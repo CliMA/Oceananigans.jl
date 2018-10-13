@@ -1,3 +1,5 @@
+using Statistics: mean
+
 # ### Defining physical constants.
 Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
 f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
@@ -24,3 +26,28 @@ w = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
 θ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
 S = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
 ρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
+
+# ### Parameters for generating initial conditions.
+Rᶜ = 600  # Radius of cooling disk [m].
+Tₛ = 20  # Surface temperature [°C].
+Q₀ = 800  # Cooling disk flux? [W?].
+Q₁ = 10  # Noise added to cooling? [W?].
+Nₛ = 0 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
+Tᶻ = Nₛ^2 / (g*αᵥ)  # Vertical temperature gradient [K/m].
+
+# Coordinates used to generate initial conditions.
+x₀ = (1:Nˣ)*Δx
+y₀ = (1:Nʸ)*Δy
+z₀ = -Δz/2:-Δz:-Lᶻ
+
+# Center horizontal coordinates so that (x,y) = (0,0) corresponds to the center
+# of the domain (and the cooling disk).
+x₀ = x₀ .- mean(x₀)
+y₀ = y₀ .- mean(y₀)
+
+# Calculate vertical temperature profile.
+T_ref = Tₛ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
+
+# Generate surface heat flux field.
+Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
+Qᶜ = zeros(NumType, Nˣ, Nʸ)
