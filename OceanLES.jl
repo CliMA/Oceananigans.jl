@@ -57,3 +57,15 @@ x₀ = repeat(transpose(x₀), Nˣ, 1)
 y₀ = repeat(y₀, 1, Nʸ)
 r₀ = x₀.*x₀ + y₀.*y₀
 Q[findall(r₀ .> Rᶜ^2)] .= 0
+
+function δˣ(f::Array{NumType, 3})
+  return f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)
+end
+
+function δʸ(f::Array{NumType, 3})
+  return f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)
+end
+
+function δᶻ(f::Array{NumType, 3})
+  return f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)
+end
