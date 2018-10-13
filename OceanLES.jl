@@ -51,3 +51,9 @@ T_ref = Tₛ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
 # Generate surface heat flux field.
 Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
 Qᶜ = zeros(NumType, Nˣ, Nʸ)
+
+# Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
+x₀ = repeat(transpose(x₀), Nˣ, 1)
+y₀ = repeat(y₀, 1, Nʸ)
+r₀ = x₀.*x₀ + y₀.*y₀
+Q[findall(r₀ .> Rᶜ^2)] .= 0
