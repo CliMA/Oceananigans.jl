@@ -69,3 +69,23 @@ end
 function δᶻ(f::Array{NumType, 3})
   return f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)
 end
+# Impose initial conditions.
+u .= 0; v .= 0; w .= 0;
+
+θ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
+
+pHY = [-ρ₀*g*h for h in z₀]
+p = repeat(reshape(pHY, 1, 1, 50), Nˣ, Nʸ, 1)
+
+# for n in 1:Nᵗ
+#   Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
+#   Gᵛ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
+#   Gʷ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+#
+#   u = u + (Gᵘ - δˣ(p)) / Δt
+#   v = v + (Gᵛ - δʸ(p)) / Δt
+#   w = w + (Gʷ - δᶻ(pⁿʰ)) / Δt
+#   w = -∫(∇ʰ(u,v,w))
+#   S = S + Gˢ/Δt
+#   T = T + Gᵀ/Δt
+# end
