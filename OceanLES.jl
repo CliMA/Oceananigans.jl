@@ -60,26 +60,6 @@ end
 function ∇x(f::Array{NumType, 3})
 end
 
-# ### Defining physical constants.
-Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
-f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
-g = 9.80665  # Standard acceleration due to gravity [m/s²].
-αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
-ρ₀ = 1025  # Reference density for seawater [kg/m³].
-
-# ### Defining model parameters.
-NumType = Float64  # Number data type.
-
-Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
-Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
-
-Δx, Δy, Δz = Lˣ/Nˣ, Lʸ/Nʸ, Lᶻ/Nᶻ  # Grid spacing [m].
-Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
-V = Δx*Δy*Δz  # Volume of a cell [m³].
-
-Nᵗ = 10  # Number of time steps to run for.
-Δt = 20  # Time step [s].
-
 @info begin
   string("Ocean LES model key parameters:\n",
          "NumType: $NumType\n",
@@ -93,13 +73,13 @@ Nᵗ = 10  # Number of time steps to run for.
 end
 
 # ### Initializing prognostic and diagnostic variable fields.
-u = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
-v = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
-w = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
-θ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
-S = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
-p = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
-ρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
+uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
+vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
+wⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
+θⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
+Sⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
+pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
+ρⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
 
 # ### Parameters for generating initial surface heat flux.
 Rᶜ = 600  # Radius of cooling disk [m].
@@ -131,23 +111,28 @@ y₀ = repeat(y₀, 1, Nʸ)
 r₀ = x₀.*x₀ + y₀.*y₀
 Q[findall(r₀ .> Rᶜ^2)] .= 0
 
-# Impose initial conditions.
-u .= 0; v .= 0; w .= 0;
+Fᵀ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Fᵀ[:, :, 1] = Q
 
-θ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
+# Impose initial conditions.
+uⁿ .= 0; vⁿ .= 0; wⁿ .= 0;
+
+θⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 
 pHY = [-ρ₀*g*h for h in z₀]
-p = repeat(reshape(pHY, 1, 1, 50), Nˣ, Nʸ, 1)
+pⁿ = repeat(reshape(pHY, 1, 1, 50), Nˣ, Nʸ, 1)
 
-# for n in 1:Nᵗ
-#   Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
-#   Gᵛ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
-#   Gʷ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
-#
-#   u = u + (Gᵘ - δˣ(p)) / Δt
-#   v = v + (Gᵛ - δʸ(p)) / Δt
-#   w = w + (Gʷ - δᶻ(pⁿʰ)) / Δt
-#   w = -∫(∇ʰ(u,v,w))
-#   S = S + Gˢ/Δt
-#   T = T + Gᵀ/Δt
-# end
+ρⁿ = ρ(Tⁿ, Sⁿ, pⁿ)
+
+for n in 1:Nᵗ
+  Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
+  Gᵛ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
+  Gʷ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+
+  u = u + (Gᵘ - δˣ(p)) / Δt
+  v = v + (Gᵛ - δʸ(p)) / Δt
+  w = w + (Gʷ - δᶻ(pⁿʰ)) / Δt
+  w = -∫(∇ʰ(u,v,w))
+  S = S + Gˢ/Δt
+  T = T + Gᵀ/Δt
+end
