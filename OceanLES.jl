@@ -1,9 +1,45 @@
 # Importing functions from packages as needed.
 using Statistics: mean
 
-# Equation of state for seawater.
+#=
+Linear equation of state for seawater. Constants taken from Table 1.2 (page 33)
+and functional form taken from Eq. (1.57) of Vallis, "Atmospheric and Oceanic
+Fluid Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017). Note
+that a linear equation of state is not accurate enough for serious quantitative
+oceanography as the expansion and contraction β coefficients vary with
+temperature, pressure, and salinity.
+=#
+
+ρ₀ = 1.027e3  # Reference density [kg/m³]
+βᵀ = 1.67e-4  # First thermal expansion coefficient [1/K]
+βˢ = 0.78e-3  # Haline contraction coefficient [1/ppt]
+βᴾ = 4.39e-10 # Compressibility coefficient [ms²/kg]
+T₀ = 283      # Reference temperature [K]
+S₀ = 35       # Reference salinity [g/kg]
+p₀ = 1e5      # Reference pressure [Pa]. Not from Table 1.2 but convention.
+αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
+
 function ρ(T, S, p)
+  return ρ₀ * (1 - βᵀ*(T-T₀) + βˢ*(S-S₀) + βᵖ*(p-p₀))
 end
+
+# ### Physical constants.
+Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
+f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
+g = 9.80665  # Standard acceleration due to gravity [m/s²].
+
+# ### Defining model parameters.
+NumType = Float64  # Number data type.
+
+Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
+Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
+
+Δx, Δy, Δz = Lˣ/Nˣ, Lʸ/Nʸ, Lᶻ/Nᶻ  # Grid spacing [m].
+Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
+V = Δx*Δy*Δz  # Volume of a cell [m³].
+
+Nᵗ = 10  # Number of time steps to run for.
+Δt = 20  # Time step [s].
 
 # Defining awesome looking operators.
 function δˣ(f::Array{NumType, 3})
