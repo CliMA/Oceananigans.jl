@@ -124,6 +124,18 @@ pⁿ = repeat(reshape(pHY, 1, 1, 50), Nˣ, Nʸ, 1)
 
 ρⁿ = ρ(Tⁿ, Sⁿ, pⁿ)
 
+Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gʷⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵀⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gˢⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
+Gᵘⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵘⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gʷⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵀⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gˢⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
 for n in 1:Nᵗ
   Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
   Gᵛ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
