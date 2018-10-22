@@ -113,15 +113,22 @@ Q[findall(r₀ .> Rᶜ^2)] .= 0
 Fᵀ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Fᵀ[:, :, 1] = Q
 
+# Zero momentum and salinity forcing term.
+Fᵘ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Fᵛ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Fʷ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Fˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
 # Impose initial conditions.
 uⁿ .= 0; vⁿ .= 0; wⁿ .= 0;
 
-θⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
+Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 
-pHY = [-ρ₀*g*h for h in z₀]
-pⁿ = repeat(reshape(pHY, 1, 1, 50), Nˣ, Nʸ, 1)
+pHY_profile = [-ρ₀*g*h for h in z₀]
+pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
+pⁿ = copy(pʰʸ)
 
-ρⁿ = ρ(Tⁿ, Sⁿ, pⁿ)
+ρⁿ .= ρ.(Tⁿ, Sⁿ, pⁿ)
 
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
@@ -134,6 +141,14 @@ Gᵘⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gʷⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵀⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
+Gᵘⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵘⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gʷⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵀⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
+pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 for n in 1:Nᵗ
   Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
