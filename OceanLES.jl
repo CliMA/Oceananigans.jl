@@ -217,14 +217,35 @@ Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 for n in 1:Nᵗ
-  Gᵘ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
-  Gᵛ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
-  Gʷ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+  # Calculate new density and density deviation.
+  δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρⁿ
+  ρⁿ = ρⁿ + δρ
 
-  u = u + (Gᵘ - δˣ(p)) / Δt
-  v = v + (Gᵛ - δʸ(p)) / Δt
-  w = w + (Gʷ - δᶻ(pⁿʰ)) / Δt
-  w = -∫(∇ʰ(u,v,w))
-  S = S + Gˢ/Δt
-  T = T + Gᵀ/Δt
+  # Store source terms from previous iteration.
+  Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
+
+  # Calculate source terms for the current time step.
+  Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + Fˢ
+  Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + Fᵀ
+
+  Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + Fᵘ
+  Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + Fᵛ
+  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - g.* (δρ ./ ρ₀) + Fʷ
+
+  # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
+  Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
+  Gᵛⁿ⁺ʰ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
+  Gʷⁿ⁺ʰ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+
+  pⁿ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+
+  # Calculate non-hydrostatic component of pressure (as a residual from the
+  # total pressure) for vertical velocity time-stepping.
+  pⁿʰ = pⁿ .- pʰʸ
+
+  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V).*δˣ(pⁿ)) ./ Δt
+  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V).*δʸ(pⁿ)) ./ Δt
+  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿʰ)) ./ Δt
+  Sⁿ = Sⁿ .+ Gˢⁿ⁺ʰ./Δt
+  Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
 end
