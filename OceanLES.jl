@@ -69,34 +69,35 @@ function div_flux(u::Array{NumType, 3}, v::Array{NumType, 3},
   return (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
 end
 
-# Calculate the convective acceleration (nonlinear advection?) terms ∇ ⋅ (Vu),
-# ∇ ⋅ (Vv), and ∇ ⋅ (Vw) where V = (u,v,w). Each component gets its own function
-# for now until we can figure out how to combine them all into one function.
+# Calculate the nonlinear advection (inertiaL acceleration or convective
+# acceleration in other fields) terms ∇ ⋅ (Vu), ∇ ⋅ (Vv), and ∇ ⋅ (Vw) where
+# V = (u,v,w). Each component gets its own function for now until we can figure
+# out how to combine them all into one function.
 function u_dot_u(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  convective_acc_x = δˣ( avgˣ(Aˣ.*u) .* avgˣ(u))
-  convective_acc_y = δʸ( avgˣ(Aʸ.*v) .* avgʸ(u))
-  convective_acc_z = δz( avgˣ(Aᶻ.*w) .* avgᶻ(u))
-  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+  advection_x = δˣ( avgˣ(Aˣ.*u) .* avgˣ(u))
+  advection_y = δʸ( avgˣ(Aʸ.*v) .* avgʸ(u))
+  advection_z = δz( avgˣ(Aᶻ.*w) .* avgᶻ(u))
+  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_v(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  convective_acc_x = δˣ( avgʸ(Aˣ.*u) .* avgˣ(v))
-  convective_acc_y = δʸ( avgʸ(Aʸ.*v) .* avgʸ(v))
-  convective_acc_z = δz( avgʸ(Aᶻ.*w) .* avgᶻ(v))
-  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+  advection_x = δˣ( avgʸ(Aˣ.*u) .* avgˣ(v))
+  advection_y = δʸ( avgʸ(Aʸ.*v) .* avgʸ(v))
+  advection_z = δz( avgʸ(Aᶻ.*w) .* avgᶻ(v))
+  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_w(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  convective_acc_x = δˣ( avgᶻ(Aˣ.*u) .* avgˣ(w))
-  convective_acc_y = δʸ( avgᶻ(Aʸ.*v) .* avgʸ(w))
-  convective_acc_z = δz( avgᶻ(Aᶻ.*w) .* avgᶻ(w))
-  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+  advection_x = δˣ( avgᶻ(Aˣ.*u) .* avgˣ(w))
+  advection_y = δʸ( avgᶻ(Aʸ.*v) .* avgʸ(w))
+  advection_z = δz( avgᶻ(Aᶻ.*w) .* avgᶻ(w))
+  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 # Precalculate wavenumbers and prefactor required to convert Fourier
