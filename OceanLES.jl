@@ -22,7 +22,13 @@ V = Δx*Δy*Δz  # Volume of a cell [m³].
 Nᵗ = 10  # Number of time steps to run for.
 Δt = 20  # Time step [s].
 
-# Defining awesome looking operators.
+# Functions to calculate the x, y, and z-derivatives on an Arakawa C-grid at
+# every grid point:
+#     δˣ(f) = (f)ᴱ - (f)ᵂ,   δʸ(f) = (f)ᴺ - (f)ˢ,   δᶻ(f) = (f)ᵀ - (f)ᴮ
+# where the E, W, N, and S superscripts indicate that the value of f is
+# evaluated on the eastern, western, northern, and southern walls of the cell,
+# respectively. Similarly, the T and B superscripts indicate the top and bottom
+# walls of the cell.
 function δˣ(f::Array{NumType, 3})
   return (f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / Δx
 end
@@ -35,6 +41,62 @@ function δᶻ(f::Array{NumType, 3})
   return (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
 end
 
+# Functions to calculate the value of a quantity on a face as the average of
+# the quantity in the two cells to which the face is common:
+#     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
+# where the superscripts are as defined for the derivative operators.
+function avgˣ(f::Array{NumType, 3})
+  return (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=1)) / 2
+end
+
+function avgʸ(f::Array{NumType, 3})
+  return (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
+end
+
+function avgᶻ(f::Array{NumType, 3})
+  return (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
+end
+
+# Calculate the divergence of a flux of Q with velocity field V = (u,v,w):
+# ∇ ⋅ (VQ).
+function div_flux(u::Array{NumType, 3}, v::Array{NumType, 3},
+  w::Array{NumType, 3}, Q::Array{NumType, 3})
+  Vᵘ = V
+  div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
+  div_flux_y = δʸ(Aʸ .* v .* avgʸ(Q))
+  div_flux_z = δᶻ(Aᶻ .* w .* avgᶻ(Q))
+  return (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
+end
+
+# Calculate the convective acceleration (nonlinear advection?) terms ∇ ⋅ (Vu),
+# ∇ ⋅ (Vv), and ∇ ⋅ (Vw) where V = (u,v,w). Each component gets its own function
+# for now until we can figure out how to combine them all into one function.
+function u_dot_u(u::Array{NumType, 3}, v::Array{NumType, 3},
+  w::Array{NumType, 3})
+  Vᵘ = V
+  convective_acc_x = δˣ( avgˣ(Aˣ.*u) .* avgˣ(u))
+  convective_acc_y = δʸ( avgˣ(Aʸ.*v) .* avgʸ(u))
+  convective_acc_z = δz( avgˣ(Aᶻ.*w) .* avgᶻ(u))
+  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+end
+
+function u_dot_v(u::Array{NumType, 3}, v::Array{NumType, 3},
+  w::Array{NumType, 3})
+  Vᵘ = V
+  convective_acc_x = δˣ( avgʸ(Aˣ.*u) .* avgˣ(v))
+  convective_acc_y = δʸ( avgʸ(Aʸ.*v) .* avgʸ(v))
+  convective_acc_z = δz( avgʸ(Aᶻ.*w) .* avgᶻ(v))
+  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+end
+
+function u_dot_w(u::Array{NumType, 3}, v::Array{NumType, 3},
+  w::Array{NumType, 3})
+  Vᵘ = V
+  convective_acc_x = δˣ( avgᶻ(Aˣ.*u) .* avgˣ(w))
+  convective_acc_y = δʸ( avgᶻ(Aʸ.*v) .* avgʸ(w))
+  convective_acc_z = δz( avgᶻ(Aᶻ.*w) .* avgᶻ(w))
+  return (1/Vᵘ) .* (convective_acc_x + convective_acc_y + convective_acc_z)
+end
 end
 
 #=
@@ -110,6 +172,8 @@ y₀ = repeat(y₀, 1, Nʸ)
 r₀ = x₀.*x₀ + y₀.*y₀
 Q[findall(r₀ .> Rᶜ^2)] .= 0
 
+# Convert surface heat flux into 3D forcing term for use when calculating
+# source terms at each time step.
 Fᵀ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Fᵀ[:, :, 1] = Q
 
@@ -130,6 +194,8 @@ pⁿ = copy(pʰʸ)
 
 ρⁿ .= ρ.(Tⁿ, Sⁿ, pⁿ)
 
+# Initialize arrays used to store source terms at current and previous
+# timesteps, and other variables.
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gʷⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
