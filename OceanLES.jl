@@ -30,33 +30,17 @@ Nᵗ = 10  # Number of time steps to run for.
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-function δˣ(f::Array{NumType, 3})
-  return (f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / Δx
-end
-
-function δʸ(f::Array{NumType, 3})
-  return (f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / Δy
-end
-
-function δᶻ(f::Array{NumType, 3})
-  return (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
-end
+function δˣ(f::Array{NumType, 3}) = (f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / Δx
+function δʸ(f::Array{NumType, 3}) = (f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / Δy
+function δᶻ(f::Array{NumType, 3}) = (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
 
 # Functions to calculate the value of a quantity on a face as the average of
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-function avgˣ(f::Array{NumType, 3})
-  return (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=1)) / 2
-end
-
-function avgʸ(f::Array{NumType, 3})
-  return (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
-end
-
-function avgᶻ(f::Array{NumType, 3})
-  return (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
-end
+function avgˣ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=1)) / 2
+function avgʸ(f::Array{NumType, 3}) = (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
+function avgᶻ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
 
 # Calculate the divergence of a flux of Q with velocity field V = (u,v,w):
 # ∇ ⋅ (VQ).
@@ -76,27 +60,27 @@ end
 function u_dot_u(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  advection_x = δˣ( avgˣ(Aˣ.*u) .* avgˣ(u))
-  advection_y = δʸ( avgˣ(Aʸ.*v) .* avgʸ(u))
-  advection_z = δz( avgˣ(Aᶻ.*w) .* avgᶻ(u))
+  advection_x = δˣ(avgˣ(Aˣ.*u) .* avgˣ(u))
+  advection_y = δʸ(avgˣ(Aʸ.*v) .* avgʸ(u))
+  advection_z = δᶻ(avgˣ(Aᶻ.*w) .* avgᶻ(u))
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_v(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  advection_x = δˣ( avgʸ(Aˣ.*u) .* avgˣ(v))
-  advection_y = δʸ( avgʸ(Aʸ.*v) .* avgʸ(v))
-  advection_z = δz( avgʸ(Aᶻ.*w) .* avgᶻ(v))
+  advection_x = δˣ(avgʸ(Aˣ.*u) .* avgˣ(v))
+  advection_y = δʸ(avgʸ(Aʸ.*v) .* avgʸ(v))
+  advection_z = δᶻ(avgʸ(Aᶻ.*w) .* avgᶻ(v))
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_w(u::Array{NumType, 3}, v::Array{NumType, 3},
   w::Array{NumType, 3})
   Vᵘ = V
-  advection_x = δˣ( avgᶻ(Aˣ.*u) .* avgˣ(w))
-  advection_y = δʸ( avgᶻ(Aʸ.*v) .* avgʸ(w))
-  advection_z = δz( avgᶻ(Aᶻ.*w) .* avgᶻ(w))
+  advection_x = δˣ(avgᶻ(Aˣ.*u) .* avgˣ(w))
+  advection_y = δʸ(avgᶻ(Aʸ.*v) .* avgʸ(w))
+  advection_z = δᶻ(avgᶻ(Aᶻ.*w) .* avgᶻ(w))
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
