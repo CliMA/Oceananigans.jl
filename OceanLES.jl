@@ -259,6 +259,8 @@ for n in 1:Nᵗ
   Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
   Gᵛⁿ⁺ʰ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
   Gʷⁿ⁺ʰ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+  Gᵀⁿ⁺ʰ = (3/2 + χ)*Gᵀⁿ - (1/2 + χ)*Gᵀⁿ⁻¹
+  Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
 
   pⁿ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
@@ -272,3 +274,5 @@ for n in 1:Nᵗ
   Sⁿ = Sⁿ .+ Gˢⁿ⁺ʰ./Δt
   Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
 end
+
+# TODO: We can use Makie to create 3D OpenGL visualizations to debug the runs.
