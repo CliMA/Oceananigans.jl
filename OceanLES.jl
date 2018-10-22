@@ -1,32 +1,13 @@
 # Importing functions from packages as needed.
 using Statistics: mean
 
-#=
-Linear equation of state for seawater. Constants taken from Table 1.2 (page 33)
-and functional form taken from Eq. (1.57) of Vallis, "Atmospheric and Oceanic
-Fluid Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017). Note
-that a linear equation of state is not accurate enough for serious quantitative
-oceanography as the expansion and contraction β coefficients vary with
-temperature, pressure, and salinity.
-=#
-
-ρ₀ = 1.027e3  # Reference density [kg/m³]
-βᵀ = 1.67e-4  # First thermal expansion coefficient [1/K]
-βˢ = 0.78e-3  # Haline contraction coefficient [1/ppt]
-βᴾ = 4.39e-10 # Compressibility coefficient [ms²/kg]
-T₀ = 283      # Reference temperature [K]
-S₀ = 35       # Reference salinity [g/kg]
-p₀ = 1e5      # Reference pressure [Pa]. Not from Table 1.2 but convention.
-αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
-
-function ρ(T, S, p)
-  return ρ₀ * (1 - βᵀ*(T-T₀) + βˢ*(S-S₀) + βᵖ*(p-p₀))
-end
-
 # ### Physical constants.
 Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
 f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
 g = 9.80665  # Standard acceleration due to gravity [m/s²].
+
+# ### Numerical method parameters.
+χ = 0.1  # Adams-Bashforth (AB2) parameter.
 
 # ### Defining model parameters.
 NumType = Float64  # Number data type.
@@ -43,25 +24,43 @@ Nᵗ = 10  # Number of time steps to run for.
 
 # Defining awesome looking operators.
 function δˣ(f::Array{NumType, 3})
-  return f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)
+  return (f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / Δx
 end
 
 function δʸ(f::Array{NumType, 3})
-  return f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)
+  return (f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / Δy
 end
 
 function δᶻ(f::Array{NumType, 3})
-  return f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)
+  return (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
 end
 
-function ∇o(f::Array{NumType, 3})
 end
 
-function ∇x(f::Array{NumType, 3})
+#=
+Linear equation of state for seawater. Constants taken from Table 1.2 (page 33)
+and functional form taken from Eq. (1.57) of Vallis, "Atmospheric and Oceanic
+Fluid Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017). Note
+that a linear equation of state is not accurate enough for serious quantitative
+oceanography as the expansion and contraction β coefficients vary with
+temperature, pressure, and salinity.
+=#
+
+ρ₀ = 1.027e3  # Reference density [kg/m³]
+βᵀ = 1.67e-4  # First thermal expansion coefficient [1/K]
+βˢ = 0.78e-3  # Haline contraction coefficient [1/ppt]
+βᵖ = 4.39e-10 # Compressibility coefficient [ms²/kg]
+T₀ = 283      # Reference temperature [K]
+S₀ = 35       # Reference salinity [g/kg]
+p₀ = 1e5      # Reference pressure [Pa]. Not from Table 1.2 but text itself.
+αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
+
+function ρ(T, S, p)
+  return ρ₀ * (1 - βᵀ*(T-T₀) + βˢ*(S-S₀) + βᵖ*(p-p₀))
 end
 
 @info begin
-  string("Ocean LES model key parameters:\n",
+  string("Ocean LES model parameters:\n",
          "NumType: $NumType\n",
          "(Nˣ, Nʸ, Nᶻ) = ($Nˣ, $Nʸ, $Nᶻ) [m]\n",
          "(Lˣ, Lʸ, Lᶻ) = ($Lˣ, $Lʸ, $Lᶻ) [m]\n",
@@ -76,7 +75,7 @@ end
 uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
 vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
 wⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
-θⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
+Tⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
 Sⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
 pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
 ρⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
@@ -99,8 +98,8 @@ z₀ = -Δz/2:-Δz:-Lᶻ
 x₀ = x₀ .- mean(x₀)
 y₀ = y₀ .- mean(y₀)
 
-# Calculate vertical temperature profile.
-T_ref = Tˢ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
+# Calculate vertical temperature profile and convert to Kelvin.
+T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
 
 # Generate surface heat flux field.
 Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
