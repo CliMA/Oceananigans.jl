@@ -38,7 +38,7 @@ function δᶻ(f::Array{NumType, 3}) = (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-function avgˣ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=1)) / 2
+function avgˣ(f::Array{NumType, 3}) = (f + cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / 2
 function avgʸ(f::Array{NumType, 3}) = (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
 function avgᶻ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
 
