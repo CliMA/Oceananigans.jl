@@ -20,15 +20,6 @@ include("generate_initial_conditions.jl")
          "Δt = $Δt [s]\n")
 end
 
-# Initializing prognostic and diagnostic variable fields.
-uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
-vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
-wⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
-Tⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
-Sⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
-pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
-ρⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
-
 # Initialize arrays used to store source terms at current and previous
 # timesteps, and other variables.
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
