@@ -1,3 +1,5 @@
+using Statistics: mean
+
 # Initializing prognostic and diagnostic variable fields.
 uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
 vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
@@ -51,7 +53,7 @@ Fˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 # Impose initial conditions.
 uⁿ .= 0; vⁿ .= 0; wⁿ .= 0;
 
-Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
+# Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 
 pHY_profile = [-ρ₀*g*h for h in z₀]
 pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)

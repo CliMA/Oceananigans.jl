@@ -1,3 +1,5 @@
+import FFTW
+
 # Precalculate wavenumbers and prefactor required to convert Fourier
 # coefficients during the spectral pressure solve.
 kˣ² = (2 / Δx^2) .* (cos.(π*[1:Nˣ;] / Nˣ) .- 1)

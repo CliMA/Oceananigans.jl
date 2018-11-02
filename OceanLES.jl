@@ -1,7 +1,3 @@
-# Importing packages and functions as needed.
-import FFTW
-using Statistics: mean
-
 include("constants.jl")
 include("operators.jl")
 include("equation_of_state.jl")
@@ -23,25 +19,33 @@ end
 # Initialize arrays used to store source terms at current and previous
 # timesteps, and other variables.
 Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
-Gᵘⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵛⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gʷⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵀⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 Gᵘⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
-Gᵘⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵛⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gʷⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵀⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ⁻¹ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 Gᵘⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
-Gᵘⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+Gᵛⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gʷⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵀⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+
 for n in 1:Nᵗ
+  global pⁿʰ, δρ
+  global uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, ρⁿ
+  global Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ
+  global Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹
+  global Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ
+
   # Calculate new density and density deviation.
   δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρⁿ
   ρⁿ = ρⁿ + δρ
