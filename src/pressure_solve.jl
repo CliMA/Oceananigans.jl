@@ -2,9 +2,9 @@ import FFTW
 
 # Precalculate wavenumbers and prefactor required to convert Fourier
 # coefficients during the spectral pressure solve.
-kˣ² = (2 / Δx^2) .* (cos.(π*[1:Nˣ;] / Nˣ) .- 1)
-kʸ² = (2 / Δy^2) .* (cos.(π*[1:Nʸ;] / Nʸ) .- 1)
-kᶻ² = (2 / Δz^2) .* (cos.(π*[1:Nᶻ;] / Nᶻ) .- 1)
+kˣ² = (2 / Δx^2) .* (cos.(π*(1:Nˣ) / Nˣ) .- 1)
+kʸ² = (2 / Δy^2) .* (cos.(π*(1:Nʸ) / Nʸ) .- 1)
+kᶻ² = (2 / Δz^2) .* (cos.(π*(1:Nᶻ) / Nᶻ) .- 1)
 
 kˣ² = repeat(reshape(kˣ², Nˣ, 1, 1), 1, Nʸ, Nᶻ)
 kʸ² = repeat(reshape(kʸ², 1, Nʸ, 1), Nˣ, 1, Nᶻ)
