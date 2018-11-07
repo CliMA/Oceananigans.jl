@@ -17,6 +17,18 @@ avgˣ(f::Array{NumType, 3}) = (f + cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / 2
 avgʸ(f::Array{NumType, 3}) = (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
 avgᶻ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
 
+#= 
+function xderiv!(out, in, g::Grid)
+end
+
+function xderiv(in, g)
+  out = zero(in)
+end
+=#
+# avgˣ(f) = @views (f + cat(f[2:end, :, :], f[1:1, :, :]; dims=1)) / 2
+# avgʸ(f) = @views (f + cat(f[:, 2:end, :], f[:, 1:1, :]; dims=2)) / 2
+# avgᶻ(f) = @views (f + cat(f[:, :, 2:end], f[:, :, 1:1]; dims=3)) / 2
+
 # Calculate the divergence of a flux of Q with velocity field V = (u,v,w):
 # ∇ ⋅ (VQ).
 function div_flux(u::Array{NumType, 3}, v::Array{NumType, 3},

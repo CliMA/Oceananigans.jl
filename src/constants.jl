@@ -7,7 +7,7 @@ g = 9.80665  # Standard acceleration due to gravity [m/s²].
 χ = 0.1  # Adams-Bashforth (AB2) parameter.
 
 # ### Defining model parameters.
-NumType = Float64  # Number data type.
+const NumType = Float64  # Number data type.
 
 Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
 Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
