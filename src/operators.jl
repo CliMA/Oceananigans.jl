@@ -5,9 +5,9 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-δˣ(f::Array{NumType, 3}) = (f - cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / Δx
-δʸ(f::Array{NumType, 3}) = (f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / Δy
-δᶻ(f::Array{NumType, 3}) = (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
+δˣ(f) = (circshift(A, (0, 0, -1)) - circshift(A, (0, 0, 1))) / Δx
+δʸ(f) = (circshift(A, (0, -1, 0)) - circshift(A, (0, 1, 0))) / Δy
+δᶻ(f) = (circshift(A, (-1, 0, 0)) - circshift(A, (1, 0, 0))) / Δz
 
 # Functions to calculate the value of a quantity on a face as the average of
 # the quantity in the two cells to which the face is common:
@@ -17,7 +17,7 @@ avgˣ(f::Array{NumType, 3}) = (f + cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / 2
 avgʸ(f::Array{NumType, 3}) = (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
 avgᶻ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
 
-#= 
+#=
 function xderiv!(out, in, g::Grid)
 end
 
