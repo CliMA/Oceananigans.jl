@@ -20,12 +20,20 @@ export
 
   δˣ,
   δʸ,
-  δᶻ
+  δᶻ,
+
+  Grid,
+  xderiv!,
+  xderivplus!,
+  yderiv!,
+  zderiv!
 
 using
   FFTW
   
+  
 include("constants.jl")
+include("domain.jl")
 include("operators.jl")
 include("equation_of_state.jl")
 include("pressure_solve.jl")
