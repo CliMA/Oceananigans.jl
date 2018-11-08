@@ -22,8 +22,3 @@ end
   @test testdz()
   @test testcellvolume()
 end
-
-@testset "Operators" begin
-  include("test_operators.jl")
-  #@test testxderiv()
-end

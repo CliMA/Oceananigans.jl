@@ -9,29 +9,17 @@
 δʸ(f::Array{NumType, 3}) = (f - cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / Δy
 δᶻ(f::Array{NumType, 3}) = (f - cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / Δz
 
+#=
+Example function to compute an x-derivative:
+
 function xderiv!(ux, u, grid)
   @views @. ux[2:grid.nx, :, :] = ( u[2:grid.nx, :, :] - u[1:grid.nx-1, :, :] ) / grid.dx
   @views @. ux[1,         :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx 
   nothing
 end
 
-function xderivplus!(ux, u, grid)
-  @views @. ux[1:grid.nx-1, :, :] = ( u[2:grid.nx, :, :] - u[1:grid.nx-1, :, :] ) / grid.dx
-  @views @. ux[grid.nx,     :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx 
-  nothing
-end
-
-function yderiv!(uy, u, grid)
-  @views @. uy[:, 2:grid.ny, :] = ( u[:, 2:grid.ny, :] - u[:, 1:grid.ny-1, :] ) / grid.dy
-  @views @. uy[:, 1,         :] = ( u[:, 1,         :] - u[:, grid.ny,     :] ) / grid.dy 
-  nothing
-end
-
-function zderiv!(uz, u, grid)
-  @views @. uz[:, :, 2:grid.nz] = ( u[:, :, 2:grid.nz] - u[:, :, 1:grid.nz-1] ) / grid.dz
-  @views @. uz[:, :, 1        ] = ( u[:, :, 1        ] - u[:, :, grid.nz    ] ) / grid.dz 
-  nothing
-end
+However --- won't we need to know whether u lives in the cell center or cell face?
+=#
 
 # Functions to calculate the value of a quantity on a face as the average of
 # the quantity in the two cells to which the face is common:
