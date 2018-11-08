@@ -19,7 +19,7 @@ struct RegularCartesianGrid{T<:AbstractFloat}
   V::T
 end
 
-function RegularCartesianGrid(n, L; T=Float64)
+function RegularCartesianGrid(n, L, T=Float64)
   nx, ny, nz = n
   Lx, Ly, Lz = L
 
@@ -33,7 +33,9 @@ function RegularCartesianGrid(n, L; T=Float64)
 
   V = dx*dy*dz
 
-  RegularCartesianGrid{T}(nx, ny, nz, Lx, Ly, Lz, dx, dy, dz, Ax, Ay, Az)
+  RegularCartesianGrid{T}(nx, ny, nz, Lx, Ly, Lz, dx, dy, dz, Ax, Ay, Az, V)
 end
+
+RegularCartesianGrid(T::AbstractFloat, n, L) = RegularCartesianGrid(n, L, T)
 
 # example: g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))

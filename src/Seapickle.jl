@@ -1,5 +1,8 @@
 module Seapickle
+
   export
+    RegularCartesianGrid,
+
     NumType,
     ρ,
     div_flux,
@@ -25,6 +28,7 @@ module Seapickle
     FFTW
 
   include("constants.jl")
+  include("grid.jl")
   include("operators.jl")
   include("equation_of_state.jl")
   include("pressure_solve.jl")
