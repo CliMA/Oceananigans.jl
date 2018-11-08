@@ -17,8 +17,17 @@ prefactor[1,1,1] = 0  # Solvability condition: DC component is zero.
 # ℱ = ∇ ⋅ G and G = (Gᵘ,Gᵛ,Gʷ) using the Fourier-spectral method.
 function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
   RHS = δˣ(Gᵘ) + δʸ(Gᵛ) + δᶻ(Gʷ)
-  RHS_hat = FFTW.fft(RHS)
-  φ_hat = prefactor .* RHS_hat
-  φ = FFTW.ifft(φ_hat)
+
+  RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(RHS)
+  φ_hat, hat_t, hat_bytes, hat_gc = @timed prefactor .* RHS_hat
+  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.ifft(φ_hat)
+
+  @info begin
+    string("Fourier-spectral profiling:\n",
+           "FFT: ($fft_t s, $fft_bytes bytes, $fft_gc GC)\n",
+           "FFT: ($hat_t s, $hat_bytes bytes, $hat_gc GC)\n",
+           "FFT: ($ifft_t s, $ifft_bytes bytes, $ifft_gc GC)\n")
+  end
+
   return real.(φ)
 end

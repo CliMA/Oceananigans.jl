@@ -1,7 +1,6 @@
-using 
-  Seapickle
-
 using Statistics: mean
+
+using Seapickle
 
 include("../src/constants.jl")
 
@@ -144,7 +143,3 @@ for n in 1:Nᵗ
   Sⁿ = Sⁿ .+ Gˢⁿ⁺ʰ./Δt
   Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
 end
-
-# TODO: We can use Makie to create 3D OpenGL visualizations to debug the runs.
-
-
