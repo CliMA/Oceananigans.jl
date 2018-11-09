@@ -5,9 +5,9 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-δˣ(f) = (circshift(A, (0, 0, -1)) - circshift(A, (0, 0, 1))) / Δx
-δʸ(f) = (circshift(A, (0, -1, 0)) - circshift(A, (0, 1, 0))) / Δy
-δᶻ(f) = (circshift(A, (-1, 0, 0)) - circshift(A, (1, 0, 0))) / Δz
+δˣ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1))) / Δx
+δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0))) / Δy
+δᶻ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0))) / Δz
 
 # Functions to calculate the value of a quantity on a face as the average of
 # the quantity in the two cells to which the face is common:
