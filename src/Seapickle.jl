@@ -1,37 +1,36 @@
 module Seapickle
 
-  export
-    RegularCartesianGrid,
+export
+  RegularCartesianGrid,
 
-    NumType,
-    ρ,
-    div_flux,
-    u_dot_u,
-    u_dot_v,
-    u_dot_w,
-    solve_for_pressure,
+  NumType,
+  ρ,
+  div_flux,
+  u_dot_u,
+  u_dot_v,
+  u_dot_w,
+  solve_for_pressure,
 
-    αᵥ,
-    T₀,
-    S₀,
-    p₀,
-    βᵖ,
-    βˢ,
-    βᵀ,
-    ρ₀,
+  αᵥ,
+  T₀,
+  S₀,
+  p₀,
+  βᵖ,
+  βˢ,
+  βᵀ,
+  ρ₀,
 
-    δˣ,
-    δʸ,
-    δᶻ
+  δˣ,
+  δʸ,
+  δᶻ,
 
-  using
-    FFTW
+  ρ
 
-  include("constants.jl")
-  include("grid.jl")
-  include("operators.jl")
-  include("equation_of_state.jl")
-  include("pressure_solve.jl")
-  #include("generate_initial_conditions.jl")
+using
+  FFTW
 
-end # module
+include("constants.jl")
+include("operators.jl")
+include("equation_of_state.jl")
+include("pressure_solve.jl")
+end
