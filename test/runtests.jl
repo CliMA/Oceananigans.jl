@@ -13,3 +13,12 @@ end
 @testset "Equation of State" begin
   @test testeos()
 end
+
+@testset "Grid" begin
+  include("test_grid.jl")
+  @test testgridsize()
+  @test testdx()
+  @test testdy()
+  @test testdz()
+  @test testcellvolume()
+end

@@ -9,6 +9,18 @@
 δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0))) / Δy
 δᶻ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0))) / Δz
 
+#=
+Example function to compute an x-derivative:
+
+function xderiv!(ux, u, grid)
+  @views @. ux[2:grid.nx, :, :] = ( u[2:grid.nx, :, :] - u[1:grid.nx-1, :, :] ) / grid.dx
+  @views @. ux[1,         :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx 
+  nothing
+end
+
+However --- won't we need to know whether u lives in the cell center or cell face?
+=#
+
 # Functions to calculate the value of a quantity on a face as the average of
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
