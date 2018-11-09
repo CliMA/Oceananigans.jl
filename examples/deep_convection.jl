@@ -172,4 +172,4 @@ for n in 1:Nᵗ
   Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
 end
 
-Makie.volume(Tⁿ, algorithm = :mip)
+Makie.volume(Tⁿ[1:50, :, :], algorithm = :mip)

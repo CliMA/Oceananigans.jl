@@ -14,7 +14,7 @@ Example function to compute an x-derivative:
 
 function xderiv!(ux, u, grid)
   @views @. ux[2:grid.nx, :, :] = ( u[2:grid.nx, :, :] - u[1:grid.nx-1, :, :] ) / grid.dx
-  @views @. ux[1,         :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx 
+  @views @. ux[1,         :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx
   nothing
 end
 
@@ -25,9 +25,9 @@ However --- won't we need to know whether u lives in the cell center or cell fac
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-avgˣ(f::Array{NumType, 3}) = (f + cat(f[2:end,:,:], f[1:1,:,:]; dims=1)) / 2
-avgʸ(f::Array{NumType, 3}) = (f + cat(f[:,2:end,:], f[:,1:1,:]; dims=2)) / 2
-avgᶻ(f::Array{NumType, 3}) = (f + cat(f[:,:,2:end], f[:,:,1:1]; dims=3)) / 2
+avgˣ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
+avgʸ(f) = (circshift(f, (0, -1, 0)) + circshift(f, (0, 1, 0))) / 2
+avgᶻ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
 
 #=
 function xderiv!(out, in, g::Grid)
@@ -43,8 +43,7 @@ end
 
 # Calculate the divergence of a flux of Q with velocity field V = (u,v,w):
 # ∇ ⋅ (VQ).
-function div_flux(u::Array{NumType, 3}, v::Array{NumType, 3},
-  w::Array{NumType, 3}, Q::Array{NumType, 3})
+function div_flux(u, v, w, Q)
   Vᵘ = V
   div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
   div_flux_y = δʸ(Aʸ .* v .* avgʸ(Q))
@@ -56,8 +55,7 @@ end
 # acceleration in other fields) terms ∇ ⋅ (Vu), ∇ ⋅ (Vv), and ∇ ⋅ (Vw) where
 # V = (u,v,w). Each component gets its own function for now until we can figure
 # out how to combine them all into one function.
-function u_dot_u(u::Array{NumType, 3}, v::Array{NumType, 3},
-  w::Array{NumType, 3})
+function u_dot_u(u, v, w)
   Vᵘ = V
   advection_x = δˣ(avgˣ(Aˣ.*u) .* avgˣ(u))
   advection_y = δʸ(avgˣ(Aʸ.*v) .* avgʸ(u))
@@ -65,8 +63,7 @@ function u_dot_u(u::Array{NumType, 3}, v::Array{NumType, 3},
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
-function u_dot_v(u::Array{NumType, 3}, v::Array{NumType, 3},
-  w::Array{NumType, 3})
+function u_dot_v(u, v, w)
   Vᵘ = V
   advection_x = δˣ(avgʸ(Aˣ.*u) .* avgˣ(v))
   advection_y = δʸ(avgʸ(Aʸ.*v) .* avgʸ(v))
@@ -74,11 +71,16 @@ function u_dot_v(u::Array{NumType, 3}, v::Array{NumType, 3},
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
-function u_dot_w(u::Array{NumType, 3}, v::Array{NumType, 3},
-  w::Array{NumType, 3})
+function u_dot_w(u, v, w)
   Vᵘ = V
   advection_x = δˣ(avgᶻ(Aˣ.*u) .* avgˣ(w))
   advection_y = δʸ(avgᶻ(Aʸ.*v) .* avgʸ(w))
   advection_z = δᶻ(avgᶻ(Aᶻ.*w) .* avgᶻ(w))
   return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+end
+
+function laplacian_diffusion_tracer(κ, T)
+end
+
+function laplacian_diffusion_velocity(v, u)
 end
