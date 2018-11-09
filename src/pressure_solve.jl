@@ -1,3 +1,5 @@
+using Printf
+
 import FFTW
 
 # Precalculate wavenumbers and prefactor required to convert Fourier
@@ -24,9 +26,9 @@ function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
 
   @info begin
     string("Fourier-spectral profiling:\n",
-           "FFT: ($fft_t s, $fft_bytes bytes, $fft_gc GC)\n",
-           "FFT: ($hat_t s, $hat_bytes bytes, $hat_gc GC)\n",
-           "FFT: ($ifft_t s, $ifft_bytes bytes, $ifft_gc GC)\n")
+           @sprintf("fFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", fft_t*1000, fft_bytes/1024^2, fft_gc*100),
+           @sprintf("FFTc: (%.0f ms, %.2f MiB, %.1f%% GC)\n", hat_t*1000, hat_bytes/1024^2, hat_gc*100),
+           @sprintf("iFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", ifft_t*1000, ifft_bytes/1024^2, ifft_gc*100))
   end
 
   return real.(φ)
