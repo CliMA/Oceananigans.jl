@@ -48,7 +48,7 @@ function div_flux(u, v, w, Q)
   div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
   div_flux_y = δʸ(Aʸ .* v .* avgʸ(Q))
   div_flux_z = δᶻ(Aᶻ .* w .* avgᶻ(Q))
-  return (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
+  (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
 end
 
 # Calculate the nonlinear advection (inertiaL acceleration or convective
@@ -60,7 +60,7 @@ function u_dot_u(u, v, w)
   advection_x = δˣ(avgˣ(Aˣ.*u) .* avgˣ(u))
   advection_y = δʸ(avgˣ(Aʸ.*v) .* avgʸ(u))
   advection_z = δᶻ(avgˣ(Aᶻ.*w) .* avgᶻ(u))
-  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_v(u, v, w)
@@ -68,7 +68,7 @@ function u_dot_v(u, v, w)
   advection_x = δˣ(avgʸ(Aˣ.*u) .* avgˣ(v))
   advection_y = δʸ(avgʸ(Aʸ.*v) .* avgʸ(v))
   advection_z = δᶻ(avgʸ(Aᶻ.*w) .* avgᶻ(v))
-  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
 function u_dot_w(u, v, w)
@@ -76,11 +76,26 @@ function u_dot_w(u, v, w)
   advection_x = δˣ(avgᶻ(Aˣ.*u) .* avgˣ(w))
   advection_y = δʸ(avgᶻ(Aʸ.*v) .* avgʸ(w))
   advection_z = δᶻ(avgᶻ(Aᶻ.*w) .* avgᶻ(w))
-  return (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
 end
 
-function laplacian_diffusion_tracer(κ, T)
+κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
+κᵛ = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
+
+function laplacian_diffusion_tracer(Q)
+  x_comp = κʰ .* Aˣ .* δˣ(Q)
+  y_comp = κʰ .* Aʸ .* δʸ(Q)
+  z_comp = κᵛ .* Aᶻ .* δᶻ(Q)
+  (1/Vᵘ) .* (x_comp + y_comp + z_comp)
 end
 
-function laplacian_diffusion_velocity(v, u)
+𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
+𝜈ᵛ = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
+
+function laplacian_diffusion_velocity(u, v, w)
+  Vᵘ = V
+  x_comp = 𝜈ʰ * avgˣ(Aˣ) * δˣ(u)
+  y_comp = 𝜈ʰ * avgʸ(Aʸ) * δʸ(v)
+  z_comp = 𝜈ᵛ * avgᶻ(Aᶻ) * δᶻ(w)
+  (1/Vᵘ) * (x_comp + y_comp + z_comp)
 end
