@@ -85,7 +85,7 @@ Fˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 # Impose initial conditions.
 uⁿ .= 0; vⁿ .= 0; wⁿ .= 0;
 
-# Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
+Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 const ρ₀ = 1.027e3  # Reference density [kg/m³]
 pHY_profile = [-ρ₀*g*h for h in z₀]
 pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
@@ -128,7 +128,7 @@ Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-for n in 1:Nᵗ
+for n in 1:2
   global pⁿʰ, δρ
   global uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, ρⁿ
   global Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ
@@ -172,4 +172,7 @@ for n in 1:Nᵗ
   Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
 end
 
-Makie.volume(Tⁿ[1:50, :, :], algorithm = :mip)
+# Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
+using PyPlot
+PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
+PyPlot.colorbar()
