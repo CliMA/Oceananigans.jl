@@ -1,4 +1,5 @@
-using Statistics: mean
+using Statistics: mean, std
+using Printf
 
 import Makie
 
@@ -133,6 +134,7 @@ pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 for n in 1:2
+@info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
   global pⁿʰ, δρ
   global uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, ρⁿ
   global Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ
@@ -149,6 +151,16 @@ for n in 1:2
   # Calculate source terms for the current time step.
   Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
   Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
+
+  GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
+  GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
+  @info begin
+    string("Temperature source term:\n",
+          @sprintf("div_flux:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
+          @sprintf("lap_diff:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_lap_diff), mean(abs.(GTn_lap_diff)), std(GTn_lap_diff)),
+          @sprintf("Fᵀ[:,:,1]: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Fᵀ[:, :, 1]), mean(abs.(Fᵀ[:, :, 1])), std(Fᵀ[:, :, 1]))
+          )
+  end
 
   Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + laplacian_diffusion_face(uⁿ) + Fᵘ
   Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + laplacian_diffusion_face(vⁿ) + Fᵛ
@@ -174,9 +186,37 @@ for n in 1:2
   wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿʰ)) ./ Δt
   Sⁿ = Sⁿ .+ Gˢⁿ⁺ʰ./Δt
   Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
+  @info begin
+    string("Time: $(n*Δt)\n",
+           @sprintf("Tⁿ[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]),
+           @sprintf("Tⁿ[50, 50, 2] = %.4g K\n", Tⁿ[50, 50, 2]),
+           @sprintf("ΔT[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1] - T_ref[1]),
+           @sprintf("pʰʸ[1, 1, 1]  = %.4g kPa\n", pʰʸ[1, 1, 1] / 1000),
+           @sprintf("pʰʸ[1, 1, 50] = %.4g kPa\n", pʰʸ[1, 1, 50] / 1000),
+           @sprintf("uⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
+           @sprintf("vⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
+           @sprintf("wⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
+           @sprintf("Tⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Tⁿ), mean(abs.(Tⁿ)), std(Tⁿ)),
+           @sprintf("Sⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
+           @sprintf("pⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
+           @sprintf("pʰʸ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
+           @sprintf("pⁿʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
+           @sprintf("ρⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
+           @sprintf("Gᵘⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
+           @sprintf("Gᵛⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
+           @sprintf("Gʷⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
+           @sprintf("Gᵀⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
+           @sprintf("Gˢⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
+          )
+  end
 end
 
 # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
 using PyPlot
+PyPlot.pygui(true)
+
 PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
+# PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
+# PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
+
 PyPlot.colorbar()
