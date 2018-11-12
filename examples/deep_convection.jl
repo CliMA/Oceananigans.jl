@@ -142,7 +142,7 @@ for n in 1:2
   global Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ
 
   # Calculate new density and density deviation.
-  δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρⁿ
+  δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρ₀
   ρⁿ = ρⁿ + δρ
 
   # Store source terms from previous iteration.
