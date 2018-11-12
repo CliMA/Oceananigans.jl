@@ -29,6 +29,12 @@ avgˣ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
 avgʸ(f) = (circshift(f, (0, -1, 0)) + circshift(f, (0, 1, 0))) / 2
 avgᶻ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
 
+# In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
+# return the scalar.
+avgˣ(s::Number) = s
+avgʸ(s::Number) = s
+avgᶻ(s::Number) = s
+
 #=
 function xderiv!(out, in, g::Grid)
 end
@@ -41,8 +47,15 @@ end
 # avgʸ(f) = @views (f + cat(f[:, 2:end, :], f[:, 1:1, :]; dims=2)) / 2
 # avgᶻ(f) = @views (f + cat(f[:, :, 2:end], f[:, :, 1:1]; dims=3)) / 2
 
-# Calculate the divergence of a flux of Q with velocity field V = (u,v,w):
-# ∇ ⋅ (VQ).
+# Calculate the divergence of the flux of a quantify f = (fˣ, fʸ, fᶻ) over the
+# cell.
+function div(fˣ, fʸ, fᶻ)
+  Vᵘ = V
+  (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
+end
+
+# Calculate the divergence of a flux of Q over a zone with velocity field
+# 𝐮 = (u,v,w): ∇ ⋅ (𝐮 Q).
 function div_flux(u, v, w, Q)
   Vᵘ = V
   div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
@@ -82,20 +95,22 @@ end
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
 κᵛ = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
 
-function laplacian_diffusion_tracer(Q)
-  x_comp = κʰ .* Aˣ .* δˣ(Q)
-  y_comp = κʰ .* Aʸ .* δʸ(Q)
-  z_comp = κᵛ .* Aᶻ .* δᶻ(Q)
-  (1/Vᵘ) .* (x_comp + y_comp + z_comp)
+# Laplacian diffusion for zone quantities: ∇ · (κ∇Q)
+function laplacian_diffusion_zone(Q)
+  κ∇Q_x = κʰ .* Aˣ .* δˣ(Q)
+  κ∇Q_y = κʰ .* Aʸ .* δʸ(Q)
+  κ∇Q_z = κᵛ .* Aᶻ .* δᶻ(Q)
+  div(κ∇Q_x, κ∇Q_y, κ∇Q_z)
 end
 
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
 𝜈ᵛ = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
 
-function laplacian_diffusion_velocity(u, v, w)
+# Laplacian diffusion for face quantities: ∇ · (ν∇u)
+function laplacian_diffusion_face(u)
   Vᵘ = V
-  x_comp = 𝜈ʰ * avgˣ(Aˣ) * δˣ(u)
-  y_comp = 𝜈ʰ * avgʸ(Aʸ) * δʸ(v)
-  z_comp = 𝜈ᵛ * avgᶻ(Aᶻ) * δᶻ(w)
-  (1/Vᵘ) * (x_comp + y_comp + z_comp)
+  𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
+  𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
+  𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
+  div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
