@@ -7,7 +7,19 @@
 # walls of the cell.
 δˣ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0)))
 δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0)))
-δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))
+# δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))
+
+function δᶻ(f)
+  ff = Array{Float64, 3}(undef, size(Tⁿ)...)
+
+  ff[:, :, 1] = f[:, :, 2] - f[:, :, 1]          # δᶻ at top layer.
+  ff[:, :, end] = f[:, :, end] - f[:, :, end-1]  # δᶻ at bottom layer.
+
+  # δᶻ in the interior.
+  ff[:, :, 2:end-1] = (circshift(f[:, :, 2:end-1], (0, 0, -1)) - circshift(f[:, :, 2:end-1], (0, 0, 1)))
+
+  return ff
+end
 
 #=
 Example function to compute an x-derivative:
@@ -27,7 +39,19 @@ However --- won't we need to know whether u lives in the cell center or cell fac
 # where the superscripts are as defined for the derivative operators.
 avgˣ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
 avgʸ(f) = (circshift(f, (0, -1, 0)) + circshift(f, (0, 1, 0))) / 2
-avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
+# avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
+
+function avgᶻ(f)
+  ff = Array{Float64, 3}(undef, size(Tⁿ)...)
+
+  ff[:, :, 1] = (f[:, :, 2] + f[:, :, 1]) / 2          # avgᶻ at top layer.
+  ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
+
+  # avgᶻ in the interior.
+  ff[:, :, 2:end-1] = (circshift(f[:, :, 2:end-1], (0, 0, -1)) + circshift(f[:, :, 2:end-1], (0, 0, 1))) / 2
+
+  return ff
+end
 
 # In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
 # return the scalar.
