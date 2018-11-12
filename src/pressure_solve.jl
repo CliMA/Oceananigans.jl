@@ -27,9 +27,9 @@ prefactor[1, 1, 1] = 0  # Solvability condition: DC component is zero.
 function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
   RHS = δˣ(Gᵘ) + δʸ(Gᵛ) + δᶻ(Gʷ)
 
-  RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(RHS, FFTW.REDFT10)
+  RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(FFTW.fft(RHS, [1, 2]), FFTW.REDFT10, 3)
   φ_hat, hat_t, hat_bytes, hat_gc = @timed prefactor .* RHS_hat
-  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01)
+  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(FFTW.ifft(φ_hat, [1, 2]), FFTW.REDFT01, 3)
 
   @info begin
     string("Fourier-spectral profiling:\n",
