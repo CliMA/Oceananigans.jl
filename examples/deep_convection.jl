@@ -164,7 +164,7 @@ for n in 1:2
 
   Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + laplacian_diffusion_face(uⁿ) + Fᵘ
   Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + laplacian_diffusion_face(vⁿ) + Fᵛ
-  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - g.* (δρ ./ ρ₀) + laplacian_diffusion_face(wⁿ) + Fʷ
+  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - avgᶻ(g.* (δρ ./ ρ₀)) + laplacian_diffusion_face(wⁿ) + Fʷ
 
   # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
   @. begin
