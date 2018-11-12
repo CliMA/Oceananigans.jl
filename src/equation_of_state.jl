@@ -7,6 +7,8 @@ oceanography as the expansion and contraction β coefficients vary with
 temperature, pressure, and salinity.
 =#
 
+const cᵥ = 4181.3  # Isobaric mass heat capacity [J / kg·K].
+
 const ρ₀ = 1.027e3  # Reference density [kg/m³]
 const βᵀ = 1.67e-4  # First thermal expansion coefficient [1/K]
 const βˢ = 0.78e-3  # Haline contraction coefficient [1/ppt]

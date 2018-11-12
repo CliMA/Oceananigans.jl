@@ -99,11 +99,12 @@ pⁿ = copy(pʰʸ)
 @info begin
   string("Ocean LES model parameters:\n",
          "NumType: $NumType\n",
-         "(Nˣ, Nʸ, Nᶻ) = ($Nˣ, $Nʸ, $Nᶻ) [m]\n",
+         "(Nˣ, Nʸ, Nᶻ) = ($Nˣ, $Nʸ, $Nᶻ) [#]\n",
          "(Lˣ, Lʸ, Lᶻ) = ($Lˣ, $Lʸ, $Lᶻ) [m]\n",
          "(Δx, Δy, Δz) = ($Δx, $Δy, $Δz) [m]\n",
          "(Aˣ, Aʸ, Aᶻ) = ($Aˣ, $Aʸ, $Aᶻ) [m²]\n",
          "V = $V [m³]\n",
+         "M = $M [kg]\n",
          "Nᵗ = $Nᵗ [s]\n",
          "Δt = $Δt [s]\n")
 end
