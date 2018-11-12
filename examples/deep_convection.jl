@@ -45,7 +45,7 @@ Rᶜ = 600  # Radius of cooling disk [m].
 Tˢ = 20  # Surface temperature [°C].
 Q₀ = 800  # Cooling disk heat flux [W/m²].
 Q₁ = 10  # Noise added to cooling disk heat flux [W/m²].
-Nˢ = 10 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
+Nˢ = 0 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 
 const αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 Tᶻ = Nˢ^2 / (g*αᵥ)  # Vertical temperature gradient [K/m].
