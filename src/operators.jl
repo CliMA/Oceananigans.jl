@@ -5,9 +5,9 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-δˣ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0))) / Δx
-δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0))) / Δy
-δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1))) / Δz
+δˣ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0)))
+δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0)))
+δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))
 
 #=
 Example function to compute an x-derivative:
