@@ -5,8 +5,8 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-δˣ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0)))
-δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0)))
+δˣ(f) = (f .- circshift(f, (1, 0, 0)))
+δʸ(f) = (f .- circshift(f, (0, 1, 0)))
 # δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))
 
 function δᶻ(f)
@@ -16,7 +16,7 @@ function δᶻ(f)
   ff[:, :, end] = f[:, :, end] - f[:, :, end-1]  # δᶻ at bottom layer.
 
   # δᶻ in the interior.
-  ff[:, :, 2:end-1] = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))[:, :, 2:end-1]
+  ff[:, :, 2:end-1] = (f .- circshift(f, (0, 0, 1)))[:, :, 2:end-1]
 
   return ff
 end
@@ -37,8 +37,8 @@ However --- won't we need to know whether u lives in the cell center or cell fac
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-avgˣ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
-avgʸ(f) = (circshift(f, (0, -1, 0)) + circshift(f, (0, 1, 0))) / 2
+avgˣ(f) = (f .+ circshift(f, (1, 0, 0))) / 2
+avgʸ(f) = (f .+ circshift(f, (0, 1, 0))) / 2
 # avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
 
 function avgᶻ(f)
@@ -48,7 +48,7 @@ function avgᶻ(f)
   ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
 
   # avgᶻ in the interior.
-  ff[:, :, 2:end-1] = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1)))[:, :, 2:end-1] ./ 2
+  ff[:, :, 2:end-1] = (f .+ circshift(f, (0, 0, 1)))[:, :, 2:end-1] ./ 2
 
   return ff
 end
