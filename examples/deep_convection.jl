@@ -181,9 +181,9 @@ for n in 1:2
   # total pressure) for vertical velocity time-stepping.
   pⁿʰ = pⁿ .- pʰʸ
 
-  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* δˣ(pⁿ)) .* Δt
-  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* δʸ(pⁿ)) .* Δt
-  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* δᶻ(pⁿʰ)) .* Δt
+  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿ) ./ ρ₀)) .* Δt
+  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿ) ./ ρ₀)) .* Δt
+  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰ) ./ ρ₀)) .* Δt
   # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
   # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
   Sⁿ = Sⁿ .+ (Gˢⁿ⁺ʰ .* Δt)
