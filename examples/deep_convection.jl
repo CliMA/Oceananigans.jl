@@ -147,12 +147,12 @@ for n in 1:2
   Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
 
   # Calculate source terms for the current time step.
-  Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + Fˢ
-  Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + Fᵀ
+  Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
+  Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
 
-  Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + Fᵘ
-  Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + Fᵛ
-  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - g.* (δρ ./ ρ₀) + Fʷ
+  Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + laplacian_diffusion_face(uⁿ) + Fᵘ
+  Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + laplacian_diffusion_face(vⁿ) + Fᵛ
+  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - g.* (δρ ./ ρ₀) + laplacian_diffusion_face(wⁿ) + Fʷ
 
   # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
   @. begin
