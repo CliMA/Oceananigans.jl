@@ -177,6 +177,8 @@ for n in 1:2
 
   pⁿ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
+  pʰʸ = -δρ .* g .* repeat(reshape(kᶻ², 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+
   # Calculate non-hydrostatic component of pressure (as a residual from the
   # total pressure) for vertical velocity time-stepping.
   pⁿʰ = pⁿ .- pʰʸ
