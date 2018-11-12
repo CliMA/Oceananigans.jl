@@ -26,6 +26,7 @@ Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
 Δx, Δy, Δz = Lˣ/Nˣ, Lʸ/Nʸ, Lᶻ/Nᶻ  # Grid spacing [m].
 Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
 V = Δx*Δy*Δz  # Volume of a cell [m³].
+M = ρ₀*V  # Mass of water in a cell [kg].
 
 Nᵗ = 10  # Number of time steps to run for.
 Δt = 20  # Time step [s].
@@ -42,8 +43,8 @@ pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
 # ### Parameters for generating initial surface heat flux.
 Rᶜ = 600  # Radius of cooling disk [m].
 Tˢ = 20  # Surface temperature [°C].
-Q₀ = 800  # Cooling disk flux? [W?].
-Q₁ = 10  # Noise added to cooling? [W?].
+Q₀ = 800  # Cooling disk heat flux [W/m²].
+Q₁ = 10  # Noise added to cooling disk heat flux [W/m²].
 Nˢ = 10 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 
 const αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
@@ -74,7 +75,9 @@ Q[findall(r₀ .> Rᶜ^2)] .= 0
 # Convert surface heat flux into 3D forcing term for use when calculating
 # source terms at each time step.
 Fᵀ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
-Fᵀ[:, :, 1] = Q
+
+# Converting surface heat flux [W/m²] into a temperature tendency forcing [K/s].
+@. Fᵀ[:, :, 1] = (Q / cᵥ) * (Aᶻ / M)
 
 # Zero momentum and salinity forcing term.
 Fᵘ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
