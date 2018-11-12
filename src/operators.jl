@@ -5,9 +5,9 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
-δˣ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1))) / Δx
+δˣ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0))) / Δx
 δʸ(f) = (circshift(f, (0, -1, 0)) - circshift(f, (0, 1, 0))) / Δy
-δᶻ(f) = (circshift(f, (-1, 0, 0)) - circshift(f, (1, 0, 0))) / Δz
+δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1))) / Δz
 
 #=
 Example function to compute an x-derivative:
@@ -25,9 +25,9 @@ However --- won't we need to know whether u lives in the cell center or cell fac
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-avgˣ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
+avgˣ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
 avgʸ(f) = (circshift(f, (0, -1, 0)) + circshift(f, (0, 1, 0))) / 2
-avgᶻ(f) = (circshift(f, (-1, 0, 0)) + circshift(f, (1, 0, 0))) / 2
+avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
 
 # In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
 # return the scalar.
