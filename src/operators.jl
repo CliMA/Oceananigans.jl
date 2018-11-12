@@ -97,10 +97,11 @@ end
 
 # Laplacian diffusion for zone quantities: ∇ · (κ∇Q)
 function laplacian_diffusion_zone(Q)
+  Vᵘ = V
   κ∇Q_x = κʰ .* Aˣ .* δˣ(Q)
   κ∇Q_y = κʰ .* Aʸ .* δʸ(Q)
   κ∇Q_z = κᵛ .* Aᶻ .* δᶻ(Q)
-  div(κ∇Q_x, κ∇Q_y, κ∇Q_z)
+  (1/Vᵘ) .* div(κ∇Q_x, κ∇Q_y, κ∇Q_z)
 end
 
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
@@ -112,5 +113,5 @@ function laplacian_diffusion_face(u)
   𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
   𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
   𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
-  div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
+  (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
