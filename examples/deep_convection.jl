@@ -181,11 +181,14 @@ for n in 1:2
   # total pressure) for vertical velocity time-stepping.
   pⁿʰ = pⁿ .- pʰʸ
 
-  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V).*δˣ(pⁿ)) ./ Δt
-  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V).*δʸ(pⁿ)) ./ Δt
-  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿʰ)) ./ Δt
-  Sⁿ = Sⁿ .+ Gˢⁿ⁺ʰ./Δt
-  Tⁿ = Tⁿ .+ Gᵀⁿ⁺ʰ./Δt
+  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* δˣ(pⁿ)) .* Δt
+  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* δʸ(pⁿ)) .* Δt
+  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* δᶻ(pⁿʰ)) .* Δt
+  # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
+  # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
+  Sⁿ = Sⁿ .+ (Gˢⁿ⁺ʰ .* Δt)
+  Tⁿ = Tⁿ .+ (Gᵀⁿ⁺ʰ .* Δt)
+
   @info begin
     string("Time: $(n*Δt)\n",
            @sprintf("Tⁿ[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]),
