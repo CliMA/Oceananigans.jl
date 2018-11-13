@@ -87,7 +87,7 @@ r₀² = x₀.*x₀ + y₀.*y₀
 # heat flux profile.
 Q = Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
 Q[findall(r₀² .> Rᶜ^2)] .= 0
-@. Q = Q + Q₀ * exp(-r₀^2 / (0.75*Rᶜ^2))
+@. Q = Q + Q₀ * exp(-r₀² / (0.75*Rᶜ^2))
 
 # Convert surface heat flux into 3D forcing term for use when calculating
 # source terms at each time step.
@@ -154,7 +154,7 @@ g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-  for n in 1:10
+  for n in 1:5
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
@@ -235,22 +235,25 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
              @sprintf("g′:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(g′), maximum(g′), mean(g′), mean(abs.(g′)), std(g′)),
              @sprintf("ρⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
              @sprintf("δρ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(δρ), maximum(δρ), mean(δρ), mean(abs.(δρ)), std(δρ)),
-             @sprintf("Gᵘⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵘⁿ⁺ʰ), maximum(Gᵘⁿ⁺ʰ), mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
+             @sprintf("δρ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(δρ), maximum(δρ), mean(δρ), mean(abs.(δρ)), std(δρ)),
              @sprintf("Gᵛⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
              @sprintf("Gʷⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
              @sprintf("Gᵀⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵀⁿ⁺ʰ), maximum(Gᵀⁿ⁺ʰ), mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
-             @sprintf("Gˢⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
+             @sprintf("Gˢⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ)),
+             @sprintf("∇ʰpHY′: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(∇ʰpHY′), maximum(∇ʰpHY′), mean(∇ʰpHY′), mean(abs.(∇ʰpHY′)), std(∇ʰpHY′))
             )
     end  # @info
+
+    # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
+
+    PyPlot.close()
+    PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
+    # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
+    # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
+
+    PyPlot.colorbar()
+
   end  # time stepping for loop
-
-  # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
-
-  PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
-  # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
-  # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
-
-  PyPlot.colorbar()
 end  # time_stepping function
 
 time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
