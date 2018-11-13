@@ -141,6 +141,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
     # Calculate new density and density deviation.
     δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρ₀
     ρⁿ = ρⁿ + δρ
+    # Calculate the hydrostatic pressure anomaly pʰʸ′ by calculating the
+    # effective weight of the water column above at every grid point, i.e. using
+    # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
+    # approximation holds.
+    @. g′ = g * δρ / ρ₀
+    pʰʸ′ = -ρ₀ .* g′ .* repeat(reshape(z₀, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
 
     # Store source terms from previous iteration.
     Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
@@ -161,7 +167,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
 
     Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .+ laplacian_diffusion_face(uⁿ) .+ Fᵘ
     Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .+ laplacian_diffusion_face(vⁿ) .+ Fᵛ
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- avgᶻ(g.* (δρ ./ ρ₀)) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+
+    # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
+    # et al. (1997) so it includes the reduced gravity buoyancy term.
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- avgᶻ(g′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
     @. begin
@@ -172,13 +181,11 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
       Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
     end
 
-    pⁿ = p₀ .+ solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    # Calculate non-hydrostatic component of pressure. As we have built in the
+    pⁿʰ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
-    pʰʸ = -δρ .* g .* repeat(reshape(z₀, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
-
-    # Calculate non-hydrostatic component of pressure (as a residual from the
-    # total pressure) for vertical velocity time-stepping.
-    pⁿʰ = pⁿ .- pʰʸ
+    # Calculate the full pressure field.
+    @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
 
     uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿ) ./ ρ₀)) .* Δt
     vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿ) ./ ρ₀)) .* Δt
