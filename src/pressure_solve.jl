@@ -30,20 +30,20 @@ prefactor[1, 1, 1] = 0  # Solvability condition: DC component is zero.
 
 # Solve an elliptic Poisson equation ∇²ϕ = ℱ for the pressure field ϕ where
 # ℱ = ∇ ⋅ G and G = (Gᵘ,Gᵛ,Gʷ) using the Fourier-spectral method.
-function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
-  RHS = div(Gᵘ, Gᵛ, Gʷ)
+function solve_for_pressure(Gᵘ, Gᵛ, Gʷ, ∇ʰpHY′)
+  RHS = div(Gᵘ, Gᵛ, Gʷ) - ∇ʰpHY′
 
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(RHS)
-  RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(FFTW.r2r(RHS, FFTW.REDFT10, 3), [1, 2])
+  # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(FFTW.r2r(RHS, FFTW.REDFT10, 3), [1, 2])
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(FFTW.fft(RHS, [1, 2]), FFTW.REDFT10, 3)
-  # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(RHS, FFTW.REDFT10)
+  RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(RHS, FFTW.REDFT10)
 
   φ_hat, hat_t, hat_bytes, hat_gc = @timed prefactor .* RHS_hat
 
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.ifft(φ_hat)
-  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(FFTW.ifft(φ_hat, [1, 2]), FFTW.REDFT01, 3)
+  # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(FFTW.ifft(φ_hat, [1, 2]), FFTW.REDFT01, 3)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.fft(FFTW.r2r(φ_hat, FFTW.REDFT01, 3), [1, 2])
-  # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01)
+  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01)
 
   @info begin
     string("Fourier-spectral profiling:\n",

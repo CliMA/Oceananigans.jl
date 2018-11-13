@@ -189,7 +189,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- avgᶻ(g′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
     @. begin
@@ -200,8 +200,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
       Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
     end
 
+    ∇ʰpHY′ = horizontal_laplacian(pʰʸ′)
+
     # Calculate non-hydrostatic component of pressure. As we have built in the
-    pⁿʰ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    pⁿʰ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, ∇ʰpHY′)
 
     # Calculate the full pressure field.
     @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
