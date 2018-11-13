@@ -139,8 +139,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
   for n in 1:3
 
     # Calculate new density and density deviation.
-    δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρ₀
-    ρⁿ = ρⁿ + δρ
+    @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
+    @. ρⁿ = ρⁿ + δρ
+
     # Calculate the hydrostatic pressure anomaly pʰʸ′ by calculating the
     # effective weight of the water column above at every grid point, i.e. using
     # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
@@ -192,8 +193,8 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
     wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰ) ./ ρ₀)) .* Δt
     # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
     # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
-    Sⁿ = Sⁿ .+ (Gˢⁿ⁺ʰ .* Δt)
-    Tⁿ = Tⁿ .+ (Gᵀⁿ⁺ʰ .* Δt)
+    @. Sⁿ = Sⁿ + (Gˢⁿ⁺ʰ * Δt)
+    @. Tⁿ = Tⁿ + (Gᵀⁿ⁺ʰ * Δt)
 
     @info begin
       string("Time: $(n*Δt)\n",
