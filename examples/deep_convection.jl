@@ -38,6 +38,7 @@ vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s]
 wⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in z-direction [m/s].
 Tⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Potential temperature [K].
 Sⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Salinity [g/kg].
+pʰʸ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ) # Hydrostatic pressure [Pa].
 pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
 ρⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Density [kg/m³].
 
@@ -93,7 +94,7 @@ Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 const ρ₀ = 1.027e3  # Reference density [kg/m³]
 pHY_profile = [-ρ₀*g*h for h in z₀]
 pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
-pⁿ = copy(pʰʸ)
+pⁿ = copy(pʰʸ)  # Initial pressure is just the hydrostatic pressure.
 
 ρⁿ .= ρ.(Tⁿ, Sⁿ, pⁿ)
 
@@ -130,12 +131,14 @@ Gʷⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gᵀⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
+pʰʸ′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
-function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
   for n in 1:3
 
     # Calculate new density and density deviation.
@@ -203,15 +206,18 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
              @sprintf("ΔT[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1] - T_ref[1]),
              @sprintf("pʰʸ[1, 1, 1]  = %.4g kPa\n", pʰʸ[1, 1, 1] / 1000),
              @sprintf("pʰʸ[1, 1, 50] = %.4g kPa\n", pʰʸ[1, 1, 50] / 1000),
-             @sprintf("uⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(uⁿ), maximum(uⁿ), mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
-             @sprintf("vⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(vⁿ), maximum(vⁿ), mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
-             @sprintf("wⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(wⁿ), maximum(wⁿ), mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
-             @sprintf("Tⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Tⁿ), maximum(Tⁿ), mean(Tⁿ), mean(abs.(Tⁿ)), std(Tⁿ)),
-             @sprintf("Sⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Sⁿ), maximum(Sⁿ), mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
-             @sprintf("pⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿ), maximum(pⁿ), mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
-             @sprintf("pʰʸ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ), maximum(pʰʸ), mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
-             @sprintf("pⁿʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿʰ), maximum(pⁿʰ), mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
-             @sprintf("ρⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
+             @sprintf("uⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(uⁿ), maximum(uⁿ), mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
+             @sprintf("vⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(vⁿ), maximum(vⁿ), mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
+             @sprintf("wⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(wⁿ), maximum(wⁿ), mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
+             @sprintf("Tⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Tⁿ), maximum(Tⁿ), mean(Tⁿ), mean(abs.(Tⁿ)), std(Tⁿ)),
+             @sprintf("Sⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Sⁿ), maximum(Sⁿ), mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
+             @sprintf("pʰʸ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ), maximum(pʰʸ), mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
+             @sprintf("pʰʸ′: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ′), maximum(pʰʸ′), mean(pʰʸ′), mean(abs.(pʰʸ′)), std(pʰʸ′)),
+             @sprintf("pⁿʰ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿʰ), maximum(pⁿʰ), mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
+             @sprintf("pⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿ), maximum(pⁿ), mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
+             @sprintf("g′:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(g′), maximum(g′), mean(g′), mean(abs.(g′)), std(g′)),
+             @sprintf("ρⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
+             @sprintf("δρ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(δρ), maximum(δρ), mean(δρ), mean(abs.(δρ)), std(δρ)),
              @sprintf("Gᵘⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵘⁿ⁺ʰ), maximum(Gᵘⁿ⁺ʰ), mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
              @sprintf("Gᵛⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
              @sprintf("Gʷⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
@@ -222,7 +228,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, 
   end  # time stepping for loop
 end  # time_stepping function
 
-time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
 
 # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
 using PyPlot
