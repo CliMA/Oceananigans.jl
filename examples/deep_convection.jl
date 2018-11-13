@@ -158,7 +158,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
-    @. ρⁿ = ρⁿ + δρ
+    @. ρⁿ = ρ₀ + δρ
 
     # Calculate the hydrostatic pressure anomaly pʰʸ′ by calculating the
     # effective weight of the water column above at every grid point, i.e. using
