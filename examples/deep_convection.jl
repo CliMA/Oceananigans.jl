@@ -3,6 +3,9 @@ using Printf
 
 # import Makie
 
+using PyPlot
+PyPlot.pygui(true)
+
 # using Seapickle
 # include("../src/Seapickle.jl")
 
@@ -139,7 +142,7 @@ g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-  for n in 1:3
+  for n in 1:10
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
@@ -226,16 +229,14 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end  # @info
   end  # time stepping for loop
+
+  # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
+
+  PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
+  # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
+  # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
+
+  PyPlot.colorbar()
 end  # time_stepping function
 
 time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-
-# Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
-using PyPlot
-PyPlot.pygui(true)
-
-PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
-# PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
-# PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
-
-PyPlot.colorbar()
