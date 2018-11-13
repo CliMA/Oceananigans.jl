@@ -68,14 +68,26 @@ y₀ = y₀ .- mean(y₀)
 # Calculate vertical temperature profile and convert to Kelvin.
 T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
 
-# Generate surface heat flux field.
-Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
-
 # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
 x₀ = repeat(transpose(x₀), Nˣ, 1)
 y₀ = repeat(y₀, 1, Nʸ)
-r₀ = x₀.*x₀ + y₀.*y₀
-Q[findall(r₀ .> Rᶜ^2)] .= 0
+r₀² = x₀.*x₀ + y₀.*y₀
+
+# Generate surface heat flux field.
+# Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
+
+# Cooling disk of radius Rᶜ. Disabling for now as I think the sharp (∞) slope
+# at the edge of the disk is causing huge fluxes and we have no flux limiter
+# yet.
+# Q[findall(r₀² .> Rᶜ^2)] .= 0
+
+# Gaussian cooling disk with similar radius but it much smoother and should work
+# without flux limiters.
+# Add a little bit of noise but only in the center then impose a Gaussian
+# heat flux profile.
+Q = Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
+Q[findall(r₀² .> Rᶜ^2)] .= 0
+@. Q = Q + Q₀ * exp(-r₀^2 / (0.75*Rᶜ^2))
 
 # Convert surface heat flux into 3D forcing term for use when calculating
 # source terms at each time step.
