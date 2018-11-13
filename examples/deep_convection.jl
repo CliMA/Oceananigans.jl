@@ -1,7 +1,7 @@
 using Statistics: mean, std
 using Printf
 
-import Makie
+# import Makie
 
 # using Seapickle
 # include("../src/Seapickle.jl")
@@ -87,7 +87,7 @@ Fʷ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Fˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 # Impose initial conditions.
-uⁿ .= 0; vⁿ .= 0; wⁿ .= 0;
+uⁿ .= 0; vⁿ .= 0; wⁿ .= 0; Sⁿ .= 35;
 
 Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 const ρ₀ = 1.027e3  # Reference density [kg/m³]
@@ -133,88 +133,88 @@ Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-for n in 1:2
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
-  global pⁿʰ, δρ
-  global uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, ρⁿ
-  global Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ
-  global Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹
-  global Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ
 
-  # Calculate new density and density deviation.
-  δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρ₀
-  ρⁿ = ρⁿ + δρ
+function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+  for n in 1:3
 
-  # Store source terms from previous iteration.
-  Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
+    # Calculate new density and density deviation.
+    δρ .= ρ.(Tⁿ, Sⁿ, pⁿ) .- ρ₀
+    ρⁿ = ρⁿ + δρ
 
-  # Calculate source terms for the current time step.
-  Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
-  Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    # Store source terms from previous iteration.
+    Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
 
-  GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
-  GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
-  @info begin
-    string("Temperature source term:\n",
-          @sprintf("div_flux:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
-          @sprintf("lap_diff:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_lap_diff), mean(abs.(GTn_lap_diff)), std(GTn_lap_diff)),
-          @sprintf("Fᵀ[:,:,1]: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Fᵀ[:, :, 1]), mean(abs.(Fᵀ[:, :, 1])), std(Fᵀ[:, :, 1]))
-          )
-  end
+    # Calculate source terms for the current time step.
+    Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
+    Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
 
-  Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) + f.*vⁿ + laplacian_diffusion_face(uⁿ) + Fᵘ
-  Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) - f.*uⁿ + laplacian_diffusion_face(vⁿ) + Fᵛ
-  Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) - avgᶻ(g.* (δρ ./ ρ₀)) + laplacian_diffusion_face(wⁿ) + Fʷ
+    GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
+    GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
+    @info begin
+      string("Temperature source term:\n",
+            @sprintf("div_flux:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
+            @sprintf("lap_diff:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_lap_diff), mean(abs.(GTn_lap_diff)), std(GTn_lap_diff)),
+            @sprintf("Fᵀ[:,:,1]: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Fᵀ[:, :, 1]), mean(abs.(Fᵀ[:, :, 1])), std(Fᵀ[:, :, 1]))
+            )
+    end
 
-  # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
-  @. begin
-    Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
-    Gᵛⁿ⁺ʰ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
-    Gʷⁿ⁺ʰ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
-    Gᵀⁿ⁺ʰ = (3/2 + χ)*Gᵀⁿ - (1/2 + χ)*Gᵀⁿ⁻¹
-    Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
-  end
+    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .+ laplacian_diffusion_face(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .+ laplacian_diffusion_face(vⁿ) .+ Fᵛ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- avgᶻ(g.* (δρ ./ ρ₀)) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
-  pⁿ = p₀ .+ solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
+    @. begin
+      Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
+      Gᵛⁿ⁺ʰ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
+      Gʷⁿ⁺ʰ = (3/2 + χ)*Gʷⁿ - (1/2 + χ)*Gʷⁿ⁻¹
+      Gᵀⁿ⁺ʰ = (3/2 + χ)*Gᵀⁿ - (1/2 + χ)*Gᵀⁿ⁻¹
+      Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
+    end
 
-  pʰʸ = -δρ .* g .* repeat(reshape(z₀, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+    pⁿ = p₀ .+ solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
-  # Calculate non-hydrostatic component of pressure (as a residual from the
-  # total pressure) for vertical velocity time-stepping.
-  pⁿʰ = pⁿ .- pʰʸ
+    pʰʸ = -δρ .* g .* repeat(reshape(z₀, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
 
-  uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿ) ./ ρ₀)) .* Δt
-  vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿ) ./ ρ₀)) .* Δt
-  wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰ) ./ ρ₀)) .* Δt
-  # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
-  # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
-  Sⁿ = Sⁿ .+ (Gˢⁿ⁺ʰ .* Δt)
-  Tⁿ = Tⁿ .+ (Gᵀⁿ⁺ʰ .* Δt)
+    # Calculate non-hydrostatic component of pressure (as a residual from the
+    # total pressure) for vertical velocity time-stepping.
+    pⁿʰ = pⁿ .- pʰʸ
 
-  @info begin
-    string("Time: $(n*Δt)\n",
-           @sprintf("Tⁿ[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]),
-           @sprintf("Tⁿ[50, 50, 2] = %.4g K\n", Tⁿ[50, 50, 2]),
-           @sprintf("ΔT[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1] - T_ref[1]),
-           @sprintf("pʰʸ[1, 1, 1]  = %.4g kPa\n", pʰʸ[1, 1, 1] / 1000),
-           @sprintf("pʰʸ[1, 1, 50] = %.4g kPa\n", pʰʸ[1, 1, 50] / 1000),
-           @sprintf("uⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
-           @sprintf("vⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
-           @sprintf("wⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
-           @sprintf("Tⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Tⁿ), mean(abs.(Tⁿ)), std(Tⁿ)),
-           @sprintf("Sⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
-           @sprintf("pⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
-           @sprintf("pʰʸ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
-           @sprintf("pⁿʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
-           @sprintf("ρⁿ:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
-           @sprintf("Gᵘⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
-           @sprintf("Gᵛⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
-           @sprintf("Gʷⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
-           @sprintf("Gᵀⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
-           @sprintf("Gˢⁿ⁺ʰ: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
-          )
-  end
-end
+    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿ) ./ ρ₀)) .* Δt
+    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿ) ./ ρ₀)) .* Δt
+    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰ) ./ ρ₀)) .* Δt
+    # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
+    # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
+    Sⁿ = Sⁿ .+ (Gˢⁿ⁺ʰ .* Δt)
+    Tⁿ = Tⁿ .+ (Gᵀⁿ⁺ʰ .* Δt)
+
+    @info begin
+      string("Time: $(n*Δt)\n",
+             @sprintf("Tⁿ[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]),
+             @sprintf("Tⁿ[50, 50, 2] = %.4g K\n", Tⁿ[50, 50, 2]),
+             @sprintf("ΔT[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1] - T_ref[1]),
+             @sprintf("pʰʸ[1, 1, 1]  = %.4g kPa\n", pʰʸ[1, 1, 1] / 1000),
+             @sprintf("pʰʸ[1, 1, 50] = %.4g kPa\n", pʰʸ[1, 1, 50] / 1000),
+             @sprintf("uⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(uⁿ), maximum(uⁿ), mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
+             @sprintf("vⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(vⁿ), maximum(vⁿ), mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
+             @sprintf("wⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(wⁿ), maximum(wⁿ), mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
+             @sprintf("Tⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Tⁿ), maximum(Tⁿ), mean(Tⁿ), mean(abs.(Tⁿ)), std(Tⁿ)),
+             @sprintf("Sⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Sⁿ), maximum(Sⁿ), mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
+             @sprintf("pⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿ), maximum(pⁿ), mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
+             @sprintf("pʰʸ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ), maximum(pʰʸ), mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
+             @sprintf("pⁿʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿʰ), maximum(pⁿʰ), mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
+             @sprintf("ρⁿ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
+             @sprintf("Gᵘⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵘⁿ⁺ʰ), maximum(Gᵘⁿ⁺ʰ), mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
+             @sprintf("Gᵛⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
+             @sprintf("Gʷⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
+             @sprintf("Gᵀⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵀⁿ⁺ʰ), maximum(Gᵀⁿ⁺ʰ), mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
+             @sprintf("Gˢⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
+            )
+    end  # @info
+  end  # time stepping for loop
+end  # time_stepping function
+
+time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pⁿʰ, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
 
 # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
 using PyPlot
