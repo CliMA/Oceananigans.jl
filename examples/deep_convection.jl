@@ -35,6 +35,25 @@ M = ρ₀*V  # Mass of water in a cell [kg].
 Nᵗ = 10  # Number of time steps to run for.
 Δt = 20  # Time step [s].
 
+# List and array of grid coordinates at the centers of the cells.
+xC = Δx/2:Δx:Lˣ
+yC = Δy/2:Δy:Lʸ
+zC = -Δz/2:-Δz:-Lᶻ
+
+xCA = repeat(reshape(xC, Nˣ, 1, 1), 1, Nʸ, Nᶻ)
+yCA = repeat(reshape(yC, 1, Nʸ, 1), Nˣ, 1, Nᶻ)
+zCA = repeat(reshape(zC, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+
+# List and array of grid coordinates at the faces of the cells. Note that there
+# are Nˣ+1 faces in the ̂x-dimension, Nʸ+1 in the ̂y, and Nᶻ+1 in the ̂z.
+xF = 0:Δx:Lˣ
+yF = 0:Δy:Lʸ
+zF = 0:-Δz:-Lᶻ
+
+xFA = repeat(reshape(xF, Nˣ, 1, 1), 1, Nʸ, Nᶻ)
+yFA = repeat(reshape(yF, 1, Nʸ, 1), Nˣ, 1, Nᶻ)
+zFA = repeat(reshape(zF, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+
 # Initializing prognostic and diagnostic variable fields.
 uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
 vⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in y-direction [m/s].
@@ -54,11 +73,6 @@ Nˢ = 0 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻�
 
 const αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 Tᶻ = Nˢ^2 / (g*αᵥ)  # Vertical temperature gradient [K/m].
-
-# Coordinates used to generate surface heat flux.
-x₀ = (1:Nˣ)*Δx
-y₀ = (1:Nʸ)*Δy
-z₀ = -Δz/2:-Δz:-Lᶻ
 
 # Center horizontal coordinates so that (x,y) = (0,0) corresponds to the center
 # of the domain (and the cooling disk).
