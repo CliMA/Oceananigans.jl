@@ -182,7 +182,11 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
     # approximation holds.
     @. g′ = g * δρ / ρ₀
-    pʰʸ′ = -ρ₀ .* g′ .* zCA
+
+    ̅g′ᶻ = avgᶻ(g′)
+    for k in 1:Nᶻ, j in 1:Nʸ, i in 1:Nˣ # good loop nesting order
+      pʰʸ′[i, j, k] = -ρ₀ * sum(g′ᶻ[i, j, 1:k]) * zC[k]
+    end
 
     # Store source terms from previous iteration.
     Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
