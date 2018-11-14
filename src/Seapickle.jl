@@ -14,7 +14,7 @@ export
   u_dot_w,
   laplacian_diffusion_zone,
   laplacian_diffusion_face_h,
-  laplacian_diffusion_face_v
+  laplacian_diffusion_face_v,
 
   ρ₀,
   T₀,
@@ -34,4 +34,5 @@ using
 include("operators.jl")
 include("equation_of_state.jl")
 include("pressure_solve.jl")
+
 end
