@@ -85,6 +85,11 @@ function div_flux(u, v, w, Q)
   div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
   div_flux_y = δʸ(Aʸ .* v .* avgʸ(Q))
   div_flux_z = δᶻ(Aᶻ .* w .* avgᶻ(Q))
+
+  # Imposing zero vertical flux through the top and bottom layers.
+  @. div_flux_z[:, :, 1] = 0
+  @. div_flux_z[:, :, 50] = 0
+
   (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
 end
 
