@@ -1,10 +1,11 @@
 using Statistics: mean, std
 using Printf
 
+using Interact
 # import Makie
-
 using PyPlot
 PyPlot.pygui(true)
+# using GR
 
 # using Seapickle
 # include("../src/Seapickle.jl")
@@ -165,6 +166,8 @@ pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
+R = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
@@ -258,16 +261,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end  # @info
 
-    # Makie.surface(1:Nˣ, 1:Nʸ, reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), algorithm = :mip)
-
-    PyPlot.close()
-    PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿʰ[:, :, 1:1], (Nˣ, Nʸ)), cmap="seismic")
-    # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nʸ), reshape(pⁿ[:, :, 25:25], (Nˣ, Nʸ)), cmap="seismic")
-    # PyPlot.pcolormesh(collect(1:Nˣ), collect(1:Nᶻ), reshape(pⁿ[1:1, :, :], (Nᶻ, Nˣ)), cmap="seismic")
-
-    PyPlot.colorbar()
+    R[n, :, :, :] = copy(pⁿʰ)
 
   end  # time stepping for loop
 end  # time_stepping function
 
 time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+
+# f = PyPlot.figure()
+# @manipulate for n in 1:5; withfig(f) do
+#     PyPlot.pcolormesh(xC, yC, pⁿʰ[:, :, n], cmap="seismic")
+#   end
+# end
