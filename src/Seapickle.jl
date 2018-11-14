@@ -28,9 +28,6 @@ export
 
   solve_for_pressure,
 
-using
-  FFTW
-
 include("operators.jl")
 include("equation_of_state.jl")
 include("pressure_solve.jl")
