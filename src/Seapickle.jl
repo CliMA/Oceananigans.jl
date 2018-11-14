@@ -16,14 +16,14 @@ export
   laplacian_diffusion_face_h,
   laplacian_diffusion_face_v,
 
-  ρ₀,
-  T₀,
-  S₀,
-  p₀,
-  βᵖ,
-  βˢ,
-  βᵀ,
-  αᵥ,
+  # ρ₀,
+  # T₀,
+  # S₀,
+  # p₀,
+  # βᵖ,
+  # βˢ,
+  # βᵀ,
+  # αᵥ,
   ρ,
 
   solve_for_pressure
