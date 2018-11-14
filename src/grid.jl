@@ -1,4 +1,5 @@
-struct RegularCartesianGrid{T<:AbstractFloat}
+struct RegularCartesianGrid{T <: AbstractFloat}
+  dim::Int
   # Number of grid points in (x,y,z).
   nx::Int
   ny::Int
