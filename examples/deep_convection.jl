@@ -77,15 +77,15 @@ Tᶻ = Nˢ^2 / (g*αᵥ)  # Vertical temperature gradient [K/m].
 
 # Center horizontal coordinates so that (x,y) = (0,0) corresponds to the center
 # of the domain (and the cooling disk).
-x₀ = xC .- mean(xC)
-y₀ = yC .- mean(yC)
+x₀ = xCA[:, :, 1] .- mean(xCA[:, :, 1])
+y₀ = yCA[:, :, 1] .- mean(yCA[:, :, 1])
 
 # Calculate vertical temperature profile and convert to Kelvin.
 T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (zC .- mean(Tᶻ*zC))
 
 # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
-x₀ = xCA[:, :, 1]
-y₀ = yCA[:, :, 1]
+# x₀ = xCA[:, :, 1]
+# y₀ = yCA[:, :, 1]
 r₀² = x₀.*x₀ + y₀.*y₀
 
 # Generate surface heat flux field.
