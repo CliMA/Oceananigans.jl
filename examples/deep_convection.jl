@@ -7,17 +7,19 @@ using PyPlot
 PyPlot.pygui(true)
 # using GR
 
-# using Seapickle
+using Seapickle
 # include("../src/Seapickle.jl")
 
-include("../src/operators.jl")
-include("../src/equation_of_state.jl")
-include("../src/pressure_solve.jl")
+# include("../src/operators.jl")
+# include("../src/equation_of_state.jl")
+# include("../src/pressure_solve.jl")
 
 # ### Physical constants.
-Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
-f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
-g = 9.80665  # Standard acceleration due to gravity [m/s²].
+const Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
+const f = 1e-4  # Nominal value for the Coriolis frequency [rad/s].
+const g = 9.80665  # Standard acceleration due to gravity [m/s²].
+const cᵥ = 4181.3  # Isobaric mass heat capacity [J / kg·K].
+# const ρ₀ = 1.027e3  # Reference density [kg/m³]
 
 # ### Numerical method parameters.
 χ = 0.1  # Adams-Bashforth (AB2) parameter.
@@ -120,7 +122,7 @@ Fˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 uⁿ .= 0; vⁿ .= 0; wⁿ .= 0; Sⁿ .= 35;
 
 Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
-const ρ₀ = 1.027e3  # Reference density [kg/m³]
+
 pHY_profile = [-ρ₀*g*h for h in zC]
 pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
 pⁿ = copy(pʰʸ)  # Initial pressure is just the hydrostatic pressure.
@@ -167,6 +169,7 @@ g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 RT = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
 RpHY′ = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+RpNHS = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
 Rw = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
@@ -278,12 +281,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
              @sprintf("Sⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Sⁿ), maximum(Sⁿ), mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
              @sprintf("pʰʸ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ), maximum(pʰʸ), mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
              @sprintf("pʰʸ′: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pʰʸ′), maximum(pʰʸ′), mean(pʰʸ′), mean(abs.(pʰʸ′)), std(pʰʸ′)),
-             @sprintf("pⁿʰ:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿʰ), maximum(pⁿʰ), mean(pⁿʰ), mean(abs.(pⁿʰ)), std(pⁿʰ)),
+             @sprintf("pⁿʰˢ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿʰˢ), maximum(pⁿʰˢ), mean(pⁿʰˢ), mean(abs.(pⁿʰˢ)), std(pⁿʰˢ)),
              @sprintf("pⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(pⁿ), maximum(pⁿ), mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
              @sprintf("g′:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(g′), maximum(g′), mean(g′), mean(abs.(g′)), std(g′)),
              @sprintf("ρⁿ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
              @sprintf("δρ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(δρ), maximum(δρ), mean(δρ), mean(abs.(δρ)), std(δρ)),
-             @sprintf("δρ:   min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(δρ), maximum(δρ), mean(δρ), mean(abs.(δρ)), std(δρ)),
+             @sprintf("Gᵘⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵘⁿ⁺ʰ), maximum(Gᵘⁿ⁺ʰ), mean(Gᵘⁿ⁺ʰ), mean(abs.(Gᵘⁿ⁺ʰ)), std(Gᵘⁿ⁺ʰ)),
              @sprintf("Gᵛⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
              @sprintf("Gʷⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
              @sprintf("Gᵀⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵀⁿ⁺ʰ), maximum(Gᵀⁿ⁺ʰ), mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
@@ -293,6 +296,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     RT[n, :, :, :] = copy(Tⁿ)
     RpHY′[n, :, :, :] = copy(pʰʸ′)
+    RpNHS[n, :, :, :] = copy(pⁿʰˢ)
     Rw[n, :, :, :] = copy(wⁿ)
 
   end  # time stepping for loop
