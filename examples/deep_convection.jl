@@ -50,9 +50,9 @@ xF = 0:Δx:Lˣ
 yF = 0:Δy:Lʸ
 zF = 0:-Δz:-Lᶻ
 
-xFA = repeat(reshape(xF, Nˣ, 1, 1), 1, Nʸ, Nᶻ)
-yFA = repeat(reshape(yF, 1, Nʸ, 1), Nˣ, 1, Nᶻ)
-zFA = repeat(reshape(zF, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+xFA = repeat(reshape(xF, Nˣ+1, 1, 1), 1, Nʸ+1, Nᶻ+1)
+yFA = repeat(reshape(yF, 1, Nʸ+1, 1), Nˣ+1, 1, Nᶻ+1)
+zFA = repeat(reshape(zF, 1, 1, Nᶻ+1), Nˣ+1, Nʸ+1, 1)
 
 # Initializing prognostic and diagnostic variable fields.
 uⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Velocity in x-direction [m/s].
@@ -76,15 +76,15 @@ Tᶻ = Nˢ^2 / (g*αᵥ)  # Vertical temperature gradient [K/m].
 
 # Center horizontal coordinates so that (x,y) = (0,0) corresponds to the center
 # of the domain (and the cooling disk).
-x₀ = x₀ .- mean(x₀)
-y₀ = y₀ .- mean(y₀)
+x₀ = xC .- mean(xC)
+y₀ = yC .- mean(yC)
 
 # Calculate vertical temperature profile and convert to Kelvin.
-T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (z₀ .- mean(Tᶻ*z₀))
+T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (zC .- mean(Tᶻ*zC))
 
 # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
-x₀ = repeat(transpose(x₀), Nˣ, 1)
-y₀ = repeat(y₀, 1, Nʸ)
+x₀ = xCA[:, :, 1]
+y₀ = yCA[:, :, 1]
 r₀² = x₀.*x₀ + y₀.*y₀
 
 # Generate surface heat flux field.
@@ -121,7 +121,7 @@ uⁿ .= 0; vⁿ .= 0; wⁿ .= 0; Sⁿ .= 35;
 
 Tⁿ = repeat(reshape(T_ref, 1, 1, 50), Nˣ, Nʸ, 1)
 const ρ₀ = 1.027e3  # Reference density [kg/m³]
-pHY_profile = [-ρ₀*g*h for h in z₀]
+pHY_profile = [-ρ₀*g*h for h in zC]
 pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
 pⁿ = copy(pʰʸ)  # Initial pressure is just the hydrostatic pressure.
 
@@ -179,7 +179,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
     # approximation holds.
     @. g′ = g * δρ / ρ₀
-    pʰʸ′ = -ρ₀ .* g′ .* repeat(reshape(z₀, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
+    pʰʸ′ = -ρ₀ .* g′ .* zCA
 
     # Store source terms from previous iteration.
     Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
