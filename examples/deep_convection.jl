@@ -166,7 +166,9 @@ pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-R = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+RT = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+RpHY′ = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+Rw = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
@@ -286,12 +288,13 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
              @sprintf("Gᵛⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
              @sprintf("Gʷⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
              @sprintf("Gᵀⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gᵀⁿ⁺ʰ), maximum(Gᵀⁿ⁺ʰ), mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
-             @sprintf("Gˢⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ)),
-             @sprintf("∇ʰpHY′: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(∇ʰpHY′), maximum(∇ʰpHY′), mean(∇ʰpHY′), mean(abs.(∇ʰpHY′)), std(∇ʰpHY′))
+             @sprintf("Gˢⁿ⁺ʰ: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
             )
     end  # @info
 
-    R[n, :, :, :] = copy(pⁿʰ)
+    RT[n, :, :, :] = copy(Tⁿ)
+    RpHY′[n, :, :, :] = copy(pʰʸ′)
+    Rw[n, :, :, :] = copy(wⁿ)
 
   end  # time stepping for loop
 end  # time_stepping function
