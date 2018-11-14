@@ -216,6 +216,19 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
     Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
+    Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
+    Gwn_pres_grad = (1/ρ₀) .* δᶻ(pʰʸ′)
+    Gwn_lap_diff = laplacian_diffusion_face(wⁿ)
+    Gwn_Fw = Fʷ
+    @info begin
+      string("Vertical velocity source term:\n",
+            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_u_dot_w), maximum(Gwn_u_dot_w), mean(Gwn_u_dot_w), mean(abs.(Gwn_u_dot_w)), std(Gwn_u_dot_w)),
+            @sprintf("Gwn_pres_grad: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_pres_grad), maximum(Gwn_pres_grad), mean(Gwn_pres_grad), mean(abs.(Gwn_pres_grad)), std(Gwn_pres_grad)),
+            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_lap_diff), maximum(Gwn_lap_diff), mean(Gwn_lap_diff), mean(abs.(Gwn_lap_diff)), std(Gwn_lap_diff)),
+            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_Fw), maximum(Gwn_Fw), mean(Gwn_Fw), mean(abs.(Gwn_Fw)), std(Gwn_Fw))
+            )
+    end
+
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
     @. begin
       Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
