@@ -224,8 +224,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
       Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
     end
 
-    # Calculate non-hydrostatic component of pressure. As we have built in the
-    pⁿʰ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, ∇ʰpHY′)
+    # Calculate non-hydrostatic + surface component of pressure. As we have
+    # built in the hydrostatic pressure into the Gᵘ source terms, what we get
+    # back is the nonhydrostatic
+    pⁿʰˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
     # Calculate the full pressure field.
     @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
