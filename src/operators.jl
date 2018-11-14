@@ -42,7 +42,7 @@ avgʸ(f) = (f .+ circshift(f, (0, 1, 0))) / 2
 # avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
 
 function avgᶻ(f)
-  ff = Array{Float64, 3}(undef, size(Tⁿ)...)
+  ff = Array{Float64, 3}(undef, size(f)...)
 
   ff[:, :, 1] = (f[:, :, 2] + f[:, :, 1]) / 2          # avgᶻ at top layer.
   ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
