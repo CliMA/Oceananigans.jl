@@ -26,7 +26,7 @@ export
   αᵥ,
   ρ,
 
-  solve_for_pressure,
+  solve_for_pressure
 
 include("operators.jl")
 include("equation_of_state.jl")
