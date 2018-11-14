@@ -24,7 +24,7 @@ export
   βˢ,
   βᵀ,
   αᵥ,
-  ρ
+  ρ,
 
   solve_for_pressure,
 
