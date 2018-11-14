@@ -210,17 +210,17 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face(uⁿ) .+ Fᵘ
-    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face(vⁿ) .+ Fᵛ
+    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
 
     Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
     Gwn_pres_grad = (1/ρ₀) .* δᶻ(pʰʸ′)
-    Gwn_lap_diff = laplacian_diffusion_face(wⁿ)
+    Gwn_lap_diff = laplacian_diffusion_face_v(wⁿ)
     Gwn_Fw = Fʷ
     @info begin
       string("Vertical velocity source term:\n",
