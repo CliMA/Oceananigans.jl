@@ -177,6 +177,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
     @. ρⁿ = ρ₀ + δρ
 
+    # Calculate the hydrostatic pressure.
+    # @. pʰʸ = -ρ₀ * g * zCA
+
     # Calculate the hydrostatic pressure anomaly pʰʸ′ by calculating the
     # effective weight of the water column above at every grid point, i.e. using
     # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
@@ -205,12 +208,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .+ laplacian_diffusion_face(uⁿ) .+ Fᵘ
-    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .+ laplacian_diffusion_face(vⁿ) .+ Fᵛ
+    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
     @. begin
@@ -220,8 +223,6 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
       Gᵀⁿ⁺ʰ = (3/2 + χ)*Gᵀⁿ - (1/2 + χ)*Gᵀⁿ⁻¹
       Gˢⁿ⁺ʰ = (3/2 + χ)*Gˢⁿ - (1/2 + χ)*Gˢⁿ⁻¹
     end
-
-    ∇ʰpHY′ = horizontal_laplacian(pʰʸ′)
 
     # Calculate non-hydrostatic component of pressure. As we have built in the
     pⁿʰ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, ∇ʰpHY′)
