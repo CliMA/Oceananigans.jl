@@ -89,20 +89,19 @@ T_ref = 273.15 .+ Tˢ .+ Tᶻ .* (zC .- mean(Tᶻ*zC))
 r₀² = x₀.*x₀ + y₀.*y₀
 
 # Generate surface heat flux field.
-# Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
-
 # Cooling disk of radius Rᶜ. Disabling for now as I think the sharp (∞) slope
 # at the edge of the disk is causing huge fluxes and we have no flux limiter
 # yet.
-# Q[findall(r₀² .> Rᶜ^2)] .= 0
+Q = Q₀ .+ Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
+Q[findall(r₀² .> Rᶜ^2)] .= 0
 
 # Gaussian cooling disk with similar radius but it much smoother and should work
 # without flux limiters.
 # Add a little bit of noise but only in the center then impose a Gaussian
 # heat flux profile.
-Q = Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
-Q[findall(r₀² .> Rᶜ^2)] .= 0
-@. Q = Q + Q₀ * exp(-r₀² / (0.75*Rᶜ^2))
+# Q = Q₁ * (0.5 .+ rand(Nˣ, Nʸ))
+# Q[findall(r₀² .> Rᶜ^2)] .= 0
+# @. Q = Q + Q₀ * exp(-r₀² / (0.75*Rᶜ^2))
 
 # Convert surface heat flux into 3D forcing term for use when calculating
 # source terms at each time step.
