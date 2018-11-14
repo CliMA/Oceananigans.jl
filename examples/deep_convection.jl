@@ -188,7 +188,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     g′ᶻ = avgᶻ(g′)
     for k in 1:Nᶻ, j in 1:Nʸ, i in 1:Nˣ # good loop nesting order
-      pʰʸ′[i, j, k] = -ρ₀ * sum(g′ᶻ[i, j, 1:k]) * zC[k]
+      pʰʸ′[i, j, k] = (ρⁿ[i, j, k] - ρ₀) * g * zC[k]
     end
 
     # Store source terms from previous iteration.
@@ -213,7 +213,8 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+    # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
 
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
     @. begin
