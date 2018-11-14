@@ -136,8 +136,22 @@ end
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
 𝜈ᵛ = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
 
-# Laplacian diffusion for face quantities: ∇ · (ν∇u)
-function laplacian_diffusion_face(u)
+# Laplacian diffusion for horizontal face quantities: ∇ · (ν∇u)
+function laplacian_diffusion_face_h(u)
+  Vᵘ = V
+  𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
+  𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
+  𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
+
+  # Imposing free slip viscous boundary conditions at the bottom layer.
+  @. 𝜈∇u_x[:, :, 50] = 0
+  @. 𝜈∇u_y[:, :, 50] = 0
+
+  (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
+end
+
+# Laplacian diffusion for vertical face quantities: ∇ · (ν∇w)
+function laplacian_diffusion_face_v(u)
   Vᵘ = V
   𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
   𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
