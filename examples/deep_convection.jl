@@ -183,7 +183,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # approximation holds.
     @. g′ = g * δρ / ρ₀
 
-    ̅g′ᶻ = avgᶻ(g′)
+    g′ᶻ = avgᶻ(g′)
     for k in 1:Nᶻ, j in 1:Nʸ, i in 1:Nˣ # good loop nesting order
       pʰʸ′[i, j, k] = -ρ₀ * sum(g′ᶻ[i, j, 1:k]) * zC[k]
     end
@@ -232,10 +232,19 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿ) ./ ρ₀)) .* Δt
     vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿ) ./ ρ₀)) .* Δt
     wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰ) ./ ρ₀)) .* Δt
-    # wⁿ = - (wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt)  # Minus to account for the fact that z increases with depth.
-    # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V).*δᶻ(pⁿ)) ./ Δt
     @. Sⁿ = Sⁿ + (Gˢⁿ⁺ʰ * Δt)
     @. Tⁿ = Tⁿ + (Gᵀⁿ⁺ʰ * Δt)
+
+    @info begin
+      string("Imposing w=0 at top and bottom boundary:\n",
+             @sprintf("Before w[:, :, 1]:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n",
+              minimum(wⁿ[:, :, 1]), maximum(wⁿ[:, :, 1]), mean(wⁿ[:, :, 1]), mean(abs.(wⁿ[:, :, 1])), std(wⁿ[:, :, 1])),
+             @sprintf("Before w[:, :, 50]: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n",
+              minimum(wⁿ[:, :, 50]), maximum(wⁿ[:, :, 50]), mean(wⁿ[:, :,50]), mean(abs.(wⁿ[:, :, 50])), std(wⁿ[:, :, 50])))
+    end
+
+    @. wⁿ[:, :, 1]  = 0
+    @. wⁿ[:, :, 50] = 0
 
     @info begin
       string("Time: $(n*Δt)\n",
