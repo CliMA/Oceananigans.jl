@@ -74,4 +74,5 @@ function ForcingFields(g::RegularCartesianGrid, T=Float64)
     Fw = FaceField(g, T)
     Fθ = ZoneField(g, T)
     FS = ZoneField(g, T)
+    ForcingFields{T}(Fu, Fv, Fw, Fθ, FS)
 end
