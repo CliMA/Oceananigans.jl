@@ -67,7 +67,7 @@ pⁿ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)  # Pressure [Pa].
 # ### Parameters for generating initial surface heat flux.
 Rᶜ = 600  # Radius of cooling disk [m].
 Tˢ = 20  # Surface temperature [°C].
-Q₀ = 800  # Cooling disk heat flux [W/m²].
+Q₀ = -800  # Cooling disk heat flux [W/m²].
 Q₁ = 10  # Noise added to cooling disk heat flux [W/m²].
 Nˢ = 0 * (f*Rᶜ/Lᶻ)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 
