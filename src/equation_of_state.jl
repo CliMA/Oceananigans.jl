@@ -18,4 +18,4 @@ const S₀ = 35       # Reference salinity [g/kg]
 const p₀ = 1e5      # Reference pressure [Pa]. Not from Table 1.2 but text itself.
 const αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 
-ρ(T, S, p) = ρ₀ * (1 - βᵀ*(T-T₀) + βˢ*(S-S₀) + βᵖ*(p-p₀))
+ρ(T, S, p) = ρ₀ * (1 - βᵀ*(T-T₀))
