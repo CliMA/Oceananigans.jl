@@ -160,7 +160,7 @@ Gᵀⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 Gˢⁿ⁺ʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 pʰʸ′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
-pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
+pⁿʰ⁺ˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
@@ -172,7 +172,7 @@ RpNHS = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
-function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
   for n in 1:10
 
     # Calculate new density and density deviation.
@@ -255,12 +255,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
     # Calculate the full pressure field.
-    # @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
-    @. pⁿ = pʰʸ′ + pⁿʰ
+    # @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ⁺ˢ
+    @. pⁿ = pʰʸ′ + pⁿʰ⁺ˢ
 
-    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (1/ρ₀) .* (δˣ(pⁿʰˢ) ./ Δx)) .* Δt
-    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (1/ρ₀) .* (δʸ(pⁿʰˢ) ./ Δy)) .* Δt
-    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (1/ρ₀) .* (δᶻ(pⁿʰˢ) ./ Δz)) .* Δt
+    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (1/ρ₀) .* (δˣ(pⁿʰ⁺ˢ) ./ Δx)) .* Δt
+    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (1/ρ₀) .* (δʸ(pⁿʰ⁺ˢ) ./ Δy)) .* Δt
+    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (1/ρ₀) .* (δᶻ(pⁿʰ⁺ˢ) ./ Δz)) .* Δt
     # uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .* Δt)
     # vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .* Δt)
     # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .* Δt)
@@ -293,7 +293,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
              @sprintf("Sⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Sⁿ), maximum(Sⁿ), mean(Sⁿ), mean(abs.(Sⁿ)), std(Sⁿ)),
              @sprintf("pʰʸ:  min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pʰʸ), maximum(pʰʸ), mean(pʰʸ), mean(abs.(pʰʸ)), std(pʰʸ)),
              @sprintf("pʰʸ′: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pʰʸ′), maximum(pʰʸ′), mean(pʰʸ′), mean(abs.(pʰʸ′)), std(pʰʸ′)),
-             @sprintf("pⁿʰˢ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pⁿʰˢ), maximum(pⁿʰˢ), mean(pⁿʰˢ), mean(abs.(pⁿʰˢ)), std(pⁿʰˢ)),
+             @sprintf("pⁿʰ⁺ˢ:min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pⁿʰ⁺ˢ), maximum(pⁿʰ⁺ˢ), mean(pⁿʰ⁺ˢ), mean(abs.(pⁿʰ⁺ˢ)), std(pⁿʰ⁺ˢ)),
              @sprintf("pⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pⁿ), maximum(pⁿ), mean(pⁿ), mean(abs.(pⁿ)), std(pⁿ)),
              # @sprintf("g′:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(g′), maximum(g′), mean(g′), mean(abs.(g′)), std(g′)),
              @sprintf("ρⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(ρⁿ), maximum(ρⁿ), mean(ρⁿ), mean(abs.(ρⁿ)), std(ρⁿ)),
@@ -310,12 +310,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     Rw[n, :, :, :] = copy(wⁿ)
     RT[n, :, :, :] = copy(Tⁿ)
     RpHY′[n, :, :, :] = copy(pʰʸ′)
-    RpNHS[n, :, :, :] = copy(pⁿʰˢ)
+    RpNHS[n, :, :, :] = copy(pⁿʰ⁺ˢ)
 
   end  # time stepping for loop
 end  # time_stepping function
 
-time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
+time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
 
 # f = PyPlot.figure()
 # @manipulate for n in 1:5; withfig(f) do
