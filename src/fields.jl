@@ -19,44 +19,45 @@ function FaceField(g::RegularCartesianGrid, T=Float64)
 end
 
 struct Fields{T <: AbstractFloat} <: FieldCollection
-    u::FaceField
-    v::FaceField
-    w::FaceField
-    T::ZoneField
-    S::ZoneField
-    ρ::ZoneField
-    p::ZoneField
-    pHY::ZoneField
-    pHY′::ZoneField
-    pNHS::ZoneField
+    u::FaceField{T}
+    v::FaceField{T}
+    w::FaceField{T}
+    T::ZoneField{T}
+    ρ::ZoneField{T}
+    p::ZoneField{T}
+    S::ZoneField{T}
+    pHY::ZoneField{T}
+    pHY′::ZoneField{T}
+    pNHS::ZoneField{T}
 end
 
 function Fields(g::RegularCartesianGrid, T=Float64)
     u = FaceField(g, T)
     v = FaceField(g, T)
     w = FaceField(g, T)
-    T = ZoneField(g, T)
+    θ = ZoneField(g, T)
     S = ZoneField(g, T)
     ρ = ZoneField(g, T)
     p = ZoneField(g, T)
     pHY = ZoneField(g, T)
     pHY′ = ZoneField(g, T)
     pNHS = ZoneField(g, T)
-    Fields{T}(u, v, w, T, S, ρ, p, pHY, pHY′, pNHS)
+    Fields(u, v, w, θ, S, ρ, p, pHY, pHY′, pNHS)
 end
 
 struct SourceTermFields{T <: AbstractFloat} <: FieldCollection
-    Gu::FaceField
-    Gv::FaceField
-    Gw::FaceField
-    GT::ZoneField
-    GS::ZoneField
+    Gu::FaceField{T}
+    Gv::FaceField{T}
+    Gw::FaceField{T}
+    Gθ::ZoneField{T}
+    GS::ZoneField{T}
 end
 
 function SourceTerms(g::RegularCartesianGrid, T=Float64)
     Gu = FaceField(g, T)
     Gv = FaceField(g, T)
     Gw = FaceField(g, T)
-    GT = ZoneField(g, T)
+    Gθ = ZoneField(g, T)
     GS = ZoneField(g, T)
+    SourceTermFields{T}(Gu, Gv, Gw, Gθ, GS)
 end

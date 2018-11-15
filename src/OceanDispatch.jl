@@ -7,9 +7,8 @@ export
 
     ZoneField,
     FaceField,
-    VelocityFields,
     Fields,
-    SourceTerms,
+    SourceTerms
 
 abstract type ConstantsCollection end
 abstract type Grid end
