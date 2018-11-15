@@ -1,32 +1,32 @@
-function testgridsize()
+function test_grid_size()
   g = RegularCartesianGrid((4, 6, 8), (2π, 4π, 9π))
-  ( 4 == g.nx &&  6 == g.ny &&  8 == g.nz && 
-   2π == g.Lx && 4π == g.Ly && 9π == g.Lz )
+  (g.Nx == 4  && g.Ny == 6  && g.Nz == 8 &&
+   g.Lx == 2π && g.Ly == 4π && g.Lz == 9π)
 end
 
-function testcellvolume()
-  nx, ny, nz = 4, 6, 8
-  dx, dy, dz = 0.1, 0.2, 0.3
-  V = dx*dy*dz
-  Lx, Ly, Lz = nx*dx, ny*dy, nz*dz
-  g = RegularCartesianGrid((nx, ny, nz), (Lx, Ly, Lz)) 
+function test_cell_volume()
+  Nx, Ny, Nz = 4, 6, 8
+  Δx, Δy, Δz = 0.1, 0.2, 0.3
+  V = Δx*Δy*Δz
+  Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
+  g = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
   V == g.V
 end
 
 const d = 0.1
 const n = 4
 
-function testdx()
+function test_Δx()
   g = RegularCartesianGrid((n, 2, 2), (d*n, 1, 1))
-  d == g.dx
+  d == g.Δx
 end
 
-function testdy()
+function test_Δy()
   g = RegularCartesianGrid((2, n, 2), (1, d*n, 1))
-  d == g.dy
+  d == g.Δy
 end
 
-function testdz()
+function test_Δz()
   g = RegularCartesianGrid((2, 2, n), (1, 1, d*n))
-  d == g.dz
+  d == g.Δz
 end
