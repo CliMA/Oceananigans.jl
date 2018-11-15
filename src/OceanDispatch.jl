@@ -3,8 +3,13 @@ module OceanDispatch
 export
     ConstantsCollection,
     Grid,
+
     Field,
+    CellField,
+    FaceField,
     FieldCollection,
+    set!,
+
     TimeStepper,
 
     PlanetaryConstants,
@@ -20,15 +25,16 @@ export
 
 abstract type ConstantsCollection end
 abstract type EquationOfStateParameters <: ConstantsCollection end
-abstract type Grid end
-abstract type Field end
-# abstract type Field <: AbstractArray end
+abstract type Grid{T} end
+abstract type Field{G<:Grid} end
 abstract type FieldCollection end
 abstract type TimeStepper end
 
+const dim = 3
+
 include("planetary_constants.jl")
 include("grid.jl")
-include("fields.jl")
+include("field.jl")
 include("equation_of_state_future.jl")
 include("time_steppers.jl")
 

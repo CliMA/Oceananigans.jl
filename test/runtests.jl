@@ -22,3 +22,10 @@ using
   @test test_Δz()
   @test test_cell_volume()
 end
+
+@testset "Fields" begin
+  include("test_field.jl")
+  @test test_initfield()
+  @test test_setfield()
+  @test test_addfield()
+end

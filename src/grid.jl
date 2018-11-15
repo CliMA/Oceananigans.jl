@@ -1,4 +1,8 @@
-struct RegularCartesianGrid{T <: AbstractFloat} <: Grid
+import Base: size
+
+dim2xyz = [:x, :y, :z]
+
+struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int
@@ -72,3 +76,6 @@ function RegularCartesianGrid(N, L, T=Float64)
 
     RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V, xCR, yCR, zCR, xCA, yCA, zCA, xFR, yFR, zFR, xFA, yFA, zFA)
 end
+
+size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
+size(g::RegularCartesianGrid, dim::Integer) = getfield(g, Symbol(:N, dim2xyz[dim]))
