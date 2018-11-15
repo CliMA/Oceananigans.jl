@@ -164,15 +164,15 @@ pⁿʰ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-RT = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
-RpHY′ = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
-RpNHS = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
-Rw = Array{NumType, 4}(undef, 5, Nˣ, Nʸ, Nᶻ)
+RT = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
+RpHY′ = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
+RpNHS = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
+Rw = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-  for n in 1:5
+  for n in 1:10
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
@@ -209,8 +209,8 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
@@ -250,6 +250,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿʰˢ) ./ ρ₀)) .* Δt
     vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿʰˢ) ./ ρ₀)) .* Δt
     wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰˢ) ./ ρ₀)) .* Δt
+    # uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .* Δt)
+    # vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .* Δt)
+    # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .* Δt)
+
     @. Sⁿ = Sⁿ + (Gˢⁿ⁺ʰ * Δt)
     @. Tⁿ = Tⁿ + (Gᵀⁿ⁺ʰ * Δt)
 
