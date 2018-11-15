@@ -192,11 +192,11 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     δρ̅ᶻ = avgᶻ(δρ)
 
     for j in 1:Nʸ, i in 1:Nˣ
-      pʰʸ′[i, j, 1] = δρ[i, j, 1] * g * Δz / 2
+      pʰʸ′[i, j, 1] = - δρ[i, j, 1] * g * Δz / 2
     end
 
     for k in 2:Nᶻ, j in 1:Nʸ, i in 1:Nˣ
-      pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] + (δρ̅ᶻ[i, j, k] * g * Δz)
+      pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] - (δρ̅ᶻ[i, j, k] * g * Δz)
     end
 
     # Store source terms from previous iteration.
