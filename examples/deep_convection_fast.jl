@@ -1,3 +1,5 @@
+using Statistics: mean
+
 using OceanDispatch
 
 function generate_cooling_disk!(c::PlanetaryConstants, g::Grid, Fũ::ForcingFields)
@@ -22,30 +24,36 @@ function generate_cooling_disk!(c::PlanetaryConstants, g::Grid, Fũ::ForcingFie
     T_ref = 273.15 .+ Ts .+ Tz .* (g.zCR .- mean(Tz * g.zCR))
 
     # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
-    @. r₀² = x₀*x₀ + y₀*y₀
+    r₀² = x₀.*x₀ + y₀.*y₀
 
     # Generate surface heat flux field with small random fluctuations.
     Q = Q₀ .+ Q₁ * (0.5 .+ rand(g.Nx, g.Ny))
     Q[findall(r₀² .> Rc^2)] .= 0  # Set Q=0 outside cooling disk.
 
+    ρ₀ = 1.027e3  # Reference density [kg/m³]
+
     # Convert surface heat flux into 3D forcing term for use when calculating
     # source terms at each time step. Also convert surface heat flux [W/m²]
     # into a temperature tendency forcing [K/s].
-    @. Fũ.FT[:, :, 1] = (Q / cᵥ) * (g.Az / M)
+    @. Fũ.Fθ.f[:, :, 1] = (Q / cᵥ) * (g.Az / (ρ₀ * g.V))
+    nothing
 end
 
-function impose_initial_conditions!(c::PlanetaryConstants, g::Grid, fs::Fields)
+function impose_initial_conditions!(c::PlanetaryConstants, g::Grid, fs::Fields, Fũ::ForcingFields)
+    generate_cooling_disk!(c, g, Fũ)
+
     ρ₀ = 1.027e3  # Reference density [kg/m³]
 
-    fs.u .= 0; fs.v .= 0; fs.w .= 0;
-    fs.S .= 35;  # TODO: Should set to EOS.S₀
-    fs.T .= 273.15 + 20;  # 20°C.
+    fs.u.f .= 0; fs.v.f .= 0; fs.w.f .= 0;
+    fs.S.f .= 35;  # TODO: Should set to EOS.S₀
+    fs.T.f .= 273.15 + 20;  # 20°C.
 
     pHY_profile = [-ρ₀ * c.g * h for h in g.zCR]
-    fs.pHY .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
-    fs.p .= fs.pHY  # Initial pressure is just the hydrostatic pressure.
+    fs.pHY.f .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
+    fs.p.f .= fs.pHY.f  # Initial pressure is just the hydrostatic pressure.
 
-    ρⁿ .= ρ.(Tⁿ, Sⁿ, pⁿ)
+    # fs.ρ .= ρ!(eos, fs.θ, fs.S, fs.p)
+    nothing
 end
 
 c = EarthConstants()
@@ -55,5 +63,4 @@ fs = Fields(g)
 Gũ = SourceTermFields(g)
 Fũ = ForcingFields(g)
 
-generate_cooling_disk!(c, g, Fũ)
-impose_initial_conditions!(g, fs)
+impose_initial_conditions!(c, g, fs, Fũ)
