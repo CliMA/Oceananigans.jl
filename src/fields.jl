@@ -51,11 +51,19 @@ struct SourceTermFields{T <: AbstractFloat} <: FieldCollection
     GS::ZoneField{T}
 end
 
-function SourceTerms(g::RegularCartesianGrid, T=Float64)
+function SourceTermFields(g::RegularCartesianGrid, T=Float64)
     Gu = FaceField(g, T)
     Gv = FaceField(g, T)
     Gw = FaceField(g, T)
     Gθ = ZoneField(g, T)
     GS = ZoneField(g, T)
     SourceTermFields{T}(Gu, Gv, Gw, Gθ, GS)
+end
+
+struct ForcingFields(g::RegularCartesianGrid, T=Float64)
+    Fu = FaceField(g, T)
+    Fv = FaceField(g, T)
+    Fw = FaceField(g, T)
+    Fθ = ZoneField(g, T)
+    FS = ZoneField(g, T)
 end
