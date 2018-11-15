@@ -10,7 +10,7 @@
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
 
-```
+#=
 Some benchmarking with Nx, Ny, Nz = 200, 200, 200.
 
 using BenchmarkTools
@@ -29,7 +29,7 @@ B = zeros((Nx, Ny, Nz));
 
 @btime δˣ!!($A, $B)  # With @inbounds. Looping in slow i, j, k order.
   92.987 ms (0 allocations: 0 bytes)
-```
+=#
 
 δˣ(f) = (f .- circshift(f, (1, 0, 0)))
 δʸ(f) = (f .- circshift(f, (0, 1, 0)))
@@ -46,17 +46,17 @@ function δᶻ(f)
   return δᶻf
 end
 
-function δˣ!(g::Grid, f, δˣf)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-      @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
-    end
-end
-
-function δʸ!(g::Grid, f, δʸf)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-      @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
-    end
-end
+# function δˣ!(g::Grid, f, δˣf)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+#     end
+# end
+#
+# function δʸ!(g::Grid, f, δʸf)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+#     end
+# end
 
 #=
 Example function to compute an x-derivative:

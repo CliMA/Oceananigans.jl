@@ -7,12 +7,9 @@ using PyPlot
 PyPlot.pygui(true)
 # using GR
 
-using Seapickle
-# include("../src/Seapickle.jl")
-
-# include("../src/operators.jl")
-# include("../src/equation_of_state.jl")
-# include("../src/pressure_solve.jl")
+include("../src/operators.jl")
+include("../src/equation_of_state.jl")
+include("../src/pressure_solve.jl")
 
 # ### Physical constants.
 const Ω = 7.2921150e-5  # Rotation rate of the Earth [rad/s].
