@@ -186,11 +186,16 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # effective weight of the water column above at every grid point, i.e. using
     # the reduced gravity g′ = g·δρ/ρ₀. Remember we are assuming the Boussinesq
     # approximation holds.
-    @. g′ = g * δρ / ρ₀
+    # @. g′ = g * δρ / ρ₀
+    # g′ᶻ = avgᶻ(g′)
+    δρ̅ᶻ = avgᶻ(δρ)
 
-    g′ᶻ = avgᶻ(g′)
-    for k in 1:Nᶻ, j in 1:Nʸ, i in 1:Nˣ # good loop nesting order
-      pʰʸ′[i, j, k] = (ρⁿ[i, j, k] - ρ₀) * g * zC[k]
+    for j in 1:Nʸ, i in 1:Nˣ
+      pʰʸ′[i, j, 1] = δρ[i, j, 1] * g * Δz / 2
+    end
+
+    for k in 2:Nᶻ, j in 1:Nʸ, i in 1:Nˣ
+      pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] + (δρ̅ᶻ[i, j, k] * g * Δz)
     end
 
     # Store source terms from previous iteration.
@@ -217,26 +222,25 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
     Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
 
-    # Note that I call Gʷⁿ is actually \hat{G}_w from Eq. (43b) of Marshall
+    # Note that I call Gʷⁿ is actually Ĝ_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
     Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
 
     Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
-    Gwn_pres_grad = (1/ρ₀) .* δᶻ(pʰʸ′)
     Gwn_lap_diff = laplacian_diffusion_face_v(wⁿ)
     Gwn_Fw = Fʷ
     @info begin
       string("Vertical velocity source term:\n",
             @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_u_dot_w), maximum(Gwn_u_dot_w), mean(Gwn_u_dot_w), mean(abs.(Gwn_u_dot_w)), std(Gwn_u_dot_w)),
-            @sprintf("Gwn_pres_grad: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_pres_grad), maximum(Gwn_pres_grad), mean(Gwn_pres_grad), mean(abs.(Gwn_pres_grad)), std(Gwn_pres_grad)),
             @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_lap_diff), maximum(Gwn_lap_diff), mean(Gwn_lap_diff), mean(abs.(Gwn_lap_diff)), std(Gwn_lap_diff)),
             @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_Fw), maximum(Gwn_Fw), mean(Gwn_Fw), mean(abs.(Gwn_Fw)), std(Gwn_Fw))
             )
     end
 
     # Calculate midpoint source terms using the Adams-Bashforth (AB2) method.
+    # TODO: χ = -1/2 for time step #1. Might matter in other cases.
     @. begin
       Gᵘⁿ⁺ʰ = (3/2 + χ)*Gᵘⁿ - (1/2 + χ)*Gᵘⁿ⁻¹
       Gᵛⁿ⁺ʰ = (3/2 + χ)*Gᵛⁿ - (1/2 + χ)*Gᵛⁿ⁻¹
@@ -248,14 +252,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Calculate non-hydrostatic + surface component of pressure. As we have
     # built in the hydrostatic pressure into the Gᵘ source terms, what we get
     # back is the nonhydrostatic
-    pⁿʰˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
     # Calculate the full pressure field.
-    @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
+    # @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ
+    @. pⁿ = pʰʸ′ + pⁿʰ
 
-    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (Aˣ/V) .* (δˣ(pⁿʰˢ) ./ ρ₀)) .* Δt
-    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (Aʸ/V) .* (δʸ(pⁿʰˢ) ./ ρ₀)) .* Δt
-    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (Aᶻ/V) .* (δᶻ(pⁿʰˢ) ./ ρ₀)) .* Δt
+    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (1/ρ₀) .* (δˣ(pⁿʰˢ) ./ Δx)) .* Δt
+    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (1/ρ₀) .* (δʸ(pⁿʰˢ) ./ Δy)) .* Δt
+    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (1/ρ₀) .* (δᶻ(pⁿʰˢ) ./ Δz)) .* Δt
     # uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .* Δt)
     # vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .* Δt)
     # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .* Δt)
@@ -272,7 +277,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     end
 
     @. wⁿ[:, :, 1]  = 0
-    @. wⁿ[:, :, 50] = 0
+    @. wⁿ[:, :, Nᶻ] = 0
 
     @info begin
       string("Time: $(n*Δt)\n",
