@@ -1,9 +1,9 @@
 struct RegularCartesianGrid{T <: AbstractFloat}
   dim::Int
   # Number of grid points in (x,y,z).
-  nx::Int
-  ny::Int
-  nz::Int
+  Nx::Int
+  Ny::Int
+  Nz::Int
   # Domain size [m].
   Lx::T
   Ly::T
@@ -20,13 +20,16 @@ struct RegularCartesianGrid{T <: AbstractFloat}
   V::T
 end
 
-function RegularCartesianGrid(n, L, T=Float64)
-  nx, ny, nz = n
+# example: g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
+function RegularCartesianGrid(N, L, T=Float64)
+  dim = 3
+
+  Nx, Ny, Nz = N
   Lx, Ly, Lz = L
 
-  dx = Lx / nx
-  dy = Ly / ny
-  dz = Lz / nz
+  dx = Lx / Nx
+  dy = Ly / Ny
+  dz = Lz / Nz
 
   Ax = dx*dz
   Ay = dx*dz
@@ -34,9 +37,5 @@ function RegularCartesianGrid(n, L, T=Float64)
 
   V = dx*dy*dz
 
-  RegularCartesianGrid{T}(nx, ny, nz, Lx, Ly, Lz, dx, dy, dz, Ax, Ay, Az, V)
+  RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, dx, dy, dz, Ax, Ay, Az, V)
 end
-
-RegularCartesianGrid(T::AbstractFloat, n, L) = RegularCartesianGrid(n, L, T)
-
-# example: g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
