@@ -119,15 +119,15 @@ end
 # 𝐮 = (u,v,w): ∇ ⋅ (𝐮 Q).
 function div_flux(u, v, w, Q)
   Vᵘ = V
-  div_flux_x = δˣ(Aˣ .* u .* avgˣ(Q))
-  div_flux_y = δʸ(Aʸ .* v .* avgʸ(Q))
-  div_flux_z = δᶻ(Aᶻ .* w .* avgᶻ(Q))
+  flux_x = Aˣ .* u .* avgˣ(Q)
+  flux_y = Aʸ .* v .* avgʸ(Q)
+  flux_z = Aᶻ .* w .* avgᶻ(Q)
 
   # Imposing zero vertical flux through the top and bottom layers.
-  @. div_flux_z[:, :, 1] = 0
-  @. div_flux_z[:, :, 50] = 0
+  @. flux_z[:, :, 1] = 0
+  @. flux_z[:, :, 50] = 0
 
-  (1/Vᵘ) .* (div_flux_x .+ div_flux_y .+ div_flux_z)
+  (1/Vᵘ) .* (δˣ(flux_x) .+ δʸ(flux_y) .+ δᶻ(flux_z))
 end
 
 # Calculate the nonlinear advection (inertiaL acceleration or convective
@@ -152,10 +152,14 @@ end
 
 function u_dot_w(u, v, w)
   Vᵘ = V
-  advection_x = δˣ(avgᶻ(Aˣ.*u) .* avgˣ(w))
-  advection_y = δʸ(avgᶻ(Aʸ.*v) .* avgʸ(w))
-  advection_z = δᶻ(avgᶻ(Aᶻ.*w) .* avgᶻ(w))
-  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  uŵ_transport = avgᶻ(Aˣ.*u) .* avgˣ(w)
+  vŵ_transport = avgᶻ(Aʸ.*v) .* avgʸ(w)
+  wŵ_transport = avgᶻ(Aᶻ.*w) .* avgᶻ(w)
+
+  wŵ_transport[:, :, 1]  .= 0
+  wŵ_transport[:, :, 50] .= 0
+
+  (1/Vᵘ) .* (δˣ(uŵ_transport) .+ δʸ(vŵ_transport) .+ δᶻ(wŵ_transport))
 end
 
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
@@ -181,8 +185,8 @@ function laplacian_diffusion_face_h(u)
   𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
 
   # Imposing free slip viscous boundary conditions at the bottom layer.
-  @. 𝜈∇u_x[:, :, 50] = 0
-  @. 𝜈∇u_y[:, :, 50] = 0
+  # @. 𝜈∇u_x[:, :, 50] = 0
+  # @. 𝜈∇u_y[:, :, 50] = 0
 
   (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
@@ -193,6 +197,11 @@ function laplacian_diffusion_face_v(u)
   𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
   𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
   𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
+
+  # Imposing free slip viscous boundary conditions at the bottom layer.
+  @. 𝜈∇u_z[:, :,  1] = 0
+  @. 𝜈∇u_z[:, :, 50] = 0
+
   (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
 
