@@ -1,21 +1,19 @@
 struct ZoneField{T <: AbstractFloat} <: Field
-    g::Grid
     f::Array
 end
 
 struct FaceField{T <: AbstractFloat} <: Field
-    g::Grid
     f::Array
 end
 
 function ZoneField(g::RegularCartesianGrid, T=Float64)
     f = Array{T,g.dim}(undef, g.Nx, g.Ny, g.Nz)
-    ZoneField{T}(g, f)
+    ZoneField{T}(f)
 end
 
 function FaceField(g::RegularCartesianGrid, T=Float64)
     f = Array{T,g.dim}(undef, g.Nx + 1, g.Ny + 1, g.Nz + 1)
-    FaceField{T}(g, f)
+    FaceField{T}(f)
 end
 
 struct Fields{T <: AbstractFloat} <: FieldCollection
