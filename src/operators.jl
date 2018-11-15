@@ -1,3 +1,7 @@
+# Inline helper functions.
+@inline incmod1(a, n) = a == n ? one(a) : a + 1
+@inline decmod1(a, n) = a == 1 ? n : a - 1
+
 # Functions to calculate the x, y, and z-derivatives on an Arakawa C-grid at
 # every grid point:
 #     δˣ(f) = (f)ᴱ - (f)ᵂ,   δʸ(f) = (f)ᴺ - (f)ˢ,   δᶻ(f) = (f)ᵀ - (f)ᴮ
@@ -5,20 +9,53 @@
 # evaluated on the eastern, western, northern, and southern walls of the cell,
 # respectively. Similarly, the T and B superscripts indicate the top and bottom
 # walls of the cell.
+
+```
+Some benchmarking with Nx, Ny, Nz = 200, 200, 200.
+
+using BenchmarkTools
+
+A = reshape(collect(0:Nx*Ny*Nz-1), (Nx, Ny, Nz));
+B = zeros((Nx, Ny, Nz));
+
+@btime δˣ($A);
+  54.556 ms (22 allocations: 122.07 MiB)
+
+@btime δˣb!($A, $B)  # With bounds checking.
+  19.870 ms (0 allocations: 0 bytes)
+
+@btime δˣ!($A, $B)  # With @inbounds. Looping in fast k, j, i order.
+  16.862 ms (0 allocations: 0 bytes)
+
+@btime δˣ!!($A, $B)  # With @inbounds. Looping in slow i, j, k order.
+  92.987 ms (0 allocations: 0 bytes)
+```
+
 δˣ(f) = (f .- circshift(f, (1, 0, 0)))
 δʸ(f) = (f .- circshift(f, (0, 1, 0)))
-# δᶻ(f) = (circshift(f, (0, 0, -1)) - circshift(f, (0, 0, 1)))
 
 function δᶻ(f)
-  ff = Array{Float64, 3}(undef, size(f)...)
+  δᶻf = Array{Float64, 3}(undef, size(f)...)
 
-  ff[:, :, 1] = f[:, :, 2] - f[:, :, 1]          # δᶻ at top layer.
-  ff[:, :, end] = f[:, :, end] - f[:, :, end-1]  # δᶻ at bottom layer.
+  δᶻf[:, :, 1] = f[:, :, 2] - f[:, :, 1]          # δᶻ at top layer.
+  δᶻf[:, :, end] = f[:, :, end] - f[:, :, end-1]  # δᶻ at bottom layer.
 
   # δᶻ in the interior.
-  ff[:, :, 2:end-1] = (f .- circshift(f, (0, 0, 1)))[:, :, 2:end-1]
+  δᶻf[:, :, 2:end-1] = (f .- circshift(f, (0, 0, 1)))[:, :, 2:end-1]
 
-  return ff
+  return δᶻf
+end
+
+function δˣ!(g::Grid, f, δˣf)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+      @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+    end
+end
+
+function δʸ!(g::Grid, f, δʸf)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+      @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+    end
 end
 
 #=
