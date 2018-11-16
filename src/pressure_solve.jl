@@ -43,7 +43,7 @@ function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.ifft(φ_hat)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(FFTW.ifft(φ_hat, [1, 2]), FFTW.REDFT01, 3)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.fft(FFTW.r2r(φ_hat, FFTW.REDFT01, 3), [1, 2])
-  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01)
+  φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01) ./ (Nˣ * Nʸ * Nᶻ)
 
   @info begin
     string("Fourier-spectral profiling:\n",

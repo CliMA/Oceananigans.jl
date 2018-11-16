@@ -170,11 +170,13 @@ Rw = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 RT = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 RpHY′ = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 RpNHS = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
+RRHS = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
+RRHS_rec = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 
-@info string(@sprintf("T⁰[50, 50, 1] = %.4g K\n", Tⁿ[50, 50, 1]))
+@info string(@sprintf("T⁰[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-  for n in 1:10
+  for n in 1:20
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
@@ -212,9 +214,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
     @info begin
       string("Temperature source term:\n",
-            @sprintf("div_flux:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
-            @sprintf("lap_diff:  mean=%.4g, absmean=%.4g, std=%.4g\n", mean(GTn_lap_diff), mean(abs.(GTn_lap_diff)), std(GTn_lap_diff)),
-            @sprintf("Fᵀ[:,:,1]: mean=%.4g, absmean=%.4g, std=%.4g\n", mean(Fᵀ[:, :, 1]), mean(abs.(Fᵀ[:, :, 1])), std(Fᵀ[:, :, 1]))
+            @sprintf("div_flux:  mean=%.6g, absmean=%.6g, std=%.6g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
+            @sprintf("lap_diff:  mean=%.6g, absmean=%.6g, std=%.6g\n", mean(GTn_lap_diff), mean(abs.(GTn_lap_diff)), std(GTn_lap_diff)),
+            @sprintf("Fᵀ[:,:,1]: mean=%.6g, absmean=%.6g, std=%.6g\n", mean(Fᵀ[:, :, 1]), mean(abs.(Fᵀ[:, :, 1])), std(Fᵀ[:, :, 1]))
             )
     end
 
@@ -234,9 +236,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     Gwn_Fw = Fʷ
     @info begin
       string("Vertical velocity source term:\n",
-            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_u_dot_w), maximum(Gwn_u_dot_w), mean(Gwn_u_dot_w), mean(abs.(Gwn_u_dot_w)), std(Gwn_u_dot_w)),
-            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_lap_diff), maximum(Gwn_lap_diff), mean(Gwn_lap_diff), mean(abs.(Gwn_lap_diff)), std(Gwn_lap_diff)),
-            @sprintf("Gwn_u_dot_w: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n", minimum(Gwn_Fw), maximum(Gwn_Fw), mean(Gwn_Fw), mean(abs.(Gwn_Fw)), std(Gwn_Fw))
+            @sprintf("Gwn_u_dot_w: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gwn_u_dot_w), maximum(Gwn_u_dot_w), mean(Gwn_u_dot_w), mean(abs.(Gwn_u_dot_w)), std(Gwn_u_dot_w)),
+            @sprintf("Gwn_u_dot_w: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gwn_lap_diff), maximum(Gwn_lap_diff), mean(Gwn_lap_diff), mean(abs.(Gwn_lap_diff)), std(Gwn_lap_diff)),
+            @sprintf("Gwn_u_dot_w: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gwn_Fw), maximum(Gwn_Fw), mean(Gwn_Fw), mean(abs.(Gwn_Fw)), std(Gwn_Fw))
             )
     end
 
@@ -255,6 +257,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # back is the nonhydrostatic
     pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
+    RHS = div(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    RHS_rec = laplacian(pⁿʰ⁺ˢ)
+    @info begin
+      string("Fourier-spectral solver diagnostics:\n",
+            @sprintf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS), maximum(RHS), mean(RHS), mean(abs.(RHS)), std(RHS)),
+            @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec))
+            )
+    end
+
     # Calculate the full pressure field.
     # @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ⁺ˢ
     @. pⁿ = pʰʸ′ + pⁿʰ⁺ˢ
@@ -271,9 +282,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     @info begin
       string("Imposing w=0 at top and bottom boundary:\n",
-             @sprintf("Before w[:, :, 1]:  min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n",
+             @sprintf("Before w[:, :, 1]:  min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
               minimum(wⁿ[:, :, 1]), maximum(wⁿ[:, :, 1]), mean(wⁿ[:, :, 1]), mean(abs.(wⁿ[:, :, 1])), std(wⁿ[:, :, 1])),
-             @sprintf("Before w[:, :, 50]: min=%.4g, max=%.4g, mean=%.4g, absmean=%.4g, std=%.4g\n",
+             @sprintf("Before w[:, :, 50]: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
               minimum(wⁿ[:, :, 50]), maximum(wⁿ[:, :, 50]), mean(wⁿ[:, :,50]), mean(abs.(wⁿ[:, :, 50])), std(wⁿ[:, :, 50])))
     end
 
@@ -284,7 +295,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
       string("Time: $(n*Δt)\n",
              @sprintf("Tⁿ[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]),
              @sprintf("Tⁿ[50, 50, 2] = %.6g K\n", Tⁿ[50, 50, 2]),
-             @sprintf("ΔT[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1] - T_ref[1]),
+             @sprintf("ΔT[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1] - 283),
              @sprintf("pʰʸ[1, 1, 1]  = %.6g kPa\n", pʰʸ[1, 1, 1] / 1000),
              @sprintf("pʰʸ[1, 1, 50] = %.6g kPa\n", pʰʸ[1, 1, 50] / 1000),
              @sprintf("uⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(uⁿ), maximum(uⁿ), mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
@@ -312,6 +323,8 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     RT[n, :, :, :] = copy(Tⁿ)
     RpHY′[n, :, :, :] = copy(pʰʸ′)
     RpNHS[n, :, :, :] = copy(pⁿʰ⁺ˢ)
+    RRHS[n, :, :, :] = copy(RHS)
+    RRHS_rec[n, :, :, :] = copy(RHS_rec)
 
   end  # time stepping for loop
 end  # time_stepping function
