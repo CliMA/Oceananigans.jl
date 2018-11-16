@@ -176,7 +176,7 @@ RRHS_rec = Array{NumType, 4}(undef, 10, Nˣ, Nʸ, Nᶻ)
 @info string(@sprintf("T⁰[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
-  for n in 1:20
+  for n in 1:10
 
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
@@ -205,10 +205,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
 
     # Calculate source terms for the current time step.
-    # Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
-    # Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
-    Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
-    Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
+    Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    # Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
+    # Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
 
     GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
     GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
@@ -220,16 +220,16 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    # Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    # Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
-    Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    # Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    # Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually Ĝ_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
-    # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
-    Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    # Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
 
     Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
     Gwn_lap_diff = laplacian_diffusion_face_v(wⁿ)
