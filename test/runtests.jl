@@ -1,6 +1,6 @@
 using
-  OceanDispatch,
-  Test
+    OceanDispatch,
+    Test
 
 # function testeos()
 #   T0 = 283
@@ -15,10 +15,16 @@ using
 # end
 
 @testset "Grid" begin
-  include("test_grid.jl")
-  @test test_grid_size()
-  @test test_Δx()
-  @test test_Δy()
-  @test test_Δz()
-  @test test_cell_volume()
+    include("test_grid.jl")
+    @test test_grid_size()
+    @test test_Δx()
+    @test test_Δy()
+    @test test_Δz()
+    @test test_cell_volume()
+end
+
+
+@testset "Spectral solvers" begin
+    include("test_spectral_solvers.jl")
+    @test test_solve_poisson_1d_pbc_cosine_source()
 end
