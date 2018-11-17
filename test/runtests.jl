@@ -29,4 +29,5 @@ end
     @test test_solve_poisson_1d_pbc_cosine_source()
     @test test_solve_poisson_1d_pbc_cosine_source_multiple_resolutions()
     @test test_solve_poisson_2d_pbc_gaussian_source()
+    @test test_solve_poisson_2d_pbc_gaussian_source_multiple_resolutions()
 end
