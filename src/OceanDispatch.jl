@@ -16,7 +16,12 @@ export
     FaceField,
     Fields,
     SourceTermFields,
-    ForcingFields
+    ForcingFields,
+
+    solve_poisson_1d_pbc
+
+using
+    FFTW
 
 abstract type ConstantsCollection end
 abstract type EquationOfStateParameters <: ConstantsCollection end
@@ -31,5 +36,6 @@ include("grid.jl")
 include("fields.jl")
 include("equation_of_state_future.jl")
 include("time_steppers.jl")
+include("spectral_solvers.jl")
 
 end # module
