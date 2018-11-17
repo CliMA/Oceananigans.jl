@@ -18,7 +18,8 @@ export
     SourceTermFields,
     ForcingFields,
 
-    solve_poisson_1d_pbc
+    solve_poisson_1d_pbc,
+    solve_poisson_2d_pbc
 
 using
     FFTW
