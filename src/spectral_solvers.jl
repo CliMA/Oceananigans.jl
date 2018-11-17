@@ -67,3 +67,32 @@ function solve_poisson_2d_pbc(f, Lx, Ly)
     # Take the inverse transform of the solution's Fourier coefficients.
     ϕ = FFTW.irfft(ϕh, Nx)
 end
+
+function solve_poisson_3d_pbc(f, Lx, Ly, Lz)
+    Nx, Ny, Nz = size(f)  # Number of grid points (excluding the periodic end point).
+
+    # Forward transform the real-valued source term.
+    fh = FFTW.rfft(f)
+
+    # Wavenumber indices.
+    l1 = 0:Int(Nx/2)
+    l2 = Int(-Nx/2 + 1):-1
+    m1 = 0:Int(Ny/2)
+    m2 = Int(-Ny/2 + 1):-1
+    n1 = 0:Int(Nz/2)
+    n2 = Int(-Nz/2 + 1):-1
+
+    kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1, 1))
+    ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny, 1))
+    kz = reshape((2π/Ly) * cat(n1, n2, dims=1), (1, 1, Nz))
+
+    k² = @. kx^2 + ky^2 + kz^2
+
+    ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :, :]
+
+    # Setting the DC/zero Fourier component to zero.
+    ϕh[1, 1, 1] = 0
+
+    # Take the inverse transform of the solution's Fourier coefficients.
+    ϕ = FFTW.irfft(ϕh, Nx)
+end
