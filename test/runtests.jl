@@ -27,4 +27,5 @@ end
 @testset "Spectral solvers" begin
     include("test_spectral_solvers.jl")
     @test test_solve_poisson_1d_pbc_cosine_source()
+    @test test_solve_poisson_1d_pbc_cosine_source_multiple_resolutions()
 end
