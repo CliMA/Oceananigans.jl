@@ -6,10 +6,10 @@ function solve_poisson_1d_pbc(f, L)
     N = length(f)  # Number of grid points (excluding the periodic end point).
     n = 0:N        # Wavenumber indices.
 
-    # Second-order convergence.
-    # k² = @. (4 / Δx^2) * sin(π*n / N)^2  # Wavenumber squared.
+    # Wavenumbers for second-order convergence.
+    # k² = @. (4 / Δx^2) * sin(π*n / N)^2
 
-    # Spectral convergence.
+    # Wavenumbers for spectral convergence.
     k² = @. ((2*π / L) * n)^2
 
     # Forward transform the real-valued source term.
