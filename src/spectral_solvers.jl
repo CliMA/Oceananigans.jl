@@ -5,9 +5,9 @@ import FFTW
 # Right now the solver expects an odd number of points in f where the last point
 # is the periodic point and equal to the first
 function solve_poisson_1d_pbc(f, Δx)
-    N = length(f) - 1  # Number of grid points (excluding the periodic end point).
     n = 0:N            # Wavenumber indices.
     k² = @. (4 / Δx^2) * sin(π*n / N)^2  # Wavenumber squared.
+    N = length(f)  # Number of grid points (excluding the periodic end point).
 
     # Forward transform the real-valued source term.
     fh = FFTW.rfft(f)
@@ -22,5 +22,5 @@ function solve_poisson_1d_pbc(f, Δx)
 
     # Take the inverse transform of the . We need to specify that the input f
     # had a length of N+1 as
-    ϕ = FFTW.irfft(ϕh, N+1)
+    ϕ = FFTW.irfft(ϕh, N)
 end
