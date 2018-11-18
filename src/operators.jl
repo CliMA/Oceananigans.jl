@@ -146,6 +146,69 @@ function δᶻz2f(f)
     δf
 end
 
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the u-faces, which has size (Nx+1, Ny, Nz).
+function avgˣz2f(f)
+    Nx, Ny, Nz = size(f)
+    fa = zeros(Nx+1, Ny, Nz)
+
+    # Calculate avgˣ in the interior.
+    for k in 1:Nz, j in 1:Ny, i in 2:Nx
+        fa[i, j, k] =  (f[i-1, j, k] + f[i, j, k]) / 2
+    end
+
+    # Calculate avgˣ at the left and right boundaries (the leftmost and rightmost faces are the
+    # same in our periodic configuration).
+    for k in 1:Nz, j in 1:Ny
+        avg′ = (f[1, j, k] + f[end, j, k]) / 2
+        fa[1, j, k], fa[end, j, k] = avg′, avg′
+    end
+
+    fa
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the v-faces, which has size (Nx, Ny+1, Nz).
+function avgʸz2f(f)
+    Nx, Ny, Nz = size(f)
+    fa = zeros(Nx, Ny+1, Nz)
+
+    # Calculate avgʸ in the interior.
+    for k in 1:Nz, j in 2:Ny, i in 1:Nx
+        fa[i, j, k] =  (f[i, j-1, k] + f[i, j, k]) / 2
+    end
+
+    # Calculate avgʸ at the north and south boundaries (the northmost and southtmost faces are the
+    # same in our periodic configuration).
+    for k in 1:Nz, i in 1:Nx
+        avg′ = (f[i, 1, k] + f[i, end, k]) / 2
+        fa[i, 1, k], fa[i, end, k] = avg′, avg′
+    end
+
+    fa
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the w-faces, which has size (Nx, Ny, Nz+1).
+function avgᶻz2f(f)
+    Nx, Ny, Nz = size(f)
+    fa = zeros(Nx, Ny, Nz+1)
+
+    # Calculate avgᶻ in the interior.
+    for k in 2:Nz, j in 1:Ny, i in 1:Nx
+        fa[i, j, k] =  (f[i, j, k-1] + f[i, j, k]) / 2
+    end
+
+    # Calculate avgᶻ at the top and bottom boundaries (the surface and bottom faces are the
+    # same in our periodic configuration).
+    for j in 1:Ny, i in 1:Nx
+        avg′ = (f[i, j, 1] + f[i, j, end]) / 2
+        fa[i, j, 1], fa[i, j, end] = avg′, avg′
+    end
+
+    fa
+end
+
 # function δˣ!(g::Grid, f, δˣf)
 #     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
 #       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
