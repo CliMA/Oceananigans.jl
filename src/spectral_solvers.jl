@@ -32,7 +32,7 @@ function solve_poisson_1d_pbc(f, L)
     ϕ = FFTW.irfft(ϕh, N)
 end
 
-# Solve a @D Poisson equation ∇²ϕ = f(x,y) with periodic boundary conditions and
+# Solve a 2D Poisson equation ∇²ϕ = f(x,y) with periodic boundary conditions and
 # domain lengths Lx, Ly using the Fourier-spectral method. Solutions to
 # Poisson's equation with periodic boundary conditions are unique up to a
 # constant so you may need to appropriately normalize the solution if you care
@@ -68,6 +68,12 @@ function solve_poisson_2d_pbc(f, Lx, Ly)
     ϕ = FFTW.irfft(ϕh, Nx)
 end
 
+# Solve a 3D Poisson equation ∇²ϕ = f(x,y,z) with periodic boundary conditions
+# and domain lengths Lx, Ly, Lz using the Fourier-spectral method. Solutions to
+# Poisson's equation with periodic boundary conditions are unique up to a
+# constant so you may need to appropriately normalize the solution if you care
+# about the numerical value of the solution itself and not just derivatives of
+# the solution.
 function solve_poisson_3d_pbc(f, Lx, Ly, Lz)
     Nx, Ny, Nz = size(f)  # Number of grid points (excluding the periodic end point).
 
@@ -95,4 +101,48 @@ function solve_poisson_3d_pbc(f, Lx, Ly, Lz)
 
     # Take the inverse transform of the solution's Fourier coefficients.
     ϕ = FFTW.irfft(ϕh, Nx)
+end
+
+# Solve a 3D Poisson equation ∇²ϕ = f(x,y,z) with periodic boundary conditions
+# in the horizontal directions (x,y) and Neumann boundary conditions in the
+# z-direction using the Fourier-spectral method.
+#
+# This corresponds to representing the solution with complex exponentials in the
+# horizontal and cosines in the vertical so that a discrete Fourier transform
+# (DFT) is employed in forward transforming the source term and inverse
+# transforming the solution in the horizontal, while a discrete cosine transform
+# (DCT) is emplored in the vertical.
+#
+# The domain lengths Lx, Ly, Lz are required to calculate the wavenumbers.
+# Solutions to Poisson's equation with periodic boundary conditions are unique
+# up to a constant so you may need to appropriately normalize the solution if
+# you careabout the numerical value of the solution itself and not just
+# derivatives of the solution.
+function solve_poisson_3d_mbc(f, Lx, Ly, Lz)
+    Nx, Ny, Nz = size(f)  # Number of grid points (excluding the periodic end point).
+
+    # Forward transform the real-valued source term.
+    fh = FFTW.dct(FFTW.rfft(f, [1, 2]), 3)
+
+    # Wavenumber indices.
+    l1 = 0:Int(Nx/2)
+    l2 = Int(-Nx/2 + 1):-1
+    m1 = 0:Int(Ny/2)
+    m2 = Int(-Ny/2 + 1):-1
+    n1 = 0:Int(Nz/2)
+    n2 = Int(-Nz/2 + 1):-1
+
+    kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1, 1))
+    ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny, 1))
+    kz = reshape((1π/Ly) * cat(n1, n2, dims=1), (1, 1, Nz))
+
+    k² = @. kx^2 + ky^2 + kz^2
+
+    ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :, :]
+
+    # Setting the DC/zero Fourier component to zero.
+    ϕh[1, 1, 1] = 0
+
+    # Take the inverse transform of the solution's Fourier coefficients.
+    ϕ = FFTW.irfft(FFTW.idct(ϕh, 3), Nx, [1, 2])
 end
