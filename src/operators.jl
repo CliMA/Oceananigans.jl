@@ -46,12 +46,14 @@ function δᶻ(f)
   return δᶻf
 end
 
-# Calculating a difference in the x, y, and z-directions for a field
-# defined at the cell faces/boundaries and projecting it onto the
-# center of the cells.
+# δˣf2z, δʸf2z, and δᶻf2z calculate a difference in the x, y, and
+# z-directions for a field defined at the cell faces/boundaries
+# and projects it onto the cell centers.
+
+# Input: Field defined at the u-faces, which has size (Nx+1, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
 function δˣf2z(f)
-    # δˣ size will be (Nx+1, Ny+1, Nz+1) instead of (Nx, Ny, Nz).
-    Nx, Ny, Nz = size(f) .- 1
+    Nx, Ny, Nz = size(f)[1] - 1, size(f)[2], size(f)[3]
     δf = zeros(Nx, Ny, Nz)
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         δf[i, j, k] =  f[i+1, j, k] - f[i, j, k]
@@ -59,9 +61,10 @@ function δˣf2z(f)
     δf
 end
 
+# Input: Field defined at the v-faces, which has size (Nx, Ny+1, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
 function δʸf2z(f)
-    # δˣ size will be (Nx+1, Ny+1, Nz+1) instead of (Nx, Ny, Nz).
-    Nx, Ny, Nz = size(f) .- 1
+    Nx, Ny, Nz = size(f)[1], size(f)[2] - 1, size(f)[3]
     δf = zeros(Nx, Ny, Nz)
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         δf[i, j, k] =  f[i, j+1, k] - f[i, j, k]
@@ -69,9 +72,10 @@ function δʸf2z(f)
     δf
 end
 
+# Input: Field defined at the v-faces, which has size (Nx, Ny, Nz+1).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
 function δᶻf2z(f)
-    # δˣ size will be (Nx+1, Ny+1, Nz+1) instead of (Nx, Ny, Nz).
-    Nx, Ny, Nz = size(f) .- 1
+    Nx, Ny, Nz = size(f)[1], size(f)[2], size(f)[3] - 1
     δf = zeros(Nx, Ny, Nz)
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         δf[i, j, k] =  f[i, j, k+1] - f[i, j, k]
