@@ -2,6 +2,8 @@ using Printf
 
 import FFTW
 
+include("spectral_solvers.jl")
+
 Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
 Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
 
@@ -40,24 +42,27 @@ function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(FFTW.fft(RHS, [1, 2]), FFTW.REDFT10, 3)
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.r2r(RHS, FFTW.REDFT10)
   # f̂, fft_t, fft_bytes, fft_gc = @timed FFTW.rfft(FFTW.dct(f, 3), [1, 2])
-  f̂, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(FFTW.dct(f, 3), [1, 2])
+  # f̂, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(FFTW.dct(f, 3), [1, 2])
 
   # TODO: How to do this using rfft as f̂ changes size to (Nˣ/2 + 1, Nʸ, Nᶻ)?
-  p̂, hat_t, hat_bytes, hat_gc = @timed k̃⁻² .* f̂
+  # p̂, hat_t, hat_bytes, hat_gc = @timed k̃⁻² .* f̂
 
-  p, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.idct(FFTW.ifft(p̂, [1, 2]), 3)
+  # p, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.idct(FFTW.ifft(p̂, [1, 2]), 3)
   # p, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.idct(FFTW.rfft(p̂, Nˣ, [1, 2]), 3)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.ifft(φ_hat)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(FFTW.ifft(φ_hat, [1, 2]), FFTW.REDFT01, 3)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.fft(FFTW.r2r(φ_hat, FFTW.REDFT01, 3), [1, 2]) / (2 * Nˣ * Nʸ * Nᶻ)
   # φ, ifft_t, ifft_bytes, ifft_gc = @timed FFTW.r2r(φ_hat, FFTW.REDFT01) ./ (Nˣ * Nʸ * Nᶻ)
 
-  @info begin
-    string("Fourier-spectral profiling:\n",
-           @sprintf("fFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", fft_t*1000, fft_bytes/1024^2, fft_gc*100),
-           @sprintf("FFTc: (%.0f ms, %.2f MiB, %.1f%% GC)\n", hat_t*1000, hat_bytes/1024^2, hat_gc*100),
-           @sprintf("iFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", ifft_t*1000, ifft_bytes/1024^2, ifft_gc*100))
-  end
-  @info "p[50, 50, 1] = $(p[50, 50, 1])"
-  return real.(p)
+  # @info begin
+  #   string("Fourier-spectral profiling:\n",
+  #          @sprintf("fFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", fft_t*1000, fft_bytes/1024^2, fft_gc*100),
+  #          @sprintf("FFTc: (%.0f ms, %.2f MiB, %.1f%% GC)\n", hat_t*1000, hat_bytes/1024^2, hat_gc*100),
+  #          @sprintf("iFFT: (%.0f ms, %.2f MiB, %.1f%% GC)\n", ifft_t*1000, ifft_bytes/1024^2, ifft_gc*100))
+  # end
+  # @info "p[50, 50, 1] = $(p[50, 50, 1])"
+
+  p = solve_poisson_3d_mbc(f, Lˣ, Lʸ, Lᶻ)
+
+  return p
 end

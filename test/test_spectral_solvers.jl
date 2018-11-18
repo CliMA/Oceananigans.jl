@@ -1,8 +1,13 @@
 using Statistics: mean
 
+using FFTW
+
 # Testing with the cos(2πz/H) source term should give a spectral solution that
 # is numerically accurate within ≈ machine epsilon, so in these tests we can
 # use ≈ to check the spectral solution with the analytic solution.
+#
+# With the source term f(z) = cos(2πz/H), the analytic solution is given by
+# ϕ(z) = -(H/2π)² cos(2πz/H) and is periodic as ϕ(0) = ϕ(H).
 
 function test_solve_poisson_1d_pbc_cosine_source()
     H = 12           # Length of domain.
@@ -42,6 +47,10 @@ end
 # Testing with the exp(-(x²+y²)) Gaussian source term won't we do see spectral
 # convergence, however, I'm not sure how to best normalize the solution to see
 # this. So for now I'm just testing to make sure that the maximum error is 1e-5.
+#
+# With the source term f(x,y) = 4(x²+y²-1)exp(-(x²+y²)), the analytic solution
+# is given by ϕ(x,y) = exp(-(x²+y²)) which I suppose is "numerically periodic"
+# if it decays to zero pretty quickly at the boundaries.
 
 function test_solve_poisson_2d_pbc_gaussian_source()
     Lx, Ly = 8, 8;  # Domain size.
@@ -216,4 +225,16 @@ function test_mixed_ifft_commutativity()
     A21 = FFTW.irfft(FFTW.idct(Ã2, 3), N, [1, 2])
     A22 = FFTW.idct(FFTW.irfft(Ã2, N, [1, 2]), 3)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
+end
+
+# Testing with the exp(-(x²+y²)) Gaussian source term won't we do see spectral
+# convergence, however, I'm not sure how to best normalize the solution to see
+# this. So for now I'm just testing to make sure that the maximum error is 1e-5.
+#
+# With the source term f(x,y,z) = 4(x²+y²-1-π²/Lz²)cos(2πz/Lz)exp(-(x²+y²)), the
+# analytic solution is given by ϕ(x,y,z) = cos(2πz/Lz)exp(-(x²+y²)) which I
+# suppose is "numerically periodic" if it decays to zero pretty quickly at the
+# boundaries.
+
+function test_solve_poisson_3d_mbc_gaussian_cosine_source()
 end
