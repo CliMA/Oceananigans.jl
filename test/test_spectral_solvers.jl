@@ -195,3 +195,25 @@ function test_solve_poisson_2d_pbc_gaussian_source_Nx_eq_2Ny_multiple_resolution
     end
     true
 end
+
+function test_mixed_fft_commutativity()
+    N = 8
+    A = rand(N, N, N)
+    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
+    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
+    Ã1 ≈ Ã2
+end
+
+function test_mixed_ifft_commutativity()
+    N = 8
+    A = rand(N, N, N)
+
+    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
+    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
+
+    A11 = FFTW.irfft(FFTW.idct(Ã1, 3), N, [1, 2])
+    A12 = FFTW.idct(FFTW.irfft(Ã1, N, [1, 2]), 3)
+    A21 = FFTW.irfft(FFTW.idct(Ã2, 3), N, [1, 2])
+    A22 = FFTW.idct(FFTW.irfft(Ã2, N, [1, 2]), 3)
+    A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
+end
