@@ -83,6 +83,69 @@ function δᶻf2z(f)
     δf
 end
 
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the u-faces, which has size (Nx+1, Ny, Nz).
+function δˣz2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx+1, Ny, Nz)
+
+    # Calculate δˣ in the interior.
+    for k in 1:Nz, j in 1:Ny, i in 2:Nx
+        δf[i, j, k] =  f[i, j, k] - f[i-1, j, k]
+    end
+
+    # Calculate δˣ at the left and right boundaries (the leftmost and rightmost faces are the
+    # same in our periodic configuration).
+    for k in 1:Nz, j in 1:Ny
+        δ′ = f[1, j, k] - f[end, j, k]
+        δf[1, j, k], δf[end, j, k] = δ′, δ′
+    end
+
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the v-faces, which has size (Nx, Ny+1, Nz).
+function δʸz2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny+1, Nz)
+
+    # Calculate δʸ in the interior.
+    for k in 1:Nz, j in 2:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, k] - f[i, j-1, k]
+    end
+
+    # Calculate δʸ at the north and south boundaries (the leftmost and rightmost faces are the
+    # same in our periodic configuration).
+    for k in 1:Nz, i in 1:Nx
+        δ′ = f[i, 1, k] - f[i, end, k]
+        δf[i, 1, k], δf[i, end, k] = δ′, δ′
+    end
+
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the w-faces, which has size (Nx, Ny, Nz+1).
+function δᶻz2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz+1)
+
+    # Calculate δᶻ in the interior.
+    for k in 2:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, k] - f[i, j, k-1]
+    end
+
+    # Calculate δᶻ at the top and bottom boundaries (the leftmost and rightmost faces are the
+    # same in our periodic configuration).
+    for j in 1:Ny, i in 1:Nx
+        δ′ = f[i, j, 1] - f[i, j, end]
+        δf[i, j, 1], δf[i, j, end] = δ′, δ′
+    end
+
+    δf
+end
+
 # function δˣ!(g::Grid, f, δˣf)
 #     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
 #       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
