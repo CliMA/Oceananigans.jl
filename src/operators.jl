@@ -278,6 +278,11 @@ function div(fˣ, fʸ, fᶻ)
   (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
 end
 
+function div_f2z(fˣ, fʸ, fᶻ)
+    Vᵘ = V
+    (1/Vᵘ) * ( δˣf2z(Aˣ .* fˣ) + δʸf2z(Aʸ .* fʸ) + δᶻf2z(Aᶻ .* fᶻ) )
+end
+
 # Calculate the divergence of a flux of Q over a zone with velocity field
 # 𝐮 = (u,v,w): ∇ ⋅ (𝐮 Q).
 function div_flux(u, v, w, Q)
