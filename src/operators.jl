@@ -254,6 +254,10 @@ function div(fˣ, fʸ, fᶻ)
   (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
 end
 
+# Input: fˣ is on a u-face grid with size (Nx+1, Ny, Nz).
+#        fʸ is on a v-face grid with size (Nx, Ny+1, Nz).
+#        fᶻ is on a w-face grid with size (Nx, Ny, Nz+1).
+# Output: ∇·̲f is on a zone/cell center grid with size (Nx, Ny, Nz).
 function div_f2z(fˣ, fʸ, fᶻ)
     Vᵘ = V
     (1/Vᵘ) * ( δˣf2z(Aˣ .* fˣ) + δʸf2z(Aʸ .* fʸ) + δᶻf2z(Aᶻ .* fᶻ) )
@@ -269,9 +273,27 @@ function div_flux(u, v, w, Q)
 
   # Imposing zero vertical flux through the top and bottom layers.
   @. flux_z[:, :, 1] = 0
-  @. flux_z[:, :, 50] = 0
+  @. flux_z[:, :, end] = 0
 
   (1/Vᵘ) .* (δˣ(flux_x) .+ δʸ(flux_y) .+ δᶻ(flux_z))
+end
+
+# Input: u is on a u-face grid with size (Nx+1, Ny, Nz).
+#        v is on a v-face grid with size (Nx, Ny+1, Nz).
+#        w is on a w-face grid with size (Nx, Ny, Nz+1).
+#        Q is on a zone/cell center grid with size (Nx, Ny, Nz).
+# Output: ∇·(u̲Q) is on zone/cell center grid with size (Nx, Ny, Nz).
+function div_flux_f2z(u, v, w, Q)
+    Vᵘ = V
+    flux_x = Aˣ .* u .* avgˣz2f(Q)
+    flux_y = Aʸ .* v .* avgʸz2f(Q)
+    flux_z = Aᶻ .* w .* avgᶻz2f(Q)
+
+    # Imposing zero vertical flux through the top and bottom layers.
+    @. flux_z[:, :, 1] = 0
+    @. flux_z[:, :, end] = 0
+
+    (1/Vᵘ) .* (δˣf2z(flux_x) .+ δʸf2z(flux_y) .+ δᶻf2z(flux_z))
 end
 
 # Calculate the nonlinear advection (inertiaL acceleration or convective
@@ -316,6 +338,16 @@ function laplacian_diffusion_zone(Q)
   κ∇Q_y = κʰ .* Aʸ .* δʸ(Q)
   κ∇Q_z = κᵛ .* Aᶻ .* δᶻ(Q)
   (1/Vᵘ) .* div(κ∇Q_x, κ∇Q_y, κ∇Q_z)
+end
+
+# Input: Q is on a zone/cell centered grid with size (Nx, Ny, Nz).
+# Output: ∇·(κ∇Q) is on a zone/cell centered grid with size (Nx, Ny, Nz).
+function laplacian_diffusion_z2z(Q)
+    Vᵘ = V
+    κ∇Q_x = κʰ .* Aˣ .* δˣz2f(Q)
+    κ∇Q_y = κʰ .* Aʸ .* δʸz2f(Q)
+    κ∇Q_z = κᵛ .* Aᶻ .* δᶻz2f(Q)
+    (1/Vᵘ) .* div_f2z(κ∇Q_x, κ∇Q_y, κ∇Q_z)
 end
 
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
