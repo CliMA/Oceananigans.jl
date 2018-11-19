@@ -205,10 +205,10 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     Gᵘⁿ⁻¹ = Gᵘⁿ; Gᵛⁿ⁻¹ = Gᵛⁿ; Gʷⁿ⁻¹ = Gʷⁿ; Gᵀⁿ⁻¹ = Gᵀⁿ; Gˢⁿ⁻¹ = Gˢⁿ;
 
     # Calculate source terms for the current time step.
-    Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
-    Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
-    # Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
-    # Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    # Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
+    # Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
+    Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
 
     GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
     GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
@@ -220,16 +220,16 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
-    # Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    # Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    # Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    # Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually Ĝ_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
-    Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
-    # Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
 
     Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
     Gwn_lap_diff = laplacian_diffusion_face_v(wⁿ)
@@ -258,11 +258,13 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
     RHS = div(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
-    RHS_rec = laplacian(pⁿʰ⁺ˢ)
+    RHS_rec = laplacian(pⁿʰ⁺ˢ) ./ (Δx)^2
+    error = RHS_rec .- RHS
     @info begin
       string("Fourier-spectral solver diagnostics:\n",
             @sprintf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS), maximum(RHS), mean(RHS), mean(abs.(RHS)), std(RHS)),
-            @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec))
+            @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec)),
+            @sprintf("error:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(error), maximum(error), mean(error), mean(abs.(error)), std(error))
             )
     end
 
