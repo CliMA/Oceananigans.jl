@@ -146,6 +146,44 @@ function δᶻz2f(f)
     δf
 end
 
+# function δˣ!(g::Grid, f, δˣf)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+#     end
+# end
+#
+# function δʸ!(g::Grid, f, δʸf)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
+#     end
+# end
+
+# Functions to calculate the value of a quantity on a face as the average of
+# the quantity in the two cells to which the face is common:
+#     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
+# where the superscripts are as defined for the derivative operators.
+avgˣ(f) = (f .+ circshift(f, (1, 0, 0))) / 2
+avgʸ(f) = (f .+ circshift(f, (0, 1, 0))) / 2
+# avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
+
+function avgᶻ(f)
+  ff = Array{Float64, 3}(undef, size(f)...)
+
+  ff[:, :, 1] = (f[:, :, 2] + f[:, :, 1]) / 2          # avgᶻ at top layer.
+  ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
+
+  # avgᶻ in the interior.
+  ff[:, :, 2:end-1] = (f .+ circshift(f, (0, 0, 1)))[:, :, 2:end-1] ./ 2
+
+  return ff
+end
+
+# In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
+# return the scalar.
+avgˣ(s::Number) = s
+avgʸ(s::Number) = s
+avgᶻ(s::Number) = s
+
 # Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
 # Output: Field defined at the u-faces, which has size (Nx+1, Ny, Nz).
 function avgˣz2f(f)
@@ -208,68 +246,6 @@ function avgᶻz2f(f)
 
     fa
 end
-
-# function δˣ!(g::Grid, f, δˣf)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
-#     end
-# end
-#
-# function δʸ!(g::Grid, f, δʸf)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
-#     end
-# end
-
-#=
-Example function to compute an x-derivative:
-
-function xderiv!(ux, u, grid)
-  @views @. ux[2:grid.nx, :, :] = ( u[2:grid.nx, :, :] - u[1:grid.nx-1, :, :] ) / grid.dx
-  @views @. ux[1,         :, :] = ( u[1,         :, :] - u[grid.nx,     :, :] ) / grid.dx
-  nothing
-end
-
-However --- won't we need to know whether u lives in the cell center or cell face?
-=#
-
-# Functions to calculate the value of a quantity on a face as the average of
-# the quantity in the two cells to which the face is common:
-#     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
-# where the superscripts are as defined for the derivative operators.
-avgˣ(f) = (f .+ circshift(f, (1, 0, 0))) / 2
-avgʸ(f) = (f .+ circshift(f, (0, 1, 0))) / 2
-# avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
-
-function avgᶻ(f)
-  ff = Array{Float64, 3}(undef, size(f)...)
-
-  ff[:, :, 1] = (f[:, :, 2] + f[:, :, 1]) / 2          # avgᶻ at top layer.
-  ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
-
-  # avgᶻ in the interior.
-  ff[:, :, 2:end-1] = (f .+ circshift(f, (0, 0, 1)))[:, :, 2:end-1] ./ 2
-
-  return ff
-end
-
-# In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
-# return the scalar.
-avgˣ(s::Number) = s
-avgʸ(s::Number) = s
-avgᶻ(s::Number) = s
-
-#=
-function xderiv!(out, in, g::Grid)
-end
-
-function xderiv(in, g)
-  out = zero(in)
-end
-=#
-# avgˣ(f) = @views (f + cat(f[2:end, :, :], f[1:1, :, :]; dims=1)) / 2
-# avgʸ(f) = @views (f + cat(f[:, 2:end, :], f[:, 1:1, :]; dims=2)) / 2
-# avgᶻ(f) = @views (f + cat(f[:, :, 2:end], f[:, :, 1:1]; dims=3)) / 2
 
 # Calculate the divergence of the flux of a quantify f = (fˣ, fʸ, fᶻ) over the
 # cell.
