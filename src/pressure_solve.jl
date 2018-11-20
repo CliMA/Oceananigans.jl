@@ -35,7 +35,7 @@ k̃⁻²[1, 1, 1] = 0  # Solvability condition: DC component is zero.
 # Solve an elliptic Poisson equation ∇²ϕ = ℱ for the pressure field ϕ where
 # ℱ = ∇ ⋅ G and G = (Gᵘ,Gᵛ,Gʷ) using the Fourier-spectral method.
 function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
-  f = div(Gᵘ, Gᵛ, Gʷ)  # Right hand side or source term.
+  f = div_f2c(Gᵘ, Gᵛ, Gʷ)  # Right hand side or source term.
 
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(RHS)
   # RHS_hat, fft_t, fft_bytes, fft_gc = @timed FFTW.fft(FFTW.r2r(RHS, FFTW.REDFT10, 3), [1, 2])

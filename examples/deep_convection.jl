@@ -193,6 +193,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # g′ᶻ = avgᶻ(g′)
     δρ̅ᶻ = avgᶻ(δρ)
 
+    # TODO: Vertical integral operator.
     for j in 1:Nʸ, i in 1:Nˣ
       pʰʸ′[i, j, 1] = - δρ[i, j, 1] * g * Δz / 2
     end
@@ -207,11 +208,13 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Calculate source terms for the current time step.
     # Gˢⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Sⁿ) + laplacian_diffusion_zone(Sⁿ) + Fˢ
     # Gᵀⁿ = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ) + laplacian_diffusion_zone(Tⁿ) + Fᵀ
-    Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
-    Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    # Gˢⁿ = laplacian_diffusion_zone(Sⁿ) + Fˢ
+    # Gᵀⁿ = laplacian_diffusion_zone(Tⁿ) + Fᵀ
+    Gᵀⁿ = -div_flux_f2c(uⁿ, vⁿ, wⁿ, Tⁿ) + κ∇²(Tⁿ) + Fᵀ
+    Gˢⁿ = -div_flux_f2c(uⁿ, vⁿ, wⁿ, Sⁿ) + κ∇²(Sⁿ) + Fˢ
 
-    GTn_div_flux = -div_flux(uⁿ, vⁿ, wⁿ, Tⁿ)
-    GTn_lap_diff = laplacian_diffusion_zone(Tⁿ)
+    GTn_div_flux = -div_flux_f2c(uⁿ, vⁿ, wⁿ, Tⁿ)
+    GTn_lap_diff = κ∇²(Tⁿ)
     @info begin
       string("Temperature source term:\n",
             @sprintf("div_flux:  mean=%.6g, absmean=%.6g, std=%.6g\n", mean(GTn_div_flux), mean(abs.(GTn_div_flux)), std(GTn_div_flux)),
@@ -222,17 +225,23 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     # Gᵘⁿ = -u_dot_u(uⁿ, vⁿ, wⁿ) .+ f.*vⁿ .- (Aˣ/V) .* (1/ρ₀).*δˣ(pʰʸ′) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
     # Gᵛⁿ = -u_dot_v(uⁿ, vⁿ, wⁿ) .- f.*uⁿ .- (Aʸ/V) .* (1/ρ₀).*δʸ(pʰʸ′) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
-    Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
-    Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+    # Gᵘⁿ = f.*vⁿ .-  (1/ρ₀) .* (δˣ(pʰʸ′) ./ Δx) .+ laplacian_diffusion_face_h(uⁿ) .+ Fᵘ
+    # Gᵛⁿ = .- f.*uⁿ .- (1/ρ₀) .* (δʸ(pʰʸ′) ./ Δy) .+ laplacian_diffusion_face_h(vⁿ) .+ Fᵛ
+
+    # TODO: When not on f-plane, fv must be calculated as avgʸ(f .* avgˣ(v)) for flux form
+    # equation of motion.
+    Gᵘⁿ = -ũ∇u(uⁿ, vⁿ, wⁿ) .+ f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣ(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²(uⁿ) .+ Fᵘ
+    Gᵛⁿ = -ũ∇v(uⁿ, vⁿ, wⁿ) .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸ(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually Ĝ_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .- (1/ρ₀).*δᶻ(pʰʸ′) .+ laplacian_diffusion_face(wⁿ) .+ Fʷ
     # Gʷⁿ = -u_dot_w(uⁿ, vⁿ, wⁿ) .+ laplacian_diffusion_face_v(wⁿ) .+ Fʷ
-    Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    # Gʷⁿ = laplacian_diffusion_face_v(wⁿ) .+ Fʷ
+    Gʷⁿ = -ũ∇w(uⁿ, vⁿ, wⁿ) .+ 𝜈ᵛ∇²(wⁿ) .+ Fʷ
 
-    Gwn_u_dot_w = u_dot_w(uⁿ, vⁿ, wⁿ)
-    Gwn_lap_diff = laplacian_diffusion_face_v(wⁿ)
+    Gwn_u_dot_w = ũ∇w(uⁿ, vⁿ, wⁿ)
+    Gwn_lap_diff = 𝜈ᵛ∇²(wⁿ)
     Gwn_Fw = Fʷ
     @info begin
       string("Vertical velocity source term:\n",
@@ -257,7 +266,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # back is the nonhydrostatic
     pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
-    RHS = div(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
     RHS_rec = laplacian(pⁿʰ⁺ˢ) ./ (Δx)^2
     error = RHS_rec .- RHS
     @info begin
@@ -272,12 +281,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # @. pⁿ = p₀ + pʰʸ + pʰʸ′ + pⁿʰ⁺ˢ
     @. pⁿ = pʰʸ′ + pⁿʰ⁺ˢ
 
-    uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (1/ρ₀) .* (δˣ(pⁿʰ⁺ˢ) ./ Δx)) .* Δt
-    vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (1/ρ₀) .* (δʸ(pⁿʰ⁺ˢ) ./ Δy)) .* Δt
-    wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (1/ρ₀) .* (δᶻ(pⁿʰ⁺ˢ) ./ Δz)) .* Δt
+    # uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .- (1/ρ₀) .* (δˣ(pⁿʰ⁺ˢ) ./ Δx)) .* Δt
+    # vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .- (1/ρ₀) .* (δʸ(pⁿʰ⁺ˢ) ./ Δy)) .* Δt
+    # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .- (1/ρ₀) .* (δᶻ(pⁿʰ⁺ˢ) ./ Δz)) .* Δt
     # uⁿ = uⁿ .+ (Gᵘⁿ⁺ʰ .* Δt)
     # vⁿ = vⁿ .+ (Gᵛⁿ⁺ʰ .* Δt)
     # wⁿ = wⁿ .+ (Gʷⁿ⁺ʰ .* Δt)
+    uⁿ = uⁿ .+ ( Gᵘⁿ⁺ʰ .- (1/Δx) .* δˣz2f(pⁿʰ⁺ˢ ./ ρ₀) ) .* Δt
+    vⁿ = vⁿ .+ ( Gᵛⁿ⁺ʰ .- (1/Δy) .* δʸz2f(pⁿʰ⁺ˢ ./ ρ₀) ) .* Δt
+    wⁿ = wⁿ .+ ( Gʷⁿ⁺ʰ .- (1/Δz) .* δᶻz2f(pⁿʰ⁺ˢ ./ ρ₀) ) .* Δt
 
     @. Sⁿ = Sⁿ + (Gˢⁿ⁺ʰ * Δt)
     @. Tⁿ = Tⁿ + (Gᵀⁿ⁺ʰ * Δt)
@@ -291,7 +303,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     end
 
     @. wⁿ[:, :, 1]  = 0
-    @. wⁿ[:, :, Nᶻ] = 0
+    @. wⁿ[:, :, end] = 0
 
     @info begin
       string("Time: $(n*Δt)\n",
