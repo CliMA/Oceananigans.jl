@@ -191,8 +191,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # approximation holds.
     # @. g′ = g * δρ / ρ₀
     # g′ᶻ = avgᶻ(g′)
-    # δρ̅ᶻ = avgᶻ(δρ)
-    δρ̅ᶻ = δρ
+    δρ̅ᶻ = avgᶻc2f(δρ)
 
     # TODO: Vertical integral operator.
     for j in 1:Nʸ, i in 1:Nˣ
