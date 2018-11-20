@@ -201,23 +201,24 @@ function div(fˣ, fʸ, fᶻ)
   (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
 end
 
-# Input: fˣ is on a u-face grid with size (Nx+1, Ny, Nz).
-#        fʸ is on a v-face grid with size (Nx, Ny+1, Nz).
-#        fᶻ is on a w-face grid with size (Nx, Ny, Nz+1).
+# Input: fˣ is on a u-face grid with size (Nx, Ny, Nz).
+#        fʸ is on a v-face grid with size (Nx, Ny, Nz).
+#        fᶻ is on a w-face grid with size (Nx, Ny, Nz).
 # Output: ∇·̲f is on a zone/cell center grid with size (Nx, Ny, Nz).
 function div_f2c(fˣ, fʸ, fᶻ)
     Vᵘ = V
     (1/Vᵘ) * ( δˣf2c(Aˣ .* fˣ) + δʸf2c(Aʸ .* fʸ) + δᶻf2c(Aᶻ .* fᶻ) )
 end
 
-# # Input: fˣ is on a u-face grid with size (Nx, Ny, Nz).
-# #        fʸ is on a v-face grid with size (Nx, Ny, Nz).
-# #        fᶻ is on a w-face grid with size (Nx, Ny, Nz).
-# # Output: ∇·̲f is on a zone/cell center grid with size (Nx, Ny, Nz).
-# function div_c2f(fˣ, fʸ, fᶻ)
-#     Vᵘ = V
-#     (1/Vᵘ) * ( δˣc2f(Aˣ .* fˣ) + δʸc2f(Aʸ .* fʸ) + δᶻc2f(Aᶻ .* fᶻ) )
-# end
+# Input: fˣ is on a cell center grid with size (Nx, Ny, Nz).
+#        fʸ is on a cell center grid with size (Nx, Ny, Nz).
+#        fᶻ is on a cell center grid with size (Nx, Ny, Nz).
+# Output: ∇·̲f is on a face grid with size (Nx, Ny, Nz). The exact face depends
+#         on the quantitify f̃ = (fx, fy, fz) being differentiated.
+function div_c2f(fˣ, fʸ, fᶻ)
+    Vᵘ = V
+    (1/Vᵘ) * ( δˣc2f(Aˣ .* fˣ) + δʸc2f(Aʸ .* fʸ) + δᶻc2f(Aᶻ .* fᶻ) )
+end
 
 # Calculate the divergence of a flux of Q over a zone with velocity field
 # ũ = (u,v,w): ∇ ⋅ (ũQ).
@@ -268,39 +269,26 @@ end
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
 κᵛ = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
 
-# Laplacian diffusion for zone quantities: ∇ · (κ∇Q)
-function laplacian_diffusion_zone(Q)
+# Laplacian diffusion ∇·(κ∇Q) for tracer quantities defined at the cell centers.
+# Input: Q is on a cell centered grid with size (Nx, Ny, Nz).
+# Output: ∇·(κ∇Q) is on a cell centered grid with size (Nx, Ny, Nz).
+function κ∇²(Q)
   Vᵘ = V
-  κ∇Q_x = κʰ .* Aˣ .* δˣ(Q)
-  κ∇Q_y = κʰ .* Aʸ .* δʸ(Q)
-  κ∇Q_z = κᵛ .* Aᶻ .* δᶻ(Q)
-  (1/Vᵘ) .* div(κ∇Q_x, κ∇Q_y, κ∇Q_z)
-end
-
-# Input: Q is on a zone/cell centered grid with size (Nx, Ny, Nz).
-# Output: ∇·(κ∇Q) is on a zone/cell centered grid with size (Nx, Ny, Nz).
-function laplacian_diffusion_z2z(Q)
-    Vᵘ = V
-    κ∇Q_x = κʰ .* Aˣ .* δˣz2f(Q)
-    κ∇Q_y = κʰ .* Aʸ .* δʸz2f(Q)
-    κ∇Q_z = κᵛ .* Aᶻ .* δᶻz2f(Q)
-    (1/Vᵘ) .* div_f2z(κ∇Q_x, κ∇Q_y, κ∇Q_z)
+  κ∇Q_x = κʰ .* Aˣ .* δˣc2f(Q)
+  κ∇Q_y = κʰ .* Aʸ .* δʸc2f(Q)
+  κ∇Q_z = κᵛ .* Aᶻ .* δᶻc2f(Q)
+  (1/Vᵘ) .* div_f2c(κ∇Q_x, κ∇Q_y, κ∇Q_z)
 end
 
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
 𝜈ᵛ = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
 
-# Laplacian diffusion for horizontal face quantities: ∇ · (ν∇u)
-function laplacian_diffusion_face_h(u)
+# Laplacian diffusion for horizontal face quantities: ∇·(𝜈∇u)
+function 𝜈ʰ∇²(u)
   Vᵘ = V
   𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
   𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
   𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
-
-  # Imposing free slip viscous boundary conditions at the bottom layer.
-  # @. 𝜈∇u_x[:, :, 50] = 0
-  # @. 𝜈∇u_y[:, :, 50] = 0
-
   (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
 
