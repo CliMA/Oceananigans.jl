@@ -197,13 +197,6 @@ function avgᶻf2c(f)
     δf
 end
 
-# Calculate the divergence of the flux of a quantify f = (fˣ, fʸ, fᶻ) over the
-# cell.
-function div(fˣ, fʸ, fᶻ)
-  Vᵘ = V
-  (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
-end
-
 # Input: fˣ is on a u-face grid with size (Nx, Ny, Nz).
 #        fʸ is on a v-face grid with size (Nx, Ny, Nz).
 #        fᶻ is on a w-face grid with size (Nx, Ny, Nz).
