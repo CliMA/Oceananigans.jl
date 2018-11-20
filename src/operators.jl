@@ -121,27 +121,78 @@ end
 # the quantity in the two cells to which the face is common:
 #     ̅qˣ = (qᴱ + qᵂ) / 2,   ̅qʸ = (qᴺ + qˢ) / 2,   ̅qᶻ = (qᵀ + qᴮ) / 2
 # where the superscripts are as defined for the derivative operators.
-avgˣ(f) = (f .+ circshift(f, (1, 0, 0))) / 2
-avgʸ(f) = (f .+ circshift(f, (0, 1, 0))) / 2
-# avgᶻ(f) = (circshift(f, (0, 0, -1)) + circshift(f, (0, 0, 1))) / 2
-
-function avgᶻ(f)
-  ff = Array{Float64, 3}(undef, size(f)...)
-
-  ff[:, :, 1] = (f[:, :, 2] + f[:, :, 1]) / 2          # avgᶻ at top layer.
-  ff[:, :, end] = (f[:, :, end] + f[:, :, end-1]) / 2  # avgᶻ at bottom layer.
-
-  # avgᶻ in the interior.
-  ff[:, :, 2:end-1] = (f .+ circshift(f, (0, 0, 1)))[:, :, 2:end-1] ./ 2
-
-  return ff
-end
 
 # In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
 # return the scalar.
 avgˣ(s::Number) = s
 avgʸ(s::Number) = s
 avgᶻ(s::Number) = s
+
+# Input: Field defined at the u-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function avgˣc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[i, j, k] + f[decmod1(i,Nx), j, k]) / 2
+    end
+    δf
+end
+
+# Input: Field defined at the v-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function avgʸc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[i, j, k] + f[i, decmod1(j,Ny), k]) / 2
+    end
+    δf
+end
+
+# Input: Field defined at the w-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function avgᶻc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[i, j, k] + f[i, j, decmod1(k,Nz)]) / 2
+    end
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the u-faces, which has size (Nx, Ny, Nz).
+function avgˣf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[incmod1(i, Nx), j, k] + f[i, j, k]) / 2
+    end
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the v-faces, which has size (Nx, Ny, Nz).
+function avgʸf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[i, incmod1(j, Ny), k] + f[i, j, k]) / 2
+    end
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the w-faces, which has size (Nx, Ny, Nz).
+function avgᶻf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  (f[i, j, incmod1(k, Nz)] + f[i, j, k]) / 2
+    end
+    δf
+end
 
 # Calculate the divergence of the flux of a quantify f = (fˣ, fʸ, fᶻ) over the
 # cell.
