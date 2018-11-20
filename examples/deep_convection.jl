@@ -287,8 +287,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
               minimum(wⁿ[:, :, 50]), maximum(wⁿ[:, :, 50]), mean(wⁿ[:, :,50]), mean(abs.(wⁿ[:, :, 50])), std(wⁿ[:, :, 50])))
     end
 
-    @. wⁿ[:, :, 1]  = 0
-    @. wⁿ[:, :, end] = 0
+    # Calculate ∇·ũ and w(z=0) as diagnostics. They should both be zero.
+    div_u = div_f2c(uⁿ, vⁿ, wⁿ)
+    δˣAˣu = δˣf2c(Aˣ .* uⁿ)
+    δʸAʸv = δʸf2c(Aʸ .* vⁿ)
+    w_diag = zeros(size(wⁿ))
+    for k in (Nᶻ-1):-1:1
+      w_diag[:, :, k] .= (1/Aᶻ) .* ( Aᶻ .* w_diag[:, :, k+1] - δˣAˣu[:, :, k] - δʸAʸv[:, :, k])
+    end
+    w_surf = w_diag[:, :, 1]
 
     @info begin
       string("Time: $(n*Δt)\n",
@@ -313,7 +320,9 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
              @sprintf("Gᵛⁿ⁺ʰ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gᵛⁿ⁺ʰ), maximum(Gᵛⁿ⁺ʰ), mean(Gᵛⁿ⁺ʰ), mean(abs.(Gᵛⁿ⁺ʰ)), std(Gᵛⁿ⁺ʰ)),
              @sprintf("Gʷⁿ⁺ʰ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gʷⁿ⁺ʰ), maximum(Gʷⁿ⁺ʰ), mean(Gʷⁿ⁺ʰ), mean(abs.(Gʷⁿ⁺ʰ)), std(Gʷⁿ⁺ʰ)),
              @sprintf("Gᵀⁿ⁺ʰ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gᵀⁿ⁺ʰ), maximum(Gᵀⁿ⁺ʰ), mean(Gᵀⁿ⁺ʰ), mean(abs.(Gᵀⁿ⁺ʰ)), std(Gᵀⁿ⁺ʰ)),
-             @sprintf("Gˢⁿ⁺ʰ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ))
+             @sprintf("Gˢⁿ⁺ʰ: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(Gˢⁿ⁺ʰ), maximum(Gˢⁿ⁺ʰ), mean(Gˢⁿ⁺ʰ), mean(abs.(Gˢⁿ⁺ʰ)), std(Gˢⁿ⁺ʰ)),
+             @sprintf("∇⋅u:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(div_u), maximum(div_u), mean(div_u), mean(abs.(div_u)), std(div_u)),
+             @sprintf("wSurf: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(w_surf), maximum(w_surf), mean(w_surf), mean(abs.(w_surf)), std(w_surf))
             )
     end  # @info
 
