@@ -201,15 +201,6 @@ function div(fˣ, fʸ, fᶻ)
   (1/V) * ( δˣ(Aˣ .* fˣ) + δʸ(Aʸ .* fʸ) + δᶻ(Aᶻ .* fᶻ) )
 end
 
-# Input: fˣ is on a u-face grid with size (Nx, Ny, Nz).
-#        fʸ is on a v-face grid with size (Nx, Ny, Nz).
-#        fᶻ is on a w-face grid with size (Nx, Ny, Nz).
-# Output: ∇·̲f is on a zone/cell center grid with size (Nx, Ny, Nz).
-function div_c2f(fˣ, fʸ, fᶻ)
-    Vᵘ = V
-    (1/Vᵘ) * ( δˣc2f(Aˣ .* fˣ) + δʸc2f(Aʸ .* fʸ) + δᶻc2f(Aᶻ .* fᶻ) )
-end
-
 # Input: fˣ is on a u-face grid with size (Nx+1, Ny, Nz).
 #        fʸ is on a v-face grid with size (Nx, Ny+1, Nz).
 #        fᶻ is on a w-face grid with size (Nx, Ny, Nz+1).
@@ -218,6 +209,15 @@ function div_f2c(fˣ, fʸ, fᶻ)
     Vᵘ = V
     (1/Vᵘ) * ( δˣf2c(Aˣ .* fˣ) + δʸf2c(Aʸ .* fʸ) + δᶻf2c(Aᶻ .* fᶻ) )
 end
+
+# # Input: fˣ is on a u-face grid with size (Nx, Ny, Nz).
+# #        fʸ is on a v-face grid with size (Nx, Ny, Nz).
+# #        fᶻ is on a w-face grid with size (Nx, Ny, Nz).
+# # Output: ∇·̲f is on a zone/cell center grid with size (Nx, Ny, Nz).
+# function div_c2f(fˣ, fʸ, fᶻ)
+#     Vᵘ = V
+#     (1/Vᵘ) * ( δˣc2f(Aˣ .* fˣ) + δʸc2f(Aʸ .* fʸ) + δᶻc2f(Aᶻ .* fᶻ) )
+# end
 
 # Calculate the divergence of a flux of Q over a zone with velocity field
 # 𝐮 = (u,v,w): ∇ ⋅ (𝐮 Q).
