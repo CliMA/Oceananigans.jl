@@ -220,36 +220,23 @@ end
 # end
 
 # Calculate the divergence of a flux of Q over a zone with velocity field
-# 𝐮 = (u,v,w): ∇ ⋅ (𝐮 Q).
-function div_flux(u, v, w, Q)
-  Vᵘ = V
-  flux_x = Aˣ .* u .* avgˣ(Q)
-  flux_y = Aʸ .* v .* avgʸ(Q)
-  flux_z = Aᶻ .* w .* avgᶻ(Q)
-
-  # Imposing zero vertical flux through the top and bottom layers.
-  @. flux_z[:, :, 1] = 0
-  @. flux_z[:, :, end] = 0
-
-  (1/Vᵘ) .* (δˣ(flux_x) .+ δʸ(flux_y) .+ δᶻ(flux_z))
-end
-
-# Input: u is on a u-face grid with size (Nx+1, Ny, Nz).
-#        v is on a v-face grid with size (Nx, Ny+1, Nz).
-#        w is on a w-face grid with size (Nx, Ny, Nz+1).
+# ũ = (u,v,w): ∇ ⋅ (ũQ).
+# Input: u is on a u-face grid with size (Nx, Ny, Nz).
+#        v is on a v-face grid with size (Nx, Ny, Nz).
+#        w is on a w-face grid with size (Nx, Ny, Nz).
 #        Q is on a zone/cell center grid with size (Nx, Ny, Nz).
 # Output: ∇·(u̲Q) is on zone/cell center grid with size (Nx, Ny, Nz).
-function div_flux_f2z(u, v, w, Q)
+function div_flux_f2c(u, v, w, Q)
     Vᵘ = V
-    flux_x = Aˣ .* u .* avgˣz2f(Q)
-    flux_y = Aʸ .* v .* avgʸz2f(Q)
-    flux_z = Aᶻ .* w .* avgᶻz2f(Q)
+    flux_x = Aˣ .* u .* avgˣc2f(Q)
+    flux_y = Aʸ .* v .* avgʸc2f(Q)
+    flux_z = Aᶻ .* w .* avgᶻc2f(Q)
 
     # Imposing zero vertical flux through the top and bottom layers.
     @. flux_z[:, :, 1] = 0
     @. flux_z[:, :, end] = 0
 
-    (1/Vᵘ) .* (δˣf2z(flux_x) .+ δʸf2z(flux_y) .+ δᶻf2z(flux_z))
+    (1/Vᵘ) .* (δˣf2c(flux_x) .+ δʸf2c(flux_y) .+ δᶻf2c(flux_z))
 end
 
 # Calculate the nonlinear advection (inertiaL acceleration or convective
