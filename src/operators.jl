@@ -31,6 +31,80 @@ B = zeros((Nx, Ny, Nz));
   92.987 ms (0 allocations: 0 bytes)
 =#
 
+# δˣc2f, δʸc2f, and δᶻc2f calculate a difference in the x, y, and
+# z-directions for a field defined at the cell centers
+# and projects it onto the cell faces.
+
+# Input: Field defined at the u-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function δˣc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, k] - f[decmod1(i,Nx), j, k]
+    end
+    δf
+end
+
+# Input: Field defined at the v-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function δʸc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, k] - f[i, decmod1(j,Ny), k]
+    end
+    δf
+end
+
+# Input: Field defined at the w-faces, which has size (Nx, Ny, Nz).
+# Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+function δᶻc2f(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, k] - f[i, j, decmod1(k,Nz)]
+    end
+    δf
+end
+
+# δˣf2c, δʸf2c, and δᶻf2c calculate a difference in the x, y, and
+# z-directions for a field defined at the cell faces
+# and projects it onto the cell centers.
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the u-faces, which has size (Nx, Ny, Nz).
+function δˣf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[incmod1(i, Nx), j, k] - f[i, j, k]
+    end
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the v-faces, which has size (Nx, Ny, Nz).
+function δʸf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, incmod1(j, Ny), k] - f[i, j, k]
+    end
+    δf
+end
+
+# Input: Field defined at the cell centers, which has size (Nx, Ny, Nz).
+# Output: Field defined at the v-faces, which has size (Nx, Ny, Nz).
+function δᶻf2c(f)
+    Nx, Ny, Nz = size(f)
+    δf = zeros(Nx, Ny, Nz)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        δf[i, j, k] =  f[i, j, incmod1(k, Nz)] - f[i, j, k]
+    end
+    δf
+end
+
 # function δˣ!(g::Grid, f, δˣf)
 #     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
 #       @inbounds δˣf[i, j, k] = f[i, j, k] - f[decmod1(i, Nx), j, k]
