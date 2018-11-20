@@ -124,9 +124,12 @@ end
 
 # In case avgⁱ is called on a scalar s, e.g. Aˣ on a RegularCartesianGrid, just
 # return the scalar.
-avgˣ(s::Number) = s
-avgʸ(s::Number) = s
-avgᶻ(s::Number) = s
+avgˣc2f(s::Number) = s
+avgʸc2f(s::Number) = s
+avgᶻc2f(s::Number) = s
+avgˣf2c(s::Number) = s
+avgʸf2c(s::Number) = s
+avgᶻf2c(s::Number) = s
 
 # Input: Field defined at the u-faces, which has size (Nx, Ny, Nz).
 # Output: Field defined at the cell centers, which has size (Nx, Ny, Nz).
@@ -269,7 +272,7 @@ end
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
 κᵛ = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
 
-# Laplacian diffusion ∇·(κ∇Q) for tracer quantities defined at the cell centers.
+# Laplacian diffusion for zone quantities: ∇ · (κ∇Q)
 # Input: Q is on a cell centered grid with size (Nx, Ny, Nz).
 # Output: ∇·(κ∇Q) is on a cell centered grid with size (Nx, Ny, Nz).
 function κ∇²(Q)
@@ -283,28 +286,29 @@ end
 𝜈ʰ = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
 𝜈ᵛ = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
 
-# Laplacian diffusion for horizontal face quantities: ∇·(𝜈∇u)
+# Laplacian diffusion for horizontal face quantities: ∇ · (ν∇u)
 function 𝜈ʰ∇²(u)
   Vᵘ = V
-  𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
-  𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
-  𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
-  (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
+  𝜈∇u_x = 𝜈ʰ .* avgˣf2c(Aˣ) .* δˣf2c(u)
+  𝜈∇u_y = 𝜈ʰ .* avgʸf2c(Aʸ) .* δʸf2c(u)
+  𝜈∇u_z = 𝜈ᵛ .* avgᶻf2c(Aᶻ) .* δᶻf2c(u)
+  (1/Vᵘ) .* div_c2f(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
 
 # Laplacian diffusion for vertical face quantities: ∇ · (ν∇w)
-function laplacian_diffusion_face_v(u)
+function 𝜈ᵛ∇²(u)
   Vᵘ = V
-  𝜈∇u_x = 𝜈ʰ .* avgˣ(Aˣ) .* δˣ(u)
-  𝜈∇u_y = 𝜈ʰ .* avgʸ(Aʸ) .* δʸ(u)
-  𝜈∇u_z = 𝜈ᵛ .* avgᶻ(Aᶻ) .* δᶻ(u)
+  𝜈∇u_x = 𝜈ʰ .* avgˣf2c(Aˣ) .* δˣf2c(u)
+  𝜈∇u_y = 𝜈ʰ .* avgʸf2c(Aʸ) .* δʸf2c(u)
+  𝜈∇u_z = 𝜈ᵛ .* avgᶻf2c(Aᶻ) .* δᶻf2c(u)
 
   # Imposing free slip viscous boundary conditions at the bottom layer.
   @. 𝜈∇u_z[:, :,  1] = 0
-  @. 𝜈∇u_z[:, :, 50] = 0
+  @. 𝜈∇u_z[:, :, end] = 0
 
-  (1/Vᵘ) .* div(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
+  (1/Vᵘ) .* div_c2f(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 end
 
 horizontal_laplacian(f) = circshift(f, (1, 0, 0)) + circshift(f, (-1, 0, 0)) + circshift(f, (0, 1, 0)) + circshift(f, (0, -1, 0)) - 4 .* f
+
 laplacian(f) = circshift(f, (1, 0, 0)) + circshift(f, (-1, 0, 0)) + circshift(f, (0, 1, 0)) + circshift(f, (0, -1, 0)) + circshift(f, (0, 0, 1)) + circshift(f, (0, -1, 0)) - 6 .* f
