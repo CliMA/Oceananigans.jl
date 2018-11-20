@@ -243,32 +243,26 @@ end
 # acceleration in other fields) terms ∇ ⋅ (Vu), ∇ ⋅ (Vv), and ∇ ⋅ (Vw) where
 # V = (u,v,w). Each component gets its own function for now until we can figure
 # out how to combine them all into one function.
-function u_dot_u(u, v, w)
+function ũ∇u(u, v, w)
   Vᵘ = V
-  advection_x = δˣ(avgˣ(Aˣ.*u) .* avgˣ(u))
-  advection_y = δʸ(avgˣ(Aʸ.*v) .* avgʸ(u))
-  advection_z = δᶻ(avgˣ(Aᶻ.*w) .* avgᶻ(u))
-  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  (1/Vᵘ) .* (δˣc2f(avgˣf2c(Aˣ.*u) .* avgˣf2c(u)) + δʸc2f(avgˣf2c(Aʸ.*v) .* avgʸf2c(u)) + δᶻc2f(avgˣf2c(Aᶻ.*w) .* avgᶻf2c(u)))
 end
 
-function u_dot_v(u, v, w)
+function ũ∇v(u, v, w)
   Vᵘ = V
-  advection_x = δˣ(avgʸ(Aˣ.*u) .* avgˣ(v))
-  advection_y = δʸ(avgʸ(Aʸ.*v) .* avgʸ(v))
-  advection_z = δᶻ(avgʸ(Aᶻ.*w) .* avgᶻ(v))
-  (1/Vᵘ) .* (advection_x + advection_y + advection_z)
+  (1/Vᵘ) .* (δˣc2f(avgʸf2c(Aˣ.*u) .* avgˣf2c(v)) + δʸc2f(avgʸf2c(Aʸ.*v) .* avgʸf2c(v)) + δᶻc2f(avgʸf2c(Aᶻ.*w) .* avgᶻf2c(v)))
 end
 
-function u_dot_w(u, v, w)
+function ũ∇w(u, v, w)
   Vᵘ = V
-  uŵ_transport = avgᶻ(Aˣ.*u) .* avgˣ(w)
-  vŵ_transport = avgᶻ(Aʸ.*v) .* avgʸ(w)
-  wŵ_transport = avgᶻ(Aᶻ.*w) .* avgᶻ(w)
+  uŵ_transport = avgᶻf2c(Aˣ.*u) .* avgˣf2c(w)
+  vŵ_transport = avgᶻf2c(Aʸ.*v) .* avgʸf2c(w)
+  wŵ_transport = avgᶻf2c(Aᶻ.*w) .* avgᶻf2c(w)
 
   wŵ_transport[:, :, 1]  .= 0
-  wŵ_transport[:, :, 50] .= 0
+  wŵ_transport[:, :, end] .= 0
 
-  (1/Vᵘ) .* (δˣ(uŵ_transport) .+ δʸ(vŵ_transport) .+ δᶻ(wŵ_transport))
+  (1/Vᵘ) .* (δˣc2f(uŵ_transport) .+ δʸc2f(vŵ_transport) .+ δᶻc2f(wŵ_transport))
 end
 
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
