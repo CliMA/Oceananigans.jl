@@ -46,26 +46,29 @@ end
 # constant so you may need to appropriately normalize the solution if you care
 # about the numerical value of the solution itself and not just derivatives of
 # the solution.
-function solve_poisson_2d_pbc(f, Lx, Ly)
+function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers=:second_order)
     Nx, Ny = size(f)  # Number of grid points (excluding the periodic end point).
 
     # Forward transform the real-valued source term.
     fh = FFTW.rfft(f)
 
-    # Wavenumbers. Can't figure out why this didn't work...
-    # l, m = 0:Nx, 0:Ny  # Wavenumber indices.
-    # kx² = @. ((2*π / Lx) * l)^2
-    # ky² = @. ((2*π / Ly) * m)^2
-    # ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :]; ϕh[1, 1] = 0; ϕh[1, end] = 0; ϕh
+    # Wavenumber indices.
+    i1 = 0:Int(Nx/2)
+    i2 = Int(-Nx/2+1):-1
+    j1 = 0:Int(Ny/2)
+    j2 = Int(-Ny/2+1):-1
 
-    # Wavenumbers that work.
-    l1 = 0:Int(Nx/2)
-    l2 = Int(-Nx/2 + 1):-1
-    m1 = 0:Int(Ny/2)
-    m2 = Int(-Ny/2 + 1):-1
-    kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1))
-    ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny))
-    k² = @. kx^2 + ky^2
+    if wavenumbers == :second_order
+        Δx = Lx/Nx
+        Δy = Ly/Ny
+        kx² = reshape((4/Δx^2) .* sin.( (π/Nx) .* cat(i1, i2, dims=1)).^2, (Nx, 1))
+        ky² = reshape((4/Δy^2) .* sin.( (π/Ny) .* cat(j1, j2, dims=1)).^2, (1, Ny))
+        k² = @. kx² + ky²
+    elseif wavenumbers == :analytic
+        kx = reshape((2π/Lx) * cat(i1, i2, dims=1), (Nx, 1))
+        ky = reshape((2π/Ly) * cat(j1, j2, dims=1), (1, Ny))
+        k² = @. kx^2 + ky^2
+    end
 
     ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :]
 
