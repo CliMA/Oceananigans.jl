@@ -6,7 +6,7 @@ import FFTW
 # constant so you may need to appropriately normalize the solution if you care
 # about the numerical value of the solution itself and not just derivatives of
 # the solution.
-function solve_poisson_1d_pbc(f, L, wavenumbers=:second_order)
+function solve_poisson_1d_pbc(f, L, wavenumbers)
     N = length(f)  # Number of grid points (excluding the periodic end point).
     n = 0:N        # Wavenumber indices.
 
@@ -46,7 +46,7 @@ end
 # constant so you may need to appropriately normalize the solution if you care
 # about the numerical value of the solution itself and not just derivatives of
 # the solution.
-function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers=:second_order)
+function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers)
     Nx, Ny = size(f)  # Number of grid points (excluding the periodic end point).
 
     # Forward transform the real-valued source term.
