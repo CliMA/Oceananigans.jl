@@ -81,7 +81,7 @@ function test_solve_poisson_2d_pbc_gaussian_source()
 
     ϕa = @. exp(-(x′^2 + y′'^2))  # Analytic solution
 
-    ϕs = solve_poisson_2d_pbc(f, Lx, Ly)
+    ϕs = solve_poisson_2d_pbc(f, Lx, Ly, :analytic)
 
     # Choosing the solution that integrates out to zero.
     ϕs = ϕs .- minimum(ϕs)
@@ -112,7 +112,7 @@ function test_solve_poisson_2d_pbc_gaussian_source_multiple_resolutions()
 
         ϕa = @. exp(-(x′^2 + y′'^2))  # Analytic solution
 
-        ϕs = solve_poisson_2d_pbc(f, Lx, Ly)
+        ϕs = solve_poisson_2d_pbc(f, Lx, Ly, :analytic)
 
         # Choosing the solution that integrates out to zero.
         ϕs = ϕs .- minimum(ϕs)
@@ -144,7 +144,7 @@ function test_solve_poisson_2d_pbc_gaussian_source_Nx_eq_2Ny()
 
     ϕa = @. exp(-(x′^2 + y′'^2))  # Analytic solution
 
-    ϕs = solve_poisson_2d_pbc(f, Lx, Ly)
+    ϕs = solve_poisson_2d_pbc(f, Lx, Ly, :analytic)
 
     # Choosing the solution that integrates out to zero.
     ϕs = ϕs .- minimum(ϕs)
@@ -171,7 +171,7 @@ function test_solve_poisson_2d_pbc_gaussian_source_Ny_eq_2Nx()
 
     ϕa = @. exp(-(x′^2 + y′'^2))  # Analytic solution
 
-    ϕs = solve_poisson_2d_pbc(f, Lx, Ly)
+    ϕs = solve_poisson_2d_pbc(f, Lx, Ly, :analytic)
 
     # Choosing the solution that integrates out to zero.
     ϕs = ϕs .- minimum(ϕs)
@@ -202,7 +202,7 @@ function test_solve_poisson_2d_pbc_gaussian_source_Nx_eq_2Ny_multiple_resolution
 
         ϕa = @. exp(-(x′^2 + y′'^2))  # Analytic solution
 
-        ϕs = solve_poisson_2d_pbc(f, Lx, Ly)
+        ϕs = solve_poisson_2d_pbc(f, Lx, Ly, :analytic)
 
         # Choosing the solution that integrates out to zero.
         ϕs = ϕs .- minimum(ϕs)
@@ -213,6 +213,16 @@ function test_solve_poisson_2d_pbc_gaussian_source_Nx_eq_2Ny_multiple_resolution
         end
     end
     true
+end
+
+function test_solve_poisson_2d_pbc_divergence_free(N)
+    laplacian2d(f) = circshift(f, (1, 0)) - 2 .* f + circshift(f, (-1, 0)) + circshift(f, (0, 1)) - 2 .* f + circshift(f, (0, -1))
+
+    A = rand(N, N)
+    A .= A .- mean(A)
+    B = solve_poisson_2d_pbc(A, N, N, :second_order)
+    A′ = laplacian2d(B)
+    A ≈ A′
 end
 
 function test_mixed_fft_commutativity()
