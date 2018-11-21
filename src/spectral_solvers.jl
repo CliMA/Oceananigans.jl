@@ -6,15 +6,22 @@ import FFTW
 # constant so you may need to appropriately normalize the solution if you care
 # about the numerical value of the solution itself and not just derivatives of
 # the solution.
-function solve_poisson_1d_pbc(f, L)
+function solve_poisson_1d_pbc(f, L, wavenumbers=:second_order)
     N = length(f)  # Number of grid points (excluding the periodic end point).
     n = 0:N        # Wavenumber indices.
 
-    # Wavenumbers for second-order convergence.
-    # k² = @. (4 / Δx^2) * sin(π*n / N)^2
-
-    # Wavenumbers for spectral convergence.
-    k² = @. ((2*π / L) * n)^2
+    if wavenumbers == :second_order
+        # Wavenumbers if Laplacian is discretized using second-order
+        # centered-difference scheme. Gives second-order convergence and ensures
+        # that ∇²ϕ == f(x) to machine precision.
+        Δx = L / N
+        k² = @. (4 / Δx^2) * sin(π*n / N)^2
+    elseif wavenumbers == :analytic
+        # Wavenumbers if the derivatives are not discretized, should give
+        # spectral convergence so that ϕ is accurate but ∇²ϕ ≈ f(x) as the ∇²
+        # operator must be discretized.
+        k² = @. ((2*π / L) * n)^2
+    end
 
     # Forward transform the real-valued source term.
     fh = FFTW.rfft(f)
@@ -28,7 +35,8 @@ function solve_poisson_1d_pbc(f, L)
     ϕh[1] = 0
 
     # Take the inverse transform of the . We need to specify that the input f
-    # had a length of N+1 as
+    # had a length of N as an rrft of length N/2 may have come from an array
+    # of length N (if N is even) or N-1 (if N is odd).
     ϕ = FFTW.irfft(ϕh, N)
 end
 

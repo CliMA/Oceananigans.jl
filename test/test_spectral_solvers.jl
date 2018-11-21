@@ -18,7 +18,7 @@ function test_solve_poisson_1d_pbc_cosine_source()
     f = cos.(2*π*z ./ H)  # Source term.
     ϕa = @. -(H / (2π))^2 * cos((2π / H) * z)  # Analytic solution.
 
-    ϕs = solve_poisson_1d_pbc(f, H)
+    ϕs = solve_poisson_1d_pbc(f, H, :analytic)
 
     ϕs ≈ ϕa
 end
@@ -34,7 +34,7 @@ function test_solve_poisson_1d_pbc_cosine_source_multiple_resolutions()
         f = cos.(2*π*z ./ H)  # Source term.
         ϕa = @. -(H / (2π))^2 * cos((2π / H) * z)  # Analytic solution.
 
-        ϕs = solve_poisson_1d_pbc(f, H)
+        ϕs = solve_poisson_1d_pbc(f, H, :analytic)
 
         max_error = maximum(abs.(ϕs - ϕa))
         if max_error > 1e-14  # Bit of leeway given here.
