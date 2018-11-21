@@ -44,6 +44,16 @@ function test_solve_poisson_1d_pbc_cosine_source_multiple_resolutions()
     true
 end
 
+function test_solve_poisson_1d_pbc_divergence_free(N)
+    laplacian1d(f) = circshift(f, 1) - 2 .* f + circshift(f, -1)
+
+    A = rand(N)
+    A .= A .- mean(A)
+    B = solve_poisson_1d_pbc(A, N, :second_order)
+    A′ = laplacian1d(B)
+    A ≈ A′
+end
+
 # Testing with the exp(-(x²+y²)) Gaussian source term won't we do see spectral
 # convergence, however, I'm not sure how to best normalize the solution to see
 # this. So for now I'm just testing to make sure that the maximum error is 1e-5.
