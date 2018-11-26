@@ -53,16 +53,16 @@ function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers)
     fh = FFTW.rfft(f)
 
     # Wavenumber indices.
-    i1 = 0:Int(Nx/2)
-    i2 = Int(-Nx/2+1):-1
-    j1 = 0:Int(Ny/2)
-    j2 = Int(-Ny/2+1):-1
+    l1 = 0:Int(Nx/2)
+    l2 = Int(-Nx/2+1):-1
+    m1 = 0:Int(Ny/2)
+    m2 = Int(-Ny/2+1):-1
 
     if wavenumbers == :second_order
         Δx = Lx/Nx
         Δy = Ly/Ny
-        kx² = reshape((4/Δx^2) .* sin.( (π/Nx) .* cat(i1, i2, dims=1)).^2, (Nx, 1))
-        ky² = reshape((4/Δy^2) .* sin.( (π/Ny) .* cat(j1, j2, dims=1)).^2, (1, Ny))
+        kx² = reshape((4/Δx^2) .* sin.( (π/Nx) .* cat(l1, l2, dims=1)).^2, (Nx, 1))
+        ky² = reshape((4/Δy^2) .* sin.( (π/Ny) .* cat(m1, m2, dims=1)).^2, (1, Ny))
         k² = @. kx² + ky²
     elseif wavenumbers == :analytic
         kx = reshape((2π/Lx) * cat(i1, i2, dims=1), (Nx, 1))
@@ -77,6 +77,39 @@ function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers)
 
     # Take the inverse transform of the solution's Fourier coefficients.
     ϕ = FFTW.irfft(ϕh, Nx)
+end
+
+function solve_poisson_2d_mbc(f, Lx, Ly, wavenumbers=:second_order)
+    Nx, Ny = size(f)  # Number of grid points (excluding the periodic end point).
+
+    # Forward transform the real-valued source term.
+    fh = FFTW.dct(FFTW.rfft(f, 1), 2)
+
+    # Wavenumber indices.
+    i1 = 0:Int(Nx/2)
+    i2 = Int(-Nx/2+1):-1
+    j1 = 0:Int(Ny/2)
+    j2 = Int(-Ny/2+1):-1
+
+    if wavenumbers == :second_order
+        Δx = Lx/Nx
+        Δy = Ly/Ny
+        kx² = reshape((4/Δx^2) .* sin.( (π/Nx) .* cat(i1, i2, dims=1)).^2, (Nx, 1))
+        ky² = reshape((2/Δz^2) .* (cos.( (π/Nz) .* (1:(Nz-1))) .- 1), (1, Ny))
+        k² = @. kx² + ky²
+        ϕh = fh ./ k²[1:Int(Nx/2 + 1), :]
+    elseif wavenumbers == :analytic
+        kx = reshape((2π/Lx) * cat(i1, i2, dims=1), (Nx, 1))
+        ky = reshape((1π/Ly) * cat(j1, j2, dims=1), (1, Ny))
+        k² = @. kx^2 + ky^2
+        ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :]
+    end
+
+    # Setting the DC/zero Fourier component to zero.
+    ϕh[1, 1] = 0
+
+    # Take the inverse transform of the solution's Fourier coefficients.
+    ϕ = FFTW.irfft(FFTW.idct(ϕh, 2), Nx, 1)
 end
 
 # Solve a 3D Poisson equation ∇²ϕ = f(x,y,z) with periodic boundary conditions
