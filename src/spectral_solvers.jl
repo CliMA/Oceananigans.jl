@@ -100,8 +100,8 @@ function solve_poisson_2d_pbc(f, Lx, Ly, wavenumbers)
         ky² = reshape((4/Δy^2) .* sin.( (π/Ny) .* cat(m1, m2, dims=1)).^2, (1, Ny))
         k² = @. kx² + ky²
     elseif wavenumbers == :analytic
-        kx = reshape((2π/Lx) * cat(i1, i2, dims=1), (Nx, 1))
-        ky = reshape((2π/Ly) * cat(j1, j2, dims=1), (1, Ny))
+        kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1))
+        ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny))
         k² = @. kx^2 + ky^2
     end
 
