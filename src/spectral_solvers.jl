@@ -197,7 +197,7 @@ end
 # up to a constant so you may need to appropriately normalize the solution if
 # you careabout the numerical value of the solution itself and not just
 # derivatives of the solution.
-function solve_poisson_3d_mbc(f, Lx, Ly, Lz)
+function solve_poisson_3d_mbc(f, Lx, Ly, Lz, wavenumbers)
     Nx, Ny, Nz = size(f)  # Number of grid points (excluding the periodic end point).
 
     # Forward transform the real-valued source term.
@@ -211,11 +211,18 @@ function solve_poisson_3d_mbc(f, Lx, Ly, Lz)
     n1 = 0:Int(Nz/2)
     n2 = Int(-Nz/2 + 1):-1
 
-    kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1, 1))
-    ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny, 1))
-    kz = reshape((1π/Ly) * cat(n1, n2, dims=1), (1, 1, Nz))
+    if wavenumbers == :second_order
+        kx² = reshape((4/Δx^2) .* sin.( (π/Nx) .* cat(l1, l2, dims=1)).^2, (Nx, 1, 1))
+        ky² = reshape((4/Δy^2) .* sin.( (π/Ny) .* cat(m1, m2, dims=1)).^2, (1, Ny, 1))
+        kz² = reshape((4/Δz^2) .* sin.( (π/(2*Nz) .* 0:(Nz-1))).^2, (1, 1, Nz))
 
-    k² = @. kx^2 + ky^2 + kz^2
+        k² = @. kx² + ky² + kz²
+    elseif wavenumbers == :analytic
+        kx = reshape((2π/Lx) * cat(l1, l2, dims=1), (Nx, 1, 1))
+        ky = reshape((2π/Ly) * cat(m1, m2, dims=1), (1, Ny, 1))
+        kz = reshape((1π/Ly) * cat(n1, n2, dims=1), (1, 1, Nz))
+        k² = @. kx^2 + ky^2 + kz^2
+    end
 
     ϕh = - fh ./ k²[1:Int(Nx/2 + 1), :, :]
 
