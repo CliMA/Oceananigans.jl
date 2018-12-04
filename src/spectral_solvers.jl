@@ -234,8 +234,9 @@ function solve_poisson_3d_mbc(f, Lx, Ly, Lz, wavenumbers)
     ϕ = FFTW.irfft(FFTW.idct(ϕh, 3), Nx, [1, 2])
 end
 
-function solve_poisson_3d_ppn(f, Lx, Ly, Lz, wavenumbers)
-    # Solve FFT style
+function solve_poisson_3d_ppn(f, Lx, Ly, Lz)
+    Nx, Ny, Nz = Lx, Ly, Lz  # TODO: FIX THIS!!! NEED Δx, etc.
+
     function mkwaves(N,L)
         k²_cyc = zeros(N,1)
         k²_neu = zeros(N,1)
