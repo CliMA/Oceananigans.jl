@@ -234,37 +234,38 @@ function solve_poisson_3d_mbc(f, Lx, Ly, Lz, wavenumbers)
     ϕ = FFTW.irfft(FFTW.idct(ϕh, 3), Nx, [1, 2])
 end
 
-function solve_poisson_3d_ppn(f, Lx, Ly, Lz)
-    Nx, Ny, Nz = Lx, Ly, Lz  # TODO: FIX THIS!!! NEED Δx, etc.
-
+function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
+    Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
     function mkwaves(N,L)
-        k²_cyc = zeros(N,1)
-        k²_neu = zeros(N,1)
+        k²_cyc = zeros(N, 1)
+        k²_neu = zeros(N, 1)
+
         for i in 1:N
-            k²_cyc[i] = (2sin((i-1) * π/N)   / (L/N))^2
-            k²_neu[i] = (2sin((i-1) * π/(2N))/ (L/N))^2
+            k²_cyc[i] = (2sin((i-1)*π/N)   /(L/N))^2
+            k²_neu[i] = (2sin((i-1)*π/(2N))/(L/N))^2
         end
+
         return k²_cyc, k²_neu
     end
 
-    # fh′ = FFTW.r2r(reshape(f,Nx,Ny,Nz),FFTW.REDFT10,3)
-    fh′ = FFTW.r2r(f, FFTW.REDFT10, 3)
-    fh  = FFTW.fft(fh′, [1, 2])
+    # TODO: Create FFTW plan.
+    fh = FFTW.fft(FFTW.r2r(f, FFTW.REDFT10, 3), [1, 2])
 
     kx²_cyc, kx²_neu = mkwaves(Nx, Lx)
     ky²_cyc, ky²_neu = mkwaves(Nx, Lx)
     kz²_cyc, kz²_neu = mkwaves(Nx, Lx)
+
     kx² = kx²_cyc
     ky² = ky²_cyc
     kz² = kz²_neu
 
-    ϕh = -fh
+    ϕh = zeros(Complex{Float64}, Nx, Ny, Nz)
 
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        ϕh[i, j, k] = fh[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
+        @inbounds ϕh[i, j, k] = -fh[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
     end
     ϕh[1, 1, 1] = 0
 
-    ϕ′ = FFTW.ifft(ϕh, [1, 2])
-    ϕ  = FFTW.r2r(real.(ϕ′), FFTW.REDFT01, 3) / (2Nz)
+    # TODO: Create FFTW plan.
+    FFTW.r2r(real.(FFTW.ifft(ϕh, [1, 2])), FFTW.REDFT01, 3) / (2Nz)
 end
