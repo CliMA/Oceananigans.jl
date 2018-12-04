@@ -62,7 +62,7 @@ function solve_for_pressure(Gᵘ, Gᵛ, Gʷ)
   # end
   # @info "p[50, 50, 1] = $(p[50, 50, 1])"
 
-  p = solve_poisson_3d_mbc(f, Lˣ, Lʸ, Lᶻ)
+  p = solve_poisson_3d_mbc(f, Lˣ, Lʸ, Lᶻ, :second_order)
 
   return p
 end

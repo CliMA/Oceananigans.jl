@@ -24,8 +24,8 @@ const cᵥ = 4181.3  # Isobaric mass heat capacity [J / kg·K].
 # ### Defining model parameters.
 const NumType = Float64  # Number data type.
 
-Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
-Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
+Nˣ, Nʸ, Nᶻ = 100, 100, 100  # Number of grid points in (x,y,z).
+Lˣ, Lʸ, Lᶻ = 2000, 2000, 2000  # Domain size [m].
 
 Δx, Δy, Δz = Lˣ/Nˣ, Lʸ/Nʸ, Lᶻ/Nᶻ  # Grid spacing [m].
 Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
@@ -122,7 +122,7 @@ uⁿ .= 0; vⁿ .= 0; wⁿ .= 0; Sⁿ .= 35;
 Tⁿ .= 283
 
 pHY_profile = [-ρ₀*g*h for h in zC]
-pʰʸ = repeat(reshape(pHY_profile, 1, 1, 50), Nˣ, Nʸ, 1)
+pʰʸ = repeat(reshape(pHY_profile, 1, 1, Nᶻ), Nˣ, Nʸ, 1)
 pⁿ = copy(pʰʸ)  # Initial pressure is just the hydrostatic pressure.
 
 ρⁿ .= ρ.(Tⁿ, Sⁿ, pⁿ)
@@ -255,10 +255,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Calculate non-hydrostatic + surface component of pressure. As we have
     # built in the hydrostatic pressure into the Gᵘ source terms, what we get
     # back is the nonhydrostatic
-    pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    # pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
-    RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
-    RHS_rec = laplacian(pⁿʰ⁺ˢ) ./ (Δx)^2
+    RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)  # Right hand side or source term.
+    pⁿʰ⁺ˢ = solve_poisson_3d_ppn(RHS, Nˣ, Nʸ, Nᶻ, Δx, Δy, Δz)
+
+    RHS_rec = laplacian3d_ppn(pⁿʰ⁺ˢ) ./ (Δx)^2
     error = RHS_rec .- RHS
     @info begin
       string("Fourier-spectral solver diagnostics:\n",
