@@ -108,3 +108,11 @@ end
 
 function test_solve_poisson_3d_mbc_gaussian_cosine_source()
 end
+
+
+function test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
+    f = rand(Nx, Ny, Nz)
+    f .= f .- mean(f)
+    ϕ = solve_poisson_3d_ppn(f, Nx, Ny, Nz, 1, 1, 1)
+    laplacian3d_ppn(ϕ) ≈ f
+end
