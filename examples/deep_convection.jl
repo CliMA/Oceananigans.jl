@@ -255,10 +255,12 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Calculate non-hydrostatic + surface component of pressure. As we have
     # built in the hydrostatic pressure into the Gᵘ source terms, what we get
     # back is the nonhydrostatic
-    pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
+    # pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
-    RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
-    RHS_rec = laplacian(pⁿʰ⁺ˢ) ./ (Δx)^2
+    RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)  # Right hand side or source term.
+    pⁿʰ⁺ˢ = solve_poisson_3d_ppn(RHS, Nˣ, Nʸ, Nᶻ, Δx, Δy, Δz)
+
+    RHS_rec = laplacian3d_ppn(pⁿʰ⁺ˢ) ./ (Δx)^2
     error = RHS_rec .- RHS
     @info begin
       string("Fourier-spectral solver diagnostics:\n",
