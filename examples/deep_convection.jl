@@ -24,8 +24,8 @@ const cᵥ = 4181.3  # Isobaric mass heat capacity [J / kg·K].
 # ### Defining model parameters.
 const NumType = Float64  # Number data type.
 
-Nˣ, Nʸ, Nᶻ = 100, 100, 50  # Number of grid points in (x,y,z).
-Lˣ, Lʸ, Lᶻ = 2000, 2000, 1000  # Domain size [m].
+Nˣ, Nʸ, Nᶻ = 100, 100, 100  # Number of grid points in (x,y,z).
+Lˣ, Lʸ, Lᶻ = 2000, 2000, 2000  # Domain size [m].
 
 Δx, Δy, Δz = Lˣ/Nˣ, Lʸ/Nʸ, Lᶻ/Nᶻ  # Grid spacing [m].
 Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
