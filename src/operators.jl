@@ -63,7 +63,7 @@ function δᶻc2f(f)
     Nx, Ny, Nz = size(f)
     δf = zeros(Nx, Ny, Nz)
     for k in 2:Nz, j in 1:Ny, i in 1:Nx
-        δf[i, j, k] =  f[i, j, k] - f[i, j, decmod1(k,Nz)]
+        δf[i, j, k] =  -(f[i, j, k] - f[i, j, k-1])
     end
     @. δf[:, :, 1] = 0
     δf
@@ -101,9 +101,9 @@ function δᶻf2c(f)
     Nx, Ny, Nz = size(f)
     δf = zeros(Nx, Ny, Nz)
     for k in 1:(Nz-1), j in 1:Ny, i in 1:Nx
-        δf[i, j, k] =  f[i, j, incmod1(k, Nz)] - f[i, j, k]
+        δf[i, j, k] =  -(f[i, j, k+1] - f[i, j, k])
     end
-    @. δf[:, :, end] = 0
+    @. δf[:, :, end] = f[:, :, end]
     δf
 end
 
@@ -161,7 +161,7 @@ function avgᶻc2f(f)
     Nx, Ny, Nz = size(f)
     δf = zeros(Nx, Ny, Nz)
     for k in 2:Nz, j in 1:Ny, i in 1:Nx
-        δf[i, j, k] =  (f[i, j, k] + f[i, j, decmod1(k,Nz)]) / 2
+        δf[i, j, k] =  (f[i, j, k] + f[i, j, k-1]) / 2
     end
     @. δf[:, :, 1] = 0
     δf
@@ -235,7 +235,7 @@ function div_flux_f2c(u, v, w, Q)
 
     # Imposing zero vertical flux through the top and bottom layers.
     @. flux_z[:, :, 1] = 0
-    @. flux_z[:, :, end] = 0
+    # @. flux_z[:, :, end] = 0
 
     (1/Vᵘ) .* (δˣf2c(flux_x) .+ δʸf2c(flux_y) .+ δᶻf2c(flux_z))
 end
