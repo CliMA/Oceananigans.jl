@@ -1,10 +1,10 @@
 using Statistics: mean, std
 using Printf
 
-using Interact
+# using Interact
 # import Makie
-using PyPlot
-PyPlot.pygui(true)
+# using PyPlot
+# PyPlot.pygui(true)
 # using GR
 
 include("../src/operators.jl")
@@ -170,6 +170,7 @@ Rv = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 Rw = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RT = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+Rρ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RpHY′ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RpNHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RRHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
@@ -341,10 +342,11 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     end  # @info
 
     Ru[n, :, :, :] = copy(uⁿ)
-    Ru[n, :, :, :] = copy(vⁿ)
+    Rv[n, :, :, :] = copy(vⁿ)
     Rw[n, :, :, :] = copy(wⁿ)
     RT[n, :, :, :] = copy(Tⁿ)
-    RT[n, :, :, :] = copy(Sⁿ)
+    RS[n, :, :, :] = copy(Sⁿ)
+    Rρ[n, :, :, :] = copy(ρⁿ)
     RpHY′[n, :, :, :] = copy(pʰʸ′)
     RpNHS[n, :, :, :] = copy(pⁿʰ⁺ˢ)
     RRHS[n, :, :, :] = copy(RHS)
