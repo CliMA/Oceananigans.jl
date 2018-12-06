@@ -252,8 +252,8 @@ function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
     fh = FFTW.fft(FFTW.r2r(f, FFTW.REDFT10, 3), [1, 2])
 
     kx²_cyc, kx²_neu = mkwaves(Nx, Lx)
-    ky²_cyc, ky²_neu = mkwaves(Nx, Lx)
-    kz²_cyc, kz²_neu = mkwaves(Nx, Lx)
+    ky²_cyc, ky²_neu = mkwaves(Ny, Ly)
+    kz²_cyc, kz²_neu = mkwaves(Nz, Lz)
 
     kx² = kx²_cyc
     ky² = ky²_cyc
