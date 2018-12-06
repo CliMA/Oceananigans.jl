@@ -166,14 +166,15 @@ g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
 Ru = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+Rv = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 Rw = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RT = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+RS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RpHY′ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RpNHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RRHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RRHS_rec = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 
-@info string(@sprintf("T⁰[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]))
+@info string(@sprintf("T₀[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]))
 
 function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, g′, ρⁿ, δρ, Gᵘⁿ, Gᵛⁿ, Gʷⁿ, Gᵀⁿ, Gˢⁿ, Gᵘⁿ⁻¹, Gᵛⁿ⁻¹, Gʷⁿ⁻¹, Gᵀⁿ⁻¹, Gˢⁿ⁻¹, Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ, Gᵀⁿ⁺ʰ, Gˢⁿ⁺ʰ)
   for n in 1:Nᵗ
@@ -219,8 +220,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
             )
     end
 
-    # TODO: When not on f-plane, fv must be calculated as avgʸ(f .* avgˣ(v)) for flux form
-    # equation of motion.
+    GSn_div_flux = -div_flux_f2c(uⁿ, vⁿ, wⁿ, Sⁿ)
+    GSn_lap_diff = κ∇²(Sⁿ)
+    @info begin
+      string("Salinity source term:\n",
+            @sprintf("div_flux:  mean=%.6g, absmean=%.6g, std=%.6g\n", mean(GSn_div_flux), mean(abs.(GSn_div_flux)), std(GSn_div_flux)),
+            @sprintf("lap_diff:  mean=%.6g, absmean=%.6g, std=%.6g\n", mean(GSn_lap_diff), mean(abs.(GSn_lap_diff)), std(GSn_lap_diff))
+            )
+    end
+
     # Gᵘⁿ = -ũ∇u(uⁿ, vⁿ, wⁿ) .+ f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²(uⁿ) .+ Fᵘ
     # Gᵛⁿ = -ũ∇v(uⁿ, vⁿ, wⁿ) .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²(vⁿ) .+ Fᵛ
     Gᵘⁿ =    f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²u(uⁿ) .+ Fᵘ
@@ -260,7 +268,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)  # Right hand side or source term.
     pⁿʰ⁺ˢ = solve_poisson_3d_ppn(RHS, Nˣ, Nʸ, Nᶻ, Δx, Δy, Δz)
 
-    RHS_rec = laplacian3d_ppn(pⁿʰ⁺ˢ) ./ (Δx)^2
+    RHS_rec = laplacian3d_ppn(pⁿʰ⁺ˢ) ./ (Δx)^2  # TODO: This assumes Δx == Δy == Δz.
     error = RHS_rec .- RHS
     @info begin
       string("Fourier-spectral solver diagnostics:\n",
@@ -333,12 +341,13 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     end  # @info
 
     Ru[n, :, :, :] = copy(uⁿ)
+    Ru[n, :, :, :] = copy(vⁿ)
     Rw[n, :, :, :] = copy(wⁿ)
     RT[n, :, :, :] = copy(Tⁿ)
+    RT[n, :, :, :] = copy(Sⁿ)
     RpHY′[n, :, :, :] = copy(pʰʸ′)
     RpNHS[n, :, :, :] = copy(pⁿʰ⁺ˢ)
     RRHS[n, :, :, :] = copy(RHS)
-    RRHS_rec[n, :, :, :] = copy(RHS_rec)
 
   end  # time stepping for loop
 end  # time_stepping function
