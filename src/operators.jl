@@ -329,3 +329,11 @@ function laplacian3d_ppn(f)
     end
     ∇²f
 end
+
+# Use δ and div to calculate laplacian!
+# function laplacian3d_ppn_v2(Q)
+#   κ∇Q_x = κʰ .* δˣc2f(Q) ./ Δx
+#   κ∇Q_y = κʰ .* δʸc2f(Q) ./ Δy
+#   κ∇Q_z = κᵛ .* δᶻc2f(Q) ./ Δz
+#   div_f2c(κ∇Q_x, κ∇Q_y, κ∇Q_z)
+# end
