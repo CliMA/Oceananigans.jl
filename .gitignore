@@ -5,3 +5,7 @@ deps/deps.jl
 
 # Swap files.
 *.swp
+
+# Model output, plots, or debugging
+.gif
+.mp4
