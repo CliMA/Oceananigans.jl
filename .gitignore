@@ -7,5 +7,5 @@ deps/deps.jl
 *.swp
 
 # Model output, plots, or debugging
-.gif
-.mp4
+*.gif
+*.mp4
