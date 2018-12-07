@@ -32,7 +32,7 @@ Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
 V = Δx*Δy*Δz  # Volume of a cell [m³].
 M = ρ₀*V  # Mass of water in a cell [kg].
 
-Nᵗ = 1440  # Number of time steps to run for.
+Nᵗ = 360  # Number of time steps to run for.
 Δt = 30  # Time step [s].
 
 # List and array of grid coordinates at the centers of the cells.
@@ -171,7 +171,7 @@ Ru = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 Rw = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 RT = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 # RS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-# Rρ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+Rρ = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 # RpHY′ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 RpNHS = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 
@@ -183,6 +183,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # Calculate new density and density deviation.
     @. δρ = ρ(Tⁿ, Sⁿ, pⁿ) - ρ₀
     @. ρⁿ = ρ₀ + δρ
+    g′ = g .* (δρ ./ ρ₀)
 
     # Calculate the hydrostatic pressure.
     # @. pʰʸ = -ρ₀ * g * zCA
@@ -197,11 +198,13 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
 
     # TODO: Vertical integral operator.
     for j in 1:Nʸ, i in 1:Nˣ
-      pʰʸ′[i, j, 1] = - δρ[i, j, 1] * g * Δz / 2
+      # pʰʸ′[i, j, 1] = - δρ[i, j, 1] * g * Δz / 2
+      pʰʸ′[i, j, 1] = δρ[i, j, 1] * g * Δz / 2
     end
 
     for k in 2:Nᶻ, j in 1:Nʸ, i in 1:Nˣ
-      pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] - (δρ̅ᶻ[i, j, k] * g * Δz)
+      # pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] - (δρ̅ᶻ[i, j, k] * g * Δz)
+      pʰʸ′[i, j, k] = pʰʸ′[i, j, k-1] + (δρ̅ᶻ[i, j, k] * g * Δz)
     end
 
     # Store source terms from previous iteration.
@@ -267,6 +270,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     # pⁿʰ⁺ˢ = solve_for_pressure(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)
 
     RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)  # Right hand side or source term.
+    # RHS = div_f2c(Gᵘⁿ⁺ʰ, Gᵛⁿ⁺ʰ, Gʷⁿ⁺ʰ)  - horizontal_laplacian(pʰʸ′)
     pⁿʰ⁺ˢ = solve_poisson_3d_ppn(RHS, Nˣ, Nʸ, Nᶻ, Δx, Δy, Δz)
 
     RHS_rec = laplacian3d_ppn(pⁿʰ⁺ˢ) ./ (Δx)^2  # TODO: This assumes Δx == Δy == Δz.
@@ -314,11 +318,11 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     if n % ΔR == 0
       @info begin
         string("Time: $(n*Δt)\n",
-               @sprintf("Tⁿ[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]),
-               @sprintf("Tⁿ[50, 50, 2] = %.6g K\n", Tⁿ[50, 50, 2]),
-               @sprintf("ΔT[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1] - 283),
-               @sprintf("pʰʸ[1, 1, 1]  = %.6g kPa\n", pʰʸ[1, 1, 1] / 1000),
-               @sprintf("pʰʸ[1, 1, 50] = %.6g kPa\n", pʰʸ[1, 1, 50] / 1000),
+               # @sprintf("Tⁿ[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]),
+               # @sprintf("Tⁿ[50, 50, 2] = %.6g K\n", Tⁿ[50, 50, 2]),
+               # @sprintf("ΔT[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1] - 283),
+               # @sprintf("pʰʸ[1, 1, 1]  = %.6g kPa\n", pʰʸ[1, 1, 1] / 1000),
+               # @sprintf("pʰʸ[1, 1, 50] = %.6g kPa\n", pʰʸ[1, 1, 50] / 1000),
                @sprintf("uⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(uⁿ), maximum(uⁿ), mean(uⁿ), mean(abs.(uⁿ)), std(uⁿ)),
                @sprintf("vⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(vⁿ), maximum(vⁿ), mean(vⁿ), mean(abs.(vⁿ)), std(vⁿ)),
                @sprintf("wⁿ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(wⁿ), maximum(wⁿ), mean(wⁿ), mean(abs.(wⁿ)), std(wⁿ)),
@@ -348,7 +352,7 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
       Rw[Ridx, :, :, :] = copy(wⁿ)
       RT[Ridx, :, :, :] = copy(Tⁿ)
       # RS[n, :, :, :] = copy(Sⁿ)
-      # Rρ[n, :, :, :] = copy(ρⁿ)
+      Rρ[Ridx, :, :, :] = copy(ρⁿ)
       # RpHY′[n, :, :, :] = copy(pʰʸ′)
       RpNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
     end
