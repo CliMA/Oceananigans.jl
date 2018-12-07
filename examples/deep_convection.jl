@@ -165,15 +165,15 @@ pⁿʰ⁺ˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-Ru = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-Rv = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-Rw = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RT = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-Rρ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RpHY′ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RpNHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
-RRHS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+ΔR = 20
+Ru = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
+# Rv = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+Rw = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
+RT = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
+# RS = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+# Rρ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+# RpHY′ = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
+RpNHS = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 
 @info string(@sprintf("T₀[50, 50, 1] = %.6g K\n", Tⁿ[50, 50, 1]))
 
@@ -342,15 +342,16 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
               )
       end  # @info
 
-    Ru[n, :, :, :] = copy(uⁿ)
-    Rv[n, :, :, :] = copy(vⁿ)
-    Rw[n, :, :, :] = copy(wⁿ)
-    RT[n, :, :, :] = copy(Tⁿ)
-    RS[n, :, :, :] = copy(Sⁿ)
-    Rρ[n, :, :, :] = copy(ρⁿ)
-    RpHY′[n, :, :, :] = copy(pʰʸ′)
-    RpNHS[n, :, :, :] = copy(pⁿʰ⁺ˢ)
-    RRHS[n, :, :, :] = copy(RHS)
+      Ridx = Int(n/ΔR)
+      Ru[Ridx, :, :, :] = copy(uⁿ)
+      # Rv[n, :, :, :] = copy(vⁿ)
+      Rw[Ridx, :, :, :] = copy(wⁿ)
+      RT[Ridx, :, :, :] = copy(Tⁿ)
+      # RS[n, :, :, :] = copy(Sⁿ)
+      # Rρ[n, :, :, :] = copy(ρⁿ)
+      # RpHY′[n, :, :, :] = copy(pʰʸ′)
+      RpNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
+    end
 
   end  # time stepping for loop
 end  # time_stepping function
