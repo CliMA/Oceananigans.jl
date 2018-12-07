@@ -32,8 +32,8 @@ Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
 V = Δx*Δy*Δz  # Volume of a cell [m³].
 M = ρ₀*V  # Mass of water in a cell [kg].
 
-Nᵗ = 20  # Number of time steps to run for.
-Δt = 1  # Time step [s].
+Nᵗ = 1440  # Number of time steps to run for.
+Δt = 30  # Time step [s].
 
 # List and array of grid coordinates at the centers of the cells.
 xC = Δx/2:Δx:Lˣ
