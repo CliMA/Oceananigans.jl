@@ -1,35 +1,43 @@
-const N = (4, 6, 8)
-const L = (2π, 3π, 5π)
+"""
+    test_init_field(N, L, ftf)
 
-function test_initfield()
-  g = RegularCartesianGrid(N, L)
-  a = CellField(g)
-  b = FaceField(g, :x)
-  c = FaceField(g, :y)
-  d = FaceField(g, :z)
-  Nxface = (N[1]+1, N[2], N[3])
-  Nyface = (N[1], N[2]+1, N[3])
-  Nzface = (N[1], N[2], N[3]+1)
-  ( size(a) == N && 
-    size(b) == Nxface &&
-    size(c) == Nyface &&
-    size(d) == Nzface )
+Test that the field initialized by the field type function `ftf` on the grid g
+has the correct size.
+
+# Examples
+```julia-repl
+julia> test_init_field((10, 10, 5), (10, 10, 10), CellField)
+```
+"""
+function test_init_field(g, ftf)
+    f = ftf(g)
+    size(f) == size(g)
 end
 
-function test_setfield()
-  g = RegularCartesianGrid(N, L)
-  a = CellField(g)
-  set!(a, 2)
-  a.data == 2*ones(N)
+"""
+    test_set_field(N, L, ftf, val)
+
+Test that the field initialized by the field type function `ftf` on the grid g
+can be correctly filled with the value `val` using the `set!(f::Field, v)`
+function.
+
+# Examples
+```julia-repl
+julia> test_init_field((10, 10, 5), (10, 10, 10), FaceFieldX, 1//7)
+```
+"""
+function test_set_field(g, ftf, val)
+    f = ftf(g)
+    set!(f, val)
+    f.data == val * ones(size(f))
 end
 
-function test_addfield()
-  g = RegularCartesianGrid(N, L)
-  u = CellField(g)
-  v = CellField(g)
-  set!(u, 2)
-  set!(v, 4)
-  w = u + v
-  wanswer = 6 * ones(N)
-  w.data == wanswer
+function test_add_field(g, ftf, val1, val2)
+    f1 = ftf(g)
+    f2 = ftf(g)
+    set!(u, val1)
+    set!(v, val2)
+    f3 = f1 + f2
+    fans = (val1 + val2) * ones(N)
+    f3.data == fans
 end
