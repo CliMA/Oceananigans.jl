@@ -3,10 +3,11 @@ import Base: size, show
 dim2xyz = [:x, :y, :z]
 
 """
-    RegularCartesianGrid{T::AbstractFloat}
+    RegularCartesianGrid{T::AbstractFloat} <: Grid
 
-A Cartesian grid with regularly spaces cells and faces so that Δx, Δy, and Δz
-are constants. Fields are stored using floating-point values of type T.
+A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
+and \$Δz\$ are constants. Fields are stored using floating-point values of type
+T.
 """
 struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
     dim::Int
@@ -56,8 +57,9 @@ end
 """
     RegularCartesianGrid(N, L, T=Float64)
 
-Create a regular Cartesian grid with size N = (Nx, Ny, Nz) and domain size
-L = (Lx, Ly, Lz) where fields are stored using floating-point values of type T.
+Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
+size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
+of type T.
 
 # Examples
 ```julia-repl
