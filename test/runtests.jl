@@ -1,5 +1,5 @@
 using
-    OceanDispatch,
+    Oceananigans,
     Test
 
 # function testeos()
@@ -27,6 +27,12 @@ using
     @test test_faces_start_at_zero()
 end
 
+@testset "Fields" begin
+  include("test_field.jl")
+  @test test_initfield()
+  @test test_setfield()
+  @test test_addfield()
+end
 
 @testset "Spectral solvers" begin
     include("test_spectral_solvers.jl")
@@ -56,11 +62,4 @@ end
     for N in [5, 10, 20, 50, 100]
         @test test_3d_poisson_solver_ppn_div_free(N, N, N)
     end
-end
-
-@testset "Fields" begin
-  include("test_field.jl")
-  @test test_initfield()
-  @test test_setfield()
-  @test test_addfield()
 end
