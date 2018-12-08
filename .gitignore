@@ -6,6 +6,9 @@ deps/deps.jl
 # Swap files.
 *.swp
 
+# Documenter.jl
+docs/build
+
 # Model output, plots, or debugging
 *.gif
 *.mp4
