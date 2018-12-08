@@ -1,4 +1,7 @@
-import Base: size, getindex, setindex!, similar, *, +, -
+import Base:
+    size, length,
+    getindex, lastindex, setindex!,
+    iterate, similar, *, +, -
 
 """
     CellField{T,G<:Grid{T}} <: Field{G}
@@ -89,7 +92,24 @@ function FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
 end
 
 size(f::Field) = size(f.grid)
+length(f::Field) = length(f.data)
+
+getindex(f::Field, inds...) = getindex(f.data, inds...)
+
+lastindex(f::Field) = lastindex(f.data)
+lastindex(f::Field, dim) = lastindex(f.data, dim)
+
+setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
+
 show(io::IO, f::Field) = show(io, f.data)
+
+iterate(f::Field, state=1) = iterate(f.data, state)
+# iterate(f::Field, state=1) = state > length(f) ? nothing : (f.data[state], state+1)
+
+similar(f::CellField) = CellField(f.grid)
+similar(f::FaceFieldX{T,G}) where {T,G} = FaceFieldX(f.grid)
+similar(f::FaceFieldY{T,G}) where {T,G} = FaceFieldY(f.grid)
+similar(f::FaceFieldZ{T,G}) where {T,G} = FaceFieldZ(f.grid)
 
 # TODO: This will not work if T=Float32 and v::Irrational.
 set!(u::Field, v) = @. u.data = v
@@ -97,14 +117,6 @@ set!(u::Field, v::Field) = @. u.data = v.data
 
 # TODO: Revise this using just xC, yC, zC.
 # set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)
-
-similar(f::CellField) = CellField(f.grid)
-similar(f::FaceFieldX{T,G}) where {T,G} = FaceFieldX(f.grid)
-similar(f::FaceFieldY{T,G}) where {T,G} = FaceFieldY(f.grid)
-similar(f::FaceFieldZ{T,G}) where {T,G} = FaceFieldZ(f.grid)
-
-getindex(f::Field, inds...) = getindex(f.data, inds...)
-setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
 # Define +, -, and * on fields as element-wise calculations on their data. This
 # is only true for fields of the same type, e.g. when adding a FaceFieldY to
