@@ -17,10 +17,14 @@ using
 @testset "Grid" begin
     include("test_grid.jl")
     @test test_grid_size()
-    @test test_Δx()
-    @test test_Δy()
-    @test test_Δz()
+
+    d, n = 0.1, 4
+    @test test_Δx(d, n)
+    @test test_Δy(d, n)
+    @test test_Δz(d, n)
+
     @test test_cell_volume()
+    @test test_faces_start_at_zero()
 end
 
 
