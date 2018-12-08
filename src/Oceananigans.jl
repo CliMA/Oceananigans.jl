@@ -3,11 +3,15 @@ module Oceananigans
 export
     ConstantsCollection,
     Grid,
-
     Field,
-    CellField,
     FaceField,
-    FieldCollection,
+
+    RegularCartesianGrid,
+
+    CellField,
+    FaceFieldX,
+    FaceFieldY,
+    FaceFieldZ,
     set!,
 
     TimeStepper,
@@ -15,13 +19,6 @@ export
     PlanetaryConstants,
     EarthConstants,
 
-    RegularCartesianGrid,
-
-    ZoneField,
-    FaceField,
-    Fields,
-    SourceTermFields,
-    ForcingFields,
 
     laplacian3d_ppn,
 
