@@ -88,8 +88,14 @@ function RegularCartesianGrid(N, L, T=Float64)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+                            Az, V, xC, yC, zC, xF, yF, zF)
 end
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 size(g::RegularCartesianGrid, dim::Integer) = getfield(g, Symbol(:N, dim2xyz[dim]))
+
+show(io::IO, g::RegularCartesianGrid) =
+    print(io, "(Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
+              "(Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
+              "(Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
