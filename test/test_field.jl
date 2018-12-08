@@ -35,9 +35,9 @@ end
 function test_add_field(g, ftf, val1, val2)
     f1 = ftf(g)
     f2 = ftf(g)
-    set!(u, val1)
-    set!(v, val2)
+    set!(f1, val1)
+    set!(f2, val2)
     f3 = f1 + f2
-    fans = (val1 + val2) * ones(N)
+    fans = (val1 + val2) * ones(size(f1))
     f3.data == fans
 end

@@ -50,7 +50,8 @@ end
                 @test test_set_field(g, ftf, val) || "type(g)=$(typeof(g)), ftf=$ftf, val=$val"
             end
 
-            @test test_add_field(g, ft, 4, 6)
+            # TODO: Try adding together a bunch of different data types.
+            @test test_add_field(g, ftf, 4, 6)
         end
     end
 end
