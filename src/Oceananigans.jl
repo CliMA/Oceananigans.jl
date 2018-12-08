@@ -41,13 +41,11 @@ abstract type FaceField{G<:Grid} <: Field{G} end
 abstract type FieldCollection end
 abstract type TimeStepper end
 
-const dim = 3
-
 include("planetary_constants.jl")
 include("grid.jl")
-
 include("field.jl")
-include("operators.jl")
+
+include("operators/operators.jl")
 
 include("equation_of_state_future.jl")
 include("time_steppers.jl")
