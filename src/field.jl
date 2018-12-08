@@ -1,4 +1,4 @@
-import Base: size, getindex, similar, *, +, -
+import Base: size, getindex, setindex!, similar, *, +, -
 
 """
     CellField{T,G<:Grid{T}} <: Field{G}
@@ -95,14 +95,16 @@ show(io::IO, f::Field) = show(io, f.data)
 set!(u::Field, v) = @. u.data = v
 set!(u::Field, v::Field) = @. u.data = v.data
 
+# TODO: Revise this using just xC, yC, zC.
+# set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)
+
 similar(f::CellField) = CellField(f.grid)
 similar(f::FaceFieldX{T,G}) where {T,G} = FaceFieldX(f.grid)
 similar(f::FaceFieldY{T,G}) where {T,G} = FaceFieldY(f.grid)
 similar(f::FaceFieldZ{T,G}) where {T,G} = FaceFieldZ(f.grid)
 
-# TODO: Revise this using just xC, yC, zC.
-# set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)
 getindex(f::Field, inds...) = getindex(f.data, inds...)
+setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
 # Define +, -, and * on fields as element-wise calculations on their data. This
 # is only true for fields of the same type, e.g. when adding a FaceFieldY to
