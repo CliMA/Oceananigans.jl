@@ -1,4 +1,6 @@
-using Oceananigans: RegularCartesianGrid, CellField, FaceField
+using Oceananigans:
+    RegularCartesianGrid,
+    CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ
 
 # Increment and decrement integer a with periodic wrapping. So if n == 10 then
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
@@ -99,40 +101,65 @@ eastern and western cells of a cell-centered field `f` and store it in a `g`
 face-centered field `favgx`, assuming both fields are defined on a regular
 Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 """
-function avgx(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgx[i, j, k] =  (f[i, j, k] + f[decmod1(i, g.Nx), j, k]) / 2
     end
 end
 
-function avgx(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
+function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgx[i, j, k] =  (f[incmod1(i, g.Nx), j, k] + f[i, j, k]) / 2
     end
 end
 
-function avgy(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+function avgy!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgy[i, j, k] =  (f[i, j, k] + f[i, decmod1(j, g.Ny), k]) / 2
     end
 end
 
-function avgy(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
+function avgy!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgy[i, j, k] =  (f[i, incmod1(j, g.Ny), k] + f[i, j, k]) / 2
     end
 end
 
-function avgz(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
+function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         favgz[i, j, k] =  (f[i, j, k] + f[i, j, k-1]) / 2
     end
     @. favgz[:, :, 1] = 0
 end
 
-function avgz(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
+function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
         favgz[i, j, k] =  (f[i, j, incmod1(k, g.Nz)] + f[i, j, k]) / 2
     end
     @. δf[:, :, end] = 0
+end
+
+"""
+    div!(g, fx, fy, fz, δfx, δfy, δfz, div)
+
+Compute the divergence.
+"""
+function div!(g::RegularCartesianGrid,
+              fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ,
+              δfx::CellField, δfy::CellField, δfz::CellField,
+              div::CellField)
+    δx!(g, fx, δfx)
+    δy!(g, fy, δfy)
+    δz!(g, fz, δfz)
+    @. div = (1/g.V) * ( g.Ax * δfx + g.Ay * δfy +  g.Az * δfz)
+end
+
+function div!(g::RegularCartesianGrid,
+              fx::CellField, fy::CellField, fz::CellField,
+              δfx::FaceField, δfy::FaceField, δfz::FaceField,
+              div::FaceField)
+    δx!(g, fx, δfx)
+    δy!(g, fy, δfy)
+    δz!(g, fz, δfz)
+    @. div = (1/g.V) * ( g.Ax * δfx + g.Ay * δfy +  g.Az * δfz)
 end

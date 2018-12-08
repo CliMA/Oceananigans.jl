@@ -32,5 +32,17 @@ FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
 
 ### Averaging operators
 ```@docs
-avgx(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
 ```
+
+### Divergence operators
+Building on top of the differencing operators we can define operators that
+compute the divergence
+```math
+\nabla\cdotp\mathbf{f} = \frac{1}{V} \left[ \delta_x \left( A_x f_x \right)
++ \delta_y\left( A_y f_y \right) + \delta_z\left( A_z f_z \right)\right]
+```
+
+<!-- ```@docs
+div!(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, δfx::CellField, δfy::CellField, δfz::CellField, div::CellField)
+``` -->

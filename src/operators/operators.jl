@@ -4,9 +4,10 @@ export
     δx!,
     δy!,
     δz!,
-    avgx,
-    avgy,
-    avgz
+    avgx!,
+    avgy!,
+    avgz!,
+    div!
 
 include("ops_regular_cartesian_grid.jl")
 
