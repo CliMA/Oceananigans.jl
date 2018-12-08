@@ -1,7 +1,13 @@
-import Base: size
+import Base: size, show
 
 dim2xyz = [:x, :y, :z]
 
+"""
+    RegularCartesianGrid{T::AbstractFloat}
+
+Create a `RegularCartesianGrid` where all floating-point variables are stored
+as type T.
+"""
 struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
     dim::Int
     # Number of grid points in (x,y,z).
@@ -47,7 +53,17 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
     # zFA
 end
 
-# example: g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
+"""
+    RegularCartesianGrid(N, L, T=Float64)
+
+Create a regular Cartesian grid with size N = (Nx, Ny, Nz) and domain size
+L = (Lx, Ly, Lz). Δx, Δy, and Δz are constants for a regular Cartesian grid.
+
+# Examples
+```julia-repl
+julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
+```
+"""
 function RegularCartesianGrid(N, L, T=Float64)
     dim = 3
 
