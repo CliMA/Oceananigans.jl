@@ -1,7 +1,9 @@
 module Operators
 
 export
-    δx!
+    δx!,
+    δy!,
+    δz!
 
 include("ops_regular_cartesian_grid.jl")
 
