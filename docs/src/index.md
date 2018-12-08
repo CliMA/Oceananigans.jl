@@ -20,6 +20,7 @@ FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
 ```
 
 ## Operators
+### Difference operators
 ```@docs
 δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
 δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
@@ -27,4 +28,9 @@ FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
 δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
 δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
 δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
+```
+
+### Averaging operators
+```@docs
+avgx(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
 ```

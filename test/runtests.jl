@@ -61,8 +61,13 @@ end
     ffY = FaceFieldY(g)
     ffZ = FaceFieldZ(g)
 
-    for f in (fC, ffX, ffY, ffZ), δ in (δx!, δy!, δz!)
-        @test_throws MethodError δ(g, f, f)
+    for f in (fC, ffX, ffY, ffZ)
+        for δ in (δx!, δy!, δz!)
+            @test_throws MethodError δ(g, f, f)
+        end
+        for avg in (avgx, avgy, avgz)
+            @test_throws MethodError avg(g, f, f)
+        end
     end
 end
 
