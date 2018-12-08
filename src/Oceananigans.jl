@@ -1,4 +1,4 @@
-module OceanDispatch
+module Oceananigans
 
 export
     ConstantsCollection,
