@@ -23,22 +23,28 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
     # Volume of a cell [m³].
     V::T
     # Range of coordinates at the centers of the cells.
-    xCR
-    yCR
-    zCR
+    xC
+    yC
+    zC
     # Array of coordinates at the centers of the cells.
-    xCA
-    yCA
-    zCA
+    # xCA
+    # yCA
+    # zCA
     # Range of grid coordinates at the faces of the cells. Note that there are
-    # Nˣ+1 faces in the x̂-dimension, Nʸ+1 in the ŷ, and Nᶻ+1 in the ẑ.
-    xFR
-    yFR
-    zFR
+    # Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z. However,
+    # we only need to store (Nx, Ny, Nz) faces because if the grid is periodic
+    # in one direction then face[1] == face[N+1] so no need to store face[N+1],
+    # and if there's a wall then face[1] and face[N+1] are both walls so you
+    # only need to store face[1]. This might need to be modified for the case
+    # of open boundary conditions but I don't think that's a commonly used
+    # configuration at all.
+    xF
+    yF
+    zF
     # Array of grid coordinates at the faces of the cells.
-    xFA
-    yFA
-    zFA
+    # xFA
+    # yFA
+    # zFA
 end
 
 # example: g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
@@ -58,23 +64,15 @@ function RegularCartesianGrid(N, L, T=Float64)
 
     V = Δx*Δy*Δz
 
-    xCR = Δx/2:Δx:Lx
-    yCR = Δy/2:Δy:Ly
-    zCR = -Δz/2:-Δz:-Lz
+    xC = Δx/2:Δx:Lx
+    yC = Δy/2:Δy:Ly
+    zC = -Δz/2:-Δz:-Lz
 
-    xCA = repeat(reshape(xCR, Nx, 1,  1),  1,  Ny, Nz)
-    yCA = repeat(reshape(yCR, 1,  Ny, 1),  Nx, 1,  Nz)
-    zCA = repeat(reshape(zCR, 1,  1,  Nz), Nx, Ny, 1)
+    xF = 0:Δx:Lx
+    yF = 0:Δy:Ly
+    zF = 0:-Δz:-Lz
 
-    xFR = 0:Δx:Lx
-    yFR = 0:Δy:Ly
-    zFR = 0:-Δz:-Lz
-
-    xFA = repeat(reshape(xFR, Nx+1, 1, 1), 1, Ny+1, Nz+1)
-    yFA = repeat(reshape(yFR, 1, Ny+1, 1), Nx+1, 1, Nz+1)
-    zFA = repeat(reshape(zFR, 1, 1, Nz+1), Nx+1, Ny+1, 1)
-
-    RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V, xCR, yCR, zCR, xCA, yCA, zCA, xFR, yFR, zFR, xFA, yFA, zFA)
+    RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V, xC, yC, zC, xF, yF, zF)
 end
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
