@@ -40,6 +40,7 @@ abstract type ConstantsCollection end
 abstract type EquationOfStateParameters <: ConstantsCollection end
 abstract type Grid{T} end
 abstract type Field{G<:Grid} end
+abstract type FaceField{G<:Grid} <: Field{G} end
 abstract type FieldCollection end
 abstract type TimeStepper end
 
