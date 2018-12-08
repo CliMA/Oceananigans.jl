@@ -65,7 +65,7 @@ end
         for δ in (δx!, δy!, δz!)
             @test_throws MethodError δ(g, f, f)
         end
-        for avg in (avgx, avgy, avgz)
+        for avg in (avgx!, avgy!, avgz!)
             @test_throws MethodError avg(g, f, f)
         end
     end
