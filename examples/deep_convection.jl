@@ -7,7 +7,7 @@ using Printf
 # PyPlot.pygui(true)
 # using GR
 
-include("../src/operators.jl")
+include("../src/operators/operators_old.jl")
 include("../src/equation_of_state.jl")
 include("../src/pressure_solve.jl")
 
@@ -32,7 +32,7 @@ Aˣ, Aʸ, Aᶻ = Δy*Δz, Δx*Δz, Δx*Δy  # Cell face areas [m²].
 V = Δx*Δy*Δz  # Volume of a cell [m³].
 M = ρ₀*V  # Mass of water in a cell [kg].
 
-Nᵗ = 360  # Number of time steps to run for.
+Nᵗ = 400  # Number of time steps to run for.
 Δt = 30  # Time step [s].
 
 # List and array of grid coordinates at the centers of the cells.
