@@ -53,3 +53,10 @@ end
         @test test_3d_poisson_solver_ppn_div_free(N, N, N)
     end
 end
+
+@testset "Fields" begin
+  include("test_field.jl")
+  @test test_initfield()
+  @test test_setfield()
+  @test test_addfield()
+end
