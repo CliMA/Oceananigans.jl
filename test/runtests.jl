@@ -55,18 +55,28 @@ end
 
     N = (10, 20, 30)
     L = (100, 100, 100)
-    g = RegularCartesianGrid(N, L)
-    fC = CellField(g)
-    ffX = FaceFieldX(g)
-    ffY = FaceFieldY(g)
-    ffZ = FaceFieldZ(g)
 
-    for f in (fC, ffX, ffY, ffZ)
-        for δ in (δx!, δy!, δz!)
-            @test_throws MethodError δ(g, f, f)
-        end
-        for avg in (avgx!, avgy!, avgz!)
-            @test_throws MethodError avg(g, f, f)
+    gdf = RegularCartesianGrid(N, L)           # Default RegularCartesianGrid
+    g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
+    g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
+
+    for g in [gdf, g32, g64]
+        fC = CellField(g)
+        ffX = FaceFieldX(g)
+        ffY = FaceFieldY(g)
+        ffZ = FaceFieldZ(g)
+
+        for f in (fC, ffX, ffY, ffZ)
+            # Fields should be initialized to zero.
+            @test f.data ≈ zeros(size(f))
+
+            # Calling with the wrong signature, e.g. two CellFields should error.
+            for δ in (δx!, δy!, δz!)
+                @test_throws MethodError δ(g, f, f)
+            end
+            for avg in (avgx!, avgy!, avgz!)
+                @test_throws MethodError avg(g, f, f)
+            end
         end
     end
 end
