@@ -88,9 +88,9 @@ with Neumann boundary condition in the \$z\$-direction.
 """
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δf[i, j, k] =  f[i, j, k] - f[i, j, k+1]
+        @inbounds δzf[i, j, k] =  f[i, j, k] - f[i, j, k+1]
     end
-    @. δf[:, :, end] = f[:, :, end]
+    @. δzf[:, :, end] = f[:, :, end]
 end
 
 """
@@ -148,18 +148,31 @@ function div!(g::RegularCartesianGrid,
               fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ,
               δfx::CellField, δfy::CellField, δfz::CellField,
               div::CellField)
+
     δx!(g, fx, δfx)
     δy!(g, fy, δfy)
     δz!(g, fz, δfz)
-    @. div = (1/g.V) * ( g.Ax * δfx + g.Ay * δfy +  g.Az * δfz)
+
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        div[i, j, k] = (1/g.V) * ( g.Ax * δfx[i, j, k]
+                                 + g.Ay * δfy[i, j, k]
+                                 + g.Az * δfz[i, j, k])
+    end
 end
 
 function div!(g::RegularCartesianGrid,
               fx::CellField, fy::CellField, fz::CellField,
               δfx::FaceField, δfy::FaceField, δfz::FaceField,
               div::FaceField)
+
     δx!(g, fx, δfx)
     δy!(g, fy, δfy)
     δz!(g, fz, δfz)
-    @. div = (1/g.V) * ( g.Ax * δfx + g.Ay * δfy +  g.Az * δfz)
+
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        div[i, j, k] = (1/g.V) * ( g.Ax * δfx[i, j, k]
+                                 + g.Ay * δfy[i, j, k]
+                                 + g.Az * δfz[i, j, k])
+    end
+end
 end
