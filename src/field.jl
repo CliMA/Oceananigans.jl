@@ -1,21 +1,44 @@
 import Base: size, getindex, similar, *, +, -
 
+"""
+    CellField{T,G<:Grid{T}} <: Field{G}
 
+A cell-centered field defined on a grid `G` whose values are stored as
+floating-point values of type T.
+"""
 struct CellField{T,G<:Grid{T}} <: Field{G}
     data::AbstractArray{T}
     grid::G
 end
 
+"""
+    FaceFieldX{T,G<:Grid{T}} <: FaceField{G}
+
+An x-face-centered field defined on a grid `G` whose values are stored as
+floating-point values of type T.
+"""
 struct FaceFieldX{T,G<:Grid{T}} <: FaceField{G}
     data::AbstractArray{T}
     grid::G
 end
 
+"""
+    FaceFieldY{T,G<:Grid{T}} <: FaceField{G}
+
+A y-face-centered field defined on a grid `G` whose values are stored as
+floating-point values of type T.
+"""
 struct FaceFieldY{T,G<:Grid{T}} <: FaceField{G}
     data::AbstractArray{T}
     grid::G
 end
 
+"""
+    FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
+
+A z-face-centered field defined on a grid `G` whose values are stored as
+floating-point values of type T.
+"""
 struct FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
     data::AbstractArray{T}
     grid::G
