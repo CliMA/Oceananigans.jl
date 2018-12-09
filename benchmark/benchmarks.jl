@@ -63,9 +63,10 @@ function run_benchmarks()
     L = (1000, 1000, 1000)
     T = Float64
 
-    g = RegularCartesianGrid(N, L, T)
-    ũ = VelocityFields(g)
-    t̃ = TemporaryFields(g)
+    g  = RegularCartesianGrid(N, L, T)
+    ũ  = VelocityFields(g, T)
+    tr = TracerFields(g, T)
+    t̃  = TemporaryFields(g, T)
 
     ũ.u.data .= rand(T, size(g))
     ũ.v.data .= rand(T, size(g))
@@ -81,11 +82,23 @@ function run_benchmarks()
     print("├───────────────┬────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬─────────┬───────┤\n")
     print("│ function name │   memory   │  allocs  │  min. time │  med. time │  mean time │  max. time │ samples │ evals │\n")
 
-    b = @benchmark δx!($g, $ũ.u, $t̃.fC1); pretty_print_summary(b, "δx! f⟶c");
-    b = @benchmark δx!($g, $t̃.fC1, $ũ.u); pretty_print_summary(b, "δx! c⟶f");
+    b = @benchmark δx!($g, $ũ.u, $t̃.fC1); pretty_print_summary(b, "δx! f2c");
+    b = @benchmark δx!($g, $t̃.fC1, $ũ.u); pretty_print_summary(b, "δx! c2f");
+    b = @benchmark δy!($g, $ũ.v, $t̃.fC2); pretty_print_summary(b, "δy! f2c");
+    b = @benchmark δy!($g, $t̃.fC2, $ũ.v); pretty_print_summary(b, "δy! c2f");
+    b = @benchmark δz!($g, $ũ.w, $t̃.fC3); pretty_print_summary(b, "δz! f2c");
+    b = @benchmark δz!($g, $t̃.fC3, $ũ.w); pretty_print_summary(b, "δz! c2f");
 
-    b = @benchmark rand(55, 55, 55)
-    pretty_print_summary(b, "rand(55^3)")
+    b = @benchmark avgx!($g, $ũ.u, $t̃.fC1); pretty_print_summary(b, "avgx! f2c");
+    b = @benchmark avgx!($g, $t̃.fC1, $ũ.u); pretty_print_summary(b, "avgx! c2f");
+    b = @benchmark avgy!($g, $ũ.v, $t̃.fC2); pretty_print_summary(b, "avgy! f2c");
+    b = @benchmark avgy!($g, $t̃.fC2, $ũ.v); pretty_print_summary(b, "avgy! c2f");
+    b = @benchmark avgz!($g, $ũ.w, $t̃.fC3); pretty_print_summary(b, "avgz! f2c");
+    b = @benchmark avgz!($g, $t̃.fC3, $ũ.w); pretty_print_summary(b, "avgz! c2f");
+
+    b = @benchmark div!($g, $ũ.u, $ũ.v, $ũ.w, $t̃.fC1, $t̃); pretty_print_summary(b, "div! f2c");
+    b = @benchmark div!($g, $t̃.fC1, $t̃.fC2, $t̃.fC3, $t̃.fFX, $t̃); pretty_print_summary(b, "div! c2f");
+    b = @benchmark div_flux!($g, $ũ.u, $ũ.v, $ũ.w, $tr.T, $t̃.fC1, $t̃); pretty_print_summary(b, "div_flux!");
 
     print("└───────────────┴────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴─────────┴───────┘\n")
     # print("+---------------------------------------------------------------------------------------------------------+\n")
