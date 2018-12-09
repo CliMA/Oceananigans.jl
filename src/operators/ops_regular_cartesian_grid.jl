@@ -1,6 +1,7 @@
 using Oceananigans:
     RegularCartesianGrid,
-    CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ
+    CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields, TemporaryFields
 
 # Increment and decrement integer a with periodic wrapping. So if n == 10 then
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
@@ -153,52 +154,52 @@ end
 Compute the divergence.
 """
 function div!(g::RegularCartesianGrid,
-              fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ,
-              δfx::CellField, δfy::CellField, δfz::CellField,
-              div::CellField)
+              fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, div::CellField,
+              tmp::TemporaryFields)
 
-    δx!(g, fx, δfx)
-    δy!(g, fy, δfy)
-    δz!(g, fz, δfz)
+    δx!(g, fx, tmp.fC1)  # tmp.fC1 now stores δx(fx)
+    δy!(g, fy, tmp.fC2)  # tmp.fC2 now stores δy(fy)
+    δz!(g, fz, tmp.fC3)  # tmp.fC3 now stores δz(fz)
 
-    @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
+    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1 + g.Ay * tmp.fC2 + g.Az * tmp.fC3 )
     nothing
 end
 
 function div!(g::RegularCartesianGrid,
-              fx::CellField, fy::CellField, fz::CellField,
-              δfx::FaceField, δfy::FaceField, δfz::FaceField,
-              div::FaceField)
+              fx::CellField, fy::CellField, fz::CellField, div::FaceField,
+              tmp::TemporaryFields)
 
-    δx!(g, fx, δfx)
-    δy!(g, fy, δfy)
-    δz!(g, fz, δfz)
+    δx!(g, fx, tmp.fC1)  # tmp.fC1 now stores δx(fx)
+    δy!(g, fy, tmp.fC2)  # tmp.fC2 now stores δy(fy)
+    δz!(g, fz, tmp.fC3)  # tmp.fC3 now stores δz(fz)
 
-    @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
+    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1 + g.Ay * tmp.fC2 + g.Az * tmp.fC3 )
     nothing
 end
 
 
-function div_flux!(g::RegularCartesianGrid, Q::CellField,
-                   u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ,
-                   ffx::FaceFieldX, ffy::FaceFieldY, ffz::FaceFieldZ,
-                   δxflx::CellField, δyfly::CellField, δzflz::CellField,
-                   div_flux::CellField)
-    avgx!(g, Q, ffx)  # ffx now stores Q̅ˣ
-    avgy!(g, Q, ffy)  # ffy now stores Q̅ʸ
-    avgz!(g, Q, ffz)  # ffz now stores Q̅ᶻ
+function div_flux!(g::RegularCartesianGrid,
+                   u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
+                   div_flux::CellField, tmp::TemporaryFields)
 
-    @. ffx.data = g.Ax * u.data * ffx.data  # ffx now stores flux_x.
-    @. ffy.data = g.Ay * v.data * ffy.data  # ffy now stores flux_y.
-    @. ffz.data = g.Az * w.data * ffz.data  # ffz now stores flux_z.
+   # ffx::FaceFieldX, ffy::FaceFieldY, ffz::FaceFieldZ,
+   # δxflx::CellField, δyfly::CellField, δzflz::CellField,
+
+    avgx!(g, Q, tmp.fFX)  # tmp.fFX now stores Q̅ˣ
+    avgy!(g, Q, tmp.fFY)  # tmp.fFY now stores Q̅ʸ
+    avgz!(g, Q, tmp.fFZ)  # tmp.fFZ now stores Q̅ᶻ
+
+    @. tmp.fFX.data = g.Ax * u.data * tmp.fFX.data  # tmp.fFX now stores flux_x.
+    @. tmp.fFY.data = g.Ay * v.data * tmp.fFY.data  # tmp.fFY now stores flux_y.
+    @. tmp.fFZ.data = g.Az * w.data * tmp.fFZ.data  # tmp.FFZ now stores flux_z.
 
     # Imposing zero vertical flux through the top layer.
-    @. ffz.data[:, :, 1] = 0
+    @. tmp.fFZ.data[:, :, 1] = 0
 
-    δx!(g, ffx, δxflx)
-    δy!(g, ffy, δyfly)
-    δz!(g, ffz, δzflz)
+    δx!(g, tmp.fFX, tmp.fC1)  # tmp.fC1 now stores δx(flux_x)
+    δy!(g, tmp.fFY, tmp.fC2)  # tmp.fC2 now stores δy(flux_y)
+    δz!(g, tmp.fFZ, tmp.fC3)  # tmp.fC3 now stores δz(flux_z)
 
-    @. div_flux.data = (1/g.V) * (δxflx.data + δyfly.data + δzflz.data)
+    @. div_flux.data = (1/g.V) * (tmp.fC1.data + tmp.fC2.data + tmp.fC3.data)
     nothing
 end
