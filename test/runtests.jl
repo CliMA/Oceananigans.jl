@@ -22,13 +22,13 @@ end
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
 
-    gdf = RegularCartesianGrid(N, L)           # Default RegularCartesianGrid
     g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
     g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
 
     int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
     uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
     vals = vcat(int_vals, uint_vals)
+
     # TODO: Use ≈ for floating-point values and set! should correctly convert
     # Rational and Irrational to Float32.
     # float_vals = Any[0.0, -0.0, 6e-34, 1f10]
@@ -36,7 +36,7 @@ end
     # other_vals = Any[π]
     # vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-    for g in [gdf, g32, g64]
+    for g in [g32, g64]
         for ftf in (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
             @test test_init_field(g, ftf)
 
@@ -56,11 +56,10 @@ end
     N = (10, 20, 30)
     L = (100, 100, 100)
 
-    gdf = RegularCartesianGrid(N, L)           # Default RegularCartesianGrid
     g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
     g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
 
-    for g in [gdf, g32, g64]
+    for g in [g32, g64]
         fC = CellField(g)
         ffX = FaceFieldX(g)
         ffY = FaceFieldY(g)
