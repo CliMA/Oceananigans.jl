@@ -2,17 +2,24 @@ module Oceananigans
 
 export
     ConstantsCollection,
-    Grid,
-    Field,
-    FaceField,
 
+    Grid,
     RegularCartesianGrid,
 
+    Field,
+    FaceField,
     CellField,
     FaceFieldX,
     FaceFieldY,
     FaceFieldZ,
     set!,
+
+    FieldSet,
+    VelocityFields,
+    TracerFields,
+    SourceTerms,
+    ForcingFields,
+    TemporaryFields,
 
     TimeStepper,
 
@@ -38,7 +45,7 @@ abstract type EquationOfStateParameters <: ConstantsCollection end
 abstract type Grid end
 abstract type Field end
 abstract type FaceField <: Field end
-abstract type FieldCollection end
+abstract type FieldSet end
 abstract type TimeStepper end
 
 include("planetary_constants.jl")
