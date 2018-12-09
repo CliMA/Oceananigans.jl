@@ -87,15 +87,19 @@ function FaceFieldZ(grid::Grid, T=Float64, dim=3)
     FaceFieldZ{Array{T,dim}}(data, grid)
 end
 
-size(f::Field) = size(f.grid)
-length(f::Field) = length(f.data)
+@inline size(f::Field) = size(f.grid)
+@inline length(f::Field) = length(f.data)
 
-getindex(f::Field, inds...) = getindex(f.data, inds...)
+@inline getindex(f::Field, inds...) = getindex(f.data, inds...)
+# @inline getindex(f::Field, inds...) = f.data[inds...]
 
-lastindex(f::Field) = lastindex(f.data)
-lastindex(f::Field, dim) = lastindex(f.data, dim)
+@inline lastindex(f::Field) = lastindex(f.data)
+@inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 
-setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
+@inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
+# @inline function setindex!(f::Field, v, inds...)
+#     f.data[inds...] = v
+# end
 
 show(io::IO, f::Field) = show(io, f.data)
 
