@@ -81,8 +81,9 @@ end
 
         @test test_divf2c(g)
         @test test_divc2f(g)
-
         @test test_div_flux(g)
+
+        @test test_u_dot_grad_u(g)
 
         for f in (fC, ffX, ffY, ffZ)
             # Fields should be initialized to zero.

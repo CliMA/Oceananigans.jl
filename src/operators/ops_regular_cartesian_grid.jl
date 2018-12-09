@@ -182,9 +182,6 @@ function div_flux!(g::RegularCartesianGrid,
                    u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
                    div_flux::CellField, tmp::TemporaryFields)
 
-   # ffx::FaceFieldX, ffy::FaceFieldY, ffz::FaceFieldZ,
-   # δxflx::CellField, δyfly::CellField, δzflz::CellField,
-
     avgx!(g, Q, tmp.fFX)  # tmp.fFX now stores Q̅ˣ
     avgy!(g, Q, tmp.fFY)  # tmp.fFY now stores Q̅ʸ
     avgz!(g, Q, tmp.fFZ)  # tmp.fFZ now stores Q̅ᶻ
@@ -202,4 +199,25 @@ function div_flux!(g::RegularCartesianGrid,
 
     @. div_flux.data = (1/g.V) * (tmp.fC1.data + tmp.fC2.data + tmp.fC3.data)
     nothing
+end
+
+function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
+              tmp::TemporaryFields)
+
+    avgx!(g, ũ.u, tmp.fC1)                   # tmp.fC1 now stores u̅ˣ
+    @. tmp.fC1.data = g.Ax * tmp.fC1.data^2  # tmp.fC1 now stores (Ax*u)ˣ * u̅ˣ
+
+    avgy!(g, ũ.u, tmp.fC2)  # tmp.fC2 now stores u̅ʸ
+    avgx!(g, ũ.v, tmp.fC3)  # tmp.fC3 now stores v̅ˣ
+    @. tmp.fC2.data = g.Ay * tmp.fC2.data * tmp.fC3.data  # tmp.fC2 now stores (Ay*u)ˣ * v̅ˣ
+
+    avgz!(g, ũ.u, tmp.fC3)  # tmp.fC3 now stores u̅ᶻ
+    avgx!(g, ũ.w, tmp.fC4)  # tmp.fC4 now stores w̅ˣ
+    @. tmp.fC3.data = g.Az * tmp.fC3.data * tmp.fC4.data  # tmp.fC3 now stores (Az*u)ᶻ * w̅ˣ
+
+    δx!(g, tmp.fC1, tmp.fFX)
+    δy!(g, tmp.fC2, tmp.fFY)
+    δz!(g, tmp.fC3, tmp.fFZ)
+
+    @. u∇u.data = (1/g.V) * (tmp.fFX.data + tmp.fFY.data + tmp.fFZ.data)
 end
