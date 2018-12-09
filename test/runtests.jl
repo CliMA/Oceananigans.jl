@@ -71,12 +71,18 @@ end
         @test test_δyf2c(g)
         @test test_δzc2f(g)
         @test test_δzf2c(g)
+
         @test test_avgxc2f(g)
         @test test_avgxf2c(g)
         @test test_avgyc2f(g)
         @test test_avgyf2c(g)
         @test test_avgzc2f(g)
         @test test_avgzf2c(g)
+
+        @test test_divf2c(g)
+        @test test_divc2f(g)
+
+        @test test_div_flux(g)
 
         for f in (fC, ffX, ffY, ffZ)
             # Fields should be initialized to zero.

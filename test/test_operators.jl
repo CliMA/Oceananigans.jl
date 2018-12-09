@@ -155,3 +155,92 @@ function test_avgzf2c(g::Grid)
 
     avgzf1 ≈ avgzf2.data
 end
+
+function test_divf2c(g::Grid)
+    T = typeof(g.V)
+
+    fx = FaceFieldX(g)
+    fy = FaceFieldY(g)
+    fz = FaceFieldZ(g)
+
+    δxfx = CellField(g)
+    δyfy = CellField(g)
+    δzfz = CellField(g)
+
+    fx.data .= rand(T, size(g))
+    fy.data .= rand(T, size(g))
+    fz.data .= rand(T, size(g))
+
+    global V = g.V
+    global Aˣ = g.Ax
+    global Aʸ = g.Ay
+    global Aᶻ = g.Az
+    div1 = div_f2c(fx.data, fy.data, fz.data)
+
+    div2 = CellField(g)
+
+    div!(g, fx, fy, fz, δxfx, δyfy, δzfz, div2)
+
+    div1 ≈ div2.data
+end
+
+function test_divc2f(g::Grid)
+    T = typeof(g.V)
+
+    fx = CellField(g)
+    fy = CellField(g)
+    fz = CellField(g)
+
+    δxfx = FaceFieldX(g)
+    δyfy = FaceFieldY(g)
+    δzfz = FaceFieldZ(g)
+
+    fx.data .= rand(T, size(g))
+    fy.data .= rand(T, size(g))
+    fz.data .= rand(T, size(g))
+
+    global V = g.V
+    global Aˣ = g.Ax
+    global Aʸ = g.Ay
+    global Aᶻ = g.Az
+    div1 = div_c2f(fx.data, fy.data, fz.data)
+
+    div2 = FaceFieldX(g)
+
+    div!(g, fx, fy, fz, δxfx, δyfy, δzfz, div2)
+
+    div1 ≈ div2.data
+end
+
+function test_div_flux(g::Grid)
+    T = typeof(g.V)
+
+    u = FaceFieldX(g)
+    v = FaceFieldY(g)
+    w = FaceFieldZ(g)
+    θ = CellField(g)
+
+    u.data .= rand(T, size(g))
+    v.data .= rand(T, size(g))
+    w.data .= rand(T, size(g))
+    θ.data .= rand(T, size(g))
+
+    Tavgx = FaceFieldX(g)
+    Tavgy = FaceFieldY(g)
+    Tavgz = FaceFieldZ(g)
+
+    δxflx = CellField(g)
+    δyfly = CellField(g)
+    δzflz = CellField(g)
+
+    global V = g.V
+    global Aˣ = g.Ax
+    global Aʸ = g.Ay
+    global Aᶻ = g.Az
+    div_flux1 = div_flux_f2c(u.data, v.data, w.data, θ.data)
+
+    div_flux2 = CellField(g)
+    div_flux!(g, θ, u, v, w, Tavgx, Tavgy, Tavgz, δxflx, δyfly, δzflz, div_flux2)
+
+    div_flux1 ≈ div_flux2.data
+end
