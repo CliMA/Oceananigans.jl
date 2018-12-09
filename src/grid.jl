@@ -1,7 +1,5 @@
 import Base: size, show
 
-dim2xyz = [:x, :y, :z]
-
 """
     RegularCartesianGrid{T::AbstractFloat} <: Grid
 
@@ -9,7 +7,7 @@ A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
 T.
 """
-struct RegularCartesianGrid{T<:AbstractFloat} <: Grid{T}
+struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int

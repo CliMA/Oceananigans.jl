@@ -9,9 +9,9 @@ import Base:
 A cell-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
 """
-struct CellField{T,G<:Grid{T}} <: Field{G}
-    data::AbstractArray{T}
-    grid::G
+struct CellField{T<:AbstractArray} <: Field
+    data::T
+    grid::Grid
 end
 
 """
@@ -20,9 +20,9 @@ end
 An x-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
 """
-struct FaceFieldX{T,G<:Grid{T}} <: FaceField{G}
-    data::AbstractArray{T}
-    grid::G
+struct FaceFieldX{T<:AbstractArray} <: FaceField
+    data::T
+    grid::Grid
 end
 
 """
@@ -31,9 +31,9 @@ end
 A y-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
 """
-struct FaceFieldY{T,G<:Grid{T}} <: FaceField{G}
-    data::AbstractArray{T}
-    grid::G
+struct FaceFieldY{T<:AbstractArray} <: FaceField
+    data::T
+    grid::Grid
 end
 
 """
@@ -42,9 +42,9 @@ end
 A z-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
 """
-struct FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
-    data::AbstractArray{T}
-    grid::G
+struct FaceFieldZ{T<:AbstractArray} <: FaceField
+    data::T
+    grid::Grid
 end
 
 """
@@ -52,10 +52,9 @@ end
 
 Construct a `CellField` whose values are defined at the center of a cell.
 """
-function CellField(grid::Grid{T}) where T <: AbstractFloat
-    sz = size(grid)
-    data = zeros(T, sz)
-    CellField(data, grid)
+function CellField(grid::Grid, T=Float64, dim=3)
+    data = zeros(T, size(grid))
+    CellField{Array{T,dim}}(data, grid)
 end
 
 """
@@ -63,10 +62,9 @@ end
 
 A `Field` whose values are defined on the x-face of a cell.
 """
-function FaceFieldX(grid::Grid{T}) where T <: AbstractFloat
-    sz = size(grid)
-    data = zeros(T, sz)
-    FaceFieldX(data, grid)
+function FaceFieldX(grid::Grid, T=Float64, dim=3)
+    data = zeros(T, size(grid))
+    FaceFieldX{Array{T,dim}}(data, grid)
 end
 
 """
@@ -74,10 +72,9 @@ end
 
 A `Field` whose values are defined on the y-face of a cell.
 """
-function FaceFieldY(grid::Grid{T}) where T <: AbstractFloat
-    sz = size(grid)
-    data = zeros(T, sz)
-    FaceFieldY(data, grid)
+function FaceFieldY(grid::Grid, T=Float64, dim=3)
+    data = zeros(T, size(grid))
+    FaceFieldY{Array{T,dim}}(data, grid)
 end
 
 """
@@ -85,10 +82,9 @@ end
 
 A `Field` whose values are defined on the z-face of a cell.
 """
-function FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
-    sz = size(grid)
-    data = zeros(T, sz)
-    FaceFieldZ(data, grid)
+function FaceFieldZ(grid::Grid, T=Float64, dim=3)
+    data = zeros(T, size(grid))
+    FaceFieldZ{Array{T,dim}}(data, grid)
 end
 
 size(f::Field) = size(f.grid)
@@ -107,9 +103,9 @@ iterate(f::Field, state=1) = iterate(f.data, state)
 # iterate(f::Field, state=1) = state > length(f) ? nothing : (f.data[state], state+1)
 
 similar(f::CellField) = CellField(f.grid)
-similar(f::FaceFieldX{T,G}) where {T,G} = FaceFieldX(f.grid)
-similar(f::FaceFieldY{T,G}) where {T,G} = FaceFieldY(f.grid)
-similar(f::FaceFieldZ{T,G}) where {T,G} = FaceFieldZ(f.grid)
+similar(f::FaceFieldX{T}) where {T} = FaceFieldX(f.grid)
+similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.grid)
+similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.grid)
 
 # TODO: This will not work if T=Float32 and v::Irrational.
 set!(u::Field, v) = @. u.data = v
