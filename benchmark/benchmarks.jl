@@ -37,14 +37,14 @@ function prettymemory(b)
 end
 
 function pretty_print_summary(b, func_name)
-    print("|",
+    print("│",
           lpad(func_name, 14), " │",
           lpad(prettymemory(b.memory), 11), " │",
           lpad(b.allocs, 9), " │",
-          lpad(prettytime(minimum(b.times)), 10), " │",
-          lpad(prettytime(median(b.times)), 10), " │",
-          lpad(prettytime(mean(b.times)), 10), " │",
-          lpad(prettytime(maximum(b.times)), 10), " │",
+          lpad(prettytime(minimum(b.times)), 11), " │",
+          lpad(prettytime(median(b.times)), 11), " │",
+          lpad(prettytime(mean(b.times)), 11), " │",
+          lpad(prettytime(maximum(b.times)), 11), " │",
           lpad(b.params.samples, 8), " │",
           lpad(b.params.evals, 6), " │"
           )
@@ -76,10 +76,10 @@ function run_benchmarks()
     # print("+---------------+------------+----------+-----------+-----------+-----------+-----------+---------+-------+\n")
     # print("| function name |   memory   |  allocs  | min. time | med. time | mean time | max. time | samples | evals |\n")
 
-    print("┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐\n")
-    print("│ ", rpad(" BENCHMARKING OCEANANIGANS: T=$T (Nx, Ny, Nz) = $N", 103), " │\n")
-    print("├───────────────┬────────────┬──────────┬───────────┬───────────┬───────────┬───────────┬─────────┬───────┤\n")
-    print("│ function name │   memory   │  allocs  │ min. time │ med. time │ mean time │ max. time │ samples │ evals │\n")
+    print("┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐\n")
+    print("│ ", rpad(" BENCHMARKING OCEANANIGANS: T=$T (Nx, Ny, Nz) = $N", 107),                                   " │\n")
+    print("├───────────────┬────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬─────────┬───────┤\n")
+    print("│ function name │   memory   │  allocs  │  min. time │  med. time │  mean time │  max. time │ samples │ evals │\n")
 
     b = @benchmark δx!($g, $ũ.u, $t̃.fC1); pretty_print_summary(b, "δx! f⟶c");
     b = @benchmark δx!($g, $t̃.fC1, $ũ.u); pretty_print_summary(b, "δx! c⟶f");
@@ -87,6 +87,6 @@ function run_benchmarks()
     b = @benchmark rand(55, 55, 55)
     pretty_print_summary(b, "rand(55^3)")
 
+    print("└───────────────┴────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴─────────┴───────┘\n")
     # print("+---------------------------------------------------------------------------------------------------------+\n")
-    print("└─────────────────────────────────────────────────────────────────────────────────────────────────────────┘\n")
 end
