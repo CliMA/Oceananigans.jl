@@ -119,13 +119,13 @@ function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
     end
 end
 
-function avgy!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
     end
 end
 
-function avgy!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
+function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
     end
@@ -143,7 +143,7 @@ function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
         favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
     end
-    @. δf.data[:, :, end] = 0
+    @. favgz.data[:, :, end] = 0
     nothing
 end
 

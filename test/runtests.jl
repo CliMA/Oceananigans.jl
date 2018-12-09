@@ -53,8 +53,8 @@ end
 @testset "Operators" begin
     include("test_operators.jl")
 
-    N = (10, 20, 30)
-    L = (100, 100, 100)
+    N = (20, 20, 20)
+    L = (1000, 1000, 1000)
 
     g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
     g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
@@ -64,6 +64,19 @@ end
         ffX = FaceFieldX(g)
         ffY = FaceFieldY(g)
         ffZ = FaceFieldZ(g)
+
+        @test test_δxc2f(g)
+        @test test_δxf2c(g)
+        @test test_δyc2f(g)
+        @test test_δyf2c(g)
+        @test test_δzc2f(g)
+        @test test_δzf2c(g)
+        @test test_avgxc2f(g)
+        @test test_avgxf2c(g)
+        @test test_avgyc2f(g)
+        @test test_avgyf2c(g)
+        @test test_avgzc2f(g)
+        @test test_avgzf2c(g)
 
         for f in (fC, ffX, ffY, ffZ)
             # Fields should be initialized to zero.
