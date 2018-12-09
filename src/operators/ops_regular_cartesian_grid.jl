@@ -173,7 +173,7 @@ function div!(g::RegularCartesianGrid,
     δy!(g, fy, tmp.fFY)  # tmp.fFY now stores δy(fy)
     δz!(g, fz, tmp.fFZ)  # tmp.fFZ now stores δz(fz)
 
-    @. div.data = (1/g.V) * ( g.Ax * tmp.fFZ.data + g.Ay * tmp.fFY.data + g.Az * tmp.fFZ.data )
+    @. div.data = (1/g.V) * ( g.Ax * tmp.fFX.data + g.Ay * tmp.fFY.data + g.Az * tmp.fFZ.data )
     nothing
 end
 
