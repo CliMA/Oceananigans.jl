@@ -127,6 +127,17 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ)
     for op in (:+, :-, :*)
         # TODO: @eval does things in global scope, is this the desired behavior?
         @eval begin
+            # +, -, * a Field by a Number on the left.
+            function $op(num::Number, f::$ft)
+                ff = similar(f)
+                @. ff.data = $op(num, f.data)
+                ff
+            end
+
+            # +, -, * a Field by a Number on the right.
+            $op(f::$ft, num::Number) = $op(num, f)
+
+            # Multiplying two fields together
             function $op(f1::$ft, f2::$ft)
                 f3 = similar(f1)
                 @. f3.data = $op(f1.data, f2.data)
