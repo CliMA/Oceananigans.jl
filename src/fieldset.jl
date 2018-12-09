@@ -50,10 +50,10 @@ function VelocityFields(g, T=Float64)
 end
 
 function TracerFields(g, T=Float64)
-    T = CellField(g ,T)
+    θ = CellField(g ,T)
     S = CellField(g ,T)
     ρ = CellField(g ,T)
-    TracerField(T, S, ρ)
+    TracerFields(θ, S, ρ)
 end
 
 function PressureFields(g, T=Float64)
