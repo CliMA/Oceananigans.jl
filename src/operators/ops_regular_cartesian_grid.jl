@@ -159,11 +159,7 @@ function div!(g::RegularCartesianGrid,
     δy!(g, fy, δfy)
     δz!(g, fz, δfz)
 
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        div[i, j, k] = (1/g.V) * ( g.Ax * δfx[i, j, k]
-                                 + g.Ay * δfy[i, j, k]
-                                 + g.Az * δfz[i, j, k])
-    end
+    @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
 end
 
 function div!(g::RegularCartesianGrid,
@@ -175,10 +171,26 @@ function div!(g::RegularCartesianGrid,
     δy!(g, fy, δfy)
     δz!(g, fz, δfz)
 
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        div[i, j, k] = (1/g.V) * ( g.Ax * δfx[i, j, k]
-                                 + g.Ay * δfy[i, j, k]
-                                 + g.Az * δfz[i, j, k])
-    end
+    @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
 end
+
+
+function div_flux!(g::RegularCartesianGrid, Q::CellField,
+                   u::FaceFieldX, v::FaceFieldY, w::FaceFieldY,
+                   Qavgx::CellField, Qavgy::CellField, Qavgz::CellField,
+                   flx::FaceFieldX, fly::FaceFieldY, flz::FaceFieldZ,
+                   div_flux::CellField)
+    avgx!(g, Q, Qavgx)
+    avgy!(g, Q, Qavgy)
+    avgz!(g, Q, Qavgz)
+
+    flx = Aˣ * u * avgˣc2f(Q)
+    fly = Aʸ * v * avgʸc2f(Q)
+    flz = Aᶻ * w * avgᶻc2f(Q)
+
+    # Imposing zero vertical flux through the top and bottom layers.
+    @. flux_z[:, :, 1] = 0
+    # @. flux_z[:, :, end] = 0
+
+    (1/Vᵘ) .* (δˣf2c(flux_x) .+ δʸf2c(flux_y) .+ δᶻf2c(flux_z))
 end
