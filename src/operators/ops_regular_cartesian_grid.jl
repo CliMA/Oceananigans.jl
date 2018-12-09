@@ -157,11 +157,13 @@ function div!(g::RegularCartesianGrid,
               fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, div::CellField,
               tmp::TemporaryFields)
 
-    δx!(g, fx, tmp.fC1)  # tmp.fC1 now stores δx(fx)
-    δy!(g, fy, tmp.fC2)  # tmp.fC2 now stores δy(fy)
-    δz!(g, fz, tmp.fC3)  # tmp.fC3 now stores δz(fz)
+    δxfx, δyfy, δzfz = tmp.fC1, tmp.fC2, tmp.fC3
 
-    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1.data + g.Ay * tmp.fC2.data + g.Az * tmp.fC3.data )
+    δx!(g, fx, δxfx)
+    δy!(g, fy, δyfy)
+    δz!(g, fz, δzfz)
+
+    @. div.data = (1/g.V) * (g.Ax * δxfx.data + g.Ay * δyfy.data + g.Az * δzfz.data)
     nothing
 end
 
@@ -169,11 +171,13 @@ function div!(g::RegularCartesianGrid,
               fx::CellField, fy::CellField, fz::CellField, div::FaceField,
               tmp::TemporaryFields)
 
-    δx!(g, fx, tmp.fFX)  # tmp.fFZ now stores δx(fx)
-    δy!(g, fy, tmp.fFY)  # tmp.fFY now stores δy(fy)
-    δz!(g, fz, tmp.fFZ)  # tmp.fFZ now stores δz(fz)
+    δxfx, δyfy, δzfz = tmp.fFX, tmp.fFY, tmp.fFZ
 
-    @. div.data = (1/g.V) * ( g.Ax * tmp.fFX.data + g.Ay * tmp.fFY.data + g.Az * tmp.fFZ.data )
+    δx!(g, fx, δxfx)
+    δy!(g, fy, δyfy)
+    δz!(g, fz, δzfz)
+
+    @. div.data = (1/g.V) * (g.Ax * δxfx.data + g.Ay * δyfy.data + g.Az * δzfz.data)
     nothing
 end
 
@@ -204,20 +208,30 @@ end
 function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
               tmp::TemporaryFields)
 
-    avgx!(g, ũ.u, tmp.fC1)                   # tmp.fC1 now stores u̅ˣ
-    @. tmp.fC1.data = g.Ax * tmp.fC1.data^2  # tmp.fC1 now stores (Ax*u)ˣ * u̅ˣ
+    u̅ˣ = tmp.fC1
+    avgx!(g, ũ.u, u̅ˣ)
 
-    avgy!(g, ũ.u, tmp.fC2)  # tmp.fC2 now stores u̅ʸ
-    avgx!(g, ũ.v, tmp.fC3)  # tmp.fC3 now stores v̅ˣ
-    @. tmp.fC2.data = g.Ay * tmp.fC2.data * tmp.fC3.data  # tmp.fC2 now stores (Ay*u)ˣ * v̅ˣ
+    uu = tmp.fC1
+    @. uu.data = g.Ax * u̅ˣ.data^2
 
-    avgz!(g, ũ.u, tmp.fC3)  # tmp.fC3 now stores u̅ᶻ
-    avgx!(g, ũ.w, tmp.fC4)  # tmp.fC4 now stores w̅ˣ
-    @. tmp.fC3.data = g.Az * tmp.fC3.data * tmp.fC4.data  # tmp.fC3 now stores (Az*u)ᶻ * w̅ˣ
+    u̅ʸ, v̅ˣ = tmp.fC2, tmp.fC3
+    avgy!(g, ũ.u, u̅ʸ)
+    avgx!(g, ũ.v, v̅ˣ)
 
-    δx!(g, tmp.fC1, tmp.fFX)
-    δy!(g, tmp.fC2, tmp.fFY)
-    δz!(g, tmp.fC3, tmp.fFZ)
+    uv = tmp.fC2
+    @. uv.data = g.Ay * u̅ʸ.data * v̅ˣ.data
 
-    @. u∇u.data = (1/g.V) * (tmp.fFX.data + tmp.fFY.data + tmp.fFZ.data)
+    u̅ᶻ, w̅ˣ = tmp.fC3, tmp.fC4
+    avgz!(g, ũ.u, u̅ᶻ)
+    avgx!(g, ũ.w, w̅ˣ)
+
+    uw = tmp.fC3
+    @. uw.data = g.Az * u̅ᶻ.data * w̅ˣ.data
+
+    ∂uu∂x, ∂uv∂y, ∂uw∂z = tmp.fFX, tmp.fFY, tmp.fFZ
+    δx!(g, uu, ∂uu∂x)
+    δy!(g, uv, ∂uv∂y)
+    δz!(g, uw, ∂uw∂z)
+
+    @. u∇u.data = (1/g.V) * (∂uu∂x.data + ∂uv∂y.data + ∂uw∂z.data)
 end
