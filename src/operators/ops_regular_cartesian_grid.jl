@@ -17,8 +17,9 @@ with periodic boundary condition in the \$x\$-direction.
 """
 function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf[i, j, k] =  f[i, j, k] - f[decmod1(i, g.Nx), j, k]
+        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
     end
+    nothing
 end
 
 """
@@ -31,8 +32,9 @@ with periodic boundary conditions in the \$x\$-direction.
 """
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf[i, j, k] =  f[incmod1(i, g.Nx), j, k] - f[i, j, k]
+        @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
     end
+    nothing
 end
 
 """
@@ -45,8 +47,9 @@ with periodic boundary condition in the \$y\$-direction.
 """
 function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf[i, j, k] =  f[i, j, k] - f[i, decmod1(j, g.Ny), k]
+        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
     end
+    nothing
 end
 
 """
@@ -59,8 +62,9 @@ with periodic boundary condition in the \$y\$-direction.
 """
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf[i, j, k] =  f[i, incmod1(j, g.Ny), k] - f[i, j, k]
+        @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
     end
+    nothing
 end
 
 """
@@ -73,9 +77,10 @@ with Neumann boundary condition in the \$z\$-direction.
 """
 function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf[i, j, k] = f[i, j, k-1] - f[i, j, k]
+        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
     end
-    @. δzf[:, :, 1] = 0
+    @. δzf.data[:, :, 1] = 0
+    nothing
 end
 
 """
@@ -88,9 +93,10 @@ with Neumann boundary condition in the \$z\$-direction.
 """
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf[i, j, k] =  f[i, j, k] - f[i, j, k+1]
+        @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
     end
-    @. δzf[:, :, end] = f[:, :, end]
+    @. δzf.data[:, :, end] = f.data[:, :, end]
+    nothing
 end
 
 """
