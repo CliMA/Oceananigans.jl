@@ -181,20 +181,23 @@ end
 
 function div_flux!(g::RegularCartesianGrid, Q::CellField,
                    u::FaceFieldX, v::FaceFieldY, w::FaceFieldY,
-                   Qavgx::CellField, Qavgy::CellField, Qavgz::CellField,
-                   flx::FaceFieldX, fly::FaceFieldY, flz::FaceFieldZ,
+                   Qavgx::FaceFieldX, Qavgy::FaceFieldY, Qavgz::FaceFieldZ,
+                   δxflx::CellField, δyfly::CellField, δzflz::CellField,
                    div_flux::CellField)
     avgx!(g, Q, Qavgx)
     avgy!(g, Q, Qavgy)
     avgz!(g, Q, Qavgz)
 
-    flx = Aˣ * u * avgˣc2f(Q)
-    fly = Aʸ * v * avgʸc2f(Q)
-    flz = Aᶻ * w * avgᶻc2f(Q)
+    @. flx.data = Ax * u.data * Qavgx.data
+    @. fly.data = Ay * v.data * Qavgy.data
+    @. flz.data = Az * w.data * Qavgz.data
 
-    # Imposing zero vertical flux through the top and bottom layers.
-    @. flux_z[:, :, 1] = 0
-    # @. flux_z[:, :, end] = 0
+    # Imposing zero vertical flux through the top layer.
+    @. flz.data[:, :, 1] = 0
 
-    (1/Vᵘ) .* (δˣf2c(flux_x) .+ δʸf2c(flux_y) .+ δᶻf2c(flux_z))
+    δx!(g, flx, δxflx)
+    δy!(g, fly, δyfly)
+    δz!(g, flz, δzflz)
+
+    @. div_flux.data = (1/g.V) * (δxflx.data + δyfly.data + δzflz.data)
 end
