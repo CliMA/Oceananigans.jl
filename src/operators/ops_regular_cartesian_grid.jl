@@ -109,40 +109,42 @@ Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 """
 function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx[i, j, k] =  (f[i, j, k] + f[decmod1(i, g.Nx), j, k]) / 2
+        @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
     end
 end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx[i, j, k] =  (f[incmod1(i, g.Nx), j, k] + f[i, j, k]) / 2
+        @inbounds favgx.data[i, j, k] =  (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]) / 2
     end
 end
 
 function avgy!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy[i, j, k] =  (f[i, j, k] + f[i, decmod1(j, g.Ny), k]) / 2
+        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
     end
 end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy[i, j, k] =  (f[i, incmod1(j, g.Ny), k] + f[i, j, k]) / 2
+        @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
     end
 end
 
 function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        favgz[i, j, k] =  (f[i, j, k] + f[i, j, k-1]) / 2
+        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
     end
-    @. favgz[:, :, 1] = 0
+    @. favgz.data[:, :, 1] = 0
+    nothing
 end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        favgz[i, j, k] =  (f[i, j, incmod1(k, g.Nz)] + f[i, j, k]) / 2
+        favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
     end
-    @. δf[:, :, end] = 0
+    @. δf.data[:, :, end] = 0
+    nothing
 end
 
 """
@@ -160,6 +162,7 @@ function div!(g::RegularCartesianGrid,
     δz!(g, fz, δfz)
 
     @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
+    nothing
 end
 
 function div!(g::RegularCartesianGrid,
@@ -172,6 +175,7 @@ function div!(g::RegularCartesianGrid,
     δz!(g, fz, δfz)
 
     @. div.data = (1/g.V) * ( g.Ax * δfx.data + g.Ay * δfy.data + g.Az * δfz.data )
+    nothing
 end
 
 
