@@ -51,6 +51,7 @@ abstract type TimeStepper end
 include("planetary_constants.jl")
 include("grid.jl")
 include("field.jl")
+include("fieldset.jl")
 
 include("operators/operators.jl")
 

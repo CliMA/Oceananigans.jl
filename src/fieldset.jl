@@ -36,9 +36,9 @@ struct TemporaryFields <: FieldSet
     fC1::CellField
     fC2::CellField
     fC3::CellField
-    ffX::FaceFieldX
-    ffY::FaceFieldY
-    ffZ::FaceFieldZ
+    fFX::FaceFieldX
+    fFY::FaceFieldY
+    fFZ::FaceFieldZ
 end
 
 function VelocityFields(g, T=Float64)

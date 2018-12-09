@@ -161,7 +161,7 @@ function div!(g::RegularCartesianGrid,
     δy!(g, fy, tmp.fC2)  # tmp.fC2 now stores δy(fy)
     δz!(g, fz, tmp.fC3)  # tmp.fC3 now stores δz(fz)
 
-    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1 + g.Ay * tmp.fC2 + g.Az * tmp.fC3 )
+    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1.data + g.Ay * tmp.fC2.data + g.Az * tmp.fC3.data )
     nothing
 end
 
@@ -169,11 +169,11 @@ function div!(g::RegularCartesianGrid,
               fx::CellField, fy::CellField, fz::CellField, div::FaceField,
               tmp::TemporaryFields)
 
-    δx!(g, fx, tmp.fC1)  # tmp.fC1 now stores δx(fx)
-    δy!(g, fy, tmp.fC2)  # tmp.fC2 now stores δy(fy)
-    δz!(g, fz, tmp.fC3)  # tmp.fC3 now stores δz(fz)
+    δx!(g, fx, tmp.fFX)  # tmp.fFZ now stores δx(fx)
+    δy!(g, fy, tmp.fFY)  # tmp.fFY now stores δy(fy)
+    δz!(g, fz, tmp.fFZ)  # tmp.fFZ now stores δz(fz)
 
-    @. div.data = (1/g.V) * ( g.Ax * tmp.fC1 + g.Ay * tmp.fC2 + g.Az * tmp.fC3 )
+    @. div.data = (1/g.V) * ( g.Ax * tmp.fFZ.data + g.Ay * tmp.fFY.data + g.Az * tmp.fFZ.data )
     nothing
 end
 

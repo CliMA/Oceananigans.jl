@@ -162,10 +162,7 @@ function test_divf2c(g::Grid)
     fx = FaceFieldX(g)
     fy = FaceFieldY(g)
     fz = FaceFieldZ(g)
-
-    δxfx = CellField(g)
-    δyfy = CellField(g)
-    δzfz = CellField(g)
+    tmp = TemporaryFields(g)
 
     fx.data .= rand(T, size(g))
     fy.data .= rand(T, size(g))
@@ -178,8 +175,7 @@ function test_divf2c(g::Grid)
     div1 = div_f2c(fx.data, fy.data, fz.data)
 
     div2 = CellField(g)
-
-    div!(g, fx, fy, fz, δxfx, δyfy, δzfz, div2)
+    div!(g, fx, fy, fz, div2, tmp)
 
     div1 ≈ div2.data
 end
@@ -190,10 +186,7 @@ function test_divc2f(g::Grid)
     fx = CellField(g)
     fy = CellField(g)
     fz = CellField(g)
-
-    δxfx = FaceFieldX(g)
-    δyfy = FaceFieldY(g)
-    δzfz = FaceFieldZ(g)
+    tmp = TemporaryFields(g)
 
     fx.data .= rand(T, size(g))
     fy.data .= rand(T, size(g))
@@ -206,8 +199,7 @@ function test_divc2f(g::Grid)
     div1 = div_c2f(fx.data, fy.data, fz.data)
 
     div2 = FaceFieldX(g)
-
-    div!(g, fx, fy, fz, δxfx, δyfy, δzfz, div2)
+    div!(g, fx, fy, fz, div2, tmp)
 
     div1 ≈ div2.data
 end
@@ -215,32 +207,23 @@ end
 function test_div_flux(g::Grid)
     T = typeof(g.V)
 
-    u = FaceFieldX(g)
-    v = FaceFieldY(g)
-    w = FaceFieldZ(g)
+    U = VelocityFields(g)
     θ = CellField(g)
+    tmp = TemporaryFields(g)
 
-    u.data .= rand(T, size(g))
-    v.data .= rand(T, size(g))
-    w.data .= rand(T, size(g))
+    U.u.data .= rand(T, size(g))
+    U.v.data .= rand(T, size(g))
+    U.w.data .= rand(T, size(g))
     θ.data .= rand(T, size(g))
-
-    Tavgx = FaceFieldX(g)
-    Tavgy = FaceFieldY(g)
-    Tavgz = FaceFieldZ(g)
-
-    δxflx = CellField(g)
-    δyfly = CellField(g)
-    δzflz = CellField(g)
 
     global V = g.V
     global Aˣ = g.Ax
     global Aʸ = g.Ay
     global Aᶻ = g.Az
-    div_flux1 = div_flux_f2c(u.data, v.data, w.data, θ.data)
+    div_flux1 = div_flux_f2c(U.u.data, U.v.data, U.w.data, θ.data)
 
     div_flux2 = CellField(g)
-    div_flux!(g, θ, u, v, w, Tavgx, Tavgy, Tavgz, δxflx, δyfly, δzflz, div_flux2)
+    div_flux!(g, U.u, U.v, U.w, θ, div_flux2, tmp)
 
     div_flux1 ≈ div_flux2.data
 end
