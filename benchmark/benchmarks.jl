@@ -81,6 +81,7 @@ function run_benchmarks()
     print("│ ", rpad(" BENCHMARKING OCEANANIGANS: T=$T (Nx, Ny, Nz) = $N", 107),                                   " │\n")
     print("├───────────────┬────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬─────────┬───────┤\n")
     print("│ function name │   memory   │  allocs  │  min. time │  med. time │  mean time │  max. time │ samples │ evals │\n")
+    print("├───────────────┼────────────┼──────────┼────────────┼────────────┼────────────┼────────────┼─────────┼───────┤\n")
 
     b = @benchmark δx!($g, $U.u, $tt.fC1); pretty_print_summary(b, "δx! (f2c)");
     b = @benchmark δx!($g, $tt.fC1, $U.u); pretty_print_summary(b, "δx! (c2f)");
@@ -100,7 +101,9 @@ function run_benchmarks()
     b = @benchmark div!($g, $tt.fC1, $tt.fC2, $tt.fC3, $tt.fFX, $tt); pretty_print_summary(b, "div! (c2f)");
     b = @benchmark div_flux!($g, $U.u, $U.v, $U.w, $tr.T, $tt.fC1, $tt); pretty_print_summary(b, "div_flux!");
 
-    b = @benchmark u∇u!($g, $U, $tmp.fFX, $tmp); pretty_print_summary(b, "u∇u!");
+    b = @benchmark u∇u!($g, $U, $tt.fFX, $tt); pretty_print_summary(b, "u∇u!");
+    b = @benchmark u∇v!($g, $U, $tt.fFY, $tt); pretty_print_summary(b, "u∇v!");
+    b = @benchmark u∇w!($g, $U, $tt.fFZ, $tt); pretty_print_summary(b, "u∇w!");
 
     print("└───────────────┴────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴─────────┴───────┘\n")
     # print("+---------------------------------------------------------------------------------------------------------+\n")
