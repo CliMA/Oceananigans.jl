@@ -181,27 +181,32 @@ function div!(g::RegularCartesianGrid,
     nothing
 end
 
-
 function div_flux!(g::RegularCartesianGrid,
                    u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
                    div_flux::CellField, tmp::TemporaryFields)
 
-    avgx!(g, Q, tmp.fFX)  # tmp.fFX now stores Q̅ˣ
-    avgy!(g, Q, tmp.fFY)  # tmp.fFY now stores Q̅ʸ
-    avgz!(g, Q, tmp.fFZ)  # tmp.fFZ now stores Q̅ᶻ
+    Q̅ˣ, Q̅ʸ, Q̅ᶻ = tmp.fFX, tmp.fFY, tmp.fFZ
 
-    @. tmp.fFX.data = g.Ax * u.data * tmp.fFX.data  # tmp.fFX now stores flux_x.
-    @. tmp.fFY.data = g.Ay * v.data * tmp.fFY.data  # tmp.fFY now stores flux_y.
-    @. tmp.fFZ.data = g.Az * w.data * tmp.fFZ.data  # tmp.FFZ now stores flux_z.
+    avgx!(g, Q, Q̅ˣ)
+    avgy!(g, Q, Q̅ʸ)
+    avgz!(g, Q, Q̅ᶻ)
+
+    flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    @. flux_x.data = g.Ax * u.data * Q̅ˣ.data
+    @. flux_y.data = g.Ay * v.data * Q̅ʸ.data
+    @. flux_z.data = g.Az * w.data * Q̅ᶻ.data
 
     # Imposing zero vertical flux through the top layer.
-    @. tmp.fFZ.data[:, :, 1] = 0
+    @. flux_z.data[:, :, 1] = 0
 
-    δx!(g, tmp.fFX, tmp.fC1)  # tmp.fC1 now stores δx(flux_x)
-    δy!(g, tmp.fFY, tmp.fC2)  # tmp.fC2 now stores δy(flux_y)
-    δz!(g, tmp.fFZ, tmp.fC3)  # tmp.fC3 now stores δz(flux_z)
+    δxflux_x, δyflux_y, δzflux_z = tmp.fC1, tmp.fC2, tmp.fC3
 
-    @. div_flux.data = (1/g.V) * (tmp.fC1.data + tmp.fC2.data + tmp.fC3.data)
+    δx!(g, flux_x, δxflux_x)
+    δy!(g, flux_y, δyflux_y)
+    δz!(g, flux_z, δzflux_z)
+
+    @. div_flux.data = (1/g.V) * (δxflux_x.data + δyflux_y.data + δzflux_z.data)
     nothing
 end
 
