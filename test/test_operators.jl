@@ -293,3 +293,30 @@ function test_u_dot_grad_w(g::Grid)
 
     u∇w1 ≈ u∇w2.data
 end
+
+function test_κ∇²(g::Grid)
+    T = typeof(g.V)
+
+    tr = TracerFields(g)
+    tmp = TemporaryFields(g)
+
+    κh, κv = 4e-2, 4e-2
+
+    tr.T.data .= rand(T, size(g))
+
+    global V = g.V
+    global Aˣ = g.Ax
+    global Aʸ = g.Ay
+    global Aᶻ = g.Az
+    global Δx = g.Δx
+    global Δy = g.Δy
+    global Δz = g.Δz
+    global κʰ = κh
+    global κᵛ = κv
+    κ∇²T1 = κ∇²(tr.T)
+
+    κ∇²T2 = CellField(g)
+    κ∇²!(g, tr.T, κ∇²T2, κh, κv, tmp)
+
+    κ∇²T1 ≈ κ∇²T2.data
+end

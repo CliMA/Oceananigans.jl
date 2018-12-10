@@ -308,3 +308,21 @@ function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
     @. u∇w.data = (1/g.V) * (∂wu∂x.data + ∂wv∂y.data + ∂ww∂z.data)
     nothing
 end
+
+function κ∇²!(g::RegularCartesianGrid, Q::CellField, κ∇²Q::CellField, κh, κv,
+             tmp::TemporaryFields)
+    δxQ, δyQ, δzQ = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    δx!(g, Q, δxQ)
+    δy!(g, Q, δyQ)
+    δz!(g, Q, δzQ)
+
+    κ∇Q_x, κ∇Q_y, κ∇Q_z = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    @. κ∇Q_x.data = κh * δxQ.data / g.Δx
+    @. κ∇Q_y.data = κh * δyQ.data / g.Δy
+    @. κ∇Q_z.data = κv * δzQ.data / g.Δz
+
+    div!(g, κ∇Q_x, κ∇Q_y, κ∇Q_z, κ∇²Q, tmp)
+    nothing
+end
