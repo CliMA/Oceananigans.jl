@@ -10,7 +10,8 @@ export
     div!,
     div_flux!,
     u∇u!,
-    u∇v!
+    u∇v!,
+    u∇w!
 
 include("ops_regular_cartesian_grid.jl")
 

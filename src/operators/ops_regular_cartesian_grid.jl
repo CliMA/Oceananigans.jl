@@ -273,3 +273,38 @@ function u∇v!(g::RegularCartesianGrid, ũ::VelocityFields, u∇v::FaceFieldY,
     @. u∇v.data = (1/g.V) * (∂vu∂x.data + ∂vv∂y.data + ∂vw∂z.data)
     nothing
 end
+
+function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
+              tmp::TemporaryFields)
+
+    w̅ᶻ = tmp.fC1
+    avgz!(g, ũ.w, w̅ᶻ)
+
+    ww = tmp.fC1
+    @. ww.data = g.Ay * w̅ᶻ.data^2
+
+    @. ww.data[:, :, 1]   .= 0
+    @. ww.data[:, :, end] .= 0
+
+    w̅ˣ, u̅ᶻ = tmp.fC2, tmp.fC3
+    avgx!(g, ũ.w, w̅ˣ)
+    avgz!(g, ũ.u, u̅ᶻ)
+
+    wu = tmp.fC2
+    @. wu.data = g.Ax * w̅ˣ.data * u̅ᶻ.data
+
+    w̅ʸ, v̅ᶻ = tmp.fC3, tmp.fC4
+    avgy!(g, ũ.w, w̅ʸ)
+    avgz!(g, ũ.v, v̅ᶻ)
+
+    wv = tmp.fC3
+    @. wv.data = g.Az * w̅ʸ.data * v̅ᶻ.data
+
+    ∂wu∂x, ∂wv∂y, ∂ww∂z = tmp.fFX, tmp.fFY, tmp.fFZ
+    δx!(g, wu, ∂wu∂x)
+    δy!(g, wv, ∂wv∂y)
+    δz!(g, ww, ∂ww∂z)
+
+    @. u∇w.data = (1/g.V) * (∂wu∂x.data + ∂wv∂y.data + ∂ww∂z.data)
+    nothing
+end
