@@ -326,3 +326,75 @@ function κ∇²!(g::RegularCartesianGrid, Q::CellField, κ∇²Q::CellField, κ
     div!(g, κ∇Q_x, κ∇Q_y, κ∇Q_z, κ∇²Q, tmp)
     nothing
 end
+
+function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceFieldX, 𝜈h, 𝜈v,
+                tmp::TemporaryFields)
+
+    δxu, δyu, δzu = tmp.fC1, tmp.fC2, tmp.fC3
+
+    δx!(g, u, δxu)
+    δy!(g, u, δyu)
+    δz!(g, u, δzu)
+
+    𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z = tmp.fC1, tmp.fC2, tmp.fC3
+
+    @. 𝜈∇u_x.data = 𝜈h * δxu.data / g.Δx
+    @. 𝜈∇u_y.data = 𝜈h * δyu.data / g.Δy
+    @. 𝜈∇u_z.data = 𝜈v * δzu.data / g.Δz
+
+    # div!(g, 𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z, 𝜈∇²u, tmp)
+
+    # Calculating (δˣc2f(Aˣ * 𝜈∇u_x) + δʸf2c(Aʸ * 𝜈∇u_y) + δᶻf2c(Aᶻ * 𝜈∇u_z)) / V
+    𝜈∇²u_x, 𝜈∇²u_y, 𝜈∇²u_z = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds 𝜈∇²u.data[i, j, k] =  𝜈∇u_x.data[i, j, k] - 𝜈∇u_x.data[decmod1(i, g.Nx), j, k]
+    end
+
+    δy!(g, 𝜈∇u_y, 𝜈∇²u_y)
+    δz!(g, 𝜈∇u_z, 𝜈∇²u_z)
+
+    @. 𝜈∇²u.data = 𝜈∇²u_x.data / g.Δx + 𝜈∇²u_y.data / g.Δy + 𝜈∇²u_z.data / g.Δz
+    nothing
+end
+
+function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceFieldY, 𝜈h, 𝜈v,
+                tmp::TemporaryFields)
+
+    δxv, δyv, δzv = tmp.fC1, tmp.fC2, tmp.fC3
+
+    δx!(g, v, δxv)
+    δy!(g, v, δyv)
+    δz!(g, v, δzv)
+
+    𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z = tmp.fC1, tmp.fC2, tmp.fC3
+
+    @. 𝜈∇v_x.data = 𝜈h * δxv.data / g.Δx
+    @. 𝜈∇v_y.data = 𝜈h * δyv.data / g.Δy
+    @. 𝜈∇v_z.data = 𝜈v * δzv.data / g.Δz
+
+    div!(g, 𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z, 𝜈h∇²v, tmp)
+    nothing
+end
+
+function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈h∇²w::FaceFieldZ, 𝜈h, 𝜈v,
+                tmp::TemporaryFields)
+
+    δxw, δyw, δzw = tmp.fC1, tmp.fC2, tmp.fC3
+
+    δx!(g, w, δxw)
+    δy!(g, w, δyw)
+    δz!(g, w, δzw)
+
+    𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z = tmp.fC1, tmp.fC2, tmp.fC3
+
+    @. 𝜈∇w_x.data = 𝜈h * δxw.data / g.Δx
+    @. 𝜈∇w_y.data = 𝜈h * δyw.data / g.Δy
+    @. 𝜈∇w_z.data = 𝜈v * δzw.data / g.Δz
+
+    # Imposing free slip viscous boundary conditions at the bottom layer.
+    @. 𝜈∇w_z.data[:, :,  1] = 0
+
+    div!(g, 𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z, 𝜈h∇²w, tmp)
+    nothing
+end

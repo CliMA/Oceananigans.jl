@@ -296,3 +296,68 @@ function test_κ∇²(g::Grid)
 
     κ∇²T1 ≈ κ∇²T2.data
 end
+
+function test_𝜈∇²u(g::Grid)
+    T = typeof(g.V)
+
+    U = VelocityFields(g)
+    tmp = TemporaryFields(g)
+
+    𝜈h, 𝜈v = 4e-2, 4e-2
+
+    U.u.data .= rand(T, size(g))
+
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
+    global Δx = g.Δx; global Δy = g.Δy; global Δz = g.Δz
+    global 𝜈ʰ = 𝜈h; global 𝜈ᵛ = 𝜈v;
+    𝜈∇²u1 = 𝜈ʰ∇²u(U.u.data)
+
+    𝜈∇²u2 = FaceFieldX(g)
+    𝜈∇²u!(g, U.u, 𝜈∇²u2, 𝜈h, 𝜈v, tmp)
+
+    print(𝜈∇²u1[:, :, 1] .- 𝜈∇²u2.data[:, :, 1])
+
+    𝜈∇²u1 ≈ 𝜈∇²u2.data
+end
+
+function test_𝜈∇²v(g::Grid)
+    T = typeof(g.V)
+
+    U = VelocityFields(g)
+    tmp = TemporaryFields(g)
+
+    𝜈h, 𝜈v = 4e-2, 4e-2
+
+    U.v.data .= rand(T, size(g))
+
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
+    global Δx = g.Δx; global Δy = g.Δy; global Δz = g.Δz
+    global 𝜈ʰ = 𝜈h; global 𝜈ᵛ = 𝜈v;
+    𝜈∇²v1 = 𝜈ʰ∇²v(U.v.data)
+
+    𝜈∇²v2 = FaceFieldY(g)
+    𝜈∇²v!(g, U.v, 𝜈∇²v2, 𝜈h, 𝜈v, tmp)
+
+    𝜈∇²v1 ≈ 𝜈∇²v2.data
+end
+
+function test_𝜈∇²w(g::Grid)
+    T = typeof(g.V)
+
+    U = VelocityFields(g)
+    tmp = TemporaryFields(g)
+
+    𝜈h, 𝜈v = 4e-2, 4e-2
+
+    U.w.data .= rand(T, size(g))
+
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
+    global Δx = g.Δx; global Δy = g.Δy; global Δz = g.Δz
+    global 𝜈ʰ = 𝜈h; global 𝜈ᵛ = 𝜈v;
+    𝜈∇²w1 = 𝜈ᵛ∇²w(U.w.data)
+
+    𝜈∇²w2 = FaceFieldZ(g)
+    𝜈∇²w!(g, U.w, 𝜈∇²w2, 𝜈h, 𝜈v, tmp)
+
+    𝜈∇²w1 ≈ 𝜈∇²w2.data
+end
