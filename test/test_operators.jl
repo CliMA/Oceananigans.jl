@@ -168,10 +168,7 @@ function test_divf2c(g::Grid)
     fy.data .= rand(T, size(g))
     fz.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     div1 = div_f2c(fx.data, fy.data, fz.data)
 
     div2 = CellField(g)
@@ -192,10 +189,7 @@ function test_divc2f(g::Grid)
     fy.data .= rand(T, size(g))
     fz.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     div1 = div_c2f(fx.data, fy.data, fz.data)
 
     div2 = FaceFieldX(g)
@@ -216,10 +210,7 @@ function test_div_flux(g::Grid)
     U.w.data .= rand(T, size(g))
     θ.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     div_flux1 = div_flux_f2c(U.u.data, U.v.data, U.w.data, θ.data)
 
     div_flux2 = CellField(g)
@@ -238,10 +229,7 @@ function test_u_dot_grad_u(g::Grid)
     U.v.data .= rand(T, size(g))
     U.w.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     u∇u1 = ũ∇u(U.u.data, U.v.data, U.w.data)
 
     u∇u2 = FaceFieldX(g)
@@ -260,10 +248,7 @@ function test_u_dot_grad_v(g::Grid)
     U.v.data .= rand(T, size(g))
     U.w.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     u∇v1 = ũ∇v(U.u.data, U.v.data, U.w.data)
 
     u∇v2 = FaceFieldY(g)
@@ -282,10 +267,7 @@ function test_u_dot_grad_w(g::Grid)
     U.v.data .= rand(T, size(g))
     U.w.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
     u∇w1 = ũ∇w(U.u.data, U.v.data, U.w.data)
 
     u∇w2 = FaceFieldZ(g)
@@ -304,16 +286,10 @@ function test_κ∇²(g::Grid)
 
     tr.T.data .= rand(T, size(g))
 
-    global V = g.V
-    global Aˣ = g.Ax
-    global Aʸ = g.Ay
-    global Aᶻ = g.Az
-    global Δx = g.Δx
-    global Δy = g.Δy
-    global Δz = g.Δz
-    global κʰ = κh
-    global κᵛ = κv
-    κ∇²T1 = κ∇²(tr.T)
+    global V = g.V; global Aˣ = g.Ax; global Aʸ = g.Ay; global Aᶻ = g.Az
+    global Δx = g.Δx; global Δy = g.Δy; global Δz = g.Δz
+    global κʰ = κh; global κᵛ = κv;
+    κ∇²T1 = κ∇²(tr.T.data)
 
     κ∇²T2 = CellField(g)
     κ∇²!(g, tr.T, κ∇²T2, κh, κv, tmp)
