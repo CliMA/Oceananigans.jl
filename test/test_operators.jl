@@ -249,3 +249,25 @@ function test_u_dot_grad_u(g::Grid)
 
     u∇u1 ≈ u∇u2.data
 end
+
+function test_u_dot_grad_v(g::Grid)
+    T = typeof(g.V)
+
+    U = VelocityFields(g)
+    tmp = TemporaryFields(g)
+
+    U.u.data .= rand(T, size(g))
+    U.v.data .= rand(T, size(g))
+    U.w.data .= rand(T, size(g))
+
+    global V = g.V
+    global Aˣ = g.Ax
+    global Aʸ = g.Ay
+    global Aᶻ = g.Az
+    u∇v1 = ũ∇v(U.u.data, U.v.data, U.w.data)
+
+    u∇v2 = FaceFieldY(g)
+    u∇v!(g, U, u∇v2, tmp)
+
+    u∇v1 ≈ u∇v2.data
+end
