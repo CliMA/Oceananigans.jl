@@ -109,7 +109,7 @@ function run_benchmarks()
     b = @benchmark u∇v!($g, $U, $tt.fFY, $tt); pretty_print_summary(b, "u∇v!");
     b = @benchmark u∇w!($g, $U, $tt.fFZ, $tt); pretty_print_summary(b, "u∇w!");
 
-    b = @benchmark κ∇²!($g, $tr.T, $tt.fC1, $κh, κh, $tt); pretty_print_summary(b, "κ∇²!");
+    b = @benchmark κ∇²!($g, $tr.T, $tt.fC1, $κh, $κv, $tt); pretty_print_summary(b, "κ∇²!");
     b = @benchmark 𝜈∇²u!($g, $U.u, $tt.fFX, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²u!");
     b = @benchmark 𝜈∇²v!($g, $U.v, $tt.fFY, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²v!");
     b = @benchmark 𝜈∇²w!($g, $U.w, $tt.fFZ, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²w!");
