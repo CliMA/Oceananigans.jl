@@ -31,10 +31,6 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     xC
     yC
     zC
-    # Array of coordinates at the centers of the cells.
-    # xCA
-    # yCA
-    # zCA
     # Range of grid coordinates at the faces of the cells. Note that there are
     # Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z. However,
     # we only need to store (Nx, Ny, Nz) faces because if the grid is periodic
@@ -46,10 +42,6 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     xF
     yF
     zF
-    # Array of grid coordinates at the faces of the cells.
-    # xFA
-    # yFA
-    # zFA
 end
 
 """
@@ -64,11 +56,14 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(N, L, T=Float64)
-    dim = 3
+function RegularCartesianGrid(dim, N, L, T=Float64)
+    @assert dim == 2 || dim == 3 "Only 2D or 3D grids are supported right now."
+    @assert length(N) == 3 && length(L) == 3  "N, L must have all three dimensions."
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
+
+    dim == 2 && @assert Nx == 1 || Ny == 1 "For 2D grid, Nx or Ny must be 1."
 
     Δx = Lx / Nx
     Δy = Ly / Ny
