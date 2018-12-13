@@ -165,7 +165,7 @@ pⁿʰ⁺ˢ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 g′ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 δρ = Array{NumType, 3}(undef, Nˣ, Nʸ, Nᶻ)
 
-ΔR = 20
+ΔR = 5
 Ru = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
 # Rv = Array{NumType, 4}(undef, Nᵗ, Nˣ, Nʸ, Nᶻ)
 Rw = Array{NumType, 4}(undef, Int(Nᵗ/ΔR), Nˣ, Nʸ, Nᶻ)
@@ -233,15 +233,15 @@ function time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿ
     #         )
     # end
 
-    Gᵘⁿ = -ũ∇u(uⁿ, vⁿ, wⁿ) .+ f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²u(uⁿ) .+ Fᵘ
-    Gᵛⁿ = -ũ∇v(uⁿ, vⁿ, wⁿ) .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²v(vⁿ) .+ Fᵛ
-    # Gᵘⁿ =    f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²u(uⁿ) .+ Fᵘ
-    # Gᵛⁿ = .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²v(vⁿ) .+ Fᵛ
+    # Gᵘⁿ = -ũ∇u(uⁿ, vⁿ, wⁿ) .+ f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²u(uⁿ) .+ Fᵘ
+    # Gᵛⁿ = -ũ∇v(uⁿ, vⁿ, wⁿ) .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²v(vⁿ) .+ Fᵛ
+    Gᵘⁿ =    f .* avgʸc2f(avgˣf2c(vⁿ)) .- (1/Δx) .* δˣc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²u(uⁿ) .+ Fᵘ
+    Gᵛⁿ = .- f .* avgˣc2f(avgʸf2c(uⁿ)) .- (1/Δy) .* δʸc2f(pʰʸ′ ./ ρ₀) .+ 𝜈ʰ∇²v(vⁿ) .+ Fᵛ
 
     # Note that I call Gʷⁿ is actually Ĝ_w from Eq. (43b) of Marshall
     # et al. (1997) so it includes the reduced gravity buoyancy term.
-    Gʷⁿ = -ũ∇w(uⁿ, vⁿ, wⁿ) .+ 𝜈ᵛ∇²w(wⁿ) .+ Fʷ
-    # Gʷⁿ = 𝜈ᵛ∇²w(wⁿ) .+ Fʷ
+    # Gʷⁿ = -ũ∇w(uⁿ, vⁿ, wⁿ) .+ 𝜈ᵛ∇²w(wⁿ) .+ Fʷ
+    Gʷⁿ = 𝜈ᵛ∇²w(wⁿ) .+ Fʷ
 
     # Gwn_u_dot_w = ũ∇w(uⁿ, vⁿ, wⁿ)
     # Gwn_lap_diff = 𝜈ᵛ∇²w(wⁿ)
