@@ -3,6 +3,9 @@ module Oceananigans
 export
     ConstantsCollection,
 
+    PlanetaryConstants,
+    EarthConstants,
+
     Grid,
     RegularCartesianGrid,
 
@@ -17,15 +20,15 @@ export
     FieldSet,
     VelocityFields,
     TracerFields,
+    PressureFields,
     SourceTerms,
     ForcingFields,
     TemporaryFields,
 
+    LinearEquationOfState,
+    ρ!,
+
     TimeStepper,
-
-    PlanetaryConstants,
-    EarthConstants,
-
 
     laplacian3d_ppn,
 
@@ -56,7 +59,7 @@ include("fieldset.jl")
 
 include("operators/operators.jl")
 
-include("equation_of_state_future.jl")
+include("equation_of_state.jl")
 include("time_steppers.jl")
 include("spectral_solvers.jl")
 
