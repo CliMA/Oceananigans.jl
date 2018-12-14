@@ -40,3 +40,10 @@ function ρ!(s::LinearEquationOfState, g::Grid, tr::TracerFields)
     end
     nothing
 end
+
+function δρ!(s::LinearEquationOfState, g::Grid, δρ::CellField, tr::TracerFields)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds δρ.data[i, j, k] =  s.ρ₀ * s.βT * (tr.T.data[i, j, k] - s.T₀)
+    end
+    nothing
+end

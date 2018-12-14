@@ -27,6 +27,7 @@ export
 
     LinearEquationOfState,
     ρ!,
+    δρ!,
 
     TimeStepper,
 

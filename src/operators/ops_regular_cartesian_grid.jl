@@ -334,7 +334,7 @@ function κ∇²!(g::RegularCartesianGrid, Q::CellField, κ∇²Q::CellField, κ
     nothing
 end
 
-function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceFieldX, 𝜈h, 𝜈v,
+function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceField, 𝜈h, 𝜈v,
                 tmp::TemporaryFields)
 
     δxu, δyu, δzu = tmp.fC1, tmp.fC2, tmp.fC3
@@ -368,7 +368,7 @@ function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceFie
     nothing
 end
 
-function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceFieldY, 𝜈h, 𝜈v,
+function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceField, 𝜈h, 𝜈v,
                 tmp::TemporaryFields)
 
     δxv, δyv, δzv = tmp.fC1, tmp.fC2, tmp.fC3
@@ -390,7 +390,7 @@ function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceFi
     nothing
 end
 
-function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈h∇²w::FaceFieldZ, 𝜈h, 𝜈v,
+function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈h∇²w::FaceField, 𝜈h, 𝜈v,
                 tmp::TemporaryFields)
 
     δxw, δyw, δzw = tmp.fC1, tmp.fC2, tmp.fC3
