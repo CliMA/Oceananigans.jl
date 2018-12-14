@@ -129,5 +129,10 @@ end
 
     for N in [5, 10, 20, 50, 100]
         @test test_3d_poisson_solver_ppn_div_free(N, N, N)
+        @test test_3d_poisson_solver_ppn_div_free(1, N, N)
+        @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
+    end
+    for Nx in [5, 10, 20, 50, 100], Ny in [5, 10, 20, 50, 100]
+        @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, 20)
     end
 end
