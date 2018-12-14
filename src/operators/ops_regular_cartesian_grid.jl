@@ -96,7 +96,12 @@ function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
     end
-    @. δzf.data[:, :, end] = f.data[:, :, end]
+    for j in 1:g.Ny, i in 1:g.Nx
+        @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
+    end
+    # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
+    # Nx, Ny, Nz = 100, 100, 100.
+    # @. δzf.data[:, :, end] = f.data[:, :, end]
     nothing
 end
 
