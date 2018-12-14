@@ -69,8 +69,8 @@ function SourceTerms(g)
     Gu = FaceFieldX(g)
     Gv = FaceFieldY(g)
     Gw = FaceFieldZ(g)
-    GT = CellField(T)
-    GS = CellField(S)
+    GT = CellField(g)
+    GS = CellField(g)
     SourceTerms(Gu, Gv, Gw, GT, GS)
 end
 
@@ -78,8 +78,8 @@ function ForcingFields(g)
     Fu = FaceFieldX(g)
     Fv = FaceFieldY(g)
     Fw = FaceFieldZ(g)
-    FT = CellField(T)
-    FS = CellField(S)
+    FT = CellField(g)
+    FS = CellField(g)
     ForcingFields(Fu, Fv, Fw, FT, FS)
 end
 
