@@ -56,14 +56,15 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(dim, N, L, T=Float64)
+function RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
     @assert dim == 2 || dim == 3 "Only 2D or 3D grids are supported right now."
-    @assert length(N) == 3 && length(L) == 3  "N, L must have all three dimensions."
+    @assert length(N) == 3 && length(L) == 3  "N, L must have all three dimensions to specify which dimensions are used."
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
 
-    dim == 2 && @assert Nx == 1 || Ny == 1 "For 2D grid, Nx or Ny must be 1."
+    dim == 2 && @assert Nx == 1 || Ny == 1 "For 2D grids, Nx, Ny, or Nz must be 1."
+    dim == 3 && @assert Nx != 1 && Ny != 1 && Nz != 1 "For 3D grid, cannot have dimensions of size 1."
 
     Δx = Lx / Nx
     Δy = Ly / Ny
@@ -83,14 +84,17 @@ function RegularCartesianGrid(dim, N, L, T=Float64)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{T}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+    RegularCartesianGrid{FloatType}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                             Az, V, xC, yC, zC, xF, yF, zF)
 end
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
-size(g::RegularCartesianGrid, dim::Integer) = getfield(g, Symbol(:N, dim2xyz[dim]))
+
+# eltypes{Tx,Ty}(::Type{Point{Tx, Ty}}) = (Tx, Ty)
+# eltypes(p) = eltypes(typeof(p))
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "(Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
+    print(io, "$(g.d)-dimensional ($(typeof(g.Lx))) regular Cartesian grid\n",
+              "(Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "(Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
               "(Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))

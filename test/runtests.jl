@@ -5,13 +5,8 @@ using Oceananigans.Operators
 
 @testset "Grid" begin
     include("test_grid.jl")
+
     @test test_grid_size()
-
-    d, n = 0.1, 4
-    @test test_Δx(d, n)
-    @test test_Δy(d, n)
-    @test test_Δz(d, n)
-
     @test test_cell_volume()
     @test test_faces_start_at_zero()
 end
@@ -22,8 +17,8 @@ end
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
 
-    g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
-    g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
+    g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
+    g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
 
     int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
     uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
@@ -56,8 +51,8 @@ end
     N = (20, 20, 20)
     L = (1000, 1000, 1000)
 
-    g32 = RegularCartesianGrid(N, L, Float32)  # Float32 RegularCartesianGrid
-    g64 = RegularCartesianGrid(N, L, Float64)  # Float64 RegularCartesianGrid
+    g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
+    g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
 
     for g in [g32, g64]
         fC = CellField(g)
@@ -90,7 +85,7 @@ end
         @test test_κ∇²(g)
         # @test test_𝜈∇²u(g)
         # @test test_𝜈∇²v(g)
-        @test test_𝜈∇²w(g)
+        # @test test_𝜈∇²w(g)
 
         for f in (fC, ffX, ffY, ffZ)
             # Fields should be initialized to zero.
