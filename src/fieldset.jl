@@ -40,54 +40,58 @@ struct TemporaryFields <: FieldSet
     fFX::FaceFieldX
     fFY::FaceFieldY
     fFZ::FaceFieldZ
+    fCC1::CellField
+    fCC2::CellField
 end
 
-function VelocityFields(g, T=Float64)
-    u = FaceFieldX(g, T)
-    v = FaceFieldY(g, T)
-    w = FaceFieldZ(g, T)
+function VelocityFields(g)
+    u = FaceFieldX(g)
+    v = FaceFieldY(g)
+    w = FaceFieldZ(g)
     VelocityFields(u, v, w)
 end
 
-function TracerFields(g, T=Float64)
-    θ = CellField(g ,T)
-    S = CellField(g ,T)
-    ρ = CellField(g ,T)
+function TracerFields(g)
+    θ = CellField(g)
+    S = CellField(g)
+    ρ = CellField(g)
     TracerFields(θ, S, ρ)
 end
 
-function PressureFields(g, T=Float64)
-    pHY = CellField(g ,T)
-    pHY′ = CellField(g ,T)
-    pNHS = CellField(g ,T)
+function PressureFields(g)
+    pHY = CellField(g)
+    pHY′ = CellField(g)
+    pNHS = CellField(g)
     PressureFields(pHY, pHY′, pNHS)
 end
 
-function SourceTerms(g, T=Float64)
-    Gu = FaceFieldX(g, T)
-    Gv = FaceFieldY(g, T)
-    Gw = FaceFieldZ(g, T)
+function SourceTerms(g)
+    Gu = FaceFieldX(g)
+    Gv = FaceFieldY(g)
+    Gw = FaceFieldZ(g)
     GT = CellField(T)
     GS = CellField(S)
     SourceTerms(Gu, Gv, Gw, GT, GS)
 end
 
-function ForcingFields(g, T=Float64)
-    Fu = FaceFieldX(g, T)
-    Fv = FaceFieldY(g, T)
-    Fw = FaceFieldZ(g, T)
+function ForcingFields(g)
+    Fu = FaceFieldX(g)
+    Fv = FaceFieldY(g)
+    Fw = FaceFieldZ(g)
     FT = CellField(T)
     FS = CellField(S)
     ForcingFields(Fu, Fv, Fw, FT, FS)
 end
 
-function TemporaryFields(g, T=Float64)
-    fC1 = CellField(g, T)
-    fC2 = CellField(g, T)
-    fC3 = CellField(g, T)
-    fC4 = CellField(g, T)
-    fFX = FaceFieldX(g, T)
-    fFY = FaceFieldY(g, T)
-    fFZ = FaceFieldZ(g, T)
-    TemporaryFields(fC1, fC2, fC3, fC4, fFX, fFY, fFZ)
+function TemporaryFields(g)
+    fC1 = CellField(g)
+    fC2 = CellField(g)
+    fC3 = CellField(g)
+    fC4 = CellField(g)
+    fFX = FaceFieldX(g)
+    fFY = FaceFieldY(g)
+    fFZ = FaceFieldZ(g)
+    fCC1 = CellField(g, Complex{eltype(g)})
+    fCC2 = CellField(g, Complex{eltype(g)})
+    TemporaryFields(fC1, fC2, fC3, fC4, fFX, fFY, fFZ, fCC1, fCC2)
 end

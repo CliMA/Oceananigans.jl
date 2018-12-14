@@ -52,9 +52,14 @@ end
 
 Construct a `CellField` whose values are defined at the center of a cell.
 """
-function CellField(grid::Grid, T=Float64, dim=3)
+function CellField(grid::Grid)
+    data = zeros(eltype(grid), size(grid))
+    CellField{Array{eltype(grid),3}}(data, grid)
+end
+
+function CellField(grid::Grid, T)
     data = zeros(T, size(grid))
-    CellField{Array{T,dim}}(data, grid)
+    CellField{Array{T,3}}(data, grid)
 end
 
 """
@@ -62,9 +67,9 @@ end
 
 A `Field` whose values are defined on the x-face of a cell.
 """
-function FaceFieldX(grid::Grid, T=Float64, dim=3)
-    data = zeros(T, size(grid))
-    FaceFieldX{Array{T,dim}}(data, grid)
+function FaceFieldX(grid::Grid)
+    data = zeros(eltype(grid), size(grid))
+    FaceFieldX{Array{eltype(grid),3}}(data, grid)
 end
 
 """
@@ -72,9 +77,9 @@ end
 
 A `Field` whose values are defined on the y-face of a cell.
 """
-function FaceFieldY(grid::Grid, T=Float64, dim=3)
-    data = zeros(T, size(grid))
-    FaceFieldY{Array{T,dim}}(data, grid)
+function FaceFieldY(grid::Grid)
+    data = zeros(eltype(grid), size(grid))
+    FaceFieldY{Array{eltype(grid),3}}(data, grid)
 end
 
 """
@@ -82,9 +87,9 @@ end
 
 A `Field` whose values are defined on the z-face of a cell.
 """
-function FaceFieldZ(grid::Grid, T=Float64, dim=3)
-    data = zeros(T, size(grid))
-    FaceFieldZ{Array{T,dim}}(data, grid)
+function FaceFieldZ(grid::Grid)
+    data = zeros(eltype(grid), size(grid))
+    FaceFieldZ{Array{eltype(grid),3}}(data, grid)
 end
 
 @inline size(f::Field) = size(f.grid)
