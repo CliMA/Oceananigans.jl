@@ -35,7 +35,8 @@ export
     solve_poisson_2d_mbc,
     solve_poisson_3d_pbc,
     solve_poisson_3d_mbc,
-    solve_poisson_3d_ppn
+    solve_poisson_3d_ppn,
+    solve_poisson_3d_ppn!
 
 using
     FFTW
