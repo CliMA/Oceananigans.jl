@@ -23,7 +23,7 @@ function SavedFields(g, Nt, ΔR)
     SavedFields(u, w, T, ρ)
 end
 
-function ∫dz(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFieldZ, pHY′::CellField)
+function ∫dz!(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFieldZ, pHY′::CellField)
     gΔz = c.g * g.Δz
     for j in 1:g.Ny, i in 1:g.Nx
       pHY′.data[i, j, 1] = δρ.data[i, j, 1] * gΔz / 2
@@ -47,7 +47,7 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         avgz!(g, δρ, δρz)
 
         # Calculate hydrostatic pressure anomaly (buoyancy).
-        ∫dz(g, c, δρ, δρz, pr.pHY′)
+        ∫dz!(g, c, δρ, δρz, pr.pHY′)
 
         # Store source terms from previous time step.
         Gp.Gu.data .= G.Gu.data
@@ -57,46 +57,52 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         Gp.GS.data .= G.GS.data
 
         # Calculate source terms for current time step.
-        ∂xpHY′ = tmp.fFX
+        ∂xpHY′ = tmp.fFX2
         δx!(g, pr.pHY′, ∂xpHY′)
         @. ∂xpHY′.data = ∂xpHY′.data / (g.Δx * eos.ρ₀)
 
-        𝜈∇²u = tmp.fFY
+        @. G.Gu.data = - ∂xpHY′.data
+
+        𝜈∇²u = tmp.fFX2
         𝜈∇²u!(g, U.u, 𝜈∇²u, 4e-2, 4e-2, tmp)
 
-        @. G.Gu.data .= - ∂xpHY′.data + 𝜈∇²u.data
+        @. G.Gu.data = G.Gu.data + 𝜈∇²u.data
 
-        ∂ypHY′ = tmp.fFY
+        ∂ypHY′ = tmp.fFY2
         δy!(g, pr.pHY′, ∂ypHY′)
         @. ∂ypHY′.data = ∂ypHY′.data / (g.Δy * eos.ρ₀)
 
-        𝜈∇²v = tmp.fFX
+        @. G.Gv.data = - ∂ypHY′.data
+
+        𝜈∇²v = tmp.fFY2
         𝜈∇²v!(g, U.v, 𝜈∇²v, 4e-2, 4e-2, tmp)
 
-        @. G.Gv.data .= - ∂ypHY′.data + 𝜈∇²v.data
+        @. G.Gv.data = G.Gv.data + 𝜈∇²v.data
 
-        𝜈∇²w = tmp.fFZ
+        𝜈∇²w = tmp.fFZ2
         𝜈∇²w!(g, U.w, 𝜈∇²w, 4e-2, 4e-2, tmp)
 
         @. G.Gw.data = 𝜈∇²w.data
 
-        # ∇uT = tmp.fC1
-        # div_flux!(g, U.u, U.v, U.w, tr.T, ∇uT, tmp)
+        ∇uT = tmp.fC4
+        div_flux!(g, U.u, U.v, U.w, tr.T, ∇uT, tmp)
+
+        @. G.GT.data = -∇uT.data
 
         κ∇²T = tmp.fC4
         κ∇²!(g, tr.T, κ∇²T, 4e-2, 4e-2, tmp)
 
-        @. G.GT.data = κ∇²T.data
-        # @. G.GT.data = -∇uT.data + κ∇²T.data
+        @. G.GT.data = G.GT.data + κ∇²T.data
 
-        # ∇uS = tmp.fC1
-        # div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, tmp)
+        ∇uS = tmp.fC4
+        div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, tmp)
+        @. G.GS.data = -∇uS.data
 
         κ∇²S = tmp.fC4
         κ∇²!(g, tr.S, κ∇²S, 4e-2, 4e-2, tmp)
 
-        @. G.GS.data = κ∇²S.data
-        # @. G.GS.data = -∇uS.data + κ∇²S.data
+        # @. G.GS.data = κ∇²S.data
+        @. G.GS.data = G.GS.data + κ∇²S.data
 
         χ = 0.1  # Adams-Bashforth (AB2) parameter.
         @. G.Gu.data = (1.5 + χ)*G.Gu.data - (0.5 + χ)*Gp.Gu.data
