@@ -33,6 +33,7 @@ export
 
     laplacian3d_ppn,
 
+    SpectralSolverParameters,
     solve_poisson_1d_pbc,
     solve_poisson_1d_nbc,
     solve_poisson_2d_pbc,
@@ -40,7 +41,8 @@ export
     solve_poisson_3d_pbc,
     solve_poisson_3d_mbc,
     solve_poisson_3d_ppn,
-    solve_poisson_3d_ppn!
+    solve_poisson_3d_ppn!,
+    solve_poisson_3d_ppn_planned!
 
 using
     FFTW

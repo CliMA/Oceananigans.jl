@@ -1,5 +1,10 @@
-import PyPlot
-using Interact, Plots
+# using Pkg
+# Pkg.activate(".")
+
+using FFTW
+
+# import PyPlot
+# using Interact, Plots
 
 using Oceananigans, Oceananigans.Operators
 
@@ -28,7 +33,7 @@ function ∫dz(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceField
     end
 end
 
-function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState,
+function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState, ssp::SpectralSolverParameters,
                         U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields, tmp::TemporaryFields,
                         Nt, Δt, R, ΔR)
     for n in 1:Nt
@@ -103,7 +108,8 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         RHS = tmp.fCC1
         ϕ   = tmp.fCC2
         div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
-        solve_poisson_3d_ppn!(g, RHS, ϕ)
+        # @time solve_poisson_3d_ppn!(g, RHS, ϕ)
+        solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
         @. pr.pNHS.data = real(ϕ.data)
 
 #         div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
@@ -137,8 +143,8 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         div_u1 = tmp.fC1
         div!(g, U.u, U.v, U.w, div_u1, tmp)
 
+        print("\rt = $(n*Δt) / $(Nt*Δt)")
         if n % ΔR == 0
-            print("\rt=$(n*Δt) / $(Nt*Δt)")
 #             @info begin
 #             string("Time: $(n*Δt)\n",
 #                    @sprintf("u:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(U.u.data), maximum(U.u.data), mean(U.u.data), mean(abs.(U.u.data)), std(U.u.data)),
@@ -155,12 +161,12 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
 #             end  # @info
 
             Ridx = Int(n/ΔR)
-            R.u[Ridx, :, :, :] = copy(U.u.data)
+            R.u[Ridx, :, :, :] .= U.u.data
             # Rv[n, :, :, :] = copy(vⁿ)
-            R.w[Ridx, :, :, :] = copy(U.w.data)
-            R.T[Ridx, :, :, :] = copy(tr.T.data)
+            R.w[Ridx, :, :, :] .= U.w.data
+            R.T[Ridx, :, :, :] .= tr.T.data
             # RS[n, :, :, :] = copy(Sⁿ)
-            R.ρ[Ridx, :, :, :] = copy(tr.ρ.data)
+            R.ρ[Ridx, :, :, :] .= tr.ρ.data
             # RpHY′[n, :, :, :] = copy(pʰʸ′)
             # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
         end
@@ -184,6 +190,9 @@ function main()
     F  = ForcingFields(g)
     tmp = TemporaryFields(g)
 
+    tmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
+    ssp = SpectralSolverParameters(g, tmp.fCC1, FFTW.PATIENT)
+
     U.u.data  .= 0
     U.v.data  .= 0
     U.w.data  .= 0
@@ -202,17 +211,17 @@ function main()
     ΔR = 10
     R  = SavedFields(g, Nt, ΔR)
 
-    @time time_stepping!(g, c, eos, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
+    @time time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
 
-    @info "Creating tracer movie..."
-
-    Plots.gr()
-
-    anim = @animate for tidx in 1:Int(Nt/ΔR)
-        Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
-                      clims=(-0.01, 0.01),
-                      # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
-                      title="T change @ t=$(tidx*ΔR*Δt)")
-    end
-    mp4(anim, "tracer_$(round(Int, time())).mp4", fps = 60)
+    # @info "Creating tracer movie..."
+    #
+    # Plots.gr()
+    #
+    # anim = @animate for tidx in 1:Int(Nt/ΔR)
+    #     Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
+    #                   clims=(-0.01, 0.01),
+    #                   # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
+    #                   title="T change @ t=$(tidx*ΔR*Δt)")
+    # end
+    # mp4(anim, "tracer_$(round(Int, time())).mp4", fps = 60)
 end
