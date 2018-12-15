@@ -10,8 +10,6 @@ using Interact, Plots
 
 using Oceananigans, Oceananigans.Operators
 
-include("../src/operators/operators_old.jl")
-
 struct SavedFields
     u::Array{Float64,4}
     w::Array{Float64,4}
@@ -105,7 +103,6 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         κ∇²S = tmp.fC4
         κ∇²!(g, tr.S, κ∇²S, 4e-2, 4e-2, tmp)
 
-        # @. G.GS.data = κ∇²S.data
         @. G.GS.data = G.GS.data + κ∇²S.data
 
         χ = 0.1  # Adams-Bashforth (AB2) parameter.
@@ -198,7 +195,7 @@ function main()
     tmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
     ssp = SpectralSolverParameters(g, tmp.fCC1, FFTW.PATIENT)
 
-    U.u.data  .= 0
+    U.u.data  .= 0.01
     U.v.data  .= 0
     U.w.data  .= 0
     tr.S.data .= 35
@@ -223,12 +220,19 @@ function main()
 
     Plots.gr()
 
-    anim = @animate for tidx in 1:Int(Nt/ΔR)
+    animT = @animate for tidx in 1:Int(Nt/ΔR)
         print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
         Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
                       clims=(-0.01, 0.01),
                       # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
                       title="T change @ t=$(tidx*ΔR*Δt)")
     end
-    mp4(anim, "tracer_$(round(Int, time())).mp4", fps = 60)
+    mp4(animT, "tracer_T_$(round(Int, time())).mp4", fps = 30)
+    animρ = @animate for tidx in 1:Int(Nt/ΔR)
+        print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
+        Plots.heatmap(g.xC, g.zC, rotl90(R.ρ[tidx, :, 1, :]) .- eos.ρ₀, color=:balance,
+                      clims=(-maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀), maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀)),
+                      title="delta rho @ t=$(tidx*ΔR*Δt)")
+    end
+    mp4(animρ, "tracer_δρ_$(round(Int, time())).mp4", fps = 30)
 end
