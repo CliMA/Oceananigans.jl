@@ -197,31 +197,33 @@ function main()
     U.v.data  .= 0
     U.w.data  .= 0
     tr.S.data .= 35
-    tr.T.data .= 283
+    tr.T.data .= 282.99
 
     pHY_profile = [-eos.ρ₀*c.g*h for h in g.zC]
-    pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1);
+    pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
 
     ρ!(eos, g, tr)
 
-    tr.T.data[Int(g.Nx/2)-2:Int(g.Nx/2)+2, 1, 10-2:10+2] .= 283.01;
+    tr.T.data[Int(g.Nx/2)-5:Int(g.Nx/2)+5, 1, 15:25] .= 283.01;
 
-    Nt = 1000
-    Δt = 30
-    ΔR = 10
+    Nt = 5000
+    Δt = 10
+    ΔR = 25
     R  = SavedFields(g, Nt, ΔR)
 
-    @time time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
+    time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
+    print("\n")
 
-    # @info "Creating tracer movie..."
-    #
-    # Plots.gr()
-    #
-    # anim = @animate for tidx in 1:Int(Nt/ΔR)
-    #     Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
-    #                   clims=(-0.01, 0.01),
-    #                   # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
-    #                   title="T change @ t=$(tidx*ΔR*Δt)")
-    # end
-    # mp4(anim, "tracer_$(round(Int, time())).mp4", fps = 60)
+    print("Creating tracer movie... ($(Nt/ΔR) frames)\n")
+
+    Plots.gr()
+
+    anim = @animate for tidx in 1:Int(Nt/ΔR)
+        print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
+        Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
+                      clims=(-0.01, 0.01),
+                      # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
+                      title="T change @ t=$(tidx*ΔR*Δt)")
+    end
+    mp4(anim, "tracer_$(round(Int, time())).mp4", fps = 60)
 end
