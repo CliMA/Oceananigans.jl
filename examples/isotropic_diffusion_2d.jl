@@ -18,13 +18,23 @@ function SavedFields(g, Nt, ΔR)
     SavedFields(u, w, T, ρ)
 end
 
+function ∫dz(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFieldZ, pHY′::CellField)
+    gΔz = c.g * g.Δz
+    for j in 1:g.Ny, i in 1:g.Nx
+      pHY′.data[i, j, 1] = δρ.data[i, j, 1] * gΔz / 2
+    end
+    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+      pHY′.data[i, j, k] = pHY′.data[i, j, k-1] + (δρz.data[i, j, k] * gΔz)
+    end
+end
+
 function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState,
                         U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields, tmp::TemporaryFields,
                         Nt, Δt, R, ΔR)
     for n in 1:Nt
         # Calculate new density and density deviation.
         δρ = tmp.fC1
-        δρ!(eos, g, δρ, tr)
+        δρ!(eos, g, δρ, tr.T)
         @. tr.ρ.data = eos.ρ₀ + δρ.data
 
         # Calculate density at the z-faces.
@@ -32,12 +42,7 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         avgz!(g, δρ, δρz)
 
         # Calculate hydrostatic pressure anomaly (buoyancy).
-        for j in 1:g.Ny, i in 1:g.Nx
-          pr.pHY′.data[i, j, 1] = δρ.data[i, j, 1] * c.g * g.Δz / 2
-        end
-        for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-          pr.pHY′.data[i, j, k] = pr.pHY′.data[i, j, k-1] + (δρz.data[i, j, k] * c.g * g.Δz)
-        end
+        ∫dz(g, c, δρ, δρz, pr.pHY′)
 
         # Store source terms from previous time step.
         Gp.Gu.data .= G.Gu.data
