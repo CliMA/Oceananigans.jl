@@ -335,3 +335,18 @@ function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW
 
     SpectralSolverParameters{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
 end
+
+function solve_poisson_3d_ppn_planned!(ssp::SpectralSolverParameters, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
+    ssp.DCT!*f.data  # Calculate DCTᶻ(f) in place.
+    ssp.FFT!*f.data  # Calculate FFTˣʸ(f) in place.
+
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (ssp.kx²[i] + ssp.ky²[j] + ssp.kz²[k])
+    end
+    ϕ.data[1, 1, 1] = 0
+
+    ssp.IFFT!*ϕ.data  # Calculate IFFTˣʸ(ϕ) in place.
+    ssp.IDCT!*ϕ.data  # Calculate IDCTᶻ(ϕ) in place.
+    @. ϕ.data = ϕ.data / (2*g.Nz)
+    nothing
+end
