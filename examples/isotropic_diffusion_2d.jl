@@ -1,12 +1,16 @@
 # using Pkg
 # Pkg.activate(".")
 
+using Statistics, Printf
+
 using FFTW
 
-# import PyPlot
-# using Interact, Plots
+import PyPlot
+using Interact, Plots
 
 using Oceananigans, Oceananigans.Operators
+
+include("../src/operators/operators_old.jl")
 
 struct SavedFields
     u::Array{Float64,4}
@@ -136,35 +140,30 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         δy!(g, pr.pNHS, ∂ypNHS)
         δz!(g, pr.pNHS, ∂zpNHS)
 
-        @. ∂xpNHS.data = - ∂xpNHS.data / (g.Δx * eos.ρ₀)
-        @. ∂ypNHS.data = - ∂ypNHS.data / (g.Δy * eos.ρ₀)
-        @. ∂zpNHS.data = - ∂zpNHS.data / (g.Δz * eos.ρ₀)
+        @. ∂xpNHS.data = ∂xpNHS.data / (g.Δx)
+        @. ∂ypNHS.data = ∂ypNHS.data / (g.Δy)
+        @. ∂zpNHS.data = ∂zpNHS.data / (g.Δz)
 
         @. U.u.data  = U.u.data  + (G.Gu.data - ∂xpNHS.data) * Δt
         @. U.v.data  = U.v.data  + (G.Gv.data - ∂ypNHS.data) * Δt
-        @. U.v.data  = U.v.data  + (G.Gw.data - ∂zpNHS.data) * Δt
+        @. U.w.data  = U.w.data  + (G.Gw.data - ∂zpNHS.data) * Δt
         @. tr.T.data = tr.T.data + (G.GT.data * Δt)
         @. tr.S.data = tr.S.data + (G.GS.data * Δt)
 
         div_u1 = tmp.fC1
         div!(g, U.u, U.v, U.w, div_u1, tmp)
 
-        print("\rt = $(n*Δt) / $(Nt*Δt)")
+        print("\rt = $(n*Δt) / $(Nt*Δt)   ")
         if n % ΔR == 0
-#             @info begin
-#             string("Time: $(n*Δt)\n",
-#                    @sprintf("u:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(U.u.data), maximum(U.u.data), mean(U.u.data), mean(abs.(U.u.data)), std(U.u.data)),
-#                    @sprintf("v:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(U.v.data), maximum(U.v.data), mean(U.v.data), mean(abs.(U.v.data)), std(U.v.data)),
-#                    @sprintf("w:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(U.w.data), maximum(U.w.data), mean(U.w.data), mean(abs.(U.w.data)), std(U.w.data)),
-#                    @sprintf("T:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(tr.T.data), maximum(tr.T.data), mean(tr.T.data), mean(abs.(tr.T.data)), std(tr.T.data)),
-#                    @sprintf("S:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(tr.S.data), maximum(tr.S.data), mean(tr.S.data), mean(abs.(tr.S.data)), std(tr.S.data)),
-#                    @sprintf("pHY:  min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pr.pHY.data), maximum(pr.pHY.data), mean(pr.pHY.data), mean(abs.(pr.pHY.data)), std(pr.pHY.data)),
-#                    @sprintf("pHY′: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pr.pHY′.data), maximum(pr.pHY′.data), mean(pr.pHY′.data), mean(abs.(pr.pHY′.data)), std(pr.pHY′.data)),
-#                    @sprintf("pNHS: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(pr.pNHS.data), maximum(pr.pNHS.data), mean(pr.pNHS.data), mean(abs.(pr.pNHS.data)), std(pr.pNHS.data)),
-#                    @sprintf("ρ:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(tr.ρ.data), maximum(tr.ρ.data), mean(tr.ρ.data), mean(abs.(tr.ρ.data)), std(tr.ρ.data)),
-#                    @sprintf("∇⋅u1:  min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(div_u1), maximum(div_u1), mean(div_u1), mean(abs.(div_u1)), std(div_u1))
-#                   )
-#             end  # @info
+            # names = ["u", "v", "w", "T", "S", "Gu", "Gv", "Gw", "GT", "GS",
+            #          "pHY", "pHY′", "pNHS", "ρ", "∇·u"]
+            # print("t = $(n*Δt) / $(Nt*Δt)\n")
+            # for (i, Q) in enumerate([U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
+            #               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+            #               pr.pHY.data, pr.pHY′.data, pr.pNHS.data, tr.ρ.data, div_u1])
+            #     @printf("%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+            #             lpad(names[i], 4), minimum(Q), maximum(Q), mean(Q), mean(abs.(Q)), std(Q))
+            # end
 
             Ridx = Int(n/ΔR)
             R.u[Ridx, :, :, :] .= U.u.data
