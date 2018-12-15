@@ -38,8 +38,11 @@ struct TemporaryFields <: FieldSet
     fC3::CellField
     fC4::CellField
     fFX::FaceFieldX
+    fFX2::FaceFieldX
     fFY::FaceFieldY
+    fFY2::FaceFieldX
     fFZ::FaceFieldZ
+    fFZ2::FaceFieldX
     fCC1::CellField
     fCC2::CellField
 end
@@ -89,9 +92,12 @@ function TemporaryFields(g)
     fC3 = CellField(g)
     fC4 = CellField(g)
     fFX = FaceFieldX(g)
+    fFX2 = FaceFieldX(g)
     fFY = FaceFieldY(g)
+    fFY2 = FaceFieldX(g)
     fFZ = FaceFieldZ(g)
+    fFZ2 = FaceFieldX(g)
     fCC1 = CellField(g, Complex{eltype(g)})
     fCC2 = CellField(g, Complex{eltype(g)})
-    TemporaryFields(fC1, fC2, fC3, fC4, fFX, fFY, fFZ, fCC1, fCC2)
+    TemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCC1, fCC2)
 end
