@@ -298,3 +298,40 @@ function solve_poisson_3d_ppn!(g::RegularCartesianGrid, f::CellField, ϕ::CellFi
 
     nothing
 end
+
+struct SpectralSolverParameters{T<:AbstractArray}
+    kx²::T
+    ky²::T
+    kz²::T
+    FFT!
+    DCT!
+    IFFT!
+    IDCT!
+end
+
+
+let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
+                FFTW.MEASURE    => "FFTW.MEASURE",
+                FFTW.PATIENT    => "FFTW.PATIENT",
+                FFTW.EXHAUSTIVE => "FFTW.EXHAUSTIVE")
+    global plannerflag2string
+    plannerflag2string(k::Integer) = pf2s[Int(k)]
+end
+
+function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT)
+    kx² = zeros(eltype(g), g.Nx)
+    ky² = zeros(eltype(g), g.Ny)
+    kz² = zeros(eltype(g), g.Nz)
+
+    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
+    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
+    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+
+    print("Planning Fourier transforms... (planner_flag=$(plannerflag2string(planner_flag)))\n")
+    print("FFT!:  "); @time FFT!  = FFTW.plan_fft!(exfield.data, [1, 2]; flags=planner_flag)
+    print("IFFT!: "); @time IFFT! = FFTW.plan_ifft!(exfield.data, [1, 2]; flags=planner_flag)
+    print("DCT!:  "); @time DCT!  = FFTW.plan_r2r!(exfield.data, FFTW.REDFT10, 3; flags=planner_flag)
+    print("IDCT!: "); @time IDCT! = FFTW.plan_r2r!(exfield.data, FFTW.REDFT01, 3; flags=planner_flag)
+
+    SpectralSolverParameters{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
+end
