@@ -96,6 +96,8 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
 
         @. G.GT.data = G.GT.data + κ∇²T.data
 
+        @. G.GT.data[Int(g.Nx/10):Int(9g.Nx/10), 1, 1] += -1e-4 + 1e-5*rand()
+
         ∇uS = tmp.fC4
         div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, tmp)
         @. G.GS.data = -∇uS.data
@@ -198,28 +200,46 @@ function main()
     tmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
     ssp = SpectralSolverParameters(g, tmp.fCC1, FFTW.PATIENT)
 
-    U.u.data  .= 0.01
+    U.u.data  .= 0
     U.v.data  .= 0
     U.w.data  .= 0
     tr.S.data .= 35
-    tr.T.data .= 282.99
+    tr.T.data .= 283
 
     pHY_profile = [-eos.ρ₀*c.g*h for h in g.zC]
     pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
 
     ρ!(eos, g, tr)
 
-    tr.T.data[Int(g.Nx/2)-5:Int(g.Nx/2)+5, 1, 15:25] .= 283.01;
+    # i1, i2 = round(Int, g.Nx/2 - g.Nx/10), round(Int, g.Nx/2 + g.Nx/10)
+    # k1, k2 = round(Int, g.Nz/3 + g.Nz/10), round(Int, g.Nz/3 + g.Nz/5)
+    # tr.T.data[i1:i2, 1, k1:k2] .= 283.02;
 
-    Nt = 5000
+    # U.u.data[:, 1, :] .= 0.05
+    # hot_buble_perturbation = reshape(0.01 * exp.(-100 * ((g.xC .- g.Lx/2).^2 .+ (g.zC .+ g.Lz/2)'.^2) / (g.Lx^2 + g.Lz^2)), (g.Nx, g.Ny, g.Nz))
+    # @. tr.T.data = 282.99 + 2*hot_buble_perturbation
+
+    # U.u.data[:, 1, 1:Int(g.Nz/2)]   .=  0.1
+    # U.u.data[:, 1, Int(g.Nz/2):end] .= -0.1
+    #
+    # tr.T.data[:, 1, 1:Int(g.Nz/2)]   .= 282.9
+    # tr.T.data[:, 1, Int(g.Nz/2):end] .= 283.1
+    #
+    # for (i, x) in enumerate(g.xC)
+    #     tr.T.data[i, 1, Int(g.Nz/2)] += i % 2 == 0 ? +0.01 : -0.01
+    # end
+
+    # U.u.data[:, 1, 1:end-1] .= 0.01
+
+    Nt = 6000
     Δt = 10
-    ΔR = 25
+    ΔR = 10
     R  = SavedFields(g, Nt, ΔR)
 
     time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
     print("\n")
 
-    print("Creating tracer movie... ($(Nt/ΔR) frames)\n")
+    print("Creating tracer movie... ($(Int(Nt/ΔR)) frames)\n")
 
     Plots.gr()
 
