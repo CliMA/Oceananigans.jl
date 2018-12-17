@@ -119,17 +119,20 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
         @. pr.pNHS.data = real(ϕ.data)
 
-#         div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
-#         RHSr = real.(RHS.data)
-#         RHS_rec = laplacian3d_ppn(pr.pNHS.data) ./ (g.Δx)^2  # TODO: This assumes Δx == Δy == Δz.
-#         error = RHS_rec .- RHSr
-#         @info begin
-#             string("Fourier-spectral solver diagnostics:\n",
-#                     @sprintf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHSr), maximum(RHSr), mean(RHSr), mean(abs.(RHSr)), std(RHSr)),
-#                     @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec)),
-#                     @sprintf("error:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(error), maximum(error), mean(error), mean(abs.(error)), std(error))
-#                     )
-#         end
+        # div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
+        # RHSr = real.(RHS.data)
+        # RHS_rec = laplacian3d_ppn(pr.pNHS.data) ./ (g.Δx)^2  # TODO: This assumes Δx == Δy == Δz.
+        # error = RHS_rec .- RHSr
+        # @info begin
+        #     string("Fourier-spectral solver diagnostics:\n",
+        #             @sprintf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+        #                      minimum(RHSr), maximum(RHSr), mean(RHSr), mean(abs.(RHSr)), std(RHSr)),
+        #             @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+        #                      minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec)),
+        #             @sprintf("error:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+        #                      minimum(error), maximum(error), mean(error), mean(abs.(error)), std(error))
+        #             )
+        # end
 
         ∂xpNHS, ∂ypNHS, ∂zpNHS = tmp.fFX, tmp.fFY, tmp.fFZ
 
@@ -177,7 +180,7 @@ end
 
 function main()
     N = (100, 1, 100)
-    L = (2000, 2000, 2000)
+    L = (20000, 1, 20000)
 
     c = EarthConstants()
     eos = LinearEquationOfState()
@@ -220,19 +223,29 @@ function main()
 
     Plots.gr()
 
+    # animU = @animate for tidx in 1:Int(Nt/ΔR)
+    #     print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
+    #     Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.u[tidx, :, 1, :]), color=:balance,
+    #                   clims=(-0.01, 0.01),
+    #                   title="u-velocity @ t=$(tidx*ΔR*Δt)")
+    # end
+    # mp4(animU, "uvel_$(round(Int, time())).mp4", fps = 30)
+
     animT = @animate for tidx in 1:Int(Nt/ΔR)
         print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
-        Plots.heatmap(g.xC, g.zC, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
+        Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
                       clims=(-0.01, 0.01),
                       # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
                       title="T change @ t=$(tidx*ΔR*Δt)")
     end
     mp4(animT, "tracer_T_$(round(Int, time())).mp4", fps = 30)
-    animρ = @animate for tidx in 1:Int(Nt/ΔR)
-        print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
-        Plots.heatmap(g.xC, g.zC, rotl90(R.ρ[tidx, :, 1, :]) .- eos.ρ₀, color=:balance,
-                      clims=(-maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀), maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀)),
-                      title="delta rho @ t=$(tidx*ΔR*Δt)")
-    end
-    mp4(animρ, "tracer_δρ_$(round(Int, time())).mp4", fps = 30)
+
+    # animρ = @animate for tidx in 1:Int(Nt/ΔR)
+    #     print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
+    #     Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.ρ[tidx, :, 1, :]) .- eos.ρ₀, color=:balance,
+    #                   clims=(-0.001, 0.001),
+    #                   # clims=(-maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀), maximum(R.ρ[tidx, :, 1, :] .- eos.ρ₀)),
+    #                   title="delta rho @ t=$(tidx*ΔR*Δt)")
+    # end
+    # mp4(animρ, "tracer_δρ_$(round(Int, time())).mp4", fps = 30)
 end
