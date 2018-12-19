@@ -286,57 +286,63 @@ end
 # Laplacian diffusion for horizontal face quantities: ∇ · (ν∇u)
 function 𝜈ʰ∇²u(u)
   # 𝜈∇u_x = 𝜈ʰ .* δˣf2c(u) ./ Δx
-  # 𝜈∇u_y = 𝜈ʰ .* δʸc2f(u) ./ Δy
-  # 𝜈∇u_z = 𝜈ᵛ .* δᶻc2f(u) ./ Δz
+  # 𝜈∇u_y = 𝜈ʰ .* δʸf2c(u) ./ Δy
+  # 𝜈∇u_z = 𝜈ᵛ .* δᶻf2c(u) ./ Δz
 
   𝜈∇u_x = 𝜈ʰ .* δˣf2c(u) ./ Δx
-  𝜈∇u_y = 𝜈ʰ .* δʸf2c(u) ./ Δy
-  𝜈∇u_z = 𝜈ᵛ .* δᶻf2c(u) ./ Δz
+  𝜈∇u_y = 𝜈ʰ .* δʸc2f(u) ./ Δy
+  𝜈∇u_z = 𝜈ᵛ .* δᶻc2f(u) ./ Δz
 
-  @. 𝜈∇u_z[:, :,  1] = 0
-  @. 𝜈∇u_z[:, :, end] = 0
+  # @. 𝜈∇u_z[:, :,  1] = 0  # redundant because of δᶻc2f.
+  # @. 𝜈∇u_z[:, :, end] = 0
 
-  div_c2f(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
+  # div_c2f(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
 
-  # (δˣc2f(Aˣ .* 𝜈∇u_x) + δʸf2c(Aʸ .* 𝜈∇u_y) + δᶻf2c(Aᶻ .* 𝜈∇u_z)) / V
+  # The following line must change if we change the viscous BCs to no-slip as
+  # we don't know what is happening at the bottom face k = Nz+1.
+  (δˣc2f(Aˣ .* 𝜈∇u_x) + δʸf2c(Aʸ .* 𝜈∇u_y) + δᶻf2c(Aᶻ .* 𝜈∇u_z)) / V
 end
 
 function 𝜈ʰ∇²v(v)
-  # 𝜈∇v_x = 𝜈ʰ .* δˣc2f(v) ./ Δx
+  # 𝜈∇v_x = 𝜈ʰ .* δˣf2c(v) ./ Δx
   # 𝜈∇v_y = 𝜈ʰ .* δʸf2c(v) ./ Δy
-  # 𝜈∇v_z = 𝜈ᵛ .* δᶻc2f(v) ./ Δz
+  # 𝜈∇v_z = 𝜈ᵛ .* δᶻf2c(v) ./ Δz
 
-  𝜈∇v_x = 𝜈ʰ .* δˣf2c(v) ./ Δx
+  𝜈∇v_x = 𝜈ʰ .* δˣc2f(v) ./ Δx
   𝜈∇v_y = 𝜈ʰ .* δʸf2c(v) ./ Δy
-  𝜈∇v_z = 𝜈ᵛ .* δᶻf2c(v) ./ Δz
+  𝜈∇v_z = 𝜈ᵛ .* δᶻc2f(v) ./ Δz
 
-  @. 𝜈∇v_z[:, :,  1] = 0
-  @. 𝜈∇v_z[:, :, end] = 0
+  # @. 𝜈∇v_z[:, :,  1] = 0  # redundant because of δᶻc2f.
+  # @. 𝜈∇v_z[:, :, end] = 0
 
-  div_c2f(𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z)
+  # div_c2f(𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z)
 
-  # (δˣf2c(Aˣ .* 𝜈∇v_x) + δʸc2f(Aʸ .* 𝜈∇v_y) + δᶻf2c(Aᶻ .* 𝜈∇v_z)) / V
+  # The following line must change if we change the viscous BCs to no-slip as
+  # we don't know what is happening at the bottom face k = Nz+1.
+  (δˣf2c(Aˣ .* 𝜈∇v_x) + δʸc2f(Aʸ .* 𝜈∇v_y) + δᶻf2c(Aᶻ .* 𝜈∇v_z)) / V
 end
 
 # Laplacian diffusion for vertical face quantities: ∇ · (ν∇w)
 function 𝜈ᵛ∇²w(w)
-  # Vᵘ = V
-  # 𝜈∇w_x = 𝜈ʰ .* δˣc2f(w) ./ Δx
-  # 𝜈∇w_y = 𝜈ʰ .* δʸc2f(w) ./ Δy
+  # 𝜈∇w_x = 𝜈ʰ .* δˣf2c(w) ./ Δx
+  # 𝜈∇w_y = 𝜈ʰ .* δʸf2c(w) ./ Δy
   # 𝜈∇w_z = 𝜈ᵛ .* δᶻf2c(w) ./ Δz
 
-  𝜈∇w_x = 𝜈ʰ .* δˣf2c(w) ./ Δx
-  𝜈∇w_y = 𝜈ʰ .* δʸf2c(w) ./ Δy
+  𝜈∇w_x = 𝜈ʰ .* δˣc2f(w) ./ Δx
+  𝜈∇w_y = 𝜈ʰ .* δʸc2f(w) ./ Δy
   𝜈∇w_z = 𝜈ᵛ .* δᶻf2c(w) ./ Δz
 
   # Imposing free slip viscous boundary conditions at the top layer.
-  @. 𝜈∇w_z[:, :,  1] = 0
-  @. 𝜈∇w_z[:, :, end] = 0
+  # @. 𝜈∇w_z[:, :,  1] = 0
+  # @. 𝜈∇w_z[:, :, end] = 0
 
-  div_c2f(𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z)
+  # div_c2f(𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z)
 
   # (1/Vᵘ) .* div_c2f(𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z)
-  # (δˣf2c(Aˣ .* 𝜈∇w_x) + δʸf2c(Aʸ .* 𝜈∇w_y) + δᶻc2f(Aᶻ .* 𝜈∇w_z)) / V
+
+  # The following line must change if we change the viscous BCs to no-slip as
+  # we don't know what is happening at the bottom face k = Nz+1.
+  (δˣf2c(Aˣ .* 𝜈∇w_x) + δʸf2c(Aʸ .* 𝜈∇w_y) + δᶻc2f(Aᶻ .* 𝜈∇w_z)) / V
 end
 
 horizontal_laplacian(f) = circshift(f, (1, 0, 0)) + circshift(f, (-1, 0, 0)) + circshift(f, (0, 1, 0)) + circshift(f, (0, -1, 0)) - 4 .* f
