@@ -164,6 +164,7 @@ function avgᶻc2f(f)
         δf[i, j, k] =  (f[i, j, k] + f[i, j, k-1]) / 2
     end
     @. δf[:, :, 1] = 0
+    @. δf[:, :, 1] = f[:, :, 1]
     δf
 end
 
@@ -197,7 +198,8 @@ function avgᶻf2c(f)
     for k in 1:(Nz-1), j in 1:Ny, i in 1:Nx
         δf[i, j, k] =  (f[i, j, incmod1(k, Nz)] + f[i, j, k]) / 2
     end
-    @. δf[:, :, end] = 0
+    # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
+    @. δf[:, :, end] = 0.5 * f[:, :, end]
     δf
 end
 
