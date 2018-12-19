@@ -246,25 +246,26 @@ end
 # V = (u,v,w). Each component gets its own function for now until we can figure
 # out how to combine them all into one function.
 function ũ∇u(u, v, w)
-  Vᵘ = V
-  (1/Vᵘ) .* (δˣc2f(avgˣf2c(Aˣ.*u) .* avgˣf2c(u)) + δʸc2f(avgˣf2c(Aʸ.*v) .* avgʸf2c(u)) + δᶻc2f(avgˣf2c(Aᶻ.*w) .* avgᶻf2c(u)))
+    (1/V) .* (δˣc2f(avgˣf2c(Aˣ.*u) .* avgˣf2c(u))
+            + δʸf2c(avgˣc2f(Aʸ.*v) .* avgʸc2f(u))
+            + δᶻf2c(avgˣc2f(Aᶻ.*w) .* avgᶻc2f(u)))
 end
 
 function ũ∇v(u, v, w)
-  Vᵘ = V
-  (1/Vᵘ) .* (δˣc2f(avgʸf2c(Aˣ.*u) .* avgˣf2c(v)) + δʸc2f(avgʸf2c(Aʸ.*v) .* avgʸf2c(v)) + δᶻc2f(avgʸf2c(Aᶻ.*w) .* avgᶻf2c(v)))
+  (1/V) .* (δˣf2c(avgʸc2f(Aˣ.*u) .* avgˣc2f(v))
+          + δʸc2f(avgʸf2c(Aʸ.*v) .* avgʸf2c(v))
+          + δᶻf2c(avgʸc2f(Aᶻ.*w) .* avgᶻc2f(v)))
 end
 
 function ũ∇w(u, v, w)
-  Vᵘ = V
-  uŵ_transport = avgᶻf2c(Aˣ.*u) .* avgˣf2c(w)
-  vŵ_transport = avgᶻf2c(Aʸ.*v) .* avgʸf2c(w)
+  uŵ_transport = avgᶻc2f(Aˣ.*u) .* avgˣc2f(w)
+  vŵ_transport = avgᶻc2f(Aʸ.*v) .* avgʸc2f(w)
   wŵ_transport = avgᶻf2c(Aᶻ.*w) .* avgᶻf2c(w)
 
-  wŵ_transport[:, :, 1]  .= 0
-  wŵ_transport[:, :, end] .= 0
+  # wŵ_transport[:, :, 1]  .= 0
+  # wŵ_transport[:, :, end] .= 0
 
-  (1/Vᵘ) .* (δˣc2f(uŵ_transport) .+ δʸc2f(vŵ_transport) .+ δᶻc2f(wŵ_transport))
+  (1/V) .* (δˣf2c(uŵ_transport) .+ δʸf2c(vŵ_transport) .+ δᶻc2f(wŵ_transport))
 end
 
 κʰ = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
