@@ -143,7 +143,7 @@ function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
     end
-    @. favgz.data[:, :, 1] = 0
+    @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
 
@@ -151,7 +151,7 @@ function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
         favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
     end
-    @. favgz.data[:, :, end] = 0
+    @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
     nothing
 end
 
