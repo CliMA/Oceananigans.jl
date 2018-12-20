@@ -162,7 +162,7 @@ function test_divf2c(g::Grid)
     fx = FaceFieldX(g)
     fy = FaceFieldY(g)
     fz = FaceFieldZ(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     fx.data .= rand(T, size(g))
     fy.data .= rand(T, size(g))
@@ -183,7 +183,7 @@ function test_divc2f(g::Grid)
     fx = CellField(g)
     fy = CellField(g)
     fz = CellField(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     fx.data .= rand(T, size(g))
     fy.data .= rand(T, size(g))
@@ -203,7 +203,7 @@ function test_div_flux(g::Grid)
 
     U = VelocityFields(g)
     θ = CellField(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     U.u.data .= rand(T, size(g))
     U.v.data .= rand(T, size(g))
@@ -223,7 +223,7 @@ function test_u_dot_grad_u(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     U.u.data .= rand(T, size(g))
     U.v.data .= rand(T, size(g))
@@ -242,7 +242,7 @@ function test_u_dot_grad_v(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     U.u.data .= rand(T, size(g))
     U.v.data .= rand(T, size(g))
@@ -261,7 +261,7 @@ function test_u_dot_grad_w(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     U.u.data .= rand(T, size(g))
     U.v.data .= rand(T, size(g))
@@ -280,7 +280,7 @@ function test_κ∇²(g::Grid)
     T = typeof(g.V)
 
     tr = TracerFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     κh, κv = 4e-2, 4e-2
 
@@ -301,7 +301,7 @@ function test_𝜈∇²u(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     𝜈h, 𝜈v = 4e-2, 4e-2
 
@@ -322,7 +322,7 @@ function test_𝜈∇²v(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     𝜈h, 𝜈v = 4e-2, 4e-2
 
@@ -343,7 +343,7 @@ function test_𝜈∇²w(g::Grid)
     T = typeof(g.V)
 
     U = VelocityFields(g)
-    tmp = TemporaryFields(g)
+    tmp = OperatorTemporaryFields(g)
 
     𝜈h, 𝜈v = 4e-2, 4e-2
 

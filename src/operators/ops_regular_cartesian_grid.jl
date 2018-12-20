@@ -1,7 +1,8 @@
 using Oceananigans:
     RegularCartesianGrid,
     CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields, TemporaryFields
+    VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields,
+    OperatorTemporaryFields
 
 # Increment and decrement integer a with periodic wrapping. So if n == 10 then
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
@@ -162,7 +163,7 @@ Compute the divergence.
 """
 function div!(g::RegularCartesianGrid,
               fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, div::CellField,
-              tmp::TemporaryFields)
+              tmp::OperatorTemporaryFields)
 
     δxfx, δyfy, δzfz = tmp.fC1, tmp.fC2, tmp.fC3
 
@@ -176,7 +177,7 @@ end
 
 function div!(g::RegularCartesianGrid,
               fx::CellField, fy::CellField, fz::CellField, div::FaceField,
-              tmp::TemporaryFields)
+              tmp::OperatorTemporaryFields)
 
     δxfx, δyfy, δzfz = tmp.fFX, tmp.fFY, tmp.fFZ
 
@@ -190,7 +191,7 @@ end
 
 function div_flux!(g::RegularCartesianGrid,
                    u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
-                   div_flux::CellField, tmp::TemporaryFields)
+                   div_flux::CellField, tmp::OperatorTemporaryFields)
 
     Q̅ˣ, Q̅ʸ, Q̅ᶻ = tmp.fFX, tmp.fFY, tmp.fFZ
 
@@ -218,7 +219,7 @@ function div_flux!(g::RegularCartesianGrid,
 end
 
 function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
-              tmp::TemporaryFields)
+              tmp::OperatorTemporaryFields)
 
     u̅ˣ = tmp.fC1
     avgx!(g, ũ.u, u̅ˣ)
@@ -250,7 +251,7 @@ function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
 end
 
 function u∇v!(g::RegularCartesianGrid, ũ::VelocityFields, u∇v::FaceFieldY,
-              tmp::TemporaryFields)
+              tmp::OperatorTemporaryFields)
 
     v̅ʸ = tmp.fC1
     avgy!(g, ũ.v, v̅ʸ)
@@ -282,7 +283,7 @@ function u∇v!(g::RegularCartesianGrid, ũ::VelocityFields, u∇v::FaceFieldY,
 end
 
 function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
-              tmp::TemporaryFields)
+              tmp::OperatorTemporaryFields)
 
     w̅ᶻ = tmp.fC1
     avgz!(g, ũ.w, w̅ᶻ)
@@ -317,7 +318,7 @@ function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
 end
 
 function κ∇²!(g::RegularCartesianGrid, Q::CellField, κ∇²Q::CellField, κh, κv,
-             tmp::TemporaryFields)
+             tmp::OperatorTemporaryFields)
     δxQ, δyQ, δzQ = tmp.fFX, tmp.fFY, tmp.fFZ
 
     δx!(g, Q, δxQ)
@@ -335,7 +336,7 @@ function κ∇²!(g::RegularCartesianGrid, Q::CellField, κ∇²Q::CellField, κ
 end
 
 function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceField, 𝜈h, 𝜈v,
-                tmp::TemporaryFields)
+                tmp::OperatorTemporaryFields)
 
     δxu, δyu, δzu = tmp.fC1, tmp.fC2, tmp.fC3
 
@@ -369,7 +370,7 @@ function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceFie
 end
 
 function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceField, 𝜈h, 𝜈v,
-                tmp::TemporaryFields)
+                tmp::OperatorTemporaryFields)
 
     δxv, δyv, δzv = tmp.fC1, tmp.fC2, tmp.fC3
 
@@ -391,7 +392,7 @@ function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceFi
 end
 
 function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈h∇²w::FaceField, 𝜈h, 𝜈v,
-                tmp::TemporaryFields)
+                tmp::OperatorTemporaryFields)
 
     δxw, δyw, δzw = tmp.fC1, tmp.fC2, tmp.fC3
 

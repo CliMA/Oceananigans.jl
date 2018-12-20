@@ -23,7 +23,8 @@ export
     PressureFields,
     SourceTerms,
     ForcingFields,
-    TemporaryFields,
+    OperatorTemporaryFields,
+    StepperTemporaryFields,
 
     LinearEquationOfState,
     ρ!,
