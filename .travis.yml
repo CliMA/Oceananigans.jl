@@ -2,12 +2,10 @@ language: julia
 
 os:
   - linux
-  - windows
   - osx
 
 julia:
   - 1.0
-  - 1.0.3
   - nightly
 
 matrix:
