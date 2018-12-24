@@ -100,7 +100,7 @@ using Oceananigans.Operators
             @test test_divc2f(g)
             @test test_div_flux(g)
 
-            # @test test_u_dot_grad_u(g)
+            @test test_u_dot_grad_u(g)
             # @test test_u_dot_grad_v(g)
             # @test test_u_dot_grad_w(g)
             #

@@ -272,30 +272,26 @@ end
 function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
               tmp::OperatorTemporaryFields)
 
-    # ⟨u⟩x = tmp.fCor1
+    ∂uu∂x, ∂uv∂y, ∂uw∂z = tmp.fFX, tmp.fFY, tmp.fFZ
+
     u̅ˣ = tmp.fC1
     avgx!(g, ũ.u, u̅ˣ)
-
     uu = tmp.fC1
     @. uu.data = g.Ax * u̅ˣ.data^2
+    δx!(g, uu, ∂uu∂x)
 
-    u̅ʸ, v̅ˣ = tmp.fC2, tmp.fC3
+    u̅ʸ, v̅ˣ = tmp.fE1, tmp.fE2
     avgy!(g, ũ.u, u̅ʸ)
     avgx!(g, ũ.v, v̅ˣ)
-
-    uv = tmp.fC2
+    uv = tmp.fE1
     @. uv.data = g.Ay * u̅ʸ.data * v̅ˣ.data
+    δy!(g, uv, ∂uv∂y)
 
-    u̅ᶻ, w̅ˣ = tmp.fC3, tmp.fC4
+    u̅ᶻ, w̅ˣ = tmp.fE1, tmp.fE2
     avgz!(g, ũ.u, u̅ᶻ)
     avgx!(g, ũ.w, w̅ˣ)
-
-    uw = tmp.fC3
+    uw = tmp.fE1
     @. uw.data = g.Az * u̅ᶻ.data * w̅ˣ.data
-
-    ∂uu∂x, ∂uv∂y, ∂uw∂z = tmp.fFX, tmp.fFY, tmp.fFZ
-    δx!(g, uu, ∂uu∂x)
-    δy!(g, uv, ∂uv∂y)
     δz!(g, uw, ∂uw∂z)
 
     @. u∇u.data = (1/g.V) * (∂uu∂x.data + ∂uv∂y.data + ∂uw∂z.data)
