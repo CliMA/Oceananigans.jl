@@ -103,11 +103,11 @@ using Oceananigans.Operators
             @test test_u_dot_grad_u(g)
             @test test_u_dot_grad_v(g)
             @test test_u_dot_grad_w(g)
-            
-            # @test test_κ∇²(g)
-            # @test test_𝜈∇²u(g)
-            # @test test_𝜈∇²v(g)
-            # @test test_𝜈∇²w(g)
+
+            @test test_κ∇²(g)
+            @test test_𝜈∇²u(g)
+            @test test_𝜈∇²v(g)
+            @test test_𝜈∇²w(g)
 
             for f in (fC, ffX, ffY, ffZ)
                 # Fields should be initialized to zero.

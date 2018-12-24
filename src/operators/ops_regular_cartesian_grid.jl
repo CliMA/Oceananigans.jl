@@ -402,78 +402,90 @@ end
 function 𝜈∇²u!(g::RegularCartesianGrid, u::FaceFieldX, 𝜈∇²u::FaceField, 𝜈h, 𝜈v,
                 tmp::OperatorTemporaryFields)
 
-    δxu, δyu, δzu = tmp.fC1, tmp.fC2, tmp.fC3
+    𝜈∇²u_x, 𝜈∇²u_y, 𝜈∇²u_z = tmp.fFX, tmp.fFY, tmp.fFZ
 
+    δxu = tmp.fC1
     δx!(g, u, δxu)
+    𝜈∇u_x = tmp.fC1
+    @. 𝜈∇u_x.data = g.Ax * 𝜈h * δxu.data / g.Δx
+    δx!(g, 𝜈∇u_x, 𝜈∇²u_x)
+
+    δyu = tmp.fE1
     δy!(g, u, δyu)
+    𝜈∇u_y = tmp.fE1
+    @. 𝜈∇u_y.data = g.Ay * 𝜈h * δyu.data / g.Δy
+    δy!(g, 𝜈∇u_y, 𝜈∇²u_y)
+
+    δzu = tmp.fE1
     δz!(g, u, δzu)
+    𝜈∇u_z = tmp.fE1
+    @. 𝜈∇u_z.data = g.Az * 𝜈v * δzu.data / g.Δz
+    δz!(g, 𝜈∇u_z, 𝜈∇²u_z)
 
-    𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z = tmp.fC1, tmp.fC2, tmp.fC3
+    # @. 𝜈∇u_z.data[:, :,   1] = 0  # # redundant because of δz! (c2f).
+    # @. 𝜈∇u_z.data[:, :, end] = 0
 
-    @. 𝜈∇u_x.data = 𝜈h * δxu.data / g.Δx
-    @. 𝜈∇u_y.data = 𝜈h * δyu.data / g.Δy
-    @. 𝜈∇u_z.data = 𝜈v * δzu.data / g.Δz
-
-    @. 𝜈∇u_z.data[:, :,   1] = 0
-    @. 𝜈∇u_z.data[:, :, end] = 0
-
-    div!(g, 𝜈∇u_x, 𝜈∇u_y, 𝜈∇u_z, 𝜈∇²u, tmp)
-
-    # # Calculating (δˣc2f(Aˣ * 𝜈∇u_x) + δʸf2c(Aʸ * 𝜈∇u_y) + δᶻf2c(Aᶻ * 𝜈∇u_z)) / V
-    # 𝜈∇²u_x, 𝜈∇²u_y, 𝜈∇²u_z = tmp.fFX, tmp.fFY, tmp.fFZ
-    #
-    # for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-    #     @inbounds 𝜈∇²u.data[i, j, k] =  𝜈∇u_x.data[i, j, k] - 𝜈∇u_x.data[decmod1(i, g.Nx), j, k]
-    # end
-    #
-    # δy!(g, 𝜈∇u_y, 𝜈∇²u_y)
-    # δz!(g, 𝜈∇u_z, 𝜈∇²u_z)
-    #
-    # @. 𝜈∇²u.data = 𝜈∇²u_x.data / g.Δx + 𝜈∇²u_y.data / g.Δy + 𝜈∇²u_z.data / g.Δz
+    @. 𝜈∇²u.data = (1/g.V) * (𝜈∇²u_x.data + 𝜈∇²u_y.data + 𝜈∇²u_z.data)
     nothing
 end
 
-function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h∇²v::FaceField, 𝜈h, 𝜈v,
+function 𝜈∇²v!(g::RegularCartesianGrid, v::FaceFieldY, 𝜈∇²v::FaceField, 𝜈h, 𝜈v,
                 tmp::OperatorTemporaryFields)
 
-    δxv, δyv, δzv = tmp.fC1, tmp.fC2, tmp.fC3
+    𝜈∇²v_x, 𝜈∇²v_y, 𝜈∇²v_z = tmp.fFX, tmp.fFY, tmp.fFZ
 
+    δxv = tmp.fE1
     δx!(g, v, δxv)
+    𝜈∇v_x = tmp.fE1
+    @. 𝜈∇v_x.data = g.Ax * 𝜈h * δxv.data / g.Δx
+    δx!(g, 𝜈∇v_x, 𝜈∇²v_x)
+
+    δyv = tmp.fC1
     δy!(g, v, δyv)
+    𝜈∇v_y = tmp.fC1
+    @. 𝜈∇v_y.data = g.Ay * 𝜈h * δyv.data / g.Δy
+    δy!(g, 𝜈∇v_y, 𝜈∇²v_y)
+
+    δzv = tmp.fE1
     δz!(g, v, δzv)
+    𝜈∇v_z = tmp.fE1
+    @. 𝜈∇v_z.data = g.Az * 𝜈v * δzv.data / g.Δz
+    δz!(g, 𝜈∇v_z, 𝜈∇²v_z)
 
-    𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z = tmp.fC1, tmp.fC2, tmp.fC3
+    # @. 𝜈∇v_z.data[:, :,   1] = 0  # # redundant because of δz! (c2f).
+    # @. 𝜈∇v_z.data[:, :, end] = 0
 
-    @. 𝜈∇v_x.data = 𝜈h * δxv.data / g.Δx
-    @. 𝜈∇v_y.data = 𝜈h * δyv.data / g.Δy
-    @. 𝜈∇v_z.data = 𝜈v * δzv.data / g.Δz
-
-    @. 𝜈∇v_z.data[:, :,   1] = 0
-    @. 𝜈∇v_z.data[:, :, end] = 0
-
-    div!(g, 𝜈∇v_x, 𝜈∇v_y, 𝜈∇v_z, 𝜈h∇²v, tmp)
+    @. 𝜈∇²v.data = (1/g.V) * (𝜈∇²v_x.data + 𝜈∇²v_y.data + 𝜈∇²v_z.data)
     nothing
 end
 
-function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈h∇²w::FaceField, 𝜈h, 𝜈v,
+function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈∇²w::FaceField, 𝜈h, 𝜈v,
                 tmp::OperatorTemporaryFields)
 
-    δxw, δyw, δzw = tmp.fC1, tmp.fC2, tmp.fC3
+    𝜈∇²w_x, 𝜈∇²w_y, 𝜈∇²w_z = tmp.fFX, tmp.fFY, tmp.fFZ
 
+    δxw = tmp.fE1
     δx!(g, w, δxw)
+    𝜈∇w_x = tmp.fE1
+    @. 𝜈∇w_x.data = g.Ax * 𝜈h * δxw.data / g.Δx
+    δx!(g, 𝜈∇w_x, 𝜈∇²w_x)
+
+    δyw = tmp.fE1
     δy!(g, w, δyw)
+    𝜈∇w_y = tmp.fE1
+    @. 𝜈∇w_y.data = g.Ay * 𝜈h * δyw.data / g.Δy
+    δy!(g, 𝜈∇w_y, 𝜈∇²w_y)
+
+    δzw = tmp.fC1
     δz!(g, w, δzw)
-
-    𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z = tmp.fC1, tmp.fC2, tmp.fC3
-
-    @. 𝜈∇w_x.data = 𝜈h * δxw.data / g.Δx
-    @. 𝜈∇w_y.data = 𝜈h * δyw.data / g.Δy
-    @. 𝜈∇w_z.data = 𝜈v * δzw.data / g.Δz
+    𝜈∇w_z = tmp.fC1
+    @. 𝜈∇w_z.data = g.Az * 𝜈v * δzw.data / g.Δz
+    δz!(g, 𝜈∇w_z, 𝜈∇²w_z)
 
     # Imposing free slip viscous boundary conditions at the bottom layer.
-    @. 𝜈∇w_z.data[:, :,   1] = 0
-    @. 𝜈∇w_z.data[:, :, end] = 0
+    # @. 𝜈∇w_z.data[:, :,   1] = 0
+    # @. 𝜈∇w_z.data[:, :, end] = 0
 
-    div!(g, 𝜈∇w_x, 𝜈∇w_y, 𝜈∇w_z, 𝜈h∇²w, tmp)
+    @. 𝜈∇²w.data = (1/g.V) * (𝜈∇²w_x.data + 𝜈∇²w_y.data + 𝜈∇²w_z.data)
     nothing
 end
