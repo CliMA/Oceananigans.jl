@@ -5,7 +5,7 @@ using Oceananigans.Operators
 
 @testset "Oceananigans" begin
     @testset "Grid" begin
-        include("test_grid.jl")
+        include("test_grids.jl")
 
         @test test_grid_size()
         @test test_cell_volume()
@@ -13,7 +13,7 @@ using Oceananigans.Operators
     end
 
     @testset "Fields" begin
-        include("test_field.jl")
+        include("test_fields.jl")
 
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
