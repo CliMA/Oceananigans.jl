@@ -14,3 +14,6 @@ matrix:
 
 notifications:
   email: true
+
+after_success:
+  - julia -e 'cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
