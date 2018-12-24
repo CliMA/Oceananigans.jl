@@ -114,7 +114,7 @@ function OperatorTemporaryFields(g)
     fFZ2 = FaceFieldX(g)
     fE1 = EdgeField(g)
     fE2 = EdgeField(g)
-    OperatorTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCor1, fCor2)
+    OperatorTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fE1, fE2)
 end
 
 function StepperTemporaryFields(g)
