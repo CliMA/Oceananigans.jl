@@ -36,16 +36,17 @@ function ∫dz!(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFiel
 end
 
 function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState, ssp::SpectralSolverParameters,
-                        U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields, tmp::TemporaryFields,
+                        U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields,
+                        stmp::StepperTemporaryFields, otmp::OperatorTemporaryFields,
                         Nt, Δt, R, ΔR)
     for n in 1:Nt
         # Calculate new density and density deviation.
-        δρ = tmp.fC1
+        δρ = stmp.fC1
         δρ!(eos, g, δρ, tr.T)
         @. tr.ρ.data = eos.ρ₀ + δρ.data
 
         # Calculate density at the z-faces.
-        δρz = tmp.fFZ
+        δρz = stmp.fFZ
         avgz!(g, δρ, δρz)
 
         # Calculate hydrostatic pressure anomaly (buoyancy).
@@ -59,51 +60,51 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         Gp.GS.data .= G.GS.data
 
         # Calculate source terms for current time step.
-        ∂xpHY′ = tmp.fFX2
+        ∂xpHY′ = stmp.fFX
         δx!(g, pr.pHY′, ∂xpHY′)
         @. ∂xpHY′.data = ∂xpHY′.data / (g.Δx * eos.ρ₀)
 
         @. G.Gu.data = - ∂xpHY′.data
 
-        𝜈∇²u = tmp.fFX2
-        𝜈∇²u!(g, U.u, 𝜈∇²u, 4e-2, 4e-2, tmp)
+        𝜈∇²u = stmp.fFX
+        𝜈∇²u!(g, U.u, 𝜈∇²u, 4e-2, 4e-2, otmp)
 
         @. G.Gu.data = G.Gu.data + 𝜈∇²u.data
 
-        ∂ypHY′ = tmp.fFY2
+        ∂ypHY′ = stmp.fFY
         δy!(g, pr.pHY′, ∂ypHY′)
         @. ∂ypHY′.data = ∂ypHY′.data / (g.Δy * eos.ρ₀)
 
         @. G.Gv.data = - ∂ypHY′.data
 
-        𝜈∇²v = tmp.fFY2
-        𝜈∇²v!(g, U.v, 𝜈∇²v, 4e-2, 4e-2, tmp)
+        𝜈∇²v = stmp.fFY
+        𝜈∇²v!(g, U.v, 𝜈∇²v, 4e-2, 4e-2, otmp)
 
         @. G.Gv.data = G.Gv.data + 𝜈∇²v.data
 
-        𝜈∇²w = tmp.fFZ2
-        𝜈∇²w!(g, U.w, 𝜈∇²w, 4e-2, 4e-2, tmp)
+        𝜈∇²w = stmp.fFZ
+        𝜈∇²w!(g, U.w, 𝜈∇²w, 4e-2, 4e-2, otmp)
 
         @. G.Gw.data = 𝜈∇²w.data
 
-        ∇uT = tmp.fC4
-        div_flux!(g, U.u, U.v, U.w, tr.T, ∇uT, tmp)
+        ∇uT = stmp.fC1
+        div_flux!(g, U.u, U.v, U.w, tr.T, ∇uT, otmp)
 
         @. G.GT.data = -∇uT.data
 
-        κ∇²T = tmp.fC4
-        κ∇²!(g, tr.T, κ∇²T, 4e-2, 4e-2, tmp)
+        κ∇²T = stmp.fC1
+        κ∇²!(g, tr.T, κ∇²T, 4e-2, 4e-2, otmp)
 
         @. G.GT.data = G.GT.data + κ∇²T.data
 
         @. G.GT.data[Int(g.Nx/10):Int(9g.Nx/10), 1, 1] += -1e-4 + 1e-5*rand()
 
-        ∇uS = tmp.fC4
-        div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, tmp)
+        ∇uS = stmp.fC1
+        div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, otmp)
         @. G.GS.data = -∇uS.data
 
-        κ∇²S = tmp.fC4
-        κ∇²!(g, tr.S, κ∇²S, 4e-2, 4e-2, tmp)
+        κ∇²S = stmp.fC1
+        κ∇²!(g, tr.S, κ∇²S, 4e-2, 4e-2, otmp)
 
         @. G.GS.data = G.GS.data + κ∇²S.data
 
@@ -114,9 +115,9 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         @. G.GT.data = (1.5 + χ)*G.GT.data - (0.5 + χ)*Gp.GT.data
         @. G.GS.data = (1.5 + χ)*G.GS.data - (0.5 + χ)*Gp.GS.data
 
-        RHS = tmp.fCC1
-        ϕ   = tmp.fCC2
-        div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
+        RHS = stmp.fCC1
+        ϕ   = stmp.fCC2
+        div!(g, G.Gu, G.Gv, G.Gw, RHS, otmp)
         # @time solve_poisson_3d_ppn!(g, RHS, ϕ)
         solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
         @. pr.pNHS.data = real(ϕ.data)
@@ -136,7 +137,7 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         #             )
         # end
 
-        ∂xpNHS, ∂ypNHS, ∂zpNHS = tmp.fFX, tmp.fFY, tmp.fFZ
+        ∂xpNHS, ∂ypNHS, ∂zpNHS = stmp.fFX, stmp.fFY, stmp.fFZ
 
         δx!(g, pr.pNHS, ∂xpNHS)
         δy!(g, pr.pNHS, ∂ypNHS)
@@ -152,8 +153,8 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         @. tr.T.data = tr.T.data + (G.GT.data * Δt)
         @. tr.S.data = tr.S.data + (G.GS.data * Δt)
 
-        div_u1 = tmp.fC1
-        div!(g, U.u, U.v, U.w, div_u1, tmp)
+        div_u1 = stmp.fC1
+        div!(g, U.u, U.v, U.w, div_u1, otmp)
 
         print("\rt = $(n*Δt) / $(Nt*Δt)   ")
         if n % ΔR == 0
@@ -195,10 +196,11 @@ function main()
     G  = SourceTerms(g)
     Gp = SourceTerms(g)
     F  = ForcingFields(g)
-    tmp = TemporaryFields(g)
+    stmp = StepperTemporaryFields(g)
+    otmp = OperatorTemporaryFields(g)
 
-    tmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
-    ssp = SpectralSolverParameters(g, tmp.fCC1, FFTW.PATIENT)
+    stmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
+    ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT)
 
     U.u.data  .= 0
     U.v.data  .= 0
@@ -236,7 +238,7 @@ function main()
     ΔR = 10
     R  = SavedFields(g, Nt, ΔR)
 
-    time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, tmp, Nt, Δt, R, ΔR)
+    @time time_stepping!(g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, otmp, Nt, Δt, R, ΔR)
     print("\n")
 
     print("Creating tracer movie... ($(Int(Nt/ΔR)) frames)\n")
@@ -254,7 +256,7 @@ function main()
     animT = @animate for tidx in 1:Int(Nt/ΔR)
         print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
         Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
-                      clims=(-0.01, 0.01),
+                      clims=(-0.1, 0.1),
                       # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
                       title="T change @ t=$(tidx*ΔR*Δt)")
     end
