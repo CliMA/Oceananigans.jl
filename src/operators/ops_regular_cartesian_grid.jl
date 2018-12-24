@@ -46,6 +46,13 @@ function δx!(g::RegularCartesianGrid, f::EdgeField, δxf::FaceField)
     nothing
 end
 
+function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+    end
+    nothing
+end
+
 """
     δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
 
@@ -79,6 +86,13 @@ end
 function δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField)
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+    end
+    nothing
+end
+
+function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
     end
     nothing
 end
@@ -134,6 +148,14 @@ function δz!(g::RegularCartesianGrid, f::EdgeField, δzf::FaceField)
     # Nx, Ny, Nz = 100, 100, 100.
     # @. δzf.data[:, :, end] = f.data[:, :, end]
 
+    nothing
+end
+
+function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
+    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+    end
+    @. δzf.data[:, :, 1] = 0
     nothing
 end
 
