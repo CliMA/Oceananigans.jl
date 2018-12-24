@@ -152,6 +152,8 @@ function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
         favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
     end
+
+    # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
     @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
     nothing
 end
@@ -221,6 +223,7 @@ end
 function u∇u!(g::RegularCartesianGrid, ũ::VelocityFields, u∇u::FaceFieldX,
               tmp::OperatorTemporaryFields)
 
+    # ⟨u⟩x = tmp.fCor1
     u̅ˣ = tmp.fC1
     avgx!(g, ũ.u, u̅ˣ)
 
