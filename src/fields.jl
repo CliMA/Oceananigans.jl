@@ -48,11 +48,11 @@ struct FaceFieldZ{T<:AbstractArray} <: FaceField
 end
 
 """
-    CornerField{T<:AbstractArray} <: Field
+    EdgeField{T<:AbstractArray} <: Field
 
-A field defined on a grid `G` whose values lie on the corners of the cells.
+A field defined on a grid `G` whose values lie on the edges of the cells.
 """
-struct CornerField{T<:AbstractArray} <: Field
+struct EdgeField{T<:AbstractArray} <: Field
     data::T
     grid::Grid
 end
@@ -102,9 +102,9 @@ function FaceFieldZ(grid::Grid)
     FaceFieldZ{Array{eltype(grid),3}}(data, grid)
 end
 
-function CornerField(grid::Grid)
+function EdgeField(grid::Grid)
     data = zeros(eltype(grid), size(grid))
-    CornerField{Array{eltype(grid),3}}(data, grid)
+    EdgeField{Array{eltype(grid),3}}(data, grid)
 end
 
 @inline size(f::Field) = size(f.grid)
@@ -130,7 +130,7 @@ similar(f::CellField) = CellField(f.grid)
 similar(f::FaceFieldX{T}) where {T} = FaceFieldX(f.grid)
 similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.grid)
 similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.grid)
-similar(f::CornerField{T}) where {T} = CornerField(f.grid)
+similar(f::EdgeField{T}) where {T} = EdgeField(f.grid)
 
 # TODO: This will not work if T=Float32 and v::Irrational.
 set!(u::Field, v) = @. u.data = v
@@ -144,7 +144,7 @@ set!(u::Field, v::Field) = @. u.data = v.data
 # another FaceFieldY, otherwise some interpolation or averaging must be done so
 # that the two fields are defined at the same point, so the operation which
 # will not be commutative anymore.
-for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :CornerField)
+for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :EdgeField)
     for op in (:+, :-, :*)
         # TODO: @eval does things in global scope, is this the desired behavior?
         @eval begin

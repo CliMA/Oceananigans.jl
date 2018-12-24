@@ -43,8 +43,8 @@ struct OperatorTemporaryFields <: FieldSet
     fFY2::FaceFieldX
     fFZ::FaceFieldZ
     fFZ2::FaceFieldX
-    fCor1::CornerField
-    fCor2::CornerField
+    fE1::EdgeField
+    fE2::EdgeField
 end
 
 struct StepperTemporaryFields <: FieldSet
@@ -112,8 +112,8 @@ function OperatorTemporaryFields(g)
     fFY2 = FaceFieldX(g)
     fFZ = FaceFieldZ(g)
     fFZ2 = FaceFieldX(g)
-    fCor1 = CornerField(g)
-    fCor2 = CornerField(g)
+    fE1 = EdgeField(g)
+    fE2 = EdgeField(g)
     OperatorTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCor1, fCor2)
 end
 
