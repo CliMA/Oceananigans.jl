@@ -301,29 +301,26 @@ end
 function u∇v!(g::RegularCartesianGrid, ũ::VelocityFields, u∇v::FaceFieldY,
               tmp::OperatorTemporaryFields)
 
-    v̅ʸ = tmp.fC1
-    avgy!(g, ũ.v, v̅ʸ)
+    ∂vu∂x, ∂vv∂y, ∂vw∂z = tmp.fFX, tmp.fFY, tmp.fFZ
 
-    vv = tmp.fC1
-    @. vv.data = g.Ay * v̅ʸ.data^2
-
-    v̅ˣ, u̅ʸ = tmp.fC2, tmp.fC3
+    v̅ˣ, u̅ʸ = tmp.fE1, tmp.fE2
     avgx!(g, ũ.v, v̅ˣ)
     avgy!(g, ũ.u, u̅ʸ)
-
-    vu = tmp.fC2
+    vu = tmp.fE1
     @. vu.data = g.Ax * v̅ˣ.data * u̅ʸ.data
+    δx!(g, vu, ∂vu∂x)
 
-    v̅ᶻ, w̅ʸ = tmp.fC3, tmp.fC4
+    v̅ʸ = tmp.fC1
+    avgy!(g, ũ.v, v̅ʸ)
+    vv = tmp.fC1
+    @. vv.data = g.Ay * v̅ʸ.data^2
+    δy!(g, vv, ∂vv∂y)
+
+    v̅ᶻ, w̅ʸ = tmp.fE1, tmp.fE2
     avgz!(g, ũ.v, v̅ᶻ)
     avgy!(g, ũ.w, w̅ʸ)
-
-    vw = tmp.fC3
+    vw = tmp.fE1
     @. vw.data = g.Az * v̅ᶻ.data * w̅ʸ.data
-
-    ∂vu∂x, ∂vv∂y, ∂vw∂z = tmp.fFX, tmp.fFY, tmp.fFZ
-    δx!(g, vu, ∂vu∂x)
-    δy!(g, vv, ∂vv∂y)
     δz!(g, vw, ∂vw∂z)
 
     @. u∇v.data = (1/g.V) * (∂vu∂x.data + ∂vv∂y.data + ∂vw∂z.data)
@@ -333,33 +330,30 @@ end
 function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
               tmp::OperatorTemporaryFields)
 
-    w̅ᶻ = tmp.fC1
-    avgz!(g, ũ.w, w̅ᶻ)
+    ∂wu∂x, ∂wv∂y, ∂ww∂z = tmp.fFX, tmp.fFY, tmp.fFZ
 
-    ww = tmp.fC1
-    @. ww.data = g.Ay * w̅ᶻ.data^2
-
-    @. ww.data[:, :, 1]   .= 0
-    @. ww.data[:, :, end] .= 0
-
-    w̅ˣ, u̅ᶻ = tmp.fC2, tmp.fC3
+    w̅ˣ, u̅ᶻ = tmp.fE1, tmp.fE2
     avgx!(g, ũ.w, w̅ˣ)
     avgz!(g, ũ.u, u̅ᶻ)
-
-    wu = tmp.fC2
+    wu = tmp.fE1
     @. wu.data = g.Ax * w̅ˣ.data * u̅ᶻ.data
+    δx!(g, wu, ∂wu∂x)
 
-    w̅ʸ, v̅ᶻ = tmp.fC3, tmp.fC4
+    w̅ʸ, v̅ᶻ = tmp.fE1, tmp.fE2
     avgy!(g, ũ.w, w̅ʸ)
     avgz!(g, ũ.v, v̅ᶻ)
-
-    wv = tmp.fC3
+    wv = tmp.fE1
     @. wv.data = g.Az * w̅ʸ.data * v̅ᶻ.data
-
-    ∂wu∂x, ∂wv∂y, ∂ww∂z = tmp.fFX, tmp.fFY, tmp.fFZ
-    δx!(g, wu, ∂wu∂x)
     δy!(g, wv, ∂wv∂y)
+
+    w̅ᶻ = tmp.fC1
+    avgz!(g, ũ.w, w̅ᶻ)
+    ww = tmp.fC1
+    @. ww.data = g.Ay * w̅ᶻ.data^2
     δz!(g, ww, ∂ww∂z)
+
+    # @. ww.data[:, :, 1]   .= 0
+    # @. ww.data[:, :, end] .= 0
 
     @. u∇w.data = (1/g.V) * (∂wu∂x.data + ∂wv∂y.data + ∂ww∂z.data)
     nothing
