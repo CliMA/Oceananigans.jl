@@ -16,4 +16,4 @@ notifications:
   email: true
 
 after_success:
-  - julia -e 'cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'import Pkg; cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
