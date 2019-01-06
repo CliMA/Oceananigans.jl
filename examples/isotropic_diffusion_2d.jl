@@ -39,6 +39,11 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
                         U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields,
                         stmp::StepperTemporaryFields, otmp::OperatorTemporaryFields,
                         Nt, Δt, R, ΔR)
+
+    κh = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
+    κv = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
+    𝜈h = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
+    𝜈v = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
     for n in 1:Nt
         # Calculate new density and density deviation.
         δρ = stmp.fC1
@@ -60,53 +65,58 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         Gp.GS.data .= G.GS.data
 
         # Calculate source terms for current time step.
+        u∇u = stmp.fFX
+        u∇u!(g, U, u∇u, otmp)
+        @. G.Gu.data = -u∇u.data
+
         ∂xpHY′ = stmp.fFX
         δx!(g, pr.pHY′, ∂xpHY′)
         @. ∂xpHY′.data = ∂xpHY′.data / (g.Δx * eos.ρ₀)
-
-        @. G.Gu.data = - ∂xpHY′.data
+        @. G.Gu.data += - ∂xpHY′.data
 
         𝜈∇²u = stmp.fFX
-        𝜈∇²u!(g, U.u, 𝜈∇²u, 4e-2, 4e-2, otmp)
+        𝜈∇²u!(g, U.u, 𝜈∇²u, 𝜈h, 𝜈v, otmp)
+        @. G.Gu.data += 𝜈∇²u.data
 
-        @. G.Gu.data = G.Gu.data + 𝜈∇²u.data
+        ###
+        u∇v = stmp.fFY
+        u∇v!(g, U, u∇v, otmp)
+        @. G.Gv.data = -u∇v.data
 
         ∂ypHY′ = stmp.fFY
         δy!(g, pr.pHY′, ∂ypHY′)
         @. ∂ypHY′.data = ∂ypHY′.data / (g.Δy * eos.ρ₀)
-
-        @. G.Gv.data = - ∂ypHY′.data
+        @. G.Gv.data += - ∂ypHY′.data
 
         𝜈∇²v = stmp.fFY
-        𝜈∇²v!(g, U.v, 𝜈∇²v, 4e-2, 4e-2, otmp)
+        𝜈∇²v!(g, U.v, 𝜈∇²v, 𝜈h, 𝜈v, otmp)
+        @. G.Gv.data += 𝜈∇²v.data
 
-        @. G.Gv.data = G.Gv.data + 𝜈∇²v.data
+        u∇w = stmp.fFZ
+        u∇w!(g, U, u∇w, otmp)
+        @. G.Gw.data = -u∇w.data
 
         𝜈∇²w = stmp.fFZ
-        𝜈∇²w!(g, U.w, 𝜈∇²w, 4e-2, 4e-2, otmp)
-
-        @. G.Gw.data = 𝜈∇²w.data
+        𝜈∇²w!(g, U.w, 𝜈∇²w, 𝜈h, 𝜈v, otmp)
+        @. G.Gw.data += 𝜈∇²w.data
 
         ∇uT = stmp.fC1
         div_flux!(g, U.u, U.v, U.w, tr.T, ∇uT, otmp)
-
         @. G.GT.data = -∇uT.data
 
         κ∇²T = stmp.fC1
-        κ∇²!(g, tr.T, κ∇²T, 4e-2, 4e-2, otmp)
+        κ∇²!(g, tr.T, κ∇²T, κh, κv, otmp)
+        @. G.GT.data += κ∇²T.data
 
-        @. G.GT.data = G.GT.data + κ∇²T.data
-
-        @. G.GT.data[Int(g.Nx/10):Int(9g.Nx/10), 1, 1] += -1e-4 + 1e-5*rand()
+        @. G.GT.data += F.FT.data
 
         ∇uS = stmp.fC1
         div_flux!(g, U.u, U.v, U.w, tr.S, ∇uS, otmp)
         @. G.GS.data = -∇uS.data
 
         κ∇²S = stmp.fC1
-        κ∇²!(g, tr.S, κ∇²S, 4e-2, 4e-2, otmp)
-
-        @. G.GS.data = G.GS.data + κ∇²S.data
+        κ∇²!(g, tr.S, κ∇²S, κh, κv, otmp)
+        @. G.GS.data += κ∇²S.data
 
         χ = 0.1  # Adams-Bashforth (AB2) parameter.
         @. G.Gu.data = (1.5 + χ)*G.Gu.data - (0.5 + χ)*Gp.Gu.data
