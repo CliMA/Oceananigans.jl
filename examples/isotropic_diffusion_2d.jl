@@ -122,20 +122,13 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
         @. pr.pNHS.data = real(ϕ.data)
 
-        # div!(g, G.Gu, G.Gv, G.Gw, RHS, tmp)
+        # div!(g, G.Gu, G.Gv, G.Gw, RHS, otmp)
         # RHSr = real.(RHS.data)
         # RHS_rec = laplacian3d_ppn(pr.pNHS.data) ./ (g.Δx)^2  # TODO: This assumes Δx == Δy == Δz.
         # error = RHS_rec .- RHSr
-        # @info begin
-        #     string("Fourier-spectral solver diagnostics:\n",
-        #             @sprintf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-        #                      minimum(RHSr), maximum(RHSr), mean(RHSr), mean(abs.(RHSr)), std(RHSr)),
-        #             @sprintf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-        #                      minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec)),
-        #             @sprintf("error:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-        #                      minimum(error), maximum(error), mean(error), mean(abs.(error)), std(error))
-        #             )
-        # end
+        # @printf("RHS:     min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHSr), maximum(RHSr), mean(RHSr), mean(abs.(RHSr)), std(RHSr))
+        # @printf("RHS_rec: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(RHS_rec), maximum(RHS_rec), mean(RHS_rec), mean(abs.(RHS_rec)), std(RHS_rec))
+        # @printf("error:   min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n", minimum(error), maximum(error), mean(error), mean(abs.(error)), std(error))
 
         ∂xpNHS, ∂ypNHS, ∂zpNHS = stmp.fFX, stmp.fFY, stmp.fFZ
 
@@ -143,9 +136,9 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         δy!(g, pr.pNHS, ∂ypNHS)
         δz!(g, pr.pNHS, ∂zpNHS)
 
-        @. ∂xpNHS.data = ∂xpNHS.data / (g.Δx)
-        @. ∂ypNHS.data = ∂ypNHS.data / (g.Δy)
-        @. ∂zpNHS.data = ∂zpNHS.data / (g.Δz)
+        @. ∂xpNHS.data = ∂xpNHS.data / g.Δx
+        @. ∂ypNHS.data = ∂ypNHS.data / g.Δy
+        @. ∂zpNHS.data = ∂zpNHS.data / g.Δz
 
         @. U.u.data  = U.u.data  + (G.Gu.data - ∂xpNHS.data) * Δt
         @. U.v.data  = U.v.data  + (G.Gv.data - ∂ypNHS.data) * Δt
