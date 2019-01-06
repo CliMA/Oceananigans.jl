@@ -184,9 +184,9 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
     end
 end
 
-function main()
-    N = (100, 1, 100)
-    L = (20000, 1, 20000)
+function isotropic_diffusion_2d()
+    N = (100, 1, 50)
+    L = (2000, 1, 1000)
 
     c = EarthConstants()
     eos = LinearEquationOfState()
@@ -210,6 +210,8 @@ function main()
     U.w.data  .= 0
     tr.S.data .= 35
     tr.T.data .= 283
+
+    @. F.FT.data[Int(g.Nx/10):Int(9g.Nx/10), 1, 1] = -0.5e-5 + 1e-6*rand()
 
     pHY_profile = [-eos.ρ₀*c.g*h for h in g.zC]
     pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
@@ -236,7 +238,7 @@ function main()
 
     # U.u.data[:, 1, 1:end-1] .= 0.01
 
-    Nt = 6000
+    Nt = 5000
     Δt = 10
     ΔR = 10
     R  = SavedFields(g, Nt, ΔR)
@@ -259,7 +261,7 @@ function main()
     animT = @animate for tidx in 1:Int(Nt/ΔR)
         print("\rframe = $tidx / $(Int(Nt/ΔR))   ")
         Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
-                      clims=(-0.1, 0.1),
+                      clims=(-0.03, 0),
                       # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
                       title="T change @ t=$(tidx*ΔR*Δt)")
     end
