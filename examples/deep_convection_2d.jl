@@ -195,7 +195,7 @@ time_stepping(uⁿ, vⁿ, wⁿ, Tⁿ, Sⁿ, pⁿ, pʰʸ, pʰʸ′, pⁿʰ⁺ˢ, 
 anim = @animate for tidx in 1:Int(Nᵗ/ΔR)
     print("\rframe = $tidx / $(Int(Nᵗ/ΔR))   ")
     Plots.heatmap(xC, zC, rotl90(RT[tidx, :, 1, :]) .- 283, color=:plasma,
-        clims=(-0.03, 0),
+        clims=(-0.1, 0),
         # clims=(-maximum(RT[tidx, :, 1, :] .- 283), maximum(RT[tidx, :, 1, :] .- 283)),
         title="T change @ t=$(tidx*ΔR*Δt)")
 end
