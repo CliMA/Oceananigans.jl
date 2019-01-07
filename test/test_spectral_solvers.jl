@@ -116,3 +116,20 @@ function test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
     ϕ = solve_poisson_3d_ppn(f, Nx, Ny, Nz, 1, 1, 1)
     laplacian3d_ppn(ϕ) ≈ f
 end
+
+function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
+    g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
+
+    RHS = CellField(g, Complex{eltype(g)})
+    ϕ = CellField(g, Complex{eltype(g)})
+    ∇²ϕ = CellField(g, Complex{eltype(g)})
+
+    RHS.data .= RHS.data .- mean(RHS.data)
+    solve_poisson_3d_ppn!(g, RHS, ϕ)
+
+    ∇²_ppn!(g, ϕ, ∇²ϕ)
+    ∇²ϕ.data ≈ RHS.data
+end
+
+function test_3d_poisson_solver_ppn_all_equal(Nx, Ny, Nz)
+end
