@@ -1,6 +1,6 @@
 using Oceananigans:
     RegularCartesianGrid,
-    CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField,
+    Field, CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField,
     VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields,
     OperatorTemporaryFields
 
@@ -487,5 +487,24 @@ function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈∇²w::FaceFie
     # @. 𝜈∇w_z.data[:, :, end] = 0
 
     @. 𝜈∇²w.data = (1/g.V) * (𝜈∇²w_x.data + 𝜈∇²w_y.data + 𝜈∇²w_z.data)
+    nothing
+end
+
+function ∇²_ppn!(g::RegularCartesianGrid, f::Field, ∇²f::Field)
+    for k in 2:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+       ∇²f.data[i, j, k] = f.data[incmod1(i, g.Nx), j, k] + f.data[decmod1(i, g.Nx), j, k]
+                         + f.data[i, incmod1(j, g.Ny), k] + f.data[i, decmod1(j, g.Ny), k]
+                         + f.data[i, j, k+1] + f.data[i, j, k-1] - 6*f.data[i, j, k]
+    end
+    for j in 1:g.Ny, i in 1:g.Nx
+        ∇²f.data[i, j,   1] = -(f.data[i, j, 1] - f.data[i, j, 2])
+                            + f.data[incmod1(i, g.Nx), j, 1] + f.data[decmod1(i, g.Nx), j, 1]
+                            + f.data[i, incmod1(j, g.Ny), 1] + f.data[i, decmod1(j, g.Ny), 1]
+                            - 4*f.data[i, j,   1]
+        ∇²f.data[i, j, end] = (f.data[i, j, end-1] - f.data[i, j, end])
+                            + f.data[incmod1(i, g.Nx), j, end] + f.data[decmod1(i, g.Nx), j, end]
+                            + f.data[i, incmod1(j, g.Ny), end] + f.data[i, decmod1(j, g.Ny), end]
+                            - 4*f.data[i, j, end]
+    end
     nothing
 end
