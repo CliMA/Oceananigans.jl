@@ -490,21 +490,19 @@ function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈∇²w::FaceFie
     nothing
 end
 
-function ∇²_ppn!(g::RegularCartesianGrid, f::Field, ∇²f::Field)
+function ∇²_ppn!(g::RegularCartesianGrid, f::CellField, ∇²f::CellField)
     for k in 2:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-       ∇²f.data[i, j, k] = f.data[incmod1(i, g.Nx), j, k] + f.data[decmod1(i, g.Nx), j, k]
-                         + f.data[i, incmod1(j, g.Ny), k] + f.data[i, decmod1(j, g.Ny), k]
-                         + f.data[i, j, k+1] + f.data[i, j, k-1] - 6*f.data[i, j, k]
+       ∇²f.data[i, j, k] = (f.data[incmod1(i, g.Nx), j, k] - 2*f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / g.Δx +
+                           (f.data[i, incmod1(j, g.Ny), k] - 2*f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / g.Δy +
+                           (f.data[i, j, k+1]              - 2*f.data[i, j, k] + f.data[i, j, k-1])              / g.Δz
     end
     for j in 1:g.Ny, i in 1:g.Nx
-        ∇²f.data[i, j,   1] = -(f.data[i, j, 1] - f.data[i, j, 2])
-                            + f.data[incmod1(i, g.Nx), j, 1] + f.data[decmod1(i, g.Nx), j, 1]
-                            + f.data[i, incmod1(j, g.Ny), 1] + f.data[i, decmod1(j, g.Ny), 1]
-                            - 4*f.data[i, j,   1]
-        ∇²f.data[i, j, end] = (f.data[i, j, end-1] - f.data[i, j, end])
-                            + f.data[incmod1(i, g.Nx), j, end] + f.data[decmod1(i, g.Nx), j, end]
-                            + f.data[i, incmod1(j, g.Ny), end] + f.data[i, decmod1(j, g.Ny), end]
-                            - 4*f.data[i, j, end]
+        ∇²f.data[i, j,   1] = (f.data[i, j, 2] - f.data[i, j, 1]) / g.Δz +
+                              (f.data[incmod1(i, g.Nx), j, 1] - 2*f.data[i, j, 1] + f.data[decmod1(i, g.Nx), j, 1]) / g.Δx +
+                              (f.data[i, incmod1(j, g.Ny), 1] - 2*f.data[i, j, 1] + f.data[i, decmod1(j, g.Ny), 1]) / g.Δy
+        ∇²f.data[i, j, end] = (f.data[i, j, end-1] - f.data[i, j, end]) / g.Δz +
+                              (f.data[incmod1(i, g.Nx), j, end] - 2*f.data[i, j, end] + f.data[decmod1(i, g.Nx), j, end]) / g.Δx +
+                              (f.data[i, incmod1(j, g.Ny), end] - 2*f.data[i, j, end] + f.data[i, decmod1(j, g.Ny), end]) / g.Δy
     end
     nothing
 end
