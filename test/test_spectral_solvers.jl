@@ -125,21 +125,31 @@ function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
     end
 
     RHS = CellField(g, Complex{eltype(g)})
+    RHS_orig = CellField(g, Complex{eltype(g)})
     ϕ = CellField(g, Complex{eltype(g)})
     ∇²ϕ = CellField(g, Complex{eltype(g)})
 
+    RHS.data .= rand(Nx, Ny, Nz)
     RHS.data .= RHS.data .- mean(RHS.data)
+
+    RHS_orig.data .= copy(RHS.data)
+
     solve_poisson_3d_ppn!(g, RHS, ϕ)
 
     ∇²_ppn!(g, ϕ, ∇²ϕ)
-    ∇²ϕ.data ≈ RHS.data
+    ∇²ϕ.data ≈ RHS_orig.data
 end
 
 function test_fftw_planner(Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(N, L)
+    if Nx == 1 || Ny == 1
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+    else
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+    end
 
     RHS = CellField(g, Complex{eltype(g)})
-    ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT, verbose=true)
+    ssp = SpectralSolverParameters(g, RHS, FFTW.PATIENT)
+    true
 end
 
 function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
