@@ -153,6 +153,21 @@ function test_fftw_planner(Nx, Ny, Nz, planner_flag)
 end
 
 function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
+
+    RHS = CellField(g, Complex{eltype(g)})
+    ϕ = CellField(g, Complex{eltype(g)})
+    ∇²ϕ = CellField(g, Complex{eltype(g)})
+
+    RHS.data .= rand(Nx, Ny, Nz)
+    RHS.data .= RHS.data .- mean(RHS.data)
+
+    ssp = SpectralSolverParameters(g, RHS, planner_flag)
+
+    solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
+    ∇²_ppn!(g, ϕ, ∇²ϕ)
+
+    ∇²ϕ.data ≈ RHS.data
 end
 
 function test_3d_poisson_solver_ppn_all_equal(Nx, Ny, Nz)
