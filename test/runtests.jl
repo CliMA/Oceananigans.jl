@@ -1,5 +1,7 @@
 using Test
 
+import FFTW
+
 using Oceananigans
 using Oceananigans.Operators
 
@@ -170,5 +172,9 @@ using Oceananigans.Operators
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
             @test test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
         end
+
+        @test test_fftw_planner(100, 100, 100, FFTW.ESTIMATE)
+        @test test_fftw_planner(1, 100, 100, FFTW.ESTIMATE)
+        @test test_fftw_planner(100, 1, 100, FFTW.ESTIMATE)
     end
 end
