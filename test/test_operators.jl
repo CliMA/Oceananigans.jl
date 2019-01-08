@@ -359,3 +359,16 @@ function test_𝜈∇²w(g::Grid)
 
     𝜈∇²w1 ≈ 𝜈∇²w2.data
 end
+
+function test_∇²_ppn(g::Grid)
+    T = typeof(g.V)
+    f = CellField(g)
+    f.data .= rand(T, size(g))
+
+    ∇²f1 = laplacian3d_ppn(f.data)
+
+    ∇²f2 = CellField(g)
+    ∇²_ppn!(g, f, ∇²f2)
+
+    ∇²f1 ≈ ∇²f2.data
+end

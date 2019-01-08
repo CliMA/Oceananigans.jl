@@ -122,6 +122,15 @@ using Oceananigans.Operators
                 end
             end
         end
+
+        N = (20, 20, 20)
+        L = (20, 20, 20)
+
+        g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
+        g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+
+        @test test_∇²_ppn(g32)
+        @test test_∇²_ppn(g64)
     end
 
     @testset "Spectral solvers" begin
