@@ -11,15 +11,6 @@ using Interact, Plots
 using Oceananigans, Oceananigans.Operators
 
 
-function ∫dz!(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFieldZ, pHY′::CellField)
-    gΔz = c.g * g.Δz
-    for j in 1:g.Ny, i in 1:g.Nx
-      pHY′.data[i, j, 1] = δρ.data[i, j, 1] * gΔz / 2
-    end
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-      pHY′.data[i, j, k] = pHY′.data[i, j, k-1] + (δρz.data[i, j, k] * gΔz)
-    end
-end
 
 function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState, ssp::SpectralSolverParameters,
                         U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields,
