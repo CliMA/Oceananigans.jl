@@ -167,14 +167,26 @@ using Oceananigans.Operators
             @test test_3d_poisson_solver_ppn!_div_free(N, N, N)
             @test test_3d_poisson_solver_ppn!_div_free(1, N, N)
             @test test_3d_poisson_solver_ppn!_div_free(N, 1, N)
+
+            for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                @test test_3d_poisson_ppn_planned!_div_free(N, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(1, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(N, 1, N, FFTW.ESTIMATE)
+            end
         end
         for Nx in [5, 10, 20, 50, 100], Ny in [5, 10, 20, 50, 100], Nz in [10, 20, 50]
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
             @test test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
+
+            for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                @test test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, FFTW.ESTIMATE)
+            end
         end
 
-        @test test_fftw_planner(100, 100, 100, FFTW.ESTIMATE)
-        @test test_fftw_planner(1, 100, 100, FFTW.ESTIMATE)
-        @test test_fftw_planner(100, 1, 100, FFTW.ESTIMATE)
+        for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+            @test test_fftw_planner(100, 100, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(1, 100, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(100, 1, 100, FFTW.ESTIMATE)
+        end
     end
 end

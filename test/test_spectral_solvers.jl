@@ -154,7 +154,11 @@ function test_fftw_planner(Nx, Ny, Nz, planner_flag)
 end
 
 function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
+    if Nx == 1 || Ny == 1
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+    else
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+    end
 
     RHS = CellField(g, Complex{eltype(g)})
     RHS_orig = CellField(g, Complex{eltype(g)})
