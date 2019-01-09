@@ -490,6 +490,7 @@ function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈∇²w::FaceFie
     nothing
 end
 
+# TODO: Rewrite using δ and div operators.
 function ∇²_ppn!(g::RegularCartesianGrid, f::CellField, ∇²f::CellField)
     for k in 2:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
        ∇²f.data[i, j, k] = (f.data[incmod1(i, g.Nx), j, k] - 2*f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / g.Δx^2 +

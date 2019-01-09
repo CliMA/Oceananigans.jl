@@ -29,10 +29,10 @@ export
     LinearEquationOfState,
     ρ!,
     δρ!,
+    ∫δρgdz!,
 
     TimeStepper,
-
-    laplacian3d_ppn,
+    time_stepping!,
 
     SpectralSolverParameters,
     solve_poisson_1d_pbc,
@@ -43,7 +43,9 @@ export
     solve_poisson_3d_mbc,
     solve_poisson_3d_ppn,
     solve_poisson_3d_ppn!,
-    solve_poisson_3d_ppn_planned!
+    solve_poisson_3d_ppn_planned!,
+
+    SavedFields
 
 using
     FFTW
@@ -64,7 +66,9 @@ include("fieldsets.jl")
 include("operators/operators.jl")
 
 include("equation_of_state.jl")
-include("time_steppers.jl")
 include("spectral_solvers.jl")
+include("time_steppers.jl")
+
+include("output_writers.jl")
 
 end # module

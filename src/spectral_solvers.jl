@@ -236,7 +236,7 @@ end
 
 function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
     Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
-    
+
     function mkwaves(N,L)
         k²_cyc = zeros(N, 1)
         k²_neu = zeros(N, 1)
@@ -316,7 +316,7 @@ let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
     plannerflag2string(k::Integer) = pf2s[Int(k)]
 end
 
-function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT, verbose=false)
+function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT; verbose=false)
     kx² = zeros(eltype(g), g.Nx)
     ky² = zeros(eltype(g), g.Ny)
     kz² = zeros(eltype(g), g.Nz)

@@ -29,7 +29,7 @@ function isotropic_diffusion_2d()
     otmp = OperatorTemporaryFields(g)
 
     stmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
-    ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT, verbose=true)
+    ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT; verbose=true)
 
     U.u.data  .= 0
     U.v.data  .= 0
