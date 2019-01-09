@@ -137,6 +137,10 @@ function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
     solve_poisson_3d_ppn!(g, RHS, ϕ)
 
     ∇²_ppn!(g, ϕ, ∇²ϕ)
+
+    @show ∇²ϕ.data[:, :, 1]
+    @show RHS_orig.data[:, :, 1]
+
     ∇²ϕ.data ≈ RHS_orig.data
 end
 

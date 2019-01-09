@@ -236,6 +236,7 @@ end
 
 function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
     Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
+    
     function mkwaves(N,L)
         k²_cyc = zeros(N, 1)
         k²_neu = zeros(N, 1)
@@ -248,7 +249,6 @@ function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
         return k²_cyc, k²_neu
     end
 
-    # TODO: Create FFTW plan.
     fh = FFTW.fft(FFTW.r2r(f, FFTW.REDFT10, 3), [1, 2])
 
     kx²_cyc, kx²_neu = mkwaves(Nx, Lx)
@@ -266,7 +266,6 @@ function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
     end
     ϕh[1, 1, 1] = 0
 
-    # TODO: Create FFTW plan.
     FFTW.r2r(real.(FFTW.ifft(ϕh, [1, 2])), FFTW.REDFT01, 3) / (2Nz)
 end
 
