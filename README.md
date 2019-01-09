@@ -3,11 +3,11 @@
 [![Build Status](https://travis-ci.com/ali-ramadhan/Oceananigans.jl.svg?branch=master)](https://travis-ci.com/ali-ramadhan/Oceananigans.jl)
 [![codecov](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl)
 
-A fast non-hydrostatic n-dimensional ocean model based on the MITgcm algorithm in Julia. The plan is to make it useful as a large eddy simulation (LES) model or as a fast super-parameterization to be embedded (or *dispatched*) within a global ocean model. As an embedded model it could resolve the sub-grid scale physics and communicate their effects back to the global model or act as a source of training data for statistical learning algorithms.
+A fast non-hydrostatic _n_-dimensional ocean model based on the [MITgcm](https://github.com/MITgcm/MITgcm) algorithm [(Marshall et al., 1997)](https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/96JC02775) in Julia. The plan is to make it useful as a [large eddy simulation](https://en.wikipedia.org/wiki/Large_eddy_simulation) (LES) model or as a fast [super-parameterization](http://hannahlab.org/what-is-super-parameterization/) to be embedded within a global ocean model. As an embedded model it could resolve the sub-grid scale physics and communicate their effects back to the global model or act as a source of training data for statistical learning algorithms [(Campin et al., 2011)](https://www.sciencedirect.com/science/article/pii/S1463500310001496?via%3Dihub).
 
-It may end up as a general-purpose ocean model that can be used in a hydrostatic or non-hydrostatic configuration with a friendly and intuitive user interface. Thanks high-level zero-cost abstractions (such as multiple *dispatch*) in Julia we think we can make the model look and behave the same no matter the dimension or grid of the underlying simulation.
+It can be used as a general-purpose ocean model in a hydrostatic or non-hydrostatic configuration. A big aim is to have a friendly and intuitive user interface allowing users to focus on the science and not on fixing compiler errors. Thanks to high-level zero-cost abstractions in Julia we think we can make the model look and behave the same no matter the dimension or grid of the underlying simulation.
 
- Just found out about the [Zen of Python](https://www.python.org/dev/peps/pep-0020/) which might be a great role model for this package
+ Just found out about the [Zen of Python](https://www.python.org/dev/peps/pep-0020/) which might be a good guide for this package
 ```
 Beautiful is better than ugly.
 Explicit is better than implicit.
