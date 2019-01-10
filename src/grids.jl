@@ -45,7 +45,7 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
 end
 
 """
-    RegularCartesianGrid(N, L, T=Float64)
+    RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
 
 Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
 size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values

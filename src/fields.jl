@@ -4,7 +4,7 @@ import Base:
     iterate, similar, *, +, -
 
 """
-    CellField{T,G<:Grid{T}} <: Field{G}
+    CellField{T<:AbstractArray} <: Field
 
 A cell-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
@@ -15,7 +15,7 @@ struct CellField{T<:AbstractArray} <: Field
 end
 
 """
-    FaceFieldX{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldX{T<:AbstractArray} <: FaceField
 
 An x-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
@@ -26,7 +26,7 @@ struct FaceFieldX{T<:AbstractArray} <: FaceField
 end
 
 """
-    FaceFieldY{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldY{T<:AbstractArray} <: FaceField
 
 A y-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.
@@ -37,7 +37,7 @@ struct FaceFieldY{T<:AbstractArray} <: FaceField
 end
 
 """
-    FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldZ{T<:AbstractArray} <: FaceField
 
 A z-face-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.

@@ -53,7 +53,6 @@ function time_stepping!(problem::Problem; Nt, Δt, R)
         𝜈∇²u!(g, U.u, 𝜈∇²u, 𝜈h, 𝜈v, otmp)
         @. G.Gu.data += 𝜈∇²u.data
 
-        ###
         u∇v = stmp.fFY
         u∇v!(g, U, u∇v, otmp)
         @. G.Gv.data = -u∇v.data

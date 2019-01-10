@@ -1,10 +1,9 @@
 # Oceananigans.jl Documentation
 
-
 ## Grids
 ```@docs
 RegularCartesianGrid
-RegularCartesianGrid(N, L, T)
+RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
 ```
 
 ## Fields
@@ -13,10 +12,10 @@ CellField
 FaceFieldX
 FaceFieldY
 FaceFieldZ
-CellField(grid::Grid{T}) where T <: AbstractFloat
-FaceFieldX(grid::Grid{T}) where T <: AbstractFloat
-FaceFieldY(grid::Grid{T}) where T <: AbstractFloat
-FaceFieldZ(grid::Grid{T}) where T <: AbstractFloat
+CellField(grid::Grid)
+FaceFieldX(grid::Grid)
+FaceFieldY(grid::Grid)
+FaceFieldZ(grid::Grid)
 ```
 
 ## Operators
