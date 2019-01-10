@@ -45,7 +45,9 @@ export
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
 
-    SavedFields
+    SavedFields,
+
+    Problem
 
 using
     FFTW
@@ -67,6 +69,7 @@ include("operators/operators.jl")
 
 include("equation_of_state.jl")
 include("spectral_solvers.jl")
+include("problem.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")

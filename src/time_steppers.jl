@@ -1,14 +1,24 @@
 using Oceananigans.Operators
 
-function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfState, ssp::SpectralSolverParameters,
-                        U::VelocityFields, tr::TracerFields, pr::PressureFields, G::SourceTerms, Gp::SourceTerms, F::ForcingFields,
-                        stmp::StepperTemporaryFields, otmp::OperatorTemporaryFields,
-                        Nt, Δt, R, ΔR)
+function time_stepping!(problem::Problem; Nt, Δt, R)
+    g = problem.g
+    c = problem.c
+    eos = problem.eos
+    ssp = problem.ssp
+    U = problem.U
+    tr = problem.tr
+    pr = problem.pr
+    G = problem.G
+    Gp = problem.Gp
+    F = problem.F
+    stmp = problem.stmp
+    otmp = problem.otmp
 
     κh = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
     κv = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
     𝜈h = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
     𝜈v = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
+
     for n in 1:Nt
         # Calculate new density and density deviation.
         δρ = stmp.fC1
@@ -125,7 +135,7 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
         div!(g, U.u, U.v, U.w, div_u1, otmp)
 
         print("\rt = $(n*Δt) / $(Nt*Δt)   ")
-        if n % ΔR == 0
+        if n % R.ΔR == 0
             # names = ["u", "v", "w", "T", "S", "Gu", "Gv", "Gw", "GT", "GS",
             #          "pHY", "pHY′", "pNHS", "ρ", "∇·u"]
             # print("t = $(n*Δt) / $(Nt*Δt)\n")
@@ -136,7 +146,7 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
             #             lpad(names[i], 4), minimum(Q), maximum(Q), mean(Q), mean(abs.(Q)), std(Q))
             # end
 
-            Ridx = Int(n/ΔR)
+            Ridx = Int(n/R.ΔR)
             R.u[Ridx, :, :, :] .= U.u.data
             # Rv[n, :, :, :] = copy(vⁿ)
             R.w[Ridx, :, :, :] .= U.w.data
@@ -147,4 +157,6 @@ function time_stepping!(g::Grid, c::PlanetaryConstants, eos::LinearEquationOfSta
             # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
         end
     end
+
+    println()
 end

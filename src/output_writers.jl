@@ -3,6 +3,7 @@ struct SavedFields
     w::Array{Float64,4}
     T::Array{Float64,4}
     ρ::Array{Float64,4}
+    ΔR  # Output frequency
 end
 
 function SavedFields(g, Nt, ΔR)
@@ -10,5 +11,5 @@ function SavedFields(g, Nt, ΔR)
     w = zeros(Int(Nt/ΔR), g.Nx, g.Ny, g.Nz)
     T = zeros(Int(Nt/ΔR), g.Nx, g.Ny, g.Nz)
     ρ = zeros(Int(Nt/ΔR), g.Nx, g.Ny, g.Nz)
-    SavedFields(u, w, T, ρ)
+    SavedFields(u, w, T, ρ, ΔR)
 end
