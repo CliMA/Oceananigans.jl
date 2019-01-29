@@ -12,6 +12,27 @@ using Oceananigans.Operators
         @test test_grid_size()
         @test test_cell_volume()
         @test test_faces_start_at_zero()
+
+        @testset "Grid dimensions" begin
+            L = (100, 100, 100)
+            for ft in [Float32, Float64]
+                @test RegularCartesianGrid((25, 25, 25), L; FloatType=ft).dim == 3
+                @test RegularCartesianGrid((5, 25, 125), L; FloatType=ft).dim == 3
+                @test RegularCartesianGrid((64, 64, 64), L; FloatType=ft).dim == 3
+                @test RegularCartesianGrid((32, 32,  1), L; FloatType=ft).dim == 2
+                @test RegularCartesianGrid((32,  1, 32), L; FloatType=ft).dim == 2
+                @test RegularCartesianGrid((1,  32, 32), L; FloatType=ft).dim == 2
+                @test_throws AssertionError RegularCartesianGrid((32,), L; FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 64), L; FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((1, 64, 1), L; FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((1, 1, 1), L; FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 32, 32, 16), L; FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100,); FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100); FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100, 1, 1); FloatType=ft)
+                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100, -100); FloatType=ft)
+            end
+        end
     end
 
     @testset "Fields" begin
