@@ -85,10 +85,16 @@ southern cells of a cell-centered field `f` and store it in a face-centered
 field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
+# function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+#     end
+#     nothing
+# end
+
 function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
-    end
+    @views @. δyf.data[:,     1, :] = f.data[:,     1, :] - f.data[:,     end, :]
+    @views @. δyf.data[:, 2:end, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     nothing
 end
 
@@ -100,24 +106,42 @@ southern faces of a face-centered field `f` and store it in a cell-centered
 field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
+# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
+
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
-    end
+    @views @. δyf.data[:, 1:end-1, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
+    @views @. δyf.data[:, end,     :] = f.data[:, 1,     :] - f.data[:, end,     :]
     nothing
 end
+
+# function δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 function δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
-    end
+    @views @. δyf.data[:, 1:end-1, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
+    @views @. δyf.data[:, end,     :] = f.data[:, 1,     :] - f.data[:, end,     :]
     nothing
 end
 
+# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+#     end
+#     nothing
+# end
+
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
-    end
+    @views @. δyf.data[:,     1, :] = f.data[:,     1, :] - f.data[:,     end, :]
+    @views @. δyf.data[:, 2:end, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     nothing
 end
 
@@ -129,11 +153,17 @@ bottom cells of a cell-centered field `f` and store it in a face-centered
 field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
 with Neumann boundary condition in the \$z\$-direction.
 """
+# function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+#     end
+#     @. δzf.data[:, :, 1] = 0
+#     nothing
+# end
+
 function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
-    end
-    @. δzf.data[:, :, 1] = 0
+    @views @. δzf.data[:, :, 2:end] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     1] = 0
     nothing
 end
 
@@ -145,41 +175,59 @@ bottom faces of a face-centered field `f` and store it in a cell-centered
 field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
 with Neumann boundary condition in the \$z\$-direction.
 """
+# function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
+#     end
+#     for j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
+#     end
+#
+#     # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
+#     # Nx, Ny, Nz = 100, 100, 100.
+#     # @. δzf.data[:, :, end] = f.data[:, :, end]
+#
+#     nothing
+# end
+
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
-    end
-    for j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
-    end
-
-    # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
-    # Nx, Ny, Nz = 100, 100, 100.
-    # @. δzf.data[:, :, end] = f.data[:, :, end]
-
+    @views @. δzf.data[:, :, 1:end-1] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     end] = f.data[:, :,     end]
     nothing
 end
+
+# function δz!(g::RegularCartesianGrid, f::EdgeField, δzf::FaceField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
+#     end
+#     for j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
+#     end
+#
+#     # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
+#     # Nx, Ny, Nz = 100, 100, 100.
+#     # @. δzf.data[:, :, end] = f.data[:, :, end]
+#
+#     nothing
+# end
 
 function δz!(g::RegularCartesianGrid, f::EdgeField, δzf::FaceField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
-    end
-    for j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
-    end
-
-    # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
-    # Nx, Ny, Nz = 100, 100, 100.
-    # @. δzf.data[:, :, end] = f.data[:, :, end]
-
+    @views @. δzf.data[:, :, 1:end-1] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     end] = f.data[:, :,     end]
     nothing
 end
 
+# function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+#     end
+#     @. δzf.data[:, :, 1] = 0
+#     nothing
+# end
+
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
-    end
-    @. δzf.data[:, :, 1] = 0
+    @views @. δzf.data[:, :, 2:end] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     1] = 0
     nothing
 end
 
