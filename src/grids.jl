@@ -56,9 +56,13 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+function RegularCartesianGrid(N, L; FloatType=Float64)
+    @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
+    @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
+
+    num_flat_dims = count(i->(i==1), N)
+    dim = 3 - num_flat_dims
     @assert dim == 2 || dim == 3 "Only 2D or 3D grids are supported right now."
-    @assert length(N) == 3 && length(L) == 3  "N, L must have all three dimensions to specify which dimensions are used."
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L

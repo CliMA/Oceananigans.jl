@@ -119,9 +119,9 @@ end
 
 function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
     if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     end
 
     RHS = CellField(g, Complex{eltype(g)})
@@ -143,9 +143,9 @@ end
 
 function test_fftw_planner(Nx, Ny, Nz, planner_flag)
     if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     end
 
     RHS = CellField(g, Complex{eltype(g)})
@@ -155,9 +155,9 @@ end
 
 function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
     if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     end
 
     RHS = CellField(g, Complex{eltype(g)})
@@ -180,9 +180,9 @@ end
 
 function test_3d_poisson_solver_ppn_all_equal(Nx, Ny, Nz, planner_flag)
     if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=2)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100); dim=3)
+        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
     end
 
     RHS = CellField(g, Complex{eltype(g)})

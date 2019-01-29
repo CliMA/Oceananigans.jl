@@ -20,8 +20,8 @@ using Oceananigans.Operators
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
 
-        g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
-        g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+        g32 = RegularCartesianGrid(N, L; FloatType=Float32)
+        g64 = RegularCartesianGrid(N, L; FloatType=Float64)
 
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
@@ -128,8 +128,8 @@ using Oceananigans.Operators
         N = (20, 20, 20)
         L = (20, 20, 20)
 
-        g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
-        g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+        g32 = RegularCartesianGrid(N, L; FloatType=Float32)
+        g64 = RegularCartesianGrid(N, L; FloatType=Float64)
 
         @test test_∇²_ppn(g32)
         @test test_∇²_ppn(g64)
