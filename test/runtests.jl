@@ -128,7 +128,7 @@ using Oceananigans.Operators
 
                     @test test_u_dot_grad_u(g)
                     @test test_u_dot_grad_v(g)
-                    # @test test_u_dot_grad_w(g) || "N=$(N), eltype(g)=$(eltype(g))"
+                    @test test_u_dot_grad_w(g) || "N=$(N), eltype(g)=$(eltype(g))"
 
                     @test test_κ∇²(g)
                     @test test_𝜈∇²u(g)

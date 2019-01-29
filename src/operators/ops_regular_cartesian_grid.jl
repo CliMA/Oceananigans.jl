@@ -365,13 +365,13 @@ function u∇w!(g::RegularCartesianGrid, ũ::VelocityFields, u∇w::FaceFieldZ,
     avgy!(g, ũ.w, w̅ʸ)
     avgz!(g, ũ.v, v̅ᶻ)
     wv = tmp.fE1
-    @. wv.data = g.Az * w̅ʸ.data * v̅ᶻ.data
+    @. wv.data = g.Ay * w̅ʸ.data * v̅ᶻ.data
     δy!(g, wv, ∂wv∂y)
 
     w̅ᶻ = tmp.fC1
     avgz!(g, ũ.w, w̅ᶻ)
     ww = tmp.fC1
-    @. ww.data = g.Ay * w̅ᶻ.data^2
+    @. ww.data = g.Az * w̅ᶻ.data^2
     δz!(g, ww, ∂ww∂z)
 
     # @. ww.data[:, :, 1]   .= 0
