@@ -129,9 +129,35 @@ function δx!(f, δxf)
     nothing
 end
 
+# function δx!(f, δxf)
+#     @views begin
+#         @. begin
+#             δxf[2:end, :, :] = f[2:end, :, :] - f[1:end-1, :, :]
+#             δxf[end,   :, :] = f[1,     :, :] - f[end,     :, :]
+#         end
+#     end
+# end
+
+# function δx!(f, δxf, Nx)
+#     @views @. δxf[1:Nx, :, :] = f[incmod1(1:Nx, Nx), :, :] - f[1:Nx, :, :]
+#     nothing
+# end
+
+function δx!(f, δxf)
+    @views @. δxf[:, 2:end, :, :] = f[:, 2:end, :, :] - f[:, 1:end-1, :, :]
+    @views @. δxf[:, end,   :, :] = f[:, 1,     :, :] - f[:, end,     :, :]
+    nothing
+end
+
 function δy!(f, δyf)
-    @views @. δxf[:, 2:end, :] = f[:, 2:end, :] - f[:, 1:end-1, :]
-    @views @. δxf[:, end,   :] = f[:, 1,     :] - f[:, end,     :]
+    @views @. δyf[:, 2:end, :] = f[:, 2:end, :] - f[:, 1:end-1, :]
+    @views @. δyf[:, end,   :] = f[:, 1,     :] - f[:, end,     :]
+    nothing
+end
+
+function δz!(f, δzf)
+    @views @. δzf[:, :, 2:end] = f[:, :, 2:end] - f[:, :, 1:end-1]
+    @views @. δzf[:, :,   end] = f[:, :, 1    ] - f[:, :, end    ]
     nothing
 end
 
