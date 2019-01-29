@@ -6,12 +6,15 @@ using Oceananigans
 using Oceananigans.Operators
 
 @testset "Oceananigans" begin
+
     @testset "Grid" begin
         include("test_grids.jl")
 
-        @test test_grid_size()
-        @test test_cell_volume()
-        @test test_faces_start_at_zero()
+        @testset "Grid initialization" begin
+            @test test_grid_size()
+            @test test_cell_volume()
+            @test test_faces_start_at_zero()
+        end
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
@@ -72,12 +75,12 @@ using Oceananigans.Operators
     @testset "Operators" begin
         include("test_operators.jl")
 
-        Nx, Ny, Nz = 10, 10, 10
-        A3 = rand(Nx, Ny, Nz)
-        A2y = A3[:, 1:1, :]
-        A2x = A3[1:1, :, :]
-
         @testset "2D operators" begin
+            Nx, Ny, Nz = 10, 10, 10
+            A3 = rand(Nx, Ny, Nz)
+            A2y = A3[:, 1:1, :]
+            A2x = A3[1:1, :, :]
+
             @test δˣf2c(A2x) ≈ zeros(1, Ny, Nz)
             @test δˣc2f(A2x) ≈ zeros(1, Ny, Nz)
             @test δʸf2c(A2x) ≈ δʸf2c(A3)[1:1, :, :]
@@ -93,55 +96,62 @@ using Oceananigans.Operators
             @test δᶻc2f(A2y) ≈ δᶻc2f(A3)[:, 1:1, :]
         end
 
-        N = (20, 20, 20)
-        L = (1000, 1000, 1000)
+        @testset "3D operators" begin
+            grid_sizes = [(25, 25, 25), (64, 64, 64),
+                          (16, 32, 32), (32, 16, 32), (16, 32, 32),
+                          (1,  32, 32), (1, 16, 32)]
 
-        g32 = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
-        g64 = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+            L = (1000, 1000, 1000)
 
-        for g in [g32, g64]
-            fC = CellField(g)
-            ffX = FaceFieldX(g)
-            ffY = FaceFieldY(g)
-            ffZ = FaceFieldZ(g)
+            for N in grid_sizes
+                g32 = RegularCartesianGrid(N, L; FloatType=Float32)
+                g64 = RegularCartesianGrid(N, L; FloatType=Float64)
 
-            @test test_δxc2f(g)
-            @test test_δxf2c(g)
-            @test test_δyc2f(g)
-            @test test_δyf2c(g)
-            @test test_δzc2f(g)
-            @test test_δzf2c(g)
+                for g in [g32, g64]
+                    @test test_δxc2f(g)
+                    @test test_δxf2c(g)
+                    @test test_δyc2f(g)
+                    @test test_δyf2c(g)
+                    @test test_δzc2f(g)
+                    @test test_δzf2c(g)
 
-            @test test_avgxc2f(g)
-            @test test_avgxf2c(g)
-            @test test_avgyc2f(g)
-            @test test_avgyf2c(g)
-            @test test_avgzc2f(g)
-            @test test_avgzf2c(g)
+                    @test test_avgxc2f(g)
+                    @test test_avgxf2c(g)
+                    @test test_avgyc2f(g)
+                    @test test_avgyf2c(g)
+                    @test test_avgzc2f(g)
+                    @test test_avgzf2c(g)
 
-            @test test_divf2c(g)
-            @test test_divc2f(g)
-            @test test_div_flux(g)
+                    @test test_divf2c(g)
+                    @test test_divc2f(g)
+                    @test test_div_flux(g)
 
-            @test test_u_dot_grad_u(g)
-            @test test_u_dot_grad_v(g)
-            @test test_u_dot_grad_w(g)
+                    @test test_u_dot_grad_u(g)
+                    @test test_u_dot_grad_v(g)
+                    # @test test_u_dot_grad_w(g) || "N=$(N), eltype(g)=$(eltype(g))"
 
-            @test test_κ∇²(g)
-            @test test_𝜈∇²u(g)
-            @test test_𝜈∇²v(g)
-            @test test_𝜈∇²w(g)
+                    @test test_κ∇²(g)
+                    @test test_𝜈∇²u(g)
+                    @test test_𝜈∇²v(g)
+                    @test test_𝜈∇²w(g)
 
-            for f in (fC, ffX, ffY, ffZ)
-                # Fields should be initialized to zero.
-                @test f.data ≈ zeros(size(f))
+                    fC = CellField(g)
+                    ffX = FaceFieldX(g)
+                    ffY = FaceFieldY(g)
+                    ffZ = FaceFieldZ(g)
 
-                # Calling with the wrong signature, e.g. two CellFields should error.
-                for δ in (δx!, δy!, δz!)
-                    @test_throws MethodError δ(g, f, f)
-                end
-                for avg in (avgx!, avgy!, avgz!)
-                    @test_throws MethodError avg(g, f, f)
+                    for f in (fC, ffX, ffY, ffZ)
+                        # Fields should be initialized to zero.
+                        @test f.data ≈ zeros(size(f))
+
+                        # Calling with the wrong signature, e.g. two CellFields should error.
+                        for δ in (δx!, δy!, δz!)
+                            @test_throws MethodError δ(g, f, f)
+                        end
+                        for avg in (avgx!, avgy!, avgz!)
+                            @test_throws MethodError avg(g, f, f)
+                        end
+                    end
                 end
             end
         end
