@@ -67,7 +67,7 @@ function run_benchmarks()
 
     U  = VelocityFields(g)
     tr = TracerFields(g)
-    tt = StepperTemporaryFields(g)
+    tt = OperatorTemporaryFields(g)
 
     κh, κv = 4e-2, 4e-2
     𝜈h, 𝜈v = 4e-2, 4e-2
