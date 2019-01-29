@@ -123,12 +123,50 @@ Time(%)      Time     Calls       Avg       Min       Max  Name
   0.00%     807ns         2     403ns     288ns     519ns  cuDeviceGet
 '''
 
-@inline incmod1(i, n) = 1 + (i % n)
+function δx!(f, δxf)
+    @views @. δxf[2:end, :, :] = f[2:end, :, :] - f[1:end-1, :, :]
+    @views @. δxf[end,   :, :] = f[1,     :, :] - f[end,     :, :]
+    nothing
+end
+
+function δy!(f, δyf)
+    @views @. δxf[:, 2:end, :] = f[:, 2:end, :] - f[:, 1:end-1, :]
+    @views @. δxf[:, end,   :] = f[:, 1,     :] - f[:, end,     :]
+    nothing
+end
 
 '''
-julia> @btime δx!(xc, yc, 100, 100, 100)
-  3.715 ms (0 allocations: 0 bytes)
+julia> using BenchmarkTools
+julia> Nx, Ny, Nz = 128, 128, 128;
+julia> xc = rand(Nx, Ny, Nz); yc = zeros(Nx, Ny, Nz);
+julia> @benchmark δx!($xc, $yc)
+BenchmarkTools.Trial:
+  memory estimate:  384 bytes
+  allocs estimate:  6
+  --------------
+  minimum time:     1.645 ms (0.00% GC)
+  median time:      1.662 ms (0.00% GC)
+  mean time:        1.667 ms (0.00% GC)
+  maximum time:     3.740 ms (0.00% GC)
+  --------------
+  samples:          2996
+  evals/sample:     1
+'''
 
-julia> @time δx!(xg, yg, 100, 100, 100)
- 19.862191 seconds (15.04 M allocations: 673.130 MiB, 0.25% gc time)
+'''
+julia> using CUDAnative, CUDAdrv, CuArrays, BenchmarkTools
+julia> Nx, Ny, Nz = 128, 128, 128;
+julia> xg = cu(rand(Nx, Ny, Nz)); yg = cu(zeros(Nx, Ny, Nz));
+julia> @benchmark δx!($xg, $yg)
+BenchmarkTools.Trial:
+  memory estimate:  4.84 KiB
+  allocs estimate:  70
+  --------------
+  minimum time:     9.721 μs (0.00% GC)
+  median time:      178.504 μs (0.00% GC)
+  mean time:        169.339 μs (0.27% GC)
+  maximum time:     2.521 ms (99.15% GC)
+  --------------
+  samples:          10000
+  evals/sample:     1
 '''
