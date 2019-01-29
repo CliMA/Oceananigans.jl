@@ -63,7 +63,7 @@ function RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
 
-    dim == 2 && @assert Nx == 1 || Ny == 1 "For 2D grids, Nx, Ny, or Nz must be 1."
+    dim == 2 && @assert Nx == 1 || Ny == 1 || Nz == 1 "For 2D grids, Nx, Ny, or Nz must be 1."
     dim == 3 && @assert Nx != 1 && Ny != 1 && Nz != 1 "For 3D grid, cannot have dimensions of size 1."
 
     Δx = Lx / Nx
