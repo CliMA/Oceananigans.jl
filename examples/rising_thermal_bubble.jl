@@ -2,10 +2,7 @@
 # Pkg.activate(".")
 
 using Statistics, Printf
-
-import PyPlot
-using Interact, Plots
-
+using Plots
 using Oceananigans
 
 function make_movies(problem::Problem, R::SavedFields, Nt, Δt)
