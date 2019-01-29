@@ -62,12 +62,12 @@ function run_benchmarks()
     N = (100, 100, 100)
     L = (1000, 1000, 1000)
 
-    g  = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
+    g  = RegularCartesianGrid(N, L; FloatType=Float64)
     eos = LinearEquationOfState()
 
     U  = VelocityFields(g)
     tr = TracerFields(g)
-    tt = TemporaryFields(g)
+    tt = StepperTemporaryFields(g)
 
     κh, κv = 4e-2, 4e-2
     𝜈h, 𝜈v = 4e-2, 4e-2
