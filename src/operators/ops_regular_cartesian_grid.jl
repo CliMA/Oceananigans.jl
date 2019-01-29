@@ -17,10 +17,16 @@ western cells of a cell-centered field `f` and store it in a face-centered
 field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$x\$-direction.
 """
+# function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+#     end
+#     nothing
+# end
+
 function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
-    end
+    @views @. δxf.data[1,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
+    @views @. δxf.data[2:end, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     nothing
 end
 
@@ -32,24 +38,42 @@ western faces of a face-centered field `f` and store it in a cell-centered
 field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary conditions in the \$x\$-direction.
 """
+# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
+
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
-    end
+    @views @. δxf.data[1:end-1, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
+    @views @. δxf.data[end,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
     nothing
 end
+
+# function δx!(g::RegularCartesianGrid, f::EdgeField, δxf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 function δx!(g::RegularCartesianGrid, f::EdgeField, δxf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
-    end
+    @views @. δxf.data[1:end-1, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
+    @views @. δxf.data[end,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
     nothing
 end
 
+# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+#     end
+#     nothing
+# end
+
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
-    end
+    @views @. δxf.data[1,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
+    @views @. δxf.data[2:end, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     nothing
 end
 
