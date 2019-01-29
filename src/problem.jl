@@ -17,11 +17,7 @@ function Problem(N, L)
     c = EarthConstants()
     eos = LinearEquationOfState()
 
-    if N[1] == 1 || N[2] == 1 || N[3] == 1
-        g = RegularCartesianGrid(N, L; dim=2, FloatType=Float64)
-    else
-        g = RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
-    end
+    g = RegularCartesianGrid(N, L; FloatType=Float64)
 
     U  = VelocityFields(g)
     tr = TracerFields(g)
