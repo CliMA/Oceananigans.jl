@@ -239,67 +239,122 @@ eastern and western cells of a cell-centered field `f` and store it in a `g`
 face-centered field `favgx`, assuming both fields are defined on a regular
 Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 """
+# function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
+#     end
+# end
+
 function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
-    end
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    nothing
 end
+
+# function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]) / 2
+#     end
+# end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]) / 2
-    end
+    @views @. favgx.data[1:end-1, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
+    @views @. favgx.data[end,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    nothing
 end
+
+# function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
+#     end
+# end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
-    end
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
-    end
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
-    end
+    @views @. favgy.data[:, 1:end-1, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
+    @views @. favgy.data[:, end,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
-    end
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
+#     end
+#     @. favgz.data[:, :, 1] = f.data[:, :, 1]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
-    end
-    @. favgz.data[:, :, 1] = f.data[:, :, 1]
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
+#     end
+#
+#     # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
+#     @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
-    end
-
-    # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
-    @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
+    @views @. favgz.data[:, :, 1:end-1] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :,     end] = 0.5 * f.data[:, :, end]
     nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
+#     end
+#     @. favgz.data[:, :, 1] = f.data[:, :, 1]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
-    end
-    @. favgz.data[:, :, 1] = f.data[:, :, 1]
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
+
 
 """
     div!(g, fx, fy, fz, δfx, δfy, δfz, div)
