@@ -246,8 +246,8 @@ Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 # end
 
 function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
-    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
     nothing
 end
 
@@ -258,8 +258,8 @@ end
 # end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
-    @views @. favgx.data[1:end-1, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
-    @views @. favgx.data[end,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    @views @. favgx.data[1:end-1, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[end,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
     nothing
 end
 
@@ -270,8 +270,8 @@ end
 # end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField)
-    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2
-    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
     nothing
 end
 
@@ -282,8 +282,8 @@ end
 # end
 
 function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
-    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
-    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
     nothing
 end
 
@@ -294,8 +294,8 @@ end
 # end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
-    @views @. favgy.data[:, 1:end-1, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
-    @views @. favgy.data[:, end,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    @views @. favgy.data[:, 1:end-1, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, end,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
     nothing
 end
 
@@ -306,8 +306,8 @@ end
 # end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField)
-    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2
-    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
     nothing
 end
 
@@ -320,7 +320,7 @@ end
 # end
 
 function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
-    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
     @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
@@ -336,7 +336,7 @@ end
 # end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
-    @views @. favgz.data[:, :, 1:end-1] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :, 1:end-1] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
     @views @. favgz.data[:, :,     end] = 0.5 * f.data[:, :, end]
     nothing
 end
@@ -350,7 +350,7 @@ end
 # end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
-    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
     @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
