@@ -9,6 +9,7 @@ T.
 """
 struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     dim::Int
+    arch::Symbol
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -56,7 +57,7 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(N, L; FloatType=Float64)
+function RegularCartesianGrid(N, L, arch=:cpu; FloatType=Float64)
     @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
     @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
 
@@ -88,7 +89,7 @@ function RegularCartesianGrid(N, L; FloatType=Float64)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{FloatType}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+    RegularCartesianGrid{FloatType}(dim, arch, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                             Az, V, xC, yC, zC, xF, yF, zF)
 end
 

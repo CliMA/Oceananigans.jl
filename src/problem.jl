@@ -13,11 +13,13 @@ struct Problem
     ssp::SpectralSolverParameters
 end
 
-function Problem(N, L)
+function Problem(N, L, arch=:cpu, FloatType=Float64)
+    @assert arch == :cpu || arch == :gpu "arch must be :cpu or :gpu"
+
     c = EarthConstants()
     eos = LinearEquationOfState()
 
-    g = RegularCartesianGrid(N, L; FloatType=Float64)
+    g = RegularCartesianGrid(N, L, arch; FloatType=Float64)
 
     U  = VelocityFields(g)
     tr = TracerFields(g)

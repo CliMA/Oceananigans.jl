@@ -52,6 +52,10 @@ export
 using
     FFTW
 
+if Base.find_package("CuArrays") !== nothing
+    using CUDAdrv, CUDAnative, CuArrays
+end
+
 abstract type ConstantsCollection end
 abstract type EquationOfStateParameters <: ConstantsCollection end
 abstract type Grid end
