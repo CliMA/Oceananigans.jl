@@ -385,3 +385,32 @@ function idct_dim3_gpu!(f)
     
     nothing
 end
+
+function solve_poisson_3d_ppn_gpu!(g::RegularCartesianGrid, f::CellField, ϕ::CellField)
+    kx² = cu(zeros(g.Nx, 1))
+    ky² = cu(zeros(g.Ny, 1))
+    kz² = cu(zeros(g.Nz, 1))
+
+    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
+    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
+    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+
+    fft!(f.data, [1, 2])
+    dct_dim3_gpu!(f.data)
+
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
+    end
+    ϕ.data[1, 1, 1] = 0
+
+    ifft!(ϕ.data, [1, 2])
+
+    @. ϕ.data = real(ϕ.data) / (2g.Nz)
+    # for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+    #     ϕ[i, j, k] = real(ϕ[i, j, k])
+    # end
+
+    idct_dim3_gpu!(f.data)
+
+    nothing
+end
