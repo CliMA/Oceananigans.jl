@@ -10,7 +10,8 @@ struct Problem
     F::ForcingFields
     stmp::StepperTemporaryFields
     otmp::OperatorTemporaryFields
-    ssp::SpectralSolverParameters
+    # ssp::SpectralSolverParameters
+    ssp
 end
 
 function Problem(N, L, arch=:cpu, FloatType=Float64)
@@ -32,11 +33,10 @@ function Problem(N, L, arch=:cpu, FloatType=Float64)
 
     if arch == :cpu
         stmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
+        ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif arch == :gpu
-        stmp.fCC1.data .= cu(rand(eltype(g), g.Nx, g.Ny, g.Nz))
+        ssp = nothing
     end
-    
-    ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT; verbose=true)
 
     U.u.data  .= 0
     U.v.data  .= 0
@@ -45,7 +45,11 @@ function Problem(N, L, arch=:cpu, FloatType=Float64)
     tr.T.data .= 283
 
     pHY_profile = [-eos.ρ₀*c.g*h for h in g.zC]
-    pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
+    if arch == :cpu
+        pr.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
+    elseif arch == :gpu
+        pr.pHY.data .= cu(repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1))
+    end
 
     ρ!(eos, g, tr)
     Problem(c, eos, g, U, tr, pr, G, Gp, F, stmp, otmp, ssp)

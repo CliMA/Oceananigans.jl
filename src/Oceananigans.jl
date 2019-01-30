@@ -44,6 +44,7 @@ export
     solve_poisson_3d_ppn,
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
+    solve_poisson_3d_ppn_gpu!,
 
     SavedFields,
 
