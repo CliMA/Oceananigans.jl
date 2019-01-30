@@ -355,3 +355,33 @@ function solve_poisson_3d_ppn_planned!(ssp::SpectralSolverParameters, g::Regular
     @. ϕ.data = ϕ.data / (2*g.Nz)
     nothing
 end
+
+function dct_dim3_gpu!(f)
+    Nx, Ny, Nz = size(f)
+    f .= cat(f[:, :, 1:2:Nz], f[:, :, Nz:-2:2]; dims=3)
+    fft!(f, 3)
+
+    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
+    
+    # f .*= repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1)
+    f .*= cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    
+    nothing
+end
+
+function idct_dim3_gpu!(f)
+    Nx, Ny, Nz = size(f)
+    
+    bfactors = 0.5 * exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    # f .*= repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1)
+    f .*= cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    
+    ifft!(f, 3)
+    
+    # f = cat(f[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4)
+    # f = reshape(permutedims(f, (1, 2, 4, 3)), Nx, Ny, Nz)
+    # f .= reshape(permutedims(cat(f[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz)
+    f .= cu(reshape(permutedims(cat(f[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    
+    nothing
+end
