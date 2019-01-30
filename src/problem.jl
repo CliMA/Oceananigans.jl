@@ -30,7 +30,12 @@ function Problem(N, L, arch=:cpu, FloatType=Float64)
     stmp = StepperTemporaryFields(g)
     otmp = OperatorTemporaryFields(g)
 
-    stmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
+    if arch == :cpu
+        stmp.fCC1.data .= rand(eltype(g), g.Nx, g.Ny, g.Nz)
+    elseif arch == :gpu
+        stmp.fCC1.data .= cu(rand(eltype(g), g.Nx, g.Ny, g.Nz))
+    end
+    
     ssp = SpectralSolverParameters(g, stmp.fCC1, FFTW.PATIENT; verbose=true)
 
     U.u.data  .= 0
