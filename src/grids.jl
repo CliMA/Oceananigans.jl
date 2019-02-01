@@ -63,7 +63,7 @@ function RegularCartesianGrid(N, L, arch=:cpu; FloatType=Float64)
 
     num_flat_dims = count(i->(i==1), N)
     dim = 3 - num_flat_dims
-    @assert dim == 2 || dim == 3 "Only 2D or 3D grids are supported right now."
+    @assert 1 <= dim <= 3 "Only 1D, 2D, and 3D grids are supported right now."
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
