@@ -231,7 +231,7 @@ using Oceananigans.Operators
     @testset "Time stepping" begin
         Nx, Ny, Nz = 100, 1, 50
         Lx, Ly, Lz = 2000, 1, 1000
-        Nt, Δt = 2500, 20
+        Nt, Δt = 10, 20
         ΔR = 10
 
         problem = Problem((Nx, Ny, Nz), (Lx, Ly, Lz))
