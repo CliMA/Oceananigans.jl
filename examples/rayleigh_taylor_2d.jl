@@ -44,9 +44,9 @@ function make_movies(problem::Problem, R::SavedFields, Nt, Δt)
 end
 
 function rayleigh_taylor_2d()
-    Nx, Ny, Nz = 512, 1, 256
-    Lx, Ly, Lz = 10000, 1, 5000
-    Nt, Δt = 10000, 10
+    Nx, Ny, Nz = 1024, 1, 512
+    Lx, Ly, Lz = 20000, 1, 10000
+    Nt, Δt = 5000, 10
     ΔR = 10
 
     problem = Problem((Nx, Ny, Nz), (Lx, Ly, Lz))

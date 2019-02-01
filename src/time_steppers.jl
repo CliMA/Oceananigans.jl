@@ -102,9 +102,15 @@ function time_stepping!(problem::Problem; Nt, Δt, R)
         RHS = stmp.fCC1
         ϕ   = stmp.fCC2
         div!(g, G.Gu, G.Gv, G.Gw, RHS, otmp)
-        # @time solve_poisson_3d_ppn!(g, RHS, ϕ)
-        solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
-        @. pr.pNHS.data = real(ϕ.data)
+        
+        if g.arch == :cpu
+            # @time solve_poisson_3d_ppn!(g, RHS, ϕ)
+            solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
+            @. pr.pNHS.data = real(ϕ.data)
+        elseif g.arch == :gpu
+            solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+            @. pr.pNHS.data = real(ϕ.data)
+        end
 
         # div!(g, G.Gu, G.Gv, G.Gw, RHS, otmp)
         # RHSr = real.(RHS.data)

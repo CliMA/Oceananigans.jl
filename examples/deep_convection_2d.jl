@@ -19,7 +19,7 @@ function make_movies(problem::Problem, R::SavedFields, Nt, Δt)
     animT = @animate for tidx in 1:Int(Nt/R.ΔR)
         print("\rframe = $tidx / $(Int(Nt/R.ΔR))   ")
         Plots.heatmap(g.xC ./ 1000, g.zC ./ 1000, rotl90(R.T[tidx, :, 1, :]) .- 283, color=:balance,
-                      clims=(-0.1, 0),
+                      clims=(-0.02, 0),
                       title="T change @ t=$(tidx*R.ΔR*Δt)")
     end
     mp4(animT, "deep_convection_2d_$(round(Int, time())).mp4", fps = 30)
@@ -37,7 +37,7 @@ end
 function deep_convection_2d()
     Nx, Ny, Nz = 100, 1, 50
     Lx, Ly, Lz = 2000, 1, 1000
-    Nt, Δt = 25000, 20
+    Nt, Δt = 2500, 20
     ΔR = 10
 
     problem = Problem((Nx, Ny, Nz), (Lx, Ly, Lz))

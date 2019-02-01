@@ -62,12 +62,13 @@ function run_benchmarks()
     N = (100, 100, 100)
     L = (1000, 1000, 1000)
 
-    g  = RegularCartesianGrid(N, L; dim=3, FloatType=Float32)
+    g  = RegularCartesianGrid(N, L; FloatType=Float64)
     eos = LinearEquationOfState()
 
     U  = VelocityFields(g)
     tr = TracerFields(g)
-    tt = TemporaryFields(g)
+    tt = OperatorTemporaryFields(g)
+    st = StepperTemporaryFields(g)
 
     κh, κv = 4e-2, 4e-2
     𝜈h, 𝜈v = 4e-2, 4e-2
@@ -76,8 +77,8 @@ function run_benchmarks()
     U.v.data  .= rand(eltype(g), size(g))
     U.w.data  .= rand(eltype(g), size(g))
     tr.T.data .= rand(eltype(g), size(g))
-    tt.fCC1.data .= rand(eltype(g), size(g))
-    tt.fCC2.data .= rand(eltype(g), size(g))
+    st.fCC1.data .= rand(eltype(g), size(g))
+    st.fCC2.data .= rand(eltype(g), size(g))
 
     #print("+---------------------------------------------------------------------------------------------------------+\n")
     # print("| ", rpad(" BENCHMARKING OCEANANIGANS: T=$T, (Nx, Ny, Nz)=$N", 103), " |\n")
@@ -118,7 +119,7 @@ function run_benchmarks()
     b = @benchmark 𝜈∇²w!($g, $U.w, $tt.fFZ, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²w!");
 
     b = @benchmark ρ!($eos, $g, $tr); pretty_print_summary(b, "ρ!");
-    b = @benchmark solve_poisson_3d_ppn!($g, $tt.fCC1, $tt.fCC2); pretty_print_summary(b, "solve_poisson_3d_ppn!");
+    b = @benchmark solve_poisson_3d_ppn!($g, $st.fCC1, $st.fCC2); pretty_print_summary(b, "solve_poisson_3d_ppn!");
 
     print("└──────────────────────────┴────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴─────────┴───────┘\n")
     # print("+---------------------------------------------------------------------------------------------------------+\n")
