@@ -240,6 +240,6 @@ using Oceananigans.Operators
 
         time_stepping!(problem; Nt=Nt, Δt=Δt, R=R)
 
-        @test typeof(p) == Problem   # Just testing that no errors happen.
+        @test typeof(problem) == Problem   # Just testing that no errors happen.
     end
 end
