@@ -225,6 +225,21 @@ using Oceananigans.Operators
 
     @testset "Problem" begin
         p = Problem((32, 32, 16), (2000, 2000, 1000))
-        @test typeof(p) == Problem
+        @test typeof(p) == Problem  # Just testing that no errors happen.
+    end
+
+    @testset "Time stepping" begin
+        Nx, Ny, Nz = 100, 1, 50
+        Lx, Ly, Lz = 2000, 1, 1000
+        Nt, Δt = 2500, 20
+        ΔR = 10
+
+        problem = Problem((Nx, Ny, Nz), (Lx, Ly, Lz))
+
+        R  = SavedFields(problem.g, Nt, ΔR)
+
+        time_stepping!(problem; Nt=Nt, Δt=Δt, R=R)
+
+        @test typeof(p) == Problem   # Just testing that no errors happen.
     end
 end
