@@ -27,7 +27,6 @@ using Oceananigans.Operators
                 @test RegularCartesianGrid((1,  32, 32), L; FloatType=ft).dim == 2
                 @test_throws AssertionError RegularCartesianGrid((32,), L; FloatType=ft)
                 @test_throws AssertionError RegularCartesianGrid((32, 64), L; FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((1, 64, 1), L; FloatType=ft)
                 @test_throws AssertionError RegularCartesianGrid((1, 1, 1), L; FloatType=ft)
                 @test_throws AssertionError RegularCartesianGrid((32, 32, 32, 16), L; FloatType=ft)
                 @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100,); FloatType=ft)
