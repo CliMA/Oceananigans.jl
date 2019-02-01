@@ -222,4 +222,9 @@ using Oceananigans.Operators
             @test test_fftw_planner(100, 1, 100, FFTW.ESTIMATE)
         end
     end
+
+    @testset "Problem" begin
+        p = Problem((32, 32, 16), (2000, 2000, 1000))
+        @test typeof(p) == Problem
+    end
 end
