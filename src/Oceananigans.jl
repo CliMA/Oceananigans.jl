@@ -33,6 +33,7 @@ export
 
     TimeStepper,
     time_stepping!,
+	time_stepping_4!,
 
     SpectralSolverParameters,
     solve_poisson_1d_pbc,

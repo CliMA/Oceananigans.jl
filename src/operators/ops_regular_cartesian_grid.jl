@@ -8,6 +8,8 @@ using Oceananigans:
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
 @inline incmod1(a, n) = a == n ? one(a) : a + 1
 @inline decmod1(a, n) = a == 1 ? n : a - 1
+@inline incmod2(a, n) = incmod1(incmod1(a, n),n)
+@inline decmod2(a, n) = decmod1(decmod1(a, n),n)
 
 """
     δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
@@ -230,6 +232,33 @@ function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
 end
 
 """
+    avgx_4(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+
+Compute the average \$\\overline{\\;f\\;}^x = \\frac{f_E + f_W}{2}\$ between the
+eastern and western cells of a cell-centered field `f` and store it in a `g`
+face-centered field `favgx`, assuming both fields are defined on a regular
+Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
+This is done with 4th order accuracy, using a centered scheme.
+"""
+function avgx_4!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds favgx.data[i, j, k] = (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k] -
+		                                    ( f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k] -
+                                          f.data[decmod1(i, g.Nx), j, k] +
+                                          f.data[incmod2(i, g.Nx), j, k]) / 6 ) / 2		 
+    end
+end
+
+function avgy_4!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k] -
+		                                     ( f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k] -
+                                           f.data[i, decmod1(j, g.Ny), k] +
+                                           f.data[i, incmod2(j, g.Ny), k]) / 6 ) / 2
+    end
+end
+
+"""
     div!(g, fx, fy, fz, δfx, δfy, δfz, div)
 
 Compute the divergence.
@@ -270,6 +299,37 @@ function div_flux!(g::RegularCartesianGrid,
 
     avgx!(g, Q, Q̅ˣ)
     avgy!(g, Q, Q̅ʸ)
+    avgz!(g, Q, Q̅ᶻ)
+
+    flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    @. flux_x.data = g.Ax * u.data * Q̅ˣ.data
+    @. flux_y.data = g.Ay * v.data * Q̅ʸ.data
+    @. flux_z.data = g.Az * w.data * Q̅ᶻ.data
+
+    # Imposing zero vertical flux through the top layer.
+    @. flux_z.data[:, :, 1] = 0
+
+    δxflux_x, δyflux_y, δzflux_z = tmp.fC1, tmp.fC2, tmp.fC3
+
+    δx!(g, flux_x, δxflux_x)
+    δy!(g, flux_y, δyflux_y)
+    δz!(g, flux_z, δzflux_z)
+
+    @. div_flux.data = (1/g.V) * (δxflux_x.data + δyflux_y.data + δzflux_z.data)
+    nothing
+end
+
+
+function div_flux_4!(g::RegularCartesianGrid,
+                   u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
+                   div_flux::CellField, tmp::OperatorTemporaryFields)
+
+
+    Q̅ˣ, Q̅ʸ, Q̅ᶻ = tmp.fFX, tmp.fFY, tmp.fFZ
+
+    avgx_4!(g, Q, Q̅ˣ)
+    avgy_4!(g, Q, Q̅ʸ)
     avgz!(g, Q, Q̅ᶻ)
 
     flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
