@@ -8,8 +8,8 @@ using Oceananigans:
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
 @inline incmod1(a, n) = a == n ? one(a) : a + 1
 @inline decmod1(a, n) = a == 1 ? n : a - 1
-@inline incmod2(a, n) = incmod1(incmod1(a, n),n)
-@inline decmod2(a, n) = decmod1(decmod1(a, n),n)
+@inline incmod2(a, n) = incmod1(incmod1(a, n), n)
+@inline decmod2(a, n) = decmod1(decmod1(a, n), n)
 
 """
     δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
@@ -245,7 +245,7 @@ function avgx_4!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
         @inbounds favgx.data[i, j, k] = (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k] -
 		                                    ( f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k] -
                                           f.data[decmod1(i, g.Nx), j, k] +
-                                          f.data[incmod2(i, g.Nx), j, k]) / 6 ) / 2		 
+                                          f.data[decmod2(i, g.Nx), j, k]) / 6 ) / 2
     end
 end
 
@@ -254,7 +254,7 @@ function avgy_4!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k] -
 		                                     ( f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k] -
                                            f.data[i, decmod1(j, g.Ny), k] +
-                                           f.data[i, incmod2(j, g.Ny), k]) / 6 ) / 2
+                                           f.data[i, decmod2(j, g.Ny), k]) / 6 ) / 2
     end
 end
 
