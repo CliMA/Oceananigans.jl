@@ -9,9 +9,12 @@ deps/deps.jl
 # Documenter.jl
 docs/build
 
-# Model output, plots, or debugging
-*.gif
-*.mp4
+# Model output
+*.dat
 
 # Checkpointer model serialization
 *.jlser
+
+# Plots
+*.gif
+*.mp4

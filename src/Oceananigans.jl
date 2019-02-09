@@ -57,7 +57,9 @@ export
     OutputWriter,
     SavedFields,
     Checkpointer,
-    write_output
+    FieldWriter,
+    write_output,
+    read_output
 
 using Serialization, FFTW
 

@@ -21,6 +21,11 @@ function time_step!(model::Model; Nt, Δt, R)
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
 
+    # Write out initial state.
+    for output_writer in model.output_writers
+        write_output(model, output_writer)
+    end
+
     for n in 1:Nt
         # Calculate new density and density deviation.
         δρ = stmp.fC1
@@ -141,6 +146,10 @@ function time_step!(model::Model; Nt, Δt, R)
         div_u1 = stmp.fC1
         div!(g, U.u, U.v, U.w, div_u1, otmp)
 
+        clock.time += Δt
+        clock.time_step += 1
+        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
+
         for output_writer in model.output_writers
             if clock.time_step % output_writer.output_frequency == 0
                 write_output(model, output_writer)
@@ -168,10 +177,6 @@ function time_step!(model::Model; Nt, Δt, R)
             # RpHY′[n, :, :, :] = copy(pʰʸ′)
             # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
         end
-
-        clock.time += Δt
-        clock.time_step += 1
-        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
     end
 
     println()
