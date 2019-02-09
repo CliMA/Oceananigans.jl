@@ -1,18 +1,20 @@
 using Oceananigans.Operators
 
-function time_stepping!(problem::Problem; Nt, Δt, R)
-    g = problem.g
-    c = problem.c
-    eos = problem.eos
-    ssp = problem.ssp
-    U = problem.U
-    tr = problem.tr
-    pr = problem.pr
-    G = problem.G
-    Gp = problem.Gp
-    F = problem.F
-    stmp = problem.stmp
-    otmp = problem.otmp
+function time_stepping!(model::Model; Nt, Δt, R)
+    metadata = model.metadata
+    bc = model.boundary_conditions
+    g = model.grid
+    c = model.constants
+    eos = model.eos
+    ssp = model.ssp
+    U = model.velocities
+    tr = model.tracers
+    pr = model.pressures
+    G = model.G
+    Gp = model.Gp
+    F = model.forcings
+    stmp = model.stepper_tmp
+    otmp = model.operator_tmp
 
     κh = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
     κv = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
@@ -102,12 +104,12 @@ function time_stepping!(problem::Problem; Nt, Δt, R)
         RHS = stmp.fCC1
         ϕ   = stmp.fCC2
         div!(g, G.Gu, G.Gv, G.Gw, RHS, otmp)
-        
-        if g.arch == :cpu
+
+        if metadata.arch == :cpu
             # @time solve_poisson_3d_ppn!(g, RHS, ϕ)
             solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
             @. pr.pNHS.data = real(ϕ.data)
-        elseif g.arch == :gpu
+        elseif metadata.arch == :gpu
             solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
             @. pr.pNHS.data = real(ϕ.data)
         end
