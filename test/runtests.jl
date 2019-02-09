@@ -106,56 +106,54 @@ using Oceananigans.Operators
                           (32,  1, 32), (32, 1, 16),
                           (32, 32,  1), (32, 16, 1)]
 
-            L = (1000, 1000, 1000)
+            domain_sizes = [(1000, 1000, 1000)]
 
-            for N in grid_sizes
-                g32 = RegularCartesianGrid(N, L; FloatType=Float32)
-                g64 = RegularCartesianGrid(N, L; FloatType=Float64)
+            for N in grid_sizes, L in domain_sizes, arch in [:cpu], ft in [Float64, Float32]
+                mm = ModelMetadata(arch, ft)
+                g = RegularCartesianGrid(mm, N, L)
 
-                for g in [g32, g64]
-                    @test test_δxc2f(g)
-                    @test test_δxf2c(g)
-                    @test test_δyc2f(g)
-                    @test test_δyf2c(g)
-                    @test test_δzc2f(g)
-                    @test test_δzf2c(g)
+                @test test_δxc2f(mm, g)
+                @test test_δxf2c(mm, g)
+                @test test_δyc2f(mm, g)
+                @test test_δyf2c(mm, g)
+                @test test_δzc2f(mm, g)
+                @test test_δzf2c(mm, g)
 
-                    @test test_avgxc2f(g)
-                    @test test_avgxf2c(g)
-                    @test test_avgyc2f(g)
-                    @test test_avgyf2c(g)
-                    @test test_avgzc2f(g)
-                    @test test_avgzf2c(g)
+                @test test_avgxc2f(mm, g)
+                @test test_avgxf2c(mm, g)
+                @test test_avgyc2f(mm, g)
+                @test test_avgyf2c(mm, g)
+                @test test_avgzc2f(mm, g)
+                @test test_avgzf2c(mm, g)
 
-                    @test test_divf2c(g)
-                    @test test_divc2f(g)
-                    @test test_div_flux(g)
+                @test test_divf2c(mm, g)
+                @test test_divc2f(mm, g)
+                @test test_div_flux(mm, g)
 
-                    @test test_u_dot_grad_u(g)
-                    @test test_u_dot_grad_v(g)
-                    @test test_u_dot_grad_w(g) || "N=$(N), eltype(g)=$(eltype(g))"
+                @test test_u_dot_grad_u(mm, g)
+                @test test_u_dot_grad_v(mm, g)
+                @test test_u_dot_grad_w(mm, g) || "N=$(N), eltype(g)=$(eltype(g))"
 
-                    @test test_κ∇²(g)
-                    @test test_𝜈∇²u(g)
-                    @test test_𝜈∇²v(g)
-                    @test test_𝜈∇²w(g)
+                @test test_κ∇²(mm, g)
+                @test test_𝜈∇²u(mm, g)
+                @test test_𝜈∇²v(mm, g)
+                @test test_𝜈∇²w(mm, g)
 
-                    fC = CellField(g)
-                    ffX = FaceFieldX(g)
-                    ffY = FaceFieldY(g)
-                    ffZ = FaceFieldZ(g)
+                fC = CellField(mm, g)
+                ffX = FaceFieldX(mm, g)
+                ffY = FaceFieldY(mm, g)
+                ffZ = FaceFieldZ(mm, g)
 
-                    for f in (fC, ffX, ffY, ffZ)
-                        # Fields should be initialized to zero.
-                        @test f.data ≈ zeros(size(f))
+                for f in [fC, ffX, ffY, ffZ]
+                    # Fields should be initialized to zero.
+                    @test f.data ≈ zeros(size(f))
 
-                        # Calling with the wrong signature, e.g. two CellFields should error.
-                        for δ in (δx!, δy!, δz!)
-                            @test_throws MethodError δ(g, f, f)
-                        end
-                        for avg in (avgx!, avgy!, avgz!)
-                            @test_throws MethodError avg(g, f, f)
-                        end
+                    # Calling with the wrong signature, e.g. two CellFields should error.
+                    for δ in [δx!, δy!, δz!]
+                        @test_throws MethodError δ(g, f, f)
+                    end
+                    for avg in [avgx!, avgy!, avgz!]
+                        @test_throws MethodError avg(g, f, f)
                     end
                 end
             end
