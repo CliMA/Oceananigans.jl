@@ -238,9 +238,9 @@ using Oceananigans.Operators
         end
     end
 
-    @testset "Problem" begin
-        p = Problem((32, 32, 16), (2000, 2000, 1000))
-        @test typeof(p) == Problem  # Just testing that no errors happen.
+    @testset "Model" begin
+        model = Model((32, 32, 16), (2000, 2000, 1000))
+        @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
     @testset "Time stepping" begin
@@ -249,12 +249,10 @@ using Oceananigans.Operators
         Nt, Δt = 10, 20
         ΔR = 10
 
-        problem = Problem((Nx, Ny, Nz), (Lx, Ly, Lz))
+        model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+        R = SavedFields(model.grid, Nt, ΔR)
+        time_step!(model; Nt=Nt, Δt=Δt, R=R)
 
-        R  = SavedFields(problem.g, Nt, ΔR)
-
-        time_stepping!(problem; Nt=Nt, Δt=Δt, R=R)
-
-        @test typeof(problem) == Problem   # Just testing that no errors happen.
+        @test typeof(model) == Model  # Just testing that no errors happen.
     end
 end
