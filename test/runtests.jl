@@ -47,9 +47,6 @@ using Oceananigans.Operators
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
 
-        g32 = RegularCartesianGrid(N, L; FloatType=Float32)
-        g64 = RegularCartesianGrid(N, L; FloatType=Float64)
-
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
         vals = vcat(int_vals, uint_vals)
@@ -61,16 +58,19 @@ using Oceananigans.Operators
         # other_vals = Any[π]
         # vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        for g in [g32, g64]
-            for ftf in (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
-                @test test_init_field(g, ftf)
+        for arch in [:cpu], ft in [Float32, Float64]
+            mm = ModelMetadata(arch, ft)
+            grid = RegularCartesianGrid(mm, N, L)
+
+            for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                @test test_init_field(mm, grid, field_type)
 
                 for val in vals
-                    @test test_set_field(g, ftf, val) || "type(g)=$(typeof(g)), ftf=$ftf, val=$val"
+                    @test test_set_field(mm, grid, field_type, val) || "type(g)=$(typeof(g)), ftf=$ftf, val=$val"
                 end
 
-                # TODO: Try adding together a bunch of different data types.
-                @test test_add_field(g, ftf, 4, 6)
+                # TODO: Try adding together a bunch of different data types?
+                @test test_add_field(mm, grid, field_type, 4, 6)
             end
         end
     end
