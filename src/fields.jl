@@ -67,16 +67,6 @@ Construct a `CellField` whose values are defined at the center of a cell.
 #     CellField{Array{eltype(grid),3}}(data, grid)
 # end
 
-function CellField(metadata::ModelMetadata, grid::Grid)
-    if metadata.arch == :cpu
-        data = zeros(eltype(grid), size(grid))
-        return CellField{Array{eltype(grid),3}}(data, grid)
-    elseif metadata.arch == :gpu
-        data = cu(zeros(eltype(grid), size(grid)))
-        return CellField{CuArray{eltype(grid),3}}(data, grid)
-    end
-end
-
 function CellField(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(T, size(grid))
@@ -87,7 +77,7 @@ function CellField(metadata::ModelMetadata, grid::Grid, T)
     end
 end
 
-# CellField(mm::ModelMetadata, g::Grid) = CellField(mm, g, eltype(g))
+CellField(mm::ModelMetadata, g::Grid) = CellField(mm, g, eltype(g))
 
 """
     FaceFieldX(grid::Grid)
