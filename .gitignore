@@ -12,3 +12,6 @@ docs/build
 # Model output, plots, or debugging
 *.gif
 *.mp4
+
+# Checkpointer model serialization
+*.jlser

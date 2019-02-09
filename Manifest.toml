@@ -71,9 +71,9 @@ version = "0.6.0"
 
 [[Documenter]]
 deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
-git-tree-sha1 = "a6db1c69925cdc53aafb38caec4446be26e0c617"
+git-tree-sha1 = "0b834915b5521c626386c8b48d8fc61577bc642f"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.21.0"
+version = "0.21.2"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "BinaryProvider", "Compat", "Conda", "Libdl", "LinearAlgebra", "Reexport", "Test"]
