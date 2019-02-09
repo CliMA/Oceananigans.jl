@@ -54,9 +54,12 @@ export
     Clock,
     Model,
 
-    SavedFields
+    OutputWriter,
+    SavedFields,
+    Checkpointer,
+    write_output
 
-using FFTW
+using Serialization, FFTW
 
 if Base.find_package("CuArrays") !== nothing
     using CUDAdrv, CUDAnative, CuArrays
@@ -69,6 +72,7 @@ abstract type Grid end
 abstract type Field end
 abstract type FaceField <: Field end
 abstract type FieldSet end
+abstract type OutputWriter end
 
 # We must play this annoying game of organizing the definitions to avoid
 # mutually circular type declarations.

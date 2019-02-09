@@ -141,6 +141,12 @@ function time_step!(model::Model; Nt, Δt, R)
         div_u1 = stmp.fC1
         div!(g, U.u, U.v, U.w, div_u1, otmp)
 
+        for output_writer in model.output_writers
+            if clock.time_step % output_writer.output_frequency == 0
+                write_output(model, output_writer)
+            end
+        end
+
         if n % R.ΔR == 0
             # names = ["u", "v", "w", "T", "S", "Gu", "Gv", "Gw", "GT", "GS",
             #          "pHY", "pHY′", "pNHS", "ρ", "∇·u"]
@@ -163,8 +169,9 @@ function time_step!(model::Model; Nt, Δt, R)
             # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
         end
 
-        print("\rmodel.time = $(clock.time) / $model_end_time   ")
         clock.time += Δt
+        clock.time_step += 1
+        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
     end
 
     println()
