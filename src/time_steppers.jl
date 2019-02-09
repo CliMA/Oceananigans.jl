@@ -164,6 +164,7 @@ function time_step!(model::Model; Nt, Δt)
 
         for output_writer in model.output_writers
             if clock.time_step % output_writer.output_frequency == 0
+                println()
                 write_output(model, output_writer)
             end
         end

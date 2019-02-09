@@ -1,6 +1,26 @@
 using Plots
 using Oceananigans
 
+function deep_convection_2d()
+    Nx, Ny, Nz = 100, 1, 50
+    Lx, Ly, Lz = 2000, 1, 1000
+    Nt, Δt = 5000, 20
+
+    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+    @. model.forcings.FT.data[Int(Nx/10):Int(9Nx/10), 1, 1] = -0.5e-5 + 1e-6*rand()
+
+    checkpointer = Checkpointer(".", "deep_convection_2d", 1000)
+    field_writer = FieldWriter(".", "deep_convection_2d", 50,
+                               [model.velocities.u, model.tracers.T],
+                               ["u", "T"])
+
+    push!(model.output_writers, checkpointer)
+    push!(model.output_writers, field_writer)
+
+    time_step!(model; Nt=Nt, Δt=Δt)
+    make_temperature_movie(model, field_writer)
+end
+
 function make_temperature_movie(model::Model, fw::FieldWriter)
     n_frames = Int(model.clock.time_step / fw.output_frequency)
 
@@ -19,25 +39,4 @@ function make_temperature_movie(model::Model, fw::FieldWriter)
     end
 
     mp4(movie, "deep_convection_2d_$(round(Int, time())).mp4", fps = 30)
-end
-
-function deep_convection_2d()
-    Nx, Ny, Nz = 100, 1, 50
-    Lx, Ly, Lz = 2000, 1, 1000
-    Nt, Δt = 2500, 20
-    ΔR = 10
-
-    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-    @. model.forcings.FT.data[Int(Nx/10):Int(9Nx/10), 1, 1] = -0.5e-5 + 1e-6*rand()
-
-    checkpointer = Checkpointer(".", "deep_convection_2d", 1000)
-    field_writer = FieldWriter(".", "deep_convection_2d", 100,
-                               [model.velocities.u, model.tracers.T],
-                               ["u", "T"])
-
-    push!(model.output_writers, checkpointer)
-    push!(model.output_writers, field_writer)
-
-    time_step!(model; Nt=Nt, Δt=Δt)
-    make_temperature_movie(model, field_writer)
 end
