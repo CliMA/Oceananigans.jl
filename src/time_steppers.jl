@@ -2,6 +2,7 @@ using Oceananigans.Operators
 
 function time_step!(model::Model; Nt, Δt, R)
     metadata = model.metadata
+    cfg = model.configuration
     bc = model.boundary_conditions
     g = model.grid
     c = model.constants
@@ -16,10 +17,6 @@ function time_step!(model::Model; Nt, Δt, R)
     stmp = model.stepper_tmp
     otmp = model.operator_tmp
 
-    κh = 4e-2  # Horizontal Laplacian heat diffusion [m²/s]. diffKhT in MITgcm.
-    κv = 4e-2  # Vertical Laplacian heat diffusion [m²/s]. diffKzT in MITgcm.
-    𝜈h = 4e-2  # Horizontal eddy viscosity [Pa·s]. viscAh in MITgcm.
-    𝜈v = 4e-2  # Vertical eddy viscosity [Pa·s]. viscAz in MITgcm.
 
     for n in 1:Nt
         # Calculate new density and density deviation.
@@ -52,7 +49,7 @@ function time_step!(model::Model; Nt, Δt, R)
         @. G.Gu.data += - ∂xpHY′.data
 
         𝜈∇²u = stmp.fFX
-        𝜈∇²u!(g, U.u, 𝜈∇²u, 𝜈h, 𝜈v, otmp)
+        𝜈∇²u!(g, U.u, 𝜈∇²u, cfg.𝜈h, cfg.𝜈v, otmp)
         @. G.Gu.data += 𝜈∇²u.data
 
         u∇v = stmp.fFY
@@ -65,7 +62,7 @@ function time_step!(model::Model; Nt, Δt, R)
         @. G.Gv.data += - ∂ypHY′.data
 
         𝜈∇²v = stmp.fFY
-        𝜈∇²v!(g, U.v, 𝜈∇²v, 𝜈h, 𝜈v, otmp)
+        𝜈∇²v!(g, U.v, 𝜈∇²v, cfg.𝜈h, cfg.𝜈v, otmp)
         @. G.Gv.data += 𝜈∇²v.data
 
         u∇w = stmp.fFZ
@@ -73,7 +70,7 @@ function time_step!(model::Model; Nt, Δt, R)
         @. G.Gw.data = -u∇w.data
 
         𝜈∇²w = stmp.fFZ
-        𝜈∇²w!(g, U.w, 𝜈∇²w, 𝜈h, 𝜈v, otmp)
+        𝜈∇²w!(g, U.w, 𝜈∇²w, cfg.𝜈h, cfg.𝜈v, otmp)
         @. G.Gw.data += 𝜈∇²w.data
 
         ∇uT = stmp.fC1
@@ -81,7 +78,7 @@ function time_step!(model::Model; Nt, Δt, R)
         @. G.GT.data = -∇uT.data
 
         κ∇²T = stmp.fC1
-        κ∇²!(g, tr.T, κ∇²T, κh, κv, otmp)
+        κ∇²!(g, tr.T, κ∇²T, cfg.κh, cfg.κv, otmp)
         @. G.GT.data += κ∇²T.data
 
         @. G.GT.data += F.FT.data
@@ -91,7 +88,7 @@ function time_step!(model::Model; Nt, Δt, R)
         @. G.GS.data = -∇uS.data
 
         κ∇²S = stmp.fC1
-        κ∇²!(g, tr.S, κ∇²S, κh, κv, otmp)
+        κ∇²!(g, tr.S, κ∇²S, cfg.κh, cfg.κv, otmp)
         @. G.GS.data += κ∇²S.data
 
         χ = 0.1  # Adams-Bashforth (AB2) parameter.

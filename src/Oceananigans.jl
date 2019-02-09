@@ -48,6 +48,9 @@ export
     solve_poisson_3d_ppn_gpu!,
 
     ModelMetadata,
+    _ModelMetadata,
+    ModelConfiguration,
+    _ModelConfiguration,
     Model,
 
     SavedFields
@@ -71,6 +74,7 @@ abstract type FieldSet end
 # See: https://github.com/JuliaLang/julia/issues/269
 
 include("model_metadata.jl")
+include("model_configuration.jl")
 include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
