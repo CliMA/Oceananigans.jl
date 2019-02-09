@@ -26,9 +26,10 @@ function deep_convection_2d()
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
     @. model.forcings.FT.data[Int(Nx/10):Int(9Nx/10), 1, 1] = -0.5e-5 + 1e-6*rand()
 
+    push!(model.output_writers, Checkpointer(".", "deep_convection_2d", 1000))
+
     R  = SavedFields(model.grid, Nt, ΔR)
 
     time_step!(model; Nt=Nt, Δt=Δt, R=R)
     make_movies(model, R, Nt, Δt)
-
 end
