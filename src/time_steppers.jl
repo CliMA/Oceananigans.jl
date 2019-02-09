@@ -1,6 +1,6 @@
 using Oceananigans.Operators
 
-function time_stepping!(model::Model; Nt, Δt, R)
+function time_step!(model::Model; Nt, Δt, R)
     metadata = model.metadata
     bc = model.boundary_conditions
     g = model.grid

@@ -33,8 +33,7 @@ export
 
     BoundaryConditions,
 
-    TimeStepper,
-    time_stepping!,
+    time_step!,
 
     SpectralSolverParameters,
     solve_poisson_1d_pbc,
@@ -66,7 +65,6 @@ abstract type Grid end
 abstract type Field end
 abstract type FaceField <: Field end
 abstract type FieldSet end
-abstract type TimeStepper end
 
 # We must play this annoying game of organizing the definitions to avoid
 # mutually circular type declarations.
