@@ -58,7 +58,7 @@ if Base.find_package("CuArrays") !== nothing
 end
 
 abstract type ConstantsCollection end
-abstract type EquationOfStateParameters <: ConstantsCollection end
+abstract type EquationOfState end
 abstract type Grid end
 abstract type Field end
 abstract type FaceField <: Field end
