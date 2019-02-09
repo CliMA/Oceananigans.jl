@@ -16,7 +16,10 @@ function time_step!(model::Model; Nt, Δt, R)
     F = model.forcings
     stmp = model.stepper_tmp
     otmp = model.operator_tmp
+    clock = model.clock
 
+    model_start_time = clock.time
+    model_end_time = model_start_time + Nt*Δt
 
     for n in 1:Nt
         # Calculate new density and density deviation.
@@ -138,7 +141,6 @@ function time_step!(model::Model; Nt, Δt, R)
         div_u1 = stmp.fC1
         div!(g, U.u, U.v, U.w, div_u1, otmp)
 
-        print("\rt = $(n*Δt) / $(Nt*Δt)   ")
         if n % R.ΔR == 0
             # names = ["u", "v", "w", "T", "S", "Gu", "Gv", "Gw", "GT", "GS",
             #          "pHY", "pHY′", "pNHS", "ρ", "∇·u"]
@@ -160,6 +162,9 @@ function time_step!(model::Model; Nt, Δt, R)
             # RpHY′[n, :, :, :] = copy(pʰʸ′)
             # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
         end
+
+        print("\rmodel.time = $(clock.time) / $model_end_time   ")
+        clock.time += Δt
     end
 
     println()

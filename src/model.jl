@@ -14,6 +14,7 @@ struct Model
     stepper_tmp::StepperTemporaryFields
     operator_tmp::OperatorTemporaryFields
     ssp  # ::SpectralSolverParameters (for arch==:cpu only...)
+    clock::Clock
 end
 
 function Model(N, L, arch=:cpu, float_type=Float64)
@@ -34,6 +35,8 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     forcings = ForcingFields(metadata, grid)
     stepper_tmp = StepperTemporaryFields(metadata, grid)
     operator_tmp = OperatorTemporaryFields(metadata, grid)
+
+    clock = Clock(0)
 
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
@@ -62,5 +65,5 @@ function Model(N, L, arch=:cpu, float_type=Float64)
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcings,
-          stepper_tmp, operator_tmp, ssp)
+          stepper_tmp, operator_tmp, ssp, clock)
 end

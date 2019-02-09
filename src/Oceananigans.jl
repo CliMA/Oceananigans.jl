@@ -51,6 +51,7 @@ export
     _ModelMetadata,
     ModelConfiguration,
     _ModelConfiguration,
+    Clock,
     Model,
 
     SavedFields
@@ -75,6 +76,7 @@ abstract type FieldSet end
 
 include("model_metadata.jl")
 include("model_configuration.jl")
+include("clock.jl")
 include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
