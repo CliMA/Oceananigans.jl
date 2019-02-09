@@ -159,18 +159,21 @@ using Oceananigans.Operators
             end
         end
 
-        N = (20, 20, 20)
-        L = (20, 20, 20)
+        @testset "Laplacian" begin
+            N = (20, 20, 20)
+            L = (20, 20, 20)
 
-        g32 = RegularCartesianGrid(N, L; FloatType=Float32)
-        g64 = RegularCartesianGrid(N, L; FloatType=Float64)
-
-        @test test_∇²_ppn(g32)
-        @test test_∇²_ppn(g64)
+            for arch in [:cpu], ft in [Float64, Float32]
+                mm = ModelMetadata(arch, ft)
+                g = RegularCartesianGrid(mm, N, L)
+                @test test_∇²_ppn(mm, g)
+            end
+        end
     end
 
     @testset "Spectral solvers" begin
         include("test_spectral_solvers.jl")
+
         for N in [4, 8, 10, 50, 100, 500, 1000, 2000, 5000, 10000]
             @test test_solve_poisson_1d_pbc_cosine_source(N)
         end
@@ -198,29 +201,40 @@ using Oceananigans.Operators
             @test test_3d_poisson_solver_ppn_div_free(N, N, N)
             @test test_3d_poisson_solver_ppn_div_free(1, N, N)
             @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
-            @test test_3d_poisson_solver_ppn!_div_free(N, N, N)
-            @test test_3d_poisson_solver_ppn!_div_free(1, N, N)
-            @test test_3d_poisson_solver_ppn!_div_free(N, 1, N)
 
-            for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                @test test_3d_poisson_ppn_planned!_div_free(N, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(1, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(N, 1, N, FFTW.ESTIMATE)
+            for arch in [:cpu], ft in [Float64]
+                mm = ModelMetadata(arch, ft)
+
+                @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
+                @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
+                @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
+
+                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+                end
             end
         end
+
         for Nx in [5, 10, 20, 50, 100], Ny in [5, 10, 20, 50, 100], Nz in [10, 20, 50]
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
-            @test test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
 
-            for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                @test test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, FFTW.ESTIMATE)
+            for arch in [:cpu], ft in [Float64]
+                mm = ModelMetadata(arch, ft)
+                @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
+
+                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
+                end
             end
         end
 
-        for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-            @test test_fftw_planner(100, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(1, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(100, 1, 100, FFTW.ESTIMATE)
+        for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE], arch in [:cpu], ft in [Float64]
+            mm = ModelMetadata(arch, ft)
+            @test test_fftw_planner(mm, 100, 100, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 1, 100, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 100, 1, 100, FFTW.ESTIMATE)
         end
     end
 

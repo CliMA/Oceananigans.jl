@@ -117,17 +117,13 @@ function test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
     laplacian3d_ppn(ϕ) ≈ f
 end
 
-function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
-    if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    end
+function test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
+    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
-    RHS = CellField(g, Complex{eltype(g)})
-    RHS_orig = CellField(g, Complex{eltype(g)})
-    ϕ = CellField(g, Complex{eltype(g)})
-    ∇²ϕ = CellField(g, Complex{eltype(g)})
+    RHS = CellField(mm, g, Complex{eltype(g)})
+    RHS_orig = CellField(mm, g, Complex{eltype(g)})
+    ϕ = CellField(mm, g, Complex{eltype(g)})
+    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
 
     RHS.data .= rand(Nx, Ny, Nz)
     RHS.data .= RHS.data .- mean(RHS.data)
@@ -141,29 +137,22 @@ function test_3d_poisson_solver_ppn!_div_free(Nx, Ny, Nz)
     ∇²ϕ.data ≈ RHS_orig.data
 end
 
-function test_fftw_planner(Nx, Ny, Nz, planner_flag)
-    if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    end
+function test_fftw_planner(mm, Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
-    RHS = CellField(g, Complex{eltype(g)})
+    RHS = CellField(mm, g, Complex{eltype(g)})
     ssp = SpectralSolverParameters(g, RHS, FFTW.PATIENT)
+
     true  # Just making sure our SpectralSolverParameters does not spit an error.
 end
 
-function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
-    if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    end
+function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
-    RHS = CellField(g, Complex{eltype(g)})
-    RHS_orig = CellField(g, Complex{eltype(g)})
-    ϕ = CellField(g, Complex{eltype(g)})
-    ∇²ϕ = CellField(g, Complex{eltype(g)})
+    RHS = CellField(mm, g, Complex{eltype(g)})
+    RHS_orig = CellField(mm, g, Complex{eltype(g)})
+    ϕ = CellField(mm, g, Complex{eltype(g)})
+    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
 
     RHS.data .= rand(Nx, Ny, Nz)
     RHS.data .= RHS.data .- mean(RHS.data)
@@ -178,17 +167,13 @@ function test_3d_poisson_ppn_planned!_div_free(Nx, Ny, Nz, planner_flag)
     ∇²ϕ.data ≈ RHS_orig.data
 end
 
-function test_3d_poisson_solver_ppn_all_equal(Nx, Ny, Nz, planner_flag)
-    if Nx == 1 || Ny == 1
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    else
-        g = RegularCartesianGrid((Nx, Ny, Nz), (100, 100, 100))
-    end
+function test_3d_poisson_solver_ppn_all_equal(mm, Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
-    RHS = CellField(g, Complex{eltype(g)})
-    RHS_orig = CellField(g, Complex{eltype(g)})
-    ϕ = CellField(g, Complex{eltype(g)})
-    ∇²ϕ = CellField(g, Complex{eltype(g)})
+    RHS = CellField(mm, g, Complex{eltype(g)})
+    RHS_orig = CellField(mm, g, Complex{eltype(g)})
+    ϕ = CellField(mm, g, Complex{eltype(g)})
+    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
 
     RHS.data .= rand(Nx, Ny, Nz)
     RHS.data .= RHS.data .- mean(RHS.data)
