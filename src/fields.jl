@@ -160,11 +160,9 @@ similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid)
 similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid)
 similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid)
 
-# TODO: This will not work if T=Float32 and v::Irrational.
 set!(u::Field, v) = @. u.data = v
 set!(u::Field, v::Field) = @. u.data = v.data
 
-# TODO: Revise this using just xC, yC, zC.
 # set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)
 
 # Define +, -, and * on fields as element-wise calculations on their data. This
@@ -174,7 +172,6 @@ set!(u::Field, v::Field) = @. u.data = v.data
 # will not be commutative anymore.
 for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :EdgeField)
     for op in (:+, :-, :*)
-        # TODO: @eval does things in global scope, is this the desired behavior?
         @eval begin
             # +, -, * a Field by a Number on the left.
             function $op(num::Number, f::$ft)
