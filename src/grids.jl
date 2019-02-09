@@ -1,5 +1,7 @@
 import Base: size, show
 
+using Oceananigans: ModelMetadata
+
 """
     RegularCartesianGrid{T::AbstractFloat} <: Grid
 
@@ -9,7 +11,6 @@ T.
 """
 struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     dim::Int
-    arch::Symbol
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -57,10 +58,12 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(N, L, arch=:cpu; FloatType=Float64)
+function RegularCartesianGrid(metadata::ModelMetadata, N, L)
     @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
     @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
 
+    # Count the number of dimensions with 1 grid point, i.e. the number of flat
+    # dimensions, and use it to determine the dimension of the model.
     num_flat_dims = count(i->(i==1), N)
     dim = 3 - num_flat_dims
     @assert 1 <= dim <= 3 "Only 1D, 2D, and 3D grids are supported right now."
@@ -89,7 +92,7 @@ function RegularCartesianGrid(N, L, arch=:cpu; FloatType=Float64)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{FloatType}(dim, arch, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+    RegularCartesianGrid{metadata.float_type}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                             Az, V, xC, yC, zC, xF, yF, zF)
 end
 
