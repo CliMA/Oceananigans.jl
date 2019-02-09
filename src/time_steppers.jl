@@ -1,6 +1,6 @@
 using Oceananigans.Operators
 
-function time_step!(model::Model; Nt, Δt, R)
+function time_step!(model::Model; Nt, Δt)
     metadata = model.metadata
     cfg = model.configuration
     bc = model.boundary_conditions
@@ -155,29 +155,5 @@ function time_step!(model::Model; Nt, Δt, R)
                 write_output(model, output_writer)
             end
         end
-
-        if n % R.ΔR == 0
-            # names = ["u", "v", "w", "T", "S", "Gu", "Gv", "Gw", "GT", "GS",
-            #          "pHY", "pHY′", "pNHS", "ρ", "∇·u"]
-            # print("t = $(n*Δt) / $(Nt*Δt)\n")
-            # for (i, Q) in enumerate([U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-            #               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-            #               pr.pHY.data, pr.pHY′.data, pr.pNHS.data, tr.ρ.data, div_u1])
-            #     @printf("%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-            #             lpad(names[i], 4), minimum(Q), maximum(Q), mean(Q), mean(abs.(Q)), std(Q))
-            # end
-
-            Ridx = Int(n/R.ΔR)
-            R.u[Ridx, :, :, :] .= U.u.data
-            # Rv[n, :, :, :] = copy(vⁿ)
-            R.w[Ridx, :, :, :] .= U.w.data
-            R.T[Ridx, :, :, :] .= tr.T.data
-            # RS[n, :, :, :] = copy(Sⁿ)
-            R.ρ[Ridx, :, :, :] .= tr.ρ.data
-            # RpHY′[n, :, :, :] = copy(pʰʸ′)
-            # R.pNHS[Ridx, :, :, :] = copy(pⁿʰ⁺ˢ)
-        end
     end
-
-    println()
 end

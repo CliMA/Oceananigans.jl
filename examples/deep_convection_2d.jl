@@ -38,8 +38,6 @@ function deep_convection_2d()
     push!(model.output_writers, checkpointer)
     push!(model.output_writers, field_writer)
 
-    R  = SavedFields(model.grid, Nt, ΔR)
-
-    time_step!(model; Nt=Nt, Δt=Δt, R=R)
+    time_step!(model; Nt=Nt, Δt=Δt)
     make_temperature_movie(model, field_writer)
 end
