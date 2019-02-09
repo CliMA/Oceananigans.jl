@@ -11,28 +11,32 @@ using Oceananigans.Operators
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            @test test_grid_size()
-            @test test_cell_volume()
-            @test test_faces_start_at_zero()
+            for arch in [:cpu], ft in [Float64]
+                mm = ModelMetadata(arch, ft)
+                @test test_grid_size(mm)
+                @test test_cell_volume(mm)
+                @test test_faces_start_at_zero(mm)
+            end
         end
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
-            for ft in [Float32, Float64]
-                @test RegularCartesianGrid((25, 25, 25), L; FloatType=ft).dim == 3
-                @test RegularCartesianGrid((5, 25, 125), L; FloatType=ft).dim == 3
-                @test RegularCartesianGrid((64, 64, 64), L; FloatType=ft).dim == 3
-                @test RegularCartesianGrid((32, 32,  1), L; FloatType=ft).dim == 2
-                @test RegularCartesianGrid((32,  1, 32), L; FloatType=ft).dim == 2
-                @test RegularCartesianGrid((1,  32, 32), L; FloatType=ft).dim == 2
-                @test_throws AssertionError RegularCartesianGrid((32,), L; FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 64), L; FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((1, 1, 1), L; FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 32, 32, 16), L; FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100,); FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100); FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100, 1, 1); FloatType=ft)
-                @test_throws AssertionError RegularCartesianGrid((32, 32, 32), (100, 100, -100); FloatType=ft)
+            for arch in [:cpu], ft in [Float64, Float32, Float16]
+                mm = ModelMetadata(arch, ft)
+                @test RegularCartesianGrid(mm, (25, 25, 25), L).dim == 3
+                @test RegularCartesianGrid(mm, (5, 25, 125), L).dim == 3
+                @test RegularCartesianGrid(mm, (64, 64, 64), L).dim == 3
+                @test RegularCartesianGrid(mm, (32, 32,  1), L).dim == 2
+                @test RegularCartesianGrid(mm, (32,  1, 32), L).dim == 2
+                @test RegularCartesianGrid(mm, (1,  32, 32), L).dim == 2
+                @test_throws AssertionError RegularCartesianGrid(mm, (32,), L)
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 64), L)
+                @test_throws AssertionError RegularCartesianGrid(mm, (1, 1, 1), L)
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32, 16), L)
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100,))
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100))
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, 1, 1))
+                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, -100))
             end
         end
     end
