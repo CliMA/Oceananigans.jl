@@ -1,3 +1,4 @@
 mutable struct Clock
-  time
+  time::Number
+  time_step::Int
 end
