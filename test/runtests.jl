@@ -250,8 +250,7 @@ using Oceananigans.Operators
         ΔR = 10
 
         model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        R = SavedFields(model.grid, Nt, ΔR)
-        time_step!(model; Nt=Nt, Δt=Δt, R=R)
+        time_step!(model; Nt=Nt, Δt=Δt)
 
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
