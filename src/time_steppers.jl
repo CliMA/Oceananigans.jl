@@ -51,6 +51,12 @@ function time_step!(model::Model; Nt, Δt)
         u∇u!(g, U, u∇u, otmp)
         @. G.Gu.data = -u∇u.data
 
+        avg_x_v = stmp.fC1
+        avg_xy_v = stmp.fFX
+        avgx!(g, U.v, avg_x_v)
+        avgy!(g, avg_x_v, avg_xy_v)
+        @. G.Gu.data += c.f * avg_xy_v.data
+
         ∂xpHY′ = stmp.fFX
         δx!(g, pr.pHY′, ∂xpHY′)
         @. ∂xpHY′.data = ∂xpHY′.data / (g.Δx * eos.ρ₀)
@@ -63,6 +69,12 @@ function time_step!(model::Model; Nt, Δt)
         u∇v = stmp.fFY
         u∇v!(g, U, u∇v, otmp)
         @. G.Gv.data = -u∇v.data
+
+        avg_y_u = stmp.fC1
+        avg_xy_u = stmp.fFY
+        avgy!(g, U.u, avg_y_u)
+        avgx!(g, avg_y_u, avg_xy_u)
+        @. G.Gv.data += - c.f * avg_xy_u.data
 
         ∂ypHY′ = stmp.fFY
         δy!(g, pr.pHY′, ∂ypHY′)
