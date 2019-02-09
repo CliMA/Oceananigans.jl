@@ -1,5 +1,6 @@
 struct Model
     metadata::ModelMetadata
+    configuration::ModelConfiguration
     boundary_conditions::BoundaryConditions
     constants::PlanetaryConstants
     eos::EquationOfState
@@ -16,7 +17,8 @@ struct Model
 end
 
 function Model(N, L, arch=:cpu, float_type=Float64)
-    metadata = ModelMetadata(arch, float_type)
+    metadata = _ModelMetadata(arch, float_type)
+    configuration = _ModelConfiguration(4e-2, 4e-2, 4e-2, 4e-2)
     boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip)
 
     constants = EarthConstants()
@@ -58,7 +60,7 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     # Calculate initial density based on tracer values.
     ρ!(eos, grid, tracers)
 
-    Model(metadata, boundary_conditions, constants, eos, grid,
+    Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcings,
           stepper_tmp, operator_tmp, ssp)
 end
