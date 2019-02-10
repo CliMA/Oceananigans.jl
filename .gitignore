@@ -16,5 +16,6 @@ docs/build
 *.jlser
 
 # Plots
+*.png
 *.gif
 *.mp4
