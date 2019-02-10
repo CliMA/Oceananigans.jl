@@ -67,6 +67,9 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Nt)
     Nu_wT_diag = Nusselt_wT(1, Float64[], 0)
     push!(model.diagnostics, Nu_wT_diag)
 
+    Nu_Chi_diag = Nusselt_Chi(1, Float64[], 0)
+    push!(model.diagnostics, Nu_Chi_diag)
+
     for i in 1:Nt
         @. model.tracers.T.data[:, :,   1] = 283 - (ΔT/2) + 0.001*rand()
         @. model.tracers.T.data[:, :, end] = 283 + (ΔT/2) + 0.001*rand()
@@ -74,7 +77,7 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Nt)
     end
 
     make_temperature_movie(model, field_writer)
-    plot_Nusselt_number_diagnostics(model, Nu_wT_diag)
+    plot_Nusselt_number_diagnostics(model, Nu_wT_diag, Nu_Chi_diag)
 end
 
 function make_temperature_movie(model::Model, fw::FieldWriter)
@@ -85,6 +88,7 @@ function make_temperature_movie(model::Model, fw::FieldWriter)
     print("Creating temperature movie... ($n_frames frames)\n")
 
     Plots.gr()
+    default(dpi=300)
     movie = @animate for tidx in 0:n_frames
         print("\rframe = $tidx / $n_frames   ")
         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*model.clock.Δt)
@@ -96,14 +100,17 @@ function make_temperature_movie(model::Model, fw::FieldWriter)
     mp4(movie, "rayleigh_benard_$(round(Int, time())).mp4", fps = 30)
 end
 
-function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT)
+function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT, Nu_Chi_diag::Nusselt_Chi)
     println("Plotting Nusselt number diagnostics...")
 
     t = 0:model.clock.Δt:model.clock.time
 
-    PyPlot.plot(t, Nu_wT_diag.Nu)
+    PyPlot.plot(t, Nu_wT_diag.Nu, label="Nu_wT")
+    PyPlot.plot(t, Nu_Chi_diag.Nu, label="Nu_Chi")
+
     PyPlot.title("Rayleigh–Bénard convection (64×64×32) @ Ra=5000")
     PyPlot.xlabel("Time (s)")
     PyPlot.ylabel("Nusselt number Nu")
+    PyPlot.legend()
     PyPlot.savefig("rayleigh_benard_nusselt_diag.png", dpi=300, format="png", transparent=false)
 end

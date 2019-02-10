@@ -42,6 +42,13 @@ function run_diagnostic(model::Model, diag::Nusselt_wT)
 
     push!(diag.Nu, Nu_wT)
 end
+
+mutable struct Nusselt_Chi <: Diagnostic
+    diagnostic_frequency::Int
+    Nu::Array{AbstractFloat,1}
+    ∇T²_cumulative_running_avg::AbstractFloat
+end
+
 function norm_gradient_squared!(g::RegularCartesianGrid, f::CellField, ∇f²::CellField, otmp::OperatorTemporaryFields)
     dfdx, dfdy, dfdz = otmp.fFX, otmp.fFY, otmp.fFZ
 
@@ -51,4 +58,21 @@ function norm_gradient_squared!(g::RegularCartesianGrid, f::CellField, ∇f²::C
 
     @. ∇f².data = dfdx.data^2 + dfdy.data^2 + dfdz.data^2
     nothing
+end
+
+function run_diagnostic(model::Model, diag::Nusselt_Chi)
+    T = model.tracers.T
+    ∇T² = model.stepper_tmp.fC1
+    norm_gradient_squared!(model.grid, T, ∇T², model.operator_tmp)
+
+    V = model.grid.Lx * model.grid.Ly * model.grid.Lz
+    ∇T²_avg = sum(∇T²) / V
+
+    n = length(diag.Nu)  # Number of "samples" so far.
+    diag.∇T²_cumulative_running_avg = (∇T²_avg + n*model.clock.Δt*diag.∇T²_cumulative_running_avg) / ((n+1)*model.clock.Δt)
+
+    Lz, ΔT = model.grid.Lz, 1
+    Nu_Chi = 1 + (Lz/ΔT)^2 * diag.∇T²_cumulative_running_avg
+
+    push!(diag.Nu, Nu_Chi)
 end
