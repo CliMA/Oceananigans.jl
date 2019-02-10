@@ -1,4 +1,4 @@
-using Plots, FFTW
+using Plots, PyPlot, FFTW
 using Oceananigans
 
 function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Nt)
@@ -37,10 +37,11 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Nt)
     stepper_tmp = StepperTemporaryFields(metadata, grid)
     operator_tmp = OperatorTemporaryFields(metadata, grid)
 
-    time, time_step = 0, 0
-    clock = Clock(time, time_step)
+    time, time_step, Δt = 0, 0, 20
+    clock = Clock(time, time_step, Δt)
 
     output_writers = OutputWriter[]
+    diagnostics = Diagnostic[]
 
     stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
     ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
@@ -58,37 +59,51 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Nt)
 
     model = Model(metadata, configuration, boundary_conditions, constants, eos, grid,
                   velocities, tracers, pressures, G, Gp, forcings,
-                  stepper_tmp, operator_tmp, ssp, clock, output_writers)
+                  stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
 
     field_writer = FieldWriter(".", "rayleigh_benard", 10, [model.tracers.T], ["T"])
     push!(model.output_writers, field_writer)
 
-    Δt = 20
+    Nu_wT_diag = Nusselt_wT(1, Float64[], 0)
+    push!(model.diagnostics, Nu_wT_diag)
+
     for i in 1:Nt
         @. model.tracers.T.data[:, :,   1] = 283 - (ΔT/2) + 0.001*rand()
         @. model.tracers.T.data[:, :, end] = 283 + (ΔT/2) + 0.001*rand()
-        time_step!(model; Nt=1, Δt=Δt)
+        time_step!(model; Nt=1, Δt=model.clock.Δt)
     end
 
     make_temperature_movie(model, field_writer)
+    plot_Nusselt_number_diagnostics(model, Nu_wT_diag)
 end
 
 function make_temperature_movie(model::Model, fw::FieldWriter)
     n_frames = Int(model.clock.time_step / fw.output_frequency)
 
     xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC
-    Δt = 20
 
     print("Creating temperature movie... ($n_frames frames)\n")
 
     Plots.gr()
     movie = @animate for tidx in 0:n_frames
         print("\rframe = $tidx / $n_frames   ")
-        temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
+        temperature = read_output(model, fw, "T", tidx*fw.output_frequency*model.clock.Δt)
         Plots.heatmap(xC, zC, rotl90(temperature[:, Int(model.grid.Ny/2), :]) .- 283, color=:balance,
                       clims=(-0.5, 0.5),
-                      title="T @ t=$(tidx*fw.output_frequency*Δt)")
+                      title="T @ t=$(tidx*fw.output_frequency*model.clock.Δt)")
     end
 
     mp4(movie, "rayleigh_benard_$(round(Int, time())).mp4", fps = 30)
+end
+
+function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT)
+    println("Plotting Nusselt number diagnostics...")
+
+    t = 0:model.clock.Δt:model.clock.time
+
+    PyPlot.plot(t, Nu_wT_diag.Nu)
+    PyPlot.title("Rayleigh–Bénard convection (64×64×32) @ Ra=5000")
+    PyPlot.xlabel("Time (s)")
+    PyPlot.ylabel("Nusselt number Nu")
+    PyPlot.savefig("rayleigh_benard_nusselt_diag.png", dpi=300, format="png", transparent=false)
 end
