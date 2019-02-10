@@ -23,7 +23,7 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     configuration = _ModelConfiguration(4e-2, 4e-2, 4e-2, 4e-2)
     boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip)
 
-    constants = EarthConstants()
+    constants = Earth()
     eos = LinearEquationOfState()
 
     grid = RegularCartesianGrid(metadata, N, L)

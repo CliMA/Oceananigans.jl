@@ -4,7 +4,8 @@ export
     ConstantsCollection,
 
     PlanetaryConstants,
-    EarthConstants,
+    Earth,
+    EarthStationary,
 
     Grid,
     RegularCartesianGrid,

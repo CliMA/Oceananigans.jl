@@ -11,7 +11,7 @@ function Earth()
     PlanetaryConstants(Ω, f, g)
 end
 
-function Earth_non_rotating()
+function EarthStationary()
     Ω = 0
     f = 0
     g = 9.80665
