@@ -22,8 +22,10 @@ function time_step!(model::Model; Nt, Δt)
     model_end_time = model_start_time + Nt*Δt
 
     # Write out initial state.
-    for output_writer in model.output_writers
-        write_output(model, output_writer)
+    if clock.time_step == 0
+        for output_writer in model.output_writers
+            write_output(model, output_writer)
+        end
     end
 
     for n in 1:Nt
