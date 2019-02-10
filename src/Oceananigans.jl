@@ -60,7 +60,11 @@ export
     Checkpointer,
     FieldWriter,
     write_output,
-    read_output
+    read_output,
+
+    Diagnostic,
+    run_diagnostic,
+    FieldSummary
 
 using Serialization, FFTW
 
@@ -76,6 +80,7 @@ abstract type Field end
 abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
+abstract type Diagnostic end
 
 # We must play this annoying game of organizing the definitions to avoid
 # mutually circular type declarations.
@@ -98,5 +103,6 @@ include("model.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
+include("diagnostics.jl")
 
 end # module

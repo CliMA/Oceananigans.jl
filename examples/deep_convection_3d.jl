@@ -17,6 +17,11 @@ function deep_convection_3d()
     push!(model.output_writers, checkpointer)
     push!(model.output_writers, field_writer)
 
+    f = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T]
+    fn = ["u", "v", "w", "T"]
+    field_summary_diag = FieldSummary(10, f, fn)
+    push!(model.diagnostics, field_summary_diag)
+
     time_step!(model; Nt=Nt, Δt=Δt)
     make_temperature_movies(model, field_writer)
 end
@@ -46,7 +51,7 @@ function impose_cooling_disk!(model::Model)
     T_ref = 273.15 .+ Ts .+ Tz .* (g.zC .- mean(Tz * g.zC))
 
     # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
-    @. r₀² = x₀*x₀ + y₀'*y₀'
+    r₀² = @. x₀*x₀ + y₀'*y₀'
 
     # Generate surface heat flux field with small random fluctuations.
     Q = Q₀ .+ Q₁ * (0.5 .+ rand(g.Nx, g.Ny))

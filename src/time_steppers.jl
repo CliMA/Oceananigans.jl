@@ -180,5 +180,11 @@ function time_step!(model::Model; Nt, Δt)
                 write_output(model, output_writer)
             end
         end
+
+        for diagnostic in model.diagnostics
+            if clock.time_step % diagnostic.diagnostic_frequency == 0
+                run_diagnostic(model, diagnostic)
+            end
+        end
     end
 end
