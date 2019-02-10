@@ -26,6 +26,9 @@ function time_step!(model::Model; Nt, Δt)
         for output_writer in model.output_writers
             write_output(model, output_writer)
         end
+        for diagnostic in model.diagnostics
+            run_diagnostic(model, diagnostic)
+        end
     end
 
     for n in 1:Nt
