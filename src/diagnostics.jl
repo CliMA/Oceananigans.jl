@@ -42,3 +42,13 @@ function run_diagnostic(model::Model, diag::Nusselt_wT)
 
     push!(diag.Nu, Nu_wT)
 end
+function norm_gradient_squared!(g::RegularCartesianGrid, f::CellField, ∇f²::CellField, otmp::OperatorTemporaryFields)
+    dfdx, dfdy, dfdz = otmp.fFX, otmp.fFY, otmp.fFZ
+
+    δx!(g, f, dfdx)
+    δy!(g, f, dfdy)
+    δz!(g, f, dfdz)
+
+    @. ∇f².data = dfdx.data^2 + dfdy.data^2 + dfdz.data^2
+    nothing
+end
