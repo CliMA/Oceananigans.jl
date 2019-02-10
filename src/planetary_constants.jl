@@ -4,9 +4,16 @@ struct PlanetaryConstants <: ConstantsCollection
     g::Float64  # Standard acceleration due to gravity [m/s²].
 end
 
-function EarthConstants()
+function Earth()
     Ω = 7.2921150e-5
     f = 1e-4
+    g = 9.80665
+    PlanetaryConstants(Ω, f, g)
+end
+
+function Earth_non_rotating()
+    Ω = 0
+    f = 0
     g = 9.80665
     PlanetaryConstants(Ω, f, g)
 end
