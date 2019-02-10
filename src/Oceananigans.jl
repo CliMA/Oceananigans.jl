@@ -64,7 +64,8 @@ export
 
     Diagnostic,
     run_diagnostic,
-    FieldSummary
+    FieldSummary,
+    Nusselt_wT
 
 using Statistics, Serialization, Printf
 using FFTW
