@@ -66,7 +66,8 @@ export
     run_diagnostic,
     FieldSummary
 
-using Serialization, FFTW
+using Statistics, Serialization, Printf
+using FFTW
 
 if Base.find_package("CuArrays") !== nothing
     using CUDAdrv, CUDAnative, CuArrays
