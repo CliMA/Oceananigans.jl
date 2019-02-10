@@ -21,6 +21,7 @@ function run_diagnostic(model::Model, fs::FieldSummary)
 end
 
 struct CheckForNaN <: Diagnostic end
+struct CFLChecker <: Diagnostic end
 struct VelocityDivergence <: Diagnostic end
 
 mutable struct Nusselt_wT <: Diagnostic

@@ -103,12 +103,13 @@ end
 function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT, Nu_Chi_diag::Nusselt_Chi)
     println("Plotting Nusselt number diagnostics...")
 
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     t = 0:model.clock.Δt:model.clock.time
 
     PyPlot.plot(t, Nu_wT_diag.Nu, label="Nu_wT")
     PyPlot.plot(t, Nu_Chi_diag.Nu, label="Nu_Chi")
 
-    PyPlot.title("Rayleigh–Bénard convection (64×64×32) @ Ra=5000")
+    PyPlot.title("Rayleigh–Bénard convection ($Nx×$Ny×$Nz) @ Ra=5000")
     PyPlot.xlabel("Time (s)")
     PyPlot.ylabel("Nusselt number Nu")
     PyPlot.legend()
