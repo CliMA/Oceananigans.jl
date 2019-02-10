@@ -66,6 +66,11 @@ function time_step!(model::Model; Nt, Δt)
         𝜈∇²u!(g, U.u, 𝜈∇²u, cfg.𝜈h, cfg.𝜈v, otmp)
         @. G.Gu.data += 𝜈∇²u.data
 
+        if bc.bottom_bc == :no_slip
+            @. @views G.Gu.data[:, :, 1] += - (1/g.Δz) * (cfg.𝜈v * U.u[:, :, 1] / (g.Δz / 2))
+            @. @views G.Gu.data[:, :, end] += - (1/g.Δz) * (cfg.𝜈v * U.u[:, :, end] / (g.Δz / 2))
+        end
+
         u∇v = stmp.fFY
         u∇v!(g, U, u∇v, otmp)
         @. G.Gv.data = -u∇v.data
@@ -84,6 +89,11 @@ function time_step!(model::Model; Nt, Δt)
         𝜈∇²v = stmp.fFY
         𝜈∇²v!(g, U.v, 𝜈∇²v, cfg.𝜈h, cfg.𝜈v, otmp)
         @. G.Gv.data += 𝜈∇²v.data
+
+        if bc.bottom_bc == :no_slip
+            @. @views G.Gv.data[:, :, 1] += - (1/g.Δz) * (cfg.𝜈v * U.v[:, :, 1] / (g.Δz / 2))
+            @. @views G.Gv.data[:, :, end] += - (1/g.Δz) * (cfg.𝜈v * U.v[:, :, end] / (g.Δz / 2))
+        end
 
         u∇w = stmp.fFZ
         u∇w!(g, U, u∇w, otmp)
