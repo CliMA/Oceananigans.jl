@@ -38,8 +38,8 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     stepper_tmp = StepperTemporaryFields(metadata, grid)
     operator_tmp = OperatorTemporaryFields(metadata, grid)
 
-    time, time_step = 0, 0
-    clock = Clock(time, time_step)
+    time, time_step, Δt = 0, 0, 0
+    clock = Clock(time, time_step, Δt)
 
     output_writers = OutputWriter[]
     diagnostics = Diagnostic[]
