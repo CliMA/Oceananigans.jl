@@ -27,7 +27,7 @@ function impose_cooling_disk!(model::Model)
     Ts = 20  # Surface temperature [°C].
     Q₀ = -800  # Cooling disk heat flux [W/m²].
     Q₁ = 10  # Noise added to cooling disk heat flux [W/m²].
-    Ns = 0 * (c.f * Rc/g.Lz)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
+    Ns = 5 * (c.f * Rc/g.Lz)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 
     αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
     cᵥ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
@@ -65,7 +65,6 @@ function impose_initial_conditions!(model::Model)
     impose_cooling_disk!(model)
 
     @. model.tracers.S.data = model.eos.S₀
-    @. model.tracers.T.data = 273.15 + 20  # 20°C.
 
     pHY_profile = [-model.eos.ρ₀ * model.constants.g * h for h in g.zC]
     model.pressures.pHY.data .= repeat(reshape(pHY_profile, 1, 1, g.Nz), g.Nx, g.Ny, 1)
@@ -86,7 +85,7 @@ function make_temperature_movies(model::Model, fw::FieldWriter)
         print("\rframe = $tidx / $n_frames   ")
         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
         Plots.heatmap(xC, zC, rotl90(temperature[:, 50, :]) .- 293.15, color=:balance,
-                      clims=(-0.04, 0),
+                      clims=(-0.1, 0),
                       title="T @ t=$(tidx*fw.output_frequency*Δt)")
     end
 
