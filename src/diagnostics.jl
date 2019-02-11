@@ -31,6 +31,9 @@ mutable struct Nusselt_wT <: Diagnostic
 end
 
 function run_diagnostic(model::Model, diag::Nusselt_wT)
+    α = 207e-6  # Volumetric expansion coefficient [K⁻¹] of water at 20°C.
+    g = model.constants.g
+
     w, T = model.velocities.w.data, model.tracers.T.data
     V = model.grid.Lx * model.grid.Ly * model.grid.Lz
     wT_avg = sum(w .* T) / V
@@ -39,7 +42,7 @@ function run_diagnostic(model::Model, diag::Nusselt_wT)
     diag.wT_cumulative_running_avg = (wT_avg + n*model.clock.Δt*diag.wT_cumulative_running_avg) / ((n+1)*model.clock.Δt)
 
     Lz, κ, ΔT = model.grid.Lz, model.configuration.κh, 1
-    Nu_wT = 1 + (Lz^2 / (κ*ΔT^2)) * diag.wT_cumulative_running_avg
+    Nu_wT = 1 + (Lz^2 / (κ*α*g*ΔT^2)) * diag.wT_cumulative_running_avg
 
     push!(diag.Nu, Nu_wT)
 end
