@@ -10,17 +10,9 @@ function deep_convection_3d()
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
     impose_initial_conditions!(model)
 
-    checkpointer = Checkpointer(".", "deep_convection_3d", 1000)
     field_writer = FieldWriter(".", "deep_convection_3d", 10,
                                [model.tracers.T], ["T"])
-
-    push!(model.output_writers, checkpointer)
     push!(model.output_writers, field_writer)
-
-    f = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T]
-    fn = ["u", "v", "w", "T"]
-    field_summary_diag = FieldSummary(10, f, fn)
-    push!(model.diagnostics, field_summary_diag)
 
     time_step!(model; Nt=Nt, Δt=Δt)
     make_temperature_movies(model, field_writer)
@@ -49,6 +41,9 @@ function impose_cooling_disk!(model::Model)
 
     # Calculate vertical temperature profile and convert to Kelvin.
     T_ref = 273.15 .+ Ts .+ Tz .* (g.zC .- mean(Tz * g.zC))
+
+    # Impose reference temperature profile.
+    model.tracers.T.data .= repeat(reshape(T_ref, 1, 1, g.Nz), g.Nx, g.Ny, 1)
 
     # Set surface heat flux to zero outside of cooling disk of radius Rᶜ.
     r₀² = @. x₀*x₀ + y₀'*y₀'
@@ -86,11 +81,12 @@ function make_temperature_movies(model::Model, fw::FieldWriter)
     print("Creating temperature movie... ($n_frames frames)\n")
 
     Plots.gr()
+    default(dpi=300)
     movie = @animate for tidx in 0:n_frames
         print("\rframe = $tidx / $n_frames   ")
         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
         Plots.heatmap(xC, zC, rotl90(temperature[:, 50, :]) .- 293.15, color=:balance,
-                      clims=(-0.1, 0),
+                      clims=(-0.04, 0),
                       title="T @ t=$(tidx*fw.output_frequency*Δt)")
     end
 
