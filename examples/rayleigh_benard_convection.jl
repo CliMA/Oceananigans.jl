@@ -45,12 +45,15 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Lx, Ly, Lz, Nt, Δt)
     Nu_Chi_diag = Nusselt_Chi(diag_freq, Float64[], Nu_running_avg)
     push!(model.diagnostics, Nu_Chi_diag)
 
+    # Small random perturbations are added to boundary conditions to ensure instability formation.
+    top_T    = 283 .- (ΔT/2) .+ 0.001.*rand(Nx, Ny)
+    bottom_T = 283 .+ (ΔT/2) .+ 0.001.*rand(Nx, Ny)
+
     for i in 1:Nt
-        # Impose constant T boundary conditions at top and bottom every time step.
-        # Small random perturbations are added to ensure instability formation.
-        @. model.tracers.T.data[:, :,   1] = 283 - (ΔT/2) + 0.001*rand()
-        @. model.tracers.T.data[:, :, end] = 283 + (ΔT/2) + 0.001*rand()
         time_step!(model; Nt=1, Δt=model.clock.Δt)
+        # Impose constant T boundary conditions at top and bottom every time step.
+        @. model.tracers.T.data[:, :,   1] = top_T
+        @. model.tracers.T.data[:, :, end] = bottom_T
     end
 
     make_temperature_movie(model, field_writer)
