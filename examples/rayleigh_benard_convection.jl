@@ -4,15 +4,16 @@ using Oceananigans
 function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Lx, Ly, Lz, Nt, Δt)
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
 
-    α = 1.43e-7  # Thermal diffusivity [m²/s] of water at 25°C.
-    ΔT = 1  # Temperature difference [K] between top and bottom.
-    Pr = 1  # Prandtl number Pr = 𝜈/κ.
+    α = 207e-6  # Volumetric expansion coefficient [K⁻¹] of water at 20°C.
+    ΔT = 1      # Temperature difference [K] between top and bottom.
+    Pr = 0.7    # Prandtl number Pr = 𝜈/κ.
 
     # Calculate viscosity needed to get flow with desired Rayleigh number using
     # Eq. (3.5) of Kerr (1996).
     𝜈 = √((α*model.constants.g *Lz^3 / Ra_desired) * Pr * ΔT)
     Ra = (α*model.constants.g*Lz^3 / 𝜈^2) * Pr * ΔT
 
+    println("Aspect ratio:    Γxz=$(Lx/Lz), Γyz=$(Ly/Lz)")
     println("Rayleigh number: Ra=$Ra")
     println("Prandtl number:  Pr=$Pr")
 
@@ -72,8 +73,8 @@ function make_temperature_movie(model::Model, fw::FieldWriter)
     movie = @animate for tidx in 0:n_frames
         print("\rframe = $tidx / $n_frames   ")
         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*model.clock.Δt)
-        Plots.heatmap(xC, zC, rotl90(temperature[:, Int(model.grid.Ny/2), :]) .- 283, color=:balance,
-                      clims=(-0.5, 0.5),
+        Plots.heatmap(xC, zC, rotl90(temperature[:, Int(ceil(model.grid.Ny/2)), :]) .- 283, color=:balance,
+                      clims=(-0.5, 0.5), aspect_ratio=:equal,
                       title="T @ t=$(tidx*fw.output_frequency*model.clock.Δt)")
     end
 
