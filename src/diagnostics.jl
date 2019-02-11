@@ -27,6 +27,7 @@ struct VelocityDivergence <: Diagnostic end
 mutable struct Nusselt_wT <: Diagnostic
     diagnostic_frequency::Int
     Nu::Array{AbstractFloat,1}
+    Nu_inst::Array{AbstractFloat,1}
     wT_cumulative_running_avg::AbstractFloat
 end
 
@@ -45,11 +46,15 @@ function run_diagnostic(model::Model, diag::Nusselt_wT)
     Nu_wT = 1 + (Lz^2 / (κ*α*g*ΔT^2)) * diag.wT_cumulative_running_avg
 
     push!(diag.Nu, Nu_wT)
+
+    Nu_wT_inst = 1 + (Lz^2 / (κ*α*g*ΔT^2)) * wT_avg
+    push!(diag.Nu_inst, Nu_wT_inst)
 end
 
 mutable struct Nusselt_Chi <: Diagnostic
     diagnostic_frequency::Int
     Nu::Array{AbstractFloat,1}
+    Nu_inst::Array{AbstractFloat,1}
     ∇T²_cumulative_running_avg::AbstractFloat
 end
 
@@ -79,4 +84,7 @@ function run_diagnostic(model::Model, diag::Nusselt_Chi)
     Nu_Chi = 1 + (Lz/ΔT)^2 * diag.∇T²_cumulative_running_avg
 
     push!(diag.Nu, Nu_Chi)
+
+    ∇T²_inst = 1 + (Lz/ΔT)^2 * ∇T²_avg
+    push!(diag.Nu_inst, ∇T²_inst)
 end

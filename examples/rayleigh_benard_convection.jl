@@ -40,10 +40,10 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Lx, Ly, Lz, Nt, Δt)
     push!(model.output_writers, field_writer)
 
     diag_freq, Nu_running_avg = 1, 0
-    Nu_wT_diag = Nusselt_wT(diag_freq, Float64[], Nu_running_avg)
+    Nu_wT_diag = Nusselt_wT(diag_freq, Float64[], Float64[], Nu_running_avg)
     push!(model.diagnostics, Nu_wT_diag)
 
-    Nu_Chi_diag = Nusselt_Chi(diag_freq, Float64[], Nu_running_avg)
+    Nu_Chi_diag = Nusselt_Chi(diag_freq, Float64[], Float64[], Nu_running_avg)
     push!(model.diagnostics, Nu_Chi_diag)
 
     # Small random perturbations are added to boundary conditions to ensure instability formation.
@@ -88,7 +88,9 @@ function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT, N
     t = 0:model.clock.Δt:model.clock.time
 
     PyPlot.plot(t, Nu_wT_diag.Nu, label="Nu_wT")
+    PyPlot.plot(t, Nu_wT_diag.Nu_inst, label="Nu_wT_inst")
     PyPlot.plot(t, Nu_Chi_diag.Nu, label="Nu_Chi")
+    PyPlot.plot(t, Nu_Chi_diag.Nu_inst, label="Nu_Chi_inst")
 
     PyPlot.title("Rayleigh–Bénard convection ($Nx×$Ny×$Nz) @ Ra=5000")
     PyPlot.xlabel("Time (s)")
