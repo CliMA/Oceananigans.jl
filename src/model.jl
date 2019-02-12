@@ -1,4 +1,4 @@
-struct Model
+mutable struct Model
     metadata::ModelMetadata
     configuration::ModelConfiguration
     boundary_conditions::BoundaryConditions
