@@ -28,7 +28,7 @@ using Oceananigans:
 @inline δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField, i, j, k) = (@inbounds δyf.data[i, j, k] = f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k])
 @inline δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField, i, j, k) = (@inbounds δyf.data[i, j, k] = f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k])
 @inline δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField, i, j, k) = (@inbounds δyf.data[i, j, k] = f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k])
-@inline δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField, i, j, k) = (@inbounds δyf.data[i, j, k] = f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+@inline δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField, i, j, k) = (@inbounds δyf.data[i, j, k] = f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k])
 
 @inline function δz_c2f(g::RegularCartesianGrid, f::CellField, i, j, k)
     if k == 1
@@ -157,3 +157,12 @@ end
         @inbounds favgz.data[i, j, k] = 0.5f0 * (f.data[i, j, k] + f.data[i, j, k-1])
     end
 end
+
+@inline div(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, i, j, k) = (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
+@inline div(g::RegularCartesianGrid, fx::CellField, fy::CellField, fz::CellField, i, j, k) = (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
+
+@inline div_flux(g::RegularCartesianGrid, u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField, i, j, k)  = @inbounds (δx_f2c(u.data[i, j, k] * avgx_c2f(g, T, i, j, k)) / g.Δx) + (δy_f2c(v.data[i, j, k] * avgy_c2f(g, T, i, j, k)) / g.Δy) + (δz_f2c(w.data[i, j, k] * avgz_c2f(g, T, i, j, k)) / g.Δz)
+
+@inline u∇u(g::RegularCartesianGrid, U::VelocityFields) = @inbounds
+(δx_c2f(avgx_f2c(g, U.u, i, j, k)^2) / g.Δx)
+(δy_e2f(avgx_f2e(g, U.v, i, j, k)*)
