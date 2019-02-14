@@ -263,9 +263,12 @@ using Oceananigans.Operators
 
         model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
         g, stmp, otmp = model.grid, model.stepper_tmp, model.operator_tmp
-        U = model.velocities
+        U, tr = model.velocities, model.tracers
 
-        test_indices = [(1, 1, 1), (2, 2, 2), (4, 5, 6), (6, 7, 8), (32, 16, 8)]
+        test_indices = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  # Interior
+                        (17, 10, 2), (23, 5, 7),  # Borderlands
+                        (1, 5, 5), (32, 10, 3), (16, 1, 4), (16, 16, 4), (16, 8, 1), (16, 8, 8),  # Edges
+                        (1, 1, 1), (32, 16, 8)]  # Corners
 
         f, δxf = stmp.fC1, stmp.fFX
         @. f.data = rand()
