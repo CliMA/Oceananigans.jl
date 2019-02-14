@@ -332,5 +332,33 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇v!(g, U, u_grad_v, otmp)
         for idx in test_indices; @test u∇v(g, U, idx...) ≈ u_grad_v.data[idx...]; end
+
+        u, w, w̅ˣ, u̅ᶻ, ∂wu = U.u, U.w, otmp.fE1, otmp.fE2, stmp.fFZ
+        Oceananigans.Operators.avgx!(g, w, w̅ˣ)
+        Oceananigans.Operators.avgz!(g, u, u̅ᶻ)
+        wu = otmp.fE1
+        @. wu.data = w̅ˣ.data * u̅ᶻ.data
+        Oceananigans.Operators.δx!(g, wu, ∂wu)
+        for idx in test_indices; @test δx_e2f_ūᶻw̄ˣ(g, u, w, idx...) ≈ ∂wu.data[idx...]; end
+
+        v, w, v̄ᶻ, w̅ʸ, ∂wv = U.v, U.w, otmp.fE1, otmp.fE2, stmp.fFZ
+        Oceananigans.Operators.avgz!(g, v, v̄ᶻ)
+        Oceananigans.Operators.avgy!(g, w, w̅ʸ)
+        wv = otmp.fE1
+        @. wv.data = v̄ᶻ.data * w̅ʸ.data
+        Oceananigans.Operators.δy!(g, wv, ∂wv)
+        for idx in test_indices; @test δy_e2f_v̄ᶻw̄ʸ(g, v, w, idx...) ≈ ∂wv.data[idx...]; end
+
+        w, w̄ᶻ, ∂ww = U.w, stmp.fC1, stmp.fFZ
+        @. w.data = rand();
+        Oceananigans.Operators.avgz!(g, w, w̄ᶻ)
+        @. w̄ᶻ.data = w̄ᶻ.data^2
+        Oceananigans.Operators.δz!(g, w̄ᶻ, ∂ww)
+        for idx in test_indices; @test δz_c2f_w̄ᶻw̄ᶻ(g, w, idx...) ≈ ∂ww.data[idx...]; end
+
+        u, v, w, u_grad_w = U.u, U.v, U.w, stmp.fFZ
+        @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
+        Oceananigans.Operators.u∇w!(g, U, u_grad_w, otmp)
+        for idx in test_indices; @test u∇w(g, U, idx...) ≈ u_grad_w.data[idx...]; end
     end
 end

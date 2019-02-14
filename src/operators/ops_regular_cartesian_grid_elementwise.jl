@@ -236,3 +236,25 @@ end
 @inline function u∇v(g::RegularCartesianGrid, U::VelocityFields, i, j, k)
     (δx_e2f_ūʸv̄ˣ(g, U.u, U.v, i, j, k) / g.Δx) + (δy_c2f_v̄ʸv̄ʸ(g, U.v, i, j, k) / g.Δy) + (δz_e2f_w̄ʸv̄ᶻ(g, U.v, U.w, i, j, k) / g.Δz)
 end
+
+@inline function δx_e2f_ūᶻw̄ˣ(g::RegularCartesianGrid, u::FaceFieldX, w::FaceFieldZ, i, j, k)
+    avgz_f2e(g, u, incmod1(i, g.Nx), j, k) * avgx_f2e(g, w, incmod1(i, g.Nx), j, k) -
+    avgz_f2e(g, u, i,                j, k) * avgx_f2e(g, w, i,                j, k)
+end
+
+@inline function δy_e2f_v̄ᶻw̄ʸ(g::RegularCartesianGrid, v::FaceFieldY, w::FaceFieldZ, i, j, k)
+    avgz_f2e(g, v, i, incmod1(j, g.Ny), k) * avgy_f2e(g, w, i, incmod1(j, g.Ny), k) -
+    avgz_f2e(g, v, i,                j, k) * avgy_f2e(g, w, i,                j, k)
+end
+
+@inline function δz_c2f_w̄ᶻw̄ᶻ(g::RegularCartesianGrid, w::FaceFieldZ, i, j, k)
+    if k == 1
+        return 0
+    else
+        return avgz_f2c(g, w, i, j, k-1)^2 - avgz_f2c(g, w, i, j, k)^2
+    end
+end
+
+@inline function u∇w(g::RegularCartesianGrid, U::VelocityFields, i, j, k)
+    (δx_e2f_ūᶻw̄ˣ(g, U.u, U.w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, U.v, U.w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, U.w, i, j, k) / g.Δz)
+end
