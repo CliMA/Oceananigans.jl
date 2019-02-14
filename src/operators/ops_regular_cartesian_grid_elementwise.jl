@@ -158,11 +158,36 @@ end
     end
 end
 
-@inline div(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, i, j, k) = (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
-@inline div(g::RegularCartesianGrid, fx::CellField, fy::CellField, fz::CellField, i, j, k) = (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
+@inline function div(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, i, j, k)
+    (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
+end
 
-@inline div_flux(g::RegularCartesianGrid, u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField, i, j, k)  = @inbounds (δx_f2c(u.data[i, j, k] * avgx_c2f(g, T, i, j, k)) / g.Δx) + (δy_f2c(v.data[i, j, k] * avgy_c2f(g, T, i, j, k)) / g.Δy) + (δz_f2c(w.data[i, j, k] * avgz_c2f(g, T, i, j, k)) / g.Δz)
+@inline function div(g::RegularCartesianGrid, fx::CellField, fy::CellField, fz::CellField, i, j, k)
+    (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
+end
 
-@inline u∇u(g::RegularCartesianGrid, U::VelocityFields) = @inbounds
-(δx_c2f(avgx_f2c(g, U.u, i, j, k)^2) / g.Δx)
-(δy_e2f(avgx_f2e(g, U.v, i, j, k)*)
+@inline function δx_f2c_ab̄ˣ(g::RegularCartesianGrid, a::FaceFieldX, b::CellField, i, j, k)
+    @inbounds 0.5f0 * (a.data[incmod1(i, g.Nx), j, k] * (b.data[incmod1(i, g.Nx), j, k] + b.data[i, j, k]) -
+                       a.data[i,                j, k] * (b.data[decmod1(i, g.Nx), j, k] + b.data[i, j, k]))
+end
+
+@inline function δy_f2c_ab̄ʸ(g::RegularCartesianGrid, a::FaceFieldY, b::CellField, i, j, k)
+    @inbounds 0.5f0 * (a.data[i, incmod1(j, g.Ny), k] * (b.data[i, incmod1(j, g.Ny), k] + b.data[i, j, k]) -
+                       a.data[i,                j, k] * (b.data[i, decmod1(j, g.Ny), k] + b.data[i, j, k]))
+end
+
+@inline function δz_f2c_ab̄ᶻ(g::RegularCartesianGrid, a::FaceFieldZ, b::CellField, i, j, k)
+    if k == 1
+        @inbounds return 0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k])) -
+                         a.data[i, j, k]*b.data[i, j, k]
+    elseif k == g.Nz
+        @inbounds return 0.5f0 * a.data[i, j,   k] * (b.data[i, j, k-1] + b.data[i, j, k])
+    else
+        @inbounds return 0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k]) -
+                                  a.data[i, j,   k] * (b.data[i, j, k-1] + b.data[i, j, k]))
+    end
+end
+
+@inline function div_flux(g::RegularCartesianGrid, u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField, i, j, k)
+    (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
+end
