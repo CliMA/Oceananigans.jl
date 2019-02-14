@@ -34,7 +34,7 @@ using Oceananigans:
     if k == 1
         return 0
     else
-        @inbounds return δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+        @inbounds return f.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
     end
 end
 
