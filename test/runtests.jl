@@ -315,5 +315,17 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand(); @. T.data = rand();
         Oceananigans.Operators.div_flux!(g, u, v, w, T, div_uT, otmp)
         for idx in test_indices; @test div_flux(g, u, v, w, T, idx...) ≈ div_uT.data[idx...]; end
+
+        u, u̅ˣ, ∂uu = U.u, stmp.fC1, stmp.fFX
+        @. u.data = rand();
+        Oceananigans.Operators.avgx!(g, u, u̅ˣ)
+        @. u̅ˣ.data = u̅ˣ.data^2
+        Oceananigans.Operators.δx!(g, u̅ˣ, ∂uu)
+        for idx in test_indices; @test δx_c2f_ūˣūˣ(g, u, idx...) ≈ ∂uu.data[idx...]; end
+
+        u, v, w, u_grad_u = U.u, U.v, U.w, stmp.fFX
+        @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
+        Oceananigans.Operators.u∇u!(g, U, u_grad_u, otmp)
+        for idx in test_indices; @test u∇u(g, U, idx...) ≈ u_grad_u.data[idx...]; end
     end
 end
