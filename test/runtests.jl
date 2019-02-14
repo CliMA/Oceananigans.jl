@@ -327,5 +327,10 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇u!(g, U, u_grad_u, otmp)
         for idx in test_indices; @test u∇u(g, U, idx...) ≈ u_grad_u.data[idx...]; end
+
+        u, v, w, u_grad_v = U.u, U.v, U.w, stmp.fFY
+        @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
+        Oceananigans.Operators.u∇v!(g, U, u_grad_v, otmp)
+        for idx in test_indices; @test u∇v(g, U, idx...) ≈ u_grad_v.data[idx...]; end
     end
 end
