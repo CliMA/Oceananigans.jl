@@ -178,12 +178,12 @@ end
 
 @inline function δz_f2c_ab̄ᶻ(g::RegularCartesianGrid, a::FaceFieldZ, b::CellField, i, j, k)
     if k == 1
-        @inbounds return 0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k])) -
+        @inbounds return -0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k])) +
                          a.data[i, j, k]*b.data[i, j, k]
     elseif k == g.Nz
         @inbounds return 0.5f0 * a.data[i, j,   k] * (b.data[i, j, k-1] + b.data[i, j, k])
     else
-        @inbounds return 0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k]) -
+        @inbounds return -0.5f0 * (a.data[i, j, k+1] * (b.data[i, j, k+1] + b.data[i, j, k]) -
                                   a.data[i, j,   k] * (b.data[i, j, k-1] + b.data[i, j, k]))
     end
 end
