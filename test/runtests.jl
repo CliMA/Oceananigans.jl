@@ -310,5 +310,10 @@ using Oceananigans.Operators
         @. wT̄ᶻ.data = w.data * wT̄ᶻ.data
         Oceananigans.Operators.δz!(g, wT̄ᶻ, δz_wT̄ᶻ)
         for idx in test_indices; @test δz_f2c_ab̄ᶻ(g, w, T, idx...) ≈ δz_wT̄ᶻ.data[idx...]; end
+
+        u, v, w, T, div_uT = U.u, U.v, U.w, tr.T, stmp.fC1
+        @. u.data = rand(); @. v.data = rand(); @. w.data = rand(); @. T.data = rand();
+        Oceananigans.Operators.div_flux!(g, u, v, w, T, div_uT, otmp)
+        for idx in test_indices; @test div_flux(g, u, v, w, T, idx...) ≈ div_uT.data[idx...]; end
     end
 end
