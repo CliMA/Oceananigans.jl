@@ -189,5 +189,9 @@ end
 end
 
 @inline function div_flux(g::RegularCartesianGrid, u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField, i, j, k)
-    (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
+    if k == 1
+        @inbounds return (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) - ((0.5f0 * w.data[i, j, 2] * (Q.data[i, j, 2] + Q.data[i, j, 1])) / g.Δz)
+    else
+        return (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
+    end
 end
