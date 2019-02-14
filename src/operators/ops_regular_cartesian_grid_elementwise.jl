@@ -178,7 +178,7 @@ end
 
 @inline function δz_f2c_ab̄ᶻ(g::RegularCartesianGrid, a::FaceFieldZ, b::CellField, i, j, k)
     if k == g.Nz
-        @inbounds return 0.5f0 * a.data[i, j,   k] * (b.data[i, j, k-1] + b.data[i, j, k])
+        @inbounds return a.data[i, j, k] * avgz_c2f(g, b, i, j, k)
     else
         @inbounds return (a.data[i, j,   k] * avgz_c2f(g, b, i, j,   k) -
                           a.data[i, j, k+1] * avgz_c2f(g, b, i, j, k+1))
