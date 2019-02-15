@@ -72,7 +72,7 @@ end
     end
 end
 
-@inline function δz_c2f(f, i, j, k)
+@inline function δz_c2f(f, Nz, i, j, k)
     if k == 1
         return 0
     else
@@ -80,23 +80,23 @@ end
     end
 end
 
-@inline function δz_f2c(f, i, j, k)
-    if k == g.Nz
-        @inbounds return f[i, j, g.Nz]
+@inline function δz_f2c(f, Nz, i, j, k)
+    if k == Nz
+        @inbounds return f[i, j, k]
     else
         @inbounds return f[i, j, k] - f[i, j, k+1]
     end
 end
 
-@inline function δz_e2f(f, i, j, k)
-    if k == g.Nz
-        @inbounds return f[i, j, g.Nz]
+@inline function δz_e2f(f, Nz, i, j, k)
+    if k == Nz
+        @inbounds return f[i, j, k]
     else
         @inbounds return f[i, j, k] - f[i, j, k+1]
     end
 end
 
-@inline function δz_f2e(f, i, j, k)
+@inline function δz_f2e(f, Nz, i, j, k)
     if k == 1
         return 0
     else
