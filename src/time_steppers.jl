@@ -241,6 +241,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
     χ = 0.1  # Adams-Bashforth (AB2) parameter.
 
     Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
+    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
 
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
@@ -253,7 +254,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
         @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
         println("Launching kernel 2...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), g, eos, cfg, U, tr, pr, F, G, Gp)
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, G.Gu.data, G.Gv.data, G.Gw.data)
 
         # println("Launching kernel 3...")
         # time_step_kernel_part3!(Val(:GPU), g, G, RHS)
@@ -301,16 +302,17 @@ function time_step_kernel_part1!(::Val{Dev}, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ
     @synchronize
 end
 
-function time_step_kernel_part2!(::Val{Dev}, g, eos, cfg, U, tr, pr, F, G, Gp) where Dev
+function time_step_kernel_part2!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, Gu, Gv, Gw) where Dev
     @setup Dev
 
-    @loop for k in (1:g.Nz; blockIdx().z)
-        @loop for j in (1:g.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:g.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate source terms for current time step.
-                @inbounds G.Gu.data[i, j, k] = -u∇u(g, U, i, j, k) + c.f*avg_xy(g, U.v, i, j, k) - δx_c2f(g, pr.pHY′, i, j, k) / (g.Δx * eos.ρ₀) + 𝜈∇²u(g, U.u, cfg.𝜈h, cfg.𝜈v)
+                # @inbounds G.Gu.data[i, j, k] = -u∇u(g, U, i, j, k) + c.f*avg_xy(g, U.v, i, j, k) - δx_c2f(g, pr.pHY′, i, j, k) / (g.Δx * eos.ρ₀) + 𝜈∇²u(g, U.u, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gv.data[i, j, k] = -u∇v(g, U, i, j, k) - c.f*avg_xy(g, U.u, i, j, k) - δy_c2f(g, pr.pHY′, i, j, k) / (g.Δy * eos.ρ₀) + 𝜈∇²v(g, U.v, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gw.data[i, j, k] = -u∇w(g, U, i, j, k)                                                                               + 𝜈∇²w(g, U.w, cfg.𝜈h, cfg.𝜈v)
+                @inbounds Gu[i, j, k] = u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
                 # @inbounds G.GT.data[i, j, k] = -div_flux(g, U, tr.T, i, j, k) + κ∇²(g, tr.T, i, j, k) + F.FT.data[i, j, k]
                 # @inbounds G.GS.data[i, j, k] = -div_flux(g, U, tr.S, i, j, k) + κ∇²(g, tr.S, i, j, k)
