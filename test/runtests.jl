@@ -314,7 +314,7 @@ using Oceananigans.Operators
         u, v, w, T, div_uT = U.u, U.v, U.w, tr.T, stmp.fC1
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand(); @. T.data = rand();
         Oceananigans.Operators.div_flux!(g, u, v, w, T, div_uT, otmp)
-        for idx in test_indices; @test div_flux(g, u, v, w, T, idx...) ≈ div_uT.data[idx...]; end
+        for idx in test_indices; @test div_flux(g, U, T, idx...) ≈ div_uT.data[idx...]; end
 
         u, u̅ˣ, ∂uu = U.u, stmp.fC1, stmp.fFX
         @. u.data = rand();

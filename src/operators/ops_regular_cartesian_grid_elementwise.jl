@@ -185,11 +185,11 @@ end
     end
 end
 
-@inline function div_flux(g::RegularCartesianGrid, u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField, i, j, k)
+@inline function div_flux(g::RegularCartesianGrid, U::VelocityFields, Q::CellField, i, j, k)
     if k == 1
-        @inbounds return (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) - ((w.data[i, j, 2] * avgz_c2f(g, Q, i, j, 2)) / g.Δz)
+        @inbounds return (δx_f2c_ab̄ˣ(g, U.u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, U.v, Q, i, j, k) / g.Δy) - ((U.w.data[i, j, 2] * avgz_c2f(g, Q, i, j, 2)) / g.Δz)
     else
-        return (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
+        return (δx_f2c_ab̄ˣ(g, U.u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, U.v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, U.w, Q, i, j, k) / g.Δz)
     end
 end
 
