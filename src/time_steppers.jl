@@ -1,3 +1,4 @@
+using GPUifyLoops
 using Oceananigans.Operators
 
 function time_step!(model::Model; Nt, Δt)
@@ -170,8 +171,8 @@ function time_step!(model::Model; Nt, Δt)
         @. tr.T.data = tr.T.data + (G.GT.data * Δt)
         @. tr.S.data = tr.S.data + (G.GS.data * Δt)
 
-        div_u1 = stmp.fC1
-        div!(g, U.u, U.v, U.w, div_u1, otmp)
+        # div_u1 = stmp.fC1
+        # div!(g, U.u, U.v, U.w, div_u1, otmp)
 
         clock.time += Δt
         clock.time_step += 1
@@ -189,5 +190,131 @@ function time_step!(model::Model; Nt, Δt)
                 run_diagnostic(model, diagnostic)
             end
         end
+    end
+end
+
+time_step_elementwise!(model::Model; Nt, Δt) = time_step_kernel!(Val(:CPU), model; Nt=Nt, Δt=Δt)
+
+function time_step_elementwise!(model::Model; Nt, Δt)
+    Tx, Ty = 16, 16  # Threads per block
+    Bx, By, Bz = Int(model.grid.Nx/Tx), Int(model.grid.Ny/Ty), Nz  # Blocks in grid.
+
+    # println("Threads per block: ($Tx, $Ty)")
+    # println("Blocks in grid:    ($Bx, $By, $Bz)")
+
+    @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel!(Val(:GPU), A, B)
+end
+
+@inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
+
+function time_step_kernel!(::Val{Dev}, model::Model; Nt, Δt)
+    @setup Dev
+
+    metadata = model.metadata
+    cfg = model.configuration
+    bc = model.boundary_conditions
+    g = model.grid
+    c = model.constants
+    eos = model.eos
+    ssp = model.ssp
+    U = model.velocities
+    tr = model.tracers
+    pr = model.pressures
+    G = model.G
+    Gp = model.Gp
+    F = model.forcings
+    stmp = model.stepper_tmp
+    otmp = model.operator_tmp
+    clock = model.clock
+
+    model_start_time = clock.time
+    model_end_time = model_start_time + Nt*Δt
+
+    # Field references.
+    δρ = stmp.fC1
+    RHS = stmp.fCC1
+    ϕ   = stmp.fCC2
+
+    # Constants.
+    gΔz = c.g * g.Δz
+    χ = 0.1  # Adams-Bashforth (AB2) parameter.
+
+    for n in 1:Nt
+        @loop for k in (1:Nz; blockIdx().z)
+            @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    # Calculate new density and density deviation.
+                    @inbounds δρ.data[i, j, k] =  - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
+                    @inbounds tracers.T.data[i, j, k] = eos.ρ₀ + δρ.data[i, j, k]
+
+                    # Calculate hydrostatic pressure anomaly (buoyancy): ∫δρg dz
+                    @inbounds pr.pHY′.data[i, j, 1] = δρ(eos, T, i, j, k) * 0.5f0 * gΔz
+                    for k′ in 2:k
+                      @inbounds pr.pHY′.data[i, j, k] += (δρ(eos, T, i, j, k-1) - δρ(eos, T, i, j, k)) * gΔz
+                    end
+                end
+            end
+
+            @synchronize
+
+            @loop for k in (1:Nz; blockIdx().z)
+                @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                    @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                        # Calculate source terms for current time step.
+                        @inbounds G.Gu.data[i, j, k] = -u∇u(g, U, i, j, k) + c.f*avg_xy(g, U.v, i, j, k) - δx_c2f(g, pr.pHY′, i, j, k) / (g.Δx * eos.ρ₀) + 𝜈∇²u(g, U.u, cfg.𝜈h, cfg.𝜈v)
+                        @inbounds G.Gv.data[i, j, k] = -u∇v(g, U, i, j, k) - c.f*avg_xy(g, U.u, i, j, k) - δy_c2f(g, pr.pHY′, i, j, k) / (g.Δy * eos.ρ₀) + 𝜈∇²v(g, U.v, cfg.𝜈h, cfg.𝜈v)
+                        @inbounds G.Gw.data[i, j, k] = -u∇w(g, U, i, j, k)                                                                               + 𝜈∇²w(g, U.w, cfg.𝜈h, cfg.𝜈v)
+
+                        @inbounds G.GT.data[i, j, k] = -div_flux(g, U, tr.T, i, j, k) + κ∇²(g, tr.T, i, j, k) + F.FT.data[i, j, k]
+                        @inbounds G.GS.data[i, j, k] = -div_flux(g, U, tr.S, i, j, k) + κ∇²(g, tr.S, i, j, k)
+
+                        @inbounds G.Gu.data[i, j, k] = (1.5f0 + χ)*G.Gu.data[i, j, k] - (0.5f0 + χ)*Gp.Gu.data[i, j, k]
+                        @inbounds G.Gv.data[i, j, k] = (1.5f0 + χ)*G.Gv.data[i, j, k] - (0.5f0 + χ)*Gp.Gv.data[i, j, k]
+                        @inbounds G.Gw.data[i, j, k] = (1.5f0 + χ)*G.Gw.data[i, j, k] - (0.5f0 + χ)*Gp.Gw.data[i, j, k]
+                        @inbounds G.GT.data[i, j, k] = (1.5f0 + χ)*G.GT.data[i, j, k] - (0.5f0 + χ)*Gp.GT.data[i, j, k]
+                        @inbounds G.GS.data[i, j, k] = (1.5f0 + χ)*G.GS.data[i, j, k] - (0.5f0 + χ)*Gp.GS.data[i, j, k]
+                    end
+                end
+            end
+        end
+
+        @synchronize
+
+        @loop for k in (1:Nz; blockIdx().z)
+            @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds RHS.data[i, j, k] = div(g, G.Gu, G.Gv, G.Gw, i, j, k)
+                end
+            end
+        end
+
+        @synchronize
+
+        solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        @. pr.pNHS.data = real(ϕ.data)
+
+        @synchronize
+
+        @loop for k in (1:Nz; blockIdx().z)
+            @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds  U.u.data[i, j, k] =  U.u.data[i, j, k] + (G.Gu.data[i, j, k] - (δx_c2f(g, pr.pNHS, i, j, k) / g.Δx)) * Δt
+                    @inbounds  U.v.data[i, j, k] =  U.v.data[i, j, k] + (G.Gv.data[i, j, k] - (δy_c2f(g, pr.pNHS, i, j, k) / g.Δy)) * Δt
+                    @inbounds  U.w.data[i, j, k] =  U.w.data[i, j, k] + (G.Gw.data[i, j, k] - (δz_c2f(g, pr.pNHS, i, j, k) / g.Δz)) * Δt
+                    @inbounds tr.T.data[i, j, k] = tr.T.data[i, j, k] + (G.GT.data[i, j, k] * Δt)
+                    @inbounds tr.S.data[i, j, k] = tr.S.data[i, j, k] + (G.GS.data[i, j, k] * Δt)
+                end
+            end
+        end
+
+        # Store source terms from previous time step.
+        @. Gp.Gu.data = G.Gu.data
+        @. Gp.Gv.data = G.Gv.data
+        @. Gp.Gw.data = G.Gw.data
+        @. Gp.GT.data = G.GT.data
+        @. Gp.GS.data = G.GS.data
+
+        clock.time += Δt
+        clock.time_step += 1
     end
 end
