@@ -525,14 +525,14 @@ end
     ((𝜈h/g.Δx^2) * δx²_f2e2f(g, w, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2e2f(g, w, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2c2f(g, w, i, j, k))
 end
 
-@inline function 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz i, j, k)
+@inline function 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     ((𝜈h/Δx^2) * δx²_f2c2f(u, Nx, i, j, k)) + ((𝜈h/Δy^2) * δy²_f2e2f(u, Ny, i, j, k)) + ((𝜈v/Δz^2) * δz²_f2e2f(u, Nz, i, j, k))
 end
 
-@inline function 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz i, j, k)
+@inline function 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     ((𝜈h/Δx^2) * δx²_f2e2f(v, Nx, i, j, k)) + ((𝜈h/Δy^2) * δy²_f2c2f(v, Ny, i, j, k)) + ((𝜈v/Δz^2) * δz²_f2e2f(v, Nz, i, j, k))
 end
 
-@inline function 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz i, j, k)
+@inline function 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     ((𝜈h/Δx^2) * δx²_f2e2f(w, Nx, i, j, k)) + ((𝜈h/Δy^2) * δy²_f2e2f(w, Ny, i, j, k)) + ((𝜈v/Δz^2) * δz²_f2c2f(w, Nz, i, j, k))
 end
