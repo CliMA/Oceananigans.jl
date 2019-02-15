@@ -259,10 +259,10 @@ end
     (δx_e2f_ūᶻw̄ˣ(g, U.u, U.w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, U.v, U.w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, U.w, i, j, k) / g.Δz)
 end
 
-@inline δx²(g::RegularCartesianGrid, f::CellField, i, j, k) = δx_c2f(g, f, incmod1(i, g.Nx), j, k) - δx_c2f(g, f, i, j, k)
-@inline δy²(g::RegularCartesianGrid, f::CellField, i, j, k) = δy_c2f(g, f, i, incmod1(j, g.Ny), k) - δy_c2f(g, f, i, j, k)
+@inline δx²_c2f2c(g::RegularCartesianGrid, f::CellField, i, j, k) = δx_c2f(g, f, incmod1(i, g.Nx), j, k) - δx_c2f(g, f, i, j, k)
+@inline δy²_c2f2c(g::RegularCartesianGrid, f::CellField, i, j, k) = δy_c2f(g, f, i, incmod1(j, g.Ny), k) - δy_c2f(g, f, i, j, k)
 
-@inline function δz²(g::RegularCartesianGrid, f::CellField, i, j, k)
+@inline function δz²_c2f2c(g::RegularCartesianGrid, f::CellField, i, j, k)
     if k == g.Nz
         return δz_c2f(g, f, i, j, k)
     else
@@ -271,5 +271,21 @@ end
 end
 
 @inline function κ∇²(g::RegularCartesianGrid, Q::CellField, κh, κv, i, j, k)
-    ((κh/g.Δx^2) * δx²(g, Q, i, j, k)) + ((κh/g.Δy^2) * δy²(g, Q, i, j, k)) + ((κv/g.Δz^2) * δz²(g, Q, i, j, k))
+    ((κh/g.Δx^2) * δx²_c2f2c(g, Q, i, j, k)) + ((κh/g.Δy^2) * δy²_c2f2c(g, Q, i, j, k)) + ((κv/g.Δz^2) * δz²_c2f2c(g, Q, i, j, k))
+end
+
+@inline δx²_f2c2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δx_f2c(g, f, i, j, k) - δx_f2c(g, f, decmod1(i, g.Nx), j, k)
+
+@inline δy²_f2e2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δy_f2e(g, f, i, incmod1(j, g.Ny), k) - δy_f2e(g, f, i, j, k)
+
+@inline function δz²_f2e2f(g::RegularCartesianGrid, f::FaceField, i, j, k)
+    if k == g.Nz
+        return δz_f2e(g, f, i, j, k)
+    else
+        return δz_f2e(g, f, i, j, k) - δz_f2e(g, f, i, j, k+1)
+    end
+end
+
+@inline function 𝜈∇²u(g::RegularCartesianGrid, u::FaceFieldX, 𝜈h, 𝜈v, i, j, k)
+    ((𝜈h/g.Δx^2) * δx²_f2c2f(g, u, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2e2f(g, u, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2e2f(g, u, i, j, k))
 end
