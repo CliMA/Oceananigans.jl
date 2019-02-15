@@ -254,10 +254,14 @@ function time_step_kernel!(model::Model, Nt, Δt)
         @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
         println("Launching kernel 2...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, G.Gu.data, G.Gv.data, G.Gw.data)
+        # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), c.f, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+        #                                                                               U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
+        #                                                                               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        #                                                                               Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
 
         # println("Launching kernel 3...")
         # time_step_kernel_part3!(Val(:GPU), g, G, RHS)
+        # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data) where Dev
 
         # println("Nonhydrostatic pressure correction step...")
         # solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
@@ -265,6 +269,9 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
         # println("Launching kernel 4...")
         # time_step_kernel_part4!(Val(:GPU), g, G, RHS)
+        # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz,
+        #                                                                    U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
+        #                                                                    G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, pr.pNHS.data)
 
         # Store source terms from previous time step.
         @. Gp.Gu.data = G.Gu.data
@@ -275,7 +282,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
         clock.time += Δt
         clock.time_step += 1
-        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
+        # print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
+        println("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
     end
 end
 
@@ -302,7 +310,7 @@ function time_step_kernel_part1!(::Val{Dev}, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ
     @synchronize
 end
 
-function time_step_kernel_part2!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, Gu, Gv, Gw) where Dev
+function time_step_kernel_part2!(::Val{Dev}, fCor, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, FT) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -312,16 +320,27 @@ function time_step_kernel_part2!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w,
                 # @inbounds G.Gu.data[i, j, k] = -u∇u(g, U, i, j, k) + c.f*avg_xy(g, U.v, i, j, k) - δx_c2f(g, pr.pHY′, i, j, k) / (g.Δx * eos.ρ₀) + 𝜈∇²u(g, U.u, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gv.data[i, j, k] = -u∇v(g, U, i, j, k) - c.f*avg_xy(g, U.u, i, j, k) - δy_c2f(g, pr.pHY′, i, j, k) / (g.Δy * eos.ρ₀) + 𝜈∇²v(g, U.v, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gw.data[i, j, k] = -u∇w(g, U, i, j, k)                                                                               + 𝜈∇²w(g, U.w, cfg.𝜈h, cfg.𝜈v)
-                @inbounds Gu[i, j, k] = u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gu[i, j, k] = -u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + fCor*avg_xy(v, Nx, Ny, i, j, k) - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀) + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gv[i, j, k] = -u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) - fCor*avg_xy(u, Nx, Ny, i, j, k) - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀) + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gw[i, j, k] = -u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)                                                                           + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
                 # @inbounds G.GT.data[i, j, k] = -div_flux(g, U, tr.T, i, j, k) + κ∇²(g, tr.T, i, j, k) + F.FT.data[i, j, k]
                 # @inbounds G.GS.data[i, j, k] = -div_flux(g, U, tr.S, i, j, k) + κ∇²(g, tr.S, i, j, k)
+
+                @inbounds GT[i, j, k] = -div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + FT[i, j, k]
+                @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
                 # @inbounds G.Gu.data[i, j, k] = (1.5f0 + χ)*G.Gu.data[i, j, k] - (0.5f0 + χ)*Gp.Gu.data[i, j, k]
                 # @inbounds G.Gv.data[i, j, k] = (1.5f0 + χ)*G.Gv.data[i, j, k] - (0.5f0 + χ)*Gp.Gv.data[i, j, k]
                 # @inbounds G.Gw.data[i, j, k] = (1.5f0 + χ)*G.Gw.data[i, j, k] - (0.5f0 + χ)*Gp.Gw.data[i, j, k]
                 # @inbounds G.GT.data[i, j, k] = (1.5f0 + χ)*G.GT.data[i, j, k] - (0.5f0 + χ)*Gp.GT.data[i, j, k]
                 # @inbounds G.GS.data[i, j, k] = (1.5f0 + χ)*G.GS.data[i, j, k] - (0.5f0 + χ)*Gp.GS.data[i, j, k]
+
+                @inbounds Gu[i, j, k] = (1.5f0 + χ)*Gu[i, j, k] - (0.5f0 + χ)*Gpu.data[i, j, k]
+                @inbounds Gv[i, j, k] = (1.5f0 + χ)*Gv[i, j, k] - (0.5f0 + χ)*Gpv.data[i, j, k]
+                @inbounds Gw[i, j, k] = (1.5f0 + χ)*Gw[i, j, k] - (0.5f0 + χ)*Gpw.data[i, j, k]
+                @inbounds GT[i, j, k] = (1.5f0 + χ)*GT[i, j, k] - (0.5f0 + χ)*GpT.data[i, j, k]
+                @inbounds GS[i, j, k] = (1.5f0 + χ)*GS[i, j, k] - (0.5f0 + χ)*GpS.data[i, j, k]
             end
         end
     end
@@ -329,13 +348,14 @@ function time_step_kernel_part2!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w,
     @synchronize
 end
 
-function time_step_kernel_part3!(::Val{Dev}, g, G, RHS) where Dev
+function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Gu, Gv, Gw, RHS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds RHS[i, j, k] = div(g, G.Gu, G.Gv, G.Gw, i, j, k)
+                # @inbounds RHS[i, j, k] = div(g, G.Gu, G.Gv, G.Gw, i, j, k)
+                @inbounds RHS[i, j, k] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
             end
         end
     end
@@ -343,17 +363,17 @@ function time_step_kernel_part3!(::Val{Dev}, g, G, RHS) where Dev
     @synchronize
 end
 
-function time_step_kernel_part4!(::Val{Dev}, g, G, RHS) where Dev
+function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, Gu, Gv, Gw, GT, GS, pNHS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds  U.u.data[i, j, k] =  U.u.data[i, j, k] + (G.Gu.data[i, j, k] - (δx_c2f(g, pr.pNHS, i, j, k) / g.Δx)) * Δt
-                @inbounds  U.v.data[i, j, k] =  U.v.data[i, j, k] + (G.Gv.data[i, j, k] - (δy_c2f(g, pr.pNHS, i, j, k) / g.Δy)) * Δt
-                @inbounds  U.w.data[i, j, k] =  U.w.data[i, j, k] + (G.Gw.data[i, j, k] - (δz_c2f(g, pr.pNHS, i, j, k) / g.Δz)) * Δt
-                @inbounds tr.T.data[i, j, k] = tr.T.data[i, j, k] + (G.GT.data[i, j, k] * Δt)
-                @inbounds tr.S.data[i, j, k] = tr.S.data[i, j, k] + (G.GS.data[i, j, k] * Δt)
+                @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(pNHS, Nx, i, j, k) / Δx)) * Δt
+                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(pNHS, Ny, i, j, k) / Δy)) * Δt
+                @inbounds w[i, j, k] = w[i, j, k] + (Gw[i, j, k] - (δz_c2f(pNHS, Nz, i, j, k) / Δz)) * Δt
+                @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
+                @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
             end
         end
     end
