@@ -360,5 +360,29 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇w!(g, U, u_grad_w, otmp)
         for idx in test_indices; @test u∇w(g, U, idx...) ≈ u_grad_w.data[idx...]; end
+
+        T, δxT, δx²T = tr.T, stmp.fFX, stmp.fC1
+        @. T.data = rand();
+        Oceananigans.Operators.δx!(g, T, δxT)
+        Oceananigans.Operators.δx!(g, δxT, δx²T)
+        for idx in test_indices; @test δx²(g, T, idx...) ≈ δx²T.data[idx...]; end
+
+        T, δyT, δy²T = tr.T, stmp.fFY, stmp.fC1
+        @. T.data = rand();
+        Oceananigans.Operators.δy!(g, T, δyT)
+        Oceananigans.Operators.δy!(g, δyT, δy²T)
+        for idx in test_indices; @test δy²(g, T, idx...) ≈ δy²T.data[idx...]; end
+
+        T, δzT, δz²T = tr.T, stmp.fFZ, stmp.fC1
+        @. T.data = rand();
+        Oceananigans.Operators.δz!(g, T, δzT)
+        Oceananigans.Operators.δz!(g, δzT, δz²T)
+        for idx in test_indices; @test δz²(g, T, idx...) ≈ δz²T.data[idx...]; end
+
+        κh, κv = 4e-2, 4e-2
+        T, κ∇²T = tr.T, stmp.fC1
+        @. T.data = rand();
+        Oceananigans.Operators.κ∇²!(g, T, κ∇²T, κh, κv, otmp)
+        for idx in test_indices; @test κ∇²(g, T, κh, κv, idx...) ≈ κ∇²T.data[idx...]; end
     end
 end

@@ -34,7 +34,7 @@ using Oceananigans:
     if k == 1
         return 0
     else
-        @inbounds return f.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+        @inbounds return f.data[i, j, k-1] - f.data[i, j, k]
     end
 end
 
@@ -257,4 +257,19 @@ end
 
 @inline function u∇w(g::RegularCartesianGrid, U::VelocityFields, i, j, k)
     (δx_e2f_ūᶻw̄ˣ(g, U.u, U.w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, U.v, U.w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, U.w, i, j, k) / g.Δz)
+end
+
+@inline δx²(g::RegularCartesianGrid, f::CellField, i, j, k) = δx_c2f(g, f, incmod1(i, g.Nx), j, k) - δx_c2f(g, f, i, j, k)
+@inline δy²(g::RegularCartesianGrid, f::CellField, i, j, k) = δy_c2f(g, f, i, incmod1(j, g.Ny), k) - δy_c2f(g, f, i, j, k)
+
+@inline function δz²(g::RegularCartesianGrid, f::CellField, i, j, k)
+    if k == g.Nz
+        return δz_c2f(g, f, i, j, k)
+    else
+        return δz_c2f(g, f, i, j, k) - δz_c2f(g, f, i, j, k+1)
+    end
+end
+
+@inline function κ∇²(g::RegularCartesianGrid, Q::CellField, κh, κv, i, j, k)
+    ((κh/g.Δx^2) * δx²(g, Q, i, j, k)) + ((κh/g.Δy^2) * δy²(g, Q, i, j, k)) + ((κv/g.Δz^2) * δz²(g, Q, i, j, k))
 end
