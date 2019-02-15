@@ -210,9 +210,7 @@ include("operators/ops_regular_cartesian_grid_elementwise.jl")
 @inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = - ρ₀ * βT * (T[i, j, k] - T₀)
 
-function time_step_kernel!(::Val{Dev}, model::Model, Nt, Δt) where Dev
-    @setup Dev
-
+function time_step_kernel!(model::Model, Nt, Δt)
     metadata = model.metadata
     cfg = model.configuration
     bc = model.boundary_conditions
@@ -242,9 +240,17 @@ function time_step_kernel!(::Val{Dev}, model::Model, Nt, Δt) where Dev
     gΔz = c.g * g.Δz
     χ = 0.1  # Adams-Bashforth (AB2) parameter.
 
+    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
+
+    Tx, Ty = 16, 16  # Threads per block
+    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
+
+    println("Threads per block: ($Tx, $Ty)")
+    println("Blocks in grid:    ($Bx, $By, $Bz)")
+
     for n in 1:Nt
         println("Launching kernel 1...")
-        time_step_kernel_part1!(Val(:GPU), δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
         # println("Launching kernel 2...")
         # time_step_kernel_part2!(Val(:GPU), g, cfg, U, tr, pr, F, G, Gp)
@@ -273,7 +279,7 @@ function time_step_kernel!(::Val{Dev}, model::Model, Nt, Δt) where Dev
 end
 
 # δρ should be an array.
-function time_step_kernel_part1!(::Val{Dev}, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
+function time_step_kernel_part1!(::Val{Dev}, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -283,13 +289,14 @@ function time_step_kernel_part1!(::Val{Dev}, δρ, T, pHY′, ρ₀, βT, T₀) 
                 @inbounds δρ[i, j, k] = -ρ₀*βT * (T[i, j, k] - T₀)
                 @inbounds  ρ[i, j, k] = ρ₀ + δρ[i, j, k]
 
-                # Calculate hydrostatic pressure anomaly (buoyancy): ∫δρg dz
-                @inbounds pHY′[i, j, 1] = δρ(ρ₀, βT, T₀, T, i, j, k) * 0.5f0 * gΔz
-                for k′ in 2:k
-                  @inbounds pHY′[i, j, k] += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
-                end
+                # # Calculate hydrostatic pressure anomaly (buoyancy): ∫δρg dz
+                # @inbounds pHY′[i, j, 1] = δρ(ρ₀, βT, T₀, T, i, j, k) * 0.5f0 * gΔz
+                # for k′ in 2:k
+                #   @inbounds pHY′[i, j, k] += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
+                # end
             end
         end
+    end
 
     @synchronize
 end

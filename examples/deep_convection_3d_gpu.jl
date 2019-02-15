@@ -20,13 +20,7 @@ function deep_convection_3d_gpu()
 
     push!(model.output_writers, field_writer)
 
-    Tx, Ty = 16, 16  # Threads per block
-    Bx, By, Bz = Int(model.grid.Nx/Tx), Int(model.grid.Ny/Ty), Nz  # Blocks in grid.
-
-    println("Threads per block: ($Tx, $Ty)")
-    println("Blocks in grid:    ($Bx, $By, $Bz)")
-
-    @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel!(Val(:GPU), model, Nt, Δt)
+    time_step_kernel!(model, Nt, Δt)
 
     # time_step!(model; Nt=Nt, Δt=Δt)
     # make_temperature_movie(model, field_writer)
