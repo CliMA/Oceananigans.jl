@@ -1,4 +1,4 @@
-using GPUifyLoops
+using GPUifyLoops, CUDAnative, CuArrays
 using Oceananigans.Operators
 
 function time_step!(model::Model; Nt, Δt)
@@ -193,21 +193,23 @@ function time_step!(model::Model; Nt, Δt)
     end
 end
 
-time_step_elementwise!(model::Model; Nt, Δt) = time_step_kernel!(Val(:CPU), model; Nt=Nt, Δt=Δt)
+# time_step_elementwise!(model::Model; Nt, Δt) = time_step_kernel!(Val(:CPU), model; Nt=Nt, Δt=Δt)
 
-function time_step_elementwise!(model::Model; Nt, Δt)
-    Tx, Ty = 16, 16  # Threads per block
-    Bx, By, Bz = Int(model.grid.Nx/Tx), Int(model.grid.Ny/Ty), Nz  # Blocks in grid.
+# function time_step_elementwise!(model::Model; Nt, Δt)
+#     Tx, Ty = 16, 16  # Threads per block
+#     Bx, By, Bz = Int(model.grid.Nx/Tx), Int(model.grid.Ny/Ty), Nz  # Blocks in grid.
 
-    # println("Threads per block: ($Tx, $Ty)")
-    # println("Blocks in grid:    ($Bx, $By, $Bz)")
+#     # println("Threads per block: ($Tx, $Ty)")
+#     # println("Blocks in grid:    ($Bx, $By, $Bz)")
 
-    @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel!(Val(:GPU), A, B)
-end
+#     @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel!(Val(:GPU), A, B)
+# end
+
+include("operators/ops_regular_cartesian_grid_elementwise.jl")
 
 @inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
 
-function time_step_kernel!(::Val{Dev}, model::Model; Nt, Δt)
+function time_step_kernel!(::Val{Dev}, model::Model, Nt, Δt) where Dev
     @setup Dev
 
     metadata = model.metadata
@@ -316,5 +318,6 @@ function time_step_kernel!(::Val{Dev}, model::Model; Nt, Δt)
 
         clock.time += Δt
         clock.time_step += 1
+        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
     end
 end

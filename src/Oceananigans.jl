@@ -35,6 +35,7 @@ export
     BoundaryConditions,
 
     time_step!,
+    time_step_kernel!,
 
     SpectralSolverParameters,
     solve_poisson_1d_pbc,
@@ -73,6 +74,7 @@ using FFTW
 
 if Base.find_package("CuArrays") !== nothing
     using CUDAdrv, CUDAnative, CuArrays
+    using GPUifyLoops
 end
 
 abstract type Metadata end
