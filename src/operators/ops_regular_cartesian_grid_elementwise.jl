@@ -275,7 +275,9 @@ end
 end
 
 @inline δx²_f2c2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δx_f2c(g, f, i, j, k) - δx_f2c(g, f, decmod1(i, g.Nx), j, k)
+@inline δy²_f2c2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δy_f2c(g, f, i, j, k) - δy_f2c(g, f, i, decmod1(j, g.Ny), k)
 
+@inline δx²_f2e2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δx_f2e(g, f, incmod1(i, g.Nx), j, k) - δx_f2e(g, f, i, j, k)
 @inline δy²_f2e2f(g::RegularCartesianGrid, f::FaceField, i, j, k) = δy_f2e(g, f, i, incmod1(j, g.Ny), k) - δy_f2e(g, f, i, j, k)
 
 @inline function δz²_f2e2f(g::RegularCartesianGrid, f::FaceField, i, j, k)
@@ -288,4 +290,8 @@ end
 
 @inline function 𝜈∇²u(g::RegularCartesianGrid, u::FaceFieldX, 𝜈h, 𝜈v, i, j, k)
     ((𝜈h/g.Δx^2) * δx²_f2c2f(g, u, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2e2f(g, u, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2e2f(g, u, i, j, k))
+end
+
+@inline function 𝜈∇²v(g::RegularCartesianGrid, v::FaceFieldY, 𝜈h, 𝜈v, i, j, k)
+    ((𝜈h/g.Δx^2) * δx²_f2e2f(g, v, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2c2f(g, v, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2e2f(g, v, i, j, k))
 end

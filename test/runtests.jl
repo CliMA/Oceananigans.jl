@@ -390,5 +390,11 @@ using Oceananigans.Operators
         @. u.data = rand();
         Oceananigans.Operators.𝜈∇²u!(g, u, 𝜈_lap_u, 𝜈h, 𝜈v, otmp)
         for idx in test_indices; @test 𝜈∇²u(g, u, 𝜈h, 𝜈v, idx...) ≈ 𝜈_lap_u.data[idx...]; end
+
+        𝜈h, 𝜈v = 4e-2, 4e-2
+        v, 𝜈_lap_v = U.v, stmp.fFY
+        @. v.data = rand();
+        Oceananigans.Operators.𝜈∇²v!(g, v, 𝜈_lap_v, 𝜈h, 𝜈v, otmp)
+        for idx in test_indices; @test 𝜈∇²v(g, v, 𝜈h, 𝜈v, idx...) ≈ 𝜈_lap_v.data[idx...]; end
     end
 end
