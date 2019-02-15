@@ -251,7 +251,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
     for n in 1:Nt
         println("Launching kernel 1...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
         println("Launching kernel 2...")
         # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), c.f, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
@@ -288,7 +288,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
 end
 
 # δρ should be an array.
-function time_step_kernel_part1!(::Val{Dev}, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
+function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -298,11 +298,20 @@ function time_step_kernel_part1!(::Val{Dev}, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ
                 @inbounds δρ[i, j, k] = -ρ₀*βT * (T[i, j, k] - T₀)
                 @inbounds  ρ[i, j, k] = ρ₀ + δρ[i, j, k]
 
-                # # Calculate hydrostatic pressure anomaly (buoyancy): ∫δρg dz
-                # @inbounds pHY′[i, j, 1] = δρ(ρ₀, βT, T₀, T, i, j, k) * 0.5f0 * gΔz
+                # Calculate hydrostatic pressure anomaly (buoyancy): ∫δρgdz
+                # @inbounds pHY′[i, j, 1] = δρ(ρ₀, βT, T₀, T, i, j, 1) * 0.5f0 * gΔz
                 # for k′ in 2:k
-                #   @inbounds pHY′[i, j, k] += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
+                #     @inbounds pHY′[i, j, k] += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
                 # end
+                # ∫δρgdz = δρ(ρ₀, βT, T₀, T, i, j, 1) * 0.5f0 * gΔz
+                # for k′ in 2:k
+                #     ∫δρgdz += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
+                # end
+                ∫δρgdz = (- ρ₀ * βT * (T[i, j, 1] - T₀)) * 0.5f0 * gΔz
+                for k′ in 2:k
+                    ∫δρgdz += ((- ρ₀ * βT * (T[i, j, k′-1] - T₀)) - (- ρ₀ * βT * (T[i, j, k′] - T₀))) * gΔz
+                end
+                @inbounds pHY′[i, j, k] = ∫δρgdz
             end
         end
     end
@@ -336,11 +345,11 @@ function time_step_kernel_part2!(::Val{Dev}, fCor, ρ₀, κh, κv, 𝜈h, 𝜈v
                 # @inbounds G.GT.data[i, j, k] = (1.5f0 + χ)*G.GT.data[i, j, k] - (0.5f0 + χ)*Gp.GT.data[i, j, k]
                 # @inbounds G.GS.data[i, j, k] = (1.5f0 + χ)*G.GS.data[i, j, k] - (0.5f0 + χ)*Gp.GS.data[i, j, k]
 
-                @inbounds Gu[i, j, k] = (1.5f0 + χ)*Gu[i, j, k] - (0.5f0 + χ)*Gpu.data[i, j, k]
-                @inbounds Gv[i, j, k] = (1.5f0 + χ)*Gv[i, j, k] - (0.5f0 + χ)*Gpv.data[i, j, k]
-                @inbounds Gw[i, j, k] = (1.5f0 + χ)*Gw[i, j, k] - (0.5f0 + χ)*Gpw.data[i, j, k]
-                @inbounds GT[i, j, k] = (1.5f0 + χ)*GT[i, j, k] - (0.5f0 + χ)*GpT.data[i, j, k]
-                @inbounds GS[i, j, k] = (1.5f0 + χ)*GS[i, j, k] - (0.5f0 + χ)*GpS.data[i, j, k]
+                @inbounds Gu[i, j, k] = (1.5f0 + χ)*Gu[i, j, k] - (0.5f0 + χ)*Gpu[i, j, k]
+                @inbounds Gv[i, j, k] = (1.5f0 + χ)*Gv[i, j, k] - (0.5f0 + χ)*Gpv[i, j, k]
+                @inbounds Gw[i, j, k] = (1.5f0 + χ)*Gw[i, j, k] - (0.5f0 + χ)*Gpw[i, j, k]
+                @inbounds GT[i, j, k] = (1.5f0 + χ)*GT[i, j, k] - (0.5f0 + χ)*GpT[i, j, k]
+                @inbounds GS[i, j, k] = (1.5f0 + χ)*GS[i, j, k] - (0.5f0 + χ)*GpS[i, j, k]
             end
         end
     end
