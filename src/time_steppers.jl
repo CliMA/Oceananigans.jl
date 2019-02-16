@@ -231,6 +231,15 @@ function time_step_kernel!(model::Model, Nt, Δt)
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
 
+    if clock.time_step == 0
+        for output_writer in model.output_writers
+            write_output(model, output_writer)
+        end
+        for diagnostic in model.diagnostics
+            run_diagnostic(model, diagnostic)
+        end
+    end
+    
     # Field references.
     δρ = stmp.fC1
     RHS = stmp.fCC1
@@ -254,48 +263,63 @@ function time_step_kernel!(model::Model, Nt, Δt)
     for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
     for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
     for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+    
+    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
+    dct_factors = cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    
+    bfactors = 0.5 * exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    idct_bfactors = cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
 
     for n in 1:Nt
-        println("Launching kernel 1...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+        print("1 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
-        println("Launching kernel 2...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+        print("2 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                                                                                       U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                                                                                       G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                                                                       Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
 
-        println("Launching kernel 3...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+        print("3 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
         # println("Nonhydrostatic pressure correction step...")
         # @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
-        @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
+        print("P "); @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
         @. pr.pNHS.data = real(ϕ.data)
 
-        println("Launching kernel 4...")
-        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-                                                                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-                                                                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, pr.pNHS.data)
-
+        print("4 ");
+        @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+                                                                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
+                                                                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+                                                                           Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+        
         # Store source terms from previous time step.
-        @. Gp.Gu.data = G.Gu.data
-        @. Gp.Gv.data = G.Gv.data
-        @. Gp.Gw.data = G.Gw.data
-        @. Gp.GT.data = G.GT.data
-        @. Gp.GS.data = G.GS.data
+        # @. Gp.Gu.data = G.Gu.data
+        # @. Gp.Gv.data = G.Gv.data
+        # @. Gp.Gw.data = G.Gw.data
+        # @. Gp.GT.data = G.GT.data
+        # @. Gp.GS.data = G.GS.data
 
         clock.time += Δt
         clock.time_step += 1
         # print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
         println("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
+        
+        for output_writer in model.output_writers
+            if clock.time_step % output_writer.output_frequency == 0
+                write_output(model, output_writer)
+            end
+        end
+        
+        for diagnostic in model.diagnostics
+            if clock.time_step % diagnostic.diagnostic_frequency == 0
+                run_diagnostic(model, diagnostic)
+            end
+        end
     end
 end
 
-# δρ should be an array.
 function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
@@ -381,7 +405,7 @@ function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, 
     @synchronize
 end
 
-function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, v, w, T, S, Gu, Gv, Gw, GT, GS, pNHS) where Dev
+function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -392,6 +416,12 @@ function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, 
                 @inbounds w[i, j, k] = w[i, j, k] + (Gw[i, j, k] - (δz_c2f(pNHS, Nz, i, j, k) / Δz)) * Δt
                 @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
                 @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
+                
+                @inbounds Gpu[i, j, k] = Gu[i, j, k]
+                @inbounds Gpv[i, j, k] = Gv[i, j, k]
+                @inbounds Gpw[i, j, k] = Gw[i, j, k]
+                @inbounds GpT[i, j, k] = GT[i, j, k]
+                @inbounds GpS[i, j, k] = GS[i, j, k]
             end
         end
     end
