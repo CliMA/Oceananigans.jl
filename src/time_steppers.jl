@@ -260,13 +260,12 @@ function time_step_kernel!(model::Model, Nt, Δt)
                                                                                       G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                                                                       Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
 
-        # println("Launching kernel 3...")
-        # time_step_kernel_part3!(Val(:GPU), g, G, RHS)
-        # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data) where Dev
+        println("Launching kernel 3...")
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
         # println("Nonhydrostatic pressure correction step...")
-        # solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
-        # @. pr.pNHS.data = real(ϕ.data)
+        solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        @. pr.pNHS.data = real(ϕ.data)
 
         # println("Launching kernel 4...")
         # time_step_kernel_part4!(Val(:GPU), g, G, RHS)
@@ -339,7 +338,7 @@ function time_step_kernel_part2!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, �
                 # @inbounds G.GS.data[i, j, k] = -div_flux(g, U, tr.S, i, j, k) + κ∇²(g, tr.S, i, j, k)
 
                 @inbounds GT[i, j, k] = -div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + FT[i, j, k]
-                # @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
                 # @inbounds G.Gu.data[i, j, k] = (1.5f0 + χ)*G.Gu.data[i, j, k] - (0.5f0 + χ)*Gp.Gu.data[i, j, k]
                 # @inbounds G.Gv.data[i, j, k] = (1.5f0 + χ)*G.Gv.data[i, j, k] - (0.5f0 + χ)*Gp.Gv.data[i, j, k]
@@ -359,7 +358,7 @@ function time_step_kernel_part2!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, �
     @synchronize
 end
 
-function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Gu, Gv, Gw, RHS) where Dev
+function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)

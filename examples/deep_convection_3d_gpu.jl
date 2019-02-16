@@ -9,9 +9,14 @@ function deep_convection_3d_gpu()
 
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz), :gpu, Float32)
 
+    T_initial = zeros(Nx, Ny, Nz)
     forcing = zeros(Nx, Ny, Nz)
     i1, i2, j1, j2 = Int(round(Nx/10)), Int(round(9Nx/10)), Int(round(Ny/10)), Int(round(9Ny/10))
-    @. forcing[i1:i2, j1:j2, 1] = -0.25e-5 + 0.5e-6*rand()
+    
+    @. T_initial[i1:i2, j1:j2, 1] += 0.01*rand()
+    @. forcing[i1:i2, j1:j2, 1] = -0.25e-5
+    
+    model.tracers.T.data .= cu(T_initial)
     model.forcings.FT.data .= cu(forcing)
 
     field_writer = FieldWriter(".", "deep_convection_2d", 50,
