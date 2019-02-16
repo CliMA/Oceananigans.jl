@@ -264,14 +264,13 @@ function time_step_kernel!(model::Model, Nt, Δt)
         @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
         # println("Nonhydrostatic pressure correction step...")
-        solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
         @. pr.pNHS.data = real(ϕ.data)
 
-        # println("Launching kernel 4...")
-        # time_step_kernel_part4!(Val(:GPU), g, G, RHS)
-        # @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz,
-        #                                                                    U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-        #                                                                    G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, pr.pNHS.data)
+        println("Launching kernel 4...")
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+                                                                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
+                                                                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, pr.pNHS.data)
 
         # Store source terms from previous time step.
         @. Gp.Gu.data = G.Gu.data
@@ -373,7 +372,7 @@ function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, 
     @synchronize
 end
 
-function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, Gu, Gv, Gw, GT, GS, pNHS) where Dev
+function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, v, w, T, S, Gu, Gv, Gw, GT, GS, pNHS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
