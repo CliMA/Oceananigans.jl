@@ -160,9 +160,9 @@ end
 # @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5f0 * (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]))
 # @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]))
 
-@inline avg_xy(g::RegularCartesianGrid, u::FaceFieldX, i, j, k) = @inbounds 0.5f0 * (avgy_f2c(g, u, i, j, k) + avg_f2c(g, u, incmod1(i, g.Nx), j, k))
+@inline avg_xy(g::RegularCartesianGrid, u::FaceFieldX, i, j, k) = 0.5f0 * (avgy_f2c(g, u, i, j, k) + avgy_f2c(g, u, incmod1(i, g.Nx), j, k))
 
-@inline avg_xy(u, Nx, Ny, i, j, k) = 0.5f0 * (avgy_f2c(u, Ny, i, j, k) + avg_f2c(u, Nx, incmod1(i, Nx), j, k))
+@inline avg_xy(u, Nx, Ny, i, j, k) = 0.5f0 * (avgy_f2c(u, Ny, i, j, k) + avgy_f2c(u, Nx, incmod1(i, Nx), j, k))
 
 @inline function avgz_c2f(g::RegularCartesianGrid, f::CellField, i, j, k)
     if k == 1
