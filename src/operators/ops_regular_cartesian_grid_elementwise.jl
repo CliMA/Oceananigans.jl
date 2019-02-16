@@ -162,7 +162,7 @@ end
 
 @inline avg_xy(g::RegularCartesianGrid, u::FaceFieldX, i, j, k) = @inbounds 0.5f0 * (avgy_f2c(g, u, i, j, k) + avg_f2c(g, u, incmod1(i, g.Nx), j, k))
 
-@inline avg_xy(u, Nx, Ny, i, j, k) = @inbounds 0.5f0 * (avgy_f2c(u, Ny, i, j, k) + avg_f2c(u, Nx, incmod1(i, Nx), j, k))
+@inline avg_xy(u, Nx, Ny, i, j, k) = 0.5f0 * (avgy_f2c(u, Ny, i, j, k) + avg_f2c(u, Nx, incmod1(i, Nx), j, k))
 
 @inline function avgz_c2f(g::RegularCartesianGrid, f::CellField, i, j, k)
     if k == 1
