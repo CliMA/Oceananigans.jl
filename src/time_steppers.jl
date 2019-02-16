@@ -246,6 +246,14 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
+    
+    kx² = cu(zeros(g.Nx, 1))
+    ky² = cu(zeros(g.Ny, 1))
+    kz² = cu(zeros(g.Nz, 1))
+
+    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
+    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
+    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
@@ -264,7 +272,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
         @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
         # println("Nonhydrostatic pressure correction step...")
-        @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        # @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
         @. pr.pNHS.data = real(ϕ.data)
 
         println("Launching kernel 4...")
