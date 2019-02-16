@@ -268,8 +268,8 @@ end
 end
 
 @inline function δy_f2c_ab̄ʸ(a, b, Ny, i, j, k)
-    @inbounds (a[i, incmod1(j, Ny), k] * avgy_c2f(g, b, i, incmod1(j, Ny), k) -
-               a[i,              j, k] * avgy_c2f(g, b, i, j,              k))
+    @inbounds (a[i, incmod1(j, Ny), k] * avgy_c2f(b, Ny, i, incmod1(j, Ny), k) -
+               a[i,              j, k] * avgy_c2f(b, Ny, i, j,              k))
 end
 
 @inline function δz_f2c_ab̄ᶻ(g::RegularCartesianGrid, a::FaceFieldZ, b::CellField, i, j, k)
@@ -283,10 +283,10 @@ end
 
 @inline function δz_f2c_ab̄ᶻ(a, b, Nz, i, j, k)
     if k == Nz
-        @inbounds return a[i, j, k] * avgz_c2f(g, b, i, j, k)
+        @inbounds return a[i, j, k] * avgz_c2f(b, Nz, i, j, k)
     else
-        @inbounds return (a[i, j,   k] * avgz_c2f(g, b, i, j,   k) -
-                          a[i, j, k+1] * avgz_c2f(g, b, i, j, k+1))
+        @inbounds return (a[i, j,   k] * avgz_c2f(b, Nz, i, j,   k) -
+                          a[i, j, k+1] * avgz_c2f(b, Nz, i, j, k+1))
     end
 end
 
