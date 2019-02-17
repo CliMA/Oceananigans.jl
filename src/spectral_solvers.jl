@@ -433,7 +433,7 @@ function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, 
     #     ϕ[i, j, k] = real(ϕ[i, j, k])
     # end
 
-    idct_dim3_gpu!(f.data)
+    idct_dim3_gpu!(ϕ.data)
 
     nothing
 end
