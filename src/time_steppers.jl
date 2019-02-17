@@ -1,6 +1,8 @@
 using GPUifyLoops, CUDAnative, CuArrays
 using Oceananigans.Operators
 
+using Test  # for debugging
+
 function time_step!(model::Model; Nt, Δt)
     metadata = model.metadata
     cfg = model.configuration
@@ -207,9 +209,6 @@ end
 
 include("operators/ops_regular_cartesian_grid_elementwise.jl")
 
-@inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
-@inline δρ(ρ₀, βT, T₀, T, i, j, k) = - ρ₀ * βT * (T[i, j, k] - T₀)
-
 function time_step_kernel!(model::Model, Nt, Δt)
     metadata = model.metadata
     cfg = model.configuration
@@ -240,6 +239,26 @@ function time_step_kernel!(model::Model, Nt, Δt)
         end
     end
     
+    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
+    Lx, Ly, Lz = g.Lx, g.Ly, g.Lz
+    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
+    
+    model_true = Model((Nx, Ny, Nz), (Lx, Ly, Lz), :cpu, Float32)
+    
+    T_initial = 293.15 .* ones(Nx, Ny, Nz)
+    forcing = zeros(Nx, Ny, Nz)
+    i1, i2, j1, j2 = Int(round(Nx/10)), Int(round(9Nx/10)), Int(round(Ny/10)), Int(round(9Ny/10))
+    @. T_initial[i1:i2, j1:j2, 1] += 0.01
+    @. forcing[i1:i2, j1:j2, 1] = -0.25e-5
+    @. model_true.tracers.T.data = T_initial
+    @. model_true.forcings.FT.data = forcing
+    
+    (typeof(@test Δx ≈ model_true.grid.Δx) == Test.Pass) && println("OK: Δx")
+    (typeof(@test Δy ≈ model_true.grid.Δy) == Test.Pass) && println("OK: Δy")
+    (typeof(@test Δz ≈ model_true.grid.Δz) == Test.Pass) && println("OK: Δz")
+    (typeof(@test tr.T.data ≈ model_true.tracers.T.data) == Test.Pass) && println("OK: Initial T")
+    (typeof(@test F.FT.data ≈ model_true.forcings.FT.data) == Test.Pass) && println("OK: T forcing")
+    
     # Field references.
     δρ = stmp.fC1
     RHS = stmp.fCC1
@@ -248,10 +267,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
     # Constants.
     gΔz = c.g * g.Δz
     χ = 0.1  # Adams-Bashforth (AB2) parameter.
-    fCor = Float32(c.f)
-
-    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
-    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
+    fCor = c.f
 
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
@@ -272,22 +288,92 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
+    
+    RHS_cpu = CellField(ModelMetadata(:cpu, Float32), model.grid, Complex{Float32})
+    ϕ_cpu = CellField(ModelMetadata(:cpu, Float32), model.grid, Complex{Float32})
 
     for n in 1:Nt
+        println("Time stepping true model...")
+        time_step!(model_true; Nt=1, Δt=Δt)
+        println()
+        
         print("1 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part1!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
-
+        
+        ###
+        (typeof(@test model_true.tracers.ρ.data ≈ tr.ρ.data) == Test.Pass) && println("OK: Time stepping ρ")
+        (typeof(@test model_true.pressures.pHY′.data ≈ pr.pHY′.data) == Test.Pass) && println("OK: Time stepping pHY′")
+        ###
+        
         print("2 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part2!(Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                                                                                       U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                                                                                       G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                                                                       Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
+        
+        ###
+        Gu_t, Gv_t, Gw_t, GT_t, GS_t = model_true.G.Gu, model_true.G.Gv, model_true.G.Gw, model_true.G.GT, model_true.G.GS
+        
+        Gu_min1, Gu_max1, Gu_avg1, Gu_std1 = minimum(Gu_t.data), maximum(Gu_t.data), mean(Gu_t.data), std(Gu_t.data)
+        Gu_min2, Gu_max2, Gu_avg2, Gu_std2 = minimum(G.Gu.data), maximum(G.Gu.data), mean(G.Gu.data), std(G.Gu.data)
+        println("Gu_cpu: min=$Gu_min1, max=$Gu_max1, mean=$Gu_avg1, std=$Gu_std1")
+        println("Gu_gpu: min=$Gu_min2, max=$Gu_max2, mean=$Gu_avg2, std=$Gu_std2")
+        mfactoru = mean(filter(!isinf, filter(!isnan, Gu_t.data ./ Array(G.Gu.data))))
+        println("mfactoru_mean=$mfactoru")
 
+        Gv_min1, Gv_max1, Gv_avg1, Gv_std1 = minimum(Gv_t.data), maximum(Gv_t.data), mean(Gv_t.data), std(Gv_t.data)
+        Gv_min2, Gv_max2, Gv_avg2, Gv_std2 = minimum(G.Gv.data), maximum(G.Gv.data), mean(G.Gv.data), std(G.Gv.data)
+        println("Gv_cpu: min=$Gv_min1, max=$Gv_max1, mean=$Gv_avg1, std=$Gv_std1")
+        println("Gv_gpu: min=$Gv_min2, max=$Gv_max2, mean=$Gv_avg2, std=$Gv_std2")
+        mfactorv = mean(filter(!isinf, filter(!isnan, Gv_t.data ./ Array(G.Gv.data))))
+        println("mfactorv_mean=$mfactorv")
+
+        Gw_min1, Gw_max1, Gw_avg1, Gw_std1 = minimum(Gw_t.data), maximum(Gw_t.data), mean(Gw_t.data), std(Gw_t.data)
+        Gw_min2, Gw_max2, Gw_avg2, Gw_std2 = minimum(G.Gw.data), maximum(G.Gw.data), mean(G.Gw.data), std(G.Gw.data)
+        println("Gw_cpu: min=$Gw_min1, max=$Gw_max1, mean=$Gw_avg1, std=$Gw_std1")
+        println("Gw_gpu: min=$Gw_min2, max=$Gw_max2, mean=$Gw_avg2, std=$Gw_std2")
+
+        GT_min1, GT_max1, GT_avg1, GT_std1 = minimum(GT_t.data), maximum(GT_t.data), mean(GT_t.data), std(GT_t.data)
+        GT_min2, GT_max2, GT_avg2, GT_std2 = minimum(G.GT.data), maximum(G.GT.data), mean(G.GT.data), std(G.GT.data)
+        println("GT_cpu: min=$GT_min1, max=$GT_max1, mean=$GT_avg1, std=$GT_std1")
+        println("GT_gpu: min=$GT_min2, max=$GT_max2, mean=$GT_avg2, std=$GT_std2")
+
+        GS_min1, GS_max1, GS_avg1, GS_std1 = minimum(GS_t.data), maximum(GS_t.data), mean(GS_t.data), std(GS_t.data)
+        GS_min2, GS_max2, GS_avg2, GS_std2 = minimum(G.GS.data), maximum(G.GS.data), mean(G.GS.data), std(G.GS.data)
+        println("GS_cpu: min=$GS_min1, max=$GS_max1, mean=$GS_avg1, std=$GS_std1")
+        println("GS_gpu: min=$GS_min2, max=$GS_max2, mean=$GS_avg2, std=$GS_std2")
+        
+        # (typeof(@test Gu_t.data ≈ model.G.Gu.data) == Test.Pass) && println("OK: Gu")
+        Gu_dis = sum(.!(Gu_t.data .≈ Array(model.G.Gu.data))); println("Gu disagreement: $Gu_dis/$(Nx*Ny*Nz)");
+        # (typeof(@test Gv_t.data ≈ model.G.Gv.data) == Test.Pass) && println("OK: Gv")
+        Gv_dis = sum(.!(Gv_t.data .≈ Array(model.G.Gv.data))); println("Gv disagreement: $Gv_dis/$(Nx*Ny*Nz)");
+        # (typeof(@test Gw_t.data ≈ model.G.Gw.data) == Test.Pass) && println("OK: Gw")
+        Gw_dis = sum(.!(Gw_t.data .≈ Array(model.G.Gw.data))); println("Gw disagreement: $Gw_dis/$(Nx*Ny*Nz)");
+        # (typeof(@test GT_t.data ≈ model.G.GT.data) == Test.Pass) && println("OK: GT")
+        GT_dis = sum(.!(GT_t.data .≈ Array(model.G.GT.data))); println("GT disagreement: $GT_dis/$(Nx*Ny*Nz)");
+        # (typeof(@test GS_t.data ≈ model.G.GS.data) == Test.Pass) && println("OK: GS")
+        GS_dis = sum(.!(GS_t.data .≈ Array(model.G.GS.data))); println("GS disagreement: $GS_dis/$(Nx*Ny*Nz)");
+        ###
+        
         print("3 "); @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
-
+        
         # println("Nonhydrostatic pressure correction step...")
         # @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
-        print("P "); @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
-        @. pr.pNHS.data = real(ϕ.data)
+        # print("P "); @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
+        # @. pr.pNHS.data = real(ϕ.data)
 
+        RHS_cpu.data .= Array(RHS.data)
+        solve_poisson_3d_ppn!(g, RHS_cpu, ϕ_cpu)
+        pr.pNHS.data .= cu(real.(ϕ_cpu.data))
+        
+        ###
+        pNHS_t = model_true.pressures.pNHS
+        pNHS_min1, pNHS_max1, pNHS_avg1, pNHS_std1 = minimum(pNHS_t.data), maximum(pNHS_t.data), mean(pNHS_t.data), std(pNHS_t.data)
+        pNHS_min2, pNHS_max2, pNHS_avg2, pNHS_std2 = minimum(pr.pNHS.data), maximum(pr.pNHS.data), mean(pr.pNHS.data), std(pr.pNHS.data)
+        println("pNHS_cpu: min=$pNHS_min1, max=$pNHS_max1, mean=$pNHS_avg1, std=$pNHS_std1")
+        println("pNHS_gpu: min=$pNHS_min2, max=$pNHS_max2, mean=$pNHS_avg2, std=$pNHS_std2")
+        
+        # (typeof(@test Gu_t.data ≈ model.G.Gu.data) == Test.Pass) && println("OK: Gu")
+        ##
+        
         print("4 ");
         @time @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
                                                                            U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
@@ -320,6 +406,9 @@ function time_step_kernel!(model::Model, Nt, Δt)
     end
 end
 
+@inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
+@inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
+
 function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
@@ -327,6 +416,9 @@ function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY�
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate new density and density deviation.
+                # @inbounds δρ[i, j, k] = δρ(ρ₀, βT, T₀, T, i, j, k)
+                # @inbounds  ρ[i, j, k] = ρ₀ + δρ(ρ₀, βT, T₀, T, i, j, k)
+                
                 @inbounds δρ[i, j, k] = -ρ₀*βT * (T[i, j, k] - T₀)
                 @inbounds  ρ[i, j, k] = ρ₀ + δρ[i, j, k]
 
@@ -335,15 +427,17 @@ function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY�
                 # for k′ in 2:k
                 #     @inbounds pHY′[i, j, k] += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
                 # end
+                
                 # ∫δρgdz = δρ(ρ₀, βT, T₀, T, i, j, 1) * 0.5f0 * gΔz
                 # for k′ in 2:k
                 #     ∫δρgdz += (δρ(ρ₀, βT, T₀, T, i, j, k′-1) - δρ(eos, T, i, j, k′)) * gΔz
                 # end
-                ∫δρgdz = (- ρ₀ * βT * (T[i, j, 1] - T₀)) * 0.5f0 * gΔz
+                
+                ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
                 for k′ in 2:k
-                    ∫δρgdz += ((- ρ₀ * βT * (T[i, j, k′-1] - T₀)) - (- ρ₀ * βT * (T[i, j, k′] - T₀))) * gΔz
+                    ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
                 end
-                @inbounds pHY′[i, j, k] = ∫δρgdz
+                @inbounds pHY′[i, j, k] = 0.5f0 * gΔz * ∫δρ
             end
         end
     end
@@ -357,11 +451,17 @@ function time_step_kernel_part2!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, �
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds Gpu[i, j, k] = Gu[i, j, k]
+                @inbounds Gpv[i, j, k] = Gv[i, j, k]
+                @inbounds Gpw[i, j, k] = Gw[i, j, k]
+                @inbounds GpT[i, j, k] = GT[i, j, k]
+                @inbounds GpS[i, j, k] = GS[i, j, k]
+                
                 # Calculate source terms for current time step.
                 # @inbounds G.Gu.data[i, j, k] = -u∇u(g, U, i, j, k) + c.f*avg_xy(g, U.v, i, j, k) - δx_c2f(g, pr.pHY′, i, j, k) / (g.Δx * eos.ρ₀) + 𝜈∇²u(g, U.u, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gv.data[i, j, k] = -u∇v(g, U, i, j, k) - c.f*avg_xy(g, U.u, i, j, k) - δy_c2f(g, pr.pHY′, i, j, k) / (g.Δy * eos.ρ₀) + 𝜈∇²v(g, U.v, cfg.𝜈h, cfg.𝜈v)
                 # @inbounds G.Gw.data[i, j, k] = -u∇w(g, U, i, j, k)                                                                               + 𝜈∇²w(g, U.w, cfg.𝜈h, cfg.𝜈v)
-                
+                 
                 @inbounds Gu[i, j, k] = -u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + fCor*avg_xy(v, Nx, Ny, i, j, k) - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀) + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                 @inbounds Gv[i, j, k] = -u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) - fCor*avg_xy(u, Nx, Ny, i, j, k) - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀) + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                 @inbounds Gw[i, j, k] = -u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)                                                                           + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
@@ -417,11 +517,11 @@ function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, 
                 @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
                 @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
                 
-                @inbounds Gpu[i, j, k] = Gu[i, j, k]
-                @inbounds Gpv[i, j, k] = Gv[i, j, k]
-                @inbounds Gpw[i, j, k] = Gw[i, j, k]
-                @inbounds GpT[i, j, k] = GT[i, j, k]
-                @inbounds GpS[i, j, k] = GS[i, j, k]
+                #@inbounds Gpu[i, j, k] = Gu[i, j, k]
+                #@inbounds Gpv[i, j, k] = Gv[i, j, k]
+                #@inbounds Gpw[i, j, k] = Gw[i, j, k]
+                #@inbounds GpT[i, j, k] = GT[i, j, k]
+                #@inbounds GpS[i, j, k] = GS[i, j, k]
             end
         end
     end
