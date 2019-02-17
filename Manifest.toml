@@ -159,11 +159,17 @@ git-tree-sha1 = "2b96d7f25fbea82c08a736d78cbf14df8d2100a5"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
 version = "0.6.1"
 
+[[GPUifyLoops]]
+deps = ["Requires", "StaticArrays"]
+path = "/home/gridsan/aramadhan/.julia/dev/GPUifyLoops"
+uuid = "8c6e557c-24b2-11e9-113b-4b4a3dc760fa"
+version = "0.1.0"
+
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test"]
-git-tree-sha1 = "3c62c19ddf86ff016829fdac1663cd3c75558c34"
+git-tree-sha1 = "41bd911efffb56957b45366770eaaa443de3f782"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.37.0"
+version = "0.38.1"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
