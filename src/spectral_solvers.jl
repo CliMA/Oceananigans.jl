@@ -395,22 +395,59 @@ function solve_poisson_3d_ppn_gpu!(g::RegularCartesianGrid, f::CellField, ϕ::Ce
     for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
     for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
 
-    fft!(f.data, [1, 2])
-    dct_dim3_gpu!(f.data)
+    print("FFT!  "); @time fft!(f.data, [1, 2])
+    print("DCT!  "); @time dct_dim3_gpu!(f.data)
 
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
+    print("ϕCALC ");
+    @time begin
+        for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+            @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
+        end
+        ϕ.data[1, 1, 1] = 0
     end
-    ϕ.data[1, 1, 1] = 0
 
-    ifft!(ϕ.data, [1, 2])
+    print("IFFT! "); @time ifft!(ϕ.data, [1, 2])
 
     @. ϕ.data = real(ϕ.data) / (2g.Nz)
     # for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
     #     ϕ[i, j, k] = real(ϕ[i, j, k])
     # end
 
-    idct_dim3_gpu!(f.data)
+    print("IDCT! "); @time idct_dim3_gpu!(f.data)
 
     nothing
+end
+
+function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, f::CellField, ϕ::CellField, kx², ky², kz²)
+    fft!(f.data, [1, 2])
+    dct_dim3_gpu!(f.data)
+
+    @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(Val(:GPU), g.Nx, g.Ny, g.Nz, f.data, ϕ.data, kx², ky², kz²)
+    ϕ.data[1, 1, 1] = 0
+
+    ifft!(ϕ.data, [1, 2])
+    # print("IFFT! "); @time ifft!(ϕ.data, [1, 2])
+
+    @. ϕ.data = real(ϕ.data) / (2g.Nz)
+    # for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+    #     ϕ[i, j, k] = real(ϕ[i, j, k])
+    # end
+
+    idct_dim3_gpu!(ϕ.data)
+
+    nothing
+end
+
+function f2ϕ!(::Val{Dev}, Nx, Ny, Nz, f, ϕ, kx², ky², kz²) where Dev
+    @setup Dev
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds ϕ[i, j, k] = -f[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
+            end
+        end
+    end
+
+    @synchronize
 end

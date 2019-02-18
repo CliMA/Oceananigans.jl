@@ -19,3 +19,6 @@ docs/build
 *.png
 *.gif
 *.mp4
+
+# Jupyter notebook stuff
+.ipynb_checkpoints
