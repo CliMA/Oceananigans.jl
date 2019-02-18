@@ -265,8 +265,8 @@ using Oceananigans.Operators
         g, stmp, otmp = model.grid, model.stepper_tmp, model.operator_tmp
         U, tr = model.velocities, model.tracers
 
-        test_indices = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  # Interior
-                        (17, 10, 2), (23, 5, 7),  # Borderlands
+        test_indices = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
+                        (2, 10, 4), (31, 5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),  # Borderlands
                         (1, 5, 5), (32, 10, 3), (16, 1, 4), (16, 16, 4), (16, 8, 1), (16, 8, 8),  # Edges
                         (1, 1, 1), (32, 16, 8)]  # Corners
 
@@ -274,22 +274,25 @@ using Oceananigans.Operators
         @. f.data = rand()
         Oceananigans.Operators.δx!(g, f, δxf)
         for idx in test_indices; @test δx_c2f(g, f, idx...) ≈ δxf.data[idx...]; end
-        for idx in test_indices; @test δx_c2f(f, g.Nx, idx...) ≈ δxf.data[idx...]; end
+        for idx in test_indices; @test δx_c2f(f.data, g.Nx, idx...) ≈ δxf.data[idx...]; end
 
         f, δyf = stmp.fC1, stmp.fFY
         @. f.data = rand()
         Oceananigans.Operators.δy!(g, f, δyf)
         for idx in test_indices; @test δy_c2f(g, f, idx...) ≈ δyf.data[idx...]; end
+        for idx in test_indices; @test δy_c2f(f.data, g.Ny, idx...) ≈ δyf.data[idx...]; end
 
         f, δzf = stmp.fC1, stmp.fFZ
         @. f.data = rand()
         Oceananigans.Operators.δz!(g, f, δzf)
         for idx in test_indices; @test δz_c2f(g, f, idx...) ≈ δzf.data[idx...]; end
+        for idx in test_indices; @test δz_c2f(f.data, g.Nz, idx...) ≈ δzf.data[idx...]; end
 
         u, v, w, div_u = U.u, U.v, U.w, stmp.fC1
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.div!(g, u, v, w, div_u, otmp)
         for idx in test_indices; @test div(g, u, v, w, idx...) ≈ div_u.data[idx...]; end
+        for idx in test_indices; @test div_f2c(u.data, v.data, w.data, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ div_u.data[idx...]; end
 
         u, T, uT̄ˣ, δx_uT̄ˣ = U.u, tr.T, stmp.fFX, stmp.fC1
         @. u.data = rand(); @. T.data = rand();
@@ -316,6 +319,7 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand(); @. T.data = rand();
         Oceananigans.Operators.div_flux!(g, u, v, w, T, div_uT, otmp)
         for idx in test_indices; @test div_flux(g, U, T, idx...) ≈ div_uT.data[idx...]; end
+        for idx in test_indices; @test div_flux(u.data, v.data, w.data, T.data, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ div_uT.data[idx...]; end
 
         u, u̅ˣ, ∂uu = U.u, stmp.fC1, stmp.fFX
         @. u.data = rand();
@@ -328,11 +332,13 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇u!(g, U, u_grad_u, otmp)
         for idx in test_indices; @test u∇u(g, U, idx...) ≈ u_grad_u.data[idx...]; end
+        for idx in test_indices; @test u∇u(u.data, v.data, w.data, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ u_grad_u.data[idx...]; end
 
         u, v, w, u_grad_v = U.u, U.v, U.w, stmp.fFY
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇v!(g, U, u_grad_v, otmp)
         for idx in test_indices; @test u∇v(g, U, idx...) ≈ u_grad_v.data[idx...]; end
+        for idx in test_indices; @test u∇v(u.data, v.data, w.data, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ u_grad_v.data[idx...]; end
 
         u, w, w̅ˣ, u̅ᶻ, ∂wu = U.u, U.w, otmp.fE1, otmp.fE2, stmp.fFZ
         Oceananigans.Operators.avgx!(g, w, w̅ˣ)
@@ -361,6 +367,7 @@ using Oceananigans.Operators
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.u∇w!(g, U, u_grad_w, otmp)
         for idx in test_indices; @test u∇w(g, U, idx...) ≈ u_grad_w.data[idx...]; end
+        for idx in test_indices; @test u∇w(u.data, v.data, w.data, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ u_grad_w.data[idx...]; end
 
         T, δxT, δx²T = tr.T, stmp.fFX, stmp.fC1
         @. T.data = rand();
@@ -385,23 +392,26 @@ using Oceananigans.Operators
         @. T.data = rand();
         Oceananigans.Operators.κ∇²!(g, T, κ∇²T, κh, κv, otmp)
         for idx in test_indices; @test κ∇²(g, T, κh, κv, idx...) ≈ κ∇²T.data[idx...]; end
+        for idx in test_indices; @test κ∇²(T.data, κh, κv, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ κ∇²T.data[idx...]; end
 
         𝜈h, 𝜈v = 4e-2, 4e-2
         u, 𝜈_lap_u = U.u, stmp.fFX
         @. u.data = rand();
         Oceananigans.Operators.𝜈∇²u!(g, u, 𝜈_lap_u, 𝜈h, 𝜈v, otmp)
         for idx in test_indices; @test 𝜈∇²u(g, u, 𝜈h, 𝜈v, idx...) ≈ 𝜈_lap_u.data[idx...]; end
+        for idx in test_indices; @test 𝜈∇²u(u.data, 𝜈h, 𝜈v, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ 𝜈_lap_u.data[idx...]; end
 
         𝜈h, 𝜈v = 4e-2, 4e-2
         v, 𝜈_lap_v = U.v, stmp.fFY
         @. v.data = rand();
         Oceananigans.Operators.𝜈∇²v!(g, v, 𝜈_lap_v, 𝜈h, 𝜈v, otmp)
-        for idx in test_indices; @test 𝜈∇²v(g, v, 𝜈h, 𝜈v, idx...) ≈ 𝜈_lap_v.data[idx...]; end
+        for idx in test_indices; @test 𝜈∇²v(v.data, 𝜈h, 𝜈v, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ 𝜈_lap_v.data[idx...]; end
 
         𝜈h, 𝜈v = 4e-2, 4e-2
         v, 𝜈_lap_w = U.w, stmp.fFZ
         @. w.data = rand();
         Oceananigans.Operators.𝜈∇²w!(g, w, 𝜈_lap_w, 𝜈h, 𝜈v, otmp)
         for idx in test_indices; @test 𝜈∇²w(g, w, 𝜈h, 𝜈v, idx...) ≈ 𝜈_lap_w.data[idx...]; end
+        for idx in test_indices; @test 𝜈∇²w(w.data, 𝜈h, 𝜈v, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ 𝜈_lap_w.data[idx...]; end
     end
 end
