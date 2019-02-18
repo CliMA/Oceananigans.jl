@@ -2,8 +2,10 @@
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://mit-license.org/)
 [![Build Status](https://travis-ci.com/ali-ramadhan/Oceananigans.jl.svg?branch=master)](https://travis-ci.com/ali-ramadhan/Oceananigans.jl)
+[![pipeline status](https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master)
 [![Documentation Status](https://readthedocs.org/projects/oceananigansjl/badge/?version=latest)](https://oceananigansjl.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl)
+[![coverage report](https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/coverage.svg)](https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master)
 [![Ask Us Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg)](https://github.com/ali-ramadhan/Oceananigans.jl/issues)
 
 A fast non-hydrostatic _n_-dimensional ocean model based on the [MITgcm](https://github.com/MITgcm/MITgcm) algorithm [(Marshall et al., 1997)](https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/96JC02775) in Julia. The plan is to make it useful as a [large eddy simulation](https://en.wikipedia.org/wiki/Large_eddy_simulation) (LES) model or as a 2D/3D [super-parameterization](http://hannahlab.org/what-is-super-parameterization/) to be embedded within a global ocean model. As an embedded model it could resolve the sub-grid scale physics and communicate their effects back to the global model or act as a source of training data for statistical learning algorithms [(Campin et al., 2011)](https://www.sciencedirect.com/science/article/pii/S1463500310001496?via%3Dihub).
