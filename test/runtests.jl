@@ -273,36 +273,37 @@ using Oceananigans.Operators
         f, δxf = stmp.fC1, stmp.fFX
         @. f.data = rand()
         Oceananigans.Operators.δx!(g, f, δxf)
-        for idx in test_indices; @test δx_c2f(g, f, idx...) ≈ δxf.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test δx_c2f(g, f, idx...) ≈ δxf.data[idx...]; end
+        for idx in test_indices; @test δx_c2f(f, g.Nx, idx...) ≈ δxf.data[idx...]; end
 
         f, δyf = stmp.fC1, stmp.fFY
         @. f.data = rand()
         Oceananigans.Operators.δy!(g, f, δyf)
-        for idx in test_indices; @test δy_c2f(g, f, idx...) ≈ δyf.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test δy_c2f(g, f, idx...) ≈ δyf.data[idx...]; end
 
         f, δzf = stmp.fC1, stmp.fFZ
         @. f.data = rand()
         Oceananigans.Operators.δz!(g, f, δzf)
-        for idx in test_indices; @test δz_c2f(g, f, idx...) ≈ δzf.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test δz_c2f(g, f, idx...) ≈ δzf.data[idx...]; end
 
         u, v, w, div_u = U.u, U.v, U.w, stmp.fC1
         @. u.data = rand(); @. v.data = rand(); @. w.data = rand();
         Oceananigans.Operators.div!(g, u, v, w, div_u, otmp)
-        for idx in test_indices; @test div(g, u, v, w, idx...) ≈ div_u.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test div(g, u, v, w, idx...) ≈ div_u.data[idx...]; end
 
         u, T, uT̄ˣ, δx_uT̄ˣ = U.u, tr.T, stmp.fFX, stmp.fC1
         @. u.data = rand(); @. T.data = rand();
         Oceananigans.Operators.avgx!(g, T, uT̄ˣ)
         @. uT̄ˣ.data = u.data * uT̄ˣ.data
         Oceananigans.Operators.δx!(g, uT̄ˣ, δx_uT̄ˣ)
-        for idx in test_indices; @test δx_f2c_ab̄ˣ(g, u, T, idx...) ≈ δx_uT̄ˣ.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test δx_f2c_ab̄ˣ(g, u, T, idx...) ≈ δx_uT̄ˣ.data[idx...]; end
 
         v, T, vT̄ʸ, δy_vT̄ʸ = U.v, tr.T, stmp.fFY, stmp.fC1
         @. v.data = rand(); @. T.data = rand();
         Oceananigans.Operators.avgy!(g, T, vT̄ʸ)
         @. vT̄ʸ.data = v.data * vT̄ʸ.data
         Oceananigans.Operators.δy!(g, vT̄ʸ, δy_vT̄ʸ)
-        for idx in test_indices; @test δy_f2c_ab̄ʸ(g, v, T, idx...) ≈ δy_vT̄ʸ.data[idx...] || "idx=$idx"; end
+        for idx in test_indices; @test δy_f2c_ab̄ʸ(g, v, T, idx...) ≈ δy_vT̄ʸ.data[idx...]; end
 
         w, T, wT̄ᶻ, δz_wT̄ᶻ = U.w, tr.T, stmp.fFZ, stmp.fC1
         @. w.data = rand(); @. T.data = rand();
