@@ -73,7 +73,9 @@ function CellField(metadata::ModelMetadata, grid::Grid, T)
         data = zeros(T, size(grid))
         return CellField{Array{T,3}}(metadata, grid, data)
     elseif metadata.arch == :gpu
-        data = cu(zeros(T, size(grid)))
+        # data = cu(zeros(T, size(grid)))
+        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
+        data .= 0.0
         return CellField{CuArray{T,3}}(metadata, grid, data)
     end
 end

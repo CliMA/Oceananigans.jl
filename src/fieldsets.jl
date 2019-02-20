@@ -49,15 +49,15 @@ end
 
 struct StepperTemporaryFields <: FieldSet
     fC1::CellField
-    fC2::CellField
-    fC3::CellField
-    fC4::CellField
-    fFX::FaceFieldX
-    fFX2::FaceFieldX
-    fFY::FaceFieldY
-    fFY2::FaceFieldX
-    fFZ::FaceFieldZ
-    fFZ2::FaceFieldX
+#     fC2::CellField
+#     fC3::CellField
+#     fC4::CellField
+#     fFX::FaceFieldX
+#     fFX2::FaceFieldX
+#     fFY::FaceFieldY
+#     fFY2::FaceFieldX
+#     fFZ::FaceFieldZ
+#     fFZ2::FaceFieldX
     fCC1::CellField
     fCC2::CellField
 end
@@ -119,16 +119,17 @@ end
 
 function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)
     fC1 = CellField(metadata, grid)
-    fC2 = CellField(metadata, grid)
-    fC3 = CellField(metadata, grid)
-    fC4 = CellField(metadata, grid)
-    fFX = FaceFieldX(metadata, grid)
-    fFX2 = FaceFieldX(metadata, grid)
-    fFY = FaceFieldY(metadata, grid)
-    fFY2 = FaceFieldX(metadata, grid)
-    fFZ = FaceFieldZ(metadata, grid)
-    fFZ2 = FaceFieldX(metadata, grid)
+    # fC2 = CellField(metadata, grid)
+    # fC3 = CellField(metadata, grid)
+    # fC4 = CellField(metadata, grid)
+    # fFX = FaceFieldX(metadata, grid)
+    # fFX2 = FaceFieldX(metadata, grid)
+    # fFY = FaceFieldY(metadata, grid)
+    # fFY2 = FaceFieldX(metadata, grid)
+    # fFZ = FaceFieldZ(metadata, grid)
+    # fFZ2 = FaceFieldX(metadata, grid)
     fCC1 = CellField(metadata, grid, Complex{metadata.float_type})
     fCC2 = CellField(metadata, grid, Complex{metadata.float_type})
-    StepperTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCC1, fCC2)
+    # StepperTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCC1, fCC2)
+    StepperTemporaryFields(fC1, fCC1, fCC2)
 end

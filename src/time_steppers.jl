@@ -237,7 +237,6 @@ function time_step_kernel!(model::Model, Nt, Δt)
     Gp = model.Gp
     F = model.forcings
     stmp = model.stepper_tmp
-    otmp = model.operator_tmp
     clock = model.clock
 
     model_start_time = clock.time

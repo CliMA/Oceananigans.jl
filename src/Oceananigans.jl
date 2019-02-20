@@ -24,7 +24,7 @@ export
     PressureFields,
     SourceTerms,
     ForcingFields,
-    OperatorTemporaryFields,
+    # OperatorTemporaryFields,
     StepperTemporaryFields,
 
     LinearEquationOfState,
