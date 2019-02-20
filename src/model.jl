@@ -71,6 +71,6 @@ function Model(N, L, arch=:cpu, float_type=Float64)
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcings,
-        stepper_tmp, ssp, clock, output_writers, diagnostics)
+          stepper_tmp, ssp, clock, output_writers, diagnostics)
           # stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
 end

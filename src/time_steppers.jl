@@ -284,20 +284,23 @@ function time_step_kernel!(model::Model, Nt, Δt)
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
     
-    kx² = cu(zeros(g.Nx, 1))
-    ky² = cu(zeros(g.Ny, 1))
-    kz² = cu(zeros(g.Nz, 1))
+    kx² = CuArray{metadata.float_type}(undef, Nx)
+    ky² = CuArray{metadata.float_type}(undef, Ny)
+    kz² = CuArray{metadata.float_type}(undef, Nz)
+    # kx² = cu(zeros(g.Nx, 1))
+    # ky² = cu(zeros(g.Ny, 1))
+    # kz² = cu(zeros(g.Nz, 1))
 
     for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
     for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
     for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
     
     factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
-    dct_factors = cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    dct_factors = CuArray{Complex{metadata.float_type}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
     
     bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
     bfactors[1] *= 0.5
-    idct_bfactors = cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    idct_bfactors = CuArray{Complex{metadata.float_type}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
@@ -461,7 +464,7 @@ function time_step_kernel_part1!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY�
                 for k′ in 2:k
                     ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
                 end
-                @inbounds pHY′[i, j, k] = 0.5f0 * gΔz * ∫δρ
+                @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
             end
         end
     end
@@ -502,11 +505,11 @@ function time_step_kernel_part2!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, �
                 # @inbounds G.GT.data[i, j, k] = (1.5f0 + χ)*G.GT.data[i, j, k] - (0.5f0 + χ)*Gp.GT.data[i, j, k]
                 # @inbounds G.GS.data[i, j, k] = (1.5f0 + χ)*G.GS.data[i, j, k] - (0.5f0 + χ)*Gp.GS.data[i, j, k]
 
-                @inbounds Gu[i, j, k] = (1.5f0 + χ)*Gu[i, j, k] - (0.5f0 + χ)*Gpu[i, j, k]
-                @inbounds Gv[i, j, k] = (1.5f0 + χ)*Gv[i, j, k] - (0.5f0 + χ)*Gpv[i, j, k]
-                @inbounds Gw[i, j, k] = (1.5f0 + χ)*Gw[i, j, k] - (0.5f0 + χ)*Gpw[i, j, k]
-                @inbounds GT[i, j, k] = (1.5f0 + χ)*GT[i, j, k] - (0.5f0 + χ)*GpT[i, j, k]
-                @inbounds GS[i, j, k] = (1.5f0 + χ)*GS[i, j, k] - (0.5f0 + χ)*GpS[i, j, k]
+                @inbounds Gu[i, j, k] = (1.5 + χ)*Gu[i, j, k] - (0.5 + χ)*Gpu[i, j, k]
+                @inbounds Gv[i, j, k] = (1.5 + χ)*Gv[i, j, k] - (0.5 + χ)*Gpv[i, j, k]
+                @inbounds Gw[i, j, k] = (1.5 + χ)*Gw[i, j, k] - (0.5 + χ)*Gpw[i, j, k]
+                @inbounds GT[i, j, k] = (1.5 + χ)*GT[i, j, k] - (0.5 + χ)*GpT[i, j, k]
+                @inbounds GS[i, j, k] = (1.5 + χ)*GS[i, j, k] - (0.5 + χ)*GpS[i, j, k]
             end
         end
     end
