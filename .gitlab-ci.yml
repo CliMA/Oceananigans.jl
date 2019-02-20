@@ -1,11 +1,88 @@
-variables:
-  CI_IMAGE_TAG: 'cuda'
-
 include:
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v1/common.yml'
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v1/test_v1.0.yml'
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v2/test_v1.1.yml'
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v1/test_dev.yml'
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v3/common.yml'
 
-test:dev:
+.projecttest:
+  extends: .test
+  only:
+    - master
+    - staging
+    - trying
+  script:
+    - julia -e 'using InteractiveUtils;
+                versioninfo()'
+    - mkdir $JULIA_DEPOT_PATH
+    - julia --project=$CI_JULIA_PROJECT -e '
+                          using Pkg;
+                          Pkg.resolve();
+                          Pkg.instantiate();
+                          Pkg.build();
+                          include("test/runtests.jl");'
+.gputest:
+  extends: .projecttest
+  variables:
+    CI_IMAGE_TAG:     'cuda'
+    CI_JULIA_PROJECT: 'test/gpuenv'
+  tags:
+    - cuda
+
+.cputest:
+  extends: .projecttest
+  variables:
+    CI_IMAGE_TAG:     'plain'
+    CI_JULIA_PROJECT: 'test/testenv'
+
+gpu:test:dev:
+  extends: .gputest
+  variables:
+    CI_VERSION_TAG: 'dev'
   allow_failure: true
+
+cpu:test:dev:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'dev'
+  allow_failure: true
+
+gpu:test:v1.0:
+  extends: .gputest
+  variables:
+    CI_VERSION_TAG: 'v1.0'
+
+cpu:test:v1.0:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'v1.0'
+
+gpu:test:v1.1:
+  extends: .gputest
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+
+cpu:test:v1.1:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+
+documentation:
+  extends: .documentation
+  dependencies:
+    - cpu:test:v1.1
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+    CI_IMAGE_TAG: 'plain'
+  only:
+    - master
+    - staging
+    - trying
+
+pages:
+  dependencies:
+    - documentation
+  stage: deploy
+  script:
+    - mv docs/build public
+  artifacts:
+    paths:
+    - public
+  only:
+    - master
