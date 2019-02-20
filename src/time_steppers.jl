@@ -296,7 +296,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
     factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
     dct_factors = cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
     
-    bfactors = 0.5 * exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    bfactors[1] *= 0.5
     idct_bfactors = cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
 
     println("Threads per block: ($Tx, $Ty)")
@@ -372,11 +373,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
         # println("Nonhydrostatic pressure correction step...")
         # solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
         
-        tp1 = time_ns()
-        solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
+        solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz², dct_factors, idct_bfactors)
         @. pr.pNHS.data = real(ϕ.data)
-        tp2 = time_ns()
-        println("Poisson:" * prettytime(tp2 - tp1))
 
         #print("P ")
         #@time begin

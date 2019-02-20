@@ -356,28 +356,30 @@ function solve_poisson_3d_ppn_planned!(ssp::SpectralSolverParameters, g::Regular
     nothing
 end
 
-function dct_dim3_gpu!(f)
-    Nx, Ny, Nz = size(f)
-    f .= cat(f[:, :, 1:2:Nz], f[:, :, Nz:-2:2]; dims=3)
+function dct_dim3_gpu!(g, f, dct_factors)
+    # Nx, Ny, Nz = size(f)
+    f .= cat(f[:, :, 1:2:g.Nz], f[:, :, g.Nz:-2:2]; dims=3)
     fft!(f, 3)
 
-    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
-    
-    f .*= cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    # factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
+    # f .*= cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    f .*= dct_factors
     
     nothing
 end
 
-function idct_dim3_gpu!(f)
-    Nx, Ny, Nz = size(f)
+function idct_dim3_gpu!(g, f, idct_bfactors)
+    # Nx, Ny, Nz = size(f)
     
-    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
-    bfactors[1] *= 0.5
+    # bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    # bfactors[1] *= 0.5
 
-    f .*= cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    # f .*= cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    
+    f .*= idct_bfactors
     ifft!(f, 3)
     
-    f .= cu(reshape(permutedims(cat(f[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    f .= cu(reshape(permutedims(cat(f[:, :, 1:Int(g.Nz/2)], f[:, :, end:-1:Int(g.Nz/2)+1]; dims=4), (1, 2, 4, 3)), g.Nx, g.Ny, g.Nz))
     # @. f = real(f)  # Don't do it here. We'll do it when assigning real(ϕ) to pNHS to save some measly FLOPS.
     
     nothing
@@ -415,8 +417,8 @@ function solve_poisson_3d_ppn_gpu!(g::RegularCartesianGrid, f::CellField, ϕ::Ce
     nothing
 end
 
-function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, f::CellField, ϕ::CellField, kx², ky², kz²)
-    dct_dim3_gpu!(f.data)
+function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, f::CellField, ϕ::CellField, kx², ky², kz², dct_factors, idct_bfactors)
+    dct_dim3_gpu!(g, f.data, dct_factors)
     @. f.data = real(f.data)
     
     fft!(f.data, [1, 2])
@@ -425,7 +427,7 @@ function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, 
     ϕ.data[1, 1, 1] = 0
 
     ifft!(ϕ.data, [1, 2])
-    idct_dim3_gpu!(ϕ.data)
+    idct_dim3_gpu!(g, ϕ.data, idct_bfactors)
 
     nothing
 end
