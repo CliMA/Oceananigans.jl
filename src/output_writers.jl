@@ -33,7 +33,7 @@ function write_output(model::Model, fw::FieldWriter)
         filepath = joinpath(fw.dir, filename)
 
         println("[FieldWriter] Writing $field_name to disk: $filepath")
-        write(filepath, field.data)
+        write(filepath, Array(field.data))
     end
 end
 
