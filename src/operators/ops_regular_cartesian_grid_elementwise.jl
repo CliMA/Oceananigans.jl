@@ -136,47 +136,47 @@ end
 #     end
 # end
 
-@inline avgx_c2f(g::RegularCartesianGrid, f::CellField, i, j, k) = @inbounds 0.5f0 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k])
-@inline avgx_f2c(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5f0 * (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k])
-@inline avgx_f2e(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5f0 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k])
+@inline avgx_c2f(g::RegularCartesianGrid, f::CellField, i, j, k) = @inbounds 0.5 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k])
+@inline avgx_f2c(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5 * (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k])
+@inline avgx_f2e(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k])
 
-@inline avgx_c2f(f, Nx, i, j, k) = @inbounds 0.5f0 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
-@inline avgx_f2c(f, Nx, i, j, k) = @inbounds 0.5f0 * (f[incmod1(i, Nx), j, k] + f[i, j, k])
-@inline avgx_f2e(f, Nx, i, j, k) = @inbounds 0.5f0 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
+@inline avgx_c2f(f, Nx, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
+@inline avgx_f2c(f, Nx, i, j, k) = @inbounds 0.5 * (f[incmod1(i, Nx), j, k] + f[i, j, k])
+@inline avgx_f2e(f, Nx, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
 
-# @inline avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]))
-# @inline avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5f0 * (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]))
-# @inline avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]))
+# @inline avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]))
+# @inline avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5 * (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]))
+# @inline avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField, i, j, k) = (@inbounds favgx.data[i, j, k] =  0.5 * (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]))
 
-@inline avgy_c2f(g::RegularCartesianGrid, f::CellField, i, j, k) = @inbounds 0.5f0 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k])
-@inline avgy_f2c(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5f0 * (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k])
-@inline avgy_f2e(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5f0 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k])
+@inline avgy_c2f(g::RegularCartesianGrid, f::CellField, i, j, k) = @inbounds 0.5 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k])
+@inline avgy_f2c(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5 * (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k])
+@inline avgy_f2e(g::RegularCartesianGrid, f::FaceField, i, j, k) = @inbounds 0.5 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k])
 
-@inline avgy_c2f(f, Ny, i, j, k) = @inbounds 0.5f0 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
-@inline avgy_f2c(f, Ny, i, j, k) = @inbounds 0.5f0 * (f[i, incmod1(j, Ny), k] + f[i, j, k])
-@inline avgy_f2e(f, Ny, i, j, k) = @inbounds 0.5f0 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
+@inline avgy_c2f(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
+@inline avgy_f2c(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, incmod1(j, Ny), k] + f[i, j, k])
+@inline avgy_f2e(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
 
-# @inline avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]))
-# @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5f0 * (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]))
-# @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]))
+# @inline avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]))
+# @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5 * (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]))
+# @inline avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField, i, j, k) = (@inbounds favgy.data[i, j, k] =  0.5 * (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]))
 
-@inline avg_xy(g::RegularCartesianGrid, u::FaceFieldX, i, j, k) = 0.5f0 * (avgy_f2c(g, u, i, j, k) + avgy_f2c(g, u, incmod1(i, g.Nx), j, k))
+@inline avg_xy(g::RegularCartesianGrid, u::FaceFieldX, i, j, k) = 0.5 * (avgy_f2c(g, u, i, j, k) + avgy_f2c(g, u, incmod1(i, g.Nx), j, k))
 
-@inline avg_xy(u, Nx, Ny, i, j, k) = 0.5f0 * (avgy_f2c(u, Ny, i, j, k) + avgy_f2c(u, Ny, incmod1(i, Nx), j, k))
+@inline avg_xy(u, Nx, Ny, i, j, k) = 0.5 * (avgy_f2c(u, Ny, i, j, k) + avgy_f2c(u, Ny, incmod1(i, Nx), j, k))
 
 @inline function avgz_c2f(g::RegularCartesianGrid, f::CellField, i, j, k)
     if k == 1
         @inbounds return f.data[i, j, k]
     else
-        @inbounds return  0.5f0 * (f.data[i, j, k] + f.data[i, j, k-1])
+        @inbounds return  0.5 * (f.data[i, j, k] + f.data[i, j, k-1])
     end
 end
 
 @inline function avgz_f2c(g::RegularCartesianGrid, f::FaceField, i, j, k)
     if k == g.Nz
-        @inbounds return 0.5f0 * f.data[i, j, k]
+        @inbounds return 0.5 * f.data[i, j, k]
     else
-        @inbounds return 0.5f0 * (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k])
+        @inbounds return 0.5 * (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k])
     end
 end
 
@@ -184,7 +184,7 @@ end
     if k == 1
         @inbounds return f.data[i, j, k]
     else
-        @inbounds return 0.5f0 * (f.data[i, j, k] + f.data[i, j, k-1])
+        @inbounds return 0.5 * (f.data[i, j, k] + f.data[i, j, k-1])
     end
 end
 
@@ -192,15 +192,15 @@ end
     if k == 1
         @inbounds return f[i, j, k]
     else
-        @inbounds return  0.5f0 * (f[i, j, k] + f[i, j, k-1])
+        @inbounds return  0.5 * (f[i, j, k] + f[i, j, k-1])
     end
 end
 
 @inline function avgz_f2c(f, Nz, i, j, k)
     if k == Nz
-        @inbounds return 0.5f0 * f[i, j, k]
+        @inbounds return 0.5 * f[i, j, k]
     else
-        @inbounds return 0.5f0 * (f[i, j, k+1] + f[i, j, k])
+        @inbounds return 0.5 * (f[i, j, k+1] + f[i, j, k])
     end
 end
 
@@ -208,7 +208,7 @@ end
     if k == 1
         @inbounds return f[i, j, k]
     else
-        @inbounds return 0.5f0 * (f[i, j, k] + f[i, j, k-1])
+        @inbounds return 0.5 * (f[i, j, k] + f[i, j, k-1])
     end
 end
 
@@ -216,15 +216,15 @@ end
 #     if k == 1
 #         @inbounds favgz.data[i, j, k] = f.data[i, j, k]
 #     else
-#         @inbounds favgz.data[i, j, k] =  0.5f0 * (f.data[i, j, k] + f.data[i, j, k-1])
+#         @inbounds favgz.data[i, j, k] =  0.5 * (f.data[i, j, k] + f.data[i, j, k-1])
 #     end
 # end
 #
 # @inline function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField, i, j, k)
 #     if k == g.Nz
-#         @inbounds favgz.data[i, j, k] = 0.5f0 * f.data[i, j, k]
+#         @inbounds favgz.data[i, j, k] = 0.5 * f.data[i, j, k]
 #     else
-#         @inbounds favgz.data[i, j, k] = 0.5f0 * (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k])
+#         @inbounds favgz.data[i, j, k] = 0.5 * (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k])
 #     end
 # end
 #
@@ -232,7 +232,7 @@ end
 #     if k == 1
 #         @inbounds favgz.data[i, j, k] = f.data[i, j, k]
 #     else
-#         @inbounds favgz.data[i, j, k] = 0.5f0 * (f.data[i, j, k] + f.data[i, j, k-1])
+#         @inbounds favgz.data[i, j, k] = 0.5 * (f.data[i, j, k] + f.data[i, j, k-1])
 #     end
 # end
 
