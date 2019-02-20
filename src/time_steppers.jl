@@ -370,18 +370,22 @@ function time_step_kernel!(model::Model, Nt, Δt)
         @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
         
         # println("Nonhydrostatic pressure correction step...")
-        # @time solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
-        # print("P "); @time solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
-        # @. pr.pNHS.data = real(ϕ.data)
+        # solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
+        
+        tp1 = time_ns()
+        solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz²)
+        @. pr.pNHS.data = real(ϕ.data)
+        tp2 = time_ns()
+        println("Poisson:" * prettytime(tp2 - tp1))
 
         #print("P ")
         #@time begin
-        tp1 = time_ns()
-        RHS_cpu.data .= Array(RHS.data)
-        solve_poisson_3d_ppn!(g, RHS_cpu, ϕ_cpu)
-        pr.pNHS.data .= cu(real.(ϕ_cpu.data))
-        tp2 = time_ns()
-        println("Poisson:" * prettytime(tp2 - tp1))
+        # tp1 = time_ns()
+        # RHS_cpu.data .= Array(RHS.data)
+        # solve_poisson_3d_ppn!(g, RHS_cpu, ϕ_cpu)
+        # pr.pNHS.data .= cu(real.(ϕ_cpu.data))
+        # tp2 = time_ns()
+        # println("Poisson:" * prettytime(tp2 - tp1))
         #end
         
         ###
