@@ -109,9 +109,9 @@ version = "0.0.4"
 
 [[DiffRules]]
 deps = ["Random", "Test"]
-git-tree-sha1 = "26b96a1a506b06cb272ef60568d478adab039b96"
+git-tree-sha1 = "dc0869fb2f5b23466b32ea799bd82c76480167f7"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "0.0.9"
+version = "0.0.10"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -160,9 +160,9 @@ uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
 version = "0.6.1"
 
 [[GPUifyLoops]]
-deps = ["Requires", "StaticArrays"]
-path = "/home/gridsan/aramadhan/.julia/dev/GPUifyLoops"
-uuid = "8c6e557c-24b2-11e9-113b-4b4a3dc760fa"
+deps = ["Pkg", "Requires", "StaticArrays", "Test"]
+git-tree-sha1 = "8211bda31777c6822d00414c67f6c831d0062c48"
+uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
 version = "0.1.0"
 
 [[GR]]
@@ -202,9 +202,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MacroTools]]
 deps = ["Compat"]
-git-tree-sha1 = "c443e1c8d58a4e9f61b708ad0a88286c7042145b"
+git-tree-sha1 = "3fd1a3022952128935b449c33552eb65895380c1"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.4.4"
+version = "0.4.5"
 
 [[Markdown]]
 deps = ["Base64"]
