@@ -6,9 +6,9 @@ using Oceananigans
 function deep_convection_3d_gpu()
     Nx, Ny, Nz = 128, 128, 64
     Lx, Ly, Lz = 2000, 2000, 1000
-    Nt, Δt = 1000, 20
+    Nt, Δt = 10000, 20
 
-    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz), :gpu, Float32)
+    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz), :gpu, Float64)
     impose_initial_conditions!(model)
 
     field_writer = FieldWriter(".", "deep_convection_3d_gpu", 10, [model.tracers.T], ["T"])

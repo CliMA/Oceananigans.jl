@@ -426,7 +426,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
         end
         
         t2 = time_ns();
-        println(prettytime(t2 - t1))
+        print(prettytime(t2 - t1))
     end
 end
 

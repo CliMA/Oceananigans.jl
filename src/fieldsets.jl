@@ -63,41 +63,41 @@ struct StepperTemporaryFields <: FieldSet
 end
 
 function VelocityFields(metadata::ModelMetadata, grid::Grid)
-    u = FaceFieldX(metadata, grid)
-    v = FaceFieldY(metadata, grid)
-    w = FaceFieldZ(metadata, grid)
+    u = FaceFieldX(metadata, grid, metadata.float_type)
+    v = FaceFieldY(metadata, grid, metadata.float_type)
+    w = FaceFieldZ(metadata, grid, metadata.float_type)
     VelocityFields(u, v, w)
 end
 
 function TracerFields(metadata::ModelMetadata, grid::Grid)
-    θ = CellField(metadata, grid)
-    S = CellField(metadata, grid)
-    ρ = CellField(metadata, grid)
+    θ = CellField(metadata, grid, metadata.float_type)
+    S = CellField(metadata, grid, metadata.float_type)
+    ρ = CellField(metadata, grid, metadata.float_type)
     TracerFields(θ, S, ρ)
 end
 
 function PressureFields(metadata::ModelMetadata, grid::Grid)
-    pHY = CellField(metadata, grid)
-    pHY′ = CellField(metadata, grid)
-    pNHS = CellField(metadata, grid)
+    pHY = CellField(metadata, grid, metadata.float_type)
+    pHY′ = CellField(metadata, grid, metadata.float_type)
+    pNHS = CellField(metadata, grid, metadata.float_type)
     PressureFields(pHY, pHY′, pNHS)
 end
 
 function SourceTerms(metadata::ModelMetadata, grid::Grid)
-    Gu = FaceFieldX(metadata, grid)
-    Gv = FaceFieldY(metadata, grid)
-    Gw = FaceFieldZ(metadata, grid)
-    GT = CellField(metadata, grid)
-    GS = CellField(metadata, grid)
+    Gu = FaceFieldX(metadata, grid, metadata.float_type)
+    Gv = FaceFieldY(metadata, grid, metadata.float_type)
+    Gw = FaceFieldZ(metadata, grid, metadata.float_type)
+    GT = CellField(metadata, grid, metadata.float_type)
+    GS = CellField(metadata, grid, metadata.float_type)
     SourceTerms(Gu, Gv, Gw, GT, GS)
 end
 
 function ForcingFields(metadata::ModelMetadata, grid::Grid)
-    Fu = FaceFieldX(metadata, grid)
-    Fv = FaceFieldY(metadata, grid)
-    Fw = FaceFieldZ(metadata, grid)
-    FT = CellField(metadata, grid)
-    FS = CellField(metadata, grid)
+    Fu = FaceFieldX(metadata, grid, metadata.float_type)
+    Fv = FaceFieldY(metadata, grid, metadata.float_type)
+    Fw = FaceFieldZ(metadata, grid, metadata.float_type)
+    FT = CellField(metadata, grid, metadata.float_type)
+    FS = CellField(metadata, grid, metadata.float_type)
     ForcingFields(Fu, Fv, Fw, FT, FS)
 end
 
@@ -118,7 +118,7 @@ function OperatorTemporaryFields(metadata::ModelMetadata, grid::Grid)
 end
 
 function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)
-    fC1 = CellField(metadata, grid)
+    fC1 = CellField(metadata, grid, metadata.float_type)
     # fC2 = CellField(metadata, grid)
     # fC3 = CellField(metadata, grid)
     # fC4 = CellField(metadata, grid)
@@ -128,8 +128,10 @@ function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)
     # fFY2 = FaceFieldX(metadata, grid)
     # fFZ = FaceFieldZ(metadata, grid)
     # fFZ2 = FaceFieldX(metadata, grid)
-    fCC1 = CellField(metadata, grid, Complex{metadata.float_type})
-    fCC2 = CellField(metadata, grid, Complex{metadata.float_type})
+    # fCC1 = CellField(metadata, grid, Complex{metadata.float_type})
+    # fCC2 = CellField(metadata, grid, Complex{metadata.float_type})
+    fCC1 = CellField(metadata, grid, Complex{Float64})  # We might really need Float64 for the Poisson solver.
+    fCC2 = CellField(metadata, grid, Complex{Float64})
     # StepperTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCC1, fCC2)
     StepperTemporaryFields(fC1, fCC1, fCC2)
 end

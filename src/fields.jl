@@ -87,13 +87,14 @@ CellField(mm::ModelMetadata, g::Grid) = CellField(mm, g, eltype(g))
 
 A `Field` whose values are defined on the x-face of a cell.
 """
-function FaceFieldX(metadata::ModelMetadata, grid::Grid)
+function FaceFieldX(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(eltype(grid), size(grid))
         return FaceFieldX{Array{eltype(grid),3}}(metadata, grid, data)
     elseif metadata.arch == :gpu
-        data = cu(zeros(eltype(grid), size(grid)))
-        return FaceFieldX{CuArray{eltype(grid),3}}(metadata, grid, data)
+        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
+        data .= 0.0
+        return FaceFieldX{CuArray{T,3}}(metadata, grid, data)
     end
 end
 
@@ -102,13 +103,14 @@ end
 
 A `Field` whose values are defined on the y-face of a cell.
 """
-function FaceFieldY(metadata::ModelMetadata, grid::Grid)
+function FaceFieldY(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(eltype(grid), size(grid))
         return FaceFieldY{Array{eltype(grid),3}}(metadata, grid, data)
     elseif metadata.arch == :gpu
-        data = cu(zeros(eltype(grid), size(grid)))
-        return FaceFieldY{CuArray{eltype(grid),3}}(metadata, grid, data)
+        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
+        data .= 0.0
+        return FaceFieldY{CuArray{T,3}}(metadata, grid, data)
     end
 end
 
@@ -117,23 +119,25 @@ end
 
 A `Field` whose values are defined on the z-face of a cell.
 """
-function FaceFieldZ(metadata::ModelMetadata, grid::Grid)
+function FaceFieldZ(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(eltype(grid), size(grid))
         return FaceFieldZ{Array{eltype(grid),3}}(metadata, grid, data)
     elseif metadata.arch == :gpu
-        data = cu(zeros(eltype(grid), size(grid)))
-        return FaceFieldZ{CuArray{eltype(grid),3}}(metadata, grid, data)
+        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
+        data .= 0.0
+        return FaceFieldZ{CuArray{T,3}}(metadata, grid, data)
     end
 end
 
-function EdgeField(metadata::ModelMetadata, grid::Grid)
+function EdgeField(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(eltype(grid), size(grid))
         return EdgeField{Array{eltype(grid),3}}(metadata, grid, data)
     elseif metadata.arch == :gpu
-        data = cu(zeros(eltype(grid), size(grid)))
-        return EdgeField{CuArray{eltype(grid),3}}(metadata, grid, data)
+        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
+        data .= 0.0
+        return EdgeField{CuArray{T,3}}(metadata, grid, data)
     end
 end
 
