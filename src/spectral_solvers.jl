@@ -358,7 +358,8 @@ end
 
 function dct_dim3_gpu!(g, f, dct_factors)
     # Nx, Ny, Nz = size(f)
-    f .= cat(f[:, :, 1:2:g.Nz], f[:, :, g.Nz:-2:2]; dims=3)
+    # This is now done in time_step_kernel_part3!.
+    # f .= cat(f[:, :, 1:2:g.Nz], f[:, :, g.Nz:-2:2]; dims=3)
     fft!(f, 3)
 
     # factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))

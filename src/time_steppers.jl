@@ -284,9 +284,9 @@ function time_step_kernel!(model::Model, Nt, Δt)
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
     
-    kx² = CuArray{metadata.float_type}(undef, Nx)
-    ky² = CuArray{metadata.float_type}(undef, Ny)
-    kz² = CuArray{metadata.float_type}(undef, Nz)
+    kx² = CuArray{Float64}(undef, Nx)
+    ky² = CuArray{Float64}(undef, Ny)
+    kz² = CuArray{Float64}(undef, Nz)
     # kx² = cu(zeros(g.Nx, 1))
     # ky² = cu(zeros(g.Ny, 1))
     # kz² = cu(zeros(g.Nz, 1))
@@ -296,17 +296,14 @@ function time_step_kernel!(model::Model, Nt, Δt)
     for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
     
     factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
-    dct_factors = CuArray{Complex{metadata.float_type}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
     
     bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
     bfactors[1] *= 0.5
-    idct_bfactors = CuArray{Complex{metadata.float_type}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
-    
-    RHS_cpu = CellField(ModelMetadata(:cpu, Float32), model.grid, Complex{Float32})
-    ϕ_cpu = CellField(ModelMetadata(:cpu, Float32), model.grid, Complex{Float32})
 
     for n in 1:Nt
         t1 = time_ns();
@@ -524,7 +521,13 @@ function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, 
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # @inbounds RHS[i, j, k] = div(g, G.Gu, G.Gv, G.Gw, i, j, k)
-                @inbounds RHS[i, j, k] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                # @inbounds RHS[i, j, k] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                # Applying permutation which is the first step in the DCT.
+                if CUDAnative.ffs(k) == 1  # isodd(k)
+                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                else
+                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                end
             end
         end
     end
