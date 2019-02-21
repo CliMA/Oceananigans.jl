@@ -373,8 +373,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
         # solve_poisson_3d_ppn_gpu!(g, RHS, ϕ)
         
         solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz², dct_factors, idct_bfactors)
-        @. pr.pNHS.data = real(ϕ.data)
-
+        @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
+        
         #print("P ")
         #@time begin
         # tp1 = time_ns()
@@ -552,6 +552,24 @@ function time_step_kernel_part4!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, 
                 #@inbounds Gpw[i, j, k] = Gw[i, j, k]
                 #@inbounds GpT[i, j, k] = GT[i, j, k]
                 #@inbounds GpS[i, j, k] = GS[i, j, k]
+            end
+        end
+    end
+
+    @synchronize
+end
+
+function idct_permute!(::Val{Dev}, Nx, Ny, Nz, ϕ, pNHS) where Dev
+    @setup Dev
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                if k <= Nz/2
+                    @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
+                else
+                    @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
+                end
             end
         end
     end

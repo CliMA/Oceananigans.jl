@@ -380,7 +380,8 @@ function idct_dim3_gpu!(g, f, idct_bfactors)
     f .*= idct_bfactors
     ifft!(f, 3)
     
-    f .= CuArray{eltype(f)}(reshape(permutedims(cat(f[:, :, 1:Int(g.Nz/2)], f[:, :, end:-1:Int(g.Nz/2)+1]; dims=4), (1, 2, 4, 3)), g.Nx, g.Ny, g.Nz))
+    # Both these steps have been merged into idct_permute! in the time-stepping loop.
+    # f .= CuArray{eltype(f)}(reshape(permutedims(cat(f[:, :, 1:Int(g.Nz/2)], f[:, :, end:-1:Int(g.Nz/2)+1]; dims=4), (1, 2, 4, 3)), g.Nx, g.Ny, g.Nz))
     # @. f = real(f)  # Don't do it here. We'll do it when assigning real(ϕ) to pNHS to save some measly FLOPS.
     
     nothing
