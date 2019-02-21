@@ -14,11 +14,11 @@ function make_movies(problem::Problem, R::SavedFields, Nt, Δt)
                       # clims=(-maximum(R.T[tidx, :, 1, :] .- 283), maximum(R.T[tidx, :, 1, :] .- 283)),
                       title="T change @ t=$(tidx*R.ΔR*Δt)")
     end
-    mp4(animT, "rising_thermal_bubble_$(round(Int, time())).mp4", fps = 30)
+    mp4(animT, "rising_thermal_bubble_2nd_$(round(Int, time())).mp4", fps = 30)
 end
 
 function rising_thermal_bubble()
-    Nx, Ny, Nz = 100, 1, 100
+    Nx, Ny, Nz = 300, 1, 300
     Lx, Ly, Lz = 2000, 2000, 2000
     Nt, Δt = 2500, 10
 

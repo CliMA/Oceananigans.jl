@@ -241,21 +241,37 @@ Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 This is done with 4th order accuracy, using a centered scheme.
 """
 function avgx_4!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+    oneSixth = 1.0/6
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgx.data[i, j, k] = (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k] -
 		                                    ( f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k] -
                                           f.data[decmod1(i, g.Nx), j, k] +
-                                          f.data[decmod2(i, g.Nx), j, k]) / 6 ) / 2
+                                          f.data[decmod2(i, g.Nx), j, k]) * oneSixth ) * 0.5
     end
 end
 
 function avgy_4!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
+    oneSixth = 1.0/6
     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k] -
 		                                     ( f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k] -
                                            f.data[i, decmod1(j, g.Ny), k] +
-                                           f.data[i, decmod2(j, g.Ny), k]) / 6 ) / 2
+                                           f.data[i, decmod2(j, g.Ny), k]) * oneSixth ) * 0.5
     end
+end
+
+function avgz_4!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
+    oneSixth = 1.0/6
+    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+        km1 = max(1,k-1)
+        kp1 = min(g.Nz,k+1)
+        km2 = max(1,k-2)
+        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, km1] -
+                                         (f.data[i, j, kp1] - f.data[i, j, k] -
+                                          f.data[i, j, km1] + f.data[i, j, km2]) * oneSixth ) * 0.5
+    end
+    @. favgz.data[:, :, 1] = f.data[:, :, 1]
+    nothing
 end
 
 """
@@ -330,7 +346,7 @@ function div_flux_4!(g::RegularCartesianGrid,
 
     avgx_4!(g, Q, Q̅ˣ)
     avgy_4!(g, Q, Q̅ʸ)
-    avgz!(g, Q, Q̅ᶻ)
+    avgz_4!(g, Q, Q̅ᶻ)
 
     flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
 
