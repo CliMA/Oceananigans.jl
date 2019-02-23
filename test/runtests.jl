@@ -139,10 +139,10 @@ using Oceananigans.Operators
                 @test test_𝜈∇²v(mm, g)
                 @test test_𝜈∇²w(mm, g)
 
-                fC = CellField(mm, g)
-                ffX = FaceFieldX(mm, g)
-                ffY = FaceFieldY(mm, g)
-                ffZ = FaceFieldZ(mm, g)
+                fC = CellField(mm, g, mm.float_type)
+                ffX = FaceFieldX(mm, g, mm.float_type)
+                ffY = FaceFieldY(mm, g, mm.float_type)
+                ffZ = FaceFieldZ(mm, g, mm.float_type)
 
                 for f in [fC, ffX, ffY, ffZ]
                     # Fields should be initialized to zero.

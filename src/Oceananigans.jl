@@ -24,7 +24,7 @@ export
     PressureFields,
     SourceTerms,
     ForcingFields,
-    # OperatorTemporaryFields,
+    OperatorTemporaryFields,
     StepperTemporaryFields,
 
     LinearEquationOfState,
@@ -86,10 +86,6 @@ abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
-
-# We must play this annoying game of organizing the definitions to avoid
-# mutually circular type declarations.
-# See: https://github.com/JuliaLang/julia/issues/269
 
 include("model_metadata.jl")
 include("model_configuration.jl")
