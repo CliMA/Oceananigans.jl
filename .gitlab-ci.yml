@@ -13,6 +13,7 @@ include:
     - mkdir $JULIA_DEPOT_PATH
     - julia --project=$CI_JULIA_PROJECT -e '
                           using Pkg;
+                          Pkg.activate(".");
                           Pkg.resolve();
                           Pkg.instantiate();
                           Pkg.build();
