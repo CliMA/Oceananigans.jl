@@ -12,7 +12,7 @@ mutable struct Model
     Gp::SourceTerms
     forcings::ForcingFields
     stepper_tmp::StepperTemporaryFields
-    # operator_tmp::OperatorTemporaryFields
+    operator_tmp::OperatorTemporaryFields
     ssp  # ::SpectralSolverParameters (for arch==:cpu only...)
     clock::Clock
     output_writers::Array{OutputWriter,1}
@@ -36,7 +36,7 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     Gp = SourceTerms(metadata, grid)
     forcings = ForcingFields(metadata, grid)
     stepper_tmp = StepperTemporaryFields(metadata, grid)
-    # operator_tmp = OperatorTemporaryFields(metadata, grid)
+    operator_tmp = OperatorTemporaryFields(metadata, grid)
 
     time, time_step, Δt = 0, 0, 0
     clock = Clock(time, time_step, Δt)
@@ -71,6 +71,5 @@ function Model(N, L, arch=:cpu, float_type=Float64)
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcings,
-          stepper_tmp, ssp, clock, output_writers, diagnostics)
-          # stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
+          stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
 end

@@ -160,11 +160,11 @@ show(io::IO, f::Field) = show(io, f.data)
 iterate(f::Field, state=1) = iterate(f.data, state)
 # iterate(f::Field, state=1) = state > length(f) ? nothing : (f.data[state], state+1)
 
-similar(f::CellField{T})  where {T} = CellField(f.metadata, f.grid)
-similar(f::FaceFieldX{T}) where {T} = FaceFieldX(f.metadata, f.grid)
-similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid)
-similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid)
-similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid)
+similar(f::CellField{T})  where {T} = CellField(f.metadata, f.grid, f.metadata.float_type)
+similar(f::FaceFieldX{T}) where {T} = FaceFieldX(f.metadata, f.grid, f.metadata.float_type)
+similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid, f.metadata.float_type)
+similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid, f.metadata.float_type)
+similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid, f.metadata.float_type)
 
 set!(u::Field, v) = @. u.data = v
 set!(u::Field, v::Field) = @. u.data = v.data
