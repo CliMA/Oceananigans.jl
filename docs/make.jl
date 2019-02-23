@@ -8,6 +8,7 @@ makedocs(
    doctest = true,
    clean   = true,
  checkdocs = :all,
+    assets = ["assets/invenia.css"],
     format = Documenter.HTML(prettyurls=true,
                              canonical="https://juliadocs.github.io/Documenter.jl/stable"),
    authors = "Ali Ramadhan",
