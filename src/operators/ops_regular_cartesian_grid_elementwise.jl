@@ -236,17 +236,17 @@ end
 #     end
 # end
 
-@inline function div(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, i, j, k)
-    (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
-end
+# @inline function div(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, i, j, k)
+#     (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
+# end
 
 @inline function div_f2c(fx, fy, fz, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     (δx_f2c(fx, Nx, i, j, k) / Δx) + (δy_f2c(fy, Ny, i, j, k) / Δy) + (δz_f2c(fz, Nz, i, j, k) / Δz)
 end
 
-@inline function div(g::RegularCartesianGrid, fx::CellField, fy::CellField, fz::CellField, i, j, k)
-    (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
-end
+# @inline function div(g::RegularCartesianGrid, fx::CellField, fy::CellField, fz::CellField, i, j, k)
+#     (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
+# end
 
 @inline function div_c2f(fx, fy, fz, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     (δx_c2f(fx, Nx, i, j, k) / Δx) + (δy_c2f(fy, Ny, i, j, k) / Δy) + (δz_c2f(fz, Nz, i, j, k) / Δz)
