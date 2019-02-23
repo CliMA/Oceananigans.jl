@@ -32,11 +32,15 @@ include:
     CI_IMAGE_TAG:     'plain'
     CI_JULIA_PROJECT: 'test/testenv'
 
-gpu:test:dev:
+cpu:test:v1.1:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+
+gpu:test:v1.1:
   extends: .gputest
   variables:
-    CI_VERSION_TAG: 'dev'
-  allow_failure: true
+    CI_VERSION_TAG: 'v1.1'
 
 cpu:test:dev:
   extends: .cputest
@@ -44,25 +48,11 @@ cpu:test:dev:
     CI_VERSION_TAG: 'dev'
   allow_failure: true
 
-gpu:test:v1.0:
+gpu:test:dev:
   extends: .gputest
   variables:
-    CI_VERSION_TAG: 'v1.0'
-
-cpu:test:v1.0:
-  extends: .cputest
-  variables:
-    CI_VERSION_TAG: 'v1.0'
-
-gpu:test:v1.1:
-  extends: .gputest
-  variables:
-    CI_VERSION_TAG: 'v1.1'
-
-cpu:test:v1.1:
-  extends: .cputest
-  variables:
-    CI_VERSION_TAG: 'v1.1'
+    CI_VERSION_TAG: 'dev'
+  allow_failure: true
 
 documentation:
   extends: .documentation
