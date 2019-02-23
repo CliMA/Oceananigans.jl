@@ -12,10 +12,6 @@ CellField
 FaceFieldX
 FaceFieldY
 FaceFieldZ
-CellField(grid::Grid)
-FaceFieldX(grid::Grid)
-FaceFieldY(grid::Grid)
-FaceFieldZ(grid::Grid)
 ```
 
 ## Operators

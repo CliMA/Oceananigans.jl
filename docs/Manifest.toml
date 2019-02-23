@@ -23,6 +23,12 @@ git-tree-sha1 = "a8c41ba3d0861240dbec942ee1d0f86c57c37c1c"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.21.5"
 
+[[DocumenterLaTeX]]
+deps = ["Documenter", "Test"]
+git-tree-sha1 = "653299370be20ff580bccd707dc9f360c0852d7f"
+uuid = "cd674d7a-5f81-5cf3-af33-235ef1834b99"
+version = "0.2.0"
+
 [[DocumenterMarkdown]]
 deps = ["Documenter", "Test"]
 git-tree-sha1 = "c302ba512683c3db462ee4eff718ae6fedcbf380"
