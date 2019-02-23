@@ -9,6 +9,14 @@ using Oceananigans:
 @inline incmod1(a, n) = a == n ? one(a) : a + 1
 @inline decmod1(a, n) = a == 1 ? n : a - 1
 
+
+# function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+#     end
+#     nothing
+# end
+
 """
     δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
 
@@ -17,18 +25,18 @@ western cells of a cell-centered field `f` and store it in a face-centered
 field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$x\$-direction.
 """
-# function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
-#     end
-#     nothing
-# end
-
 function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
     @views @. δxf.data[1,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
     @views @. δxf.data[2:end, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     nothing
 end
+
+# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 """
     δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
@@ -38,13 +46,6 @@ western faces of a face-centered field `f` and store it in a cell-centered
 field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary conditions in the \$x\$-direction.
 """
-# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
-#     end
-#     nothing
-# end
-
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
     @views @. δxf.data[1:end-1, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     @views @. δxf.data[end,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
@@ -77,6 +78,13 @@ function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
     nothing
 end
 
+# function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+#     end
+#     nothing
+# end
+
 """
     δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
 
@@ -85,18 +93,18 @@ southern cells of a cell-centered field `f` and store it in a face-centered
 field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
-# function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
-#     end
-#     nothing
-# end
-
 function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
     @views @. δyf.data[:,     1, :] = f.data[:,     1, :] - f.data[:,     end, :]
     @views @. δyf.data[:, 2:end, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     nothing
 end
+
+# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 """
     δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
@@ -106,13 +114,6 @@ southern faces of a face-centered field `f` and store it in a cell-centered
 field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
-# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
-#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
-#     end
-#     nothing
-# end
-
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
     @views @. δyf.data[:, 1:end-1, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     @views @. δyf.data[:, end,     :] = f.data[:, 1,     :] - f.data[:, end,     :]
@@ -145,14 +146,6 @@ function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
     nothing
 end
 
-"""
-    δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
-
-Compute the difference \$\\delta_z(f) = f_T - f_B\$ between the top and
-bottom cells of a cell-centered field `f` and store it in a face-centered
-field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
-with Neumann boundary condition in the \$z\$-direction.
-"""
 # function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
 #     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
 #         @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
@@ -161,20 +154,20 @@ with Neumann boundary condition in the \$z\$-direction.
 #     nothing
 # end
 
+"""
+    δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
+
+Compute the difference \$\\delta_z(f) = f_T - f_B\$ between the top and
+bottom cells of a cell-centered field `f` and store it in a face-centered
+field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
+with Neumann boundary condition in the \$z\$-direction.
+"""
 function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
     @views @. δzf.data[:, :, 2:end] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
     @views @. δzf.data[:, :,     1] = 0
     nothing
 end
 
-"""
-    δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
-
-Compute the difference \$\\delta_z(f) = f_T - f_B\$ between the top and
-bottom faces of a face-centered field `f` and store it in a cell-centered
-field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
-with Neumann boundary condition in the \$z\$-direction.
-"""
 # function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
 #     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
 #         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
@@ -190,6 +183,14 @@ with Neumann boundary condition in the \$z\$-direction.
 #     nothing
 # end
 
+"""
+    δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
+
+Compute the difference \$\\delta_z(f) = f_T - f_B\$ between the top and
+bottom faces of a face-centered field `f` and store it in a cell-centered
+field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
+with Neumann boundary condition in the \$z\$-direction.
+"""
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
     @views @. δzf.data[:, :, 1:end-1] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
     @views @. δzf.data[:, :,     end] = f.data[:, :,     end]
@@ -231,20 +232,20 @@ function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
     nothing
 end
 
-"""
-    avgx(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-
-Compute the average \$\\overline{\\;f\\;}^x = \\frac{f_E + f_W}{2}\$ between the
-eastern and western cells of a cell-centered field `f` and store it in a `g`
-face-centered field `favgx`, assuming both fields are defined on a regular
-Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
-"""
 # function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
 #     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
 #         @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
 #     end
 # end
 
+"""
+    avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+
+Compute the average \$\\overline{\\;f\\;}^x = \\frac{f_E + f_W}{2}\$ between the
+eastern and western cells of a cell-centered field `f` and store it in a `g`
+face-centered field `favgx`, assuming both fields are defined on a regular
+Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
+"""
 function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
     @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
     @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
@@ -357,7 +358,7 @@ end
 
 
 """
-    div!(g, fx, fy, fz, δfx, δfy, δfz, div)
+    div!(g, fx, fy, fz, div, tmp)
 
 Compute the divergence.
 """

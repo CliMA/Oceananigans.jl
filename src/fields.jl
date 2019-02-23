@@ -63,11 +63,10 @@ struct EdgeField{T<:AbstractArray} <: Field
 end
 
 """
-    CellField(grid::Grid)
+    CellField(metadata::ModelMetadata, grid::Grid, T)
 
 Construct a `CellField` whose values are defined at the center of a cell.
 """
-
 function CellField(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(T, size(grid))
@@ -83,7 +82,7 @@ end
 CellField(mm::ModelMetadata, g::Grid) = CellField(mm, g, eltype(g))
 
 """
-    FaceFieldX(grid::Grid)
+    FaceFieldX(metadata::ModelMetadata, grid::Grid, T)
 
 A `Field` whose values are defined on the x-face of a cell.
 """
@@ -99,7 +98,7 @@ function FaceFieldX(metadata::ModelMetadata, grid::Grid, T)
 end
 
 """
-    FaceFieldY(grid::Grid)
+    FaceFieldY(metadata::ModelMetadata, grid::Grid, T)
 
 A `Field` whose values are defined on the y-face of a cell.
 """
@@ -115,7 +114,7 @@ function FaceFieldY(metadata::ModelMetadata, grid::Grid, T)
 end
 
 """
-    FaceFieldZ(grid::Grid)
+    FaceFieldZ(metadata::ModelMetadata, grid::Grid, T)
 
 A `Field` whose values are defined on the z-face of a cell.
 """
@@ -130,6 +129,11 @@ function FaceFieldZ(metadata::ModelMetadata, grid::Grid, T)
     end
 end
 
+"""
+    FEdgeField(metadata::ModelMetadata, grid::Grid, T)
+
+A `Field` whose values are defined on the edges of a cell.
+"""
 function EdgeField(metadata::ModelMetadata, grid::Grid, T)
     if metadata.arch == :cpu
         data = zeros(eltype(grid), size(grid))

@@ -16,6 +16,7 @@ export
     FaceFieldX,
     FaceFieldY,
     FaceFieldZ,
+    EdgeField,
     set!,
 
     FieldSet,

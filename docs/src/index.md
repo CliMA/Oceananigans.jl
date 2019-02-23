@@ -1,43 +1,21 @@
-# Oceananigans.jl Documentation
+# Oceananigans.jl
 
-## Grids
-```@docs
-RegularCartesianGrid
-RegularCartesianGrid(metadata::ModelMetadata, N, L)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://mit-license.org/)
+[![Latest documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://ali-ramadhan.github.io/Oceananigans.jl/latest)
+[![Build Status](https://travis-ci.com/ali-ramadhan/Oceananigans.jl.svg?branch=master)](https://travis-ci.com/ali-ramadhan/Oceananigans.jl)
+[![Pipeline status](https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master)
+[![codecov](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl)
+[![Ask us anything](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/ali-ramadhan/Oceananigans.jl/issues)
+
+Oceananigans is a fast and friendly non-hydrostatic _n_-dimensional ocean model that generically runs on CPU and GPU architectures. It is written 100% in Julia.
+
+## Installation instructions
+```julia
+julia> ]
+(v1.1) pkg> add Oceananigans (it needs to be pulled into METADATA.jl first...)
 ```
 
-## Fields
-```@docs
-CellField
-FaceFieldX
-FaceFieldY
-FaceFieldZ
-```
-
-## Operators
-### Difference operators
-```@docs
-δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
-δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
-δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
-δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
-δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
-δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
-```
-
-### Averaging operators
-```@docs
-avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-```
-
-### Divergence operators
-Building on top of the differencing operators we can define operators that
-compute the divergence
-```math
-\nabla\cdotp\mathbf{f} = \frac{1}{V} \left[ \delta_x \left( A_x f_x \right)
-+ \delta_y\left( A_y f_y \right) + \delta_z\left( A_z f_z \right)\right]
-```
-
-<!-- ```@docs
-div!(g::RegularCartesianGrid, fx::FaceFieldX, fy::FaceFieldY, fz::FaceFieldZ, δfx::CellField, δfy::CellField, δfz::CellField, div::CellField)
-``` -->
+## Running your first example
+Instructions for running something like 3D deep convection?
+Maybe 2D deep convection so it's easy to generate a first visualization?

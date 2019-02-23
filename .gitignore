@@ -17,9 +17,8 @@ docs/site
 *.jlser
 
 # Plots
-*.png
 *.gif
 *.mp4
 
-# Jupyter notebook stuff
+# Jupyter Lab stuff and notebooks
 .ipynb_checkpoints
