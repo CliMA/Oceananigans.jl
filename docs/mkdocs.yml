@@ -2,7 +2,7 @@ site_name:        Oceananigans.jl
 repo_url:         https://github.com/ali-ramadhan/Oceananigans.jl
 site_description: Documentation for Oceananigans.jl
 site_author:      Ali Ramadhan
-theme:            readthedocs
+theme:            material
 
 extra_css:
   - assets/Documenter.css

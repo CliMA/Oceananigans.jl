@@ -16,7 +16,7 @@ makedocs(
 
 deploydocs(
     repo   = "github.com/ali-ramadhan/Oceananigans.jl.git",
-    deps   = Deps.pip("mkdocs", "pygments", "python-markdown-math"),
+    deps   = Deps.pip("mkdocs", "mkdocs-material", "pygments", "python-markdown-math"),
     make   = () -> run(`mkdocs build`),
     target = "site"
 )
