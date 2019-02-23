@@ -53,27 +53,3 @@ gpu:test:dev:
   variables:
     CI_VERSION_TAG: 'dev'
   allow_failure: true
-
-documentation:
-  extends: .documentation
-  dependencies:
-    - cpu:test:v1.1
-  variables:
-    CI_VERSION_TAG: 'v1.1'
-    CI_IMAGE_TAG: 'plain'
-  only:
-    - master
-    - staging
-    - trying
-
-pages:
-  dependencies:
-    - documentation
-  stage: deploy
-  script:
-    - mv docs/build public
-  artifacts:
-    paths:
-    - public
-  only:
-    - master
