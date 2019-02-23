@@ -67,14 +67,24 @@ export
     run_diagnostic,
     FieldSummary,
     Nusselt_wT,
-    Nusselt_Chi
+    Nusselt_Chi,
+
+    HAVE_CUDA,
+    hascuda
 
 using Statistics, Serialization, Printf
 using FFTW
 
-if Base.find_package("CuArrays") !== nothing
+const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
     using GPUifyLoops
+    true
+catch
+    false
+end
+
+macro hascuda(ex)
+    return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
 end
 
 abstract type Metadata end

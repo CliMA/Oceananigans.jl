@@ -1,4 +1,5 @@
 import FFTW
+using GPUifyLoops
 
 # Solve a 1D Poisson equation ∇²ϕ = d²ϕ/dx² = f(x) with periodic boundary
 # conditions and domain length L using the Fourier-spectral method. Solutions to
@@ -365,25 +366,25 @@ function dct_dim3_gpu!(g, f, dct_factors)
     # factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
     # f .*= cu(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
     f .*= dct_factors
-    
+
     nothing
 end
 
 function idct_dim3_gpu!(g, f, idct_bfactors)
     # Nx, Ny, Nz = size(f)
-    
+
     # bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
     # bfactors[1] *= 0.5
 
     # f .*= cu(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
-    
+
     f .*= idct_bfactors
     ifft!(f, 3)
-    
+
     # Both these steps have been merged into idct_permute! in the time-stepping loop.
     # f .= CuArray{eltype(f)}(reshape(permutedims(cat(f[:, :, 1:Int(g.Nz/2)], f[:, :, end:-1:Int(g.Nz/2)+1]; dims=4), (1, 2, 4, 3)), g.Nx, g.Ny, g.Nz))
     # @. f = real(f)  # Don't do it here. We'll do it when assigning real(ϕ) to pNHS to save some measly FLOPS.
-    
+
     nothing
 end
 
@@ -422,10 +423,10 @@ end
 function solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g::RegularCartesianGrid, f::CellField, ϕ::CellField, kx², ky², kz², dct_factors, idct_bfactors)
     dct_dim3_gpu!(g, f.data, dct_factors)
     @. f.data = real(f.data)
-    
+
     fft!(f.data, [1, 2])
 
-    @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(Val(:GPU), g.Nx, g.Ny, g.Nz, f.data, ϕ.data, kx², ky², kz²)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(Val(:GPU), g.Nx, g.Ny, g.Nz, f.data, ϕ.data, kx², ky², kz²)
     ϕ.data[1, 1, 1] = 0
 
     ifft!(ϕ.data, [1, 2])
