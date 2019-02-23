@@ -16,7 +16,7 @@ include:
                           Pkg.resolve();
                           Pkg.instantiate();
                           Pkg.build();
-                          include("test/runtests.jl");'
+                          Pkg.test(; coverage=true);'
 .gputest:
   extends: .projecttest
   variables:
