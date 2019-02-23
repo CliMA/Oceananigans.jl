@@ -16,7 +16,5 @@ makedocs(
 
 deploydocs(
     # deps   = Deps.pip("mkdocs", "python-markdown-math"),
-    repo   = "github.com/ali-ramadhan/Oceananigans.jl.git",
-    julia  = "1.1",
-    osname = "linux"
+    repo   = "github.com/ali-ramadhan/Oceananigans.jl.git"
 )
