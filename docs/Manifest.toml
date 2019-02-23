@@ -23,6 +23,12 @@ git-tree-sha1 = "a8c41ba3d0861240dbec942ee1d0f86c57c37c1c"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.21.5"
 
+[[DocumenterMarkdown]]
+deps = ["Documenter", "Test"]
+git-tree-sha1 = "c302ba512683c3db462ee4eff718ae6fedcbf380"
+uuid = "997ab1e6-3595-5248-9280-8efb232c3433"
+version = "0.2.0"
+
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"

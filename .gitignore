@@ -6,8 +6,9 @@ deps/deps.jl
 # Swap files.
 *.swp
 
-# Documenter.jl
+# Documenter.jl and MkDocs
 docs/build
+docs/site
 
 # Model output
 *.dat

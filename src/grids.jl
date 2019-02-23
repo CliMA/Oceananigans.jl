@@ -3,7 +3,7 @@ import Base: size, show
 using Oceananigans: ModelMetadata
 
 """
-    RegularCartesianGrid{T::AbstractFloat} <: Grid
+    RegularCartesianGrid
 
 A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
@@ -47,7 +47,7 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
 end
 
 """
-    RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+    RegularCartesianGrid(metadata::ModelMetadata, N, L)
 
 Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
 size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values

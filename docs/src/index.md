@@ -3,7 +3,7 @@
 ## Grids
 ```@docs
 RegularCartesianGrid
-RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+RegularCartesianGrid(metadata::ModelMetadata, N, L)
 ```
 
 ## Fields

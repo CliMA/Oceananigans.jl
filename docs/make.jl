@@ -1,20 +1,22 @@
-using Documenter
+push!(LOAD_PATH,"../src/")  # Add package to PATH.
+
+using Documenter, DocumenterMarkdown
 using Oceananigans, Oceananigans.Operators
 
-push!(LOAD_PATH,"../src/")
-
 makedocs(
-   modules = [Oceananigans],
+   modules = [Oceananigans, Oceananigans.Operators],
    doctest = true,
    clean   = true,
  checkdocs = :all,
-    format = :html,
+    format = DocumenterMarkdown.Markdown(),
    authors = "Ali Ramadhan",
   sitename = "Oceananigans.jl",
      pages = Any["Home" => "index.md"]
 )
 
 deploydocs(
-    deps   = Deps.pip("mkdocs", "python-markdown-math"),
-    repo   = "github.com/ali-ramadhan/Oceananigans.jl.git"
+    repo   = "github.com/ali-ramadhan/Oceananigans.jl.git",
+    deps   = Deps.pip("mkdocs", "pygments", "python-markdown-math"),
+    make   = () -> run(`mkdocs build`),
+    target = "site"
 )
