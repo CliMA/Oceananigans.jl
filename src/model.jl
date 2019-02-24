@@ -13,7 +13,7 @@ mutable struct Model
     forcings::ForcingFields
     stepper_tmp::StepperTemporaryFields
     operator_tmp::OperatorTemporaryFields
-    ssp  # ::SpectralSolverParameters (for arch==:cpu only...)
+    ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
     clock::Clock
     output_writers::Array{OutputWriter,1}
     diagnostics::Array{Diagnostic,1}
@@ -48,7 +48,8 @@ function Model(N, L, arch=:cpu, float_type=Float64)
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
         ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
-        ssp = nothing
+        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
+        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1; verbose=true)
     end
 
     # Setting some initial configuration.

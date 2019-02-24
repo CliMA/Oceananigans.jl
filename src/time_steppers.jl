@@ -244,22 +244,22 @@ function time_step_kernel!(model::Model, Nt, Δt)
     Tx, Ty = 16, 16  # Threads per block
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
 
-    kx² = CuArray{Float64}(undef, Nx)
-    ky² = CuArray{Float64}(undef, Ny)
-    kz² = CuArray{Float64}(undef, Nz)
-
-    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
-    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
-    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
-
-    # Exponential factors required to calculate the DCT on the GPU.
-    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
-    dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
-
-    # "Backward" exponential factors required to calculate the IDCT on the GPU.
-    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
-    bfactors[1] *= 0.5
-    idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    # kx² = CuArray{Float64}(undef, Nx)
+    # ky² = CuArray{Float64}(undef, Ny)
+    # kz² = CuArray{Float64}(undef, Nz)
+    #
+    # for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
+    # for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
+    # for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+    #
+    # # Exponential factors required to calculate the DCT on the GPU.
+    # factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
+    # dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    #
+    # # "Backward" exponential factors required to calculate the IDCT on the GPU.
+    # bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    # bfactors[1] *= 0.5
+    # idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
@@ -276,7 +276,8 @@ function time_step_kernel!(model::Model, Nt, Δt)
 
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part3!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
-        solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz², dct_factors, idct_bfactors)
+        # solve_poisson_3d_ppn_gpu!(Tx, Ty, Bx, By, Bz, g, RHS, ϕ, kx², ky², kz², dct_factors, idct_bfactors)
+        solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, model.ssp, g, RHS, ϕ)
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
 
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) time_step_kernel_part4!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
@@ -301,7 +302,7 @@ function time_step_kernel!(model::Model, Nt, Δt)
         end
 
         t2 = time_ns();
-        print(prettytime(t2 - t1))
+        println(prettytime(t2 - t1))
     end
 end
 
@@ -366,7 +367,7 @@ function time_step_kernel_part3!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # Calculate divergence of thApplying permutation which is the first step in the DCT.
+                # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation which is the first step in the DCT.
                 if CUDAnative.ffs(k) == 1  # isodd(k)
                     @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                 else

@@ -39,6 +39,7 @@ export
     time_step_kernel!,
 
     SpectralSolverParameters,
+    SpectralSolverParametersGPU,
     solve_poisson_1d_pbc,
     solve_poisson_1d_nbc,
     solve_poisson_2d_pbc,
@@ -49,6 +50,7 @@ export
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
     solve_poisson_3d_ppn_gpu!,
+    solve_poisson_3d_ppn_gpu_planned!,
 
     ModelMetadata,
     _ModelMetadata,
