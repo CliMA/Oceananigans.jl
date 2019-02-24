@@ -1,6 +1,9 @@
 module Oceananigans
 
 export
+    HAVE_CUDA,
+    hascuda,
+
     ConstantsCollection,
 
     PlanetaryConstants,
@@ -72,8 +75,7 @@ export
     Nusselt_wT,
     Nusselt_Chi,
 
-    HAVE_CUDA,
-    hascuda
+    prettytime
 
 using Statistics, Serialization, Printf
 using FFTW
@@ -118,5 +120,7 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
+
+include("utils.jl")
 
 end # module
