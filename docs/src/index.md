@@ -17,5 +17,7 @@ julia> ]
 ```
 
 ## Running your first example
-Instructions for running something like 3D deep convection?
-Maybe 2D deep convection so it's easy to generate a first visualization?
+### CPU example
+We can have a simple 2D example running on the CPU with a simple visualization. Deep convection?
+### GPU example
+A beefier more impressive 3D example?
