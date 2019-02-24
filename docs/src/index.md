@@ -11,13 +11,30 @@
 Oceananigans is a fast and friendly non-hydrostatic _n_-dimensional ocean model that generically runs on CPU and GPU architectures. It is written 100% in Julia.
 
 ## Installation instructions
+
+
+Oceananigans is still not an official Julia package. But you can install it using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
 ```julia
-julia> ]
-(v1.1) pkg> add Oceananigans (it needs to be pulled into METADATA.jl first...)
+julia>]
+(v1.1) pkg> develop
 ```
+**Note**: We recommend using Julia 1.1 with Oceananigans.
 
 ## Running your first example
+Let's initialize a
+```julia
+using Oceananigans
+Nx, Ny, Nz = 100, 100, 50      # Number of grid points in each dimension.
+Lx, Ly, Lz = 2000, 2000, 1000  # Domain size (meters).
+Nt, Δt = 10, 60                # Number of time steps, time step size (seconds).
+
+model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+time_step!(model, Nt, Δt)
+```
+You just simulated a 3D patch of ocean for 10 minutes of model time, it's that easy!
+
 ### CPU example
-We can have a simple 2D example running on the CPU with a simple visualization. Deep convection?
+Let's add something to make the ocean dynamics a bit more interesting.
+
 ### GPU example
-A beefier more impressive 3D example?
+If you have access to an Nvidia CUDA-enabled graphics processing unit (GPU) you can run ocean models on it.
