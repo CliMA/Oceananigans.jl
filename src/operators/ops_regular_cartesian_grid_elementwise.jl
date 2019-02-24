@@ -6,8 +6,8 @@ using Oceananigans:
 
 # Increment and decrement integer a with periodic wrapping. So if n == 10 then
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
-@inline incmod1(a, n) = a == n ? one(a) : a + 1
-@inline decmod1(a, n) = a == 1 ? n : a - 1
+@inline incmod1(a, n) = ifelse(a==n, 1, a + 1)
+@inline decmod1(a, n) = ifelse(a==1, n, a - 1)
 
 @inline δx_c2f(f, Nx, i, j, k) = @inbounds f[i, j, k] - f[decmod1(i, Nx), j, k]
 @inline δx_f2c(f, Nx, i, j, k) = @inbounds f[incmod1(i, Nx), j, k] - f[i, j, k]
