@@ -15,6 +15,7 @@ makedocs(
    authors = "Ali Ramadhan, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = ["Home" => "index.md",
+              "Examples" => "examples.md",
               "Numerical algorithm" => "algorithm.md",
               "Internals" => ["internal/grids.md",
                               "internal/fields.md",
