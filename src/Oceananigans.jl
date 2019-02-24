@@ -63,9 +63,9 @@ export
     Model,
 
     OutputWriter,
-    SavedFields,
     Checkpointer,
-    FieldWriter,
+    restore_from_checkpoint,
+    BinaryFieldWriter,
     write_output,
     read_output,
 

@@ -1,4 +1,4 @@
-using Serialization
+import JLD
 
 struct Checkpointer <: OutputWriter
     dir::AbstractString
@@ -7,16 +7,47 @@ struct Checkpointer <: OutputWriter
 end
 
 function write_output(model::Model, chk::Checkpointer)
-    filename = chk.filename_prefix * "_model_checkpoint_" * lpad(model.clock.time, 12, "0") * ".jlser"
+    filename = chk.filename_prefix * "_model_checkpoint_" * lpad(model.clock.time_step, 9, "0") * ".jld"
     filepath = joinpath(chk.dir, filename)
 
+    # Do not include the spectral solver parameters. We want to avoid serializing
+    # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
+    # seems like a tricky business in general.
+    model.ssp = nothing
+
     println("[Checkpointer] Serializing model to disk: $filepath")
-    serialize(filepath, model)
+    f = JLD.jldopen(filepath, "w", compress=true)
+    JLD.@write f model
+    close(f)
+
+    # Reconstruct SpectralSolverParameters struct with FFT plans.
+    metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
+    if metadata.arch == :cpu
+        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
+        ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+    elseif metadata.arch == :gpu
+        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
+        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
+    end
 end
 
-function read_output(filepath)
+function restore_from_checkpoint(filepath)
     println("Deserializing model from disk: $filepath")
-    deserialize(filepath)
+    f = JLD.jldopen(filepath, "r")
+    model = read(f, "model");
+    close(f)
+
+    # Reconstruct SpectralSolverParameters struct with FFT plans.
+    metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
+    if metadata.arch == :cpu
+        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
+        ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+    elseif metadata.arch == :gpu
+        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
+        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
+    end
+
+    return model
 end
 
 struct BinaryFieldWriter <: OutputWriter
