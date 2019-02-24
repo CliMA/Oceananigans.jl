@@ -450,11 +450,11 @@ function f2ϕ!(::Val{Dev}, Nx, Ny, Nz, f, ϕ, kx², ky², kz²) where Dev
 end
 
 struct SpectralSolverParametersGPU{T<:AbstractArray}
-    kx²::T
-    ky²::T
-    kz²::T
-    dct_factors::T
-    idct_factors::T
+    kx²
+    ky²
+    kz²
+    dct_factors
+    idct_bfactors
     FFT_xy!
     FFT_z!
     IFFT_xy!
@@ -462,22 +462,22 @@ struct SpectralSolverParametersGPU{T<:AbstractArray}
 end
 
 function SpectralSolverParametersGPU(g::Grid, exfield::CellField)
-    kx² = CuArray{Float64}(undef, Nx)
-    ky² = CuArray{Float64}(undef, Ny)
-    kz² = CuArray{Float64}(undef, Nz)
+    kx² = CuArray{Float64}(undef, g.Nx)
+    ky² = CuArray{Float64}(undef, g.Ny)
+    kz² = CuArray{Float64}(undef, g.Nz)
 
     for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
     for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
     for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
 
     # Exponential factors required to calculate the DCT on the GPU.
-    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2*Nz)))
-    dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, Nz), Nx, Ny, 1))
+    factors = 2 * exp.(collect(-1im*π*(0:g.Nz-1) / (2*g.Nz)))
+    dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, g.Nz), g.Nx, g.Ny, 1))
 
     # "Backward" exponential factors required to calculate the IDCT on the GPU.
-    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2*Nz)))
+    bfactors = exp.(collect(1im*π*(0:g.Nz-1) / (2*g.Nz)))
     bfactors[1] *= 0.5
-    idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, Nz), Nx, Ny, 1))
+    idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, g.Nz), g.Nx, g.Ny, 1))
 
     print("Creating CuFFT plans...\n")
     print("FFT_xy!:  "); @time FFT_xy!  = plan_fft!(exfield.data, [1, 2])
@@ -485,13 +485,13 @@ function SpectralSolverParametersGPU(g::Grid, exfield::CellField)
     print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
     print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
 
-    SpectralSolverParameters{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
+    SpectralSolverParametersGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
 
 function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, ssp::SpectralSolverParametersGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     # Calculate DCTᶻ(f) in place using the FFT.
     ssp.FFT_z! * f.data
-    f .*= ssp.dct_factors
+    f.data .*= ssp.dct_factors
     @. f.data = real(f.data)
 
     ssp.FFT_xy! * f.data  # Calculate FFTˣʸ(f) in place.

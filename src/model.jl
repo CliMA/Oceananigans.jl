@@ -49,7 +49,7 @@ function Model(N, L, arch=:cpu, float_type=Float64)
         ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1; verbose=true)
+        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
     end
 
     # Setting some initial configuration.
