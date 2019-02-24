@@ -20,8 +20,8 @@ julia>]
 ```
 **Note**: We recommend using Julia 1.1 with Oceananigans.
 
-## Running your first example
-Let's initialize a
+## Running your first model
+Let's initialize a 3D ocean with $100\times100\times50$ grid points on a $2\times2\times1$ km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
 ```julia
 using Oceananigans
 Nx, Ny, Nz = 100, 100, 50      # Number of grid points in each dimension.
@@ -31,7 +31,7 @@ Nt, Δt = 10, 60                # Number of time steps, time step size (seconds)
 model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
 time_step!(model, Nt, Δt)
 ```
-You just simulated a 3D patch of ocean for 10 minutes of model time, it's that easy!
+You just simulated a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and plot the output.
 
 ### CPU example
 Let's add something to make the ocean dynamics a bit more interesting.
