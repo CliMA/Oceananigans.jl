@@ -19,7 +19,7 @@ function read_output(filepath)
     deserialize(filepath)
 end
 
-struct FieldWriter <: OutputWriter
+struct BinaryFieldWriter <: OutputWriter
     dir::AbstractString
     filename_prefix::AbstractString
     output_frequency::Int
@@ -27,18 +27,22 @@ struct FieldWriter <: OutputWriter
     field_names::Array{String,1}
 end
 
-function write_output(model::Model, fw::FieldWriter)
+function write_output(model::Model, fw::BinaryFieldWriter)
     for (field, field_name) in zip(fw.fields, fw.field_names)
-        filename = fw.filename_prefix * "_" * field_name * "_" * lpad(model.clock.time, 12, "0") * ".dat"
+        filename = fw.filename_prefix * "_" * field_name * "_" * lpad(model.clock.time_step, 9, "0") * ".dat"
         filepath = joinpath(fw.dir, filename)
 
         println("[FieldWriter] Writing $field_name to disk: $filepath")
-        write(filepath, Array(field.data))
+        if model.metadata == :cpu
+            write(filepath, field.data)
+        elseif model.metadata == :gpu
+            write(filepath, Array(field.data))
+        end
     end
 end
 
-function read_output(model::Model, fw::FieldWriter, field_name, time)
-    filename = fw.filename_prefix * "_" * field_name * "_" * lpad(time, 12, "0") * ".dat"
+function read_output(model::Model, fw::BinaryFieldWriter, field_name, time)
+    filename = fw.filename_prefix * "_" * field_name * "_" * lpad(time_step, 9, "0") * ".dat"
     filepath = joinpath(fw.dir, filename)
 
     fio = open(filepath, "r")
