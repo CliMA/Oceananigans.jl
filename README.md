@@ -6,6 +6,7 @@
 [![Travis-CI build status](https://travis-ci.com/ali-ramadhan/Oceananigans.jl.svg?branch=master)](https://travis-ci.com/ali-ramadhan/Oceananigans.jl)
 [![GitLab CI GPU pipeline status](https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master)
 [![Appveyor build status](https://ci.appveyor.com/api/projects/status/jd7kctgj3c0mt957?svg=true)](https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl)
+[![Coveralls](https://coveralls.io/repos/github/ali-ramadhan/Oceananigans.jl/badge.svg?branch=master)](https://coveralls.io/github/ali-ramadhan/Oceananigans.jl?branch=master)
 [![codecov](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ali-ramadhan/Oceananigans.jl)
 [![Ask us anything](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/ali-ramadhan/Oceananigans.jl/issues)
 
