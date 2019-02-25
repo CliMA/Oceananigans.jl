@@ -1,3 +1,4 @@
+# Julia stuff
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
@@ -23,4 +24,5 @@ docs/site
 *.mp4
 
 # Jupyter Lab stuff and notebooks
+*.ipynb
 .ipynb_checkpoints
