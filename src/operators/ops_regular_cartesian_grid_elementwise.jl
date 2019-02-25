@@ -85,6 +85,29 @@ end
     end
 end
 
+function avgx_4(f, Nx, i, j, k)
+    @inbounds (f[i, j, k] + f[decmod1(i, Nx), j, k] -
+		                   (f[incmod1(i, Nx), j, k] - f[i, j, k] -
+                            f[decmod1(i, Nx), j, k] + f[decmod2(i, Nx), j, k]) / 6.0) * 0.5
+end
+
+function avgy_4(f, Ny, i, j, k)
+    @inbounds (f[i, j, k] + f[i, decmod1(j, Ny), k] -
+		                   (f[i, incmod1(j, Ny), k] - f[i, j, k] -
+                            f[i, decmod1(j, Ny), k] + f[i, decmod2(j, Ny), k]) / 6.0) * 0.5
+end
+
+function avgz_4(f, Nz, i, j, k)
+	if k == 1
+		@inbounds return f[i, j, 1]
+	else
+		@inbounds return (f[i, j, k] + f[i, j, max(1, k-1)] -
+		                              (f[i, j, min(Nz, k+1)] - f[i, j, k] -
+							           f[i, j, max(1, k-1)] + f[i, j, max(1, k-2)]) / 6.0 ) * 0.5
+    end
+    nothing
+end
+
 @inline function div_f2c(fx, fy, fz, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     (δx_f2c(fx, Nx, i, j, k) / Δx) + (δy_f2c(fy, Ny, i, j, k) / Δy) + (δz_f2c(fz, Nz, i, j, k) / Δz)
 end

@@ -9,6 +9,7 @@ export
     avgz!,
     div!,
     div_flux!,
+	div_flux_4!,
     u∇u!,
     u∇v!,
     u∇w!,
