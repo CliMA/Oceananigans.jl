@@ -12,9 +12,11 @@ docs/site
 
 # Model output
 *.dat
+*.nc
 
 # Checkpointer model serialization
 *.jlser
+*.jld
 
 # Plots
 *.gif

@@ -66,6 +66,7 @@ export
     Checkpointer,
     restore_from_checkpoint,
     BinaryFieldWriter,
+    NetCDFFieldWriter,
     write_output,
     read_output,
 
@@ -77,8 +78,8 @@ export
 
     prettytime
 
-using Statistics, Serialization, Printf
-using FFTW
+using Statistics, Printf
+using FFTW, JLD, NetCDF
 
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays

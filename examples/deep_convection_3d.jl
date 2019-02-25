@@ -5,17 +5,16 @@ using Oceananigans
 function deep_convection_3d()
     Nx, Ny, Nz = 100, 100, 50
     Lx, Ly, Lz = 2000, 2000, 1000
-    Nt, Δt = 5000, 20
+    Nt, Δt = 500, 20
 
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
     impose_initial_conditions!(model)
 
-    field_writer = FieldWriter(".", "deep_convection_3d", 10,
-                               [model.tracers.T], ["T"])
-    push!(model.output_writers, field_writer)
+    nc_writer = NetCDFFieldWriter(".", "deep_convection_3d", 50)
+    push!(model.output_writers, nc_writer)
 
     time_step!(model; Nt=Nt, Δt=Δt)
-    make_temperature_movies(model, field_writer)
+    # make_temperature_movies(model, field_writer)
 end
 
 function impose_cooling_disk!(model::Model)
@@ -71,33 +70,33 @@ function impose_initial_conditions!(model::Model)
     nothing
 end
 
-function make_temperature_movies(model::Model, fw::FieldWriter)
-    n_frames = Int(model.clock.time_step / fw.output_frequency)
-
-    xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC
-    Δt = 20
-
-    print("Creating temperature movie... ($n_frames frames)\n")
-
-    Plots.gr()
-    default(dpi=300)
-    movie = @animate for tidx in 0:n_frames
-        print("\rframe = $tidx / $n_frames   ")
-        temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
-        Plots.heatmap(xC, zC, rotl90(temperature[:, 50, :]) .- 293.15, color=:balance,
-                      clims=(-0.1, 0),
-                      title="T @ t=$(tidx*fw.output_frequency*Δt)")
-    end
-
-    mp4(movie, "deep_convection_3d_$(round(Int, time())).mp4", fps = 30)
-
-    print("Creating surface temperature movie... ($n_frames frames)\n")
-    movie = @animate for tidx in 0:n_frames
-        print("\rframe = $tidx / $n_frames   ")
-        temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
-        Plots.heatmap(xC, yC, temperature[:, :, 1] .- 293.15, color=:balance,
-                      clims=(-0.1, 0),
-                      title="T @ t=$(tidx*fw.output_frequency*Δt)")
-    end
-    mp4(movie, "deep_convection_3d_$(round(Int, time())).mp4", fps = 30)
-end
+# function make_temperature_movies(model::Model, fw::FieldWriter)
+#     n_frames = Int(model.clock.time_step / fw.output_frequency)
+#
+#     xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC
+#     Δt = 20
+#
+#     print("Creating temperature movie... ($n_frames frames)\n")
+#
+#     Plots.gr()
+#     default(dpi=300)
+#     movie = @animate for tidx in 0:n_frames
+#         print("\rframe = $tidx / $n_frames   ")
+#         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
+#         Plots.heatmap(xC, zC, rotl90(temperature[:, 50, :]) .- 293.15, color=:balance,
+#                       clims=(-0.1, 0),
+#                       title="T @ t=$(tidx*fw.output_frequency*Δt)")
+#     end
+#
+#     mp4(movie, "deep_convection_3d_$(round(Int, time())).mp4", fps = 30)
+#
+#     print("Creating surface temperature movie... ($n_frames frames)\n")
+#     movie = @animate for tidx in 0:n_frames
+#         print("\rframe = $tidx / $n_frames   ")
+#         temperature = read_output(model, fw, "T", tidx*fw.output_frequency*Δt)
+#         Plots.heatmap(xC, yC, temperature[:, :, 1] .- 293.15, color=:balance,
+#                       clims=(-0.1, 0),
+#                       title="T @ t=$(tidx*fw.output_frequency*Δt)")
+#     end
+#     mp4(movie, "deep_convection_3d_$(round(Int, time())).mp4", fps = 30)
+# end

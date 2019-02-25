@@ -81,3 +81,49 @@ function read_output(model::Model, fw::BinaryFieldWriter, field_name, time)
     read!(fio, arr)
     return arr
 end
+
+struct NetCDFFieldWriter <: OutputWriter
+    dir::AbstractString
+    filename_prefix::AbstractString
+    output_frequency::Int
+end
+
+function write_output(model::Model, fw::NetCDFFieldWriter)
+    xC = collect(model.grid.xC)
+    yC = collect(model.grid.yC)
+    zC = collect(model.grid.zC)
+    xF = collect(model.grid.xF)
+    yF = collect(model.grid.yF)
+    zF = collect(model.grid.zF)
+
+    xC_attr = Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m")
+    yC_attr = Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m")
+    zC_attr = Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m")
+    xF_attr = Dict("longname" => "Locations of the cell faces in the x-direction.", "units" => "m")
+    yF_attr = Dict("longname" => "Locations of the cell faces in the y-direction.", "units" => "m")
+    zF_attr = Dict("longname" => "Locations of the cell faces in the z-direction.", "units" => "m")
+
+    u_attr = Dict("longname" => "Velocity in the x-direction", "units" => "m/s")
+    v_attr = Dict("longname" => "Velocity in the y-direction", "units" => "m/s")
+    w_attr = Dict("longname" => "Velocity in the z-direction", "units" => "m/s")
+    T_attr = Dict("longname" => "Temperature", "units" => "K")
+
+    nc_filename = fw.filename_prefix * "_" * lpad(model.clock.time_step, 9, "0") * ".nc"
+    nc_filepath = joinpath(fw.dir, nc_filename)
+
+    isfile(nc_filepath) && rm(nc_filepath)
+
+    nccreate(nc_filepath, "u", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=u_attr, compress=5)
+    ncwrite(model.velocities.u.data, nc_filepath, "u")
+
+    nccreate(nc_filepath, "v", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=v_attr, compress=5)
+    ncwrite(model.velocities.v.data, nc_filepath, "v")
+
+    nccreate(nc_filepath, "w", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=w_attr, compress=5)
+    ncwrite(model.velocities.w.data, nc_filepath, "w")
+
+    nccreate(nc_filepath, "T", "xC", xC, xC_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=T_attr, compress=5)
+    ncwrite(model.tracers.T.data, nc_filepath, "T")
+
+    ncclose(nc_filename)
+end
