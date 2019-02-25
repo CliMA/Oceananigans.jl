@@ -9,8 +9,8 @@ has the correct size.
 julia> test_init_field((10, 10, 5), (10, 10, 10), CellField)
 ```
 """
-function test_init_field(g, ftf)
-    f = ftf(g)
+function test_init_field(mm::ModelMetadata, g::Grid, field_type)
+    f = field_type(mm, g, mm.float_type)
     size(f) == size(g)
 end
 
@@ -26,18 +26,18 @@ function.
 julia> test_init_field((10, 10, 5), (10, 10, 10), FaceFieldX, 1//7)
 ```
 """
-function test_set_field(g, ftf, val)
-    f = ftf(g)
+function test_set_field(mm::ModelMetadata, g::Grid, field_type, val::Number)
+    f = field_type(mm, g, mm.float_type)
     set!(f, val)
     f.data == val * ones(size(f))
 end
 
-function test_add_field(g, ftf, val1, val2)
-    f1 = ftf(g)
-    f2 = ftf(g)
+function test_add_field(mm::ModelMetadata, g::Grid, field_type, val1::Number, val2::Number)
+    f1 = field_type(mm, g, mm.float_type)
+    f2 = field_type(mm, g, mm.float_type)
     set!(f1, val1)
     set!(f2, val2)
     f3 = f1 + f2
-    fans = (val1 + val2) * ones(size(f1))
-    f3.data == fans
+    f_ans = (val1 + val2) * ones(size(f1))
+    f3.data == f_ans
 end

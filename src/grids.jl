@@ -1,7 +1,9 @@
 import Base: size, show
 
+using Oceananigans: ModelMetadata
+
 """
-    RegularCartesianGrid{T::AbstractFloat} <: Grid
+    RegularCartesianGrid
 
 A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
@@ -45,7 +47,7 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
 end
 
 """
-    RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
+    RegularCartesianGrid(metadata::ModelMetadata, N, L)
 
 Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
 size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
@@ -56,9 +58,15 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
-    @assert dim == 2 || dim == 3 "Only 2D or 3D grids are supported right now."
-    @assert length(N) == 3 && length(L) == 3  "N, L must have all three dimensions to specify which dimensions are used."
+function RegularCartesianGrid(metadata::ModelMetadata, N, L)
+    @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
+    @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
+
+    # Count the number of dimensions with 1 grid point, i.e. the number of flat
+    # dimensions, and use it to determine the dimension of the model.
+    num_flat_dims = count(i->(i==1), N)
+    dim = 3 - num_flat_dims
+    @assert 1 <= dim <= 3 "Only 1D, 2D, and 3D grids are supported right now."
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
@@ -84,7 +92,7 @@ function RegularCartesianGrid(N, L; dim=3, FloatType=Float64)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{FloatType}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+    RegularCartesianGrid{metadata.float_type}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                             Az, V, xC, yC, zC, xF, yF, zF)
 end
 

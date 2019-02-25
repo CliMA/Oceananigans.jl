@@ -1,3 +1,4 @@
+# Julia stuff
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
@@ -6,9 +7,22 @@ deps/deps.jl
 # Swap files.
 *.swp
 
-# Documenter.jl
+# Documenter.jl and MkDocs
 docs/build
+docs/site
 
-# Model output, plots, or debugging
+# Model output
+*.dat
+*.nc
+
+# Checkpointer model serialization
+*.jlser
+*.jld
+
+# Plots
 *.gif
 *.mp4
+
+# Jupyter Lab stuff and notebooks
+*.ipynb
+.ipynb_checkpoints

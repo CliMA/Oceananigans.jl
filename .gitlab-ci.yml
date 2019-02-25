@@ -1,0 +1,55 @@
+include:
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v3/common.yml'
+
+.projecttest:
+  extends: .test
+  only:
+    - master
+    - staging
+    - trying
+  script:
+    - julia -e 'using InteractiveUtils;
+                versioninfo()'
+    - mkdir $JULIA_DEPOT_PATH
+    - julia --project=$CI_JULIA_PROJECT -e '
+                          using Pkg;
+                          Pkg.activate(".");
+                          Pkg.resolve();
+                          Pkg.instantiate();
+                          Pkg.build();
+                          Pkg.test(; coverage=true);'
+.gputest:
+  extends: .projecttest
+  variables:
+    CI_IMAGE_TAG:     'cuda'
+    CI_JULIA_PROJECT: 'test/gpuenv'
+  tags:
+    - cuda
+
+.cputest:
+  extends: .projecttest
+  variables:
+    CI_IMAGE_TAG:     'plain'
+    CI_JULIA_PROJECT: 'test/testenv'
+
+cpu:test:v1.1:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+
+gpu:test:v1.1:
+  extends: .gputest
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+
+cpu:test:dev:
+  extends: .cputest
+  variables:
+    CI_VERSION_TAG: 'dev'
+  allow_failure: true
+
+gpu:test:dev:
+  extends: .gputest
+  variables:
+    CI_VERSION_TAG: 'dev'
+  allow_failure: true

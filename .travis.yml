@@ -5,7 +5,7 @@ os:
   - osx
 
 julia:
-  - 1.0
+  - 1.1
   - nightly
 
 matrix:
@@ -16,12 +16,14 @@ notifications:
   email: true
 
 after_success:
+  - julia -e 'import Pkg; cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   - julia -e 'import Pkg; cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+
 
 jobs:
   include:
     - stage: "Documentation"
-      julia: 1.0
+      julia: 1.1
       os: linux
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.add("Documenter");

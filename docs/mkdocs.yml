@@ -1,9 +1,8 @@
 site_name:        Oceananigans.jl
 repo_url:         https://github.com/ali-ramadhan/Oceananigans.jl
 site_description: Documentation for Oceananigans.jl
-site_author:      ali-ramadhan
-
-theme: readthedocs
+site_author:      Ali Ramadhan
+theme:            material
 
 extra_css:
   - assets/Documenter.css
@@ -13,6 +12,7 @@ extra_javascript:
   - assets/mathjaxhelper.js
 
 markdown_extensions:
+  - codehilite
   - extra
   - tables
   - fenced_code
@@ -20,5 +20,5 @@ markdown_extensions:
 
 docs_dir: 'build'
 
-pages:
+nav:
   - Home: index.md

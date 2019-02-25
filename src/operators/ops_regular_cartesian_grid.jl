@@ -8,8 +8,14 @@ using Oceananigans:
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.
 @inline incmod1(a, n) = a == n ? one(a) : a + 1
 @inline decmod1(a, n) = a == 1 ? n : a - 1
-@inline incmod2(a, n) = incmod1(incmod1(a, n), n)
-@inline decmod2(a, n) = decmod1(decmod1(a, n), n)
+
+
+# function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+#     end
+#     nothing
+# end
 
 """
     δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
@@ -20,11 +26,17 @@ field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$x\$-direction.
 """
 function δx!(g::RegularCartesianGrid, f::CellField, δxf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
-    end
+    @views @. δxf.data[1,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
+    @views @. δxf.data[2:end, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     nothing
 end
+
+# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 """
     δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
@@ -35,25 +47,43 @@ field `δxf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary conditions in the \$x\$-direction.
 """
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
-    end
+    @views @. δxf.data[1:end-1, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
+    @views @. δxf.data[end,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
     nothing
 end
+
+# function δx!(g::RegularCartesianGrid, f::EdgeField, δxf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 function δx!(g::RegularCartesianGrid, f::EdgeField, δxf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k]
-    end
+    @views @. δxf.data[1:end-1, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
+    @views @. δxf.data[end,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
     nothing
 end
 
+# function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
+#     end
+#     nothing
+# end
+
 function δx!(g::RegularCartesianGrid, f::FaceField, δxf::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δxf.data[i, j, k] =  f.data[i, j, k] - f.data[decmod1(i, g.Nx), j, k]
-    end
+    @views @. δxf.data[1,     :, :] = f.data[1,     :, :] - f.data[end,     :, :]
+    @views @. δxf.data[2:end, :, :] = f.data[2:end, :, :] - f.data[1:end-1, :, :]
     nothing
 end
+
+# function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+#     end
+#     nothing
+# end
 
 """
     δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
@@ -64,11 +94,17 @@ field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
 function δy!(g::RegularCartesianGrid, f::CellField, δyf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
-    end
+    @views @. δyf.data[:,     1, :] = f.data[:,     1, :] - f.data[:,     end, :]
+    @views @. δyf.data[:, 2:end, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     nothing
 end
+
+# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 """
     δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
@@ -79,25 +115,44 @@ field `δyf`, assuming both fields are defined on a regular Cartesian grid `g`
 with periodic boundary condition in the \$y\$-direction.
 """
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
-    end
+    @views @. δyf.data[:, 1:end-1, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
+    @views @. δyf.data[:, end,     :] = f.data[:, 1,     :] - f.data[:, end,     :]
     nothing
 end
+
+# function δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
+#     end
+#     nothing
+# end
 
 function δy!(g::RegularCartesianGrid, f::EdgeField, δyf::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k]
-    end
+    @views @. δyf.data[:, 1:end-1, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
+    @views @. δyf.data[:, end,     :] = f.data[:, 1,     :] - f.data[:, end,     :]
     nothing
 end
 
+# function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
+#     end
+#     nothing
+# end
+
 function δy!(g::RegularCartesianGrid, f::FaceField, δyf::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δyf.data[i, j, k] =  f.data[i, j, k] - f.data[i, decmod1(j, g.Ny), k]
-    end
+    @views @. δyf.data[:,     1, :] = f.data[:,     1, :] - f.data[:,     end, :]
+    @views @. δyf.data[:, 2:end, :] = f.data[:, 2:end, :] - f.data[:, 1:end-1, :]
     nothing
 end
+
+# function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+#     end
+#     @. δzf.data[:, :, 1] = 0
+#     nothing
+# end
 
 """
     δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
@@ -108,12 +163,25 @@ field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
 with Neumann boundary condition in the \$z\$-direction.
 """
 function δz!(g::RegularCartesianGrid, f::CellField, δzf::FaceField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
-    end
-    @. δzf.data[:, :, 1] = 0
+    @views @. δzf.data[:, :, 2:end] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     1] = 0
     nothing
 end
+
+# function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
+#     end
+#     for j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
+#     end
+#
+#     # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
+#     # Nx, Ny, Nz = 100, 100, 100.
+#     # @. δzf.data[:, :, end] = f.data[:, :, end]
+#
+#     nothing
+# end
 
 """
     δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
@@ -124,45 +192,54 @@ field `δzf`, assuming both fields are defined on a regular Cartesian grid `g`
 with Neumann boundary condition in the \$z\$-direction.
 """
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::CellField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
-    end
-    for j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
-    end
-
-    # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
-    # Nx, Ny, Nz = 100, 100, 100.
-    # @. δzf.data[:, :, end] = f.data[:, :, end]
-
+    @views @. δzf.data[:, :, 1:end-1] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     end] = f.data[:, :,     end]
     nothing
 end
+
+# function δz!(g::RegularCartesianGrid, f::EdgeField, δzf::FaceField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
+#     end
+#     for j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
+#     end
+#
+#     # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
+#     # Nx, Ny, Nz = 100, 100, 100.
+#     # @. δzf.data[:, :, end] = f.data[:, :, end]
+#
+#     nothing
+# end
 
 function δz!(g::RegularCartesianGrid, f::EdgeField, δzf::FaceField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] =  f.data[i, j, k] - f.data[i, j, k+1]
-    end
-    for j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, g.Nz] = f.data[i, j, g.Nz]
-    end
-
-    # For some reason broadcasting causes 3 memory allocations (78.27 KiB) for
-    # Nx, Ny, Nz = 100, 100, 100.
-    # @. δzf.data[:, :, end] = f.data[:, :, end]
-
+    @views @. δzf.data[:, :, 1:end-1] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     end] = f.data[:, :,     end]
     nothing
 end
+
+# function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
+#     end
+#     @. δzf.data[:, :, 1] = 0
+#     nothing
+# end
 
 function δz!(g::RegularCartesianGrid, f::FaceField, δzf::EdgeField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δzf.data[i, j, k] = f.data[i, j, k-1] - f.data[i, j, k]
-    end
-    @. δzf.data[:, :, 1] = 0
+    @views @. δzf.data[:, :, 2:end] = f.data[:, :, 1:end-1] - f.data[:, :, 2:end]
+    @views @. δzf.data[:, :,     1] = 0
     nothing
 end
 
+# function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
+#     end
+# end
+
 """
-    avgx(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
+    avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
 
 Compute the average \$\\overline{\\;f\\;}^x = \\frac{f_E + f_W}{2}\$ between the
 eastern and western cells of a cell-centered field `f` and store it in a `g`
@@ -170,112 +247,118 @@ face-centered field `favgx`, assuming both fields are defined on a regular
 Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
 """
 function avgx!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
-    end
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
+    nothing
 end
+
+# function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]) / 2
+#     end
+# end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[incmod1(i, g.Nx), j, k] + f.data[i, j, k]) / 2
-    end
+    @views @. favgx.data[1:end-1, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[end,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
+    nothing
 end
+
+# function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
+#     end
+# end
 
 function avgx!(g::RegularCartesianGrid, f::FaceField, favgx::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] =  (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / 2
-    end
+    @views @. favgx.data[2:end, :, :] = (f.data[2:end, :, :] + f.data[1:end-1, :, :]) / 2.0f0
+    @views @. favgx.data[1,     :, :] = (f.data[1,     :, :] + f.data[end,     :, :]) / 2.0f0
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
-    end
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, incmod1(j, g.Ny), k] + f.data[i, j, k]) / 2
-    end
+    @views @. favgy.data[:, 1:end-1, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, end,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
+    nothing
 end
+
+# function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField)
+#     for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
+#     end
+# end
 
 function avgy!(g::RegularCartesianGrid, f::FaceField, favgy::EdgeField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / 2
-    end
+    @views @. favgy.data[:, 2:end, :] = (f.data[:, 2:end, :] + f.data[:, 1:end-1, :]) / 2.0f0
+    @views @. favgy.data[:, 1,     :] = (f.data[:, 1,     :] + f.data[:, end,     :]) / 2.0f0
+    nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
+#     end
+#     @. favgz.data[:, :, 1] = f.data[:, :, 1]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
-    end
-    @. favgz.data[:, :, 1] = f.data[:, :, 1]
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
+    @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
+#     for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
+#         favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
+#     end
+#
+#     # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
+#     @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::CellField)
-    for k in 1:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-        favgz.data[i, j, k] =  (f.data[i, j, incmod1(k, g.Nz)] + f.data[i, j, k]) / 2
-    end
-
-    # Assuming zero at the very bottom, so (f[end] + 0) / 2 = 0.5 * f[end].
-    @. favgz.data[:, :, end] = 0.5 * f.data[:, :, end]
+    @views @. favgz.data[:, :, 1:end-1] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
+    @views @. favgz.data[:, :,     end] = 0.5 * f.data[:, :, end]
     nothing
 end
+
+# function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
+#     for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
+#         @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
+#     end
+#     @. favgz.data[:, :, 1] = f.data[:, :, 1]
+#     nothing
+# end
 
 function avgz!(g::RegularCartesianGrid, f::FaceField, favgz::EdgeField)
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, k-1]) / 2
-    end
-    @. favgz.data[:, :, 1] = f.data[:, :, 1]
+    @views @. favgz.data[:, :, 2:end] = (f.data[:, :, 2:end] + f.data[:, :, 1:end-1]) / 2.0f0
+    @views @. favgz.data[:, :, 1] = f.data[:, :, 1]
     nothing
 end
 
-"""
-    avgx_4(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-
-Compute the average \$\\overline{\\;f\\;}^x = \\frac{f_E + f_W}{2}\$ between the
-eastern and western cells of a cell-centered field `f` and store it in a `g`
-face-centered field `favgx`, assuming both fields are defined on a regular
-Cartesian grid `g` with periodic boundary conditions in the \$x\$-direction.
-This is done with 4th order accuracy, using a centered scheme.
-"""
-function avgx_4!(g::RegularCartesianGrid, f::CellField, favgx::FaceField)
-    oneSixth = 1.0/6
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgx.data[i, j, k] = (f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k] -
-		                                    ( f.data[incmod1(i, g.Nx), j, k] - f.data[i, j, k] -
-                                          f.data[decmod1(i, g.Nx), j, k] +
-                                          f.data[decmod2(i, g.Nx), j, k]) * oneSixth ) * 0.5
-    end
-end
-
-function avgy_4!(g::RegularCartesianGrid, f::CellField, favgy::FaceField)
-    oneSixth = 1.0/6
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds favgy.data[i, j, k] =  (f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k] -
-		                                     ( f.data[i, incmod1(j, g.Ny), k] - f.data[i, j, k] -
-                                           f.data[i, decmod1(j, g.Ny), k] +
-                                           f.data[i, decmod2(j, g.Ny), k]) * oneSixth ) * 0.5
-    end
-end
-
-function avgz_4!(g::RegularCartesianGrid, f::CellField, favgz::FaceField)
-    oneSixth = 1.0/6
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        km1 = max(1,k-1)
-        kp1 = min(g.Nz,k+1)
-        km2 = max(1,k-2)
-        @inbounds favgz.data[i, j, k] =  (f.data[i, j, k] + f.data[i, j, km1] -
-                                         (f.data[i, j, kp1] - f.data[i, j, k] -
-                                          f.data[i, j, km1] + f.data[i, j, km2]) * oneSixth ) * 0.5
-    end
-    @. favgz.data[:, :, 1] = f.data[:, :, 1]
-    nothing
-end
 
 """
-    div!(g, fx, fy, fz, δfx, δfy, δfz, div)
+    div!(g, fx, fy, fz, div, tmp)
 
 Compute the divergence.
 """
@@ -316,37 +399,6 @@ function div_flux!(g::RegularCartesianGrid,
     avgx!(g, Q, Q̅ˣ)
     avgy!(g, Q, Q̅ʸ)
     avgz!(g, Q, Q̅ᶻ)
-
-    flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
-
-    @. flux_x.data = g.Ax * u.data * Q̅ˣ.data
-    @. flux_y.data = g.Ay * v.data * Q̅ʸ.data
-    @. flux_z.data = g.Az * w.data * Q̅ᶻ.data
-
-    # Imposing zero vertical flux through the top layer.
-    @. flux_z.data[:, :, 1] = 0
-
-    δxflux_x, δyflux_y, δzflux_z = tmp.fC1, tmp.fC2, tmp.fC3
-
-    δx!(g, flux_x, δxflux_x)
-    δy!(g, flux_y, δyflux_y)
-    δz!(g, flux_z, δzflux_z)
-
-    @. div_flux.data = (1/g.V) * (δxflux_x.data + δyflux_y.data + δzflux_z.data)
-    nothing
-end
-
-
-function div_flux_4!(g::RegularCartesianGrid,
-                   u::FaceFieldX, v::FaceFieldY, w::FaceFieldZ, Q::CellField,
-                   div_flux::CellField, tmp::OperatorTemporaryFields)
-
-
-    Q̅ˣ, Q̅ʸ, Q̅ᶻ = tmp.fFX, tmp.fFY, tmp.fFZ
-
-    avgx_4!(g, Q, Q̅ˣ)
-    avgy_4!(g, Q, Q̅ʸ)
-    avgz_4!(g, Q, Q̅ᶻ)
 
     flux_x, flux_y, flux_z = tmp.fFX, tmp.fFY, tmp.fFZ
 
@@ -566,7 +618,6 @@ function 𝜈∇²w!(g::RegularCartesianGrid, w::FaceFieldZ, 𝜈∇²w::FaceFie
     nothing
 end
 
-# TODO: Rewrite using δ and div operators.
 function ∇²_ppn!(g::RegularCartesianGrid, f::CellField, ∇²f::CellField)
     for k in 2:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
        ∇²f.data[i, j, k] = (f.data[incmod1(i, g.Nx), j, k] - 2*f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / g.Δx^2 +

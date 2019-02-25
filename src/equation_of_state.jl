@@ -7,7 +7,7 @@ oceanography as the expansion and contraction β coefficients vary with
 temperature, pressure, and salinity.
 =#
 
-struct LinearEquationOfState <: EquationOfStateParameters
+struct LinearEquationOfState <: EquationOfState
     ρ₀::Float64  # Reference density [kg/m³]
     βT::Float64  # First thermal expansion coefficient [1/K]
     βS::Float64  # Haline contraction coefficient [1/ppt]
