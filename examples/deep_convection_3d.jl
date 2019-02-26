@@ -5,12 +5,26 @@ using Oceananigans
 function deep_convection_3d()
     Nx, Ny, Nz = 100, 100, 50
     Lx, Ly, Lz = 2000, 2000, 1000
-    Nt, Δt = 500, 20
+    Nt, Δt = 1000, 20
 
     model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-    impose_initial_conditions!(model)
 
-    nc_writer = NetCDFFieldWriter(".", "deep_convection_3d", 50)
+    # impose_initial_conditions!(model)
+
+    # We will impose a surface heat flux of -800 W/m² ≈ -9e-6 K/s  in a square
+    # on the surface of the domain.
+    @inline function surface_cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+        if k == 1 && (20 < i < 80) && (20 < j < 80)
+            return -9e-6
+        else
+            return 0
+        end
+    end
+
+    # Only impose surface_cooling_disk on the temperature field.
+    model.forcing = Forcing(nothing, nothing, nothing, surface_cooling_disk, nothing)
+
+    nc_writer = NetCDFFieldWriter(".", "deep_convection_3d", 20)
     push!(model.output_writers, nc_writer)
 
     time_step!(model; Nt=Nt, Δt=Δt)
@@ -55,6 +69,7 @@ function impose_cooling_disk!(model::Model)
     # source terms at each time step. Also convert surface heat flux [W/m²]
     # into a temperature tendency forcing [K/s].
     @. model.forcings.FT.data[:, :, 1] = (Q / cᵥ) * (g.Az / (model.eos.ρ₀ * g.V))
+    @show model.forcings.FT.data[50, 50, 1]
     nothing
 end
 
