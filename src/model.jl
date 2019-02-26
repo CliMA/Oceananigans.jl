@@ -11,6 +11,7 @@ mutable struct Model
     G::SourceTerms
     Gp::SourceTerms
     forcings::ForcingFields
+    forcing::Forcing
     stepper_tmp::StepperTemporaryFields
     operator_tmp::OperatorTemporaryFields
     ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
@@ -37,6 +38,8 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     forcings = ForcingFields(metadata, grid)
     stepper_tmp = StepperTemporaryFields(metadata, grid)
     operator_tmp = OperatorTemporaryFields(metadata, grid)
+
+    forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
 
     time, time_step, Δt = 0, 0, 0
     clock = Clock(time, time_step, Δt)
@@ -71,6 +74,6 @@ function Model(N, L, arch=:cpu, float_type=Float64)
     ρ!(eos, grid, tracers)
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
-          velocities, tracers, pressures, G, Gp, forcings,
+          velocities, tracers, pressures, G, Gp, forcings, forcing,
           stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
 end
