@@ -65,6 +65,17 @@ function time_step_kernel_cpu!(model::Model, Nt, Δt)
                              G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                              Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, model.forcing)
 
+        # Set boundary conditions
+        if bc.top_bc == :no_slip
+            @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
+            @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
+        end
+
+        if bc.bottom_bc == :no_slip
+            @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
+            @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
+        end
+
         calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
         solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
@@ -149,14 +160,22 @@ function time_step_kernel_gpu!(model::Model, Nt, Δt)
     for n in 1:Nt
         t1 = time_ns(); # Timing the time stepping loop.
 
-        # Set boundary conditions
-
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_source_terms!(Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                                                                                  U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                                                                                  G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                                                                  Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
+        # Set boundary conditions
+        if bc.top_bc == :no_slip
+            @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
+            @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
+        end
+
+        if bc.bottom_bc == :no_slip
+            @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
+            @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
+        end
 
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
