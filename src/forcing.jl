@@ -1,28 +1,28 @@
+"Dummy function and forcing default."
+@inline zero_func(args...) = 0
+
+"""
+    Forcing(Fu, Fv, Fw, FF, FS)
+
+    Forcing(; Fu=zero_func, Fv=zero_func, Fw=zero_func, FT=zero_func, FS=zero_func)
+
+Construct a `Forcing` to specify functions that force `u`, `v`, `w`, `T`, and `S`. 
+Forcing functions default to `zero_func`, which does nothing.
+"""
 struct Forcing{Tu,Tv,Tw,TT,TS}
-  u::Tu
-  v::Tv
-  w::Tw
-  T::TT
-  S::TS
+    u::Tu
+    v::Tv
+    w::Tw
+    T::TT
+    S::TS
+    function Forcing(Fu, Fv, Fw, FT, FS)
+        Fu = Fu === nothing ? zero_func : Fu
+        Fv = Fv === nothing ? zero_func : Fv
+        Fw = Fw === nothing ? zero_func : Fw
+        FT = FT === nothing ? zero_func : FT
+        FS = FS === nothing ? zero_func : FS
+        new{typeof(Fu),typeof(Fv),typeof(Fw),typeof(FT),typeof(FS)}(Fu, Fv, Fw, FT, FS)
+    end
 end
 
-@inline zero_func(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) = 0
-
-function Forcing(Tu, Tv, Tw, TT, TS)
-    if Tu == nothing
-        Tu = zero_func
-    end
-    if Tv == nothing
-        Tv = zero_func
-    end
-    if Tw == nothing
-        Tw = zero_func
-    end
-    if TT == nothing
-        TT = zero_func
-    end
-    if TS == nothing
-        TS = zero_func
-    end
-    Forcing{typeof(Tu),typeof(Tv),typeof(Tw),typeof(TT),typeof(Tu)}(Tu, Tv, Tw, TT, TS)
-end
+Forcing(; Fu=nothing, Fv=nothing, Fw=nothing, FT=nothing, FS=nothing) = Forcing(Fu, Fv, Fw, FT, FS)
