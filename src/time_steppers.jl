@@ -4,31 +4,19 @@ using Oceananigans.Operators
 
 include("operators/ops_regular_cartesian_grid_elementwise.jl")
 
-function time_step!(model::Model; Nt, Δt)
-    if model.metadata.arch == :cpu
-        time_step_kernel_cpu!(model, Nt, Δt)
-    elseif model.metadata.arch == :gpu
-        time_step_kernel_gpu!(model, Nt, Δt)
-    end
-end
+const Tx = 16 # Threads per x-block
+const Ty = 16 # Threads per y-block
+const χ = 0.1 # Adams-Bashforth (AB2) parameter.
 
-function time_step_kernel_cpu!(model::Model, Nt, Δt)
-    metadata = model.metadata
-    cfg = model.configuration
-    bc = model.boundary_conditions
-    g = model.grid
-    c = model.constants
-    eos = model.eos
-    ssp = model.ssp
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    G = model.G
-    Gp = model.Gp
-    F = model.forcings
-    stmp = model.stepper_tmp
+"""
+    time_step!(model, Nt, Δt)
+
+Step forward `model` `Nt` time steps using a second-order Adams-Bashforth 
+method with step size `Δt`.
+"""
+function time_step!(model::Model, Nt, Δt)
+
     clock = model.clock
-
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
 
@@ -41,176 +29,115 @@ function time_step_kernel_cpu!(model::Model, Nt, Δt)
         end
     end
 
-    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
-    Lx, Ly, Lz = g.Lx, g.Ly, g.Lz
-    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
-
-    # Field references.
-    δρ = stmp.fC1
-    RHS = stmp.fCC1
-    ϕ   = stmp.fCC2
-
-    # Constants.
-    gΔz = c.g * g.Δz
-    χ = 0.1  # Adams-Bashforth (AB2) parameter.
-    fCor = c.f
-
     for n in 1:Nt
-        t1 = time_ns(); # Timing the time stepping loop.
+        t1 = time_ns() # time each time-step
 
-        update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
-
-        update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                             U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-                             G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                             Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, model.forcing)
-
-        # Set boundary conditions
-        if bc.top_bc == :no_slip
-            @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
-            @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
-        end
-
-        if bc.bottom_bc == :no_slip
-            @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
-            @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
-        end
-
-        calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
-
-        solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
-        @. pr.pNHS.data = real(ϕ.data)
-
-        update_velocities_and_tracers!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-                                       U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
-                                       G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                       Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+        time_step_kernel!(Val(model.metadata.arch), Δt,
+                          model.configuration,
+                          model.boundary_conditions,
+                          model.grid,
+                          model.constants,
+                          model.eos,
+                          model.ssp,
+                          model.velocities,
+                          model.tracers,
+                          model.pressures,
+                          model.G,
+                          model.Gp,
+                          model.forcings,
+                          model.stepper_tmp,
+                          model.clock,
+                          model.forcing,
+                          model.grid.Nx, model.grid.Ny, model.grid.Nz,
+                          model.grid.Lx, model.grid.Ly, model.grid.Lz,
+                          model.grid.Δx, model.grid.Δy, model.grid.Δz,
+                          model.stepper_tmp.fC1, model.stepper_tmp.fCC1, model.stepper_tmp.fCC2,
+                          model.constants.g * model.grid.Δz, χ, model.constants.f
+                         )
 
         clock.time += Δt
         clock.time_step += 1
         print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
 
-        for output_writer in model.output_writers
-            if clock.time_step % output_writer.output_frequency == 0
-                write_output(model, output_writer)
-            end
+        for diagnostic in model.diagnostics
+            (clock.time_step % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
         end
 
-        for diagnostic in model.diagnostics
-            if clock.time_step % diagnostic.diagnostic_frequency == 0
-                run_diagnostic(model, diagnostic)
-            end
+        for output_writer in model.output_writers
+            (clock.time_step % output_writer.output_frequency) == 0 && write_output(model, output_writer)
         end
 
         t2 = time_ns();
         println(prettytime(t2 - t1))
     end
+
+    return nothing
 end
 
-function time_step_kernel_gpu!(model::Model, Nt, Δt)
+"Execute one time-step on the CPU."
+function time_step_kernel!(::Val{:cpu}, Δt,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    # Re-binding for readability
-    metadata = model.metadata
-         cfg = model.configuration
-          bc = model.boundary_conditions
-           g = model.grid
-           c = model.constants
-         eos = model.eos
-         ssp = model.ssp
-           U = model.velocities
-          tr = model.tracers
-          pr = model.pressures
-           G = model.G
-          Gp = model.Gp
-           F = model.forcings
-        stmp = model.stepper_tmp
-       clock = model.clock
+    update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    
+    update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+                         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
+                         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
+    
+    apply_boundary_conditions!(G, U, cfg, g, bc)
+        
+    calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+    
+    solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
+    @. pr.pNHS.data = real(ϕ.data)
+    
+    update_velocities_and_tracers!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+                                   U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
+                                   G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+                                   Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
-    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
-    Lx, Ly, Lz = g.Lx, g.Ly, g.Lz
-    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
+    return nothing
+end
 
-     δρ = stmp.fC1
-    RHS = stmp.fCC1
-      ϕ = stmp.fCC2
+"Execute one time-step on the GPU."
+function time_step_kernel!(::Val{:gpu}, Δt,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    model_start_time = clock.time
-    model_end_time = model_start_time + Nt*Δt
+    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
 
-    if clock.time_step == 0
-        for output_writer in model.output_writers
-            write_output(model, output_writer)
-        end
-        for diagnostic in model.diagnostics
-            run_diagnostic(model, diagnostic)
-        end
-    end
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
+        Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
-    # Constants.
-    gΔz = c.g * g.Δz
-    χ = 0.1  # Adams-Bashforth (AB2) parameter.
-    fCor = c.f
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_source_terms!(
+        Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+        U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
+        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
 
-    Tx, Ty = 16, 16  # Threads per block
-    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid.
+    apply_boundary_conditions!(G, U, cfg, g, bc)
 
-    println("Threads per block: ($Tx, $Ty)")
-    println("Blocks in grid:    ($Bx, $By, $Bz)")
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(
+        Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
-    for n in 1:Nt
-        t1 = time_ns(); # Timing the time stepping loop.
+    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, ssp, g, RHS, ϕ)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
 
-        @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(
+        Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+        U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
+        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
-        @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_source_terms!(Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                                                                                 U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-                                                                                 G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                                                                 Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
-        # Set boundary conditions
-        if bc.top_bc == :no_slip
-            @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
-            @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
-        end
-
-        if bc.bottom_bc == :no_slip
-            @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
-            @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
-        end
-
-        @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
-
-        solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, model.ssp, g, RHS, ϕ)
-        @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
-
-        @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-                                                                                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
-                                                                                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                                                                           Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
-
-        clock.time += Δt
-        clock.time_step += 1
-        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
-
-        for output_writer in model.output_writers
-            if clock.time_step % output_writer.output_frequency == 0
-                write_output(model, output_writer)
-            end
-        end
-
-        for diagnostic in model.diagnostics
-            if clock.time_step % diagnostic.diagnostic_frequency == 0
-                run_diagnostic(model, diagnostic)
-            end
-        end
-
-        t2 = time_ns();
-        println(prettytime(t2 - t1))
-    end
+    return nothing
 end
 
 @inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
 
+"Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
 function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
@@ -232,6 +159,7 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ�
     @synchronize
 end
 
+"Store previous value of the source term and calculate current source term."
 function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, 
                               u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
     @setup Dev
@@ -286,6 +214,7 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
     @synchronize
 end
 
+"tore previous value of the source term and calculate current source term."
 function calculate_source_term_divergence_cpu!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS) where Dev
     @setup Dev
 
@@ -356,4 +285,21 @@ function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, �
     end
 
     @synchronize
+end
+
+"Apply boundary conditions by modifying the source term G."
+function apply_boundary_conditions!(G, U, cfg, g, bc)
+    #=
+    # Set boundary conditions
+    if bc.top_bc == :no_slip
+        @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
+        @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
+    end
+    
+    if bc.bottom_bc == :no_slip
+        @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
+        @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
+    end
+    =#
+    return nothing
 end
