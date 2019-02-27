@@ -97,21 +97,31 @@ function time_step_kernel_cpu!(model::Model, Nt, Δt)
 end
 
 function time_step_kernel_gpu!(model::Model, Nt, Δt)
+
+    # Re-binding for readability
     metadata = model.metadata
-    cfg = model.configuration
-    bc = model.boundary_conditions
-    g = model.grid
-    c = model.constants
-    eos = model.eos
-    ssp = model.ssp
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    G = model.G
-    Gp = model.Gp
-    F = model.forcings
-    stmp = model.stepper_tmp
-    clock = model.clock
+         cfg = model.configuration
+          bc = model.boundary_conditions
+           g = model.grid
+           c = model.constants
+         eos = model.eos
+         ssp = model.ssp
+           U = model.velocities
+          tr = model.tracers
+          pr = model.pressures
+           G = model.G
+          Gp = model.Gp
+           F = model.forcings
+        stmp = model.stepper_tmp
+       clock = model.clock
+
+    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
+    Lx, Ly, Lz = g.Lx, g.Ly, g.Lz
+    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
+
+     δρ = stmp.fC1
+    RHS = stmp.fCC1
+      ϕ = stmp.fCC2
 
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
@@ -125,28 +135,21 @@ function time_step_kernel_gpu!(model::Model, Nt, Δt)
         end
     end
 
-    Nx, Ny, Nz = g.Nx, g.Ny, g.Nz
-    Lx, Ly, Lz = g.Lx, g.Ly, g.Lz
-    Δx, Δy, Δz = g.Δx, g.Δy, g.Δz
-
-    # Field references.
-    δρ = stmp.fC1
-    RHS = stmp.fCC1
-    ϕ   = stmp.fCC2
-
     # Constants.
     gΔz = c.g * g.Δz
     χ = 0.1  # Adams-Bashforth (AB2) parameter.
     fCor = c.f
 
     Tx, Ty = 16, 16  # Threads per block
-    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz  # Blocks in grid.
+    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid.
 
     println("Threads per block: ($Tx, $Ty)")
     println("Blocks in grid:    ($Bx, $By, $Bz)")
 
     for n in 1:Nt
         t1 = time_ns(); # Timing the time stepping loop.
+
+        # Set boundary conditions
 
         @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
@@ -195,7 +198,7 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ�
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds δρ[i, j, k] = -ρ₀*βT * (T[i, j, k] - T₀)
+                @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
                 @inbounds  ρ[i, j, k] = ρ₀ + δρ[i, j, k]
 
                 ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
@@ -210,7 +213,8 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ�
     @synchronize
 end
 
-function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
+function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, 
+                              u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -222,12 +226,34 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
                 @inbounds GpT[i, j, k] = GT[i, j, k]
                 @inbounds GpS[i, j, k] = GS[i, j, k]
 
-                @inbounds Gu[i, j, k] = -u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + fCor*avg_xy(v, Nx, Ny, i, j, k) - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀) + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.u(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                @inbounds Gv[i, j, k] = -u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) - fCor*avg_xy(u, Nx, Ny, i, j, k) - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀) + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.v(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                @inbounds Gw[i, j, k] = -u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)                                                                           + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.w(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                # u-momentum equation
+                @inbounds Gu[i, j, k] = (-u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + fCor*avg_xy(v, Nx, Ny, i, j, k)
+                                            - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀)
+                                            + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + F.u(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
-                @inbounds GT[i, j, k] = -div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                # v-momentum equation
+                @inbounds Gv[i, j, k] = (-u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            - fCor*avg_xy(u, Nx, Ny, i, j, k)
+                                            - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀)
+                                            + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + F.v(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+
+                # w-momentum equation: comment about how pressure and buoyancy are handled
+                @inbounds Gw[i, j, k] = (-u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + F.w(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+
+                # temperature equation
+                @inbounds GT[i, j, k] = (-div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) 
+                                            + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+
+                # salinity equation
+                @inbounds GS[i, j, k] = (-div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                                            + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 @inbounds Gu[i, j, k] = (1.5 + χ)*Gu[i, j, k] - (0.5 + χ)*Gpu[i, j, k]
                 @inbounds Gv[i, j, k] = (1.5 + χ)*Gv[i, j, k] - (0.5 + χ)*Gpv[i, j, k]
@@ -294,7 +320,8 @@ function idct_permute!(::Val{Dev}, Nx, Ny, Nz, ϕ, pNHS) where Dev
 end
 
 
-function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, 
+                                        u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
