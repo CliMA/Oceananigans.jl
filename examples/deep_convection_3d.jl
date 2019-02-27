@@ -2,35 +2,6 @@ using Statistics: mean
 using Plots
 using Oceananigans
 
-function deep_convection_3d()
-    Nx, Ny, Nz = 100, 100, 50
-    Lx, Ly, Lz = 2000, 2000, 1000
-    Nt, Δt = 1000, 20
-
-    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-
-    # impose_initial_conditions!(model)
-
-    # We will impose a surface heat flux of -800 W/m² ≈ -9e-6 K/s  in a square
-    # on the surface of the domain.
-    @inline function surface_cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-        if k == 1 && (20 < i < 80) && (20 < j < 80)
-            return -9e-6
-        else
-            return 0
-        end
-    end
-
-    # Only impose surface_cooling_disk on the temperature field.
-    model.forcing = Forcing(nothing, nothing, nothing, surface_cooling_disk, nothing)
-
-    nc_writer = NetCDFFieldWriter(".", "deep_convection_3d", 20)
-    push!(model.output_writers, nc_writer)
-
-    time_step!(model; Nt=Nt, Δt=Δt)
-    # make_temperature_movies(model, field_writer)
-end
-
 function impose_cooling_disk!(model::Model)
     g = model.grid
     c = model.constants
@@ -115,3 +86,24 @@ end
 #     end
 #     mp4(movie, "deep_convection_3d_$(round(Int, time())).mp4", fps = 30)
 # end
+
+Nx, Ny, Nz = 100, 100, 50
+Lx, Ly, Lz = 2000, 2000, 1000
+Nt, Δt = 1000, 20
+
+model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+
+# impose_initial_conditions!(model)
+
+# We will impose a surface heat flux of -800 W/m² ≈ -9e-6 K/s  in a square
+# on the surface of the domain.
+@inline surface_cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) = ifelse(k == 1 && 20 < i < 80 && 20 < j < 80, -9e-6, 0)
+
+# Only impose surface_cooling_disk on the temperature field.
+model.forcing = Forcing(nothing, nothing, nothing, surface_cooling_disk, nothing)
+
+nc_writer = NetCDFFieldWriter(".", "deep_convection_3d", 20)
+push!(model.output_writers, nc_writer)
+
+time_step!(model; Nt=Nt, Δt=Δt)
+# make_temperature_movies(model, field_writer)
