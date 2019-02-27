@@ -385,4 +385,19 @@ using Oceananigans.Operators
         Oceananigans.Operators.𝜈∇²w!(g, w, 𝜈_lap_w, 𝜈h, 𝜈v, otmp)
         for idx in test_indices; @test 𝜈∇²w(w.data, 𝜈h, 𝜈v, g.Nx, g.Ny, g.Nz, g.Δx, g.Δy, g.Δz, idx...) ≈ 𝜈_lap_w.data[idx...]; end
     end
-end
+
+    @testset "Forcing" begin
+        add_one(args...) = 1.0
+        function test_forcing(fld)
+            kwarg = Dict(Symbol(:F, fld)=>add_one)
+            forcing = Forcing(; kwarg...)
+            f = getfield(forcing, fld)
+            f() == 1.0
+        end
+
+        for fld in [:u, :v, :w, :T, :S]
+            @test test_forcing(fld)
+        end
+    end
+
+end # Oceananigans tests

@@ -31,6 +31,8 @@ export
     OperatorTemporaryFields,
     StepperTemporaryFields,
 
+    Forcing,
+
     LinearEquationOfState,
     ρ!,
     δρ!,
@@ -104,6 +106,7 @@ include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
 include("fieldsets.jl")
+include("forcing.jl")
 
 include("operators/operators.jl")
 

@@ -63,7 +63,7 @@ function time_step_kernel_cpu!(model::Model, Nt, Δt)
         update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                              U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                              G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                             Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
+                             Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, model.forcing)
 
         calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
@@ -210,7 +210,7 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ�
     @synchronize
 end
 
-function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, FT) where Dev
+function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -222,12 +222,12 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
                 @inbounds GpT[i, j, k] = GT[i, j, k]
                 @inbounds GpS[i, j, k] = GS[i, j, k]
 
-                @inbounds Gu[i, j, k] = -u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + fCor*avg_xy(v, Nx, Ny, i, j, k) - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀) + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                @inbounds Gv[i, j, k] = -u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) - fCor*avg_xy(u, Nx, Ny, i, j, k) - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀) + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                @inbounds Gw[i, j, k] = -u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)                                                                           + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gu[i, j, k] = -u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + fCor*avg_xy(v, Nx, Ny, i, j, k) - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀) + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.u(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gv[i, j, k] = -u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) - fCor*avg_xy(u, Nx, Ny, i, j, k) - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀) + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.v(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gw[i, j, k] = -u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)                                                                           + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.w(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
-                @inbounds GT[i, j, k] = -div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + FT[i, j, k]
-                @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds GT[i, j, k] = -div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds GS[i, j, k] = -div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
 
                 @inbounds Gu[i, j, k] = (1.5 + χ)*Gu[i, j, k] - (0.5 + χ)*Gpu[i, j, k]
                 @inbounds Gv[i, j, k] = (1.5 + χ)*Gv[i, j, k] - (0.5 + χ)*Gpv[i, j, k]
