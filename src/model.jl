@@ -21,9 +21,9 @@ mutable struct Model
 end
 
 function Model(N, L, arch=:cpu, float_type=Float64)
-    metadata = _ModelMetadata(arch, float_type)
-    configuration = _ModelConfiguration(4e-2, 4e-2, 4e-2, 4e-2)
-    boundary_conditions = _BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip)
+    metadata = ModelMetadata(arch, float_type)
+    configuration = ModelConfiguration(4e-2, 4e-2, 4e-2, 4e-2)
+    boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip)
 
     constants = Earth()
     eos = LinearEquationOfState()
