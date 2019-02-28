@@ -77,30 +77,42 @@ using Oceananigans.Operators
 
     @testset "Operators" begin
         @testset "2D operators" begin
-            Nx, Ny, Nz = 10, 10, 10
+            Nx, Ny, Nz = 32, 16, 8
+            Lx, Ly, Lz = 100, 100, 100
             A3 = rand(Nx, Ny, Nz)
-            A2y = A3[:, 1:1, :]
-            A2x = A3[1:1, :, :]
 
-            @test δˣf2c(A2x) ≈ zeros(1, Ny, Nz)
-            @test δˣc2f(A2x) ≈ zeros(1, Ny, Nz)
-            @test δʸf2c(A2x) ≈ δʸf2c(A3)[1:1, :, :]
-            @test δʸc2f(A2x) ≈ δʸc2f(A3)[1:1, :, :]
-            @test δᶻf2c(A2x) ≈ δᶻf2c(A3)[1:1, :, :]
-            @test δᶻc2f(A2x) ≈ δᶻc2f(A3)[1:1, :, :]
+            test_indices_3d = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
+                               (2, 10, 4), (31, 5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),  # Borderlands
+                               (1, 5, 5), (32, 10, 3), (16, 1, 4), (16, 16, 4), (16, 8, 1), (16, 8, 8),  # Edges
+                               (1, 1, 1), (32, 16, 8)] # Corners
 
-            @test δˣf2c(A2y) ≈ δˣf2c(A3)[:, 1:1, :]
-            @test δˣc2f(A2y) ≈ δˣc2f(A3)[:, 1:1, :]
-            @test δʸf2c(A2y) ≈ zeros(Nx, 1, Nz)
-            @test δʸc2f(A2y) ≈ zeros(Nx, 1, Nz)
-            @test δᶻf2c(A2y) ≈ δᶻf2c(A3)[:, 1:1, :]
-            @test δᶻc2f(A2y) ≈ δᶻc2f(A3)[:, 1:1, :]
-        end
+            test_indices_2d_yz = [(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2),
+                                  (1, 1, 5), (1, 5, 1), (1, 5, 5), (1, 11, 4),
+                                  (1, 15, 7), (1, 15, 8), (1, 16, 7), (1, 16, 8)]
 
+            test_indices_2d_xz = [(1, 1, 1), (1, 1, 2), (2, 1, 1), (2, 1, 2),
+                                  (1, 1, 5), (5, 1, 1), (5, 1, 5), (17, 1, 4),
+                                  (31, 1, 7), (31, 1, 8), (32, 1, 7), (32, 1, 8)]
+
+            A2yz = A3[1:1, :, :]  # A yz-slice with Nx==1.
+            for idx in test_indices_2d_yz
+                @test δx_f2c(A2yz, 1, idx...) ≈ 0
+                @test δx_c2f(A2yz, 1, idx...) ≈ 0
+                @test δy_f2c(A2yz, Ny, idx...) ≈ δy_f2c(A3, Ny, idx...)
+                @test δy_c2f(A2yz, Ny, idx...) ≈ δy_c2f(A3, Ny, idx...)
+                @test δz_f2c(A2yz, Nz, idx...) ≈ δz_f2c(A3, Nz, idx...)
+                @test δz_c2f(A2yz, Nz, idx...) ≈ δz_c2f(A3, Nz, idx...)
             end
-        end
 
-
+            A2xz = A3[:, 1:1, :]  # An xz-slice with Ny==1.
+            for idx in test_indices_2d_xz
+                @test δx_f2c(A2xz, Nx, idx...) ≈ δx_f2c(A3, Nx, idx...)
+                @test δx_c2f(A2xz, Nx, idx...) ≈ δx_c2f(A3, Nx, idx...)
+                @test δy_f2c(A2xz, 1, idx...) ≈ 0
+                @test δy_c2f(A2xz, 1, idx...) ≈ 0
+                @test δz_f2c(A2xz, Nz, idx...) ≈ δz_f2c(A3, Nz, idx...)
+                @test δz_c2f(A2xz, Nz, idx...) ≈ δz_c2f(A3, Nz, idx...)
+            end
         end
     end
 
