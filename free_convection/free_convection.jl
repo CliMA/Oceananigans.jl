@@ -44,14 +44,9 @@ function plot_Nusselt_number_diagnostics(model::Model, Nu_wT_diag::Nusselt_wT, N
     PyPlot.savefig("rayleigh_benard_nusselt_diag.png", dpi=300, format="png", transparent=false)
 end
 
-Nx = 512
-Ny = 1
-Nz = 256
-Lx = 500.0
-Ly = 500.0
-Lz = 500.0
-Nt = 100
-Δt = 0.1
+Nx, Ny, Nz = 512, 1, 256
+Lx, Ly, Lz = 500, 500, 500
+Nt, Δt = 100, 0.1
 ν, κ = 1e-2, 1e-2
 
 model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
@@ -64,27 +59,10 @@ model.configuration = _ModelConfiguration(ν, ν, κ, κ)
 model.boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :no_slip)
 
 # Write temperature field to disk every 10 time steps.
-output_dir, output_prefix, output_freq = ".", "rayleigh_benard", 10
-field_writer = NetCDFFieldWriter(output_dir, output_prefix, output_freq) #, [model.tracers.T], ["T"])
+field_writer = NetCDFFieldWriter(dir=".", prefix="convection", frequency=10)
 push!(model.output_writers, field_writer)
 
-diag_freq, Nu_running_avg = 1, 0
-Nu_wT_diag = Nusselt_wT(diag_freq, Float64[], Float64[], Nu_running_avg)
-push!(model.diagnostics, Nu_wT_diag)
-
-Nu_Chi_diag = Nusselt_Chi(diag_freq, Float64[], Float64[], Nu_running_avg)
-push!(model.diagnostics, Nu_Chi_diag)
-
-# Small random perturbations are added to boundary conditions to ensure instability formation.
-top_T    = 283 .- (ΔT/2) .+ 0.001.*rand(Nx, Ny)
-bottom_T = 283 .+ (ΔT/2) .+ 0.001.*rand(Nx, Ny)
-
-for i in 1:Nt
-    time_step!(model; Nt=1, Δt=Δt)
-    # Impose constant T boundary conditions at top and bottom every time step.
-    #@. model.tracers.T.data[:, :,   1] = top_T
-    #@. model.tracers.T.data[:, :, end] = bottom_T
-end
+# Time stepping
+time_step!(model, Nt, Δt)
 
 make_temperature_movie(model, field_writer)
-plot_Nusselt_number_diagnostics(model, Nu_wT_diag, Nu_Chi_diag)
