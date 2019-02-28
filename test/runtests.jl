@@ -199,7 +199,8 @@ using Oceananigans.Operators
             end
         end
 
-        for Nx in [5, 10, 20, 50, 100], Ny in [5, 10, 20, 50, 100], Nz in [10, 20, 50]
+        Ns = 2 .^ [2, 4, 6]
+        for Nx in Ns, Ny in Ns, Nz in Ns
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
 
             for arch in [:cpu], ft in [Float64]
@@ -214,25 +215,24 @@ using Oceananigans.Operators
 
         for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE], arch in [:cpu], ft in [Float64]
             mm = ModelMetadata(arch, ft)
-            @test test_fftw_planner(mm, 100, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 1, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 100, 1, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 32, 32, 32, planner_flag)
+            @test test_fftw_planner(mm, 1,  32, 32, planner_flag)
+            @test test_fftw_planner(mm, 32,  1, 32, planner_flag)
         end
     end
 
     @testset "Model" begin
-        model = Model((32, 32, 16), (2000, 2000, 1000))
+        model = Model((4, 5, 6), (1, 2, 3))
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
     @testset "Time stepping" begin
-        Nx, Ny, Nz = 100, 1, 50
-        Lx, Ly, Lz = 2000, 1, 1000
-        Nt, Δt = 10, 20
-        ΔR = 10
+        Nx, Ny, Nz = 4, 5, 6
+        Lx, Ly, Lz = 1, 2, 3
+        Nt, Δt = 10, 1
 
         model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        time_step!(model; Nt=Nt, Δt=Δt)
+        time_step!(model, Nt, Δt)
 
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
@@ -247,10 +247,12 @@ using Oceananigans.Operators
         g, stmp, otmp = model.grid, model.stepper_tmp, model.operator_tmp
         U, tr = model.velocities, model.tracers
 
-        test_indices = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
-                        (2, 10, 4), (31, 5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),  # Borderlands
-                        (1, 5, 5), (32, 10, 3), (16, 1, 4), (16, 16, 4), (16, 8, 1), (16, 8, 8),  # Edges
-                        (1, 1, 1), (32, 16, 8)]  # Corners
+        test_indices = [
+            (4,  5, 5), (21, 11, 4), (16, 8, 4), (30, 12, 3), (11,  3, 6),               # Interior
+            (2, 10, 4), (31,  5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),   # Borderlands
+            (1,  5, 5), (32, 10, 3), (16, 1, 4), (16, 16, 4), (16,  8, 1), (16, 8, 8),   # Edges
+            (1,  1, 1), (32, 16, 8)                                                      # Corners
+        ]  
 
         f, δxf = stmp.fC1, stmp.fFX
         @. f.data = rand()
