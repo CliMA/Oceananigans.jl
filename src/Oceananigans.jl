@@ -113,7 +113,7 @@ include("operators/operators.jl")
 include("boundary_conditions.jl")
 include("equation_of_state.jl")
 include("spectral_solvers.jl")
-include("model.jl")
+include("models.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
