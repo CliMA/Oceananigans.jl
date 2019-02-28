@@ -147,7 +147,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     filepath = joinpath(fw.dir, filename(fw, "", model.clock.time_step))
 
-    (isfile(filepath) && overwrite) && rm(filepath)
+    isfile(filepath) && rm(filepath)
 
     nccreate(filepath, "u", "xF", xF, xF_attr, 
                                "yC", yC, yC_attr, 
