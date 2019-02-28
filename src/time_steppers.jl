@@ -2,8 +2,6 @@
 
 using Oceananigans.Operators
 
-include("operators/ops_regular_cartesian_grid_elementwise.jl")
-
 function time_step!(model::Model; Nt, Δt)
     if model.metadata.arch == :cpu
         time_step_kernel_cpu!(model, Nt, Δt)
