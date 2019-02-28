@@ -159,7 +159,6 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
                                "zC", zC, zC_attr, 
                                atts=v_attr, compress=fw.compression)
 
-
     nccreate(filepath, "w", "xC", xC, xC_attr, 
                                "yC", yC, yC_attr, 
                                "zF", zF, zF_attr, 
@@ -180,4 +179,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     return nothing 
 end
 
-
+function read_output(fw::NetCDFOutputWriter, field_name, iter)
+    filepath = joinpath(fw.dir, filename(fw, "", iter))
+    ncread(filepath, field_name)
+end

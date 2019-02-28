@@ -38,6 +38,8 @@ Construct an `Oceananigans.jl` model. The keyword arguments are:
 boundary_conditions : boundary conditions
      output_writers : output writer
         diagonstics : diagnostics
+
+        ... and more.
 """
 function Model(;
     # Model resolution and domain size
@@ -62,15 +64,15 @@ function Model(;
            eos = LinearEquationOfState(),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = _BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip),
+    boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip),
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
 )
 
     # Initialize model basics.
-         metadata = _ModelMetadata(arch, float_type)
-    configuration = _ModelConfiguration(νh, νv, κh, κv)
+         metadata = ModelMetadata(arch, float_type)
+    configuration = ModelConfiguration(νh, νv, κh, κv)
              grid = RegularCartesianGrid(metadata, N, L)
             clock = Clock(start_time, time_step, dt)
 

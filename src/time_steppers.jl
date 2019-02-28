@@ -2,7 +2,7 @@
 
 using Oceananigans.Operators
 
-include("operators/ops_regular_cartesian_grid_elementwise.jl")
+#include("operators/ops_regular_cartesian_grid_elementwise.jl")
 
 const Tx = 16 # Threads per x-block
 const Ty = 16 # Threads per y-block
@@ -14,7 +14,7 @@ const χ = 0.1 # Adams-Bashforth (AB2) parameter.
 Step forward `model` `Nt` time steps using a second-order Adams-Bashforth 
 method with step size `Δt`.
 """
-function time_step!(model::Model, Nt, Δt)
+function time_step!(model, Nt, Δt)
 
     clock = model.clock
     model_start_time = clock.time
@@ -73,6 +73,9 @@ function time_step!(model::Model, Nt, Δt)
 
     return nothing
 end
+
+time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
+
 
 "Execute one time-step on the CPU."
 function time_step_kernel!(::Val{:cpu}, Δt,
