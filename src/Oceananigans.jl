@@ -61,8 +61,8 @@ export
     OutputWriter,
     Checkpointer,
     restore_from_checkpoint,
-    BinaryFieldWriter,
-    NetCDFFieldWriter,
+    BinaryOutputWriter,
+    NetCDFOutputWriter,
     write_output,
     read_output,
 
