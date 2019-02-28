@@ -1,7 +1,5 @@
 import JLD
 
-const velocities = (:u, :v, :w)
-
 "A type for writing checkpoints."
 struct Checkpointer <: OutputWriter
     dir::AbstractString
@@ -147,37 +145,37 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     w_attr = Dict("longname" => "Velocity in the z-direction", "units" => "m/s")
     T_attr = Dict("longname" => "Temperature", "units" => "K")
 
-    nc_filepath = joinpath(fw.dir, filename(fw, "", model.clock.time_step))
+    filepath = joinpath(fw.dir, filename(fw, "", model.clock.time_step))
 
-    (isfile(nc_filepath) && overwrite) && rm(nc_filepath)
+    (isfile(filepath) && overwrite) && rm(filepath)
 
-    nccreate(nc_filepath, "u", "xF", xF, xF_attr, 
+    nccreate(filepath, "u", "xF", xF, xF_attr, 
                                "yC", yC, yC_attr, 
                                "zC", zC, zC_attr, 
                                atts=u_attr, compress=fw.compression)
 
-    nccreate(nc_filepath, "v", "xC", xC, xC_attr, 
+    nccreate(filepath, "v", "xC", xC, xC_attr, 
                                "yF", yF, yC_attr, 
                                "zC", zC, zC_attr, 
                                atts=v_attr, compress=fw.compression)
 
 
-    nccreate(nc_filepath, "w", "xC", xC, xC_attr, 
+    nccreate(filepath, "w", "xC", xC, xC_attr, 
                                "yC", yC, yC_attr, 
                                "zF", zF, zF_attr, 
                                atts=w_attr, compress=fw.compression)
 
-    nccreate(nc_filepath, "T", "xC", xC, xC_attr, 
+    nccreate(filepath, "T", "xC", xC, xC_attr, 
                                "yC", yC, yC_attr, 
                                "zC", zC, zC_attr, 
                                atts=T_attr, compress=fw.compression)
 
-    ncwrite(model.velocities.u.data, nc_filepath, "u")
-    ncwrite(model.velocities.v.data, nc_filepath, "v")
-    ncwrite(model.velocities.w.data, nc_filepath, "w")
-    ncwrite(model.tracers.T.data, nc_filepath, "T")
+    ncwrite(model.velocities.u.data, filepath, "u")
+    ncwrite(model.velocities.v.data, filepath, "v")
+    ncwrite(model.velocities.w.data, filepath, "w")
+    ncwrite(model.tracers.T.data, filepath, "T")
 
-    ncclose(nc_filename)
+    ncclose(filepath)
 
     return nothing 
 end
