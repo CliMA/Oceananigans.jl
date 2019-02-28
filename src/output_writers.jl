@@ -113,17 +113,23 @@ function write_output(model::Model, fw::NetCDFFieldWriter)
 
     isfile(nc_filepath) && rm(nc_filepath)
 
-    nccreate(nc_filepath, "u", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=u_attr, compress=5)
+    nccreate(nc_filepath, "u", "xC", xC, xC_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=u_attr, compress=5)
     ncwrite(model.velocities.u.data, nc_filepath, "u")
 
-    nccreate(nc_filepath, "v", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=v_attr, compress=5)
+    nccreate(nc_filepath, "v", "xC", xC, xC_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=v_attr, compress=5)
     ncwrite(model.velocities.v.data, nc_filepath, "v")
 
-    nccreate(nc_filepath, "w", "xC", xF, xF_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=w_attr, compress=5)
+    nccreate(nc_filepath, "w", "xC", xC, xC_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=w_attr, compress=5)
     ncwrite(model.velocities.w.data, nc_filepath, "w")
 
     nccreate(nc_filepath, "T", "xC", xC, xC_attr, "yC", yC, yC_attr, "zC", zC, zC_attr, atts=T_attr, compress=5)
     ncwrite(model.tracers.T.data, nc_filepath, "T")
 
     ncclose(nc_filename)
+end
+
+function read_output(fw::NetCDFFieldWriter, field_name, iter)
+    nc_filename = fw.filename_prefix * "_" * lpad(iter, 9, "0") * ".nc"
+    nc_filepath = joinpath(fw.dir, nc_filename)
+    ncread(nc_filepath, field_name)
 end
