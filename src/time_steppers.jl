@@ -64,7 +64,7 @@ function time_step!(model, Nt, Δt)
         end
 
         for output_writer in model.output_writers
-            (clock.time_step % output_writer.output_frequency) == 0 && write_output(model, output_writer)
+            (clock.time_step % output_writer.frequency) == 0 && write_output(model, output_writer)
         end
 
         t2 = time_ns();
