@@ -29,7 +29,7 @@ Construct an `Oceananigans.jl` model. The keyword arguments are:
           L (tuple) : model domain in (x, y, z)
          dt (float) : time step
  start_time (float) : start time for the simulation
-  time_step (float) : ?
+  iteration (float) : ?
          arch (sym) : architecture (:cpu or :gpu)
   float_type (type) : floating point type for model data (typically Float32 or Float64)
           constants : planetary constants (?)
@@ -43,19 +43,14 @@ boundary_conditions : boundary conditions
 """
 function Model(;
     # Model resolution and domain size
-             N = (32, 1, 32),
-             L = (1.0, 1.0, 1.0),
+             N,
+             L,
     # Molecular parameters
-             ν = 1.05e-6,
-            νh = ν,
-            νv = ν,
-             κ = 1.43e-7,
-            κh = κ,
-            κv = κ,
+             ν = 1.05e-6, νh = ν, νv = ν,
+             κ = 1.43e-7, κh = κ, κv = κ,
     # Time stepping
-            dt = 1e-16,
     start_time = 0,
-     time_step = 0, # ?
+     iteration = 0, # ?
     # Model architecture and floating point precision
           arch = :cpu,
     float_type = Float64,
@@ -74,7 +69,7 @@ function Model(;
          metadata = ModelMetadata(arch, float_type)
     configuration = ModelConfiguration(νh, νv, κh, κv)
              grid = RegularCartesianGrid(metadata, N, L)
-            clock = Clock(start_time, time_step, dt)
+            clock = Clock(start_time, iteration)
 
     # Initialize fields, including source terms and temporary variables.
       velocities = VelocityFields(metadata, grid)
@@ -102,10 +97,10 @@ function Model(;
     tracers.S.data .= 35
     tracers.T.data .= 283
 
-    # ?
+    # Hydrostatic pressure vertical profile.
     pHY_profile = [-eos.ρ₀*constants.g*h for h in grid.zC]
 
-    # ?
+    # Set hydrostatic pressure everywhere.
     if metadata.arch == :cpu
         pressures.pHY.data .= repeat(reshape(pHY_profile, 1, 1, grid.Nz), grid.Nx, grid.Ny, 1)
     elseif metadata.arch == :gpu

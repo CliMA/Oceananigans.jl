@@ -11,7 +11,7 @@ const χ = 0.1 # Adams-Bashforth (AB2) parameter.
 """
     time_step!(model, Nt, Δt)
 
-Step forward `model` `Nt` time steps using a second-order Adams-Bashforth 
+Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
 function time_step!(model, Nt, Δt)
@@ -20,7 +20,7 @@ function time_step!(model, Nt, Δt)
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
 
-    if clock.time_step == 0
+    if clock.iteration == 0
         for output_writer in model.output_writers
             write_output(model, output_writer)
         end
@@ -56,15 +56,15 @@ function time_step!(model, Nt, Δt)
                          )
 
         clock.time += Δt
-        clock.time_step += 1
+        clock.iteration += 1
         print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
 
         for diagnostic in model.diagnostics
-            (clock.time_step % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
+            (clock.iteration % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
         end
 
         for output_writer in model.output_writers
-            (clock.time_step % output_writer.frequency) == 0 && write_output(model, output_writer)
+            (clock.iteration % output_writer.frequency) == 0 && write_output(model, output_writer)
         end
 
         t2 = time_ns();
@@ -83,19 +83,19 @@ function time_step_kernel!(::Val{:cpu}, Δt,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
-    
+
     update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                          U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                          G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                          Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
-    
+
     apply_boundary_conditions!(G, U, cfg, g, bc)
-        
+
     calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
-    
+
     solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
-    
+
     update_velocities_and_tracers!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
                                    U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
                                    G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
@@ -163,7 +163,7 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ�
 end
 
 "Store previous value of the source term and calculate current source term."
-function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, 
+function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                               u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
     @setup Dev
 
@@ -197,7 +197,7 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
 
                 # temperature equation
                 @inbounds GT[i, j, k] = (-div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) 
+                                            + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                                             + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 # salinity equation
@@ -271,7 +271,7 @@ function idct_permute!(::Val{Dev}, Nx, Ny, Nz, ϕ, pNHS) where Dev
 end
 
 
-function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt, 
+function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt,
                                         u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
     @setup Dev
 
@@ -298,7 +298,7 @@ function apply_boundary_conditions!(G, U, cfg, g, bc)
         @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
         @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
     end
-    
+
     if bc.bottom_bc == :no_slip
         @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
         @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]

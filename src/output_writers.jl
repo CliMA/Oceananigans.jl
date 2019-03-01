@@ -3,16 +3,16 @@ import JLD
 "A type for writing checkpoints."
 struct Checkpointer <: OutputWriter
     dir::AbstractString
-    prefix::AbstractString
-    frequency::Int
+    filename_prefix::AbstractString
+    output_frequency::Int
     padding::Int
 end
 
 "A type for writing NetCDF output."
 mutable struct NetCDFOutputWriter <: OutputWriter
     dir::AbstractString
-    prefix::AbstractString
-    frequency::Int
+    filename_prefix::AbstractString
+    output_frequency::Int
     padding::Int
     compression::Int
 end
@@ -20,8 +20,8 @@ end
 "A type for writing Binary output."
 mutable struct BinaryOutputWriter <: OutputWriter
     dir::AbstractString
-    prefix::AbstractString
-    frequency::Int
+    filename_prefix::AbstractString
+    output_frequency::Int
     padding::Int
 end
 
@@ -34,8 +34,8 @@ suffix(fw::OutputWriter) = throw("Not implemented.")
 suffix(fw::NetCDFOutputWriter) = ".nc"
 suffix(fw::Checkpointer) = ".jld"
 
-prefix(fw) = fw.prefix == "" ? "" : fw.prefix * "_"
-filename(fw, name, time_step) = prefix(fw) * name * "_" * lpad(time_step, fw.padding, "0") * suffix(fw)
+filename_prefix(fw) = fw.filename_prefix == "" ? "" : fw.filename_prefix * "_"
+filename(fw, name, time_step) = filename_prefix(fw) * name * "_" * lpad(time_step, fw.padding, "0") * suffix(fw)
 filename(fw::Checkpointer, name, time_step) = filename(fw, "model_checkpoint", time_step)
 
 #
@@ -43,7 +43,7 @@ filename(fw::Checkpointer, name, time_step) = filename(fw, "model_checkpoint", t
 #
 
 function write_output(model::Model, chk::Checkpointer)
-    filepath = joinpath(chk.dir, filename(chk, model.clock.time_step))
+    filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
 
     # Do not include the spectral solver parameters. We want to avoid serializing
     # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
@@ -64,7 +64,7 @@ function write_output(model::Model, chk::Checkpointer)
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
         ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
     end
-    return nothing 
+    return nothing
 end
 
 function restore_from_checkpoint(filepath)
@@ -93,7 +93,7 @@ end
 
 function write_output(model::Model, fw::BinaryOutputWriter)
     for (field, field_name) in zip(fw.fields, fw.field_names)
-        filepath = joinpath(fw.dir, filename(fw, field_name, model.clock_time_step))
+        filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
 
         println("[OutputWriter] Writing $field_name to disk: $filepath")
         if model.metadata == :cpu
@@ -145,28 +145,28 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     w_attr = Dict("longname" => "Velocity in the z-direction", "units" => "m/s")
     T_attr = Dict("longname" => "Temperature", "units" => "K")
 
-    filepath = joinpath(fw.dir, filename(fw, "", model.clock.time_step))
+    filepath = joinpath(fw.dir, filename(fw, "", model.clock.iteration))
 
     isfile(filepath) && rm(filepath)
 
-    nccreate(filepath, "u", "xF", xF, xF_attr, 
-                               "yC", yC, yC_attr, 
-                               "zC", zC, zC_attr, 
+    nccreate(filepath, "u", "xF", xF, xF_attr,
+                               "yC", yC, yC_attr,
+                               "zC", zC, zC_attr,
                                atts=u_attr, compress=fw.compression)
 
-    nccreate(filepath, "v", "xC", xC, xC_attr, 
-                               "yF", yF, yC_attr, 
-                               "zC", zC, zC_attr, 
+    nccreate(filepath, "v", "xC", xC, xC_attr,
+                               "yF", yF, yC_attr,
+                               "zC", zC, zC_attr,
                                atts=v_attr, compress=fw.compression)
 
-    nccreate(filepath, "w", "xC", xC, xC_attr, 
-                               "yC", yC, yC_attr, 
-                               "zF", zF, zF_attr, 
+    nccreate(filepath, "w", "xC", xC, xC_attr,
+                               "yC", yC, yC_attr,
+                               "zF", zF, zF_attr,
                                atts=w_attr, compress=fw.compression)
 
-    nccreate(filepath, "T", "xC", xC, xC_attr, 
-                               "yC", yC, yC_attr, 
-                               "zC", zC, zC_attr, 
+    nccreate(filepath, "T", "xC", xC, xC_attr,
+                               "yC", yC, yC_attr,
+                               "zC", zC, zC_attr,
                                atts=T_attr, compress=fw.compression)
 
     ncwrite(model.velocities.u.data, filepath, "u")
@@ -176,7 +176,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     ncclose(filepath)
 
-    return nothing 
+    return nothing
 end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)

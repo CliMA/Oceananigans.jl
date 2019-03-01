@@ -137,9 +137,9 @@ using Oceananigans.Operators
                 @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
 
                 for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
                 end
             end
         end
@@ -153,7 +153,8 @@ using Oceananigans.Operators
                 @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
 
                 for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
+                    @show planner_flag
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
                 end
             end
         end

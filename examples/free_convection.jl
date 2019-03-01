@@ -1,7 +1,7 @@
-using 
-    Plots, 
-    PyPlot, 
-    FFTW, 
+using
+    Plots,
+    PyPlot,
+    FFTW,
     Oceananigans
 
 function make_temperature_movie(model::Model, fw::NetCDFOutputWriter)
@@ -18,7 +18,7 @@ function make_temperature_movie(model::Model, fw::NetCDFOutputWriter)
         temperature = read_output(fw, "T", tidx*fw.frequency)
         Plots.heatmap(xC, zC, rotl90(temperature[:, Int(ceil(model.grid.Ny/2)), :]) .- 283, color=:balance,
                       clims=(-0.5, 0.5), aspect_ratio=:equal,
-                      title="T @ t=$(tidx*fw.frequency*model.clock.Δt)")
+                      title="T @ t=$(tidx*fw.frequency)")
     end
 
     mp4(movie, "free_convection_$(round(Int, time())).mp4", fps=30)
