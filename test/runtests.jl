@@ -136,11 +136,15 @@ using Oceananigans.Operators
                 @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
                 @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
 
-                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
-                end
+                @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+
+                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                # end
             end
         end
 
@@ -151,19 +155,15 @@ using Oceananigans.Operators
             for arch in [:cpu], ft in [Float64]
                 mm = ModelMetadata(arch, ft)
                 @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
-
-                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @show planner_flag
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
-                end
+                @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
 
-        for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE], arch in [:cpu], ft in [Float64]
+        for arch in [:cpu], ft in [Float64]
             mm = ModelMetadata(arch, ft)
-            @test test_fftw_planner(mm, 32, 32, 32, planner_flag)
-            @test test_fftw_planner(mm, 1,  32, 32, planner_flag)
-            @test test_fftw_planner(mm, 32,  1, 32, planner_flag)
+            @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
         end
     end
 
