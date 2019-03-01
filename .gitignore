@@ -6,6 +6,7 @@ deps/deps.jl
 
 # Swap files.
 *.swp
+*~
 
 # Documenter.jl and MkDocs
 docs/build

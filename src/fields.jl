@@ -4,7 +4,7 @@ import Base:
     iterate, similar, *, +, -
 
 """
-    CellField{T,G<:Grid{T}} <: Field{G}
+    CellField{T,G<:Grid{T}} <: Field
 
 A cell-centered field defined on a grid `G` whose values are stored as
 floating-point values of type T.

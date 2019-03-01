@@ -136,48 +136,49 @@ using Oceananigans.Operators
                 @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
                 @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
 
-                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
-                end
+                @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
+                @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+
+                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                # end
             end
         end
 
-        for Nx in [5, 10, 20, 50, 100], Ny in [5, 10, 20, 50, 100], Nz in [10, 20, 50]
+        Ns = 2 .^ [2, 4, 6]
+        for Nx in Ns, Ny in Ns, Nz in Ns
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
 
             for arch in [:cpu], ft in [Float64]
                 mm = ModelMetadata(arch, ft)
                 @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
-
-                for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
-                end
+                @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
 
-        for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE], arch in [:cpu], ft in [Float64]
+        for arch in [:cpu], ft in [Float64]
             mm = ModelMetadata(arch, ft)
-            @test test_fftw_planner(mm, 100, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 1, 100, 100, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 100, 1, 100, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
+            @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
         end
     end
 
     @testset "Model" begin
-        model = Model((32, 32, 16), (2000, 2000, 1000))
+        model = Model((4, 5, 6), (1, 2, 3))
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
     @testset "Time stepping" begin
-        Nx, Ny, Nz = 100, 1, 50
-        Lx, Ly, Lz = 2000, 1, 1000
-        Nt, Δt = 10, 20
-        ΔR = 10
+        Nx, Ny, Nz = 4, 5, 6
+        Lx, Ly, Lz = 1, 2, 3
+        Nt, Δt = 10, 1
 
         model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        time_step!(model; Nt=Nt, Δt=Δt)
+        time_step!(model, Nt, Δt)
 
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
