@@ -117,7 +117,7 @@ function time_step_kernel!(::Val{:gpu}, Δt,
         Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(G, U, cfg, g, bc)
 
