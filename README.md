@@ -9,7 +9,7 @@
 | [![docs][docs-img]][docs-url] | [![travis][travis-img]][travis-url] [![gitlab][gitlab-img]][gitlab-url] [![appveyor][appveyor-img]][appveyor-url]    | [![coveralls][coveralls-img]][coveralls-url] [![codecov][codecov-img]][codecov-url] |
 
 [docs-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-url]: https://ali-ramadhan.github.io/Oceananigans.jl/latest
+[docs-url]: https://climate-machine.github.io/Oceananigans.jl/latest/
 
 [travis-img]: https://travis-ci.com/climate-machine/Oceananigans.jl.svg?branch=master
 [travis-url]: https://travis-ci.com/climate-machine/Oceananigans.jl
