@@ -11,8 +11,8 @@
 [docs-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [docs-url]: https://ali-ramadhan.github.io/Oceananigans.jl/latest
 
-[travis-img]: https://travis-ci.com/ali-ramadhan/Oceananigans.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/ali-ramadhan/Oceananigans.jl
+[travis-img]: https://travis-ci.com/climate-machine/Oceananigans.jl.svg?branch=master
+[travis-url]: https://travis-ci.com/climate-machine/Oceananigans.jl
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master
