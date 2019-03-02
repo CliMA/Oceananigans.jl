@@ -1,5 +1,7 @@
 using Oceananigans
 
+include("utils.jl")
+
 Nx, Ny, Nz = 1024, 1, 512
 Lx, Ly, Lz = 20000, 1, 10000
 Nt, Δt = 500, 10
