@@ -13,7 +13,7 @@ function deep_convection_3d_gpu()
 
     field_writer = FieldWriter(".", "deep_convection_3d_gpu", 10, [model.tracers.T], ["T"])
     push!(model.output_writers, field_writer)
-    
+
     time_step_kernel!(model, Nt, Δt)
 end
 
@@ -29,7 +29,7 @@ function impose_cooling_disk!(model::Model)
     Ns = 5 * (c.f * Rc/g.Lz)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 
     αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
-    cᵥ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
+    cₚ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
 
     Tz = Ns^2 / (c.g * αᵥ)  # Vertical temperature gradient [K/m].
 
@@ -55,7 +55,7 @@ function impose_cooling_disk!(model::Model)
     # source terms at each time step. Also convert surface heat flux [W/m²]
     # into a temperature tendency forcing [K/s].
     T_forcing = zeros(g.Nx, g.Ny, g.Nz)
-    T_forcing[:, :, 1] = (Q / cᵥ) * (g.Az / (model.eos.ρ₀ * g.V))
+    T_forcing[:, :, 1] = (Q / cₚ) * (g.Az / (model.eos.ρ₀ * g.V))
     model.forcings.FT.data .= cu(T_forcing)
     nothing
 end
