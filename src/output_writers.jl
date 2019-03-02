@@ -29,14 +29,13 @@ function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compre
     NetCDFOutputWriter(dir, prefix, frequency, padding, compression)
 end
 
-"Return the filename suffix for the `OutputWriter` filetype."
-suffix(fw::OutputWriter) = throw("Not implemented.")
-suffix(fw::NetCDFOutputWriter) = ".nc"
-suffix(fw::Checkpointer) = ".jld"
+"Return the filename extension for the `OutputWriter` filetype."
+ext(fw::OutputWriter) = throw("Not implemented.")
+ext(fw::NetCDFOutputWriter) = ".nc"
+ext(fw::Checkpointer) = ".jld"
 
-filename_prefix(fw) = fw.filename_prefix == "" ? "" : fw.filename_prefix * "_"
-filename(fw, name, time_step) = filename_prefix(fw) * name * "_" * lpad(time_step, fw.padding, "0") * suffix(fw)
-filename(fw::Checkpointer, name, time_step) = filename(fw, "model_checkpoint", time_step)
+filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+filename(fw::Checkpointer, name, iteration) = filename(fw, "model_checkpoint", iteration)
 
 #
 # Checkpointing functions
@@ -95,7 +94,7 @@ function write_output(model::Model, fw::BinaryOutputWriter)
     for (field, field_name) in zip(fw.fields, fw.field_names)
         filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
 
-        println("[OutputWriter] Writing $field_name to disk: $filepath")
+        println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
         if model.metadata == :cpu
             write(filepath, field.data)
         elseif model.metadata == :gpu
@@ -147,6 +146,8 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     filepath = joinpath(fw.dir, filename(fw, "", model.clock.iteration))
 
+    println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
+
     isfile(filepath) && rm(filepath)
 
     nccreate(filepath, "u", "xF", xF, xF_attr,
@@ -181,5 +182,6 @@ end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
     filepath = joinpath(fw.dir, filename(fw, "", iter))
+    println("[NetCDFOutputWriter] Reading fields from disk: $filepath")
     ncread(filepath, field_name)
 end
