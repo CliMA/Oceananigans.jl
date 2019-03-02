@@ -50,7 +50,7 @@ function Model(;
     start_time = 0,
      iteration = 0, # ?
     # Model architecture and floating point precision
-          arch = :cpu,
+          arch = :CPU,
     float_type = Float64,
      constants = Earth(),
     # Equation of State
@@ -78,10 +78,10 @@ function Model(;
      stepper_tmp = StepperTemporaryFields(metadata, grid)
 
     # Initialize Poisson solver.
-    if metadata.arch == :cpu
+    if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
         ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.MEASURE; verbose=true)
-    elseif metadata.arch == :gpu
+    elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
         ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
     end
@@ -99,4 +99,4 @@ function Model(;
 end
 
 "Legacy constructor for `Model`."
-Model(N, L; arch=:cpu, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
+Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)

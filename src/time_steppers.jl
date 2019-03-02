@@ -75,7 +75,7 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 
 "Execute one time-step on the CPU."
-function time_step_kernel!(::Val{:cpu}, Δt,
+function time_step_kernel!(::Val{:CPU}, Δt,
                            cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
@@ -102,7 +102,7 @@ function time_step_kernel!(::Val{:cpu}, Δt,
 end
 
 "Execute one time-step on the GPU."
-function time_step_kernel!(::Val{:gpu}, Δt,
+function time_step_kernel!(::Val{:GPU}, Δt,
                            cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 

@@ -40,7 +40,6 @@ function impose_cooling_disk!(model::Model)
     # source terms at each time step. Also convert surface heat flux [W/m²]
     # into a temperature tendency forcing [K/s].
     @. model.forcings.FT.data[:, :, 1] = (Q / cₚ) * (g.Az / (model.eos.ρ₀ * g.V))
-    @show model.forcings.FT.data[50, 50, 1]
     nothing
 end
 
@@ -91,13 +90,10 @@ Nx, Ny, Nz = 100, 100, 50
 Lx, Ly, Lz = 2000, 2000, 1000
 Nt, Δt = 1000, 20
 
-model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))  # CPU Model
+# model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=:GPU, float_type=Float32)  # GPU Model
 
-# impose_initial_conditions!(model)
-
-# We will impose a surface heat flux of -800 W/m² ≈ -9e-6 K/s  in a square
-# on the surface of the domain.
-@inline surface_cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k) = ifelse(k == 1 && 20 < i < 80 && 20 < j < 80, -9e-6, 0)
+impose_initial_conditions!(model)
 
 # Only impose surface_cooling_disk on the temperature field.
 model.forcing = Forcing(nothing, nothing, nothing, surface_cooling_disk, nothing)
