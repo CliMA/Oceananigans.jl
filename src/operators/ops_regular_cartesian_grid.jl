@@ -1,8 +1,7 @@
 using Oceananigans:
     RegularCartesianGrid,
     Field, CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField,
-    VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields,
-    OperatorTemporaryFields
+    VelocityFields, TracerFields, PressureFields, SourceTerms, ForcingFields
 
 # Increment and decrement integer a with periodic wrapping. So if n == 10 then
 # incmod1(11, n) = 1 and decmod1(0, n) = 10.

@@ -13,7 +13,6 @@ mutable struct Model
     forcings::ForcingFields
     forcing::Forcing
     stepper_tmp::StepperTemporaryFields
-    operator_tmp::OperatorTemporaryFields
     ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
     clock::Clock
     output_writers::Array{OutputWriter,1}
@@ -79,7 +78,6 @@ function Model(;
               Gp = SourceTerms(metadata, grid)
         forcings = ForcingFields(metadata, grid)
      stepper_tmp = StepperTemporaryFields(metadata, grid)
-    operator_tmp = OperatorTemporaryFields(metadata, grid)
 
     # Initialize Poisson solver.
     if metadata.arch == :cpu
@@ -112,7 +110,7 @@ function Model(;
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcings, forcing,
-          stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
+          stepper_tmp, ssp, clock, output_writers, diagnostics)
 end
 
 "Legacy constructor for `Model`."

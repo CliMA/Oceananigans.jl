@@ -28,7 +28,6 @@ export
     PressureFields,
     SourceTerms,
     ForcingFields,
-    OperatorTemporaryFields,
     StepperTemporaryFields,
 
     Forcing,

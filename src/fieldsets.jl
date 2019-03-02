@@ -32,21 +32,6 @@ struct ForcingFields <: FieldSet
     FS::CellField
 end
 
-struct OperatorTemporaryFields <: FieldSet
-    fC1::CellField
-    fC2::CellField
-    fC3::CellField
-    fC4::CellField
-    fFX::FaceFieldX
-    fFX2::FaceFieldX
-    fFY::FaceFieldY
-    fFY2::FaceFieldX
-    fFZ::FaceFieldZ
-    fFZ2::FaceFieldX
-    fE1::EdgeField
-    fE2::EdgeField
-end
-
 struct StepperTemporaryFields <: FieldSet
     fC1::CellField
     fC2::CellField
@@ -99,22 +84,6 @@ function ForcingFields(metadata::ModelMetadata, grid::Grid)
     FT = CellField(metadata, grid, metadata.float_type)
     FS = CellField(metadata, grid, metadata.float_type)
     ForcingFields(Fu, Fv, Fw, FT, FS)
-end
-
-function OperatorTemporaryFields(metadata::ModelMetadata, grid::Grid)
-    fC1 = CellField(metadata, grid, metadata.float_type)
-    fC2 = CellField(metadata, grid, metadata.float_type)
-    fC3 = CellField(metadata, grid, metadata.float_type)
-    fC4 = CellField(metadata, grid, metadata.float_type)
-    fFX = FaceFieldX(metadata, grid, metadata.float_type)
-    fFX2 = FaceFieldX(metadata, grid, metadata.float_type)
-    fFY = FaceFieldY(metadata, grid, metadata.float_type)
-    fFY2 = FaceFieldX(metadata, grid, metadata.float_type)
-    fFZ = FaceFieldZ(metadata, grid, metadata.float_type)
-    fFZ2 = FaceFieldX(metadata, grid, metadata.float_type)
-    fE1 = EdgeField(metadata, grid, metadata.float_type)
-    fE2 = EdgeField(metadata, grid, metadata.float_type)
-    OperatorTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fE1, fE2)
 end
 
 function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)
