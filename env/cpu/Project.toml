@@ -1,0 +1,13 @@
+name = "Oceananigans"
+uuid = "6e00b360-fae3-11e8-3922-3d7cb9e50aad"
+authors = ["Ali Ramadhan <ali.hh.ramadhan@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+GPUifyLoops = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
+JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
+NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
