@@ -1,18 +1,21 @@
 module Oceananigans
 
 export
+    # Helper variables and macros for determining if machine is CUDA-enabled.
     HAVE_CUDA,
     hascuda,
 
+    # Planetary Constants
     ConstantsCollection,
-
     PlanetaryConstants,
     Earth,
     EarthStationary,
 
+    # Grids
     Grid,
     RegularCartesianGrid,
 
+    # Fields
     Field,
     FaceField,
     CellField,
@@ -22,27 +25,31 @@ export
     EdgeField,
     set!,
 
+    # FieldSets (collections of related fields)
     FieldSet,
     VelocityFields,
     TracerFields,
     PressureFields,
     SourceTerms,
-    ForcingFields,
-    OperatorTemporaryFields,
     StepperTemporaryFields,
 
+    # Forcing functions
     Forcing,
 
+    # Equation of state
     LinearEquationOfState,
     ρ!,
     δρ!,
     ∫δρgdz!,
 
+    # Boundary conditions
     BoundaryConditions,
 
+    # Time stepping
     time_step!,
     time_step_kernel!,
 
+    # Poisson solver
     SpectralSolverParameters,
     SpectralSolverParametersGPU,
     solve_poisson_3d_ppn,
@@ -51,6 +58,7 @@ export
     solve_poisson_3d_ppn_gpu!,
     solve_poisson_3d_ppn_gpu_planned!,
 
+    # Model helper structs, e.g. metadata, configuration, clock, etc.
     ModelMetadata,
     _ModelMetadata,
     ModelConfiguration,
@@ -58,6 +66,7 @@ export
     Clock,
     Model,
 
+    # Model output writers
     OutputWriter,
     Checkpointer,
     restore_from_checkpoint,
@@ -66,20 +75,22 @@ export
     write_output,
     read_output,
 
+    # Model diagnostics
     Diagnostic,
     run_diagnostic,
     FieldSummary,
     Nusselt_wT,
     Nusselt_Chi,
 
+    # Package utilities
     prettytime
 
 using Statistics, Printf
 using FFTW, JLD, NetCDF
+using GPUifyLoops
 
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
-    using GPUifyLoops
     true
 catch
     false

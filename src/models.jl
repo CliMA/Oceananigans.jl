@@ -10,10 +10,8 @@ mutable struct Model
     pressures::PressureFields
     G::SourceTerms
     Gp::SourceTerms
-    forcings::ForcingFields
     forcing::Forcing
     stepper_tmp::StepperTemporaryFields
-    operator_tmp::OperatorTemporaryFields
     ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
     clock::Clock
     output_writers::Array{OutputWriter,1}
@@ -77,9 +75,7 @@ function Model(;
        pressures = PressureFields(metadata, grid)
                G = SourceTerms(metadata, grid)
               Gp = SourceTerms(metadata, grid)
-        forcings = ForcingFields(metadata, grid)
      stepper_tmp = StepperTemporaryFields(metadata, grid)
-    operator_tmp = OperatorTemporaryFields(metadata, grid)
 
     # Initialize Poisson solver.
     if metadata.arch == :cpu
@@ -97,22 +93,9 @@ function Model(;
     tracers.S.data .= 35
     tracers.T.data .= 283
 
-    # Hydrostatic pressure vertical profile.
-    pHY_profile = [-eos.ρ₀*constants.g*h for h in grid.zC]
-
-    # Set hydrostatic pressure everywhere.
-    if metadata.arch == :cpu
-        pressures.pHY.data .= repeat(reshape(pHY_profile, 1, 1, grid.Nz), grid.Nx, grid.Ny, 1)
-    elseif metadata.arch == :gpu
-        pressures.pHY.data .= CuArray(repeat(reshape(pHY_profile, 1, 1, grid.Nz), grid.Nx, grid.Ny, 1))
-    end
-
-    # Calculate initial density based on tracer values.
-    ρ!(eos, grid, tracers)
-
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
-          velocities, tracers, pressures, G, Gp, forcings, forcing,
-          stepper_tmp, operator_tmp, ssp, clock, output_writers, diagnostics)
+          velocities, tracers, pressures, G, Gp, forcing,
+          stepper_tmp, ssp, clock, output_writers, diagnostics)
 end
 
 "Legacy constructor for `Model`."
