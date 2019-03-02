@@ -1,6 +1,3 @@
-using Statistics, Printf
-using FFTW
-using Plots
 using Oceananigans
 
 include("utils.jl")

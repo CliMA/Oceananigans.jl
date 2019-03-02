@@ -1,10 +1,13 @@
+using Plots
+using Oceananigans
+
 """ Make a movie of a  """
 function make_vertical_slice_movie(model::Model, nc_writer::NetCDFOutputWriter, var_name, Nt, Δt, var_offset=0)
     freq = nc_writer.output_frequency
     N_frames = Int(Nt/freq)
 
     print("Creating tracer movie... ($N_frames frames)\n")
-    Plots.gr()
+    Plots.gr(dpi=150)
 
     animation = @animate for n in 0:N_frames
         print("\rframe = $n / $N_frames   ")
