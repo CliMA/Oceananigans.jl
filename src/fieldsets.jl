@@ -11,7 +11,6 @@ struct TracerFields <: FieldSet
 end
 
 struct PressureFields <: FieldSet
-    pHY::CellField
     pHY′::CellField
     pNHS::CellField
 end
@@ -45,10 +44,9 @@ function TracerFields(metadata::ModelMetadata, grid::Grid)
 end
 
 function PressureFields(metadata::ModelMetadata, grid::Grid)
-    pHY = CellField(metadata, grid, metadata.float_type)
     pHY′ = CellField(metadata, grid, metadata.float_type)
     pNHS = CellField(metadata, grid, metadata.float_type)
-    PressureFields(pHY, pHY′, pNHS)
+    PressureFields(pHY′, pNHS)
 end
 
 function SourceTerms(metadata::ModelMetadata, grid::Grid)

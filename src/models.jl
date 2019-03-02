@@ -93,16 +93,6 @@ function Model(;
     tracers.S.data .= 35
     tracers.T.data .= 283
 
-    # Hydrostatic pressure vertical profile.
-    pHY_profile = [-eos.ρ₀*constants.g*h for h in grid.zC]
-
-    # Set hydrostatic pressure everywhere.
-    if metadata.arch == :cpu
-        pressures.pHY.data .= repeat(reshape(pHY_profile, 1, 1, grid.Nz), grid.Nx, grid.Ny, 1)
-    elseif metadata.arch == :gpu
-        pressures.pHY.data .= CuArray(repeat(reshape(pHY_profile, 1, 1, grid.Nz), grid.Nx, grid.Ny, 1))
-    end
-
     # Calculate initial density based on tracer values.
     ρ!(eos, grid, tracers)
 
