@@ -23,4 +23,4 @@ makedocs(
               "Index" => "subject_index.md"]
 )
 
-deploydocs(repo = "github.com/ali-ramadhan/Oceananigans.jl.git")
+deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
