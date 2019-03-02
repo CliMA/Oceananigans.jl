@@ -93,9 +93,6 @@ function Model(;
     tracers.S.data .= 35
     tracers.T.data .= 283
 
-    # Calculate initial density based on tracer values.
-    ρ!(eos, grid, tracers)
-
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcing,
           stepper_tmp, ssp, clock, output_writers, diagnostics)

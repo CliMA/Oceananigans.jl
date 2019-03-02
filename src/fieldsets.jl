@@ -7,7 +7,6 @@ end
 struct TracerFields <: FieldSet
     T::CellField
     S::CellField
-    ρ::CellField
 end
 
 struct PressureFields <: FieldSet
@@ -39,8 +38,7 @@ end
 function TracerFields(metadata::ModelMetadata, grid::Grid)
     θ = CellField(metadata, grid, metadata.float_type)
     S = CellField(metadata, grid, metadata.float_type)
-    ρ = CellField(metadata, grid, metadata.float_type)
-    TracerFields(θ, S, ρ)
+    TracerFields(θ, S)
 end
 
 function PressureFields(metadata::ModelMetadata, grid::Grid)
