@@ -143,6 +143,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     v_attr = Dict("longname" => "Velocity in the y-direction", "units" => "m/s")
     w_attr = Dict("longname" => "Velocity in the z-direction", "units" => "m/s")
     T_attr = Dict("longname" => "Temperature", "units" => "K")
+    S_attr = Dict("longname" => "Salinity", "units" => "g/kg")
 
     filepath = joinpath(fw.dir, filename(fw, "", model.clock.iteration))
 
@@ -151,29 +152,35 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     isfile(filepath) && rm(filepath)
 
     nccreate(filepath, "u", "xF", xF, xF_attr,
-                               "yC", yC, yC_attr,
-                               "zC", zC, zC_attr,
-                               atts=u_attr, compress=fw.compression)
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=u_attr, compress=fw.compression)
 
     nccreate(filepath, "v", "xC", xC, xC_attr,
-                               "yF", yF, yC_attr,
-                               "zC", zC, zC_attr,
-                               atts=v_attr, compress=fw.compression)
+                            "yF", yF, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=v_attr, compress=fw.compression)
 
     nccreate(filepath, "w", "xC", xC, xC_attr,
-                               "yC", yC, yC_attr,
-                               "zF", zF, zF_attr,
-                               atts=w_attr, compress=fw.compression)
+                            "yC", yC, yC_attr,
+                            "zF", zF, zF_attr,
+                            atts=w_attr, compress=fw.compression)
 
     nccreate(filepath, "T", "xC", xC, xC_attr,
-                               "yC", yC, yC_attr,
-                               "zC", zC, zC_attr,
-                               atts=T_attr, compress=fw.compression)
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=T_attr, compress=fw.compression)
+
+    nccreate(filepath, "S", "xC", xC, xC_attr,
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=S_attr, compress=fw.compression)
 
     ncwrite(model.velocities.u.data, filepath, "u")
     ncwrite(model.velocities.v.data, filepath, "v")
     ncwrite(model.velocities.w.data, filepath, "w")
     ncwrite(model.tracers.T.data, filepath, "T")
+    ncwrite(model.tracers.S.data, filepath, "S")
 
     ncclose(filepath)
 
