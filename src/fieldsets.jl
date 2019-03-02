@@ -26,15 +26,6 @@ end
 
 struct StepperTemporaryFields <: FieldSet
     fC1::CellField
-    fC2::CellField
-    fC3::CellField
-    fC4::CellField
-    fFX::FaceFieldX
-    fFX2::FaceFieldX
-    fFY::FaceFieldY
-    fFY2::FaceFieldX
-    fFZ::FaceFieldZ
-    fFZ2::FaceFieldX
     fCC1::CellField
     fCC2::CellField
 end
@@ -71,16 +62,7 @@ end
 
 function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)
     fC1 = CellField(metadata, grid, metadata.float_type)
-    fC2 = CellField(metadata, grid, metadata.float_type)
-    fC3 = CellField(metadata, grid, metadata.float_type)
-    fC4 = CellField(metadata, grid, metadata.float_type)
-    fFX = FaceFieldX(metadata, grid, metadata.float_type)
-    fFX2 = FaceFieldX(metadata, grid, metadata.float_type)
-    fFY = FaceFieldY(metadata, grid, metadata.float_type)
-    fFY2 = FaceFieldX(metadata, grid, metadata.float_type)
-    fFZ = FaceFieldZ(metadata, grid, metadata.float_type)
-    fFZ2 = FaceFieldX(metadata, grid, metadata.float_type)
     fCC1 = CellField(metadata, grid, Complex{Float64})  # We might really need Float64 for the Poisson solver.
     fCC2 = CellField(metadata, grid, Complex{Float64})
-    StepperTemporaryFields(fC1, fC2, fC3, fC4, fFX, fFX2, fFY, fFY2, fFZ, fFZ2, fCC1, fCC2)
+    StepperTemporaryFields(fC1, fCC1, fCC2)
 end

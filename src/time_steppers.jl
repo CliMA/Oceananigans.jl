@@ -2,8 +2,6 @@
 
 using Oceananigans.Operators
 
-#include("operators/ops_regular_cartesian_grid_elementwise.jl")
-
 const Tx = 16 # Threads per x-block
 const Ty = 16 # Threads per y-block
 const χ = 0.1 # Adams-Bashforth (AB2) parameter.
