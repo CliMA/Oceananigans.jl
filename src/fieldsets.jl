@@ -24,14 +24,6 @@ struct SourceTerms <: FieldSet
     GS::CellField
 end
 
-struct ForcingFields <: FieldSet
-    Fu::FaceFieldX
-    Fv::FaceFieldY
-    Fw::FaceFieldZ
-    FT::CellField
-    FS::CellField
-end
-
 struct StepperTemporaryFields <: FieldSet
     fC1::CellField
     fC2::CellField
@@ -75,15 +67,6 @@ function SourceTerms(metadata::ModelMetadata, grid::Grid)
     GT = CellField(metadata, grid, metadata.float_type)
     GS = CellField(metadata, grid, metadata.float_type)
     SourceTerms(Gu, Gv, Gw, GT, GS)
-end
-
-function ForcingFields(metadata::ModelMetadata, grid::Grid)
-    Fu = FaceFieldX(metadata, grid, metadata.float_type)
-    Fv = FaceFieldY(metadata, grid, metadata.float_type)
-    Fw = FaceFieldZ(metadata, grid, metadata.float_type)
-    FT = CellField(metadata, grid, metadata.float_type)
-    FS = CellField(metadata, grid, metadata.float_type)
-    ForcingFields(Fu, Fv, Fw, FT, FS)
 end
 
 function StepperTemporaryFields(metadata::ModelMetadata, grid::Grid)

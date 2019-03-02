@@ -27,7 +27,6 @@ export
     TracerFields,
     PressureFields,
     SourceTerms,
-    ForcingFields,
     StepperTemporaryFields,
 
     Forcing,

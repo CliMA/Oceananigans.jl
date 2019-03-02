@@ -10,7 +10,6 @@ mutable struct Model
     pressures::PressureFields
     G::SourceTerms
     Gp::SourceTerms
-    forcings::ForcingFields
     forcing::Forcing
     stepper_tmp::StepperTemporaryFields
     ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
@@ -76,7 +75,6 @@ function Model(;
        pressures = PressureFields(metadata, grid)
                G = SourceTerms(metadata, grid)
               Gp = SourceTerms(metadata, grid)
-        forcings = ForcingFields(metadata, grid)
      stepper_tmp = StepperTemporaryFields(metadata, grid)
 
     # Initialize Poisson solver.
@@ -109,7 +107,7 @@ function Model(;
     ρ!(eos, grid, tracers)
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
-          velocities, tracers, pressures, G, Gp, forcings, forcing,
+          velocities, tracers, pressures, G, Gp, forcing,
           stepper_tmp, ssp, clock, output_writers, diagnostics)
 end
 

@@ -44,7 +44,6 @@ function time_step!(model, Nt, Δt)
                           model.pressures,
                           model.G,
                           model.Gp,
-                          model.forcings,
                           model.stepper_tmp,
                           model.clock,
                           model.forcing,
@@ -79,7 +78,7 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 "Execute one time-step on the CPU."
 function time_step_kernel!(::Val{:cpu}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
@@ -106,7 +105,7 @@ end
 
 "Execute one time-step on the GPU."
 function time_step_kernel!(::Val{:gpu}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
