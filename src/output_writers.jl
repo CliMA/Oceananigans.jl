@@ -183,5 +183,7 @@ end
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
     filepath = joinpath(fw.dir, filename(fw, "", iter))
     println("[NetCDFOutputWriter] Reading fields from disk: $filepath")
-    ncread(filepath, field_name)
+    field_data = ncread(filepath, field_name)
+    ncclose(filepath)
+    return field_data
 end
