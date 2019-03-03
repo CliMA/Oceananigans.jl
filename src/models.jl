@@ -90,8 +90,8 @@ function Model(;
     velocities.u.data .= 0
     velocities.v.data .= 0
     velocities.w.data .= 0
-    tracers.S.data .= 35
-    tracers.T.data .= 283
+    tracers.S.data .= eos.S₀
+    tracers.T.data .= eos.T₀
 
     Model(metadata, configuration, boundary_conditions, constants, eos, grid,
           velocities, tracers, pressures, G, Gp, forcing,
