@@ -37,15 +37,6 @@ using Oceananigans:
 @inline avgz_f2c(f, Nz, i, j, k) = @inbounds ifelse(k == Nz,      f[i, j, k], 0.5 * (f[i, j, k] + f[i, j, k+1]))
 @inline avgz_f2e(f, Nz, i, j, k) = @inbounds ifelse(k == 1, 0.5 * f[i, j, k], 0.5 * (f[i, j, k-1] + f[i, j, k]))
 
-@inline function avgz_f2e(f, Nz, i, j, k)
-    if k == 1
-        @inbounds return f[i, j, k]
-    else
-        @inbounds return 0.5 * (f[i, j, k] + f[i, j, k-1])
-    end
-end
-
-
 function avgx_4(f, Nx, i, j, k)
     @inbounds (f[i, j, k] + f[decmod1(i, Nx), j, k] -
 		                   (f[incmod1(i, Nx), j, k] - f[i, j, k] -
@@ -89,16 +80,16 @@ end
 
 @inline function δz_f2c_ab̄ᶻ(a, b, Nz, i, j, k)
     if k == Nz
-        @inbounds return a[i, j, k] * avgz_c2f(b, Nz, i, j, k)
+        return 0
     else
-        @inbounds return (a[i, j,   k] * avgz_c2f(b, Nz, i, j,   k) -
-                          a[i, j, k+1] * avgz_c2f(b, Nz, i, j, k+1))
+        @inbounds return (a[i, j, k+1] * avgz_c2f(b, Nz, i, j, k+1) -
+                          a[i, j,   k] * avgz_c2f(b, Nz, i, j,   k))
     end
 end
 
 @inline function div_flux(u, v, w, Q, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     if k == 1
-        @inbounds return (δx_f2c_ab̄ˣ(u, Q, Nx, i, j, k) / Δx) + (δy_f2c_ab̄ʸ(v, Q, Ny, i, j, k) / Δy) - ((w[i, j, 2] * avgz_c2f(Q, Nz, i, j, 2)) / Δz)
+        @inbounds return (δx_f2c_ab̄ˣ(u, Q, Nx, i, j, k) / Δx) + (δy_f2c_ab̄ʸ(v, Q, Ny, i, j, k) / Δy)
     else
         return (δx_f2c_ab̄ˣ(u, Q, Nx, i, j, k) / Δx) + (δy_f2c_ab̄ʸ(v, Q, Ny, i, j, k) / Δy) + (δz_f2c_ab̄ᶻ(w, Q, Nz, i, j, k) / Δz)
     end
@@ -115,10 +106,10 @@ end
 
 @inline function δz_e2f_w̄ˣūᶻ(u, w, Nx, Nz, i, j, k)
     if k == Nz
-        @inbounds return avgx_f2e(w, Nx, i, j, k) * avgz_f2e(u, Nx, i, j, k)
+        return 0
     else
-        @inbounds return avgx_f2e(w, Nx, i, j,   k) * avgz_f2e(u, Nz, i, j,   k) -
-                         avgx_f2e(w, Nx, i, j, k+1) * avgz_f2e(u, Nz, i, j, k+1)
+        @inbounds return (avgx_f2e(w, Nx, i, j, k+1) * avgz_f2e(u, Nz, i, j, k+1) -
+						  avgx_f2e(w, Nx, i, j,   k) * avgz_f2e(u, Nz, i, j,   k))
     end
 end
 
@@ -137,10 +128,11 @@ end
 
 @inline function δz_e2f_w̄ʸv̄ᶻ(v, w, Ny, Nz, i, j, k)
     if k == Nz
-        @inbounds return avgy_f2e(w, Ny, i, j, k) * avgz_f2e(v, Nz, i, j, k)
+        return 0
     else
-        @inbounds return avgy_f2e(w, Ny, i, j,   k) * avgz_f2e(v, Nz, i, j,   k) -
-                         avgy_f2e(w, Ny, i, j, k+1) * avgz_f2e(v, Nz, i, j, k+1)
+        @inbounds return (avgy_f2e(w, Ny, i, j, k+1) * avgz_f2e(v, Nz, i, j, k+1) -
+		 				  avgy_f2e(w, Ny, i, j,   k) * avgz_f2e(v, Nz, i, j,   k))
+
     end
 end
 
@@ -160,9 +152,9 @@ end
 
 @inline function δz_c2f_w̄ᶻw̄ᶻ(w, Nz, i, j, k)
     if k == 1
-        return 0
+        return avgz_f2c(w, Nz, i, j, 1)^2
     else
-        return avgz_f2c(w, Nz, i, j, k-1)^2 - avgz_f2c(w, Nz, i, j, k)^2
+        return avgz_f2c(w, Nz, i, j, k)^2 - avgz_f2c(w, Nz, i, j, k-1)^2
     end
 end
 
@@ -175,9 +167,9 @@ end
 
 @inline function δz²_c2f2c(f, Nz, i, j, k)
     if k == Nz
-        return δz_c2f(f, Nz, i, j, k)
+        return 0
     else
-        return δz_c2f(f, Nz, i, j, k) - δz_c2f(f, Nz, i, j, k+1)
+        return δz_c2f(f, Nz, i, j, k+1) - δz_c2f(f, Nz, i, j, k)
     end
 end
 
@@ -193,17 +185,17 @@ end
 
 @inline function δz²_f2e2f(f, Nz, i, j, k)
     if k == Nz
-        return δz_f2e(f, Nz, i, j, k)
+        return 0
     else
-        return δz_f2e(f, Nz, i, j, k) - δz_f2e(f, Nz, i, j, k+1)
+        return δz_f2e(f, Nz, i, j, k+1) - δz_f2e(f, Nz, i, j, k)
     end
 end
 
 @inline function δz²_f2c2f(f, Nz, i, j, k)
     if k == 1
-        return 0
+        return δz_f2c(f, Nz, i, j, 1)
     else
-        return δz_f2c(f, Nz, i, j, k-1) - δz_f2c(f, Nz, i, j, k)
+        return δz_f2c(f, Nz, i, j, k) - δz_f2c(f, Nz, i, j, k-1)
     end
 end
 
