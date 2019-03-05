@@ -33,7 +33,7 @@ struct RegularCartesianGrid{T<:AbstractFloat,A} <: Grid
     xC::A
     yC::A
     zC::A
-    # Range of grid coordinates at the faces of the cells. 
+    # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
     xF::A
     yF::A
@@ -80,11 +80,11 @@ function RegularCartesianGrid(T, N, L)
 
     xC = Δx/2:Δx:Lx
     yC = Δy/2:Δy:Ly
-    zC = -Δz/2:-Δz:-Lz
+    zC = -Lz:Δz:-Δz/2
 
     xF = 0:Δx:Lx
     yF = 0:Δy:Ly
-    zF = 0:-Δz:-Lz
+    zF = -Lz:Δz:0
 
     RegularCartesianGrid{T,typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                                        Az, V, xC, yC, zC, xF, yF, zF)
