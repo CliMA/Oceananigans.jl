@@ -145,11 +145,18 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, 
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
 
-                ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
-                for k′ in (Nz-1):-1:k
-                    @inbounds ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
+                ∫δρ = (-ρ₀*βT*(T[i, j, Nz]-T₀))
+                if k == 1
+                    for k′ in Nz:-1:2
+                        @inbounds ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
+                    end
+                    @inbounds pHY′[i, j, k] = 0.5 * gΔz * (∫δρ - ρ₀*βT * (T[i, j, 1] - T₀))
+                else
+                    for k′ in Nz:-1:k
+                        @inbounds ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
+                    end
+                    @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
                 end
-                @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
             end
         end
     end
