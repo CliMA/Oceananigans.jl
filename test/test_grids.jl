@@ -17,5 +17,5 @@ end
 
 function test_faces_start_at_zero(mm::ModelMetadata)
     g = RegularCartesianGrid(mm, (10, 10, 10), (2π, 2π, 2π))
-    g.xF[1] == 0 && g.yF[1] == 0 && g.zF[1] == 0
+    g.xF[1] == 0 && g.yF[1] == 0 && g.zF[end] == 0
 end
