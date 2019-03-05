@@ -10,16 +10,29 @@ struct Neumann <: PoissonBC end
 
 abstract type AbstractPoissonSolver{D, xBC, yBC, zBC} end
 
+"""
+    PoissonEigenvalues(A, grid, bcs)
+
+Return the squared eigenvalues to Poisson's equation
+discretized on a staggered grids in array type `A`, on `grid`
+and for boundary conditions `bcs`.
+"""
 struct PoissonEigenvalues{A, xBC, yBC, zBC}
     kx²::A
     ky²::A
     kz²::A
 end
 
-get_eigenvalues(::Periodic,  N, L) = [ (2N*sin((i-1)*π/N) / L)^2 for i=1:N]
-get_eigenvalues(::Neumann, N, L) = [ (4N*sin((i-1)*π/N) / L)^2 for i=1:N]
+"""
+    get_eigenvalues(bc, N, L)
 
-function PoissonEigenvalues(A, grid, bcs=(Periodic, Periodic, Neumann))
+Get the eigenvalues for Poisson's equation in a particular
+direction for boundary condition `bc`, grid length `N` and extent `L`.
+"""
+get_eigenvalues(::Periodic, N, L) = [ (2N*sin((i-1)*π/N) / L)^2 for i=1:N]
+get_eigenvalues(::Neumann,  N, L) = [ (4N*sin((i-1)*π/N) / L)^2 for i=1:N]
+
+function PoissonEigenvalues(A, grid, bcs)
     kx² = convert(A, reshape(get_eigenvalues(bcs[1], grid.Nx, grid.Lx), (grid.Nx, 1, 1) ))
     ky² = convert(A, reshape(get_eigenvalues(bcs[2], grid.Ny, grid.Ly), (1, grid.Ny, 1) ))
     kz² = convert(A, reshape(get_eigenvalues(bcs[3], grid.Nz, grid.Lz), (1, 1, grid.Nz) ))
@@ -42,7 +55,7 @@ struct PoissonSolver_PPN_CPU{Ak, T1, T2, T3, T4} <: AbstractPoissonSolver{CPU, P
     IDCT_z!   :: T4
 end
 
-struct PoissonSolver_PPN_GPU{Ak, As, T1, T2, T3, T4} <: AbstractPoissonSolver{GPU, Periodic, Periodic, Neumann}
+struct PoissonSolver_PPN_GPU{Ak, T1, T2, T3, T4, As} <: AbstractPoissonSolver{GPU, Periodic, Periodic, Neumann}
     eigenvals            :: PoissonEigenvalues{Ak, Periodic, Periodic, Neumann}
     FFT_xy!              :: T1
     FFT_z!               :: T2
@@ -52,15 +65,19 @@ struct PoissonSolver_PPN_GPU{Ak, As, T1, T2, T3, T4} <: AbstractPoissonSolver{GP
     ifft_to_idct_factors :: As
 end
 
-get_Ak(::CPU) = Array{solver_eltype,3}
-get_Ak(::GPU) = CuArray{solver_eltype,3}
+get_Ak(::CPU) = Array{solver_eltype, 3}
+get_Ak(::GPU) = CuArray{solver_eltype, 3}
 
 """
-    PoissonSolver(CPU, Periodic, Periodic, Neumann...)
+    PoissonSolver([Dev=CPU()], xBC, yBC, zBC, grid; kwargs...)
 
+Return a `PoissonSolver` on device `Dev` for given boundary
+conditions and grid.
 """
+PoissonSolver(args...; kwargs...) = PoissonSolver(CPU(), args...; kwargs...)
+
 function PoissonSolver(::CPU, ::Periodic, ::Periodic, ::Neumann, grid; 
-                       planning_array=zeros(eltype(grid), size(grid)), planner_flag=FFTW.MEASURE, verbose=false)
+                       planning_array=zeros(solver_eltype, size(grid)), planner_flag=FFTW.MEASURE, verbose=false)
     Ak = get_Ak(CPU)
     eigenvals = PoissonEigenvalues(Ak, grid, (Periodic, Periodic, Neumann))
 
@@ -72,13 +89,8 @@ function PoissonSolver(::CPU, ::Periodic, ::Periodic, ::Neumann, grid;
     PoissonSolver_PPN_CPU(eigenvals, FFT_xy!, DCT_z!, IFFT_xy!, DCT_z!)
 end
 
-"""
-    PoissonSolver(GPU, Periodic, Periodic, Neumann...)
-
-"""
 function PoissonSolver(::GPU, ::Periodic, ::Periodic, ::Neumann, grid; 
-                       planning_array=CuArray{solver_eltype}(zeros(eltype(grid), size(grid))), 
-                       planner_flag=FFTW.MEASURE, verbose=false)
+                       planning_array=cuzeros(solver_eltype, size(grid)), planner_flag=FFTW.MEASURE, verbose=false)
     Ak = get_Ak(GPU)
     eigenvals = PoissonEigenvalues(Ak, grid, (Periodic, Periodic, Neumann))
 
@@ -102,42 +114,46 @@ function PoissonSolver(::GPU, ::Periodic, ::Periodic, ::Neumann, grid;
 end
 
 """
-    fwd_transforms!(solver, a)
+    fwd_transforms!(a, solver)
 
-Perform forward transforms on `a` for `solver`, 
-depending on device type and boundary conditions.
+Perform forward transforms on `a` (typically, the source term for 
+Poisson's equation) for `solver`, depending on device type and boundary conditions.
 """
-function fwd_transforms!(solver::AbstractPoissonSolver{D, xBC, yBC, zBC}, a) where {D<:CPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
-    solver.FFT_xy! * a # Calculate FFTˣʸ(f) in place.
-     solver.DCT_z! * a # Calculate DCTᶻ(f) in place.
+function fwd_transforms!(a, solver::AbstractPoissonSolver{D, xBC, yBC, zBC}) where {D<:CPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
+    solver.FFT_xy! * a
+     solver.DCT_z! * a
     return nothing
 end
 
-function fwd_transforms!(solver::AbstractPoissonSolver{D, xBC, yBC, zBC}, a) where {D<:GPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
+function fwd_transforms!(a, solver::AbstractPoissonSolver{D, xBC, yBC, zBC}) where {D<:GPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
     # Calculate DCTᶻ(f) in place using the FFT.
     solver.FFT_z! * a
     @. a *= solver.fft_to_dct_factors
     @. a = real(a)
 
-    solver.FFT_xy! * a # Calculate FFTˣʸ(f) in place.
-
+    solver.FFT_xy! * a 
     return nothing
 end
 
-function bwd_transforms!(solver::AbstractPoissonSolver{D, xBC, yBC, zBC}, a) where {D<:CPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
-    solver.IFFT!*a # Calculate IFFTˣʸ(ϕ) in place.
-    solver.IDCT!*a # Calculate IDCTᶻ(ϕ) in place.
-    @. a = a / (2*size(a, 3)) # Specific to PPN boundary conditions?
+"""
+    bwd_transforms!(a, solver)
+
+Perform backward transforms on `a` (typically, the solution
+to Poisson's equation) for `solver`, depending on device type and boundary conditions.
+"""
+function bwd_transforms!(a, solver::AbstractPoissonSolver{D, xBC, yBC, zBC}) where {D<:CPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
+    solver.IFFT! * a 
+    solver.IDCT! * a 
+    @. a = a / (2*size(a, 3))
     return nothing
 end
 
-function bwd_transforms!(solver::AbstractPoissonSolver{D, xBC, yBC, zBC}, a) where {D<:GPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
-    solver.IFFT_xy! * a # Calculate IFFTˣʸ(ϕ̂) in place.
+function bwd_transforms!(a, solver::AbstractPoissonSolver{D, xBC, yBC, zBC}) where {D<:GPU, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
+    solver.IFFT_xy! * a 
 
-    # Calculate IDCTᶻ(ϕ̂) in place using the FFT.
+    # Calculate IDCTᶻ(ϕ) in place using the FFT.
     @. a *= solver.idct_bfactors
     solver.IFFT_z! * a
-
     return nothing
 end
  
@@ -145,13 +161,15 @@ end
 """
     solve_poisson!(ϕ, f, solver)
 
-Solve Poisson's equation for `ϕ`:
+Solve Poisson's equation,
 
 ``
 \triangle \phi = f
 ``
 
-for `ϕ`, using `solver`.
+for `ϕ` with the source term `f`, using `solver`.
+Boundary conditions and the type of compute device 
+are stored in `solver`.
 """
 function solve_poisson!(f, ϕ, solver::PoissonSolver{D, xBC, yBC, zBC}) where {D, xBC<:Periodic, yBC<:Periodic, zBC<:Neumann}
     # Transform source term
@@ -163,6 +181,5 @@ function solve_poisson!(f, ϕ, solver::PoissonSolver{D, xBC, yBC, zBC}) where {D
 
     # Transform solution
     bwd_transforms!(solver, ϕ.data)
-
     return nothing
 end
