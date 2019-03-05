@@ -9,7 +9,7 @@ A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
 T.
 """
-struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
+struct RegularCartesianGrid{T<:AbstractFloat,A} <: Grid
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int
@@ -30,20 +30,14 @@ struct RegularCartesianGrid{T<:AbstractFloat} <: Grid
     # Volume of a cell [m³].
     V::T
     # Range of coordinates at the centers of the cells.
-    xC
-    yC
-    zC
-    # Range of grid coordinates at the faces of the cells. Note that there are
-    # Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z. However,
-    # we only need to store (Nx, Ny, Nz) faces because if the grid is periodic
-    # in one direction then face[1] == face[N+1] so no need to store face[N+1],
-    # and if there's a wall then face[1] and face[N+1] are both walls so you
-    # only need to store face[1]. This might need to be modified for the case
-    # of open boundary conditions but I don't think that's a commonly used
-    # configuration at all.
-    xF
-    yF
-    zF
+    xC::A
+    yC::A
+    zC::A
+    # Range of grid coordinates at the faces of the cells. 
+    # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
+    xF::A
+    yF::A
+    zF::A
 end
 
 """
@@ -58,7 +52,7 @@ of type T.
 julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
-function RegularCartesianGrid(metadata::ModelMetadata, N, L)
+function RegularCartesianGrid(T, N, L)
     @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
     @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
 
@@ -92,12 +86,14 @@ function RegularCartesianGrid(metadata::ModelMetadata, N, L)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    RegularCartesianGrid{metadata.float_type}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
-                            Az, V, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{T,typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+                                       Az, V, xC, yC, zC, xF, yF, zF)
 end
 
-size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
+RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
+RegularCartesianGrid(meta::ModelMetadata, N, L) = RegularCartesianGrid(meta.float_type, N, L)
 
+size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 Base.eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
