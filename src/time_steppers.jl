@@ -146,8 +146,8 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, 
                 @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
 
                 ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
-                for k′ in 2:k
-                    ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
+                for k′ in (Nz-1):-1:k
+                    @inbounds ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
                 end
                 @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
             end
