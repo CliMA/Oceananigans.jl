@@ -18,10 +18,37 @@ using Oceananigans:
 @inline δy_e2f(f, Ny, i, j, k) = @inbounds f[i, incmod1(j, Ny), k] - f[i, j, k]
 @inline δy_f2e(f, Ny, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, Ny), k]
 
-@inline δz_c2f(f, Nz, i, j, k) = @inbounds ifelse(k == 1,  f[i, j, k], f[i, j, k] - f[i, j, k-1])
-@inline δz_f2c(f, Nz, i, j, k) = @inbounds ifelse(k == Nz,          0, f[i, j, k+1] - f[i, j, k])
-@inline δz_e2f(f, Nz, i, j, k) = @inbounds ifelse(k == Nz,          0, f[i, j, k+1] - f[i, j, k])
-@inline δz_f2e(f, Nz, i, j, k) = @inbounds ifelse(k == 1,  f[i, j, k], f[i, j, k] - f[i, j, k-1])
+@inline function δz_c2f(f, Nz, i, j, k)
+	if k == 1
+		@inbounds return f[i, j, k]
+	else
+		@inbounds return f[i, j, k] - f[i, j, k-1]
+	end
+end
+
+@inline function δz_f2c(f, Nz, i, j, k)
+	if k == Nz
+		return 0
+	else
+		@inbounds return f[i, j, k+1] - f[i, j, k]
+	end
+end
+
+@inline function δz_e2f(f, Nz, i, j, k)
+	if k == Nz
+		return 0
+	else
+		@inbounds return f[i, j, k+1] - f[i, j, k]
+	end
+end
+
+@inline function δz_f2e(f, Nz, i, j, k)
+	if k == 1
+		return f[i, j, k]
+	else
+		@inbounds return f[i, j, k] - f[i, j, k-1]
+	end
+end
 
 @inline avgx_c2f(f, Nx, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
 @inline avgx_f2c(f, Nx, i, j, k) = @inbounds 0.5 * (f[incmod1(i, Nx), j, k] + f[i, j, k])
@@ -33,9 +60,29 @@ using Oceananigans:
 
 @inline avg_xy(u, Nx, Ny, i, j, k) = 0.5 * (avgy_f2c(u, Ny, i, j, k) + avgy_f2c(u, Ny, incmod1(i, Nx), j, k))
 
-@inline avgz_c2f(f, Nz, i, j, k) = @inbounds ifelse(k == 1, 0.5 * f[i, j, k], 0.5 * (f[i, j, k-1] + f[i, j, k]))
-@inline avgz_f2c(f, Nz, i, j, k) = @inbounds ifelse(k == Nz,      f[i, j, k], 0.5 * (f[i, j, k] + f[i, j, k+1]))
-@inline avgz_f2e(f, Nz, i, j, k) = @inbounds ifelse(k == 1, 0.5 * f[i, j, k], 0.5 * (f[i, j, k-1] + f[i, j, k]))
+@inline function avgz_c2f(f, Nz, i, j, k)
+	if k == 1
+		@inbounds return 0.5 * f[i, j, k]
+	else
+		@inbounds return 0.5 * (f[i, j, k-1] + f[i, j, k])
+	end
+end
+
+@inline function avgz_f2c(f, Nz, i, j, k)
+	if k == Nz
+		@inbounds return f[i, j, k]
+	else
+		@inbounds return 0.5 * (f[i, j, k] + f[i, j, k+1])
+	end
+end
+
+@inline function avgz_f2e(f, Nz, i, j, k)
+	if k == 1
+		@inbounds return 0.5 * f[i, j, k]
+	else
+		@inbounds return 0.5 * (f[i, j, k-1] + f[i, j, k])
+	end
+end
 
 function avgx_4(f, Nx, i, j, k)
     @inbounds (f[i, j, k] + f[decmod1(i, Nx), j, k] -
