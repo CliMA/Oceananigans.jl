@@ -1,11 +1,11 @@
 using
     Plots,
-    PyPlot,
+    #PyPlot,
     FFTW,
     Oceananigans
 
 function make_temperature_movie(model::Model, fw::NetCDFOutputWriter)
-    n_frames = Int(model.clock.time_step / fw.frequency)
+    n_frames = Int(model.clock.iteration / fw.output_frequency)
 
     xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC
 
@@ -15,10 +15,10 @@ function make_temperature_movie(model::Model, fw::NetCDFOutputWriter)
     default(dpi=300)
     movie = @animate for tidx in 0:n_frames
         print("\rframe = $tidx / $n_frames   ")
-        temperature = read_output(fw, "T", tidx*fw.frequency)
+        temperature = read_output(fw, "T", tidx*fw.output_frequency)
         Plots.heatmap(xC, zC, rotl90(temperature[:, Int(ceil(model.grid.Ny/2)), :]) .- 283, color=:balance,
-                      clims=(-0.5, 0.5), aspect_ratio=:equal,
-                      title="T @ t=$(tidx*fw.frequency)")
+                      clims=(-0.05, 0.05), aspect_ratio=:equal,
+                      title="T @ t=$(tidx*fw.output_frequency)")
     end
 
     mp4(movie, "free_convection_$(round(Int, time())).mp4", fps=30)
@@ -44,14 +44,17 @@ end
 
 Nx, Ny, Nz = 512, 1, 256
 Lx, Ly, Lz = 500, 500, 500
-Nt, Δt = 100, 0.1
+Nt, Δt = 40*100, 10
 ν, κ = 1e-2, 1e-2
 
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ)
 model.boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :no_slip)
+#
+@inline fT(u,v,w,T,S,Nx,Ny,Nz,dx,dy,dz,i,j,k ) = ifelse(k ==1, -9e-6 + 1e-6*sin.( 2*pi * i / 512),0)
+model.forcing = Forcing(nothing,nothing,nothing, fT, nothing)
 
 # Write temperature field to disk every 10 time steps.
-output_writer = NetCDFOutputWriter(dir=".", prefix="convection", frequency=10)
+output_writer = NetCDFOutputWriter(dir=".", prefix="convection", frequency=40)
 push!(model.output_writers, output_writer)
 
 # Time stepping

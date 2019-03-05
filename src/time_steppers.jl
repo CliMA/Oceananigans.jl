@@ -2,8 +2,6 @@
 
 using Oceananigans.Operators
 
-#include("operators/ops_regular_cartesian_grid_elementwise.jl")
-
 const Tx = 16 # Threads per x-block
 const Ty = 16 # Threads per y-block
 const χ = 0.1 # Adams-Bashforth (AB2) parameter.
@@ -44,7 +42,6 @@ function time_step!(model, Nt, Δt)
                           model.pressures,
                           model.G,
                           model.Gp,
-                          model.forcings,
                           model.stepper_tmp,
                           model.clock,
                           model.forcing,
@@ -64,7 +61,7 @@ function time_step!(model, Nt, Δt)
         end
 
         for output_writer in model.output_writers
-            (clock.iteration % output_writer.frequency) == 0 && write_output(model, output_writer)
+            (clock.iteration % output_writer.output_frequency) == 0 && write_output(model, output_writer)
         end
 
         t2 = time_ns();
@@ -78,11 +75,11 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 
 "Execute one time-step on the CPU."
-function time_step_kernel!(::Val{:cpu}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+function time_step_kernel!(::Val{:CPU}, Δt,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
     update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                          U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
@@ -105,20 +102,20 @@ function time_step_kernel!(::Val{:cpu}, Δt,
 end
 
 "Execute one time-step on the GPU."
-function time_step_kernel!(::Val{:gpu}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, F, stmp, clock, forcing,
+function time_step_kernel!(::Val{:GPU}, Δt,
+                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
-        Val(:GPU), gΔz, Nx, Ny, Nz, tr.ρ.data, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+        Val(:GPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_source_terms!(
         Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, F.FT.data)
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(G, U, cfg, g, bc)
 
@@ -137,18 +134,16 @@ function time_step_kernel!(::Val{:gpu}, Δt,
     return nothing
 end
 
-@inline δρ(eos::LinearEquationOfState, T::CellField, i, j, k) = - eos.ρ₀ * eos.βT * (T.data[i, j, k] - eos.T₀)
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, ρ, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
+function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
-                @inbounds  ρ[i, j, k] = ρ₀ + δρ[i, j, k]
 
                 ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
                 for k′ in 2:k
