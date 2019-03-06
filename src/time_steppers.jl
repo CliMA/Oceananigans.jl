@@ -36,7 +36,7 @@ function time_step!(model, Nt, Δt)
                           model.grid,
                           model.constants,
                           model.eos,
-                          model.ssp,
+                          model.poisson_solver,
                           model.velocities,
                           model.tracers,
                           model.pressures,
@@ -76,7 +76,7 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 "Execute one time-step on the CPU."
 function time_step_kernel!(::Val{:CPU}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
+                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
@@ -90,7 +90,7 @@ function time_step_kernel!(::Val{:CPU}, Δt,
 
     calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
-    solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
+    solve_poisson_3d_ppn_planned!(poisson_solver, g, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
 
     update_velocities_and_tracers!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
@@ -103,7 +103,7 @@ end
 
 "Execute one time-step on the GPU."
 function time_step_kernel!(::Val{:GPU}, Δt,
-                           cfg, bc, g, c, eos, ssp, U, tr, pr, G, Gp, stmp, clock, forcing,
+                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
@@ -122,7 +122,7 @@ function time_step_kernel!(::Val{:GPU}, Δt,
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(
         Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
-    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, ssp, g, RHS, ϕ)
+    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, g, RHS, ϕ)
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(

@@ -1,19 +1,36 @@
 # Numerical algorithm
-Here we present notes on the governing equations, spatial discretization schemes, time-stepping algorithms, and elliptic equation solvers for Oceananigans.jl. Both hydrostatic (HY) and non-hydrostatic (NHY) algorithms are presented, although the model can only be run in non-hydrostatic mode right now.
+
+Here we present notes on the governing equations, spatial discretization schemes, time-stepping algorithms, and elliptic equation solvers for Oceananigans.jl. 
+Both hydrostatic (HY) and non-hydrostatic (NHY) algorithms are presented, although the model can only be run in non-hydrostatic mode right now.
 
 ## Grids and variables
-Lay out a Cartesian array $(x,y,z)$ of cubes of horizontal dimensions $\Delta x, \Delta y$ and vertical dimension $\Delta z$ as in the figure below. Define the areas of the cell faces as $A_x = \Delta y \Delta z$, $A_y = \Delta x \Delta z$, and $A_z = \Delta x \Delta y$. Each cell encloses a volume $V = \Delta x \Delta y \Delta z$. Velocities $(u,v,w) = (v_x, v_y, v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
+
+Lay out a Cartesian array $(x,y,z)$ of cubes of horizontal dimensions $\Delta x, \Delta y$ and vertical dimension $\Delta z$ as in the figure below. 
+Define the areas of the cell faces as $A_x = \Delta y \Delta z$, $A_y = \Delta x \Delta z$, and $A_z = \Delta x \Delta y$. 
+Each cell encloses a volume $V = \Delta x \Delta y \Delta z$. 
+Velocities $(u,v,w) = (v_x, v_y, v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
 
 ![Schematic of a single volume](assets/single_volume.png)  
 
-Tracer variables, which are cell averages, are temperature $T$ and salinity $S$ and thus are stored at the cell centers. Pressure $p$ and density $\rho$ are also defined at the cell centers. The faces of the cells are coincident with three orthogonal coordinate axes (Cartesian in this case). Vorticity $\mathbf{\omega}=\nabla\times\mathbf{u}$ and certain intermediate quantities are stored at the cell edges. (In 2D it would more correct to say the cell corners, however, in 3D variables like vorticity $\mathbf{\omega}$ lie at the same vertical levels as the cell-centered variables and so they really lie at the cell edges. In addition to being technically correct, we abbreviate cell centers as $c$ and cell faces as $f$ in subscripts, so edges can use $e$ while corners would conflict with cell centers.)
+Tracer variables, which are cell averages, are temperature $T$ and salinity $S$ and thus are stored at the cell centers. 
+Pressure $p$ and density $\rho$ are also defined at the cell centers. 
+The faces of the cells are coincident with three orthogonal coordinate axes (Cartesian in this case). 
+Vorticity $\mathbf{\omega}=\nabla\times\mathbf{u}$ and certain intermediate quantities are stored at the cell edges. 
+(In 2D it would more correct to say the cell corners, however, in 3D variables like vorticity $\mathbf{\omega}$ lie 
+at the same vertical levels as the cell-centered variables and so they really lie at the cell edges. 
+In addition to being technically correct, we abbreviate cell centers as $c$ and cell faces as $f$ in subscripts, so edges can use $e$ while corners would conflict with cell centers.)
 
-The cells are indexed by $(i,j,k)$ where $i\in \{1,2,\dots,N_x\}$, $j\in \{1,2,\dots,N_y\}$, and $k\in \{1,2,\dots,N_z\}$ with $k=1$ corresponding to the top and $k=N_z$ corresponding to the bottom. (To solve the equations on the sphere, the "quads" used to grid the sphere are appropriately defined including geometrical information and the $G$'s in the equations have to be modified slightly to include metric terms. But the underlying algorithm remains the same.)
+The cells are indexed by $(i,j,k)$ where $i\in \{1,2,\dots,N_x\}$, $j\in \{1,2,\dots,N_y\}$, and $k\in \{1,2,\dots,N_z\}$ with $k=1$ corresponding to the top and $k=N_z$ corresponding to the bottom. 
+(To solve the equations on the sphere, the "quads" used to grid the sphere are appropriately defined including geometrical information and the $G$'s in the equations have to be modified slightly to include metric terms. 
+But the underlying algorithm remains the same.)
 
-While there are $N$ cells and cells centers per dimension and $N+1$ cell faces and cell edges per dimension, all fields are stored as $N_x \times N_y \times N_z$ fields. The reason for this is that for the case of periodic boundary conditions, the values at face $N+1$ equal the values at face $1$ so there is no need to store an extra face, and for walled boundaries, faces $N+1$ and $1$ both represent walls so again there is no need to store an extra face. This will change for the case of open boundary conditions which are not considered here.
+While there are $N$ cells and cells centers per dimension and $N+1$ cell faces and cell edges per dimension, all fields are stored as $N_x \times N_y \times N_z$ fields. 
+The reason for this is that for the case of periodic boundary conditions, the values at face $N+1$ equal the values at face $1$ so there is no need to store an extra face, and for walled boundaries, faces $N+1$ and $1$ both represent walls so again there is no need to store an extra face. This will change for the case of open boundary conditions which are not considered here.
 
 ## Governing prognostic equations and boundary conditions
-The governing equations are the rotating, incompressible, Boussinesq equations of motion. They are an approximation to the full Navier-Stokes equations in a non-intertial reference frame that is appropriate for the ocean and may be written as:
+
+The governing equations are the rotating, incompressible, Boussinesq equations of motion. 
+They are an approximation to the full Navier-Stokes equations in a non-intertial reference frame that is appropriate for the ocean and may be written as:
 
 ```math
 \newcommand\p[2]{\frac{\partial #1}{\partial #2}}
@@ -91,14 +108,17 @@ where $\kappa$ is the diffusivity while $F_T$ and $F_S$ represent forcing terms.
 The associated boundary conditions for the embedded non-hydrostatic models is periodic in the horizontal direction and a rigid boundary or "lid" at the top and bottom. The rigid lid approximation sets $w = 0$ at the vertical boundaries so that it does not move but still allows a pressure to be exerted on the fluid by the lid.
 
 ## Numerical strategy
+
 To numerically solve the governing equations, they must be appropriately discretized. To this effect a number of strategies are employed to ensure the discretized equations satisfy the same conservative properties that the incompressible Navier-Stokes equations satisfy, and to ensure that the numerical solution is stable.
 
 The main strategies involve the use of a staggered grid and the splitting of the pressure field into three components.
 
 ### Staggered grid
+
 As shown in the schematic of a single volume and discussed earlier the velocities are defined as averages over faces while other quantities are cell averages stored at the cell centers. This staggered storage of variables is more complicated than the collocated grid arrangement but is massively beneficial as it avoids the odd-even decoupling between the pressure and velocity if they are stored at the same positions. Odd-even decoupling is a discretization error that can occur on collocated grids and which leads to checkerboard patterns in the solutions (See the CFD Online article on [staggered grids](https://www.cfd-online.com/Wiki/Staggered_grid)). Another way to look at this is that the discrete Poisson equation used to enforce incompressibility has a null space. The null space often manifests itself in producing solutions with checkerboard pressure fields. The staggering of variables effectively eliminates the null space; however, when it is used in the context of curvilinear coordinates its consistent implementation is complicated because it requires the use of contravariant velocity components and variable coordinate base vectors [See A. S. Dvinsky & J. K. Dukowicz, [Null-space-free methods for the incompressible Navier-Stokes equations on non-staggered curvilinear grids](https://www-sciencedirect-com.libproxy.mit.edu/science/article/pii/0045793093900336), _Computers & Fluids_ **22**(6), pp. 685--696 (1993)].
 
 ### Splitting of the pressure field
+
 Another strategy employed is to split the pressure field into three components
 ```math
 \begin{equation} \label{eqn:pressure_split}
@@ -116,9 +136,11 @@ where $g' = g(\delta \rho / \rho_0)$ is the _reduced gravity_. The third term is
 A related quantity, the geopotential $\phi = p / \rho_0$ is used as required.
 
 ## Discrete operators
+
 To calculate the various terms and perform the time-stepping, discrete difference and interpolation operators must be designed from which all the terms, such as momentum advection and Laplacian diffusion, may be constructed. These operators introduced in this section are for a Cartesian grid with periodic boundary conditions in the horizontal and a rigid lid at the top and bottom. The operators will change form for other grids such as the cubed sphere.
 
 ### Difference operators
+
 Difference operators act as the discrete form of the derivative operators. Care must be taken when calculating differences as the difference of a cell-centered variable such as temperature $T$ lies on the faces in the direction of the difference, and vice versa. In principle, there are three difference operators, one for each direction
 
 ```math
@@ -209,6 +231,7 @@ The third averaging operator of use is the one that takes the difference of a fa
 The horizontal averaging operators take into account the periodic boundary conditions while the vertical averaging operator takes in to account the presence of the rigid lid.
 
 ### Divergence and flux divergence operators
+
 The divergence of the flux of a cell-centered quantity over the cell can be calculated as
 ```math
 \begin{equation}
@@ -226,6 +249,7 @@ The divergence of the flux of $T$ over a cell, $\nabla \cdot (\mathbf{v} T)$, re
 where $T$ is interpolated onto the cell faces where it can be multiplied by the velocities, which are then differenced and projected onto the cell centers where they added together and then added to $G_T$ which also lives at the cell centers.
 
 ### Momentum advection operators
+
 The advection terms that make up the $\mathbf{G}$ terms in equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} can be mathematically written as
 ```math
 \begin{equation}
@@ -249,6 +273,7 @@ For example, the $x$-momentum advection operator is discretized as
 where $\overline{V}^x$ is the average of the volumes of the cells on either side of the face in question. Calculating $\partial(uu)/\partial x$ can be performed by interpolating $A_x u$ and $u$ onto the cell centers then multiplying them and differencing them back onto the faces. However, in the case of the the two other terms, $\partial(vu)/\partial y$ and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then differenced back onto the cell faces.
 
 ### Laplacian diffusion operator
+
 Laplacian diffusion is discretized for tracer quantities as
 ```math
 \begin{equation}
@@ -263,6 +288,7 @@ Laplacian diffusion is discretized for tracer quantities as
 where $\kappa$ is the diffusivity, usually taken to be the eddy diffusivity, and different diffusivities may be taken for the horizontal and vertical directions to account for the differences between horizontal and vertical turbulence.
 
 ### Viscous terms
+
 Viscous dissipation operators are discretized similarly to the momentum advection operators and so there is a different one for each direction. For example, the vertical diffusion operator is discretized as
 ```math
 \begin{multline}
@@ -279,6 +305,7 @@ where $\nu$ is the eddy viscosity.
 [Need notes on boundary conditions.]
 
 ## Time stepping
+
 Once the source terms are calculated, the time stepping is performed as follows where superscripts indicate the time-step:
 ```math
 \begin{equation}
@@ -303,6 +330,7 @@ The source terms $\mathbf{G}$ are evaluated using the Adams-Bashforth method (AB
 AB2 is a linear extrapolation in time to a point that is just, by an amount $\chi$, on then $n+1$ side of the midpoint $n + 1/2$. AB2 has the advantage of being quasi-second-order in time and yet does not have a computational mode. Furthermore, it can be implemented by evaluating the source terms $\mathbf{G}$ only once and storing them for use on the next time step, thus using less memory that higher-order time stepping schemes such as the popular fourth-order Runge–Kutta method. Typically we set $\chi = 0.1$.
 
 ## The elliptic problem for the pressure
+
 The pressure field is obtained by taking the divergence of \eqref{eqn:horizontalMomentum} and invoking \eqref{eqn:verticalMomentum} to yield an elliptic Poisson equation for the geopotential field,
 ```math
 \begin{equation} \label{eqn:ellipticPressure}
@@ -311,11 +339,19 @@ The pressure field is obtained by taking the divergence of \eqref{eqn:horizontal
 ```
 along with homogenous Neumann boundary conditions $\mathbf{v} \cdot \mathbf{\hat{n}} = 0$ and where $\mathscr{F}$ denotes the right-hand-side or the source term for the Poisson equation.
 
-We solve for the pressure field in three steps. First we find the 2D surface pressure $p_S(x,y)$. Second we integrate vertically down from the surface to calculate the hydrostatic pressure field $p_{HY}(x,y,z)$ according to \eqref{eqn:hydrostaticPressure}. Third, in the NHY model, we go on to solve for the 3D non-hydrostatic pressure $p_{NH}(x,y,z)$. The 3D pressure solve is generally the most computationally expensive operation at each time step. The HY model, however, only involves steps 1 and 2 and is so is much less computationally demanding than NHY.
+We solve for the pressure field in three steps:
+
+1. Find the 2D surface pressure $p_S(x,y)$. 
+2. Integrate vertically down from the surface to calculate the hydrostatic pressure 
+    field $p_{HY}(x,y,z)$ according to \eqref{eqn:hydrostaticPressure}. 
+3. In the non-hydrostatic model, we solve for the 3D non-hydrostatic pressure $p_{NH}(x,y,z)$. 
+
+The 3D pressure solve is generally the most computationally expensive operation at each time step. The HY model, however, only involves steps 1 and 2 and is so is much less computationally demanding than NHY.
 
 We outline two methods for finding for finding the pressure field. One, the conjugate gradient method, is currently used in the MITgcm. It has the advantage of being versatile, readily supporting different boundary conditions and complicated geometries involving land boundaries. The second, a discrete Fourier-spectral method, can be used in the NHY submodels which employ a regular Cartesian grid with periodic or Neumann boundary conditions.
 
 ### Conjugate-gradient method
+
 In the absence of nice boundary conditions (e.g. bathymetry and continental boundaries), a preconditioned conjugate-gradient iterative method is used to solve the 2D and 3D elliptic problems, with the solution of the 2D problem acting as the precondtioner for the 3D problem.
 
 We now describe how to solve for the surface pressure $p_S(x,y)$. By setting $q = 0$ in the momentum equations \eqref{eqn:velocity_time_stepping} and summing them over the whole depth of the ocean, invoking the continuity equation \eqref{eqn:continuity} and applying boundary conditions $\mathbf{v} \cdot \mathbf{\hat{n}} = 0$, the following equation for $p_S$ results:
@@ -342,7 +378,7 @@ Here $\bar{\cdot}^H$ is the discrete analogue of $(1/H) \int_{-H}^0 (\cdot) dz$,
 ```
 where $\mathbf{A}_{2D}$ is a symmetric, positive-definite matrix (A2D has five diagonals corresponding to the coupling of the central point with surrounding points along the four _arms_ of the horizontal $\nabla^2$ Operator). composed of $\mathbf{D}_{\text{div}\;h}$ and $ \mathbf{G}_{\mathrm{rad}\;h}$ (matrix representations of the ``div'' and ``grad'' operators), $\mathbf{\phi}_S$ is a column vector of surface pressure elements, and $\mathbf{f}_\mathrm{2D}$ is a column vector containing the elements of the right-hand side of \eqref{eqn:ellipticPressure}. The system can thus be solved using a standard conjugate-gradient method, appropriately preconditioned for efficient solution.
 
-In nonhydrostatic calculations a three-dimensional elliptic equation must also be inverted for $\phi_{NH}(x,y,z)$ to ensure that the local divergence vanishes. This is sometimes referred to as a pressure correction. The appropriate discrete form can be deduced in a manner that exactly parallels that which was used to deduce \eqref{eqn:ellipticPressure}. The resulting elliptic equation can be written as
+In non-hydrostatic calculations a three-dimensional elliptic equation must also be inverted for $\phi_{NH}(x,y,z)$ to ensure that the local divergence vanishes. This is sometimes referred to as a pressure correction. The appropriate discrete form can be deduced in a manner that exactly parallels that which was used to deduce \eqref{eqn:ellipticPressure}. The resulting elliptic equation can be written as
 ```math
 \begin{equation}
     \mathbf{A}_\mathrm{3D} \mathbf{\phi}_{NH} = \mathbf{f}_\mathrm{3D},
@@ -350,31 +386,48 @@ In nonhydrostatic calculations a three-dimensional elliptic equation must also b
     \mathbf{A}_\mathrm{3D} = \mathbf{D}_\text{div} \cdot \mathbf{G}_\mathrm{rad}
 \end{equation}
 ```
-where $\mathbf{A}_\mathrm{3D}$, like $\mathbf{A}_\mathrm{2D}$, is a symmetric, positive-definite matrix representing the discrete representation of $\nabla^2$, but now in three dimensions. $\mathbf{f}_\mathrm{3D}$ and $\mathbf{\phi}_{NH}$ are $(1 \times N)$ column vectors containing the source term and nonhydrostatic pressure, in each of the $N = N_xN_yN_z$ cells into which the ocean has been carved.
+where $\mathbf{A}_\mathrm{3D}$, like $\mathbf{A}_\mathrm{2D}$, is a symmetric, positive-definite matrix representing the discrete representation of $\nabla^2$, but now in three dimensions. $\mathbf{f}_\mathrm{3D}$ and $\mathbf{\phi}_{NH}$ are $(1 \times N)$ column vectors containing the source term and non-hydrostatic pressure, in each of the $N = N_xN_yN_z$ cells into which the ocean has been carved.
 
-### Discrete Fourier-spectral method
-For the embedded NHY sub-models we can assume periodic boundary conditions in the horizontal and so switch to a Fourier-spectral Poisson solver which is much faster than the conjugate-gradient approach described above. In this approach, the surface and nonhydrostatic pressure can be combined so only a single elliptic problem is solved.
+### Method based on Fourier transforms for regular domains
 
-In this method the geopotential field $\phi_{NH+S}$ and source term $\mathscr{F}$ are expanded in terms of multi-dimensional Fourier series with discrete Fourier transforms (to enforce periodicity) in the horizontal and discrete cosine transforms in the vertical (to enforce the Neumann boundary conditions) and Poisson's equation is solved in the frequency domain. In Fourier space, Poisson's equation becomes
+On a uniform, orthogonal grid and in the absense of bathymetry, we solve equation \eqref{eqn:ellipticPressure} using
+an alternative method described by 
+[Schumann and Sweet (1988)](https://www.sciencedirect.com/science/article/pii/0021999188901027).
+that utilizes an eigenfunction expansion of the discrete Poisson operator on a staggered grid
+to formulate the solution in terms of the Fast Fourier transform.
+We note that this is *not* a 'spectral' solution method --- it is second-order accurate,
+and valid for staggered grids, which is critical for eliminating divergence in the velocity 
+field to machine precision, thereby ensuring conservation of mass.
+The FFT-based method is adaptable to any boundary condition in any direction and
+implementable on GPUs.
 
-```math
-\begin{equation} \label{eqn:spectralPressure}
-  -\mathbf{k}^2\hat{\phi}_{NH+S} = -(k_x^2 + k_y^2 + k_z^2)\hat{\phi}_{NH+S} = \hat{\mathscr{F}}
+In this eigenfunction-expansion method, the surface and non-hydrostatic pressure are combined into $\phi_{NH+S}$
+and solved for simultaneously.
+An fast discrete transform is used to perform an eignefunction expansion of the source 
+term $\mathscr{F}$, where the type of discrete transform (Fourier, Cosine, or Sine) depends on the 
+eigenfunctions of the Poisson equation, and thus the boundary conditions (Periodic, Neumann, and Dirichlet).
+At the moment we only provide a solver for Periodic, Periodic, Neumann boundary conditions in x, y, and z.
+
+The amplitudes of each eigenfunction component $\hat \phi_{NH+S}$ of the solution $\phi_{NH+S}$ are then easily found by 
+inverting the matrix equation
+
+```math 
+\begin{equation} \label{eqn:eigenpressure}
+\left ( \lambda^x_{i} \lambda^y_{j} \lambda^z_{k} \right ) \hat \phi_{NH+S}_{ijk} = \hat \mathscr{F} ,
 \end{equation}
 ```
 
-where $\hat{\phi}_{NH+S}$ and $\hat{\mathscr{F}}$ are respectively the geopotential and source term in Fourier space, and the form of the wavenumbers $(k_x, k_y, k_z)$ will depend on the boundary conditions imposed. In the case of periodic boundary conditions in the horizontal and Neumann boundary conditions in the vertical on a discrete grid they are given by
+where the $\lambda^x_i, \lambda^y_j, \lambda^z_k$ are the eigenvalues of the Poisson equation: 
 
 ```math
 \begin{align}
-    k_x^2(i) &= 4\frac{N_x^2}{L_x^2} \sin^2 \left[ \frac{(i-1)\pi}{N_x} \right], \quad i=1,2,\dots,N_x-1 \\
-    k_y^2(j) &= 4\frac{N_y^2}{L_y^2} \sin^2 \left[ \frac{(j-1)\pi}{N_y} \right], \quad j=1,2,\dots,N_y-1 \\
-    k_z^2(k) &= 4\frac{N_z^2}{L_z^2} \sin^2 \left[ \frac{(k-1)\pi}{2N_z} \right], \quad k=1,2,\dots,N_z-1
+    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left[ \frac{(i-1)\pi}{N_x} \right],  \quad i=1,2, \dots,N_x-1 \\
+    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left[ \frac{(j-1)\pi}{N_y} \right],  \quad j=1,2, \dots,N_y-1 \\
+    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left[ \frac{(k-1)\pi}{2N_z} \right], \quad k=1,2, \dots,N_z-1
 \end{align}
 ```
 
-These wavenumbers are obtained by discretizing Poisson's equation using second-order finite differences before inserting the inverse Fourier series and then diagonalizing the resulting equation in Fourier space to obtain expressions for the wavenumbers \footnote{This derivation should be detailed in an appendix.}. This specific discretization enforces that the Laplacian of the numerical solution $\nabla^2\phi$ matches $\mathscr{F}$ up to numerical precision and ensures that the velocity field will be divergence-free up to numerical precision, crucial for a stable time-stepping algorithm.
-
-In the spectral method, one Fourier transforms the right hand side $\hat{\mathscr{F}} = \text{DCT}_z \left( \text{FFT}_{xy} (\mathscr{F}) \right)$, then calculates the pressure field in frequency space using \eqref{eqn:spectralPressure}, and then transforms the pressure back to real space to yield $\phi_{NH+S} = \text{IFFT}(\hat{\phi}_{NH+S})$.
-
-Spectral methods require $\mathcal{O}(N\log N)$ operations compared to $\mathcal{O}(N^2)$ operations for the conjugate-gradient solver where $N = N_xN_yN_z$. Moreover, the spectral method returns an exact solution (in the sense that the discrete Laplacian of the solution matches the right hand side) compared to the conjugate-gradient method that can requires many iterations to converge. To fix this when using the conjugate gradient method, a further pressure correction/relaxation is computed. We believe further performance gains can be realized by using batched FFTs running on GPU accelerators.
+After solving \eqref{eqn:eigenpressure}, the final step is to reconstruct the physical solution 
+$\phi_{NH+S}$ from its eigenfunction expansion $\hat \phi_{NH+S}_{ijk}$ with an inverse discrete transform. 
+The total cost of solving Poisson's equation with an eigenfunction expansions and FFTs is $\mathcal{O}(N\log N)$ ,
+compared to $\mathcal{O}(N^2)$ operations for the conjugate-gradient solver, where $N = N_xN_yN_z$. 
