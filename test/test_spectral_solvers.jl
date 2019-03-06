@@ -86,9 +86,9 @@ function test_fftw_planner(mm, Nx, Ny, Nz, planner_flag)
     g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
     RHS = CellField(mm, g, Complex{eltype(g)})
-    ssp = SpectralSolverParameters(g, RHS, FFTW.PATIENT)
+    ssp = PoissonSolver(g, RHS, FFTW.PATIENT)
 
-    true  # Just making sure our SpectralSolverParameters does not spit an error.
+    true  # Just making sure our PoissonSolver does not spit an error.
 end
 
 function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
@@ -104,7 +104,7 @@ function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
 
     RHS_orig.data .= copy(RHS.data)
 
-    ssp = SpectralSolverParameters(g, RHS, planner_flag)
+    ssp = PoissonSolver(g, RHS, planner_flag)
 
     solve_poisson_3d_ppn_planned!(ssp, g, RHS, ϕ)
     ∇²_ppn!(g, ϕ, ∇²ϕ)
@@ -125,5 +125,5 @@ function test_3d_poisson_solver_ppn_all_equal(mm, Nx, Ny, Nz, planner_flag)
 
     RHS_orig.data .= copy(RHS.data)
 
-    ssp = SpectralSolverParameters(g, RHS, planner_flag)
+    ssp = PoissonSolver(g, RHS, planner_flag)
 end
