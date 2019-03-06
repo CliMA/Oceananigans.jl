@@ -50,8 +50,8 @@ export
     time_step_kernel!,
 
     # Poisson solver
-    SpectralSolverParameters,
-    SpectralSolverParametersGPU,
+    PoissonSolver,
+    PoissonSolverGPU,
     solve_poisson_3d_ppn,
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
@@ -109,6 +109,7 @@ abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
+abstract type AbstractPoissonSolver end
 
 include("model_metadata.jl")
 include("model_configuration.jl")

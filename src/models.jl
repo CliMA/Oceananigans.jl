@@ -12,7 +12,7 @@ mutable struct Model
     Gp::SourceTerms
     forcing::Forcing
     stepper_tmp::StepperTemporaryFields
-    ssp  # ::SpectralSolverParameters or ::SpectralSolverParametersGPU
+    ssp  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
     output_writers::Array{OutputWriter,1}
     diagnostics::Array{Diagnostic,1}
@@ -80,10 +80,10 @@ function Model(;
     # Initialize Poisson solver.
     if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.MEASURE; verbose=true)
+        ssp = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE; verbose=true)
     elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
+        ssp = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
 
     # Default initial condition

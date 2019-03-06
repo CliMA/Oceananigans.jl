@@ -1,7 +1,7 @@
 import FFTW
 using GPUifyLoops
 
-struct SpectralSolverParameters{T<:AbstractArray}
+struct PoissonSolver{T<:AbstractArray} <: AbstractPoissonSolver
     kx²::T
     ky²::T
     kz²::T
@@ -19,7 +19,7 @@ let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
     plannerflag2string(k::Integer) = pf2s[Int(k)]
 end
 
-function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT; verbose=false)
+function PoissonSolver(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT; verbose=false)
     kx² = zeros(eltype(g), g.Nx)
     ky² = zeros(eltype(g), g.Ny)
     kz² = zeros(eltype(g), g.Nz)
@@ -41,7 +41,7 @@ function SpectralSolverParameters(g::Grid, exfield::CellField, planner_flag=FFTW
         IDCT! = FFTW.plan_r2r!(exfield.data, FFTW.REDFT01, 3; flags=planner_flag)
     end
 
-    SpectralSolverParameters{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
+    PoissonSolver{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
 end
 
 function solve_poisson_3d_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz)
@@ -105,7 +105,7 @@ function solve_poisson_3d_ppn!(g::RegularCartesianGrid, f::CellField, ϕ::CellFi
     nothing
 end
 
-function solve_poisson_3d_ppn_planned!(ssp::SpectralSolverParameters, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
+function solve_poisson_3d_ppn_planned!(ssp::PoissonSolver, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     ssp.DCT!*f.data  # Calculate DCTᶻ(f) in place.
     ssp.FFT!*f.data  # Calculate FFTˣʸ(f) in place.
 
@@ -212,7 +212,7 @@ function f2ϕ!(::Val{Dev}, Nx, Ny, Nz, f, ϕ, kx², ky², kz²) where Dev
     @synchronize
 end
 
-struct SpectralSolverParametersGPU{T<:AbstractArray}
+struct PoissonSolverGPU{T<:AbstractArray} <: AbstractPoissonSolver
     kx²
     ky²
     kz²
@@ -224,7 +224,7 @@ struct SpectralSolverParametersGPU{T<:AbstractArray}
     IFFT_z!
 end
 
-function SpectralSolverParametersGPU(g::Grid, exfield::CellField)
+function PoissonSolverGPU(g::Grid, exfield::CellField)
     kx² = CuArray{Float64}(undef, g.Nx)
     ky² = CuArray{Float64}(undef, g.Ny)
     kz² = CuArray{Float64}(undef, g.Nz)
@@ -248,10 +248,10 @@ function SpectralSolverParametersGPU(g::Grid, exfield::CellField)
     print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
     print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
 
-    SpectralSolverParametersGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
+    PoissonSolverGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
 
-function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, ssp::SpectralSolverParametersGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
+function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, ssp::PoissonSolverGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     # Calculate DCTᶻ(f) in place using the FFT.
     ssp.FFT_z! * f.data
     f.data .*= ssp.dct_factors

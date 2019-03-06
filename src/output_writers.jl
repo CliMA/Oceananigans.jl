@@ -54,14 +54,14 @@ function write_output(model::Model, chk::Checkpointer)
     JLD.@write f model
     close(f)
 
-    # Reconstruct SpectralSolverParameters struct with FFT plans ?
+    # Reconstruct PoissonSolver struct with FFT plans ?
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+        ssp = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
+        ssp = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
     return nothing
 end
@@ -72,14 +72,14 @@ function restore_from_checkpoint(filepath)
     model = read(f, "model");
     close(f)
 
-    # Reconstruct SpectralSolverParameters struct with FFT plans.
+    # Reconstruct PoissonSolver struct with FFT plans.
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        ssp = SpectralSolverParameters(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+        ssp = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = SpectralSolverParametersGPU(grid, stepper_tmp.fCC1)
+        ssp = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
 
     return model
