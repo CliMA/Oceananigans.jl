@@ -47,7 +47,7 @@ function write_output(model::Model, chk::Checkpointer)
     # Do not include the spectral solver parameters. We want to avoid serializing
     # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
     # seems like a tricky business in general.
-    model.ssp = nothing
+    model.poisson_solver = nothing
 
     println("[Checkpointer] Serializing model to disk: $filepath")
     f = JLD.jldopen(filepath, "w", compress=true)
@@ -58,10 +58,10 @@ function write_output(model::Model, chk::Checkpointer)
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        ssp = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
     return nothing
 end
@@ -76,10 +76,10 @@ function restore_from_checkpoint(filepath)
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        ssp = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        ssp = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
 
     return model
