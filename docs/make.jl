@@ -11,7 +11,7 @@ makedocs(
  checkdocs = :all,
     assets = ["assets/invenia.css"],
     format = Documenter.HTML(prettyurls=true,
-                             canonical="https://ali-ramadhan.github.io/Oceananigans.jl/latest"),
+                             canonical="https://climate-machine.github.io/Oceananigans.jl/latest/"),
    authors = "Ali Ramadhan, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = ["Home" => "index.md",
