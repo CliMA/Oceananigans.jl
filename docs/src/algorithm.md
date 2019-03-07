@@ -1,7 +1,20 @@
 ```math
-\newcommand\p[2]    {\frac{\partial #1}{\partial #2}}
-\newcommand\v[1]    {\boldsymbol{#1}}
-\newdommand{\b}[1]  {\boldsymbol{#1}}
+\newcommand\p[2]        {\frac{\partial #1}{\partial #2}}
+\newcommand\v[1]        {\boldsymbol{#1}}
+\newcommand{\b}[1]      {\boldsymbol{#1}}
+
+\newcommand{\beq}       {\begin{equation}}
+\newcommand{\eeq}       {\end{equation}}
+
+\newcommand{\bnabla}    {\b{\nabla}}
+\newcommand{\bnablah}   {\bnabla_h}
+
+\newcommand{\bu}        {\b{u}}
+\newcommand{\buh}       {\b{u}_h}
+
+\newcommand{\bnh}       {\b{\widehat{n}}}
+
+\renewcommand{\div}[1]  {\bnabla \cdotp \left ( #1 \right )}
 ```
 
 # Numerical algorithm
@@ -16,162 +29,183 @@ Define the areas of the cell faces as $A_x = \Delta y \Delta z$, $A_y = \Delta x
 Each cell encloses a volume $V = \Delta x \Delta y \Delta z$.
 Velocities $(u,v,w) = (v_x, v_y, v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
 
-![Schematic of a single volume](assets/single_volume.png)  
+![Schematic of a single volume](assets/single_volume.png)
 
 Tracer variables, which are cell averages, are temperature $T$ and salinity $S$ and thus are stored at the cell centers.
 Pressure $p$ and density $\rho$ are also defined at the cell centers.
 The faces of the cells are coincident with three orthogonal coordinate axes (Cartesian in this case).
-Vorticity $\mathbf{\omega}=\v{\nabla}\times\mathbf{u}$ and certain intermediate quantities are stored at the cell edges.
+Vorticity $\mathbf{\omega}=\bnabla\times\mathbf{u}$ and certain intermediate quantities are stored at the cell edges.
 (In 2D it would more correct to say the cell corners, however, in 3D variables like vorticity $\mathbf{\omega}$ lie
 at the same vertical levels as the cell-centered variables and so they really lie at the cell edges.
 In addition to being technically correct, we abbreviate cell centers as $c$ and cell faces as $f$ in subscripts, so edges can use $e$ while corners would conflict with cell centers.)
 
-The cells are indexed by $(i,j,k)$ where $i\in \{1,2,\dots,N_x\}$, $j\in \{1,2,\dots,N_y\}$, and $k\in \{1,2,\dots,N_z\}$ with $k=1$ corresponding to the top and $k=N_z$ corresponding to the bottom.
-(To solve the equations on the sphere, the "quads" used to grid the sphere are appropriately defined including geometrical information and the $G$'s in the equations have to be modified slightly to include metric terms.
+The cells are indexed by $(i, j, k)$ where 
+$i \in \{1, 2, \dots, N_x\}$, $j \in \{1, 2, \dots, N_y\}$, and $k \in \{1, 2, \dots, N_z\}$ 
+with $k=1$ corresponding to the top and $k=N_z$ corresponding to the bottom.
+(To solve the equations on the sphere, the "quads" used to grid the sphere are appropriately defined including geometrical information 
+and the $G$'s in the equations have to be modified slightly to include metric terms.
 But the underlying algorithm remains the same.)
 
 While there are $N$ cells and cells centers per dimension and $N+1$ cell faces and cell edges per dimension, all fields are stored as $N_x \times N_y \times N_z$ fields.
-The reason for this is that for the case of periodic boundary conditions, the values at face $N+1$ equal the values at face $1$ so there is no need to store an extra face, and for walled boundaries, faces $N+1$ and $1$ both represent walls so again there is no need to store an extra face. This will change for the case of open boundary conditions which are not considered here.
+The reason for this is that for the case of periodic boundary conditions, the values at face $N+1$ equal the values at face $1$ so there is no need to store an extra face, 
+and for walled boundaries, faces $N+1$ and $1$ both represent walls so again there is no need to store an extra face. This will change for the case of open boundary conditions 
+which are not considered here.
 
 ## Governing prognostic equations and boundary conditions
 
-The governing equations are the rotating, incompressible, Boussinesq equations of motion.
-They are an approximation to the full Navier-Stokes equations in a non-intertial reference frame that is appropriate for the ocean and may be written as:
+The governing equations are the rotating Boussinesq equations of motion.
+The Boussinesq approxiomation, which is appropriate for Earth's ocean
+assumes that density variations from a reference state
+are small, which means that the fluid can be treated as effective incompressible
+and that density variations affect only accelerations along the axis of gravity.
+The Boussinesq equations are
 
 ```math
-\begin{equation}
-  \p{\mathbf{v}_h}{t} = \mathbf{G}_{vh} - \v{\nabla}_h p ,
-  \label{eqn:horizontalMomentum}
-\end{equation}
+\begin{gather}
+        \p{\buh}{t} = \b{G}_{\bu h} - \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
+           \p{w}{t} = G_w - \p{p}{z} ,                  \label{eqn:verticalMomentum} \\
+  \bnabla \cdot \bu = 0 ,                               \label{eqn:continuity} \\
+           \p{T}{t} = G_T ,                             \label{eqn:TTendency} \\
+           \p{S}{t} = G_S ,                             \label{eqn:STendency} \\
+               \rho = \rho(T,S,p) ,                     \label{eqn:EOS}
+\end{gather}
 ```
 
-```math
-\begin{equation}
-  \p{w}{t} = G_w - \p{p}{z} ,
-  \label{eqn:verticalMomentum}
-\end{equation}
-```
-
-```math
-\begin{equation}
-  \v{\nabla} \cdot \mathbf{v} = 0 ,
-  \label{eqn:continuity}
-\end{equation}
-```
-
-```math
-\begin{equation}
-  \p{T}{t} = G_T ,
-  \label{eqn:TTendency}
-\end{equation}
-```
-
-```math
-\begin{equation}
-  \p{S}{t} = G_S ,
-  \label{eqn:STendency}
-\end{equation}
-```
-
-```math
-\begin{equation}
-  \rho = \rho(T,S,p) ,
-  \label{eqn:EOS}
-\end{equation}
-```
-
-where $\mathbf{v} = (\mathbf{v}_h, w) = (u, v, w)$ is the velocity, $\mathbf{v}_h = (u,v)$ is the horizontal velocity, $\v{\nabla} = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\v{\nabla}_h = (\partial_x, \partial_y)$ is the horizontal del operator. Equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} are the horizontal and vertical momentum equations respectively. Equation \eqref{eqn:continuity} is the continuity equation expressing conservation of mass. Equations \eqref{eqn:TTendency} and \eqref{eqn:STendency} prognostic equations describing the time evolution of temperature~$T$ and salinity~$S$. Equation \eqref{eqn:EOS} is an equation of state for seawater giving the density $\rho$ in terms of $T$, $S$, and $p$. The source terms $\mathbf{G}_v = (\mathbf{G}_{vh}, G_w) = (G_u, G_v, G_w)$ represents inertial, Coriolis, gravitational, forcing, and dissipation terms. They can be written as
+where $\bu = (u, v, w)$ is the velocity, $\buh = (u,v)$ is the horizontal velocity, 
+$\bnabla = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\bnablah = (\partial_x, \partial_y)$ 
+is the horizontal del operator. 
+Equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} are the horizontal 
+and vertical momentum equations respectively. 
+Equation \eqref{eqn:continuity} is the continuity equation expressing conservation of mass. 
+Equations \eqref{eqn:TTendency} and \eqref{eqn:STendency} prognostic equations describing the time evolution of temperature~$T$ and salinity~$S$. 
+Equation \eqref{eqn:EOS} is an equation of state for seawater giving the density $\rho$ in terms of $T$, $S$, and $p$. 
+The source terms $\mathbf{G}_v = (\mathbf{G}_{vh}, G_w) = (G_u, G_v, G_w)$ in \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum}
+represent inertial, Coriolis, gravitational, forcing, and dissipation terms:
 
 ```math
 \begin{align}
-    G_u &= -\mathbf{v} \cdot \v{\nabla} u + fv - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \v{\nabla}\cdotp (\nu\v{\nabla} u) + F_u  ,\\
-    G_v &= -\mathbf{v} \cdot \v{\nabla} v - fu - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \v{\nabla}\cdotp (\nu\v{\nabla} v) + F_v  ,\\
-    G_w &= -\mathbf{v} \cdot \v{\nabla} w - \nabla\cdotp (\nu\nabla w) + F_w ,
+    G_u &= -\bu \cdot \bnabla u + fv - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
+    G_v &= -\bu \cdot \bnabla v - fu - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla v} + F_v  ,\\
+    G_w &= -\bu \cdot \bnabla w                                        - \div{\nu \bnabla w} + F_w ,
 \end{align}
 ```
 
-where $f = 2\Omega\sin\phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, $g$ is the acceleration due to gravity, $p'_{HY}$ is the hydrostatic pressure anomaly, $\rho_0$ is a reference density corresponding to an ocean at rest, and $\nu$ is the viscosity. $F_u$, $F_v$, and $F_w$ represent other forcing terms that may be imposed. Note that the buoyancy term $-g(\delta\rho/\rho_0)$ that is usually present in the vertical momentum equation has been expressed in terms of the hydrostatic pressure anomaly $p'_{HY}$ which ends up in the horizontal momentum equations. (This step will be shown in an appendix.)
+where $f = 2 \Omega \sin \phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, 
+$g$ is the acceleration due to gravity, $p'_{HY}$ is the hydrostatic pressure anomaly, $\rho_0$ is a reference density 
+corresponding to an ocean at rest, and $\nu$ is the viscosity. $F_u$, $F_v$, and $F_w$ represent other forcing terms that may be imposed. 
+Note that the buoyancy term $-g \delta \rho / \rho_0$ that is usually present in the vertical momentum equation has been expressed in terms 
+of the hydrostatic pressure anomaly $p'_{HY}$ which ends up in the horizontal momentum equations. (This step will be shown in an appendix.)
 
 Similarly, the source terms for the tracer quantities can be written as
 
 ```math
-\begin{equation}
-  G_T = -\v{\nabla} \cdot (\mathbf{v} T) + \kappa\nabla^2 T + F_T ,
+\beq
+  G_T = -\div{\bu T} + \kappa \nabla^2 T + F_T ,
   \label{eqn:G_T}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
-  G_S = -\v{\nabla} \cdot (\mathbf{v} S) + \kappa\nabla^2 S + F_S ,
+\beq
+  G_S = -\div{\bu S} + \kappa \nabla^2 S + F_S ,
   \label{eqn:G_S}
-\end{equation}
+\eeq
 ```
 
 where $\kappa$ is the diffusivity while $F_T$ and $F_S$ represent forcing terms.
 
-The associated boundary conditions for the embedded non-hydrostatic models is periodic in the horizontal direction and a rigid boundary or "lid" at the top and bottom. The rigid lid approximation sets $w = 0$ at the vertical boundaries so that it does not move but still allows a pressure to be exerted on the fluid by the lid.
+The associated boundary conditions for the embedded non-hydrostatic models is periodic in the horizontal direction and a 
+rigid boundary or "lid" at the top and bottom. The rigid lid approximation sets $w = 0$ at the vertical boundaries so 
+that it does not move but still allows a pressure to be exerted on the fluid by the lid.
 
 ## Numerical strategy
 
-To numerically solve the governing equations, they must be appropriately discretized. To this effect a number of strategies are employed to ensure the discretized equations satisfy the same conservative properties that the incompressible Navier-Stokes equations satisfy, and to ensure that the numerical solution is stable.
+To numerically solve the governing equations, they must be appropriately discretized. 
+To this effect a number of strategies are employed to ensure the discretized equations satisfy the same conservative 
+properties that the incompressible Navier-Stokes equations satisfy, and to ensure that the numerical solution is stable.
 
 The main strategies involve the use of a staggered grid and the splitting of the pressure field into three components.
 
 ### Staggered grid
 
-As shown in the schematic of a single volume and discussed earlier the velocities are defined as averages over faces while other quantities are cell averages stored at the cell centers. This staggered storage of variables is more complicated than the collocated grid arrangement but is massively beneficial as it avoids the odd-even decoupling between the pressure and velocity if they are stored at the same positions. Odd-even decoupling is a discretization error that can occur on collocated grids and which leads to checkerboard patterns in the solutions (See the CFD Online article on [staggered grids](https://www.cfd-online.com/Wiki/Staggered_grid)). Another way to look at this is that the discrete Poisson equation used to enforce incompressibility has a null space. The null space often manifests itself in producing solutions with checkerboard pressure fields. The staggering of variables effectively eliminates the null space; however, when it is used in the context of curvilinear coordinates its consistent implementation is complicated because it requires the use of contravariant velocity components and variable coordinate base vectors [See A. S. Dvinsky & J. K. Dukowicz, [Null-space-free methods for the incompressible Navier-Stokes equations on non-staggered curvilinear grids](https://www-sciencedirect-com.libproxy.mit.edu/science/article/pii/0045793093900336), _Computers & Fluids_ **22**(6), pp. 685--696 (1993)].
+As shown in the schematic of a single volume and discussed earlier the velocities are defined as averages over faces while other 
+quantities are cell averages stored at the cell centers. 
+This staggered storage of variables is more complicated than the collocated grid arrangement but is beneficial as it 
+avoids the odd-even decoupling between the pressure and velocity if they are stored at the same positions. 
+Odd-even decoupling is a discretization error that can occur on collocated grids and which leads to checkerboard patterns 
+in the solutions (See the CFD Online article on [staggered grids](https://www.cfd-online.com/Wiki/Staggered_grid)). 
+Another way to look at this is that the discrete Poisson equation used to enforce incompressibility has a null space. 
+The null space often manifests itself in producing solutions with checkerboard pressure fields. 
+The staggering of variables effectively eliminates the null space; however, when it is used in the context of 
+curvilinear coordinates its consistent implementation is complicated because it requires the use of contravariant velocity 
+components and variable coordinate base vectors 
+[See A. S. Dvinsky & J. K. Dukowicz, [Null-space-free methods for the incompressible Navier-Stokes equations on non-staggered curvilinear grids](https://www-sciencedirect-com.libproxy.mit.edu/science/article/pii/0045793093900336), _Computers & Fluids_ **22**(6), pp. 685--696 (1993)].
 
 ### Splitting of the pressure field
 
 Another strategy employed is to split the pressure field into three components
+
 ```math
-\begin{equation} \label{eqn:pressure_split}
+\beq \label{eqn:pressure_split}
     p(x,y,z) = p_S(x,y) + p_{HY}(x,y,z) + qp_{NH}(x,y,z ,
-\end{equation}
+\eeq
 ```
-where the first term, $p_S$, is the surface pressure---the pressure exerted by the fluid under the rigid lid at the surface; it is only a function of horizontal position and is found by inverting a 2D elliptic Poisson equation. The second term is the hydrostatic pressure $p_{HY}$ defined in terms of the weight of water in a vertical column above the depth $z$
+where the first term, $p_S$, is the surface pressure---the pressure exerted by the fluid under the rigid lid at the surface; 
+it is only a function of horizontal position and is found by inverting a 2D elliptic Poisson equation. 
+The second term is the hydrostatic pressure $p_{HY}$ defined in terms of the weight of water in a vertical column above the depth $z$
+
 ```math
-\begin{equation} \label{eqn:hydrostaticPressure}
+\beq \label{eqn:hydrostaticPressure}
     \p{p_{HY}}{z} + g' = 0 ,
-\end{equation}
+\eeq
 ```
-where $g' = g(\delta \rho / \rho_0)$ is the _reduced gravity_. The third term is the non-hydrostatic pressure $p_{NH}$ which must be found by inverting a 3D elliptic equation analogous to \eqref{eqn:ellipticPressure}. Note that the parameter $q$ in, for example, \eqref{eqn:pressure_split}, is a trace parameter that is set to zero in HY and to one in the NHY algorithm. The methods we use to solve for the various components of the pressure field will be described in the next section.
+
+where $g' = g(\delta \rho / \rho_0)$ is the _reduced gravity_. 
+The third term is the non-hydrostatic pressure $p_{NH}$ which must be found by inverting a 3D elliptic equation analogous to \eqref{eqn:ellipticPressure}. 
+Note that the parameter $q$ in, for example, \eqref{eqn:pressure_split}, is a trace parameter that is set to zero in HY and to one in the NHY algorithm. 
+The methods we use to solve for the various components of the pressure field will be described in the next section.
 
 A related quantity, the geopotential $\phi = p / \rho_0$ is used as required.
 
 ## Discrete operators
 
-To calculate the various terms and perform the time-stepping, discrete difference and interpolation operators must be designed from which all the terms, such as momentum advection and Laplacian diffusion, may be constructed. These operators introduced in this section are for a Cartesian grid with periodic boundary conditions in the horizontal and a rigid lid at the top and bottom. The operators will change form for other grids such as the cubed sphere.
+To calculate the various terms and perform the time-stepping, discrete difference and interpolation operators must be designed from 
+which all the terms, such as momentum advection and Laplacian diffusion, may be constructed. 
+These operators introduced in this section are for a Cartesian grid with periodic boundary conditions in the horizontal and a rigid lid at the top and bottom. 
+The operators will change form for other grids such as the cubed sphere.
 
 ### Difference operators
 
-Difference operators act as the discrete form of the derivative operators. Care must be taken when calculating differences as the difference of a cell-centered variable such as temperature $T$ lies on the faces in the direction of the difference, and vice versa. In principle, there are three difference operators, one for each direction
+Difference operators act as the discrete form of the derivative operators. 
+Care must be taken when calculating differences as the difference of a cell-centered variable such as temperature $T$ lies on the faces in the direction of the difference, and vice versa. 
+In principle, there are three difference operators, one for each direction
 
 ```math
-\begin{equation}
+\beq
   \delta_x f = f_E - f_W ,
   \label{eqn:delta_x}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
+\beq
   \delta_y f = f_N - f_S ,
   \label{eqn:delta_y}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
+\beq
   \delta_z f = f_T - f_B ,
   \label{eqn:delta_z}
-\end{equation}
+\eeq
 ```
 
-where the $E$ and $W$ subscripts indicate that the value is evaluated the eastern or western wall of the cell, $N$ and $S$ indicate the northern and southern walls, and $T$ and $B$ indicate the top and bottom walls.
+where the $E$ and $W$ subscripts indicate that the value is evaluated the eastern or western wall of the cell, $N$ and $S$ indicate the northern and southern walls, 
+and $T$ and $B$ indicate the top and bottom walls.
 
-Additionally, three $\delta$ operators must be defined for each direction to account for the staggered nature of the grid. One for taking the difference of a cell-centered variable and projecting it onto the cell faces
+Additionally, three $\delta$ operators must be defined for each direction to account for the staggered nature of the grid. 
+One for taking the difference of a cell-centered variable and projecting it onto the cell faces
 ```math
 \begin{align}
     \delta_x^{c \rightarrow f} f_{i,j,k} &= f_{i,j,k} - f_{i-1,j,k} , \\
@@ -187,35 +221,40 @@ and another for taking the difference of a face-centered variable and projecting
     \delta_z^{f \rightarrow c} f_{i,j,k} &= f_{i,j,k+1} - f_{i,j,k} .
 \end{align}
 ```
-The third $\delta$ operator of use is the one that takes the difference of an edge-centered variable and projects it onto the cell faces, $\delta^{e \rightarrow f}$, which looks the same as $\delta^{f \rightarrow c}$. While it is computationally redundant, it is included for clarity.
+The third $\delta$ operator of use is the one that takes the difference of an edge-centered variable and projects it onto the cell faces, $\delta^{e \rightarrow f}$, 
+which looks the same as $\delta^{f \rightarrow c}$. While it is computationally redundant, it is included for clarity.
 
-The horizontal difference operators, $\delta_x$ and $\delta_y$, take into account the periodic boundary conditions while the vertical difference operator $\delta_z$ must take into account the rigid lid. In the vertical this is done by imposing that $\delta_z^{c \rightarrow f}f_{i,j,1} = f_{i,j,1}$ and $\delta_z^{f \rightarrow c}f_{i,j,N_z} = f_{i,j,N_z}$.
+The horizontal difference operators, $\delta_x$ and $\delta_y$, take into account the periodic boundary conditions while the vertical difference operator $\delta_z$ 
+must take into account the rigid lid. In the vertical this is done by imposing that $\delta_z^{c \rightarrow f}f_{i,j,1} = f_{i,j,1}$ and $\delta_z^{f \rightarrow c}f_{i,j,N_z} = f_{i,j,N_z}$.
 
 ### Interpolation operators
-In order to add or multiply variables that are defined at different points they are interpolated. In our case, linear interpolation or averaging is employed. Once again, there are three averaging operators, one for each direction,
+
+In order to add or multiply variables that are defined at different points they are interpolated. In our case, linear interpolation or averaging is employed. 
+Once again, there are three averaging operators, one for each direction,
 
 ```math
-\begin{equation}
+\beq
   \overline{f}^x = \frac{f_E + f_W}{2} ,
   \label{eqn:avg_x}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
+\beq
   \overline{f}^y = \frac{f_N + f_S}{2} ,
   \label{eqn:avg_y}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
+\beq
   \overline{f}^z = \frac{f_T + f_B}{2} .
   \label{eqn:avg_z}
-\end{equation}
+\eeq
 ```
 
 Additionally, three averaging operators must be defined for each direction. One for taking the average of a cell-centered variable and projecting it onto the cell faces
+
 ```math
 \begin{align}
     \overline{f_{i,j,k}}^{x,c \rightarrow f} = \frac{f_{i,j,k} + f_{i-1,j,k}}{2} , \\
@@ -223,7 +262,9 @@ Additionally, three averaging operators must be defined for each direction. One 
     \overline{f_{i,j,k}}^{z,c \rightarrow f} = \frac{f_{i,j,k} + f_{i,j,k-1}}{2} ,
 \end{align}
 ```
+
 and another for taking the average of a face-centered variable and projecting it onto the cell centers
+
 ```math
 \begin{align}
     \overline{f_{i,j,k}}^{x,f \rightarrow c} = \frac{f_{i+1,j,k} + f_{i,j,k}}{2} , \\
@@ -231,49 +272,56 @@ and another for taking the average of a face-centered variable and projecting it
     \overline{f_{i,j,k}}^{z,f \rightarrow c} = \frac{f_{i,j,k+1} + f_{i,j,k}}{2} .
 \end{align}
 ```
-The third averaging operator of use is the one that takes the difference of a face-centered variable and projects it onto the cell edges, $\overline{f}^{f \rightarrow e}$, which is the same as $\delta^{c \rightarrow f}$.
+The third averaging operator of use is the one that takes the difference of a face-centered variable and projects it onto the cell edges, 
+$\overline{f}^{f \rightarrow e}$, which is the same as $\delta^{c \rightarrow f}$.
 
 The horizontal averaging operators take into account the periodic boundary conditions while the vertical averaging operator takes in to account the presence of the rigid lid.
 
 ### Divergence and flux divergence operators
 
 The divergence of the flux of a cell-centered quantity over the cell can be calculated as
-```math
-\begin{equation}
-    \v{\nabla} \cdot \mathbf{f} = \frac{1}{V} \left[ \delta_x^{c \rightarrow f} (A_x f_x)  + \delta_y^{c \rightarrow f} (A_y f_y) + \delta_z^{c \rightarrow f} (A_z f_z) \right] ,
-\end{equation}
-```
-where $\mathbf{f} = (f_x, f_y, f_z)$ is the flux with components defined normal to the faces, and $V$ is the volume of the cell. The presence of a solid boundary is indicated by setting the appropriate flux normal to the boundary to zero. In our case, we have already done this in the definition of the $\delta$ operators. A similar divergence operator can be defined for a face-centered quantity.
 
-The divergence of the flux of $T$ over a cell, $\v{\nabla} \cdot (\mathbf{v} T)$, required in the evaluation of $G_T$, for example, is then
 ```math
-\begin{equation}
-    \v{\nabla} \cdot (\mathbf{v} T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
-\end{equation}
+\beq
+    \bnabla \cdot \mathbf{f} = \frac{1}{V} \left[ \delta_x^{c \rightarrow f} (A_x f_x)  + \delta_y^{c \rightarrow f} (A_y f_y) + \delta_z^{c \rightarrow f} (A_z f_z) \right] ,
+\eeq
 ```
+
+where $\mathbf{f} = (f_x, f_y, f_z)$ is the flux with components defined normal to the faces, and $V$ is the volume of the cell. 
+The presence of a solid boundary is indicated by setting the appropriate flux normal to the boundary to zero. 
+In our case, we have already done this in the definition of the $\delta$ operators. A similar divergence operator can be defined for a face-centered quantity.
+
+The divergence of the flux of $T$ over a cell, $\bnabla \cdot (\bu T)$, required in the evaluation of $G_T$, for example, is then
+
+```math
+\beq
+    \bnabla \cdot (\bu T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
+\eeq
+```
+
 where $T$ is interpolated onto the cell faces where it can be multiplied by the velocities, which are then differenced and projected onto the cell centers where they added together and then added to $G_T$ which also lives at the cell centers.
 
 ### Momentum advection operators
 
 The advection terms that make up the $\mathbf{G}$ terms in equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} can be mathematically written as
 ```math
-\begin{equation}
-    \mathbf{u} \cdot \v{\nabla} v
-    = \v{\nabla} \cdot (v\mathbf{u}) - v\underbrace{(\v{\nabla}\cdot\mathbf{u})}_{=0}
-    = \v{\nabla} \cdot (v\mathbf{u}) ,
-\end{equation}
+\beq
+    \mathbf{u} \cdot \bnabla v
+    = \bnabla \cdot (v\mathbf{u}) - v\underbrace{(\bnabla\cdot\mathbf{u})}_{=0}
+    = \bnabla \cdot (v\mathbf{u}) ,
+\eeq
 ```
 which can then be discretized similarly to the flux divergence operator, however, they must be discretized differently for each direction.
 
 For example, the $x$-momentum advection operator is discretized as
 ```math
-\begin{equation}
-    \mathbf{u} \cdot \v{\nabla} u
+\beq
+    \mathbf{u} \cdot \bnabla u
     = \frac{1}{\overline{V}^x} \left[
       \delta_x^{c \rightarrow f} \left( \overline{A_x u}^{x, f \rightarrow c} \overline{u}^{x, f \rightarrow c} \right)
       + \delta_y^{e \rightarrow f} \left( \overline{A_y v}^{x, f \rightarrow e} \overline{u}^{y, f \rightarrow e} \right)
       + \delta_z^{e \rightarrow f} \left( \overline{A_z w}^{x, f \rightarrow e} \overline{u}^{z, f \rightarrow e} \right) \right] ,
-\end{equation}
+\eeq
 ```
 where $\overline{V}^x$ is the average of the volumes of the cells on either side of the face in question. Calculating $\partial(uu)/\partial x$ can be performed by interpolating $A_x u$ and $u$ onto the cell centers then multiplying them and differencing them back onto the faces. However, in the case of the the two other terms, $\partial(vu)/\partial y$ and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then differenced back onto the cell faces.
 
@@ -281,14 +329,14 @@ where $\overline{V}^x$ is the average of the volumes of the cells on either side
 
 Laplacian diffusion is discretized for tracer quantities as
 ```math
-\begin{equation}
-    \v{\nabla} \cdot (\kappa \v{\nabla} T)
+\beq
+    \bnabla \cdot (\kappa \bnabla T)
     = \frac{1}{V} \left[
         \delta_x^{f \rightarrow c} \left( \kappa_h A_x \delta_x^{c \rightarrow f} T \right)
       + \delta_y^{f \rightarrow c} \left( \kappa_h A_y \delta_y^{c \rightarrow f} T \right)
       + \delta_z^{f \rightarrow c} \left( \kappa_v A_z \delta_z^{c \rightarrow f} T \right)
     \right] ,
-\end{equation}
+\eeq
 ```
 where $\kappa$ is the diffusivity, usually taken to be the eddy diffusivity, and different diffusivities may be taken for the horizontal and vertical directions to account for the differences between horizontal and vertical turbulence.
 
@@ -297,7 +345,7 @@ where $\kappa$ is the diffusivity, usually taken to be the eddy diffusivity, and
 Viscous dissipation operators are discretized similarly to the momentum advection operators and so there is a different one for each direction. For example, the vertical diffusion operator is discretized as
 ```math
 \begin{multline}
-    \v{\nabla} \cdot (\nu \v{\nabla} w)
+    \bnabla \cdot (\nu \bnabla w)
     = \frac{1}{V} \left[
         \delta_x^{e \rightarrow f} \left( \nu_h \overline{A_x}^{x,f \rightarrow e} \delta_x^{f \rightarrow e} u \right)
         \delta_y^{e \rightarrow f} \left( \nu_h \overline{A_y}^{y,f \rightarrow e} \delta_y^{f \rightarrow e} v \right) \nonumber \\
@@ -313,36 +361,38 @@ where $\nu$ is the eddy viscosity.
 
 Once the source terms are calculated, the time stepping is performed as follows where superscripts indicate the time-step:
 ```math
-\begin{equation}
-  \frac{\mathbf{u}^{n+1} - \mathbf{u}^n}{\Delta t} = \mathbf{G}_{\mathbf{u}}^{n+1/2} - \v{\nabla} (\phi_S + \phi_{HY} + q\phi_{NH})^{n+1/2} ,
+\beq
+  \frac{\mathbf{u}^{n+1} - \mathbf{u}^n}{\Delta t} = \mathbf{G}_{\mathbf{u}}^{n+1/2} - \bnabla (\phi_S + \phi_{HY} + q\phi_{NH})^{n+1/2} ,
   \label{eqn:velocity_time_stepping}
-\end{equation}
+\eeq
 ```
 
 ```math
-\begin{equation}
+\beq
     \frac{1}{\Delta t} \left[ \begin{pmatrix}S \\ T\end{pmatrix}^{n+1} - \begin{pmatrix}S \\ T\end{pmatrix}^n \right] = \mathbf{G}^{n+1/2}_{(S,T)} .
     \label{eqn:ST_time_stepping}
-\end{equation}
+\eeq
 ```
 
 The source terms $\mathbf{G}$ are evaluated using the Adams-Bashforth method (AB2) which makes use of time levels $n$ and $n-1$:
 ```math
-\begin{equation}
+\beq
     \mathbf{G}^{n+1/2} = \left( \frac{3}{2} + \chi \right) \mathbf{G}^n - \left( \frac{1}{2} + \chi \right) \mathbf{G}^{n-1} .
-\end{equation}
+\eeq
 ```
 AB2 is a linear extrapolation in time to a point that is just, by an amount $\chi$, on then $n+1$ side of the midpoint $n + 1/2$. AB2 has the advantage of being quasi-second-order in time and yet does not have a computational mode. Furthermore, it can be implemented by evaluating the source terms $\mathbf{G}$ only once and storing them for use on the next time step, thus using less memory that higher-order time stepping schemes such as the popular fourth-order Runge–Kutta method. Typically we set $\chi = 0.1$.
 
 ## The elliptic problem for the pressure
 
 The pressure field is obtained by taking the divergence of \eqref{eqn:horizontalMomentum} and invoking \eqref{eqn:verticalMomentum} to yield an elliptic Poisson equation for the geopotential field,
+
 ```math
-\begin{equation} \label{eqn:ellipticPressure}
-    \nabla^2\phi = \v{\nabla} \cdot \mathbf{G}_{\mathbf{u}} = \mathscr{F} ,
-\end{equation}
+\beq \label{eqn:ellipticPressure}
+    \nabla^2\phi = \bnabla \cdot \mathbf{G}_{\mathbf{u}} = \mathscr{F} ,
+\eeq
 ```
-along with homogenous Neumann boundary conditions $\mathbf{v} \cdot \mathbf{\widehat{n}} = 0$ and where $\mathscr{F}$ denotes the right-hand-side or the source term for the Poisson equation.
+
+along with homogenous Neumann boundary conditions $\bu \cdot \bnh = 0$ and where $\mathscr{F}$ denotes the right-hand-side or the source term for the Poisson equation.
 
 We solve for the pressure field in three steps:
 
@@ -357,41 +407,56 @@ We outline two methods for finding for finding the pressure field. One, the conj
 
 ### Conjugate-gradient method
 
-In the absence of nice boundary conditions (e.g. bathymetry and continental boundaries), a preconditioned conjugate-gradient iterative method is used to solve the 2D and 3D elliptic problems, with the solution of the 2D problem acting as the precondtioner for the 3D problem.
+In the absence of nice boundary conditions (e.g. bathymetry and continental boundaries), a preconditioned conjugate-gradient 
+iterative method is used to solve the 2D and 3D elliptic problems, with the solution of the 2D problem acting as the precondtioner for the 3D problem.
 
-We now describe how to solve for the surface pressure $p_S(x,y)$. By setting $q = 0$ in the momentum equations \eqref{eqn:velocity_time_stepping} and summing them over the whole depth of the ocean, invoking the continuity equation \eqref{eqn:continuity} and applying boundary conditions $\mathbf{v} \cdot \mathbf{\widehat{n}} = 0$, the following equation for $p_S$ results:
+We now describe how to solve for the surface pressure $p_S(x,y)$. By setting $q = 0$ in the momentum equations \eqref{eqn:velocity_time_stepping} 
+and summing them over the whole depth of the ocean, invoking the continuity equation \eqref{eqn:continuity} and applying boundary conditions 
+$\bu \cdot \bnh = 0$, the following equation for $p_S$ results:
 
 ```math
-\begin{equation} \label{eqn:ellipticPS}
-    \v{\nabla}_h \cdot \left( H \v{\nabla}_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \v{\nabla}_h \left( H \overline{\mathbf{v}_h}^H \right) \right]^n}{\Delta t} ,
-\end{equation}
+\beq \label{eqn:ellipticPS}
+    \bnabla_h \cdot \left( H \bnabla_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \bnabla_h \left( H \overline{\bu_h}^H \right) \right]^n}{\Delta t} ,
+\eeq
 ```
 where
 ```math
-\begin{equation} \label{eqn:S_HY}
-    \mathscr{S}_{HY}^n = \v{\nabla}_h \cdot \left( H \overline{\mathbf{G}_{vh}^{n+1/2}}^H \right) - \v{\nabla}_h \cdot \left( H \overline{\v{\nabla}_h \phi_{HY}^{n+1/2}}^H \right) .
-\end{equation}
+\beq \label{eqn:S_HY}
+    \mathscr{S}_{HY}^n = \bnabla_h \cdot \left( H \overline{\mathbf{G}_{vh}^{n+1/2}}^H \right) - \bnabla_h \cdot \left( H \overline{\bnabla_h \phi_{HY}^{n+1/2}}^H \right) .
+\eeq
 ```
 
 Here, $\overline{\cdot}^H$ is the discrete analogue of $(1/H) \int_{-H}^0 (\cdot)\, dz$, a vertical integral over the whole depth of the ocean. The elliptic problem \eqref{eqn:ellipticPS} and \eqref{eqn:S_HY} can be written in the concise matrix notation
 ```math
-\begin{equation}
+\beq
     \mathbf{A}_\mathrm{2D} \mathbf{\phi}_S = \mathbf{f}_\mathrm{2D} ,
     \quad \text{where} \quad
     \mathbf{A}_\mathrm{2D} = \mathbf{D}_{\text{div}\;h} \cdot H \mathbf{G}_{\mathrm{rad}\;h} ,
-\end{equation}
+\eeq
 ```
-where $\mathbf{A}_{2D}$ is a symmetric, positive-definite matrix (A2D has five diagonals corresponding to the coupling of the central point with surrounding points along the four _arms_ of the horizontal $\nabla^2$ Operator) composed of $\mathbf{D}_{\textrm{div}\;h}$ and $\mathbf{G}_{\mathrm{rad}\;h}$ (matrix representations of the div and grad operators), $\mathbf{\phi}_S$ is a column vector of surface pressure elements, and $\mathbf{f}_\mathrm{2D}$ is a column vector containing the elements of the right-hand side of \eqref{eqn:ellipticPressure}. The system can thus be solved using a standard conjugate-gradient method, appropriately preconditioned for efficient solution.
+where $\mathbf{A}_{2D}$ is a symmetric, positive-definite matrix (A2D has five diagonals corresponding to the coupling of the central 
+point with surrounding points along the four _arms_ of the horizontal $\nabla^2$ Operator) composed of $\mathbf{D}_{\textrm{div}\;h}$ 
+and $\mathbf{G}_{\mathrm{rad}\;h}$ (matrix representations of the div and grad operators), $\mathbf{\phi}_S$ is a column vector of 
+surface pressure elements, and $\mathbf{f}_\mathrm{2D}$ is a column vector containing the elements of the right-hand side of \eqref{eqn:ellipticPressure}. 
+The system can thus be solved using a standard conjugate-gradient method, appropriately preconditioned for efficient solution.
 
-In non-hydrostatic calculations a three-dimensional elliptic equation must also be inverted for $\phi_{NH}(x, y, z)$ to ensure that the local divergence vanishes. This is sometimes referred to as a pressure correction. The appropriate discrete form can be deduced in a manner that exactly parallels that which was used to deduce \eqref{eqn:ellipticPressure}. The resulting elliptic equation can be written as
+In non-hydrostatic calculations a three-dimensional elliptic equation must also be inverted for $\phi_{NH}(x, y, z)$ to ensure that the local divergence vanishes. 
+This is sometimes referred to as a pressure correction. 
+The appropriate discrete form can be deduced in a manner that exactly parallels that which was used to deduce \eqref{eqn:ellipticPressure}. 
+The resulting elliptic equation can be written as
+
 ```math
-\begin{equation}
+\beq
     \mathbf{A}_\mathrm{3D} \mathbf{\phi}_{NH} = \mathbf{f}_\mathrm{3D} ,
     \quad \text{where} \quad
     \mathbf{A}_\mathrm{3D} = \mathbf{D}_\text{div} \cdot \mathbf{G}_\mathrm{rad} ,
-\end{equation}
+\eeq
 ```
-where $\mathbf{A}_\mathrm{3D}$, like $\mathbf{A}_\mathrm{2D}$, is a symmetric, positive-definite matrix representing the discrete representation of $\nabla^2$, but now in three dimensions. $\mathbf{f}_\mathrm{3D}$ and $\mathbf{\phi}_{NH}$ are $(1 \times N)$ column vectors containing the source term and non-hydrostatic pressure, in each of the $N = N_xN_yN_z$ cells into which the ocean has been carved.
+
+where $\mathbf{A}_\mathrm{3D}$, like $\mathbf{A}_\mathrm{2D}$, is a symmetric, positive-definite matrix representing 
+the discrete representation of $\nabla^2$, but now in three dimensions. 
+$\mathbf{f}_\mathrm{3D}$ and $\mathbf{\phi}_{NH}$ are $(1 \times N)$ column vectors containing the source term and non-hydrostatic pressure, 
+in each of the $N = N_x N_y N_z$ cells into which the ocean has been carved.
 
 ### Method based on Fourier transforms for regular domains
 
@@ -417,22 +482,22 @@ The amplitudes of each eigenfunction component $\widehat{\phi}_{NH+S}$ of the so
 inverting the matrix equation
 
 ```math
-\begin{equation} \label{eqn:eigenpressure}
+\beq \label{eqn:eigenpressure}
 \left ( \lambda^x_{i} \; \lambda^y_{j} \; \lambda^z_{k} \right ) {\widehat{\phi}_{NH+S}}_{ijk} = \widehat{\mathscr{F}} ,
-\end{equation}
+\eeq
 ```
 
 where the $\lambda^x_i, \lambda^y_j, \lambda^z_k$ are the eigenvalues of the Poisson equation:
 
 ```math
 \begin{align}
-    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left[ \frac{(i-1)\pi}{N_x} \right],  \quad i=1,2, \dots,N_x-1 , \\
-    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left[ \frac{(j-1)\pi}{N_y} \right],  \quad j=1,2, \dots,N_y-1 , \\
-    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left[ \frac{(k-1)\pi}{2N_z} \right], \quad k=1,2, \dots,N_z-1 .
+    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ],  \quad i=1,2, \dots,N_x-1 , \\
+    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ],  \quad j=1,2, \dots,N_y-1 , \\
+    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=1,2, \dots,N_z-1 .
 \end{align}
 ```
 
 After solving \eqref{eqn:eigenpressure}, the final step is to reconstruct the physical solution
 $\phi_{NH+S}$ from its eigenfunction expansion ${\widehat{\phi}_{NH+S}}_{ijk}$ with an inverse discrete transform.
 The total cost of solving Poisson's equation with an eigenfunction expansions and FFTs is $\mathcal{O}(N\log N)$ ,
-compared to $\mathcal{O}(N^2)$ operations for the conjugate-gradient solver, where $N = N_xN_yN_z$.
+compared to $\mathcal{O}(N^2)$ operations for the conjugate-gradient solver, where $N = N_x N_y N_z$.
