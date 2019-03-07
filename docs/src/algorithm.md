@@ -9,8 +9,8 @@
 \newcommand{\bnabla}    {\b{\nabla}}
 \newcommand{\bnablah}   {\bnabla_h}
 
-\newcommand{\bu}        {\b{u}}
-\newcommand{\buh}       {\b{u}_h}
+\newcommand{\bv}        {\b{v}}
+\newcommand{\bvh}       {\b{v}_h}
 
 \newcommand{\bnh}       {\b{\widehat{n}}}
 
@@ -62,16 +62,16 @@ The Boussinesq equations are
 
 ```math
 \begin{gather}
-        \p{\buh}{t} = \b{G}_{\bu h} - \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
+        \p{\bvh}{t} = \b{G}_{\bv h} - \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
            \p{w}{t} = G_w - \p{p}{z} ,                  \label{eqn:verticalMomentum} \\
-  \bnabla \cdot \bu = 0 ,                               \label{eqn:continuity} \\
+  \bnabla \cdot \bv = 0 ,                               \label{eqn:continuity} \\
            \p{T}{t} = G_T ,                             \label{eqn:TTendency} \\
            \p{S}{t} = G_S ,                             \label{eqn:STendency} \\
                \rho = \rho(T,S,p) ,                     \label{eqn:EOS}
 \end{gather}
 ```
 
-where $\bu = (u, v, w)$ is the velocity, $\buh = (u,v)$ is the horizontal velocity, 
+where $\bv = (u, v, w)$ is the velocity, $\bvh = (u, v)$ is the horizontal velocity, 
 $\bnabla = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\bnablah = (\partial_x, \partial_y)$ 
 is the horizontal del operator. 
 Equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} are the horizontal 
@@ -84,9 +84,9 @@ represent inertial, Coriolis, gravitational, forcing, and dissipation terms:
 
 ```math
 \begin{align}
-    G_u &= -\bu \cdot \bnabla u + fv - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
-    G_v &= -\bu \cdot \bnabla v - fu - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla v} + F_v  ,\\
-    G_w &= -\bu \cdot \bnabla w                                        - \div{\nu \bnabla w} + F_w ,
+    G_u &= -\bv \cdot \bnabla u + fv - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
+    G_v &= -\bv \cdot \bnabla v - fu - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla v} + F_v  ,\\
+    G_w &= -\bv \cdot \bnabla w                                        - \div{\nu \bnabla w} + F_w ,
 \end{align}
 ```
 
@@ -100,14 +100,14 @@ Similarly, the source terms for the tracer quantities can be written as
 
 ```math
 \beq
-  G_T = -\div{\bu T} + \kappa \nabla^2 T + F_T ,
+  G_T = -\div{\bv T} + \kappa \nabla^2 T + F_T ,
   \label{eqn:G_T}
 \eeq
 ```
 
 ```math
 \beq
-  G_S = -\div{\bu S} + \kappa \nabla^2 S + F_S ,
+  G_S = -\div{\bv S} + \kappa \nabla^2 S + F_S ,
   \label{eqn:G_S}
 \eeq
 ```
@@ -291,11 +291,11 @@ where $\mathbf{f} = (f_x, f_y, f_z)$ is the flux with components defined normal 
 The presence of a solid boundary is indicated by setting the appropriate flux normal to the boundary to zero. 
 In our case, we have already done this in the definition of the $\delta$ operators. A similar divergence operator can be defined for a face-centered quantity.
 
-The divergence of the flux of $T$ over a cell, $\bnabla \cdot (\bu T)$, required in the evaluation of $G_T$, for example, is then
+The divergence of the flux of $T$ over a cell, $\bnabla \cdot (\bv T)$, required in the evaluation of $G_T$, for example, is then
 
 ```math
 \beq
-    \bnabla \cdot (\bu T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
+    \bnabla \cdot (\bv T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
 \eeq
 ```
 
@@ -392,7 +392,7 @@ The pressure field is obtained by taking the divergence of \eqref{eqn:horizontal
 \eeq
 ```
 
-along with homogenous Neumann boundary conditions $\bu \cdot \bnh = 0$ and where $\mathscr{F}$ denotes the right-hand-side or the source term for the Poisson equation.
+along with homogenous Neumann boundary conditions $\bv \cdot \bnh = 0$ and where $\mathscr{F}$ denotes the right-hand-side or the source term for the Poisson equation.
 
 We solve for the pressure field in three steps:
 
@@ -401,9 +401,12 @@ We solve for the pressure field in three steps:
     field $p_{HY}(x,y,z)$ according to \eqref{eqn:hydrostaticPressure}.
 3. In the non-hydrostatic model, we solve for the 3D non-hydrostatic pressure $p_{NH}(x,y,z)$.
 
-The 3D pressure solve is generally the most computationally expensive operation at each time step. The HY model, however, only involves steps 1 and 2 and is so is much less computationally demanding than NHY.
+The 3D pressure solve is generally the most computationally expensive operation at each time step. 
+The HY model, however, only involves steps 1 and 2 and is so is much less computationally demanding than NHY.
 
-We outline two methods for finding for finding the pressure field. One, the conjugate gradient method, is currently used in the MITgcm. It has the advantage of being versatile, readily supporting different boundary conditions and complicated geometries involving land boundaries. The second, a discrete Fourier-spectral method, can be used in the NHY submodels which employ a regular Cartesian grid with periodic or Neumann boundary conditions.
+We outline two methods for finding for finding the pressure field. One, the conjugate gradient method, is currently used in the MITgcm. 
+It has the advantage of being versatile, readily supporting different boundary conditions and complicated geometries involving land boundaries. 
+The second, a discrete Fourier-spectral method, can be used in the NHY submodels which employ a regular Cartesian grid with periodic or Neumann boundary conditions.
 
 ### Conjugate-gradient method
 
@@ -412,11 +415,11 @@ iterative method is used to solve the 2D and 3D elliptic problems, with the solu
 
 We now describe how to solve for the surface pressure $p_S(x,y)$. By setting $q = 0$ in the momentum equations \eqref{eqn:velocity_time_stepping} 
 and summing them over the whole depth of the ocean, invoking the continuity equation \eqref{eqn:continuity} and applying boundary conditions 
-$\bu \cdot \bnh = 0$, the following equation for $p_S$ results:
+$\bv \cdot \bnh = 0$, the following equation for $p_S$ results:
 
 ```math
 \beq \label{eqn:ellipticPS}
-    \bnabla_h \cdot \left( H \bnabla_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \bnabla_h \left( H \overline{\bu_h}^H \right) \right]^n}{\Delta t} ,
+    \bnabla_h \cdot \left( H \bnabla_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \bnabla_h \left( H \overline{\bv_h}^H \right) \right]^n}{\Delta t} ,
 \eeq
 ```
 where
@@ -426,7 +429,9 @@ where
 \eeq
 ```
 
-Here, $\overline{\cdot}^H$ is the discrete analogue of $(1/H) \int_{-H}^0 (\cdot)\, dz$, a vertical integral over the whole depth of the ocean. The elliptic problem \eqref{eqn:ellipticPS} and \eqref{eqn:S_HY} can be written in the concise matrix notation
+Here, $\overline{\cdot}^H$ is the discrete analogue of $(1/H) \int_{-H}^0 (\cdot)\, dz$, a vertical integral over the whole depth of the ocean. 
+The elliptic problem \eqref{eqn:ellipticPS} and \eqref{eqn:S_HY} can be written in the concise matrix notation
+
 ```math
 \beq
     \mathbf{A}_\mathrm{2D} \mathbf{\phi}_S = \mathbf{f}_\mathrm{2D} ,
@@ -434,6 +439,7 @@ Here, $\overline{\cdot}^H$ is the discrete analogue of $(1/H) \int_{-H}^0 (\cdot
     \mathbf{A}_\mathrm{2D} = \mathbf{D}_{\text{div}\;h} \cdot H \mathbf{G}_{\mathrm{rad}\;h} ,
 \eeq
 ```
+
 where $\mathbf{A}_{2D}$ is a symmetric, positive-definite matrix (A2D has five diagonals corresponding to the coupling of the central 
 point with surrounding points along the four _arms_ of the horizontal $\nabla^2$ Operator) composed of $\mathbf{D}_{\textrm{div}\;h}$ 
 and $\mathbf{G}_{\mathrm{rad}\;h}$ (matrix representations of the div and grad operators), $\mathbf{\phi}_S$ is a column vector of 
