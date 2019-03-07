@@ -6,7 +6,7 @@ using Oceananigans
 using Oceananigans.Operators
 
 archs = [:CPU]
-@hascuda archs = [:CPU, :GPU]
+Oceananigans.@hascuda archs = [:CPU, :GPU]
 
 @testset "Oceananigans" begin
 
