@@ -27,3 +27,6 @@ docs/site
 # Jupyter Lab stuff and notebooks
 *.ipynb
 .ipynb_checkpoints
+
+$ MacOS stuff
+*.DS_Store
