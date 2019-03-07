@@ -1,3 +1,9 @@
+```math
+\newcommand\p[2]    {\frac{\partial #1}{\partial #2}}
+\newcommand\v[1]    {\boldsymbol{#1}}
+\newdommand{\b}[1]  {\boldsymbol{#1}}
+```
+
 # Numerical algorithm
 
 Here we present notes on the governing equations, spatial discretization schemes, time-stepping algorithms, and elliptic equation solvers for Oceananigans.jl.
@@ -33,8 +39,6 @@ The governing equations are the rotating, incompressible, Boussinesq equations o
 They are an approximation to the full Navier-Stokes equations in a non-intertial reference frame that is appropriate for the ocean and may be written as:
 
 ```math
-\newcommand\p[2]{\frac{\partial #1}{\partial #2}}
-\newcommand\v[1]{\boldsymbol{ #1}}
 \begin{equation}
   \p{\mathbf{v}_h}{t} = \mathbf{G}_{vh} - \v{\nabla}_h p ,
   \label{eqn:horizontalMomentum}
