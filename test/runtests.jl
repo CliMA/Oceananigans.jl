@@ -5,13 +5,16 @@ import FFTW
 using Oceananigans
 using Oceananigans.Operators
 
+archs = [:CPU]
+@hascuda archs = [:CPU, :GPU]
+
 @testset "Oceananigans" begin
 
     @testset "Grid" begin
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            for arch in [:CPU], ft in [Float64]
+            for arch in archs, ft in [Float64]
                 mm = ModelMetadata(arch, ft)
                 @test test_grid_size(mm)
                 @test test_cell_volume(mm)
@@ -21,7 +24,7 @@ using Oceananigans.Operators
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
-            for arch in [:CPU], ft in [Float64, Float32, Float16]
+            for arch in archs, ft in [Float64, Float32, Float16]
                 mm = ModelMetadata(arch, ft)
                 @test RegularCartesianGrid(mm, (25, 25, 25), L).dim == 3
                 @test RegularCartesianGrid(mm, (5, 25, 125), L).dim == 3
@@ -58,7 +61,7 @@ using Oceananigans.Operators
         # other_vals = Any[π]
         # vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        for arch in [:CPU], ft in [Float32, Float64]
+        for arch in archs, ft in [Float32, Float64]
             mm = ModelMetadata(arch, ft)
             grid = RegularCartesianGrid(mm, N, L)
 
@@ -129,7 +132,7 @@ using Oceananigans.Operators
             @test test_3d_poisson_solver_ppn_div_free(1, N, N)
             @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
 
-            for arch in [:CPU], ft in [Float64]
+            for arch in archs, ft in [Float64]
                 mm = ModelMetadata(arch, ft)
 
                 @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
@@ -152,14 +155,14 @@ using Oceananigans.Operators
         for Nx in Ns, Ny in Ns, Nz in Ns
             @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
 
-            for arch in [:CPU], ft in [Float64]
+            for arch in archs, ft in [Float64]
                 mm = ModelMetadata(arch, ft)
                 @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
                 @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
 
-        for arch in [:CPU], ft in [Float64]
+        for arch in archs, ft in [Float64]
             mm = ModelMetadata(arch, ft)
             @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
             @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
