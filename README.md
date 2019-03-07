@@ -30,5 +30,5 @@ A fast non-hydrostatic ocean model in Julia that can be run in 2 or 3 dimensions
 
 Our goal is to develop friendly and intuitive code allowing users to focus on the science and not on fixing compiler errors. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, or whether running on CPUs or GPUs.
 
-Watch the deep convection example in action on Youtube!
+Watch the deep convection example (running on a GPU) in action on Youtube!
 [![Watch the video](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/surface_temp_3d_00130_halfsize.png)](https://www.youtube.com/watch?v=kpUrxnKKMjI)
