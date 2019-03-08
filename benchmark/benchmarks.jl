@@ -6,7 +6,9 @@ const timer = TimerOutput()
 Nt = 50  # Number of time steps to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks.
-Ns = [(1, 1, 512), (32, 32, 32), (64, 64, 64)]
+Ns = [(1, 1, 512),
+      (1, 128, 128), (128, 1, 128), (128, 128, 1),
+      (32, 32, 32), (64, 64, 64)]
 
 float_types = [Float32, Float64]  # Float types to benchmark.
 archs = [:CPU]  # Architectures to benchmark on.
