@@ -3,12 +3,13 @@ using Oceananigans
 
 const timer = TimerOutput()
 
-Nt = 50  # Number of time steps to use for benchmarking time stepping.
+Ni = 2   # Number of iterations before benchmarking starts.
+Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks. Focusing on 3D models for GPU.
 Ns = [# (1, 1, 512),
       # (1, 128, 128), (128, 1, 128), (128, 128, 1),
-      (32, 32, 32), (64, 64, 64)]
+      (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
 
 float_types = [Float32, Float64]  # Float types to benchmark.
 archs = [:CPU]  # Architectures to benchmark on.
@@ -44,7 +45,7 @@ for arch in archs, float_type in float_types, N in Ns
     Lx, Ly, Lz = 100, 100, 100
 
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type)
-    time_step!(model, 1, 1)  # First time step is usually slower.
+    time_step!(model, Ni, 1)  # First 1-2 iterations usually slower.
 
     bn =  benchmark_name(N, "static ocean", arch, float_type)
     for i in 1:Nt
