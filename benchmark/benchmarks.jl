@@ -1,4 +1,4 @@
-using TimerOutputs
+using TimerOutputs, Printf
 using Oceananigans
 
 const timer = TimerOutput()
@@ -13,6 +13,9 @@ archs = [:CPU]  # Architectures to benchmark on.
 
 Oceananigans.@hascuda archs = [:CPU, :GPU]  # Benchmark GPU on CUDA-enabled computers.
 
+benchmark_name(N)           = "$(N[1])x$(N[2])x$(N[3]) static ocean"
+benchmark_name(N, ft)       = "$(N[1])x$(N[2])x$(N[3]) static ocean ($ft)"
+benchmark_name(N, arch)     = "$(N[1])x$(N[2])x$(N[3]) static ocean ($arch)"
 benchmark_name(N, arch, ft) = "$(N[1])x$(N[2])x$(N[3]) static ocean ($arch, $ft)"
 
 for arch in archs, float_type in float_types, N in Ns
@@ -27,4 +30,13 @@ for arch in archs, float_type in float_types, N in Ns
     end
 end
 
-print_timer(timer, title="Oceananigans.jl benchmarks", sortby=:name)
+print_timer(timer, title="Oceananigans.jl benchmarks")
+
+println("\n\nCPU Float64 -> Float32 speedups:")
+for N in Ns
+    bn32 = benchmark_name(N, :CPU, Float32)
+    bn64 = benchmark_name(N, :CPU, Float64)
+    t32  = TimerOutputs.time(timer[bn32])
+    t64  = TimerOutputs.time(timer[bn64])
+    @printf("%s: %.3f\n", benchmark_name(N), t64/t32)
+end
