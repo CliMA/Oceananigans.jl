@@ -5,9 +5,9 @@ const timer = TimerOutput()
 
 Nt = 50  # Number of time steps to use for benchmarking time stepping.
 
-# Model resolutions to benchmarks.
-Ns = [(1, 1, 512),
-      (1, 128, 128), (128, 1, 128), (128, 128, 1),
+# Model resolutions to benchmarks. Focusing on 3D models for GPU.
+Ns = [# (1, 1, 512),
+      # (1, 128, 128), (128, 1, 128), (128, 128, 1),
       (32, 32, 32), (64, 64, 64)]
 
 float_types = [Float32, Float64]  # Float types to benchmark.
@@ -81,6 +81,6 @@ Oceananigans.@hascuda begin
         bn_gpu = benchmark_name(N, bid, :GPU, ft)
         t_cpu  = TimerOutputs.time(timer[bn_cpu])
         t_gpu  = TimerOutputs.time(timer[bn_gpu])
-        @printf("%s: %.3f\n", benchmark_name(N, bid, ft), t_gpu/t_cpu)
+        @printf("%s: %.3f\n", benchmark_name(N, bid, ft), t_cpu/t_gpu)
     end
 end
