@@ -106,7 +106,7 @@ function time_step_kernel!(::Val{:GPU}, Δt,
                            cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz # Blocks in grid
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
         Val(:GPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
