@@ -28,5 +28,5 @@ docs/site
 *.ipynb
 .ipynb_checkpoints
 
-$ MacOS stuff
+# MacOS stuff
 *.DS_Store
