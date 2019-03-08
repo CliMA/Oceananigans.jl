@@ -19,86 +19,54 @@ end
 # Boundaries and Boundary Conditions
 #
 
-# TODO: 
-#   * figure out how to use functors for boundary conditions.
-#   * figure out how to declare the type of the boundary condition in struct definition.
+const coordinates = (:x, :y, :z)
+const dims = length(coordinates)
+const solution_fields = (:u, :v, :w, :T, :S)
 
-#=
-abstract type BCType end
-struct Flux <: BCType end
-struct Value <: BCType end
-struct Default <: BCType end
+abstract type Condition end
+struct Default <: Condition end
+struct Flux <: Condition end
+struct Value <: Condition end
 
-mutable struct BoundaryCondition{TBC, C, B} 
-    call::Function
+struct BoundaryCondition{C}
+    calc::Function
 end
 
-struct CoordinateBoundaryConditions{TL, TR}
-  left::TL
-  right::TR
-end
-
-struct FieldBoundaryConditions{TX, TY, TZ}
-  x::TX
-  y::TY
-  z::TZ
-end
-
-struct FieldBoundaryConditions <: FieldVector{
-
-struct BoundaryConditions{TU, TV <: FieldVector{
-
-=#
-
-abstract type BoundaryCondition{C, B} end
-const BC = BoundaryCondition # alias
-
-struct DefaultBC{C, B} <: BoundaryCondition{C, B} end
-
-struct FluxBC{C, B} <: BoundaryCondition{C, B}
-  flux::Function
-end
-
-struct ValueBC{C, B} <: BoundaryCondition{C, B}
-  value::Function
-end
+(bc::BoundaryCondition)(args...) = bc.calc(args...)
 
 """
     CoordinateBoundaryConditions(c)
 
 Construct `CoordinateBoundaryCondition` to be applied along coordinate `c`, where
 `c` is `:x`, `:y`, or `:z`. A CoordinateBoundaryCondition has two fields
-`left` and `right` that store boundary conditions on the 'left' (negative side) 
+`left` and `right` that store boundary conditions on the 'left' (negative side)
 and 'right' (positive side) of a given coordinate.
 """
-mutable struct CoordinateBoundaryConditions{C}
-  left::BoundaryCondition{C, :left} 
-  right::BoundaryCondition{C, :right} 
+mutable struct CoordinateBoundaryConditions <: FieldVector{2, BoundaryCondition}
+  left::BoundaryCondition
+  right::BoundaryCondition
 end
 
-CoordinateBoundaryConditions(c) = CoordinateBoundaryConditions{c}(DefaultBC{c, :left}(), DefaultBC{c, :right}())
+CoordinateBoundaryConditions() = CoordinateBoundaryConditions(DefaultBC(), DefaultBC())
 
 """
     FieldBoundaryConditions()
 
 Construct `FieldBoundaryConditions` for a field.
-A FieldBoundaryCondition has fields `x`, `y`, and `z`
-cooresponding to `CoordinateBoundaryConditions`in those respective directions.
+A FieldBoundaryCondition has `CoordinateBoundaryConditions` in
+`x`, `y`, and `z`.
 """
-struct FieldBoundaryConditions
-  x::CoordinateBoundaryConditions{:x}
-  y::CoordinateBoundaryConditions{:y}
-  z::CoordinateBoundaryConditions{:z}
+struct FieldBoundaryConditions <: FieldVector{dims, CoordinateBoundaryConditions}
+  x::CoordinateBoundaryConditions
+  y::CoordinateBoundaryConditions
+  z::CoordinateBoundaryConditions
 end
-
-FieldBoundaryConditions() = FieldBoundaryConditions(CoordinateBoundaryConditions(:x),
-                                                    CoordinateBoundaryConditions(:y),
-                                                    CoordinateBoundaryConditions(:z))
 
 """
     BoundaryConditions()
 
-Construct a boundary condition type full of default FieldBoundaryConditions for u, v, w, T, S.
+Construct a boundary condition type full of default
+`FieldBoundaryConditions` for u, v, w, T, S.
 """
 struct BoundaryConditions <: FieldVector{5, FieldBoundaryConditions}
   u::FieldBoundaryConditions
@@ -108,23 +76,29 @@ struct BoundaryConditions <: FieldVector{5, FieldBoundaryConditions}
   S::FieldBoundaryConditions
 end
 
+FieldBoundaryConditions() = FieldBoundaryConditions(CoordinateBoundaryConditions(),
+                                                    CoordinateBoundaryConditions(),
+                                                    CoordinateBoundaryConditions())
+
 function BoundaryConditions()
-  return BoundaryConditions(
-    FieldBoundaryConditions(),
-    FieldBoundaryConditions(),
-    FieldBoundaryConditions(),
-    FieldBoundaryConditions(),
-    FieldBoundaryConditions()
-)
+  bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields)))
+  return BoundaryConditions(bcs...)
 end
 
-# A few sugary things
+#
+# User API
+#
+# Note:
+#
+# The syntax model.boundary_conditions.u.x.left = bc works, out of the box.
+# How can we make it easier for users to set boundary conditions?
 
-# allows the syntax: model.boundary_conditions.u = (bc1, bc2) or bcs.u = bc1
-Base.setproperty!(bcs::BoundaryConditions, fld, bc::Union{BC, NTuple{2, BC}}) = add_bc!(bcs, fld, bc)
+const BC = BoundaryCondition
+const FBCs = FieldBoundaryConditions
 
+#=
 """
-    add_bcs!(model, u=...)
+    add_bcs!(boundary_conditions, u=...)
 
 Add `bc` as a boundary condition of `fld`.
 """
@@ -140,7 +114,7 @@ end
 Add `bc` as a boundary condition of `fld`.
 """
 function add_bc!(boundary_conditions, fld, bc::BoundaryCondition{C, B}) where {C, B}
-  field_bcs = getproperty(boundary_conditions, fld)  
+  field_bcs = getproperty(boundary_conditions, fld)
   setproperty!(getproperty(field_bcs, C), B, bc)
 end
 
@@ -149,3 +123,4 @@ function add_bc!(bcs, fld, bctuple::NTuple{2, BC})
   add_bc!(bcs, fld, bctuple[2])
   return nothing
 end
+=#
