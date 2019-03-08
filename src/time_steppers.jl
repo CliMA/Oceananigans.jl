@@ -76,7 +76,7 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 "Execute one time-step on the CPU."
 function time_step_kernel!(::Val{:CPU}, Δt,
-                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                           cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
@@ -86,7 +86,7 @@ function time_step_kernel!(::Val{:CPU}, Δt,
                          G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                          Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
-    apply_boundary_conditions!(G, U, cfg, g, bc)
+    apply_boundary_conditions!(G, U, tr, cfg, g, bcs)
 
     calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
@@ -103,7 +103,7 @@ end
 
 "Execute one time-step on the GPU."
 function time_step_kernel!(::Val{:GPU}, Δt,
-                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                           cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
@@ -117,7 +117,7 @@ function time_step_kernel!(::Val{:GPU}, Δt,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
-    apply_boundary_conditions!(G, U, cfg, g, bc)
+    apply_boundary_conditions!(G, U, tr, cfg, g, bcs)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(
         Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
@@ -285,16 +285,29 @@ function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, �
     @synchronize
 end
 
+
+#
+# Boundary condition physics specification
+#
+
+#=
+# Proposed design and notes:
+
+* apply_bc!(bc::DefaultBC, args...) = nothing
+* use function signature flux(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+* what else?
+=#
+
 "Apply boundary conditions by modifying the source term G."
-function apply_boundary_conditions!(G, U, cfg, g, bc)
+function apply_boundary_conditions!(G, U, tr, cfg, g, bcs)
     #=
     # Set boundary conditions
-    if bc.top_bc == :no_slip
+    if bcs.top_bc == :no_slip
         @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
         @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
     end
 
-    if bc.bottom_bc == :no_slip
+    if bcs.bottom_bc == :no_slip
         @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
         @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
     end

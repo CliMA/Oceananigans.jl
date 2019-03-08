@@ -57,7 +57,7 @@ function Model(;
            eos = LinearEquationOfState(),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip),
+    boundary_conditions = BoundaryConditions(), #:periodic, :periodic, :rigid_lid, :free_slip),
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
@@ -100,3 +100,6 @@ end
 
 "Legacy constructor for `Model`."
 Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
+
+
+add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
