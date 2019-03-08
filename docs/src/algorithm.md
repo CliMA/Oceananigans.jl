@@ -33,8 +33,8 @@ Velocities $(u,v,w) = (v_x, v_y, v_z)$ are normal to the requisite face, that is
 Tracer variables, which are cell averages, are temperature $T$ and salinity $S$ and thus are stored at the cell centers.
 Pressure $p$ and density $\rho$ are also defined at the cell centers.
 The faces of the cells are coincident with three orthogonal coordinate axes (Cartesian in this case).
-Vorticity $\boldsymbol{\omega}=\bnabla\times\bv$ and certain intermediate quantities are stored at the cell edges.
-(In 2D it would more correct to say the cell corners, however, in 3D variables like vorticity $\mathbf{\omega}$ lie
+Vorticity $\b{\omega}=\bnabla\times\bv$ and certain intermediate quantities are stored at the cell edges.
+(In 2D it would more correct to say the cell corners, however, in 3D variables like vorticity $\b{\omega}$ lie
 at the same vertical levels as the cell-centered variables and so they really lie at the cell edges.
 In addition to being technically correct, we abbreviate cell centers as $c$ and cell faces as $f$ in subscripts, so edges can use $e$ while corners would conflict with cell centers.)
 
@@ -53,7 +53,7 @@ which are not considered here.
 ## Governing prognostic equations and boundary conditions
 
 The governing equations are the rotating Boussinesq equations of motion.
-The Boussinesq approxiomation, which is appropriate for Earth's ocean
+The Boussinesq approximation, which is appropriate for Earth's ocean
 assumes that density variations from a reference state
 are small, which means that the fluid can be treated as effective incompressible
 and that density variations affect only accelerations along the axis of gravity.
