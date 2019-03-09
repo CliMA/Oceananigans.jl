@@ -30,7 +30,7 @@ function time_step!(model, Nt, Δt)
     for n in 1:Nt
         t1 = time_ns() # time each time-step
 
-        time_step_kernel!(Val(model.metadata.arch), Δt,
+        time_step_kernels!(Val(model.metadata.arch), Δt,
                           model.configuration,
                           model.boundary_conditions,
                           model.grid,
@@ -75,9 +75,9 @@ time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 
 "Execute one time-step on the CPU."
-function time_step_kernel!(::Val{:CPU}, Δt,
-                           cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
-                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+function time_step_kernels!(::Val{:CPU}, Δt,
+                            cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
@@ -105,9 +105,9 @@ function time_step_kernel!(::Val{:CPU}, Δt,
 end
 
 "Execute one time-step on the GPU."
-function time_step_kernel!(::Val{:GPU}, Δt,
-                           cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
-                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+function time_step_kernels!(::Val{:GPU}, Δt,
+                            cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
 
@@ -296,99 +296,114 @@ end
 # Boundary condition physics specification
 #
 
-#=
-# Proposed design and notes:
-
-* apply_bc!(bc::DefaultBC, args...) = nothing
-* use function signature
-
-
-* what else?
-
-apply_boundary_conditions!(Val(Dev), eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
-                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
-
-=#
-function apply_bc!(dev, coord, side, bc, args...) = nothing # default!
-function apply_bc!(dev, coord, side, bc::BC{C}, args...) where C <: Value = throw("Value boundary conditions are not supported.")
-
 "Apply boundary conditions by modifying the source term G."
-function apply_boundary_conditions!(Dev, bcs, args...)
+function apply_boundary_conditions!(Dev, bcs, 
+                                    ρ₀, κh, κv, 𝜈h, 𝜈v,
+                                    Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                                    u, v, w, T, S, Gu, Gv, Gw, GT, GS)
+    
+    coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
+    𝜈 = 𝜈v
+    κ = κv
 
-    #=
-    args to this function:
-        ρ₀, κh, κv, 𝜈h, 𝜈v,
-        Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
-        u, v, w, T, S, Gu, Gv, Gw, GT, GS)
+    u_bcs = getproperty(bcs.u, coord)
+    v_bcs = getproperty(bcs.v, coord)
+    w_bcs = getproperty(bcs.w, coord)
+    T_bcs = getproperty(bcs.T, coord)
+    S_bcs = getproperty(bcs.S, coord)
 
-    args to apply_bc!
-        (u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-    =#
+    # Apply boundary conditions. We assume there is one molecular 'diffusivity'
+    # value, which is passed to apply_bcs.
 
-    for coord in coordinates, side in (:left, :right)
-        # Ideally this would be a loop over solution fields. For now we hard code because
-        # we don't have an abstraction for the physics on the boundary.
-        u_bc = getproperty(getproperty(bcs.u, coord), side)
-        v_bc = getproperty(getproperty(bcs.v, coord), side)
-        w_bc = getproperty(getproperty(bcs.w, coord), side)
-        T_bc = getproperty(getproperty(bcs.T, coord), side)
-        S_bc = getproperty(getproperty(bcs.S, coord), side)
+    # u
+    apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈,
+               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
 
-        apply_bc!(Val(Dev), Val(coord), Val(side), u_bc, u, Gu, cfg.νv, args...)
-        apply_bc!(Val(Dev), Val(coord), Val(side), v_bc, v, Gv, cfg.νv, args...)
-        apply_bc!(Val(Dev), Val(coord), Val(side), w_bc, w, Gw, cfg.νv, args...)
-        apply_bc!(Val(Dev), Val(coord), Val(side), T_bc, T, GT, cfg.κv, args...)
-        apply_bc!(Val(Dev), Val(coord), Val(side), S_bc, S, GS, cfg.κv, args...)
-    end
+    # v
+    apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈,
+               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
 
-    #=
-    # Set boundary conditions
-    if bcs.top_bc == :no_slip
-        @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
-    end
+    # w
+    apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈,
+               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
 
-    if bcs.bottom_bc == :no_slip
-        @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
-        @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
-    end
-    =#
+    # T
+    apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ,
+               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+
+    # S
+    apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ,
+               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
 
     return nothing
 end
 
+# Do nothing if both boundary conditions are default.
+apply_bcs!(::Val{Dev}, ::Val{:x}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
+apply_bcs!(::Val{Dev}, ::Val{:y}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
+apply_bcs!(::Val{Dev}, ::Val{:z}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
 
-#=
-apply_bc!(::Val{:CPU}, ::Val{:x}, ::Val{:left},  args...) = apply_x_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:CPU}, ::Val{:y}, ::Val{:left},  args...) = apply_y_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:CPU}, ::Val{:z}, ::Val{:left},  args...) = apply_z_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:CPU}, ::Val{:x}, ::Val{:right}, args...) = apply_x_right_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:CPU}, ::Val{:y}, ::Val{:right}, args...) = apply_y_right_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:CPU}, ::Val{:z}, ::Val{:right}, args...) = apply_z_right_bc!(Val(:GPU), args...)
+# First, dispatch on coordinate.
+apply_bcs!(Dev, ::Val{:x}, args...) = apply_x_bcs!(Val(Dev), args...)
+apply_bcs!(Dev, ::Val{:y}, args...) = apply_y_bcs!(Val(Dev), args...)
+apply_bcs!(Dev, ::Val{:z}, args...) = apply_z_bcs!(Val(Dev), args...)
 
-apply_bc!(::Val{:GPU}, ::Val{:x}, ::Val{:left},  args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:GPU}, ::Val{:y}, ::Val{:left},  args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:GPU}, ::Val{:z}, ::Val{:left},  args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_left_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:GPU}, ::Val{:x}, ::Val{:right}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_right_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:GPU}, ::Val{:y}, ::Val{:right}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_right_bc!(Val(:GPU), args...)
-apply_bc!(::Val{:GPU}, ::Val{:z}, ::Val{:right}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_right_bc!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:x}, args...) = (
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...))
+apply_bcs!(::Val{:GPU}, ::Val{:y}, args...) = (
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...))
+apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = (
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...))
 
-function apply_z_right_bc!(::Val{Dev}, bc::BC{C}, ϕ, Gϕ, κ, args...) where C <: Flux
+#
+# Physics goes here.
+#
+# Currently we only support flux boundary conditions at the top and bottom of the domain.
+# 
+
+# Do nothing in default case. These functions are called in cases where one of the 
+# z-boundaries is set, but not the other.
+apply_z_top_bc!(args...) = nothing
+apply_z_bottom_bc!(args...) = nothing
+
+# These functions compute vertical fluxes for (A, A, C) quantities.
+@inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, Δzc, Δzf) = (      -flux        - κ*(ϕt - ϕt₋₁)/Δzc ) / Δzf
+@inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, Δzc, Δzf) = ( κ*(ϕb₊₁ - ϕb)/Δzc +       flux        ) / Δzf
+
+"Apply a top flux boundary condition to ϕ."
+@inline function apply_z_top_bc!(top_flux::BC{<:Flux}, 
+                                 ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+
+    # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
+    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, ϕ.data[i, j, Nz], ϕ.data[i, j, Nz-1], 
+                                  top_flux(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
+
+    return nothing
+end
+
+"Apply a bottom flux boundary condition to ϕ."
+@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, 
+                                    ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+
+    # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
+    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, ϕ.data[i, j, 1], ϕ.data[i, j, 2], 
+                               bottom_flux(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
+
+    return nothing
+end
+
+"Apply a top and/or bottom boundary condition to variable ϕ."
+function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc,
+                      ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz) where Dev 
     @setup Dev
 
-    # apply a boundary condition on the x_left boundary on ϕ, somehow...
+    # Loop over i and j to apply a boundary condition on the top.
     @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            # With a more general equation specification, this inner loop could call a function to where boundary
-            # conditions are specified in an 'equation' module.
-            Gϕ.data[i, j, Nz] -= 2κ/Δz^2 * ϕ.data[i, j, Nz]
+            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
         end
     end
 
     return nothing
 end
-
-# and etc for every other boundary.
-
-=#
