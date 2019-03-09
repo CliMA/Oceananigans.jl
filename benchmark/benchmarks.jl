@@ -57,7 +57,7 @@ print_timer(timer, title="Oceananigans.jl benchmarks")
 
 bid = "static ocean"  # Benchmark ID. We only have one right now.
 
-println("\n\nCPU Float64 -> Float32 speedups:")
+println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
     bn32 = benchmark_name(N, bid, :CPU, Float32)
     bn64 = benchmark_name(N, bid, :CPU, Float64)
@@ -67,7 +67,7 @@ for N in Ns
 end
 
 Oceananigans.@hascuda begin
-    println("\nGPU Float64 -> Float32 speedups:")
+    println("\nGPU Float64 -> Float32 speedup:")
     for N in Ns
         bn32 = benchmark_name(N, bid, :GPU, Float32)
         bn64 = benchmark_name(N, bid, :GPU, Float64)
@@ -76,7 +76,7 @@ Oceananigans.@hascuda begin
         @printf("%s: %.3f\n", benchmark_name(N, bid), t64/t32)
     end
 
-    println("\nCPU -> GPU speedsup:")
+    println("\nCPU -> GPU speedup:")
     for N in Ns, ft in float_types
         bn_cpu = benchmark_name(N, bid, :CPU, ft)
         bn_gpu = benchmark_name(N, bid, :GPU, ft)
