@@ -17,6 +17,7 @@ makedocs(
      pages = ["Home" => "index.md",
               "Examples" => "examples.md",
               "Numerical algorithm" => "algorithm.md",
+              "Performance benchmarks" => "benchmarks.md",
               "Internals" => ["internal/grids.md",
                               "internal/fields.md",
                               "internal/operators.md"],
