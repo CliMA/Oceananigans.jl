@@ -44,6 +44,8 @@ export
 
     # Boundary conditions
     BoundaryConditions,
+    BoundaryCondition,
+    Flux,
 
     # Time stepping
     time_step!,

@@ -87,7 +87,7 @@ function time_step_kernels!(::Val{:CPU}, Δt,
                          Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(Val(:CPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               clock.t, clock.step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
@@ -121,7 +121,7 @@ function time_step_kernels!(::Val{:GPU}, Δt,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(Val(:GPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               clock.t, clock.step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
@@ -299,7 +299,7 @@ end
 "Apply boundary conditions by modifying the source term G."
 function apply_boundary_conditions!(Dev, bcs, 
                                     ρ₀, κh, κv, 𝜈h, 𝜈v,
-                                    Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                                    t, step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                     u, v, w, T, S, Gu, Gv, Gw, GT, GS)
     
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
@@ -317,23 +317,23 @@ function apply_boundary_conditions!(Dev, bcs,
 
     # u
     apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈,
-               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # v
     apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈,
-               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # w
     apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈,
-               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # T
     apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ,
-               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # S
     apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ,
-               u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
 
     return nothing
 end
@@ -372,36 +372,36 @@ apply_z_bottom_bc!(args...) = nothing
 
 "Apply a top flux boundary condition to ϕ."
 @inline function apply_z_top_bc!(top_flux::BC{<:Flux}, 
-                                 ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+                                 ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
     Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, ϕ.data[i, j, Nz], ϕ.data[i, j, Nz-1], 
-                                  top_flux(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
+                                  top_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
 end
 
 "Apply a bottom flux boundary condition to ϕ."
 @inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, 
-                                    ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+                                    ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
     Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, ϕ.data[i, j, 1], ϕ.data[i, j, 2], 
-                               bottom_flux(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
+                               bottom_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
 end
 
 "Apply a top and/or bottom boundary condition to variable ϕ."
 function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc,
-                      ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz) where Dev 
+                      ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz) where Dev 
     @setup Dev
 
     # Loop over i and j to apply a boundary condition on the top.
     @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
-            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
         end
     end
 
