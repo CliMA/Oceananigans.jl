@@ -297,11 +297,11 @@ end
 #
 
 "Apply boundary conditions by modifying the source term G."
-function apply_boundary_conditions!(Dev, bcs, 
+function apply_boundary_conditions!(Dev, bcs,
                                     ρ₀, κh, κv, 𝜈h, 𝜈v,
                                     t, step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                     u, v, w, T, S, Gu, Gv, Gw, GT, GS)
-    
+
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
     𝜈 = 𝜈v
     κ = κv
@@ -359,9 +359,9 @@ apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = (
 # Physics goes here.
 #
 # Currently we only support flux boundary conditions at the top and bottom of the domain.
-# 
+#
 
-# Do nothing in default case. These functions are called in cases where one of the 
+# Do nothing in default case. These functions are called in cases where one of the
 # z-boundaries is set, but not the other.
 apply_z_top_bc!(args...) = nothing
 apply_z_bottom_bc!(args...) = nothing
@@ -371,22 +371,22 @@ apply_z_bottom_bc!(args...) = nothing
 @inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, Δzc, Δzf) = ( κ*(ϕb₊₁ - ϕb)/Δzc +       flux        ) / Δzf
 
 "Apply a top flux boundary condition to ϕ."
-@inline function apply_z_top_bc!(top_flux::BC{<:Flux}, 
+@inline function apply_z_top_bc!(top_flux::BC{<:Flux},
                                  ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, ϕ.data[i, j, Nz], ϕ.data[i, j, Nz-1], 
+    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, 0, 0,
                                   top_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
 end
 
 "Apply a bottom flux boundary condition to ϕ."
-@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, 
+@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux},
                                     ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, ϕ.data[i, j, 1], ϕ.data[i, j, 2], 
+    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, 0, 0,
                                bottom_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
@@ -394,7 +394,7 @@ end
 
 "Apply a top and/or bottom boundary condition to variable ϕ."
 function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc,
-                      ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz) where Dev 
+                      ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
     @setup Dev
 
     # Loop over i and j to apply a boundary condition on the top.

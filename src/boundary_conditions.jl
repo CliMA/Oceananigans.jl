@@ -5,6 +5,7 @@
 const coordinates = (:x, :y, :z)
 const dims = length(coordinates)
 const solution_fields = (:u, :v, :w, :T, :S)
+const nsolution = length(solution_fields)
 
 abstract type BCType end
 struct Default <: BCType end
@@ -55,7 +56,7 @@ end
 Construct a boundary condition type full of default
 `FieldBoundaryConditions` for u, v, w, T, S.
 """
-struct BoundaryConditions <: FieldVector{5, FieldBoundaryConditions}
+struct ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions}
   u::FieldBoundaryConditions
   v::FieldBoundaryConditions
   w::FieldBoundaryConditions
@@ -67,9 +68,9 @@ FieldBoundaryConditions() = FieldBoundaryConditions(CoordinateBoundaryConditions
                                                     CoordinateBoundaryConditions(),
                                                     CoordinateBoundaryConditions())
 
-function BoundaryConditions()
+function ModelBoundaryConditions()
   bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
-  return BoundaryConditions(bcs...)
+  return ModelBoundaryConditions(bcs...)
 end
 
 #

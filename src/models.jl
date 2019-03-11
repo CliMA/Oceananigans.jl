@@ -1,7 +1,7 @@
 mutable struct Model
     metadata::ModelMetadata
     configuration::ModelConfiguration
-    boundary_conditions::BoundaryConditions
+    boundary_conditions::ModelBoundaryConditions
     constants::PlanetaryConstants
     eos::EquationOfState
     grid::Grid
@@ -57,7 +57,7 @@ function Model(;
            eos = LinearEquationOfState(),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = BoundaryConditions(), #:periodic, :periodic, :rigid_lid, :free_slip),
+    boundary_conditions = ModelBoundaryConditions(),
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
