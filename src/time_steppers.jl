@@ -87,7 +87,7 @@ function time_step_kernels!(::Val{:CPU}, Δt,
                          Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(Val(:CPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               clock.t, clock.step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
@@ -121,7 +121,7 @@ function time_step_kernels!(::Val{:GPU}, Δt,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(Val(:GPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               clock.t, clock.step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
@@ -375,7 +375,7 @@ apply_z_bottom_bc!(args...) = nothing
                                  ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, 0, 0,
+    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, 0, 0, # 0's assume that a no-flux boundary condition is implemented elsewhere
                                   top_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
@@ -386,7 +386,7 @@ end
                                     ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
 
     # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, 0, 0,
+    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, 0, 0, # 0's assume that a no-flux boundary condition is implemented elsewhere
                                bottom_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
 
     return nothing
