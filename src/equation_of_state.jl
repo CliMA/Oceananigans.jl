@@ -31,27 +31,3 @@ function LinearEquationOfState()
     αᵥ = 2.07e-4
     LinearEquationOfState(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
 end
-
-function ρ!(s::LinearEquationOfState, g::Grid, tr::TracerFields)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds tr.ρ.data[i, j, k] =  s.ρ₀ * (1 - s.βT * (tr.T.data[i, j, k] - s.T₀))
-    end
-    nothing
-end
-
-function δρ!(s::LinearEquationOfState, g::Grid, δρ::CellField, T::CellField)
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds δρ.data[i, j, k] =  - s.ρ₀ * s.βT * (T.data[i, j, k] - s.T₀)
-    end
-    nothing
-end
-
-function ∫δρgdz!(g::Grid, c::PlanetaryConstants, δρ::CellField, δρz::FaceFieldZ, pHY′::CellField)
-    gΔz = c.g * g.Δz
-    for j in 1:g.Ny, i in 1:g.Nx
-      pHY′.data[i, j, 1] = δρ.data[i, j, 1] * gΔz / 2
-    end
-    for k in 2:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-      pHY′.data[i, j, k] = pHY′.data[i, j, k-1] + (δρz.data[i, j, k] * gΔz)
-    end
-end
