@@ -20,8 +20,8 @@
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/jd7kctgj3c0mt957?svg=true
 [appveyor-url]: https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl
 
-[coveralls-img]: https://coveralls.io/repos/github/ali-ramadhan/Oceananigans.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/ali-ramadhan/Oceananigans.jl?branch=master
+[coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master
+[coveralls-url]: https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master
 
 [codecov-img]: https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/ali-ramadhan/Oceananigans.jl
