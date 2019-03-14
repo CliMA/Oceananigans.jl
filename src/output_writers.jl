@@ -176,11 +176,11 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
                             "zC", zC, zC_attr,
                             atts=S_attr, compress=fw.compression)
 
-    ncwrite(model.velocities.u.data, filepath, "u")
-    ncwrite(model.velocities.v.data, filepath, "v")
-    ncwrite(model.velocities.w.data, filepath, "w")
-    ncwrite(model.tracers.T.data, filepath, "T")
-    ncwrite(model.tracers.S.data, filepath, "S")
+    ncwrite(Array(model.velocities.u.data), filepath, "u")
+    ncwrite(Array(model.velocities.v.data), filepath, "v")
+    ncwrite(Array(model.velocities.w.data), filepath, "w")
+    ncwrite(Array(model.tracers.T.data), filepath, "T")
+    ncwrite(Array(model.tracers.S.data), filepath, "S")
 
     ncclose(filepath)
 
