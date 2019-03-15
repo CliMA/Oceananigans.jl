@@ -57,7 +57,6 @@ function test_diffusion_cosine(fld)
     eos = LinearEquationOfState(βS=0, βT=0)
 
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos)
-    @show model.grid.zF[1] model.grid.zF[end]
 
     if fld == :w
         throw("There are no boundary condition tests for w yet.")
@@ -69,8 +68,9 @@ function test_diffusion_cosine(fld)
 
     zC = model.grid.zC
     m = 2
-    @views @. field.data[1, 1, :] = cos.(m*z)
-    field_ans(z, t) = exp(-κ*m^2*t) * cos(m*z)
+    @views @. field.data[1, 1, :] = cos.(m*zC)
+
+    diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
     τκ = Lz^2 / κ # diffusion time-scale
     Δt = 1e-6 * τκ # time-step much less than diffusion time-scale
@@ -78,9 +78,6 @@ function test_diffusion_cosine(fld)
 
     time_step!(model, Nt, Δt)
 
-    field_num = dropdims(field.data, dims=(1, 2))
-
-    @show norm(field_num .- field_ans.(zC, model.clock.time))
-
-    false
+    field_numerical = dropdims(field.data, dims=(1, 2))
+    isapprox(field_numerical, diffusing_cosine.(κ, m, zC, model.clock.time), rtol=1e-9*Nt*Nz)
 end

@@ -191,6 +191,7 @@ end
         for fld in (:u, :v, :T, :S)
             @test test_diffusion_simple(fld)
             @test test_diffusion_budget(fld)
+            @test test_diffusion_cosine(fld)
         end
     end
 
