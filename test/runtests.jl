@@ -172,17 +172,6 @@ using Oceananigans.Operators
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
-    @testset "Time stepping" begin
-        Nx, Ny, Nz = 4, 5, 6
-        Lx, Ly, Lz = 1, 2, 3
-        Nt, Δt = 10, 1
-
-        model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        time_step!(model, Nt, Δt)
-
-        @test typeof(model) == Model  # Just testing that no errors happen.
-    end
-
     @testset "Forcing" begin
         add_one(args...) = 1.0
         function test_forcing(fld)
@@ -194,6 +183,29 @@ using Oceananigans.Operators
 
         for fld in [:u, :v, :w, :T, :S]
             @test test_forcing(fld)
+        end
+    end
+
+    @testset "Time stepping" begin
+        @testset "First time step" begin
+            Nx, Ny, Nz = 10, 12, 15
+            Lx, Ly, Lz = 1, 2, 3
+            Nt, Δt = 10, 1
+
+            model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+
+            add_ones(args...) = 1.0
+            model.forcing = Forcing(nothing, nothing, nothing, add_ones, nothing)
+
+            time_step!(model, Nt, Δt)
+
+            # Test that GT = 1 after first time step and that AB2 actually
+            # reduced to forward Euler.
+            @test all(model.G.Gu.data .≈ 0)
+            @test all(model.G.Gv.data .≈ 0)
+            @test all(model.G.Gw.data .≈ 0)
+            @test all(model.G.GT.data .≈ 1.0)
+            @test all(model.G.GS.data .≈ 0)
         end
     end
 
