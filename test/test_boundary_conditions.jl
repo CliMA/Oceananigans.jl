@@ -51,7 +51,7 @@ function test_diffusion_budget(field_name)
 end
 
 function test_diffusion_cosine(fld)
-    Nx, Ny, Nz = 1, 1, 16
+    Nx, Ny, Nz = 1, 1, 128
     Lx, Ly, Lz = 1, 1, π/2
     κ = 1
     eos = LinearEquationOfState(βS=0, βT=0)
@@ -79,7 +79,8 @@ function test_diffusion_cosine(fld)
     time_step!(model, Nt, Δt)
 
     field_numerical = dropdims(field.data, dims=(1, 2))
-    isapprox(field_numerical, diffusing_cosine.(κ, m, zC, model.clock.time), rtol=1e-9*Nt*Nz)
+
+    !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
 end
 
 
@@ -98,11 +99,9 @@ end
 
 function test_flux_budget(field_name)
     Nx, Ny, Nz = 1, 1, 16
-    Lx, Ly, Lz = 1, 0.3, 1
+    Lx, Ly, Lz = 1, 1, 0.7
     κ = 1
     eos = LinearEquationOfState(βS=0, βT=0)
-
-    V = Lx*Ly*Lz
 
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos)
 
@@ -122,16 +121,12 @@ function test_flux_budget(field_name)
     mean_init = mean(field.data)
 
     τκ = Lz^2 / κ # diffusion time-scale
-    Δt = 1e-2 * τκ # time-step much less than diffusion time-scale
-    Nt = 10
+    Δt = 1e-6 * τκ # time-step much less than diffusion time-scale
+    Nt = 100
 
     time_step!(model, Nt, Δt)
 
-    # budget is ∂<ϕ>/∂t = -Δflux = -top_flux/V (left) + bottom_flux/V (right);
-    # therefore <ϕ> = bottom_flux * t / V
-    @show mean_init
-    @show mean(field.data) - mean_init
-    @show bottom_flux*model.clock.time/V
-
-    isapprox(mean(field.data)-mean_init, bottom_flux*model.clock.time/V)
+    # budget is Lz * ∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right);
+    # therefore <ϕ> = bottom_flux * t / Lz
+    isapprox(mean(field.data) - mean_init, bottom_flux*model.clock.time/Lz)
 end

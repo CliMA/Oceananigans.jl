@@ -15,9 +15,15 @@ struct Gradient <: NonDefault end
 struct Value <: NonDefault end
 
 """
-    BoundaryCondition(condition)
+    BoundaryCondition(BCType, condition)
 
+Construct a boundary condition of `BCType` with `condition`,
+where `BCType` is `Flux` or `Gradient`. `condition` may be a 
+number, array, or a function with signature:
 
+    condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) = # function definition
+
+`i` and `j` are indices along the boundary.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition::T
@@ -28,6 +34,16 @@ end
 
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
+
+function BoundaryCondition(Tbc, c::Number) 
+    @inline condition(args...) = c
+    BoundaryCondition{Tbc, Function}(condition)
+end
+
+function BoundaryCondition(Tbc, c::AbstractArray) 
+    @inline condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) = @inbounds c[i, j]
+    BoundaryCondition{Tbc, Function}(condition)
+end
 
 """
     TimeVaryingBoundaryCondition(T, f)
