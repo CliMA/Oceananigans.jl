@@ -80,7 +80,7 @@ function Model(;
     # Initialize Poisson solver.
     if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE; verbose=true)
+        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE)
     elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
         poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
