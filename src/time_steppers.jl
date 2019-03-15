@@ -297,8 +297,7 @@ end
 #
 
 "Apply boundary conditions by modifying the source term G."
-function apply_boundary_conditions!(Dev, bcs,
-                                    ρ₀, κh, κv, 𝜈h, 𝜈v,
+function apply_boundary_conditions!(Dev, bcs, ρ₀, κh, κv, 𝜈h, 𝜈v,
                                     t, iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                     u, v, w, T, S, Gu, Gv, Gw, GT, GS)
 
@@ -314,26 +313,11 @@ function apply_boundary_conditions!(Dev, bcs,
 
     # Apply boundary conditions. We assume there is one molecular 'diffusivity'
     # value, which is passed to apply_bcs.
-
-    # u
-    apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈,
-               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
-
-    # v
-    apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈,
-               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
-
-    # w
-    apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈,
-               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
-
-    # T
-    apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ,
-               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
-
-    # S
-    apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ,
-               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
+    apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
+    apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
+    apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
+    apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
+    apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
 
     return nothing
 end
@@ -348,12 +332,9 @@ apply_bcs!(Dev, ::Val{:x}, args...) = apply_x_bcs!(Val(Dev), args...)
 apply_bcs!(Dev, ::Val{:y}, args...) = apply_y_bcs!(Val(Dev), args...)
 apply_bcs!(Dev, ::Val{:z}, args...) = apply_z_bcs!(Val(Dev), args...)
 
-apply_bcs!(::Val{:GPU}, ::Val{:x}, args...) = (
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...))
-apply_bcs!(::Val{:GPU}, ::Val{:y}, args...) = (
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...))
-apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = (
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...))
+apply_bcs!(::Val{:GPU}, ::Val{:x}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:y}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_bcs!(Val(:GPU), args...)
 
 #
 # Physics goes here.
@@ -367,7 +348,7 @@ Notes:
 
 - The boundary condition on a z-boundary is a callable object with arguments
 
-      (u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j),
+      (t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j),
 
   where i and j are the x and y indices, respectively. No other function signature will work.
   We do not abstractions that generalize to non-uniform grids.
@@ -399,29 +380,23 @@ apply_z_bottom_bc!(args...) = nothing
 @inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, Δzc, Δzf) = (      -flux        - κ*(ϕt - ϕt₋₁)/Δzc ) / Δzf
 @inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, Δzc, Δzf) = ( κ*(ϕb₊₁ - ϕb)/Δzc +       flux        ) / Δzf
 
-"Add flux divergence to ∂ϕ/∂t associated with a top flux boundary condition on ϕ."
-@inline function apply_z_top_bc!(top_flux::BC{<:Flux}, ϕ, Gϕ, κ, args...)
-    Gϕ.data[i, j, Nz] -= top_flux(args...) / Δz
-    return nothing
-end
+"Add flux divergence to ∂ϕ/∂t associated with a top boundary condition on ϕ."
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Function},      ϕ, Gϕ, κ, args...) =       Gϕ.data[i, j, 1]  += top_flux(args...)        / Δz
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Number},        ϕ, Gϕ, κ, args...) =       Gϕ.data[i, j, 1]  += top_flux.condition       / Δz
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, args...) =       Gϕ.data[i, j, 1]  += top_flux.condition[i, j] / Δz
 
-"Add flux divergence to ∂ϕ/∂t associated with a top gradient boundary condition on ϕ."
-@inline function apply_z_top_bc!(top_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, args...)
-    Gϕ.data[i, j, Nz] += κ*top_gradient(args...) / Δz
-    return nothing
-end
+"Add flux divergence to ∂ϕ/∂t associated with a bottom boundary condition on ϕ."
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Function},      ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] -= bottom_flux(args...)        / Δz
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Number},        ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] -= bottom_flux.condition       / Δz
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] -= bottom_flux.condition[i, j] / Δz
 
-"Add flux divergence to ∂ϕ/∂t associated with a bottom flux boundary condition on ϕ."
-@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, ϕ, Gϕ, κ, args...)
-    Gϕ.data[i, j, 1] += bottom_flux(args...) / Δz
-    return nothing
-end
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Function},      ϕ, Gϕ, κ, args...)   = Gϕ.data[i, j, 1]      -= κ*top_gradient(args...)        / Δz
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Number},        ϕ, Gϕ, κ, args...)   = Gϕ.data[i, j, 1]      -= κ*top_gradient.condition       / Δz
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, args...)   = Gϕ.data[i, j, 1]      -= κ*top_gradient.condition[i, j] / Δz
 
-"Add flux divergence to ∂ϕ/∂t associated with a bottom gradient boundary condition on ϕ."
-@inline function apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, args...)
-    Gϕ.data[i, j, 1] -= κ*bottom_gradient(args...) / Δz
-    return nothing
-end
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Function},      ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] += κ*bottom_gradient(args...)        / Δz
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Number},        ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] += κ*bottom_gradient.condition       / Δz
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, args...) = Gϕ.data[i, j, Nz] += κ*bottom_gradient.condition[i, j] / Δz
 
 "Apply a top and/or bottom boundary condition to variable ϕ."
 function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
@@ -430,8 +405,8 @@ function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S,
     # Loop over i and j to apply a boundary condition on the top.
     @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
-            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j)
+            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j)
         end
     end
 

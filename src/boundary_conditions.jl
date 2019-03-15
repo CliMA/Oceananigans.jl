@@ -14,14 +14,32 @@ struct Flux <: NonDefault end
 struct Gradient <: NonDefault end
 struct Value <: NonDefault end
 
-struct BoundaryCondition{C<:BCType}
-    calc::Function
+"""
+    BoundaryCondition(condition)
+
+
+"""
+struct BoundaryCondition{C<:BCType, T}
+    condition::T
 end
 
-(bc::BoundaryCondition)(args...) = bc.calc(args...)
+# Implements a sugary callable BC.
+(bc::BoundaryCondition{<:BCType, <:Function})(args...) = bc.condition(args...)
 
-nothing_func() = nothing
-DefaultBC() = BoundaryCondition{Default}(nothing_func)
+# Constructors
+BoundaryCondition(T::BCType, c) = BoundaryCondition{T, typeof(c)}(c)
+
+"""
+    TimeVaryingBoundaryCondition(T, f)
+
+Construct a boundary condition f(t) as a function of time only.
+"""
+function TimeVaryingBoundaryCondition(T::BCType, f)
+  @inline condition(t, args...) = f(t)
+  BoundaryCondition{T, Function}(condition)
+end
+
+DefaultBC() = BoundaryCondition{Default, Nothing}(nothing)
 
 """
     CoordinateBoundaryConditions(c)
