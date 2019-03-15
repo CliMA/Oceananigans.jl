@@ -45,6 +45,7 @@ export
     # Boundary conditions
     BoundaryConditions,
     BoundaryCondition,
+    Default,
     Flux,
     Gradient,
 

@@ -358,14 +358,19 @@ function calculate_boundary_source_terms!(Dev, bcs, ρ₀, κh, κv, 𝜈h, 𝜈
 end
 
 # Do nothing if both boundary conditions are default.
-apply_bcs!(::Val{Dev}, ::Val{:x}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
-apply_bcs!(::Val{Dev}, ::Val{:y}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
-apply_bcs!(::Val{Dev}, ::Val{:z}, left_bc::BC{<:Default}, right_bc::BC{<:Default}, args...) where Dev = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:x}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:y}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:z}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+
+apply_bcs!(::Val{:GPU}, ::Val{:x}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:y}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:z}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+           
 
 # First, dispatch on coordinate.
-apply_bcs!(Dev, ::Val{:x}, args...) = apply_x_bcs!(Dev, args...)
-apply_bcs!(Dev, ::Val{:y}, args...) = apply_y_bcs!(Dev, args...)
-apply_bcs!(Dev, ::Val{:z}, args...) = apply_z_bcs!(Dev, args...)
+apply_bcs!(::Val{:CPU}, ::Val{:x}, args...) = apply_x_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:y}, args...) = apply_y_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:z}, args...) = apply_z_bcs!(Val(:CPU), args...)
 
 apply_bcs!(::Val{:GPU}, ::Val{:x}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
 apply_bcs!(::Val{:GPU}, ::Val{:y}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)

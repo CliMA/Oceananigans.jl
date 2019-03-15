@@ -9,6 +9,7 @@ const nsolution = length(solution_fields)
 
 abstract type BCType end
 struct Default <: BCType end
+
 abstract type NonDefault <: BCType end
 struct Flux <: NonDefault end
 struct Gradient <: NonDefault end
