@@ -28,8 +28,6 @@ function time_step!(model, Nt, Δt)
     end
 
     for n in 1:Nt
-        t1 = time_ns() # time each time-step
-
         time_step_kernels!(Val(model.metadata.arch), Δt,
                           model.configuration,
                           model.boundary_conditions,
@@ -54,7 +52,6 @@ function time_step!(model, Nt, Δt)
 
         clock.time += Δt
         clock.iteration += 1
-        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
 
         for diagnostic in model.diagnostics
             (clock.iteration % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
@@ -63,9 +60,6 @@ function time_step!(model, Nt, Δt)
         for output_writer in model.output_writers
             (clock.iteration % output_writer.output_frequency) == 0 && write_output(model, output_writer)
         end
-
-        t2 = time_ns();
-        println(prettytime(t2 - t1))
     end
 
     return nothing
