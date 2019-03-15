@@ -188,10 +188,20 @@ end
 
     @testset "Boundary conditions" begin
         include("test_boundary_conditions.jl")
+
+        Nx, Ny, Nz = 3, 4, 5 # for simple test
+        funbc(args...) = π
+
         for fld in (:u, :v, :T, :S)
+            for bctype in (Gradient, Flux)
+                for bc in (0.6, rand(Nx, Ny), funbc)
+                    test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+                end
+            end
             @test test_diffusion_simple(fld)
             @test test_diffusion_budget(fld)
             @test test_diffusion_cosine(fld)
+            @test test_flux_budget(fld)
         end
     end
 
