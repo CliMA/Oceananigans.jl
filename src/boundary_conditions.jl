@@ -30,21 +30,8 @@ struct BoundaryCondition{C<:BCType, T}
     condition::T
 end
 
-# Implements a sugary callable BC.
-(bc::BoundaryCondition{<:BCType, <:Function})(args...) = bc.condition(args...)
-
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
-
-function BoundaryCondition(Tbc, c::Number) 
-    @inline condition(args...) = c
-    BoundaryCondition{Tbc, Function}(condition)
-end
-
-function BoundaryCondition(Tbc, c::AbstractArray) 
-    @inline condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) = @inbounds c[i, j]
-    BoundaryCondition{Tbc, Function}(condition)
-end
 
 """
     TimeVaryingBoundaryCondition(T, f)
@@ -66,7 +53,7 @@ Construct `CoordinateBoundaryCondition` to be applied along coordinate `c`, wher
 `left` and `right` that store boundary conditions on the 'left' (negative side)
 and 'right' (positive side) of a given coordinate.
 """
-mutable struct CoordinateBoundaryConditions <: FieldVector{2, BoundaryCondition}
+mutable struct CoordinateBoundaryConditions
   left::BoundaryCondition
   right::BoundaryCondition
 end

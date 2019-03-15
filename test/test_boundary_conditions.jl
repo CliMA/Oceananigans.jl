@@ -87,8 +87,8 @@ end
 function test_z_boundary_condition_simple(field_name, bctype, bc, Nx, Ny, Nz)
     Lx, Ly, Lz = 0.1, 0.2, 0.3
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))
-    bc = BoundaryCondition(bctype, bc)
 
+    bc = BoundaryCondition(bctype, bc)
     bcs = getfield(model.boundary_conditions, field_name)
     bcs.z.right = bc # just set a boundary condition somewhere
 

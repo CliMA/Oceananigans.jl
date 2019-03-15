@@ -340,19 +340,19 @@ function calculate_boundary_source_terms!(Dev, bcs, ρ₀, κh, κv, 𝜈h, 𝜈
     𝜈 = 𝜈v
     κ = κv
 
-    u_bcs = getproperty(bcs.u, coord)
-    v_bcs = getproperty(bcs.v, coord)
-    w_bcs = getproperty(bcs.w, coord)
-    T_bcs = getproperty(bcs.T, coord)
-    S_bcs = getproperty(bcs.S, coord)
+    u_x_bcs = getproperty(bcs.u, coord)
+    v_x_bcs = getproperty(bcs.v, coord)
+    w_x_bcs = getproperty(bcs.w, coord)
+    T_x_bcs = getproperty(bcs.T, coord)
+    S_x_bcs = getproperty(bcs.S, coord)
 
     # Apply boundary conditions. We assume there is one molecular 'diffusivity'
     # value, which is passed to apply_bcs.
-    apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
-    apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
-    apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
-    apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
-    apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
+    apply_bcs!(Dev, Val(coord), u_x_bcs.left, u_x_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
+    apply_bcs!(Dev, Val(coord), v_x_bcs.left, v_x_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
+    apply_bcs!(Dev, Val(coord), w_x_bcs.left, w_x_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
+    apply_bcs!(Dev, Val(coord), T_x_bcs.left, T_x_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
+    apply_bcs!(Dev, Val(coord), S_x_bcs.left, S_x_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
 
     return nothing
 end
@@ -422,17 +422,41 @@ Notes:
 
 "Add flux divergence to ∂ϕ/∂t associated with a top boundary condition on ϕ."
 @inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
-    iteration, i, j) = Gϕ[i, j, 1] -= top_flux(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition / Δz
+
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition[i, j] / Δz
 
 @inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
-    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition / Δz
+
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition[i, j] / Δz
 
 "Add flux divergence to ∂ϕ/∂t associated with a bottom boundary condition on ϕ."
 @inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
-    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition / Δz
+
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition[i, j] / Δz
 
 @inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
-    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition / Δz
+
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition[i, j] / Δz
 
 "Apply a top and/or bottom boundary condition to variable ϕ."
 function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
