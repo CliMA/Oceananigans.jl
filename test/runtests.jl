@@ -5,6 +5,15 @@ import FFTW
 using Oceananigans
 using Oceananigans.Operators
 
+function test_basic_timestepping()
+    Nx, Ny, Nz = 4, 5, 6
+    Lx, Ly, Lz = 1, 2, 3
+    Nt, Δt = 10, 1
+    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+    time_step!(model, Nt, Δt)
+    return typeof(model) == Model # Just testing that no errors happen.
+end
+
 @testset "Oceananigans" begin
 
     @testset "Grid" begin
@@ -172,15 +181,17 @@ using Oceananigans.Operators
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
+
     @testset "Time stepping" begin
-        Nx, Ny, Nz = 4, 5, 6
-        Lx, Ly, Lz = 1, 2, 3
-        Nt, Δt = 10, 1
+        @test test_basic_timestepping()
+    end
 
-        model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        time_step!(model, Nt, Δt)
-
-        @test typeof(model) == Model  # Just testing that no errors happen.
+    @testset "Boundary conditions" begin
+        include("test_boundary_conditions.jl")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_simple(fld)
+            @test test_diffusion_budget(fld)
+        end
     end
 
     @testset "Forcing" begin
@@ -192,7 +203,7 @@ using Oceananigans.Operators
             f() == 1.0
         end
 
-        for fld in [:u, :v, :w, :T, :S]
+        for fld in (:u, :v, :w, :T, :S)
             @test test_forcing(fld)
         end
     end
