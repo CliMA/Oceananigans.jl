@@ -11,6 +11,7 @@ abstract type BCType end
 struct Default <: BCType end
 abstract type NonDefault end
 struct Flux <: NonDefault end
+struct Gradient <: NonDefault end
 struct Value <: NonDefault end
 
 struct BoundaryCondition{C<:BCType}

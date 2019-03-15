@@ -299,7 +299,7 @@ end
 "Apply boundary conditions by modifying the source term G."
 function apply_boundary_conditions!(Dev, bcs,
                                     ρ₀, κh, κv, 𝜈h, 𝜈v,
-                                    t, step, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                                    t, iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                     u, v, w, T, S, Gu, Gv, Gw, GT, GS)
 
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
@@ -317,23 +317,23 @@ function apply_boundary_conditions!(Dev, bcs,
 
     # u
     apply_bcs!(Dev, Val(coord), u_bcs.left, u_bcs.right, u, Gu, 𝜈,
-               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # v
     apply_bcs!(Dev, Val(coord), v_bcs.left, v_bcs.right, v, Gv, 𝜈,
-               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # w
     apply_bcs!(Dev, Val(coord), w_bcs.left, w_bcs.right, w, Gw, 𝜈,
-               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # T
     apply_bcs!(Dev, Val(coord), T_bcs.left, T_bcs.right, T, GT, κ,
-               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
 
     # S
     apply_bcs!(Dev, Val(coord), S_bcs.left, S_bcs.right, S, GS, κ,
-               u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz)
+               u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz)
 
     return nothing
 end
@@ -358,50 +358,80 @@ apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = (
 #
 # Physics goes here.
 #
-# Currently we only support flux boundary conditions at the top and bottom of the domain.
-#
+
+#=
+Currently we support flux and gradient boundary conditions
+at the top and bottom of the domain.
+
+Notes:
+
+- The boundary condition on a z-boundary is a callable object with arguments
+
+      (u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j),
+
+  where i and j are the x and y indices, respectively. No other function signature will work.
+  We do not abstractions that generalize to non-uniform grids.
+
+- We assume that the boundary tendency has been previously calculated assuming
+  a 'no-flux' boundary condition.
+
+  This means that boudnary conditions take the form of
+  an addition/subtraction to the tendency associated with the (C, C, I) below the bottom cell point.
+  This paradigm holds as long as consider boundary conditions on (A, A, C) variables only, where A is
+  "any" of C or I.
+
+ - We use the physics-based convention that
+
+        flux = -κ * gradient,
+
+    and that
+
+        tendency = ∂ϕ/∂t = Gϕ = - ∇ ⋅ flux
+
+=#
 
 # Do nothing in default case. These functions are called in cases where one of the
 # z-boundaries is set, but not the other.
 apply_z_top_bc!(args...) = nothing
 apply_z_bottom_bc!(args...) = nothing
 
-# These functions compute vertical fluxes for (A, A, C) quantities.
+# These functions compute vertical fluxes for (A, A, C) quantities. They are not currently used.
 @inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, Δzc, Δzf) = (      -flux        - κ*(ϕt - ϕt₋₁)/Δzc ) / Δzf
 @inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, Δzc, Δzf) = ( κ*(ϕb₊₁ - ϕb)/Δzc +       flux        ) / Δzf
 
-"Apply a top flux boundary condition to ϕ."
-@inline function apply_z_top_bc!(top_flux::BC{<:Flux},
-                                 ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
-
-    # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, Nz] += ∇κ∇ϕ_t(κ, 0, 0, # 0's assume that a no-flux boundary condition is implemented elsewhere
-                                  top_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
-
+"Add flux divergence to ∂ϕ/∂t associated with a top flux boundary condition on ϕ."
+@inline function apply_z_top_bc!(top_flux::BC{<:Flux}, ϕ, Gϕ, κ, args...)
+    Gϕ.data[i, j, Nz] -= top_flux(args...) / Δz
     return nothing
 end
 
-"Apply a bottom flux boundary condition to ϕ."
-@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux},
-                                    ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+"Add flux divergence to ∂ϕ/∂t associated with a top gradient boundary condition on ϕ."
+@inline function apply_z_top_bc!(top_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, args...)
+    Gϕ.data[i, j, Nz] += κ*top_gradient(args...) / Δz
+    return nothing
+end
 
-    # Note that we cannot use the δ operators on the boundary; therefore we compute δ's manually.
-    Gϕ.data[i, j, 1] += ∇κ∇ϕ_b(κ, 0, 0, # 0's assume that a no-flux boundary condition is implemented elsewhere
-                               bottom_flux(u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j), Δz, Δz)
+"Add flux divergence to ∂ϕ/∂t associated with a bottom flux boundary condition on ϕ."
+@inline function apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, ϕ, Gϕ, κ, args...)
+    Gϕ.data[i, j, 1] += bottom_flux(args...) / Δz
+    return nothing
+end
 
+"Add flux divergence to ∂ϕ/∂t associated with a bottom gradient boundary condition on ϕ."
+@inline function apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, args...)
+    Gϕ.data[i, j, 1] -= κ*bottom_gradient(args...) / Δz
     return nothing
 end
 
 "Apply a top and/or bottom boundary condition to variable ϕ."
-function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc,
-                      ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
+function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
     @setup Dev
 
     # Loop over i and j to apply a boundary condition on the top.
     @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
-            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, step, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
+            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz, i, j)
         end
     end
 
