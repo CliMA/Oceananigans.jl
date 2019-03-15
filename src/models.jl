@@ -1,7 +1,7 @@
 mutable struct Model
     metadata::ModelMetadata
     configuration::ModelConfiguration
-    boundary_conditions::BoundaryConditions
+    boundary_conditions::ModelBoundaryConditions
     constants::PlanetaryConstants
     eos::EquationOfState
     grid::Grid
@@ -57,7 +57,7 @@ function Model(;
            eos = LinearEquationOfState(),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = BoundaryConditions(:periodic, :periodic, :rigid_lid, :free_slip),
+    boundary_conditions = ModelBoundaryConditions(),
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
@@ -80,7 +80,7 @@ function Model(;
     # Initialize Poisson solver.
     if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE; verbose=true)
+        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE)
     elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
         poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
@@ -100,3 +100,6 @@ end
 
 "Legacy constructor for `Model`."
 Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
+
+
+add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)

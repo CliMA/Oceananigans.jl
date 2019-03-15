@@ -44,6 +44,9 @@ export
 
     # Boundary conditions
     BoundaryConditions,
+    BoundaryCondition,
+    Flux,
+    Gradient,
 
     # Time stepping
     time_step!,
@@ -85,9 +88,18 @@ export
     # Package utilities
     prettytime
 
-using Statistics, Printf
-using FFTW, JLD, NetCDF
-using GPUifyLoops
+using
+    Statistics,
+    Printf
+
+using
+    FFTW,
+    JLD,
+    NetCDF,
+    StaticArrays
+
+using
+    GPUifyLoops
 
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
