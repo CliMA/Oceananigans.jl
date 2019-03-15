@@ -84,7 +84,7 @@ function time_step_kernels!(::Val{:CPU}, Δt,
                            U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                            G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    calculate_boundary_source_terms!(Val(:CPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+    calculate_boundary_source_terms!(Val(:CPU), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
@@ -124,7 +124,7 @@ function time_step_kernels!(::Val{:GPU}, Δt,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    calculate_boundary_source_terms!(Val(:GPU), bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+    calculate_boundary_source_terms!(Val(:GPU), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
@@ -332,7 +332,7 @@ end
 #
 
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(Dev, bcs, ρ₀, κh, κv, 𝜈h, 𝜈v,
+function calculate_boundary_source_terms!(Dev, Bx, By, Bz, bcs, ρ₀, κh, κv, 𝜈h, 𝜈v,
                                           t, iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                           u, v, w, T, S, Gu, Gv, Gw, GT, GS)
 
@@ -348,33 +348,33 @@ function calculate_boundary_source_terms!(Dev, bcs, ρ₀, κh, κv, 𝜈h, 𝜈
 
     # Apply boundary conditions. We assume there is one molecular 'diffusivity'
     # value, which is passed to apply_bcs.
-    apply_bcs!(Dev, Val(coord), u_x_bcs.left, u_x_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
-    apply_bcs!(Dev, Val(coord), v_x_bcs.left, v_x_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
-    apply_bcs!(Dev, Val(coord), w_x_bcs.left, w_x_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
-    apply_bcs!(Dev, Val(coord), T_x_bcs.left, T_x_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
-    apply_bcs!(Dev, Val(coord), S_x_bcs.left, S_x_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
 
     return nothing
 end
 
 # Do nothing if both boundary conditions are default.
-apply_bcs!(::Val{:CPU}, ::Val{:x}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::Val{:CPU}, ::Val{:y}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::Val{:CPU}, ::Val{:z}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
 
-apply_bcs!(::Val{:GPU}, ::Val{:x}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::Val{:GPU}, ::Val{:y}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::Val{:GPU}, ::Val{:z}, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
            
 
 # First, dispatch on coordinate.
-apply_bcs!(::Val{:CPU}, ::Val{:x}, args...) = apply_x_bcs!(Val(:CPU), args...)
-apply_bcs!(::Val{:CPU}, ::Val{:y}, args...) = apply_y_bcs!(Val(:CPU), args...)
-apply_bcs!(::Val{:CPU}, ::Val{:z}, args...) = apply_z_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:x}, Bx, By, Bz, args...) = apply_x_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:y}, Bx, By, Bz, args...) = apply_y_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, args...) = apply_z_bcs!(Val(:CPU), args...)
 
-apply_bcs!(::Val{:GPU}, ::Val{:x}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
-apply_bcs!(::Val{:GPU}, ::Val{:y}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)
-apply_bcs!(::Val{:GPU}, ::Val{:z}, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_bcs!(Val(:GPU), args...)
 
 #
 # Physics goes here.
