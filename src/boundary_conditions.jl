@@ -9,7 +9,7 @@ const nsolution = length(solution_fields)
 
 abstract type BCType end
 struct Default <: BCType end
-abstract type NonDefault end
+abstract type NonDefault <: BCType end
 struct Flux <: NonDefault end
 struct Gradient <: NonDefault end
 struct Value <: NonDefault end
@@ -27,7 +27,7 @@ end
 (bc::BoundaryCondition{<:BCType, <:Function})(args...) = bc.condition(args...)
 
 # Constructors
-BoundaryCondition(T::BCType, c) = BoundaryCondition{T, typeof(c)}(c)
+BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 
 """
     TimeVaryingBoundaryCondition(T, f)

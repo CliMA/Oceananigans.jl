@@ -46,6 +46,7 @@ export
     BoundaryConditions,
     BoundaryCondition,
     Flux,
+    Gradient,
 
     # Time stepping
     time_step!,
@@ -87,17 +88,17 @@ export
     # Package utilities
     prettytime
 
-using 
-    Statistics, 
+using
+    Statistics,
     Printf
 
-using 
-    FFTW, 
-    JLD, 
+using
+    FFTW,
+    JLD,
     NetCDF,
     StaticArrays
 
-using 
+using
     GPUifyLoops
 
 const HAVE_CUDA = try
