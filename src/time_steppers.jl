@@ -29,6 +29,11 @@ function time_step!(model, Nt, Δt)
     for n in 1:Nt
         t1 = time_ns() # time each time-step
 
+        # Adams-Bashforth (AB2) parameter. It is set to -0.5 at the first step so
+        # that the time-stepping reduces down to a forward-Euler time step.
+        # Otherwise it is set to 1//8 which is optimal for stability.
+        χ = ifelse(model.clock.iteration == 0, -0.5, 0.125)
+
         time_step_kernel!(Val(model.metadata.arch), Δt,
                           model.configuration,
                           model.boundary_conditions,
@@ -84,7 +89,7 @@ function time_step_kernel!(::Val{:CPU}, Δt,
     update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                          U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                          G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing, clock.iteration)
+                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(G, U, cfg, g, bc)
 
@@ -115,7 +120,7 @@ function time_step_kernel!(::Val{:GPU}, Δt,
         Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing, clock.iteration)
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
 
     apply_boundary_conditions!(G, U, cfg, g, bc)
 
@@ -159,13 +164,8 @@ end
 
 "Store previous value of the source term and calculate current source term."
 function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                              u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F, iteration) where Dev
+                              u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
     @setup Dev
-
-    # Adams-Bashforth (AB2) parameter. It is set to -0.5 at the first step so
-    # that the time-stepping reduces down to a forward-Euler time step.
-    # Otherwise it is set to 1//8 which is optimal for stability.    
-    χ = ifelse(iteration == 0, -0.5, 0.125)
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
