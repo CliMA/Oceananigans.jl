@@ -130,7 +130,7 @@ function time_step_kernels!(::Val{:GPU}, Δt,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(
-        Val(:GPU), χ, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        Val(:GPU), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(
