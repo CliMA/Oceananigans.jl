@@ -214,10 +214,15 @@ float_types = [Float32, Float64]
 
     @testset "Time stepping" begin
         include("test_time_stepping.jl")
-        @test test_basic_timestepping()
+
+        for arch in archs, ft in float_types
+            @test test_basic_timestepping(arch, ft)
+        end
 
         @testset "Adams-Bashforth 2" begin
-            test_first_AB2_time_Step()
+            for arch in archs, ft in float_types
+                run_first_AB2_time_step_tests(arch, ft)
+            end
         end
     end
 end # Oceananigans tests
