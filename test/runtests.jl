@@ -128,7 +128,7 @@ float_types = [Float32, Float64]
         end
 
         for N in [5, 10, 20, 50, 100]
-            for ft in [Float64]
+            for ft in float_types
                 mm = ModelMetadata(:CPU, ft)
 
                 @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
@@ -145,12 +145,12 @@ float_types = [Float32, Float64]
         end
 
         Ns = 2 .^ [2, 4, 6]
-        for Nx in Ns, Ny in Ns, Nz in Ns, ft in [Float64]
+        for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
             mm = ModelMetadata(:CPU, ft)
             @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
         end
 
-        for ft in [Float64]
+        for ft in float_types
             mm = ModelMetadata(:CPU, ft)
             @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
             @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
