@@ -51,6 +51,17 @@ archs = [:CPU]
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
 
+        @testset "Field initialization" begin
+            for arch in [:CPU], ft in [Float32, Float64]
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
+
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    @test test_init_field(mm, grid, field_type)
+                end
+            end
+        end
+
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
         float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
@@ -58,19 +69,28 @@ archs = [:CPU]
         other_vals = Any[π]
         vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        for arch in archs, ft in [Float32, Float64]
-            mm = ModelMetadata(arch, ft)
-            grid = RegularCartesianGrid(mm, N, L)
+        @testset "Setting fields" begin
+            for arch in archs, ft in [Float32, Float64]
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
 
-            for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
-                @test test_init_field(mm, grid, field_type)
-
-                for val in vals
-                    @test test_set_field(mm, grid, field_type, val)
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    for val in vals
+                        @test test_set_field(mm, grid, field_type, val)
+                    end
                 end
+            end
+        end
 
-                for val1 in vals, val2 in vals
-                    @test test_add_field(mm, grid, field_type, val1, val2)
+        @testset "Field operations" begin
+            for arch in [:CPU], ft in [Float32, Float64]
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
+
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    for val1 in vals, val2 in vals
+                        @test test_add_field(mm, grid, field_type, val1, val2)
+                    end
                 end
             end
         end
@@ -120,51 +140,57 @@ archs = [:CPU]
     @testset "Poisson solvers" begin
         include("test_poisson_solvers.jl")
 
-        for N in [4, 8, 10, 64, 100, 256]
-            @test test_mixed_fft_commutativity(N)
-            @test test_mixed_ifft_commutativity(N)
-        end
-
-        for N in [5, 10, 20, 50, 100]
-            @test test_3d_poisson_solver_ppn_div_free(N, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(1, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
-
-            for arch in [:CPU], ft in [Float64]
-                mm = ModelMetadata(arch, ft)
-
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
-
-                @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
-
-                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
-                # end
+        @testset "FFT commutativity" begin
+            for N in [4, 8, 10, 64, 100, 256]
+                @test test_mixed_fft_commutativity(N)
+                @test test_mixed_ifft_commutativity(N)
             end
         end
 
-        Ns = 2 .^ [2, 4, 6]
-        for Nx in Ns, Ny in Ns, Nz in Ns
-            @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
-
-            for arch in [:CPU], ft in [Float64]
-                mm = ModelMetadata(arch, ft)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
+        @testset "FFTW plans" begin
+            for ft in [Float64]
+                mm = ModelMetadata(:CPU, ft)
+                @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
+                @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
+                @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
             end
         end
 
-        for arch in [:CPU], ft in [Float64]
-            mm = ModelMetadata(arch, ft)
-            @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
+        @testset "Divergence-free solution [CPU]" begin
+            for N in [5, 10, 20, 50, 100]
+                @test test_3d_poisson_solver_ppn_div_free(N, N, N)
+                @test test_3d_poisson_solver_ppn_div_free(1, N, N)
+                @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
+
+                for ft in [Float64]
+                    mm = ModelMetadata(:CPU, ft)
+
+                    @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
+                    @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
+                    @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
+
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+
+                    # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                    # end
+                end
+            end
+
+            Ns = 2 .^ [2, 4, 6]
+            for Nx in Ns, Ny in Ns, Nz in Ns
+                @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
+
+                for arch in [:CPU], ft in [Float64]
+                    mm = ModelMetadata(arch, ft)
+                    @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
+                end
+            end
         end
     end
 
@@ -210,7 +236,7 @@ archs = [:CPU]
         include("test_time_stepping.jl")
         @test test_basic_timestepping()
 
-        @testset "Adams-Bashforth 2" begin
+        @testset "Two-step Adams-Bashforth" begin
             test_first_AB2_time_Step()
         end
     end
