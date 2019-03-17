@@ -5,39 +5,6 @@ using GPUifyLoops
 
 using Oceananigans.Operators
 
-@inline incmod1(a, n) = ifelse(a==n, 1, a + 1)
-@inline decmod1(a, n) = ifelse(a==1, n, a - 1)
-
-function ∇²_ppn!(g::RegularCartesianGrid, f::CellField, ∇²f::CellField)
-    for k in 2:(g.Nz-1), j in 1:g.Ny, i in 1:g.Nx
-       ∇²f.data[i, j, k] = (f.data[incmod1(i, g.Nx), j, k] - 2*f.data[i, j, k] + f.data[decmod1(i, g.Nx), j, k]) / g.Δx^2 +
-                           (f.data[i, incmod1(j, g.Ny), k] - 2*f.data[i, j, k] + f.data[i, decmod1(j, g.Ny), k]) / g.Δy^2 +
-                           (f.data[i, j, k+1]              - 2*f.data[i, j, k] + f.data[i, j, k-1])              / g.Δz^2
-    end
-    for j in 1:g.Ny, i in 1:g.Nx
-        ∇²f.data[i, j,   1] = (f.data[i, j, 2] - f.data[i, j, 1]) / g.Δz^2 +
-                              (f.data[incmod1(i, g.Nx), j, 1] - 2*f.data[i, j, 1] + f.data[decmod1(i, g.Nx), j, 1]) / g.Δx^2 +
-                              (f.data[i, incmod1(j, g.Ny), 1] - 2*f.data[i, j, 1] + f.data[i, decmod1(j, g.Ny), 1]) / g.Δy^2
-        ∇²f.data[i, j, end] = (f.data[i, j, end-1] - f.data[i, j, end]) / g.Δz^2 +
-                              (f.data[incmod1(i, g.Nx), j, end] - 2*f.data[i, j, end] + f.data[decmod1(i, g.Nx), j, end]) / g.Δx^2 +
-                              (f.data[i, incmod1(j, g.Ny), end] - 2*f.data[i, j, end] + f.data[i, decmod1(j, g.Ny), end]) / g.Δy^2
-    end
-    nothing
-end
-
-function laplacian3d_ppn(f)
-    Nx, Ny, Nz = size(f)
-    ∇²f = zeros(Nx, Ny, Nz)
-    for k in 2:(Nz-1), j in 1:Ny, i in 1:Nx
-       ∇²f[i, j, k] = f[incmod1(i, Nx), j, k] + f[decmod1(i, Nx), j, k] + f[i, incmod1(j, Ny), k] + f[i, decmod1(j, Ny), k] + f[i, j, k+1] + f[i, j, k-1] - 6*f[i, j, k]
-    end
-    for j in 1:Ny, i in 1:Nx
-        ∇²f[i, j,   1] = -(f[i, j,     1] - f[i, j,   2]) + f[incmod1(i, Nx), j,   1] + f[decmod1(i, Nx), j,   1] + f[i, incmod1(j, Ny),   1] + f[i, decmod1(j, Ny),   1] - 4*f[i, j,   1]
-        ∇²f[i, j, end] =  (f[i, j, end-1] - f[i, j, end]) + f[incmod1(i, Nx), j, end] + f[decmod1(i, Nx), j, end] + f[i, incmod1(j, Ny), end] + f[i, decmod1(j, Ny), end] - 4*f[i, j, end]
-    end
-    ∇²f
-end
-
 function ∇²_ppn!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, f, ∇²f) where Dev
     @setup Dev
 
