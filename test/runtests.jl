@@ -52,14 +52,10 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
 
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
-        vals = vcat(int_vals, uint_vals)
-
-        # TODO: Use ≈ for floating-point values and set! should correctly convert
-        # Rational and Irrational to Float32.
-        # float_vals = Any[0.0, -0.0, 6e-34, 1f10]
-        # rational_vals = Any[1//11, -22//7]
-        # other_vals = Any[π]
-        # vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
+        float_vals = Any[0.0, -0.0, 6e-34, 1f10]
+        rational_vals = Any[1//11, -22//7]
+        other_vals = Any[π]
+        vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
         for arch in [:CPU], ft in [Float32, Float64]
             mm = ModelMetadata(arch, ft)
@@ -69,7 +65,7 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
                 @test test_init_field(mm, grid, field_type)
 
                 for val in vals
-                    @test test_set_field(mm, grid, field_type, val) || "type(g)=$(typeof(g)), ftf=$ftf, val=$val"
+                    @test test_set_field(mm, grid, field_type, val)
                 end
 
                 # TODO: Try adding together a bunch of different data types?
@@ -216,5 +212,4 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
             test_first_AB2_time_Step()
         end
     end
-
 end # Oceananigans tests

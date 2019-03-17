@@ -29,7 +29,7 @@ julia> test_init_field((10, 10, 5), (10, 10, 10), FaceFieldX, 1//7)
 function test_set_field(mm::ModelMetadata, g::Grid, field_type, val::Number)
     f = field_type(mm, g, mm.float_type)
     set!(f, val)
-    f.data == val * ones(size(f))
+    f.data ≈ val * ones(size(f))
 end
 
 function test_add_field(mm::ModelMetadata, g::Grid, field_type, val1::Number, val2::Number)
