@@ -54,7 +54,7 @@ float_types = [Float32, Float64]
         L = (2π, 3π, 5π)
 
         @testset "Field initialization" begin
-            for arch in [:CPU], ft in float_types
+            for arch in archs, ft in float_types
                 mm = ModelMetadata(arch, ft)
                 grid = RegularCartesianGrid(mm, N, L)
 
@@ -85,7 +85,7 @@ float_types = [Float32, Float64]
         end
 
         @testset "Field operations" begin
-            for arch in [:CPU], ft in float_types
+            for arch in archs, ft in float_types
                 mm = ModelMetadata(arch, ft)
                 grid = RegularCartesianGrid(mm, N, L)
 
@@ -202,7 +202,7 @@ float_types = [Float32, Float64]
         for fld in (:u, :v, :T, :S)
             for bctype in (Gradient, Flux)
                 for bc in (0.6, rand(Nx, Ny), funbc)
-                    test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+                    @test test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
                 end
             end
             @test test_diffusion_simple(fld)
