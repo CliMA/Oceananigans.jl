@@ -72,33 +72,6 @@ function test_mixed_ifft_commutativity(N)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
-function test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
-    f = rand(Nx, Ny, Nz)
-    f .= f .- mean(f)
-    ϕ = solve_poisson_3d_ppn(f, Nx, Ny, Nz, 1, 1, 1)
-    laplacian3d_ppn(ϕ) ≈ f
-end
-
-function test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
-    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
-
-    RHS = CellField(mm, g, Complex{eltype(g)})
-    RHS_orig = CellField(mm, g, Complex{eltype(g)})
-    ϕ = CellField(mm, g, Complex{eltype(g)})
-    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
-
-    RHS.data .= rand(Nx, Ny, Nz)
-    RHS.data .= RHS.data .- mean(RHS.data)
-
-    RHS_orig.data .= copy(RHS.data)
-
-    solve_poisson_3d_ppn!(g, RHS, ϕ)
-
-    ∇²_ppn!(g, ϕ, ∇²ϕ)
-
-    ∇²ϕ.data ≈ RHS_orig.data
-end
-
 function test_fftw_planner(mm, Nx, Ny, Nz, planner_flag)
     g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
 
@@ -125,23 +98,6 @@ function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
 
     solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
     ∇²_ppn!(Val(mm.arch), Nx, Ny, Nz, g.Δx, g.Δy, g.Δz, ϕ, ∇²ϕ)
-    # ∇²_ppn!(g, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
-end
-
-function test_3d_poisson_solver_ppn_all_equal(mm, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
-
-    RHS = CellField(mm, g, Complex{eltype(g)})
-    RHS_orig = CellField(mm, g, Complex{eltype(g)})
-    ϕ = CellField(mm, g, Complex{eltype(g)})
-    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
-
-    RHS.data .= rand(Nx, Ny, Nz)
-    RHS.data .= RHS.data .- mean(RHS.data)
-
-    RHS_orig.data .= copy(RHS.data)
-
-    solver = PoissonSolver(g, RHS, planner_flag)
 end

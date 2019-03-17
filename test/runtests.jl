@@ -128,21 +128,14 @@ float_types = [Float32, Float64]
         end
 
         for N in [5, 10, 20, 50, 100]
-            @test test_3d_poisson_solver_ppn_div_free(N, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(1, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
-
             for ft in [Float64]
                 mm = ModelMetadata(:CPU, ft)
-
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
 
                 @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
                 @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
                 @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
 
+                # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
                 # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
                 #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
                 #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
@@ -152,14 +145,9 @@ float_types = [Float32, Float64]
         end
 
         Ns = 2 .^ [2, 4, 6]
-        for Nx in Ns, Ny in Ns, Nz in Ns
-            @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
-
-            for ft in [Float64]
-                mm = ModelMetadata(:CPU, ft)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
-            end
+        for Nx in Ns, Ny in Ns, Nz in Ns, ft in [Float64]
+            mm = ModelMetadata(:CPU, ft)
+            @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
         end
 
         for ft in [Float64]
