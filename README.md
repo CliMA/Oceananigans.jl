@@ -23,8 +23,8 @@
 [coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master
 
-[codecov-img]: https://codecov.io/gh/ali-ramadhan/Oceananigans.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/ali-ramadhan/Oceananigans.jl
+[codecov-img]: https://codecov.io/gh/climate-machine/Oceananigans.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/climate-machine/Oceananigans.jl
 
 A fast non-hydrostatic ocean model in Julia that can be run in 2 or 3 dimensions on CPUs and GPUs. The plan is to develop it as a stand-alone [large eddy simulation](https://en.wikipedia.org/wiki/Large_eddy_simulation) (LES) model which can be used as a source of training data for statistical learning algorithms and/or embedded within a global ocean model as a super-parameterization of small-scale processes, as in [Campin et al., 2011](https://www.sciencedirect.com/science/article/pii/S1463500310001496?via%3Dihub).
 
