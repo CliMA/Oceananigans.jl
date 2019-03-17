@@ -52,8 +52,8 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
 
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
-        float_vals = Any[0.0, -0.0, 6e-34, 1f10]
-        rational_vals = Any[1//11, -22//7]
+        float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
+        rational_vals = Any[1//11, -23//7]
         other_vals = Any[π]
         vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
@@ -68,8 +68,9 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
                     @test test_set_field(mm, grid, field_type, val)
                 end
 
-                # TODO: Try adding together a bunch of different data types?
-                @test test_add_field(mm, grid, field_type, 4, 6)
+                for val1 in vals, val2 in vals
+                    @test test_add_field(mm, grid, field_type, val1, val2)
+                end
             end
         end
     end

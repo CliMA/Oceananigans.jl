@@ -35,9 +35,12 @@ end
 function test_add_field(mm::ModelMetadata, g::Grid, field_type, val1::Number, val2::Number)
     f1 = field_type(mm, g, mm.float_type)
     f2 = field_type(mm, g, mm.float_type)
+
     set!(f1, val1)
     set!(f2, val2)
     f3 = f1 + f2
-    f_ans = (val1 + val2) * ones(size(f1))
-    f3.data == f_ans
+
+    val3 = convert(mm.float_type, val1) + convert(mm.float_type, val2)
+    f_ans = val3 * ones(size(f1))
+    f3.data ≈ f_ans
 end
