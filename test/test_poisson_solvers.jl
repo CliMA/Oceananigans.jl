@@ -1,6 +1,9 @@
 using Statistics: mean
 
 using FFTW
+using GPUifyLoops
+
+using Oceananigans.Operators
 
 @inline incmod1(a, n) = ifelse(a==n, 1, a + 1)
 @inline decmod1(a, n) = ifelse(a==1, n, a - 1)
@@ -33,6 +36,20 @@ function laplacian3d_ppn(f)
         ∇²f[i, j, end] =  (f[i, j, end-1] - f[i, j, end]) + f[incmod1(i, Nx), j, end] + f[decmod1(i, Nx), j, end] + f[i, incmod1(j, Ny), end] + f[i, decmod1(j, Ny), end] - 4*f[i, j, end]
     end
     ∇²f
+end
+
+function ∇²_ppn!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, f, ∇²f) where Dev
+    @setup Dev
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds ∇²f[i, j, k] = ∇²_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+            end
+        end
+    end
+
+    @synchronize
 end
 
 function test_mixed_fft_commutativity(N)
@@ -107,7 +124,8 @@ function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
     solver = PoissonSolver(g, RHS, planner_flag)
 
     solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(g, ϕ, ∇²ϕ)
+    ∇²_ppn!(Val(mm.arch), Nx, Ny, Nz, g.Δx, g.Δy, g.Δz, ϕ, ∇²ϕ)
+    # ∇²_ppn!(g, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
 end
