@@ -28,9 +28,10 @@ function time_step!(model, Nt, Δt)
     end
 
     for n in 1:Nt
-        t1 = time_ns() # time each time-step
 
-        time_step_kernel!(Val(model.metadata.arch), Δt,
+        χ = ifelse(model.clock.iteration == 0, -0.5, 0.125)
+
+        time_step_kernels!(Val(model.metadata.arch), Δt,
                           model.configuration,
                           model.boundary_conditions,
                           model.grid,
@@ -54,7 +55,6 @@ function time_step!(model, Nt, Δt)
 
         clock.time += Δt
         clock.iteration += 1
-        print("\rmodel.clock.time = $(clock.time) / $model_end_time   ")
 
         for diagnostic in model.diagnostics
             (clock.iteration % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
@@ -63,9 +63,6 @@ function time_step!(model, Nt, Δt)
         for output_writer in model.output_writers
             (clock.iteration % output_writer.output_frequency) == 0 && write_output(model, output_writer)
         end
-
-        t2 = time_ns();
-        println(prettytime(t2 - t1))
     end
 
     return nothing
@@ -73,22 +70,29 @@ end
 
 time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
-
 "Execute one time-step on the CPU."
-function time_step_kernel!(::Val{:CPU}, Δt,
-                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
-                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+function time_step_kernels!(::Val{:CPU}, Δt,
+                            cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+
+    store_previous_source_terms!(Val(:CPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+                                 Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
-    update_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-                         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
+    calculate_interior_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
+                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    apply_boundary_conditions!(G, U, cfg, g, bc)
+    calculate_boundary_source_terms!(Val(:CPU), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
+                               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
-    calculate_source_term_divergence_cpu!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+    adams_bashforth_update_source_terms!(Val(:CPU), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+                                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+
+    calculate_source_term_divergence!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
     solve_poisson_3d_ppn_planned!(poisson_solver, g, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
@@ -102,24 +106,34 @@ function time_step_kernel!(::Val{:CPU}, Δt,
 end
 
 "Execute one time-step on the GPU."
-function time_step_kernel!(::Val{:GPU}, Δt,
-                           cfg, bc, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
-                           Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+function time_step_kernels!(::Val{:GPU}, Δt,
+                            cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
+                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    Bx, By, Bz = Int(Nx/Tx), Int(Ny/Ty), Nz # Blocks in grid
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz # Blocks in grid
+
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(
+        Val(:GPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
         Val(:GPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_source_terms!(
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(
         Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data, forcing)
+        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    apply_boundary_conditions!(G, U, cfg, g, bc)
+    calculate_boundary_source_terms!(Val(:GPU), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                               U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
+                               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence_gpu!(
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(
+        Val(:GPU), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(
         Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, g, RHS, ϕ)
@@ -157,9 +171,8 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, 
     @synchronize
 end
 
-"Store previous value of the source term and calculate current source term."
-function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                              u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, F) where Dev
+"""Store previous source terms before updating them."""
+function store_previous_source_terms!(::Val{Dev}, Nx, Ny, Nz, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
     @setup Dev
 
     @loop for k in (1:Nz; blockIdx().z)
@@ -170,7 +183,22 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
                 @inbounds Gpw[i, j, k] = Gw[i, j, k]
                 @inbounds GpT[i, j, k] = GT[i, j, k]
                 @inbounds GpS[i, j, k] = GS[i, j, k]
+            end
+        end
+    end
 
+    @synchronize
+end
+
+"Store previous value of the source term and calculate current source term."
+function calculate_interior_source_terms!(
+                                ::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+                                u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F) where Dev
+    @setup Dev
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # u-momentum equation
                 @inbounds Gu[i, j, k] = (-u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                                             + fCor*avg_xy(v, Nx, Ny, i, j, k)
@@ -200,6 +228,19 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
                                             + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                                             + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
+            end
+        end
+    end
+
+    @synchronize
+end
+
+function adams_bashforth_update_source_terms!(::Val{Dev}, χ, Nx, Ny, Nz, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+    @setup Dev
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gu[i, j, k] = (1.5 + χ)*Gu[i, j, k] - (0.5 + χ)*Gpu[i, j, k]
                 @inbounds Gv[i, j, k] = (1.5 + χ)*Gv[i, j, k] - (0.5 + χ)*Gpv[i, j, k]
                 @inbounds Gw[i, j, k] = (1.5 + χ)*Gw[i, j, k] - (0.5 + χ)*Gpw[i, j, k]
@@ -212,9 +253,9 @@ function update_source_terms!(::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈
     @synchronize
 end
 
-"tore previous value of the source term and calculate current source term."
-function calculate_source_term_divergence_cpu!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS) where Dev
-    @setup Dev
+"Store previous value of the source term and calculate current source term."
+function calculate_source_term_divergence!(::Val{:CPU}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS)
+    @setup :CPU
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -228,8 +269,8 @@ function calculate_source_term_divergence_cpu!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy,
     @synchronize
 end
 
-function calculate_source_term_divergence_gpu!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS) where Dev
-    @setup Dev
+function calculate_source_term_divergence!(::Val{:GPU}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS)
+    @setup :GPU
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -285,19 +326,149 @@ function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, �
     @synchronize
 end
 
+
+#
+# Boundary condition physics specification
+#
+
 "Apply boundary conditions by modifying the source term G."
-function apply_boundary_conditions!(G, U, cfg, g, bc)
-    #=
-    # Set boundary conditions
-    if bc.top_bc == :no_slip
-        @. @views G.Gu.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, 1]
-        @. @views G.Gv.data[:, :, 1] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, 1]
+function calculate_boundary_source_terms!(Dev, Bx, By, Bz, bcs, ρ₀, κh, κv, 𝜈h, 𝜈v,
+                                          t, iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
+                                          u, v, w, T, S, Gu, Gv, Gw, GT, GS)
+
+    coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
+    𝜈 = 𝜈v
+    κ = κv
+
+    u_x_bcs = getproperty(bcs.u, coord)
+    v_x_bcs = getproperty(bcs.v, coord)
+    w_x_bcs = getproperty(bcs.w, coord)
+    T_x_bcs = getproperty(bcs.T, coord)
+    S_x_bcs = getproperty(bcs.S, coord)
+
+    # Apply boundary conditions. We assume there is one molecular 'diffusivity'
+    # value, which is passed to apply_bcs.
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # u
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # v
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # w
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # T
+    apply_bcs!(Dev, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) # S
+
+    return nothing
+end
+
+# Do nothing if both boundary conditions are default.
+apply_bcs!(::Val{:CPU}, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+
+apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+           
+
+# First, dispatch on coordinate.
+apply_bcs!(::Val{:CPU}, ::Val{:x}, Bx, By, Bz, args...) = apply_x_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:y}, Bx, By, Bz, args...) = apply_y_bcs!(Val(:CPU), args...)
+apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, args...) = apply_z_bcs!(Val(:CPU), args...)
+
+apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_bcs!(Val(:GPU), args...)
+
+#
+# Physics goes here.
+#
+
+#=
+Currently we support flux and gradient boundary conditions
+at the top and bottom of the domain.
+
+Notes:
+
+- The boundary condition on a z-boundary is a callable object with arguments
+
+      (t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j),
+
+  where i and j are the x and y indices, respectively. No other function signature will work.
+  We do not have abstractions that generalize to non-uniform grids.
+
+- We assume that the boundary tendency has been previously calculated for
+  a 'no-flux' boundary condition.
+
+  This means that boudnary conditions take the form of
+  an addition/subtraction to the tendency associated with a flux at point (A, A, I) below the bottom cell.
+  This paradigm holds as long as consider boundary conditions on (A, A, C) variables only, where A is
+  "any" of C or I.
+
+ - We use the physics-based convention that
+
+        flux = -κ * gradient,
+
+    and that
+
+        tendency = ∂ϕ/∂t = Gϕ = - ∇ ⋅ flux
+
+=#
+
+# Do nothing in default case. These functions are called in cases where one of the
+# z-boundaries is set, but not the other.
+@inline apply_z_top_bc!(args...) = nothing
+@inline apply_z_bottom_bc!(args...) = nothing
+
+# These functions compute vertical fluxes for (A, A, C) quantities. They are not currently used.
+@inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, Δzc, Δzf) = (      -flux        - κ*(ϕt - ϕt₋₁)/Δzc ) / Δzf
+@inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, Δzc, Δzf) = ( κ*(ϕb₊₁ - ϕb)/Δzc +       flux        ) / Δzf
+
+"Add flux divergence to ∂ϕ/∂t associated with a top boundary condition on ϕ."
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition / Δz
+
+@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] -= top_flux.condition[i, j] / Δz
+
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition / Δz
+
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, 1] += κ*top_gradient.condition[i, j] / Δz
+
+"Add flux divergence to ∂ϕ/∂t associated with a bottom boundary condition on ϕ."
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition / Δz
+
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] += bottom_flux.condition[i, j] / Δz
+
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition(t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j) / Δz
+
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition / Δz
+
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S,
+    iteration, i, j) = Gϕ[i, j, Nz] -= κ*bottom_gradient.condition[i, j] / Δz
+
+"Apply a top and/or bottom boundary condition to variable ϕ."
+function apply_z_bcs!(::Val{Dev}, top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, Nx, Ny, Nz, Δx, Δy, Δz) where Dev
+    @setup Dev
+
+    # Loop over i and j to apply a boundary condition on the top.
+    @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j)
+            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, t, Δx, Δy, Δz, Nx, Ny, Nz, u, v, w, T, S, iteration, i, j)
+        end
     end
 
-    if bc.bottom_bc == :no_slip
-        @. @views G.Gu.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.u.data[:, :, end]
-        @. @views G.Gv.data[:, :, end] -= (2*cfg.𝜈v/g.Δz^2) * U.v.data[:, :, end]
-    end
-    =#
     return nothing
 end

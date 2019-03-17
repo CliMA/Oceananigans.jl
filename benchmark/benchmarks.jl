@@ -1,126 +1,87 @@
-using BenchmarkTools, Printf, Statistics
+using TimerOutputs, Printf
+using Oceananigans
 
-using Oceananigans, Oceananigans.Operators
+const timer = TimerOutput()
 
-# Pretty printing functions stolen from BenchmarkTools.jl
-prettypercent(p) = string(@sprintf("%.2f", p * 100), "%")
+Ni = 2   # Number of iterations before benchmarking starts.
+Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
-function prettydiff(p)
-    diff = p - 1.0
-    return string(diff >= 0.0 ? "+" : "", @sprintf("%.2f", diff * 100), "%")
-end
+# Model resolutions to benchmarks. Focusing on 3D models for GPU.
+Ns = [# (1, 1, 512),
+      # (1, 128, 128), (128, 1, 128), (128, 128, 1),
+      (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
 
-function prettytime(t)
-    if t < 1e3
-        value, units = t, "ns"
-    elseif t < 1e6
-        value, units = t / 1e3, "μs"
-    elseif t < 1e9
-        value, units = t / 1e6, "ms"
-    else
-        value, units = t / 1e9, "s"
+float_types = [Float32, Float64]  # Float types to benchmark.
+archs = [:CPU]  # Architectures to benchmark on.
+
+Oceananigans.@hascuda archs = [:CPU, :GPU]  # Benchmark GPU on CUDA-enabled computers.
+
+benchmark_name(N, id)               = benchmark_name(N, id, nothing, nothing)
+benchmark_name(N, id, arch::Symbol) = benchmark_name(N, id, arch, nothing)
+benchmark_name(N, id, ft::DataType) = benchmark_name(N, id, nothing, ft)
+
+function benchmark_name(N, id, arch, ft; npad=3)
+    Nx, Ny, Nz = N
+    print_arch = typeof(arch) == Symbol ? true : false
+    print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
+
+    bn = ""
+    bn *= lpad(Nx, npad, " ") * "x" * lpad(Ny, npad, " ") * "x" * lpad(Nz, npad, " ")
+    bn *= " $id"
+
+    if print_arch && print_ft
+        bn *= " ($arch, $ft)"
+    elseif print_arch && !print_ft
+        bn *= " ($arch)"
+    elseif !print_arch && print_ft
+        bn *= " ($ft)"
     end
-    return string(@sprintf("%.3f", value), " ", units)
+
+    return bn
 end
 
-function prettymemory(b)
-    if b < 1024
-        return string(b, " bytes")
-    elseif b < 1024^2
-        value, units = b / 1024, "KiB"
-    elseif b < 1024^3
-        value, units = b / 1024^2, "MiB"
-    else
-        value, units = b / 1024^3, "GiB"
-    end
-    return string(@sprintf("%.2f", value), " ", units)
-end
+for arch in archs, float_type in float_types, N in Ns
+    Nx, Ny, Nz = N
+    Lx, Ly, Lz = 100, 100, 100
 
-function pretty_print_summary(b, func_name)
-    print("│",
-          lpad(func_name, 25), " │",
-          lpad(prettymemory(b.memory), 11), " │",
-          lpad(b.allocs, 9), " │",
-          lpad(prettytime(minimum(b.times)), 11), " │",
-          lpad(prettytime(median(b.times)), 11), " │",
-          lpad(prettytime(mean(b.times)), 11), " │",
-          lpad(prettytime(maximum(b.times)), 11), " │",
-          lpad(b.params.samples, 8), " │",
-          lpad(b.params.evals, 6), " │"
-          )
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type)
+    time_step!(model, Ni, 1)  # First 1-2 iterations usually slower.
 
-    if !(median(b.gctimes) ≈ 0)
-        print(" GC min: ", prettypercent(100 * minimum(b.gctimes) / minimum(b.times)), ", ",
-              " GC med: ", prettypercent(100 * median(b.gctimes) / median(b.times)), "\n"
-              )
-    else
-        print("\n")
+    bn =  benchmark_name(N, "static ocean", arch, float_type)
+    for i in 1:Nt
+        @timeit timer bn time_step!(model, 1, 1)
     end
 end
 
-function run_benchmarks()
-    N = (100, 100, 100)
-    L = (1000, 1000, 1000)
+print_timer(timer, title="Oceananigans.jl benchmarks")
 
-    g  = RegularCartesianGrid(N, L; FloatType=Float64)
-    eos = LinearEquationOfState()
+bid = "static ocean"  # Benchmark ID. We only have one right now.
 
-    U  = VelocityFields(g)
-    tr = TracerFields(g)
-    tt = OperatorTemporaryFields(g)
-    st = StepperTemporaryFields(g)
+println("\n\nCPU Float64 -> Float32 speedup:")
+for N in Ns
+    bn32 = benchmark_name(N, bid, :CPU, Float32)
+    bn64 = benchmark_name(N, bid, :CPU, Float64)
+    t32  = TimerOutputs.time(timer[bn32])
+    t64  = TimerOutputs.time(timer[bn64])
+    @printf("%s: %.3f\n", benchmark_name(N, bid), t64/t32)
+end
 
-    κh, κv = 4e-2, 4e-2
-    𝜈h, 𝜈v = 4e-2, 4e-2
+Oceananigans.@hascuda begin
+    println("\nGPU Float64 -> Float32 speedup:")
+    for N in Ns
+        bn32 = benchmark_name(N, bid, :GPU, Float32)
+        bn64 = benchmark_name(N, bid, :GPU, Float64)
+        t32  = TimerOutputs.time(timer[bn32])
+        t64  = TimerOutputs.time(timer[bn64])
+        @printf("%s: %.3f\n", benchmark_name(N, bid), t64/t32)
+    end
 
-    U.u.data  .= rand(eltype(g), size(g))
-    U.v.data  .= rand(eltype(g), size(g))
-    U.w.data  .= rand(eltype(g), size(g))
-    tr.T.data .= rand(eltype(g), size(g))
-    st.fCC1.data .= rand(eltype(g), size(g))
-    st.fCC2.data .= rand(eltype(g), size(g))
-
-    #print("+---------------------------------------------------------------------------------------------------------+\n")
-    # print("| ", rpad(" BENCHMARKING OCEANANIGANS: T=$T, (Nx, Ny, Nz)=$N", 103), " |\n")
-    # print("+---------------+------------+----------+-----------+-----------+-----------+-----------+---------+-------+\n")
-    # print("| function name |   memory   |  allocs  | min. time | med. time | mean time | max. time | samples | evals |\n")
-
-    print("┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐\n")
-    print("│ ", rpad(" BENCHMARKING OCEANANIGANS: (Nx, Ny, Nz) = $N [$(eltype(g))]", 118),                                             " │\n")
-    print("├──────────────────────────┬────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬─────────┬───────┤\n")
-    print("│         function         │   memory   │  allocs  │  min. time │  med. time │  mean time │  max. time │ samples │ evals │\n")
-    print("├──────────────────────────┼────────────┼──────────┼────────────┼────────────┼────────────┼────────────┼─────────┼───────┤\n")
-
-    b = @benchmark δx!($g, $U.u, $tt.fC1); pretty_print_summary(b, "δx! (f2c)");
-    b = @benchmark δx!($g, $tt.fC1, $U.u); pretty_print_summary(b, "δx! (c2f)");
-    b = @benchmark δy!($g, $U.v, $tt.fC2); pretty_print_summary(b, "δy! (f2c)");
-    b = @benchmark δy!($g, $tt.fC2, $U.v); pretty_print_summary(b, "δy! (c2f)");
-    b = @benchmark δz!($g, $U.w, $tt.fC3); pretty_print_summary(b, "δz! (f2c)");
-    b = @benchmark δz!($g, $tt.fC3, $U.w); pretty_print_summary(b, "δz! (c2f)");
-
-    b = @benchmark avgx!($g, $U.u, $tt.fC1); pretty_print_summary(b, "avgx! (f2c)");
-    b = @benchmark avgx!($g, $tt.fC1, $U.u); pretty_print_summary(b, "avgx! (c2f)");
-    b = @benchmark avgy!($g, $U.v, $tt.fC2); pretty_print_summary(b, "avgy! (f2c)");
-    b = @benchmark avgy!($g, $tt.fC2, $U.v); pretty_print_summary(b, "avgy! (c2f)");
-    b = @benchmark avgz!($g, $U.w, $tt.fC3); pretty_print_summary(b, "avgz! (f2c)");
-    b = @benchmark avgz!($g, $tt.fC3, $U.w); pretty_print_summary(b, "avgz! (c2f)");
-
-    b = @benchmark div!($g, $U.u, $U.v, $U.w, $tt.fC1, $tt); pretty_print_summary(b, "div! (f2c)");
-    b = @benchmark div!($g, $tt.fC1, $tt.fC2, $tt.fC3, $tt.fFX, $tt); pretty_print_summary(b, "div! (c2f)");
-    b = @benchmark div_flux!($g, $U.u, $U.v, $U.w, $tr.T, $tt.fC1, $tt); pretty_print_summary(b, "div_flux!");
-
-    b = @benchmark u∇u!($g, $U, $tt.fFX, $tt); pretty_print_summary(b, "u∇u!");
-    b = @benchmark u∇v!($g, $U, $tt.fFY, $tt); pretty_print_summary(b, "u∇v!");
-    b = @benchmark u∇w!($g, $U, $tt.fFZ, $tt); pretty_print_summary(b, "u∇w!");
-
-    b = @benchmark κ∇²!($g, $tr.T, $tt.fC1, $κh, $κv, $tt); pretty_print_summary(b, "κ∇²!");
-    b = @benchmark 𝜈∇²u!($g, $U.u, $tt.fFX, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²u!");
-    b = @benchmark 𝜈∇²v!($g, $U.v, $tt.fFY, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²v!");
-    b = @benchmark 𝜈∇²w!($g, $U.w, $tt.fFZ, $𝜈h, $𝜈h, $tt); pretty_print_summary(b, "𝜈∇²w!");
-
-    b = @benchmark ρ!($eos, $g, $tr); pretty_print_summary(b, "ρ!");
-    b = @benchmark solve_poisson_3d_ppn!($g, $st.fCC1, $st.fCC2); pretty_print_summary(b, "solve_poisson_3d_ppn!");
-
-    print("└──────────────────────────┴────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴─────────┴───────┘\n")
-    # print("+---------------------------------------------------------------------------------------------------------+\n")
+    println("\nCPU -> GPU speedup:")
+    for N in Ns, ft in float_types
+        bn_cpu = benchmark_name(N, bid, :CPU, ft)
+        bn_gpu = benchmark_name(N, bid, :GPU, ft)
+        t_cpu  = TimerOutputs.time(timer[bn_cpu])
+        t_gpu  = TimerOutputs.time(timer[bn_gpu])
+        @printf("%s: %.3f\n", benchmark_name(N, bid, ft), t_cpu/t_gpu)
+    end
 end

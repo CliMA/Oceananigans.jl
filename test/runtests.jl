@@ -8,6 +8,15 @@ using Oceananigans.Operators
 archs = [:CPU]
 Oceananigans.@hascuda archs = [:CPU, :GPU]
 
+function test_basic_timestepping()
+    Nx, Ny, Nz = 4, 5, 6
+    Lx, Ly, Lz = 1, 2, 3
+    Nt, Δt = 10, 1
+    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+    time_step!(model, Nt, Δt)
+    return typeof(model) == Model # Just testing that no errors happen.
+end
+
 @testset "Oceananigans" begin
 
     @testset "Grid" begin
@@ -175,15 +184,28 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
+
     @testset "Time stepping" begin
-        Nx, Ny, Nz = 4, 5, 6
-        Lx, Ly, Lz = 1, 2, 3
-        Nt, Δt = 10, 1
+        @test test_basic_timestepping()
+    end
 
-        model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-        time_step!(model, Nt, Δt)
+    @testset "Boundary conditions" begin
+        include("test_boundary_conditions.jl")
 
-        @test typeof(model) == Model  # Just testing that no errors happen.
+        Nx, Ny, Nz = 3, 4, 5 # for simple test
+        funbc(args...) = π
+
+        for fld in (:u, :v, :T, :S)
+            for bctype in (Gradient, Flux)
+                for bc in (0.6, rand(Nx, Ny), funbc)
+                    test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+                end
+            end
+            @test test_diffusion_simple(fld)
+            @test test_diffusion_budget(fld)
+            @test test_diffusion_cosine(fld)
+            @test test_flux_budget(fld)
+        end
     end
 
     @testset "Forcing" begin
@@ -195,7 +217,7 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
             f() == 1.0
         end
 
-        for fld in [:u, :v, :w, :T, :S]
+        for fld in (:u, :v, :w, :T, :S)
             @test test_forcing(fld)
         end
     end

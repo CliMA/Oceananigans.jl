@@ -99,7 +99,7 @@ struct PoissonSolverGPU{T<:AbstractArray} <: AbstractPoissonSolver
     IFFT_z!
 end
 
-function PoissonSolverGPU(g::Grid, exfield::CellField)
+function PoissonSolverGPU(g::Grid, exfield::CellField; verbose=false)
     kx² = CuArray{Float64}(undef, g.Nx)
     ky² = CuArray{Float64}(undef, g.Ny)
     kz² = CuArray{Float64}(undef, g.Nz)
@@ -117,11 +117,13 @@ function PoissonSolverGPU(g::Grid, exfield::CellField)
     bfactors[1] *= 0.5
     idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, g.Nz), g.Nx, g.Ny, 1))
 
-    print("Creating CuFFT plans...\n")
-    print("FFT_xy!:  "); @time FFT_xy!  = plan_fft!(exfield.data, [1, 2])
-    print("FFT_z!:   "); @time FFT_z!   = plan_fft!(exfield.data, 3)
-    print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
-    print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
+    if verbose
+        print("Creating CuFFT plans...\n")
+        print("FFT_xy!:  "); @time FFT_xy!  = plan_fft!(exfield.data, [1, 2])
+        print("FFT_z!:   "); @time FFT_z!   = plan_fft!(exfield.data, 3)
+        print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
+        print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
+    end
 
     PoissonSolverGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
