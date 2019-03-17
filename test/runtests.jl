@@ -57,7 +57,7 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
         other_vals = Any[π]
         vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        for arch in [:CPU], ft in [Float32, Float64]
+        for arch in archs, ft in [Float32, Float64]
             mm = ModelMetadata(arch, ft)
             grid = RegularCartesianGrid(mm, N, L)
 
