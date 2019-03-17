@@ -116,8 +116,8 @@ Oceananigans.@hascuda archs = [:CPU, :GPU]
         end
     end
 
-    @testset "Spectral solvers" begin
-        include("test_spectral_solvers.jl")
+    @testset "Poisson solvers" begin
+        include("test_poisson_solvers.jl")
 
         for N in [4, 8, 10, 64, 100, 256]
             @test test_mixed_fft_commutativity(N)
