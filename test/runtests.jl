@@ -171,8 +171,12 @@ float_types = [Float32, Float64]
     end
 
     @testset "Model" begin
-        model = Model((4, 5, 6), (1, 2, 3))
-        @test typeof(model) == Model  # Just testing that no errors happen.
+        for arch in archs, ft in float_types
+            model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
+
+            # Just testing that a Model was constructed with no errors.
+            @test typeof(model) == Model
+        end
     end
 
     @testset "Boundary conditions" begin

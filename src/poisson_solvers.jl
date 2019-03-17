@@ -123,6 +123,11 @@ function PoissonSolverGPU(g::Grid, exfield::CellField; verbose=false)
         print("FFT_z!:   "); @time FFT_z!   = plan_fft!(exfield.data, 3)
         print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
         print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
+    else
+        FFT_xy!  = plan_fft!(exfield.data, [1, 2])
+        FFT_z!   = plan_fft!(exfield.data, 3)
+        IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
+        IFFT_z!  = plan_ifft!(exfield.data, 3)
     end
 
     PoissonSolverGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
