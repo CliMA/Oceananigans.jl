@@ -3,10 +3,11 @@ using Test
 import FFTW
 
 using Oceananigans
+using Oceananigans: @hascuda
 using Oceananigans.Operators
 
 archs = [:CPU]
-Oceananigans.@hascuda archs = [:CPU, :GPU]
+@hascuda archs = [:CPU, :GPU]
 
 @testset "Oceananigans" begin
 
