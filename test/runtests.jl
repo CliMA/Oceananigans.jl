@@ -8,15 +8,6 @@ using Oceananigans.Operators
 archs = [:CPU]
 Oceananigans.@hascuda archs = [:CPU, :GPU]
 
-function test_basic_timestepping()
-    Nx, Ny, Nz = 4, 5, 6
-    Lx, Ly, Lz = 1, 2, 3
-    Nt, Δt = 10, 1
-    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-    time_step!(model, Nt, Δt)
-    return typeof(model) == Model # Just testing that no errors happen.
-end
-
 @testset "Oceananigans" begin
 
     @testset "Grid" begin
@@ -184,11 +175,6 @@ end
         @test typeof(model) == Model  # Just testing that no errors happen.
     end
 
-
-    @testset "Time stepping" begin
-        @test test_basic_timestepping()
-    end
-
     @testset "Boundary conditions" begin
         include("test_boundary_conditions.jl")
 
@@ -219,6 +205,15 @@ end
 
         for fld in (:u, :v, :w, :T, :S)
             @test test_forcing(fld)
+        end
+    end
+
+    @testset "Time stepping" begin
+        include("test_time_stepping.jl")
+        @test test_basic_timestepping()
+
+        @testset "Adams-Bashforth 2" begin
+            test_first_AB2_time_Step()
         end
     end
 
