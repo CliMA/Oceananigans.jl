@@ -170,7 +170,7 @@ similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid, f.metadata.
 similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid, f.metadata.float_type)
 similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid, f.metadata.float_type)
 
-set!(u::Field, v) = @. u.data = v
+set!(u::Field, v) = u.data .= convert(eltype(u.grid), v)
 set!(u::Field, v::Field) = @. u.data = v.data
 
 # set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)

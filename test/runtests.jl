@@ -3,16 +3,13 @@ using Test
 import FFTW
 
 using Oceananigans
+using Oceananigans: @hascuda
 using Oceananigans.Operators
 
-function test_basic_timestepping()
-    Nx, Ny, Nz = 4, 5, 6
-    Lx, Ly, Lz = 1, 2, 3
-    Nt, Δt = 10, 1
-    model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
-    time_step!(model, Nt, Δt)
-    return typeof(model) == Model # Just testing that no errors happen.
-end
+archs = [:CPU]
+@hascuda archs = [:CPU, :GPU]
+
+float_types = [Float32, Float64]
 
 @testset "Oceananigans" begin
 
@@ -20,7 +17,7 @@ end
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            for arch in [:CPU], ft in [Float64]
+            for arch in archs, ft in [Float64]
                 mm = ModelMetadata(arch, ft)
                 @test test_grid_size(mm)
                 @test test_cell_volume(mm)
@@ -30,7 +27,7 @@ end
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
-            for arch in [:CPU], ft in [Float64, Float32, Float16]
+            for arch in archs, ft in [Float64, Float32, Float16]
                 mm = ModelMetadata(arch, ft)
                 @test RegularCartesianGrid(mm, (25, 25, 25), L).dim == 3
                 @test RegularCartesianGrid(mm, (5, 25, 125), L).dim == 3
@@ -56,30 +53,47 @@ end
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
 
+        @testset "Field initialization" begin
+            for arch in archs, ft in float_types
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
+
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    @test test_init_field(mm, grid, field_type)
+                end
+            end
+        end
+
         int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
         uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
-        vals = vcat(int_vals, uint_vals)
+        float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
+        rational_vals = Any[1//11, -23//7]
+        other_vals = Any[π]
+        vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        # TODO: Use ≈ for floating-point values and set! should correctly convert
-        # Rational and Irrational to Float32.
-        # float_vals = Any[0.0, -0.0, 6e-34, 1f10]
-        # rational_vals = Any[1//11, -22//7]
-        # other_vals = Any[π]
-        # vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
+        @testset "Setting fields" begin
+            for arch in archs, ft in float_types
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
 
-        for arch in [:CPU], ft in [Float32, Float64]
-            mm = ModelMetadata(arch, ft)
-            grid = RegularCartesianGrid(mm, N, L)
-
-            for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
-                @test test_init_field(mm, grid, field_type)
-
-                for val in vals
-                    @test test_set_field(mm, grid, field_type, val) || "type(g)=$(typeof(g)), ftf=$ftf, val=$val"
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    for val in vals
+                        @test test_set_field(mm, grid, field_type, val)
+                    end
                 end
+            end
+        end
 
-                # TODO: Try adding together a bunch of different data types?
-                @test test_add_field(mm, grid, field_type, 4, 6)
+        @testset "Field operations" begin
+            for arch in archs, ft in float_types
+                mm = ModelMetadata(arch, ft)
+                grid = RegularCartesianGrid(mm, N, L)
+
+                for field_type in [CellField, FaceFieldX, FaceFieldY, FaceFieldZ]
+                    for val1 in vals, val2 in vals
+                        @test test_add_field(mm, grid, field_type, val1, val2)
+                    end
+                end
             end
         end
     end
@@ -125,65 +139,58 @@ end
         end
     end
 
-    @testset "Spectral solvers" begin
-        include("test_spectral_solvers.jl")
+    @testset "Poisson solvers" begin
+        include("test_poisson_solvers.jl")
 
-        for N in [4, 8, 10, 64, 100, 256]
-            @test test_mixed_fft_commutativity(N)
-            @test test_mixed_ifft_commutativity(N)
-        end
-
-        for N in [5, 10, 20, 50, 100]
-            @test test_3d_poisson_solver_ppn_div_free(N, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(1, N, N)
-            @test test_3d_poisson_solver_ppn_div_free(N, 1, N)
-
-            for arch in [:CPU], ft in [Float64]
-                mm = ModelMetadata(arch, ft)
-
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, 1, N, N)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, N, 1, N)
-
-                @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
-
-                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
-                # end
+        @testset "FFTW commutativity" begin
+            for N in [4, 8, 10, 64, 100, 256]
+                @test test_mixed_fft_commutativity(N)
+                @test test_mixed_ifft_commutativity(N)
             end
         end
 
-        Ns = 2 .^ [2, 4, 6]
-        for Nx in Ns, Ny in Ns, Nz in Ns
-            @test test_3d_poisson_solver_ppn_div_free(Nx, Ny, Nz)
+        @testset "FFTW plans" begin
+            for ft in float_types
+                mm = ModelMetadata(:CPU, ft)
+                @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
+                @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
+                @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
+            end
+        end
 
-            for arch in [:CPU], ft in [Float64]
-                mm = ModelMetadata(arch, ft)
-                @test test_3d_poisson_solver_ppn!_div_free(mm, Nx, Ny, Nz)
+        @testset "Divergence-free solution [CPU]" begin
+            for N in [5, 10, 20, 50, 100]
+                for ft in float_types
+                    mm = ModelMetadata(:CPU, ft)
+
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
+                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+
+                    # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
+                    # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                    #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                    # end
+                end
+            end
+
+            Ns = 2 .^ [2, 4, 6]
+            for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
+                mm = ModelMetadata(:CPU, ft)
                 @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
-        end
-
-        for arch in [:CPU], ft in [Float64]
-            mm = ModelMetadata(arch, ft)
-            @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
-            @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
         end
     end
 
     @testset "Model" begin
-        model = Model((4, 5, 6), (1, 2, 3))
-        @test typeof(model) == Model  # Just testing that no errors happen.
-    end
+        for arch in archs, ft in float_types
+            model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
 
-
-    @testset "Time stepping" begin
-        @test test_basic_timestepping()
+            # Just testing that a Model was constructed with no errors.
+            @test typeof(model) == Model
+        end
     end
 
     @testset "Boundary conditions" begin
@@ -195,7 +202,7 @@ end
         for fld in (:u, :v, :T, :S)
             for bctype in (Gradient, Flux)
                 for bc in (0.6, rand(Nx, Ny), funbc)
-                    test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+                    @test test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
                 end
             end
             @test test_diffusion_simple(fld)
@@ -219,4 +226,17 @@ end
         end
     end
 
+    @testset "Time stepping" begin
+        include("test_time_stepping.jl")
+
+        for arch in archs, ft in float_types
+            @test test_basic_timestepping(arch, ft)
+        end
+
+        @testset "Adams-Bashforth 2" begin
+            for arch in archs, ft in float_types
+                run_first_AB2_time_step_tests(arch, ft)
+            end
+        end
+    end
 end # Oceananigans tests

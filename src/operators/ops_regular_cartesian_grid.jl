@@ -256,3 +256,7 @@ end
 @inline function 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     ((𝜈h/Δx^2) * δx²_f2e2f(w, Nx, i, j, k)) + ((𝜈h/Δy^2) * δy²_f2e2f(w, Ny, i, j, k)) + ((𝜈v/Δz^2) * δz²_f2c2f(w, Nz, i, j, k))
 end
+
+@inline function ∇²_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+	(δx²_c2f2c(f, Nx, i, j, k) / Δx^2) + (δy²_c2f2c(f, Ny, i, j, k) / Δy^2) + (δz²_c2f2c(f, Nz, i, j, k) / Δz^2)
+end
