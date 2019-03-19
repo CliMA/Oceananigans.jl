@@ -54,7 +54,20 @@ function impose_cooling_disk!(model::Model)
     # geometries, probably by being able to define, e.g. a forcing only at the
     # top, etc.
     @inline function cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-        ifelse(k == 1 && 0.2Nx < i < 0.8Nx && 0.2Ny < j < 0.8Ny, -4.5e-6, 0)
+        if k == 1
+            x = i*Δx
+            y = j*Δy
+            Lx = Nx*Δx
+            Ly = Ny*Δy
+            r² = (x - Lx/2)^2 + (y - Ly/2)^2
+            if r² < 600^2
+                return -4.5e-6
+            else
+                return 0
+            end
+        else
+            return 0
+        end
     end
 
     model.forcing = Forcing(nothing, nothing, nothing, cooling_disk, nothing)
@@ -75,6 +88,11 @@ impose_cooling_disk!(model)
 nc_writer = NetCDFOutputWriter(dir=".", prefix="deep_convection_", frequency=20)
 push!(model.output_writers, nc_writer)
 
-time_step!(model; Nt=Nt, Δt=Δt)
+# time_step!(model; Nt=Nt, Δt=Δt)
+for i = 1:Nt
+    tic = time_ns()
+    time_step!(model, 1, Δt)
+    println("Time: $(model.clock.time)  [$(prettytime(time_ns()-tic))]")
+end
 
 make_vertical_slice_movie(model, nc_writer, "T", Nt, Δt, 293.15, ceil(Int, Ny/2))
