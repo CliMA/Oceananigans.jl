@@ -19,7 +19,7 @@ function run_basic_checkpointer_tests()
 
     checkpointed_model = deepcopy(true_model)
 
-    time_step!(true_model, 5, Δt)
+    time_step!(true_model, 10, Δt)
 
     checkpointer = Checkpointer(dir=".", prefix="test_", frequency=5, padding=1)
     push!(checkpointed_model.output_writers, checkpointer)
@@ -37,4 +37,13 @@ function run_basic_checkpointer_tests()
 
     # Now the true_model and restored_model should be identical.
     @test all(restored_model.velocities.u.data .≈ true_model.velocities.u.data)
+    @test all(restored_model.velocities.v.data .≈ true_model.velocities.v.data)
+    @test all(restored_model.velocities.w.data .≈ true_model.velocities.w.data)
+    @test all(restored_model.tracers.T.data .≈ true_model.tracers.T.data)
+    @test all(restored_model.tracers.S.data .≈ true_model.tracers.S.data)
+    @test all(restored_model.G.Gu.data .≈ true_model.G.Gu.data)
+    @test all(restored_model.G.Gv.data .≈ true_model.G.Gv.data)
+    @test all(restored_model.G.Gw.data .≈ true_model.G.Gw.data)
+    @test all(restored_model.G.GT.data .≈ true_model.G.GT.data)
+    @test all(restored_model.G.GS.data .≈ true_model.G.GS.data)
 end
