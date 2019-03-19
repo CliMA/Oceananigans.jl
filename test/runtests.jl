@@ -239,4 +239,12 @@ float_types = [Float32, Float64]
             end
         end
     end
+
+    @testset "Output writers" begin
+        include("test_output_writers.jl")
+
+        @testset "Checkpointing" begin
+            run_basic_checkpointer_tests()
+        end
+    end
 end # Oceananigans tests
