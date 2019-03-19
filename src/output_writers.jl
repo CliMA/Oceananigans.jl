@@ -25,6 +25,10 @@ mutable struct BinaryOutputWriter <: OutputWriter
     padding::Int
 end
 
+function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
+    Checkpointer(dir, prefix, frequency, padding)
+end
+
 function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5)
     NetCDFOutputWriter(dir, prefix, frequency, padding, compression)
 end
