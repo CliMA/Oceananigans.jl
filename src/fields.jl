@@ -3,6 +3,8 @@ import Base:
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
+using CuArrays
+
 """
     CellField{T,G<:Grid{T}} <: Field
 
