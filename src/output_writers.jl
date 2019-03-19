@@ -48,10 +48,15 @@ filename(fw::Checkpointer, iteration) = filename(fw, "model_checkpoint_", iterat
 function write_output(model::Model, chk::Checkpointer)
     filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
 
-    # Do not include the spectral solver parameters. We want to avoid serializing
+    forcing_functions = model.forcing
+
+    # Do not include forcing functions and FFT plans. We want to avoid serializing
     # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
     # seems like a tricky business in general.
+    model.forcing = nothing
     model.poisson_solver = nothing
+
+    println("WARNING: Forcing functions are not serialized!")
 
     println("[Checkpointer] Serializing model to disk: $filepath")
     f = JLD.jldopen(filepath, "w", compress=true)
@@ -68,6 +73,9 @@ function write_output(model::Model, chk::Checkpointer)
         model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
 
+    # Putting back in the forcing functions.
+    model.forcing = forcing_functions
+
     return nothing
 end
 
@@ -79,13 +87,16 @@ function restore_from_checkpoint(filepath)
 
     println("Reconstructing FFT plans...")
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :cpu
+    if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
         model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
-    elseif metadata.arch == :gpu
+    elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
         model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
+
+    model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
+    println("WARNING: Forcing functions have been set to nothing!")
 
     return model
 end
