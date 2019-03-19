@@ -1,4 +1,10 @@
 import JLD
+using Distributed
+
+using NetCDF
+@everywhere using NetCDF
+
+@everywhere abstract type OutputWriter end
 
 "A type for writing checkpoints."
 struct Checkpointer <: OutputWriter
@@ -15,6 +21,20 @@ mutable struct NetCDFOutputWriter <: OutputWriter
     output_frequency::Int
     padding::Int
     compression::Int
+    async::Bool
+end
+
+# Not sure why I have to define NetCDFOutputWriter again @everywhere but I get a weird ArgumentError
+# if I just define it @everywhere. I have to define it twice...
+@everywhere begin
+    mutable struct NetCDFOutputWriter <: OutputWriter
+        dir::AbstractString
+        filename_prefix::AbstractString
+        output_frequency::Int
+        padding::Int
+        compression::Int
+        async::Bool
+    end
 end
 
 "A type for writing Binary output."
@@ -25,16 +45,18 @@ mutable struct BinaryOutputWriter <: OutputWriter
     padding::Int
 end
 
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, compression)
+function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, async=false)
+    NetCDFOutputWriter(dir, prefix, frequency, padding, compression, async)
 end
 
 "Return the filename extension for the `OutputWriter` filetype."
 ext(fw::OutputWriter) = throw("Not implemented.")
 ext(fw::NetCDFOutputWriter) = ".nc"
+@everywhere ext(fw::NetCDFOutputWriter) = ".nc"
 ext(fw::Checkpointer) = ".jld"
 
 filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+@everywhere filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
 filename(fw::Checkpointer, name, iteration) = filename(fw, "model_checkpoint", iteration)
 
 #
@@ -122,15 +144,40 @@ end
 # etc; so this API needs to be designed. For now, we simply save u, v, w, and T.
 
 function write_output(model::Model, fw::NetCDFOutputWriter)
+    fields = Dict(
+        "xC" => collect(model.grid.xC),
+        "yC" => collect(model.grid.yC),
+        "zC" => collect(model.grid.zC),
+        "xF" => collect(model.grid.xF),
+        "yF" => collect(model.grid.yF),
+        "zF" => collect(model.grid.zF),
+        "u" => Array(model.velocities.u.data),
+        "v" => Array(model.velocities.v.data),
+        "w" => Array(model.velocities.w.data),
+        "T" => Array(model.tracers.T.data),
+        "S" => Array(model.tracers.S.data)
+    )
+    
+    if fw.async
+        # Execute asynchronously on worker 2.
+        println("Using @async...")
+        println("nprocs()=$(nprocs())")
+        @async remotecall(write_output_netcdf, 2, fw, fields, model.clock.iteration)
+    else
+        println("Regular call...")
+        write_output_netcdf(fw, fields, model.clock.iteration)
+    end
 
-    xC = collect(model.grid.xC)
-    yC = collect(model.grid.yC)
-    zC = collect(model.grid.zC)
+    return nothing
+end
 
-    xF = collect(model.grid.xF)
-    yF = collect(model.grid.yF)
-    zF = collect(model.grid.zF)
-
+function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
+    xC, yC, zC = fields["xC"], fields["yC"], fields["zC"]
+    xF, yF, zF = fields["xF"], fields["yF"], fields["zF"]
+    
+    u, v, w = fields["u"], fields["v"], fields["w"]
+    T, S    = fields["T"], fields["S"]
+    
     xC_attr = Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m")
     yC_attr = Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m")
     zC_attr = Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m")
@@ -145,9 +192,13 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
     T_attr = Dict("longname" => "Temperature", "units" => "K")
     S_attr = Dict("longname" => "Salinity", "units" => "g/kg")
 
-    filepath = joinpath(fw.dir, filename(fw, "", model.clock.iteration))
+    filepath = joinpath(fw.dir, filename(fw, "", iteration))
 
-    println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
+    if fw.async
+        println("[Worker $(Distributed.myid()): NetCDFOutputWriter] Writing fields to disk: $filepath")
+    else
+        println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
+    end
 
     isfile(filepath) && rm(filepath)
 
@@ -176,11 +227,80 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
                             "zC", zC, zC_attr,
                             atts=S_attr, compress=fw.compression)
 
-    ncwrite(Array(model.velocities.u.data), filepath, "u")
-    ncwrite(Array(model.velocities.v.data), filepath, "v")
-    ncwrite(Array(model.velocities.w.data), filepath, "w")
-    ncwrite(Array(model.tracers.T.data), filepath, "T")
-    ncwrite(Array(model.tracers.S.data), filepath, "S")
+    ncwrite(u, filepath, "u")
+    ncwrite(v, filepath, "v")
+    ncwrite(w, filepath, "w")
+    ncwrite(T, filepath, "T")
+    ncwrite(S, filepath, "S")
+
+    ncclose(filepath)
+
+    return nothing
+end
+
+# Not sure why I have to define write_output_netcdf again @everywhere but if I just define it @everywhere
+# then I get UndefVarError: write_output_netcdf not defined...
+@everywhere function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
+    xC, yC, zC = fields["xC"], fields["yC"], fields["zC"]
+    xF, yF, zF = fields["xF"], fields["yF"], fields["zF"]
+    
+    u, v, w = fields["u"], fields["v"], fields["w"]
+    T, S    = fields["T"], fields["S"]
+    
+    xC_attr = Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m")
+    yC_attr = Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m")
+    zC_attr = Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m")
+
+    xF_attr = Dict("longname" => "Locations of the cell faces in the x-direction.", "units" => "m")
+    yF_attr = Dict("longname" => "Locations of the cell faces in the y-direction.", "units" => "m")
+    zF_attr = Dict("longname" => "Locations of the cell faces in the z-direction.", "units" => "m")
+
+    u_attr = Dict("longname" => "Velocity in the x-direction", "units" => "m/s")
+    v_attr = Dict("longname" => "Velocity in the y-direction", "units" => "m/s")
+    w_attr = Dict("longname" => "Velocity in the z-direction", "units" => "m/s")
+    T_attr = Dict("longname" => "Temperature", "units" => "K")
+    S_attr = Dict("longname" => "Salinity", "units" => "g/kg")
+
+    filepath = joinpath(fw.dir, filename(fw, "", iteration))
+
+    if fw.async
+        println("[Worker $(Distributed.myid()): NetCDFOutputWriter] Writing fields to disk: $filepath")
+    else
+        println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
+    end
+
+    isfile(filepath) && rm(filepath)
+
+    nccreate(filepath, "u", "xF", xF, xF_attr,
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=u_attr, compress=fw.compression)
+
+    nccreate(filepath, "v", "xC", xC, xC_attr,
+                            "yF", yF, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=v_attr, compress=fw.compression)
+
+    nccreate(filepath, "w", "xC", xC, xC_attr,
+                            "yC", yC, yC_attr,
+                            "zF", zF, zF_attr,
+                            atts=w_attr, compress=fw.compression)
+
+    nccreate(filepath, "T", "xC", xC, xC_attr,
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=T_attr, compress=fw.compression)
+
+    nccreate(filepath, "S", "xC", xC, xC_attr,
+                            "yC", yC, yC_attr,
+                            "zC", zC, zC_attr,
+                            atts=S_attr, compress=fw.compression)
+
+    ncwrite(u, filepath, "u")
+    ncwrite(v, filepath, "v")
+    ncwrite(w, filepath, "w")
+    ncwrite(T, filepath, "T")
+    ncwrite(S, filepath, "S")
 
     ncclose(filepath)
 
