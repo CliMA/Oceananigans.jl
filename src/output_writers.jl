@@ -58,15 +58,16 @@ function write_output(model::Model, chk::Checkpointer)
     JLD.@write f model
     close(f)
 
-    # Reconstruct PoissonSolver struct with FFT plans ?
+    println("[Checkpointer] Reconstructing FFT plans...")
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :cpu
+    if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
-    elseif metadata.arch == :gpu
+        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
+    elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
+
     return nothing
 end
 
@@ -76,14 +77,14 @@ function restore_from_checkpoint(filepath)
     model = read(f, "model");
     close(f)
 
-    # Reconstruct PoissonSolver struct with FFT plans.
+    println("Reconstructing FFT plans...")
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
     if metadata.arch == :cpu
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
+        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
     elseif metadata.arch == :gpu
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
 
     return model
@@ -99,9 +100,9 @@ function write_output(model::Model, fw::BinaryOutputWriter)
         filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
 
         println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
-        if model.metadata == :cpu
+        if model.metadata == :CPU
             write(filepath, field.data)
-        elseif model.metadata == :gpu
+        elseif model.metadata == :GPU
             write(filepath, Array(field.data))
         end
     end
