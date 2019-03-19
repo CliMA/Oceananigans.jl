@@ -39,7 +39,7 @@ ext(fw::NetCDFOutputWriter) = ".nc"
 ext(fw::Checkpointer) = ".jld"
 
 filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
-filename(fw::Checkpointer, name, iteration) = filename(fw, "model_checkpoint", iteration)
+filename(fw::Checkpointer, iteration) = filename(fw, "model_checkpoint_", iteration)
 
 #
 # Checkpointing functions
