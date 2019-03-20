@@ -253,5 +253,10 @@ float_types = [Float32, Float64]
     end
 
     @testset "Golden master tests" begin
+        include("test_golden_master.jl")
+
+        @testset "Thermal bubble" begin
+            run_thermal_bubble_golden_master_tests()
+        end
     end
 end # Oceananigans tests
