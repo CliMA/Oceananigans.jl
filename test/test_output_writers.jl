@@ -3,7 +3,7 @@ Run two coarse rising thermal bubble simulations and make sure that when
 restarting from a checkpoint, the restarted simulation matches the non-restarted
 simulation numerically.
 """
-function run_basic_checkpointer_tests()
+function run_thermal_bubble_checkpointer_tests()
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
@@ -46,4 +46,38 @@ function run_basic_checkpointer_tests()
     @test all(restored_model.G.Gw.data .≈ true_model.G.Gw.data)
     @test all(restored_model.G.GT.data .≈ true_model.G.GT.data)
     @test all(restored_model.G.GS.data .≈ true_model.G.GS.data)
+end
+
+"""
+"""
+function run_thermal_bubble_netcdf_tests()
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 100, 100, 100
+    Δt = 6
+
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2)
+
+    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
+    # of the domain volume.
+    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
+    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
+    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
+    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+
+    nc_writer = NetCDFOutputWriter(dir=".", prefix="test_", frequency=10, padding=1)
+    push!(model.output_writers, nc_writer)
+
+    time_step!(model, 10, Δt)
+
+    u = read_output(nc_writer, "u", 10)
+    v = read_output(nc_writer, "v", 10)
+    w = read_output(nc_writer, "w", 10)
+    T = read_output(nc_writer, "T", 10)
+    S = read_output(nc_writer, "S", 10)
+
+    @test all(u .≈ model.velocities.u.data)
+    @test all(v .≈ model.velocities.v.data)
+    @test all(w .≈ model.velocities.w.data)
+    @test all(T .≈ model.tracers.T.data)
+    @test all(S .≈ model.tracers.S.data)
 end
