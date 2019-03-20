@@ -244,7 +244,14 @@ float_types = [Float32, Float64]
         include("test_output_writers.jl")
 
         @testset "Checkpointing" begin
-            run_basic_checkpointer_tests()
+            run_thermal_bubble_checkpointer_tests()
         end
+
+        @testset "NetCDF" begin
+            run_thermal_bubble_netcdf_tests()
+        end
+    end
+
+    @testset "Golden master tests" begin
     end
 end # Oceananigans tests
