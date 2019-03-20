@@ -167,19 +167,19 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     isfile(filepath) && rm(filepath)
 
-    nccreate(filepath, "u", "xF", xF, xF_attr,
+    nccreate(filepath, "u", "xF", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zC", zC, zC_attr,
                             atts=u_attr, compress=fw.compression)
 
     nccreate(filepath, "v", "xC", xC, xC_attr,
-                            "yF", yF, yC_attr,
+                            "yF", yC, yC_attr,
                             "zC", zC, zC_attr,
                             atts=v_attr, compress=fw.compression)
 
     nccreate(filepath, "w", "xC", xC, xC_attr,
                             "yC", yC, yC_attr,
-                            "zF", zF, zF_attr,
+                            "zF", zC, zC_attr,
                             atts=w_attr, compress=fw.compression)
 
     nccreate(filepath, "T", "xC", xC, xC_attr,
