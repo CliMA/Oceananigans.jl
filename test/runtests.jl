@@ -258,5 +258,9 @@ float_types = [Float32, Float64]
         @testset "Thermal bubble" begin
             run_thermal_bubble_golden_master_tests()
         end
+
+        @testset "Deep convection" begin
+            run_deep_convection_golden_master_tests()
+        end
     end
 end # Oceananigans tests
