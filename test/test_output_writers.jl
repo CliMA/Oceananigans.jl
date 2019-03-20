@@ -49,6 +49,9 @@ function run_thermal_bubble_checkpointer_tests()
 end
 
 """
+Run a coarse thermal bubble simulation and save the output to NetCDF at the
+10th time step. Then read back the output and test that it matches the model's
+state.
 """
 function run_thermal_bubble_netcdf_tests()
     Nx, Ny, Nz = 16, 16, 16
