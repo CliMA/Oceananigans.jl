@@ -56,8 +56,13 @@ function RegularCartesianGrid(T, N, L)
     !(length(N) == 3) && throw(ArgumentError("N=$N must be a tuple of length 3."))
     !(length(L) == 3) && throw(ArgumentError("L=$L must be a tuple of length 3."))
 
+    !all(isa.(N, Integer)) && throw(ArgumentError("N=$N should contain integers."))
+    !all(isa.(L, Number))  && throw(ArgumentError("L=$L should contain numbers."))
+
     !all(N .>= 1) && throw(ArgumentError("N=$N must be nonzero and positive!"))
     !all(L .> 0)  && throw(ArgumentError("L=$L must be nonzero and positive!"))
+
+    !(T in [Float32, Float64]) && throw(ArgumentError("T=$T but only Float32 and Float64 grids are supported."))
 
     # Count the number of dimensions with 1 grid point, i.e. the number of flat
     # dimensions, and use it to determine the dimension of the model.

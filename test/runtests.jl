@@ -45,6 +45,13 @@ float_types = [Float32, Float64]
                 @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100))
                 @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, 1, 1))
                 @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, -100))
+
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32.0), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (20.1, 32, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, nothing, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, "32", 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (1, nothing, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (1, "1", 1))
             end
         end
     end
