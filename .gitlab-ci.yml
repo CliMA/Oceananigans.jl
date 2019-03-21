@@ -3,10 +3,6 @@ include:
 
 .projecttest:
   extends: .test
-  only:
-    - master
-    - staging
-    - trying
   script:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
