@@ -17,7 +17,7 @@ float_types = [Float32, Float64]
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            for arch in archs, ft in [Float64]
+            for arch in archs, ft in float_types
                 mm = ModelMetadata(arch, ft)
                 @test test_grid_size(mm)
                 @test test_cell_volume(mm)
@@ -27,7 +27,7 @@ float_types = [Float32, Float64]
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
-            for arch in archs, ft in [Float64, Float32, Float16]
+            for arch in archs, ft in float_types
                 mm = ModelMetadata(arch, ft)
                 @test RegularCartesianGrid(mm, (25, 25, 25), L).dim == 3
                 @test RegularCartesianGrid(mm, (5, 25, 125), L).dim == 3
