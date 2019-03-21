@@ -158,11 +158,8 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     if fw.async
         # Execute asynchronously on worker 2.
-        println("Using @async...")
-        println("nprocs()=$(nprocs())")
         @async remotecall(write_output_netcdf, 2, fw, fields, model.clock.iteration)
     else
-        println("Regular call...")
         write_output_netcdf(fw, fields, model.clock.iteration)
     end
 
