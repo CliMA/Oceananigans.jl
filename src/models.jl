@@ -1,4 +1,4 @@
-mutable struct Model
+mutable struct Model{A<:Architecture}
     metadata::ModelMetadata
     configuration::ModelConfiguration
     boundary_conditions::ModelBoundaryConditions
@@ -10,7 +10,7 @@ mutable struct Model
     pressures::PressureFields
     G::SourceTerms
     Gp::SourceTerms
-    forcing  # ::Forcing  # No type so we can set to nothing while checkpointing.
+    forcing  # ::Forcing  # No type so we can set it to nothing while checkpointing.
     stepper_tmp::StepperTemporaryFields
     poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
@@ -93,9 +93,12 @@ function Model(;
     tracers.S.data .= eos.S₀
     tracers.T.data .= eos.T₀
 
-    Model(metadata, configuration, boundary_conditions, constants, eos, grid,
-          velocities, tracers, pressures, G, Gp, forcing,
-          stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+    arch == :CPU && (arch_T = CPU)
+    arch == :GPU && (arch_T = GPU)
+
+    Model{arch_T}(metadata, configuration, boundary_conditions, constants, eos, grid,
+                  velocities, tracers, pressures, G, Gp, forcing,
+                  stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
 end
 
 "Legacy constructor for `Model`."
