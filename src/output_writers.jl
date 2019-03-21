@@ -29,6 +29,10 @@ mutable struct BinaryOutputWriter <: OutputWriter
     padding::Int
 end
 
+function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
+    Checkpointer(dir, prefix, frequency, padding)
+end
+
 function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, async=false)
     NetCDFOutputWriter(dir, prefix, frequency, padding, compression, async)
 end
@@ -39,7 +43,7 @@ ext(fw::NetCDFOutputWriter) = ".nc"
 ext(fw::Checkpointer) = ".jld"
 
 filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
-filename(fw::Checkpointer, name, iteration) = filename(fw, "model_checkpoint", iteration)
+filename(fw::Checkpointer, iteration) = filename(fw, "model_checkpoint_", iteration)
 
 #
 # Checkpointing functions
@@ -48,25 +52,34 @@ filename(fw::Checkpointer, name, iteration) = filename(fw, "model_checkpoint", i
 function write_output(model::Model, chk::Checkpointer)
     filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
 
-    # Do not include the spectral solver parameters. We want to avoid serializing
+    forcing_functions = model.forcing
+
+    # Do not include forcing functions and FFT plans. We want to avoid serializing
     # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
     # seems like a tricky business in general.
+    model.forcing = nothing
     model.poisson_solver = nothing
+
+    println("WARNING: Forcing functions are not serialized!")
 
     println("[Checkpointer] Serializing model to disk: $filepath")
     f = JLD.jldopen(filepath, "w", compress=true)
     JLD.@write f model
     close(f)
 
-    # Reconstruct PoissonSolver struct with FFT plans ?
+    println("[Checkpointer] Reconstructing FFT plans...")
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :cpu
+    if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
-    elseif metadata.arch == :gpu
+        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
+    elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
+
+    # Putting back in the forcing functions.
+    model.forcing = forcing_functions
+
     return nothing
 end
 
@@ -76,15 +89,18 @@ function restore_from_checkpoint(filepath)
     model = read(f, "model");
     close(f)
 
-    # Reconstruct PoissonSolver struct with FFT plans.
+    println("Reconstructing FFT plans...")
     metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :cpu
+    if metadata.arch == :CPU
         stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT; verbose=true)
-    elseif metadata.arch == :gpu
+        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
+    elseif metadata.arch == :GPU
         stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
+        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
     end
+
+    model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
+    println("WARNING: Forcing functions have been set to nothing!")
 
     return model
 end
@@ -99,9 +115,9 @@ function write_output(model::Model, fw::BinaryOutputWriter)
         filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
 
         println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
-        if model.metadata == :cpu
+        if model.metadata == :CPU
             write(filepath, field.data)
-        elseif model.metadata == :gpu
+        elseif model.metadata == :GPU
             write(filepath, Array(field.data))
         end
     end
@@ -139,7 +155,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         "T" => Array(model.tracers.T.data),
         "S" => Array(model.tracers.S.data)
     )
-    
+
     if fw.async
         # Execute asynchronously on worker 2.
         println("Using @async...")
@@ -156,10 +172,10 @@ end
 function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
     xC, yC, zC = fields["xC"], fields["yC"], fields["zC"]
     xF, yF, zF = fields["xF"], fields["yF"], fields["zF"]
-    
+
     u, v, w = fields["u"], fields["v"], fields["w"]
     T, S    = fields["T"], fields["S"]
-    
+
     xC_attr = Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m")
     yC_attr = Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m")
     zC_attr = Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m")
@@ -184,19 +200,19 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
 
     isfile(filepath) && rm(filepath)
 
-    nccreate(filepath, "u", "xF", xF, xF_attr,
+    nccreate(filepath, "u", "xF", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zC", zC, zC_attr,
                             atts=u_attr, compress=fw.compression)
 
     nccreate(filepath, "v", "xC", xC, xC_attr,
-                            "yF", yF, yC_attr,
+                            "yF", yC, yC_attr,
                             "zC", zC, zC_attr,
                             atts=v_attr, compress=fw.compression)
 
     nccreate(filepath, "w", "xC", xC, xC_attr,
                             "yC", yC, yC_attr,
-                            "zF", zF, zF_attr,
+                            "zF", zC, zC_attr,
                             atts=w_attr, compress=fw.compression)
 
     nccreate(filepath, "T", "xC", xC, xC_attr,
