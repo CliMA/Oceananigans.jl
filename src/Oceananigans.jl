@@ -89,17 +89,17 @@ export
     # Package utilities
     prettytime
 
+# Standard library modules
 using
     Statistics,
     Printf
 
+# Third-party modules
 using
     FFTW,
     JLD,
     NetCDF,
-    StaticArrays
-
-using
+    StaticArrays,
     GPUifyLoops
 
 const HAVE_CUDA = try
@@ -112,6 +112,10 @@ end
 macro hascuda(ex)
     return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
 end
+
+abstract type Architecture end
+struct CPU <: Architecture end
+struct GPU <: Architecture end
 
 abstract type Metadata end
 abstract type ConstantsCollection end
