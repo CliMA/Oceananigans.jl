@@ -10,7 +10,7 @@ mutable struct Model
     pressures::PressureFields
     G::SourceTerms
     Gp::SourceTerms
-    forcing::Forcing
+    forcing  # ::Forcing  # No type so we can set to nothing while checkpointing.
     stepper_tmp::StepperTemporaryFields
     poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
