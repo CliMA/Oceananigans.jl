@@ -9,7 +9,7 @@ A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
 T.
 """
-struct RegularCartesianGrid{T<:AbstractFloat,A} <: Grid
+struct RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int
@@ -30,14 +30,14 @@ struct RegularCartesianGrid{T<:AbstractFloat,A} <: Grid
     # Volume of a cell [m³].
     V::T
     # Range of coordinates at the centers of the cells.
-    xC::A
-    yC::A
-    zC::A
+    xC::R
+    yC::R
+    zC::R
     # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
-    xF::A
-    yF::A
-    zF::A
+    xF::R
+    yF::R
+    zF::R
 end
 
 """
@@ -79,15 +79,19 @@ function RegularCartesianGrid(T, N, L)
     dim == 3 && !(Nx != 1 && Ny != 1 && Nz != 1) &&
         throw(ArgumentError("For 3D grids, cannot have dimensions of size 1."))
 
-    Δx = Lx / Nx
-    Δy = Ly / Ny
-    Δz = Lz / Nz
+    Lx = convert(T, Lx)
+    Ly = convert(T, Ly)
+    Lz = convert(T, Lz)
 
-    Ax = Δy*Δz
-    Ay = Δx*Δz
-    Az = Δx*Δy
+    Δx = convert(T, Lx / Nx)
+    Δy = convert(T, Ly / Ny)
+    Δz = convert(T, Lz / Nz)
 
-    V = Δx*Δy*Δz
+    Ax = convert(T, Δy*Δz)
+    Ay = convert(T, Δx*Δz)
+    Az = convert(T, Δx*Δy)
+
+    V = convert(T, Δx*Δy*Δz)
 
     xC = Δx/2:Δx:Lx
     yC = Δy/2:Δy:Ly
@@ -96,6 +100,10 @@ function RegularCartesianGrid(T, N, L)
     xF = 0:Δx:Lx
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
+
+    # Make sure all the coordinate ranges have the same type.
+    !all(typeof.([xC, yC, zC, xF, yF, zF]) .== typeof(xC)) &&
+        throw(ArgumentError("At least one coordinate range type did not match."))
 
     RegularCartesianGrid{T,typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
                                        Az, V, xC, yC, zC, xF, yF, zF)
