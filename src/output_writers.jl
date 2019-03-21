@@ -33,8 +33,8 @@ function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
     Checkpointer(dir, prefix, frequency, padding)
 end
 
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, compression)
+function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, async=false)
+    NetCDFOutputWriter(dir, prefix, frequency, padding, compression, async)
 end
 
 "Return the filename extension for the `OutputWriter` filetype."
@@ -155,7 +155,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         "T" => Array(model.tracers.T.data),
         "S" => Array(model.tracers.S.data)
     )
-    
+
     if fw.async
         # Execute asynchronously on worker 2.
         println("Using @async...")
@@ -172,10 +172,10 @@ end
 function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
     xC, yC, zC = fields["xC"], fields["yC"], fields["zC"]
     xF, yF, zF = fields["xF"], fields["yF"], fields["zF"]
-    
+
     u, v, w = fields["u"], fields["v"], fields["w"]
     T, S    = fields["T"], fields["S"]
-    
+
     xC_attr = Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m")
     yC_attr = Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m")
     zC_attr = Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m")
