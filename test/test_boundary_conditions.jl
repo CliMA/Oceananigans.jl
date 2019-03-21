@@ -93,7 +93,7 @@ function test_z_boundary_condition_simple(field_name, bctype, bc, Nx, Ny, Nz)
     bcs.z.right = bc # just set a boundary condition somewhere
 
     time_step!(model, 1, 1e-16)
-    typeof(model) == Model
+    typeof(model) <: Model
 end
 
 

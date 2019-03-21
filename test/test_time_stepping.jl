@@ -6,7 +6,7 @@ function test_basic_timestepping(arch, ft)
     time_step!(model, 1, Δt)
 
     # Just testing that no errors happen when time stepping.
-    return typeof(model) == Model
+    return typeof(model) <: Model
 end
 
 function run_first_AB2_time_step_tests(arch, ft)

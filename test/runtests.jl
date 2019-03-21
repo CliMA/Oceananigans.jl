@@ -201,7 +201,7 @@ float_types = [Float32, Float64]
             model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
 
             # Just testing that a Model was constructed with no errors.
-            @test typeof(model) == Model
+            @test typeof(model) <: Model
         end
     end
 
