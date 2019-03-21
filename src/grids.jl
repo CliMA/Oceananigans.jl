@@ -3,11 +3,12 @@ import Base: size, show
 using Oceananigans: ModelMetadata
 
 """
-    RegularCartesianGrid
+    RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
 
 A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
-T.
+`T`. The cell-centered and face-centered coordinate ranges are stored as ranges
+of type `A`.
 """
 struct RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
     dim::Int
@@ -41,11 +42,11 @@ struct RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
 end
 
 """
-    RegularCartesianGrid(metadata::ModelMetadata, N, L)
+    RegularCartesianGrid(T, N, L)
 
 Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
 size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
-of type T.
+of type `T`.
 
 # Examples
 ```julia-repl
