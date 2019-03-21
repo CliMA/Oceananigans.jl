@@ -17,7 +17,7 @@
 [gitlab-img]: https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master
 
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/qp7ymfdog4mqd4y4?svg=true
+[appveyor-img]: https://ci.appveyor.com/api/projects/status/sc488kyni1wp93he?svg=true
 [appveyor-url]: https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl
 
 [coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master

@@ -1,5 +1,14 @@
-using Oceananigans
-using CuArrays
+using Distributed
+addprocs(1)  # For asynchronous output writing.
+
+# Apparently I have to do this even when starting julia with "-p 2 --project"
+# otherwise we get "ERROR: LoadError: On worker 2: ArgumentError: Package Oceananigans
+# not found in current path:"
+@everywhere using Pkg
+@everywhere Pkg.activate(".");
+
+@everywhere using Oceananigans
+@everywhere using CuArrays
 
 # physical constants
 p0 = 1027
@@ -8,7 +17,7 @@ cp = 4181.3
 # set simulation parameters
 Nx, Ny, Nz = 128, 128, 128
 Lx, Ly, Lz = 100, 100, 100
-Nt, Δt = 10000, 6
+Nt, Δt = 1000, 1
 ν, κ = 1e-4, 1e-4
 Tz = 0.01
 bottom_gradient = Tz
@@ -31,12 +40,13 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)
 model.tracers.T.data .= CuArray(T_3d)
 
 # Write temperature field to disk every 10 time steps.
-output_writer = NetCDFOutputWriter(dir=".", prefix="convection", frequency=2500)
+output_writer = NetCDFOutputWriter(dir=".", prefix="convection", frequency=200, async=true)
 push!(model.output_writers, output_writer)
 
 # Time stepping
-Ni = 10
-for i = 1:Ni
-    time_step!(model, ceil(Nt/Ni), Δt)
-    println("Time step: $(model.clock.iteration)")
+for i = 1:Nt
+    tic = time_ns()
+    print("Time: $(model.clock.time) ")
+    time_step!(model, 1, Δt)
+    println(prettytime(time_ns() - tic))
 end
