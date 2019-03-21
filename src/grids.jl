@@ -33,7 +33,7 @@ struct RegularCartesianGrid{T<:AbstractFloat,A} <: Grid
     xC::A
     yC::A
     zC::A
-    # Range of grid coordinates at the faces of the cells. 
+    # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
     xF::A
     yF::A
@@ -53,20 +53,26 @@ julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
 ```
 """
 function RegularCartesianGrid(T, N, L)
-    @assert length(N) == 3 && length(L) == 3 "N, L must have all three dimensions to specify which dimensions are used."
-    @assert all(L .> 0) "Domain lengths must be nonzero and positive!"
+    !(length(N) == 3) && throw(ArgumentError("N=$N must be a tuple of length 3."))
+    !(length(L) == 3) && throw(ArgumentError("L=$L must be a tuple of length 3."))
+
+    !all(N .>= 1) && throw(ArgumentError("N=$N must be nonzero and positive!"))
+    !all(L .> 0)  && throw(ArgumentError("L=$L must be nonzero and positive!"))
 
     # Count the number of dimensions with 1 grid point, i.e. the number of flat
     # dimensions, and use it to determine the dimension of the model.
     num_flat_dims = count(i->(i==1), N)
     dim = 3 - num_flat_dims
-    @assert 1 <= dim <= 3 "Only 1D, 2D, and 3D grids are supported right now."
+    !(1 <= dim <= 3) && throw(ArgumentError("N=$N has dimension $dim. Only 1D, 2D, and 3D grids are supported."))
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
 
-    dim == 2 && @assert Nx == 1 || Ny == 1 || Nz == 1 "For 2D grids, Nx, Ny, or Nz must be 1."
-    dim == 3 && @assert Nx != 1 && Ny != 1 && Nz != 1 "For 3D grid, cannot have dimensions of size 1."
+    dim == 2 && !(Nx == 1 || Ny == 1 || Nz == 1) &&
+        throw(ArgumentError("For 2D grids, Nx, Ny, or Nz must be 1."))
+
+    dim == 3 && !(Nx != 1 && Ny != 1 && Nz != 1) &&
+        throw(ArgumentError("For 3D grids, cannot have dimensions of size 1."))
 
     Δx = Lx / Nx
     Δy = Ly / Ny
