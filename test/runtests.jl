@@ -35,14 +35,16 @@ float_types = [Float32, Float64]
                 @test RegularCartesianGrid(mm, (32, 32,  1), L).dim == 2
                 @test RegularCartesianGrid(mm, (32,  1, 32), L).dim == 2
                 @test RegularCartesianGrid(mm, (1,  32, 32), L).dim == 2
-                @test_throws AssertionError RegularCartesianGrid(mm, (32,), L)
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 64), L)
-                @test_throws AssertionError RegularCartesianGrid(mm, (1, 1, 1), L)
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32, 16), L)
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100,))
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100))
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, 1, 1))
-                @test_throws AssertionError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, -100))
+                @test RegularCartesianGrid(mm, (1,  1,  64), L).dim == 1
+
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32,), L)
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 64), L)
+                @test_throws ArgumentError RegularCartesianGrid(mm, (1, 1, 1), L)
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32, 16), L)
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100,))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, -100))
             end
         end
     end
