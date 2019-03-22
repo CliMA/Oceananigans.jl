@@ -113,6 +113,13 @@ macro hascuda(ex)
     return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
 end
 
+@hascuda begin
+    println("CUDA-enabled GPU(s) detected:")
+    for (gpu, dev) in enumerate(CUDAnative.devices())
+        println(dev)
+    end
+end
+
 abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
