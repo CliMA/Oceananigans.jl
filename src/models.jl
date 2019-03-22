@@ -62,7 +62,9 @@ function Model(;
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
 )
-
+    
+    arch == :GPU && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    
     # Initialize model basics.
          metadata = ModelMetadata(arch, float_type)
     configuration = ModelConfiguration(νh, νv, κh, κv)
