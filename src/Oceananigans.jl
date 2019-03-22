@@ -120,6 +120,8 @@ end
     end
 end
 
+@hascuda CuArrays.allowscalar(false)
+
 abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
