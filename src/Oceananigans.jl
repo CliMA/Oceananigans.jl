@@ -3,7 +3,7 @@ module Oceananigans
 export
     # Helper variables and macros for determining if machine is CUDA-enabled.
     HAVE_CUDA,
-    hascuda,
+    @hascuda,
 
     # Planetary Constants
     ConstantsCollection,
