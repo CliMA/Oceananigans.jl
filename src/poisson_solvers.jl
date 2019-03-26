@@ -1,6 +1,16 @@
 import FFTW
 using GPUifyLoops
 
+function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
+    poisson_solver = PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
+end
+
+function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
+    poisson_solver = PoissonSolverGPU(g, tmp_rhs)
+end
+
 # Translations to print FFT timing.
 let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
                 FFTW.MEASURE    => "FFTW.MEASURE",
@@ -14,7 +24,7 @@ end
     PoissonSolver(grid, example_field, planner_flag; verbose=false)
 
 Return a `PoissonSolver` on `grid`, using `example_field` and `planner_flag`
-to plan fast transforms. 
+to plan fast transforms.
 """
 struct PoissonSolver{T<:AbstractArray} <: AbstractPoissonSolver
     kx²::T
@@ -53,17 +63,17 @@ end
 
 """
     solve_poisson_3d_ppn_planned!(args...)
-    
+
 Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
 FFTs and DCTs.
 
   Args
   ----
-  
+
       solver : PoissonSolver
            g : solver grid
            f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation 
+           ϕ : Solution to Poisson equation
 """
 function solve_poisson_3d_ppn_planned!(solver::PoissonSolver, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     solver.DCT!*f.data  # Calculate DCTᶻ(f) in place.
@@ -135,19 +145,19 @@ end
 
 """
     solve_poisson_3d_ppn_gpu_planned!(args...)
-    
+
 Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
 CuFFTs on a GPU.
 
   Args
   ----
-  
+
       Tx, Ty : Thread size in x, y
   Bx, By, Bz : Block size in x, y, z
       solver : PoissonSolverGPU
            g : solver grid
            f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation 
+           ϕ : Solution to Poisson equation
 """
 function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     # Calculate DCTᶻ(f) in place using the FFT.
