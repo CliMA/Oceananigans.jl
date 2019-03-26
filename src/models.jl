@@ -92,6 +92,7 @@ end
 "Legacy constructor for `Model`."
 Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
 
-model_arch(model::Model{A}) where A <: Architecture = A
+arch(model::Model{A}) where A <: Architecture = A
+float_type(m::Model) = eltype(model.grid)
 
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
