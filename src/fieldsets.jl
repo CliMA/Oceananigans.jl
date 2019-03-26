@@ -57,7 +57,7 @@ function SourceTerms(arch::Architecture, grid::Grid)
 end
 
 function StepperTemporaryFields(arch::Architecture, grid::Grid)
-    fC1 = CellField(metadata, grid, metadata.float_type)
+    fC1 = CellField(arch, grid)
 
     # Forcing Float64 for these fields as it's needed by the Poisson solver.
     fCC1 = CellField(Complex{Float64}, arch, grid)
