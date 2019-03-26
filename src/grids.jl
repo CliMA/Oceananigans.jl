@@ -110,8 +110,8 @@ function RegularCartesianGrid(T, N, L)
                                        Az, V, xC, yC, zC, xF, yF, zF)
 end
 
+# Constructor aliases.
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
-RegularCartesianGrid(meta::ModelMetadata, N, L) = RegularCartesianGrid(meta.float_type, N, L)
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 Base.eltype(g::RegularCartesianGrid{T}) where T = T
