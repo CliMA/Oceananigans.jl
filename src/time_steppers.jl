@@ -12,7 +12,6 @@ Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
 function time_step!(model::Model{arch}, Nt, Δt) where arch <: Architecture
-
     clock = model.clock
     model_start_time = clock.time
     model_end_time = model_start_time + Nt*Δt
@@ -30,27 +29,7 @@ function time_step!(model::Model{arch}, Nt, Δt) where arch <: Architecture
         # Adams-Bashforth (AB2) parameter.
         χ = ifelse(model.clock.iteration == 0, -0.5, 0.125)
 
-        time_step_kernels!(arch(), Δt,
-                          model.configuration,
-                          model.boundary_conditions,
-                          model.grid,
-                          model.constants,
-                          model.eos,
-                          model.poisson_solver,
-                          model.velocities,
-                          model.tracers,
-                          model.pressures,
-                          model.G,
-                          model.Gp,
-                          model.stepper_tmp,
-                          model.clock,
-                          model.forcing,
-                          model.grid.Nx, model.grid.Ny, model.grid.Nz,
-                          model.grid.Lx, model.grid.Ly, model.grid.Lz,
-                          model.grid.Δx, model.grid.Δy, model.grid.Δz,
-                          model.stepper_tmp.fC1, model.stepper_tmp.fCC1, model.stepper_tmp.fCC2,
-                          model.constants.g * model.grid.Δz, χ, model.constants.f
-                         )
+        time_step_kernels!(arch(), model, χ, Δt)
 
         clock.time += Δt
         clock.iteration += 1
@@ -70,9 +49,32 @@ end
 time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 "Execute one time-step on the CPU."
-function time_step_kernels!(arch::CPU, Δt,
-                            cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
-                            Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
+function time_step_kernels!(arch::CPU, model, χ, Δt)
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
+    Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
+    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
+
+    g = model.grid
+    cfg = model.configuration
+    bcs = model.boundary_conditions
+    clock = model.clock
+
+    G = model.G
+    Gp = model.Gp
+    c = model.constants
+    eos =  model.eos
+    U = model.velocities
+    tr = model.tracers
+    pr = model.pressures
+    forcing = model.forcing
+    poisson_solver = model.poisson_solver
+
+    δρ = model.stepper_tmp.fC1
+    RHS = model.stepper_tmp.fCC1
+    ϕ = model.stepper_tmp.fCC2
+
+    gΔz = model.constants.g * model.grid.Δz
+    fCor = model.constants.f
 
     store_previous_source_terms!(device(arch), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                  Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
