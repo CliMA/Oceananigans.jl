@@ -61,6 +61,7 @@ export
     # Poisson solver
     PoissonSolver,
     PoissonSolverGPU,
+    init_poisson_solver,
     solve_poisson_3d_ppn,
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,

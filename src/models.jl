@@ -89,18 +89,9 @@ function Model(;
                         stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
 end
 
-function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
-    tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
-    poisson_solver = PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
-end
-
-function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
-    tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
-    poisson_solver = PoissonSolverGPU(g, tmp_rhs)
-end
-
 "Legacy constructor for `Model`."
 Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
 
+model_arch(model::Model{A}) where A <: Architecture = A
 
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
