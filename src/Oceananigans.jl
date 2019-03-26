@@ -8,6 +8,7 @@ export
     Architecture,
     CPU,
     GPU,
+    device,
 
     # Planetary Constants
     ConstantsCollection,
@@ -117,6 +118,9 @@ end
 abstract type Architecture end
 struct CPU <: Architecture end
 struct GPU <: Architecture end
+
+device(::CPU) = Val(:CPU)
+device(::GPU) = Val(:GPU)
 
 abstract type Metadata end
 abstract type ConstantsCollection end
