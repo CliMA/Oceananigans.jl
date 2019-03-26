@@ -209,6 +209,8 @@ float_types = [Float32, Float64]
     end
 
     @testset "Model" begin
+        println("  Testing model...")
+
         for arch in new_archs, ft in float_types
             model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
 
@@ -251,20 +253,20 @@ float_types = [Float32, Float64]
     end
 
     @testset "Time stepping" begin
+        println("  Testing time stepping...")
         include("test_time_stepping.jl")
 
-        for arch in archs, ft in float_types
-            @test test_basic_timestepping(arch, ft)
+        for arch in new_archs, ft in float_types
+            @test time_stepping_works(arch, ft)
         end
 
         @testset "Adams-Bashforth 2" begin
-            for arch in archs, ft in float_types
+            for arch in new_archs, ft in float_types
                 run_first_AB2_time_step_tests(arch, ft)
             end
         end
     end
 
-    @testset "Output writers" begin
         include("test_output_writers.jl")
 
         @testset "Checkpointing" begin
