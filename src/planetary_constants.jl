@@ -1,7 +1,7 @@
-struct PlanetaryConstants <: ConstantsCollection
-    Ω::Float64  # Rotation rate of the planet [rad/s].
-    f::Float64  # Nominal value for the Coriolis frequency [rad/s].
-    g::Float64  # Standard acceleration due to gravity [m/s²].
+struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
+    Ω::T  # Rotation rate of the planet [rad/s].
+    f::T  # Nominal value for the Coriolis frequency [rad/s].
+    g::T  # Standard acceleration due to gravity [m/s²].
 end
 
 function Earth()
