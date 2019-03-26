@@ -4,7 +4,6 @@ using Oceananigans.Operators
 
 const Tx = 16 # Threads per x-block
 const Ty = 16 # Threads per y-block
-const χ = 0.1 # Adams-Bashforth (AB2) parameter.
 
 """
     time_step!(model, Nt, Δt)
@@ -12,7 +11,7 @@ const χ = 0.1 # Adams-Bashforth (AB2) parameter.
 Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
-function time_step!(model, Nt, Δt)
+function time_step!(model::Model{arch}, Nt, Δt) where arch <: Architecture
 
     clock = model.clock
     model_start_time = clock.time
@@ -28,10 +27,10 @@ function time_step!(model, Nt, Δt)
     end
 
     for n in 1:Nt
-
+        # Adams-Bashforth (AB2) parameter.
         χ = ifelse(model.clock.iteration == 0, -0.5, 0.125)
 
-        time_step_kernels!(Val(model.metadata.arch), Δt,
+        time_step_kernels!(arch(), Δt,
                           model.configuration,
                           model.boundary_conditions,
                           model.grid,
@@ -71,33 +70,33 @@ end
 time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 "Execute one time-step on the CPU."
-function time_step_kernels!(::Val{:CPU}, Δt,
+function time_step_kernels!(arch::CPU, Δt,
                             cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                             Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
-    store_previous_source_terms!(Val(:CPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+    store_previous_source_terms!(device(arch), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                  Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
-    update_buoyancy!(Val(:CPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    update_buoyancy!(device(arch), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
-    calculate_interior_source_terms!(Val(:CPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+    calculate_interior_source_terms!(device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                            U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
                            G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    calculate_boundary_source_terms!(Val(:CPU), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+    calculate_boundary_source_terms!(device(arch), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
-    adams_bashforth_update_source_terms!(Val(:CPU), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+    adams_bashforth_update_source_terms!(device(arch), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                          Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
-    calculate_source_term_divergence!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+    calculate_source_term_divergence!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
     solve_poisson_3d_ppn_planned!(poisson_solver, g, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
 
-    update_velocities_and_tracers!(Val(:CPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+    update_velocities_and_tracers!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
                                    U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
                                    G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
                                    Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
@@ -106,41 +105,41 @@ function time_step_kernels!(::Val{:CPU}, Δt,
 end
 
 "Execute one time-step on the GPU."
-function time_step_kernels!(::Val{:GPU}, Δt,
+function time_step_kernels!(arch::GPU, Δt,
                             cfg, bcs, g, c, eos, poisson_solver, U, tr, pr, G, Gp, stmp, clock, forcing,
                             Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, δρ, RHS, ϕ, gΔz, χ, fCor)
 
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz # Blocks in grid
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(
-        Val(:GPU), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        device(arch), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
-        Val(:GPU), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+        device(arch), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(
-        Val(:GPU), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
+        device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
 
-    calculate_boundary_source_terms!(Val(:GPU), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
+    calculate_boundary_source_terms!(device(arch), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(
-        Val(:GPU), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+        device(arch), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(
-        Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+        device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, g, RHS, ϕ)
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(Val(:GPU), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(device(arch), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(
-        Val(:GPU), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
+        device(arch), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
         U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
         G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
@@ -365,7 +364,7 @@ apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_
 apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
 apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
 apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-           
+
 
 # First, dispatch on coordinate.
 apply_bcs!(::Val{:CPU}, ::Val{:x}, Bx, By, Bz, args...) = apply_x_bcs!(Val(:CPU), args...)
