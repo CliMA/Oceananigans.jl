@@ -5,11 +5,8 @@ import FFTW
 using Oceananigans
 using Oceananigans.Operators
 
-archs = [:CPU]
-@hascuda archs = [:CPU, :GPU]
-
-new_archs = [CPU()]
-@hascuda new_archs = [CPU(), GPU()]
+archs = [CPU()]
+@hascuda archs = [CPU(), GPU()]
 
 float_types = [Float32, Float64]
 
@@ -74,7 +71,7 @@ float_types = [Float32, Float64]
 
         @testset "Field initialization" begin
             println("    Testing field initialization...")
-            for arch in new_archs, ft in float_types
+            for arch in archs, ft in float_types
                 grid = RegularCartesianGrid(ft, N, L)
 
                 for field_type in field_types
@@ -93,7 +90,7 @@ float_types = [Float32, Float64]
         @testset "Setting fields" begin
             println("    Testing field setting...")
 
-            for arch in new_archs, ft in float_types
+            for arch in archs, ft in float_types
                 grid = RegularCartesianGrid(ft, N, L)
 
                 for field_type in field_types, val in vals
@@ -103,7 +100,7 @@ float_types = [Float32, Float64]
         end
 
         # @testset "Field operations" begin
-        #     for arch in new_archs, ft in float_types
+        #     for arch in archs, ft in float_types
         #         grid = RegularCartesianGrid(ft, N, L)
         #
         #         for field_type in field_types, val1 in vals, val2 in vals
@@ -211,7 +208,7 @@ float_types = [Float32, Float64]
     @testset "Model" begin
         println("  Testing model...")
 
-        for arch in new_archs, ft in float_types
+        for arch in archs, ft in float_types
             model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
 
             # Just testing that a Model was constructed with no errors/crashes.
@@ -223,12 +220,12 @@ float_types = [Float32, Float64]
         println("  Testing time stepping...")
         include("test_time_stepping.jl")
 
-        for arch in new_archs, ft in float_types
+        for arch in archs, ft in float_types
             @test time_stepping_works(arch, ft)
         end
 
         @testset "Adams-Bashforth 2" begin
-            for arch in new_archs, ft in float_types
+            for arch in archs, ft in float_types
                 run_first_AB2_time_step_tests(arch, ft)
             end
         end
