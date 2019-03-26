@@ -5,6 +5,10 @@ export
     HAVE_CUDA,
     @hascuda,
 
+    Architecture,
+    CPU,
+    GPU,
+
     # Planetary Constants
     ConstantsCollection,
     PlanetaryConstants,
