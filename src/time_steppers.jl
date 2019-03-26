@@ -76,6 +76,9 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
     gΔz = model.constants.g * model.grid.Δz
     fCor = model.constants.f
 
+    uvw = U.u.data, U.v.data, U.w.data
+    TS = tr.T.data, tr.S.data
+
     # Source terms at current (Gⁿ) and previous (G⁻) time steps.
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
     G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
@@ -84,17 +87,14 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
 
-    calculate_interior_source_terms!(device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                           U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-                           G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
+    calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
 
     calculate_boundary_source_terms!(device(arch), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
-    adams_bashforth_update_source_terms!(device(arch), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                         Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+    adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
     calculate_source_term_divergence!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
@@ -137,6 +137,9 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
     gΔz = model.constants.g * model.grid.Δz
     fCor = model.constants.f
 
+    uvw = U.u.data, U.v.data, U.w.data
+    TS = tr.T.data, tr.S.data
+
     # Source terms at current (Gⁿ) and previous (G⁻) time steps.
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
     G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
@@ -147,19 +150,14 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(
-        device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-        U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
-        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data, forcing)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
 
     calculate_boundary_source_terms!(device(arch), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
                                clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
                                U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
                                G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(
-        device(arch), χ, Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(
         device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
@@ -222,14 +220,21 @@ function update_buoyancy!(::Val{Dev}, grid::Grid, constants, eos, δρ, T, pHY�
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_interior_source_terms!(
-                                ::Val{Dev}, fCor, χ, ρ₀, κh, κv, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
-                                u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F) where Dev
+function calculate_interior_source_terms!(::Val{Dev}, grid::Grid, constants, eos, cfg,
+    u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F) where Dev
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
+
+    fCor = constants.f
+    ρ₀ = eos.ρ₀
+    𝜈h, 𝜈v, κh, κv = cfg.𝜈h, cfg.𝜈v, cfg.κh, cfg.κv
+
     @setup Dev
 
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # u-momentum equation
                 @inbounds Gu[i, j, k] = (-u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
                                             + fCor*avg_xy(v, Nx, Ny, i, j, k)
@@ -266,12 +271,12 @@ function calculate_interior_source_terms!(
     @synchronize
 end
 
-function adams_bashforth_update_source_terms!(::Val{Dev}, χ, Nx, Ny, Nz, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+function adams_bashforth_update_source_terms!(::Val{Dev}, grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where Dev
     @setup Dev
 
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gu[i, j, k] = (1.5 + χ)*Gu[i, j, k] - (0.5 + χ)*Gpu[i, j, k]
                 @inbounds Gv[i, j, k] = (1.5 + χ)*Gv[i, j, k] - (0.5 + χ)*Gpv[i, j, k]
                 @inbounds Gw[i, j, k] = (1.5 + χ)*Gw[i, j, k] - (0.5 + χ)*Gpw[i, j, k]
