@@ -1,7 +1,5 @@
 import Base: size, show
 
-using Oceananigans: ModelMetadata
-
 """
     RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
 

@@ -66,11 +66,8 @@ export
     solve_poisson_3d_ppn_gpu!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. metadata, configuration, clock, etc.
-    ModelMetadata,
-    _ModelMetadata,
+    # Model helper structs, e.g. configuration, clock, etc.
     ModelConfiguration,
-    _ModelConfiguration,
     Clock,
     Model,
 
@@ -132,7 +129,6 @@ abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type AbstractPoissonSolver end
 
-include("model_metadata.jl")
 include("model_configuration.jl")
 include("clock.jl")
 include("planetary_constants.jl")
