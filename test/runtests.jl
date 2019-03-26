@@ -114,7 +114,10 @@ float_types = [Float32, Float64]
     end
 
     @testset "Operators" begin
+        println("  Testing operators...")
+
         @testset "2D operators" begin
+            println("    Testing 2D operators...")
             Nx, Ny, Nz = 32, 16, 8
             Lx, Ly, Lz = 100, 100, 100
             A3 = rand(Nx, Ny, Nz)
@@ -155,32 +158,39 @@ float_types = [Float32, Float64]
     end
 
     @testset "Poisson solvers" begin
+        println("  Testing Poisson solvers...")
         include("test_poisson_solvers.jl")
 
         @testset "FFTW commutativity" begin
-            for N in [4, 8, 10, 64, 100, 256]
-                @test test_mixed_fft_commutativity(N)
-                @test test_mixed_ifft_commutativity(N)
+            println("    Testing FFTW commutativity...")
+
+            # Testing for nice powers of two and not-so-nice prime numbers.
+            for N in [4, 7, 8, 10, 48, 64, 79, 128]
+                @test mixed_fft_commutes(N)
+                @test mixed_ifft_commutes(N)
             end
         end
 
         @testset "FFTW plans" begin
+            println("    Testing FFTW planning...")
+
             for ft in float_types
-                mm = ModelMetadata(:CPU, ft)
-                @test test_fftw_planner(mm, 32, 32, 32, FFTW.ESTIMATE)
-                @test test_fftw_planner(mm, 1,  32, 32, FFTW.ESTIMATE)
-                @test test_fftw_planner(mm, 32,  1, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(ft, 32, 32, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(ft, 1,  32, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(ft, 32,  1, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(ft,  1,  1, 32, FFTW.ESTIMATE)
             end
         end
 
         @testset "Divergence-free solution [CPU]" begin
+            println("    Testing divergence-free solution [CPU]...")
+
             for N in [5, 10, 20, 50, 100]
                 for ft in float_types
-                    mm = ModelMetadata(:CPU, ft)
-
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, FFTW.ESTIMATE)
-                    @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(ft, N, N, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(ft, 1, N, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(ft, N, 1, N, FFTW.ESTIMATE)
+                    # @test poisson_ppn_planned_div_free_cpu(ft, 1, 1, N, FFTW.ESTIMATE)
 
                     # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
                     # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
@@ -193,8 +203,7 @@ float_types = [Float32, Float64]
 
             Ns = 2 .^ [2, 4, 6]
             for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
-                mm = ModelMetadata(:CPU, ft)
-                @test test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, FFTW.ESTIMATE)
+                @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
     end
