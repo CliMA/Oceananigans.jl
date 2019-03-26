@@ -29,34 +29,32 @@ float_types = [Float32, Float64]
 
         @testset "Grid dimensions" begin
             L = (100, 100, 100)
-            for arch in archs, ft in float_types
-                mm = ModelMetadata(arch, ft)
+            for ft in float_types
+                @test isbitstype(typeof(RegularCartesianGrid(ft, (16, 16, 16), (1, 1, 1))))
 
-                @test isbitstype(typeof(RegularCartesianGrid(mm, (16, 16, 16), (1, 1, 1))))
+                @test RegularCartesianGrid(ft, (25, 25, 25), L).dim == 3
+                @test RegularCartesianGrid(ft, (5, 25, 125), L).dim == 3
+                @test RegularCartesianGrid(ft, (64, 64, 64), L).dim == 3
+                @test RegularCartesianGrid(ft, (32, 32,  1), L).dim == 2
+                @test RegularCartesianGrid(ft, (32,  1, 32), L).dim == 2
+                @test RegularCartesianGrid(ft, (1,  32, 32), L).dim == 2
+                @test RegularCartesianGrid(ft, (1,  1,  64), L).dim == 1
 
-                @test RegularCartesianGrid(mm, (25, 25, 25), L).dim == 3
-                @test RegularCartesianGrid(mm, (5, 25, 125), L).dim == 3
-                @test RegularCartesianGrid(mm, (64, 64, 64), L).dim == 3
-                @test RegularCartesianGrid(mm, (32, 32,  1), L).dim == 2
-                @test RegularCartesianGrid(mm, (32,  1, 32), L).dim == 2
-                @test RegularCartesianGrid(mm, (1,  32, 32), L).dim == 2
-                @test RegularCartesianGrid(mm, (1,  1,  64), L).dim == 1
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32,), L)
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 64), L)
+                @test_throws ArgumentError RegularCartesianGrid(ft, (1, 1, 1), L)
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32, 16), L)
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100,))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100, -100))
 
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32,), L)
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 64), L)
-                @test_throws ArgumentError RegularCartesianGrid(mm, (1, 1, 1), L)
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32, 16), L)
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100,))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (100, 100, -100))
-
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32.0), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (20.1, 32, 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, nothing, 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, "32", 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (1, nothing, 1))
-                @test_throws ArgumentError RegularCartesianGrid(mm, (32, 32, 32), (1, "1", 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32.0), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (20.1, 32, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, nothing, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, "32", 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (1, nothing, 1))
+                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (1, "1", 1))
             end
         end
     end
