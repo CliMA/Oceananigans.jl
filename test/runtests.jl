@@ -185,12 +185,12 @@ float_types = [Float32, Float64]
         @testset "Divergence-free solution [CPU]" begin
             println("    Testing divergence-free solution [CPU]...")
 
-            for N in [5, 10, 20, 50, 100]
+            for N in [5, 7, 10, 15, 20, 29, 32]
                 for ft in float_types
                     @test poisson_ppn_planned_div_free_cpu(ft, N, N, N, FFTW.ESTIMATE)
                     @test poisson_ppn_planned_div_free_cpu(ft, 1, N, N, FFTW.ESTIMATE)
                     @test poisson_ppn_planned_div_free_cpu(ft, N, 1, N, FFTW.ESTIMATE)
-                    # @test poisson_ppn_planned_div_free_cpu(ft, 1, 1, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(ft, 1, 1, N, FFTW.ESTIMATE)
 
                     # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
                     # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
@@ -201,7 +201,7 @@ float_types = [Float32, Float64]
                 end
             end
 
-            Ns = 2 .^ [2, 4, 6]
+            Ns = [5, 7, 10, 15, 20, 29, 32]
             for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
                 @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
