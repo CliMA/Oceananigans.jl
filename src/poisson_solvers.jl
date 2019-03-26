@@ -3,12 +3,12 @@ using GPUifyLoops
 
 function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
     tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
-    poisson_solver = PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
+    PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
 end
 
 function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
     tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
-    poisson_solver = PoissonSolverGPU(g, tmp_rhs)
+    PoissonSolverGPU(g, tmp_rhs)
 end
 
 # Translations to print FFT timing.

@@ -83,7 +83,7 @@ function restore_from_checkpoint(filepath)
     close(f)
 
     println("Reconstructing FFT plans...")
-    model.poisson_solver = init_poisson_solver(arch(model), model.grid, model.stepper_tmp.fCC1)
+    model.poisson_solver = init_poisson_solver(arch(model)(), model.grid, model.stepper_tmp.fCC1)
 
     model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
     println("WARNING: Forcing functions have been set to nothing!")
