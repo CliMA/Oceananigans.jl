@@ -61,7 +61,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     G = model.G
     Gp = model.Gp
-    c = model.constants
+    constants = model.constants
     eos =  model.eos
     U = model.velocities
     tr = model.tracers
@@ -82,7 +82,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     store_previous_source_terms!(device(arch), grid, Gⁿ..., G⁻...)
 
-    update_buoyancy!(device(arch), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
 
     calculate_interior_source_terms!(device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
                            U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pHY′.data,
@@ -122,7 +122,7 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     G = model.G
     Gp = model.Gp
-    c = model.constants
+    constants = model.constants
     eos =  model.eos
     U = model.velocities
     tr = model.tracers
@@ -145,8 +145,7 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(device(arch), grid, Gⁿ..., G⁻...)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(
-        device(arch), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(
         device(arch), fCor, χ, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v, Nx, Ny, Nz, Δx, Δy, Δz,
@@ -178,12 +177,12 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 end
 
 """Store previous source terms before updating them."""
-function store_previous_source_terms!(::Val{Dev}, g::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+function store_previous_source_terms!(::Val{Dev}, grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
     @setup Dev
 
-    @loop for k in (1:g.Nz; blockIdx().z)
-        @loop for j in (1:g.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:g.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gpu[i, j, k] = Gu[i, j, k]
                 @inbounds Gpv[i, j, k] = Gv[i, j, k]
                 @inbounds Gpw[i, j, k] = Gw[i, j, k]
@@ -199,12 +198,15 @@ end
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, βT, T₀) where Dev
+function update_buoyancy!(::Val{Dev}, grid::Grid, constants, eos, δρ, T, pHY′) where Dev
     @setup Dev
 
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    ρ₀, T₀, βT = eos.ρ₀, eos.T₀, eos.βT
+    gΔz = constants.g * grid.Δz
+
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
 
                 ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
