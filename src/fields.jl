@@ -3,8 +3,6 @@ import Base:
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
-@hascuda using CuArrays
-
 """
     CellField{A<:AbstractArray,G<:Grid} <: Field
 
