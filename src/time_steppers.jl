@@ -54,7 +54,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
     Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
 
-    g = model.grid
+    grid = model.grid
     cfg = model.configuration
     bcs = model.boundary_conditions
     clock = model.clock
@@ -76,8 +76,13 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
     gΔz = model.constants.g * model.grid.Δz
     fCor = model.constants.f
 
-    store_previous_source_terms!(device(arch), Nx, Ny, Nz, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                 Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+    Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
+    G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
+
+    store_previous_source_terms!(device(arch), grid, Gⁿ..., G⁻...)
+
+    # store_previous_source_terms!(device(arch), grid, G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
+    #                              Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
 
     update_buoyancy!(device(arch), gΔz, Nx, Ny, Nz, δρ.data, tr.T.data, pr.pHY′.data, eos.ρ₀, eos.βT, eos.T₀)
 
@@ -95,7 +100,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     calculate_source_term_divergence!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
 
-    solve_poisson_3d_ppn_planned!(poisson_solver, g, RHS, ϕ)
+    solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
 
     update_velocities_and_tracers!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
@@ -149,6 +154,25 @@ function time_step_kernels!(arch::GPU, Δt,
     return nothing
 end
 
+"""Store previous source terms before updating them."""
+function store_previous_source_terms!(::Val{Dev}, g::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+    @setup Dev
+
+    @loop for k in (1:g.Nz; blockIdx().z)
+        @loop for j in (1:g.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:g.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds Gpu[i, j, k] = Gu[i, j, k]
+                @inbounds Gpv[i, j, k] = Gv[i, j, k]
+                @inbounds Gpw[i, j, k] = Gw[i, j, k]
+                @inbounds GpT[i, j, k] = GT[i, j, k]
+                @inbounds GpS[i, j, k] = GS[i, j, k]
+            end
+        end
+    end
+
+    @synchronize
+end
+
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
@@ -165,25 +189,6 @@ function update_buoyancy!(::Val{Dev}, gΔz, Nx, Ny, Nz, δρ, T, pHY′, ρ₀, 
                     ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
                 end
                 @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
-            end
-        end
-    end
-
-    @synchronize
-end
-
-"""Store previous source terms before updating them."""
-function store_previous_source_terms!(::Val{Dev}, Nx, Ny, Nz, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
-    @setup Dev
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gpu[i, j, k] = Gu[i, j, k]
-                @inbounds Gpv[i, j, k] = Gv[i, j, k]
-                @inbounds Gpw[i, j, k] = Gw[i, j, k]
-                @inbounds GpT[i, j, k] = GT[i, j, k]
-                @inbounds GpS[i, j, k] = GS[i, j, k]
             end
         end
     end
