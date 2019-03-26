@@ -14,11 +14,14 @@ new_archs = [CPU()]
 float_types = [Float32, Float64]
 
 @testset "Oceananigans" begin
+    println("Testing Oceananigans...")
 
     @testset "Grid" begin
+        println("  Testing grids...")
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
+            println("    Testing grid initialization...")
             for ft in float_types
                 @test test_grid_size(ft)
                 @test test_cell_volume(ft)
@@ -28,6 +31,7 @@ float_types = [Float32, Float64]
         end
 
         @testset "Grid dimensions" begin
+            println("    Testing grid dimensions...")
             L = (100, 100, 100)
             for ft in float_types
                 @test isbitstype(typeof(RegularCartesianGrid(ft, (16, 16, 16), (1, 1, 1))))
@@ -60,6 +64,7 @@ float_types = [Float32, Float64]
     end
 
     @testset "Fields" begin
+        println("  Testing fields...")
         include("test_fields.jl")
 
         N = (4, 6, 8)
@@ -68,6 +73,7 @@ float_types = [Float32, Float64]
         field_types = [CellField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField]
 
         @testset "Field initialization" begin
+            println("    Testing field initialization...")
             for arch in new_archs, ft in float_types
                 grid = RegularCartesianGrid(ft, N, L)
 
@@ -85,6 +91,8 @@ float_types = [Float32, Float64]
         vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
         @testset "Setting fields" begin
+            println("    Testing field setting...")
+
             for arch in new_archs, ft in float_types
                 grid = RegularCartesianGrid(ft, N, L)
 
