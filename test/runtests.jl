@@ -209,11 +209,11 @@ float_types = [Float32, Float64]
     end
 
     @testset "Model" begin
-        for arch in archs, ft in float_types
+        for arch in new_archs, ft in float_types
             model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
 
-            # Just testing that a Model was constructed with no errors.
-            @test typeof(model) <: Model
+            # Just testing that a Model was constructed with no errors/crashes.
+            @test true
         end
     end
 

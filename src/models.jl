@@ -1,5 +1,4 @@
 mutable struct Model{A<:Architecture}
-    metadata::ModelMetadata
     configuration::ModelConfiguration
     boundary_conditions::ModelBoundaryConditions
     constants::PlanetaryConstants
@@ -50,7 +49,7 @@ function Model(;
     start_time = 0,
      iteration = 0, # ?
     # Model architecture and floating point precision
-          arch = :CPU,
+          arch = CPU(),
     float_type = Float64,
      constants = Earth(),
     # Equation of State
@@ -64,27 +63,19 @@ function Model(;
 )
 
     # Initialize model basics.
-         metadata = ModelMetadata(arch, float_type)
     configuration = ModelConfiguration(νh, νv, κh, κv)
-             grid = RegularCartesianGrid(metadata, N, L)
+             grid = RegularCartesianGrid(float_type, N, L)
             clock = Clock(start_time, iteration)
 
     # Initialize fields, including source terms and temporary variables.
-      velocities = VelocityFields(metadata, grid)
-         tracers = TracerFields(metadata, grid)
-       pressures = PressureFields(metadata, grid)
-               G = SourceTerms(metadata, grid)
-              Gp = SourceTerms(metadata, grid)
-     stepper_tmp = StepperTemporaryFields(metadata, grid)
+      velocities = VelocityFields(arch, grid)
+         tracers = TracerFields(arch, grid)
+       pressures = PressureFields(arch, grid)
+               G = SourceTerms(arch, grid)
+              Gp = SourceTerms(arch, grid)
+     stepper_tmp = StepperTemporaryFields(arch, grid)
 
-    # Initialize Poisson solver.
-    if metadata.arch == :CPU
-        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE)
-    elseif metadata.arch == :GPU
-        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
-    end
+     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
 
     # Default initial condition
     velocities.u.data .= 0
@@ -93,12 +84,19 @@ function Model(;
     tracers.S.data .= eos.S₀
     tracers.T.data .= eos.T₀
 
-    arch == :CPU && (arch_T = CPU)
-    arch == :GPU && (arch_T = GPU)
+    Model{typeof(arch)}(configuration, boundary_conditions, constants, eos, grid,
+                        velocities, tracers, pressures, G, Gp, forcing,
+                        stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+end
 
-    Model{arch_T}(metadata, configuration, boundary_conditions, constants, eos, grid,
-                  velocities, tracers, pressures, G, Gp, forcing,
-                  stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
+    poisson_solver = PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
+end
+
+function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
+    poisson_solver = PoissonSolverGPU(g, tmp_rhs)
 end
 
 "Legacy constructor for `Model`."
