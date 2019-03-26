@@ -3,11 +3,13 @@ using Test
 import FFTW
 
 using Oceananigans
-using Oceananigans: @hascuda
 using Oceananigans.Operators
 
 archs = [:CPU]
 @hascuda archs = [:CPU, :GPU]
+
+new_archs = [CPU()]
+@hascuda new_archs = [CPU(), GPU()]
 
 float_types = [Float32, Float64]
 
@@ -17,11 +19,11 @@ float_types = [Float32, Float64]
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            for arch in archs, ft in float_types
-                mm = ModelMetadata(arch, ft)
-                @test test_grid_size(mm)
-                @test test_cell_volume(mm)
-                @test test_faces_start_at_zero(mm)
+            for ft in float_types
+                @test test_grid_size(ft)
+                @test test_cell_volume(ft)
+                @test test_faces_start_at_zero(ft)
+                @test test_end_faces_match_grid_length(ft)
             end
         end
 
