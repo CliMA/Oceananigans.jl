@@ -103,20 +103,20 @@ end
 
 An edge-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct EdgeField{A<:AbstractArray,G<:Grid} <: Field
+struct EdgeField{A<:AbstractArray, G<:Grid} <: Field
     data::A
     grid::G
 end
 
-function EdgeField(::CPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function EdgeField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = zeros(T, size(g))
-    EdgeField{typeof(data),typeof(g)}(data, g)
+    EdgeField{typeof(data), typeof(g)}(data, g)
 end
 
-function EdgeField(::GPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function EdgeField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
     data .= 0.0
-    EdgeField{typeof(data),typeof(g)}(data, g)
+    EdgeField{typeof(data), typeof(g)}(data, g)
 end
 
 @inline size(f::Field) = size(f.grid)

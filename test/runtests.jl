@@ -23,10 +23,10 @@ float_types = [Float32, Float64]
         @testset "Grid initialization" begin
             println("    Testing grid initialization...")
             for ft in float_types
-                @test test_grid_size(ft)
-                @test test_cell_volume(ft)
-                @test test_faces_start_at_zero(ft)
-                @test test_end_faces_match_grid_length(ft)
+                @test correct_grid_size(ft)
+                @test correct_cell_volume(ft)
+                @test faces_start_at_zero(ft)
+                @test end_faces_match_grid_length(ft)
             end
         end
 
@@ -78,7 +78,7 @@ float_types = [Float32, Float64]
                 grid = RegularCartesianGrid(ft, N, L)
 
                 for field_type in field_types
-                    @test test_init_field(arch, grid, field_type)
+                    @test correct_field_size(arch, grid, field_type)
                 end
             end
         end
@@ -97,7 +97,7 @@ float_types = [Float32, Float64]
                 grid = RegularCartesianGrid(ft, N, L)
 
                 for field_type in field_types, val in vals
-                    @test test_set_field(arch, grid, field_type, val)
+                    @test correct_field_value_was_set(arch, grid, field_type, val)
                 end
             end
         end
@@ -107,7 +107,7 @@ float_types = [Float32, Float64]
         #         grid = RegularCartesianGrid(ft, N, L)
         #
         #         for field_type in field_types, val1 in vals, val2 in vals
-        #             @test test_add_field(arch, grid, field_type, val1, val2)
+        #             @test correct_field_addition(arch, grid, field_type, val1, val2)
         #         end
         #     end
         # end
