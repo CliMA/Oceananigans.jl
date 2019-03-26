@@ -3,14 +3,14 @@ import Base: size, show
 using Oceananigans: ModelMetadata
 
 """
-    RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
+    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
 
 A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
 and \$Δz\$ are constants. Fields are stored using floating-point values of type
 `T`. The cell-centered and face-centered coordinate ranges are stored as ranges
 of type `A`.
 """
-struct RegularCartesianGrid{T<:AbstractFloat,R<:AbstractRange} <: Grid
+struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int
@@ -106,8 +106,8 @@ function RegularCartesianGrid(T, N, L)
     !all(typeof.([xC, yC, zC, xF, yF, zF]) .== typeof(xC)) &&
         throw(ArgumentError("At least one coordinate range type did not match."))
 
-    RegularCartesianGrid{T,typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
-                                       Az, V, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
+                                        Az, V, xC, yC, zC, xF, yF, zF)
 end
 
 # Constructor aliases.

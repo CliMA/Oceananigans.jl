@@ -4,87 +4,98 @@ import Base:
     iterate, similar, *, +, -
 
 """
-    CellField{A<:AbstractArray,G<:Grid} <: Field
+    CellField{A<:AbstractArray, G<:Grid} <: Field
 
 A cell-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct CellField{A<:AbstractArray,G<:Grid} <: Field
+struct CellField{A<:AbstractArray, G<:Grid} <: Field
     data::A
     grid::G
 end
 
-function CellField(::CPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = zeros(T, size(g))
-    CellField{typeof(data),typeof(g)}(data, g)
+    CellField{typeof(data), typeof(g)}(data, g)
 end
 
-function CellField(::GPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
     data .= 0.0
-    CellField{typeof(data),typeof(g)}(data, g)
+    CellField{typeof(data), typeof(g)}(data, g)
+end
+
+function CellField(T, ::CPU, g::RegularCartesianGrid)
+    data = zeros(T, size(g))
+    CellField{typeof(data), typeof(g)}(data, g)
+end
+
+function CellField(T, ::GPU, g::RegularCartesianGrid)
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    CellField{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldX{A<:AbstractArray,G<:Grid} <: FaceField
+    FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
 
 An x-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldX{A<:AbstractArray,G<:Grid} <: FaceField
+struct FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
     data::A
     grid::G
 end
 
-function FaceFieldX(::CPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldX(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = zeros(T, size(g))
-    FaceFieldX{typeof(data),typeof(g)}(data, g)
+    FaceFieldX{typeof(data), typeof(g)}(data, g)
 end
 
-function FaceFieldX(::GPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldX(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
     data .= 0.0
-    FaceFieldX{typeof(data),typeof(g)}(data, g)
+    FaceFieldX{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldY{T,G <: FaceField
+    FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
 
 A y-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldY{A<:AbstractArray,G<:Grid} <: FaceField
+struct FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
     data::A
     grid::G
 end
 
-function FaceFieldY(::CPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldY(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = zeros(T, size(g))
-    FaceFieldY{typeof(data),typeof(g)}(data, g)
+    FaceFieldY{typeof(data), typeof(g)}(data, g)
 end
 
-function FaceFieldY(::GPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldY(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
     data .= 0.0
-    FaceFieldY{typeof(data),typeof(g)}(data, g)
+    FaceFieldY{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldZ{T, G<:Grid{T}} <: FaceField{G}
 
 A z-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldZ{A<:AbstractArray,G<:Grid} <: FaceField
+struct FaceFieldZ{A<:AbstractArray, G<:Grid} <: FaceField
     data::A
     grid::G
 end
 
-function FaceFieldZ(::CPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldZ(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = zeros(T, size(g))
-    FaceFieldZ{typeof(data),typeof(g)}(data, g)
+    FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
 
-function FaceFieldZ(::GPU, g::RegularCartesianGrid{T,<:AbstractRange}) where T <: AbstractFloat
+function FaceFieldZ(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
     data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
     data .= 0.0
-    FaceFieldZ{typeof(data),typeof(g)}(data, g)
+    FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
 
 """
