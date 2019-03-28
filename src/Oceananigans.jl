@@ -102,7 +102,9 @@ using
     FFTW,
     JLD,
     NetCDF,
-    StaticArrays,
+    StaticArrays
+
+import
     GPUifyLoops
 
 const HAVE_CUDA = try
@@ -120,8 +122,8 @@ abstract type Architecture end
 struct CPU <: Architecture end
 struct GPU <: Architecture end
 
-device(::CPU) = Val(:CPU)
-device(::GPU) = Val(:GPU)
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
 
 abstract type Metadata end
 abstract type ConstantsCollection end
