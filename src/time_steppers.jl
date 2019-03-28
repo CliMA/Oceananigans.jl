@@ -78,6 +78,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     uvw = U.u.data, U.v.data, U.w.data
     TS = tr.T.data, tr.S.data
+    Guvw = G.Gu.data, G.Gv.data, G.Gw.data
 
     # Source terms at current (Gⁿ) and previous (G⁻) time steps.
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
@@ -96,15 +97,12 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
-    calculate_source_term_divergence!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+    calculate_source_term_divergence!(device(arch), grid, Guvw..., RHS.data)
 
     solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
     @. pr.pNHS.data = real(ϕ.data)
 
-    update_velocities_and_tracers!(device(arch), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-                                   U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
-                                   G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-                                   Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+    update_velocities_and_tracers!(device(arch), grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
 
     return nothing
 end
@@ -139,6 +137,7 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     uvw = U.u.data, U.v.data, U.w.data
     TS = tr.T.data, tr.S.data
+    Guvw = G.Gu.data, G.Gv.data, G.Gw.data
 
     # Source terms at current (Gⁿ) and previous (G⁻) time steps.
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
@@ -159,17 +158,12 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(
-        device(arch), Nx, Ny, Nz, Δx, Δy, Δz, G.Gu.data, G.Gv.data, G.Gw.data, RHS.data)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(device(arch), grid, Guvw..., RHS.data)
 
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, grid, RHS, ϕ)
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(device(arch), Nx, Ny, Nz, ϕ.data, pr.pNHS.data)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(device(arch), grid, ϕ.data, pr.pNHS.data)
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(
-        device(arch), Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-        U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data, pr.pNHS.data,
-        G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data,
-        Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data)
+    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(device(arch), grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
 
     return nothing
 end
@@ -290,8 +284,11 @@ function adams_bashforth_update_source_terms!(::Val{Dev}, grid::Grid, Gu, Gv, Gw
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_source_term_divergence!(::Val{:CPU}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS)
+function calculate_source_term_divergence!(::Val{:CPU}, grid::Grid, Gu, Gv, Gw, RHS)
     @setup :CPU
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -305,8 +302,11 @@ function calculate_source_term_divergence!(::Val{:CPU}, Nx, Ny, Nz, Δx, Δy, Δ
     @synchronize
 end
 
-function calculate_source_term_divergence!(::Val{:GPU}, Nx, Ny, Nz, Δx, Δy, Δz, Gu, Gv, Gw, RHS)
+function calculate_source_term_divergence!(::Val{:GPU}, grid::Grid, Gu, Gv, Gw, RHS)
     @setup :GPU
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -324,12 +324,12 @@ function calculate_source_term_divergence!(::Val{:GPU}, Nx, Ny, Nz, Δx, Δy, Δ
     @synchronize
 end
 
-function idct_permute!(::Val{Dev}, Nx, Ny, Nz, ϕ, pNHS) where Dev
+function idct_permute!(::Val{Dev}, grid::Grid, ϕ, pNHS) where Dev
     @setup Dev
 
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if k <= Nz/2
                     @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
                 else
@@ -343,9 +343,11 @@ function idct_permute!(::Val{Dev}, Nx, Ny, Nz, ϕ, pNHS) where Dev
 end
 
 
-function update_velocities_and_tracers!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, Δt,
-                                        u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS) where Dev
+function update_velocities_and_tracers!(::Val{Dev}, grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt) where Dev
     @setup Dev
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
