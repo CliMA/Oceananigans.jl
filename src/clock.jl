@@ -1,4 +1,4 @@
-mutable struct Clock
-  time::Number
+mutable struct Clock{T<:Number}
+  time::T
   iteration::Int
 end
