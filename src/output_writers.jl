@@ -18,6 +18,7 @@ mutable struct NetCDFOutputWriter <: OutputWriter
     output_frequency::Int
     padding::Int
     compression::Int
+    chunksize::Tuple
     async::Bool
 end
 
@@ -33,8 +34,8 @@ function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
     Checkpointer(dir, prefix, frequency, padding)
 end
 
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, async=false)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, compression, async)
+function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, chunksize=(256,16,1), async=false)
+    NetCDFOutputWriter(dir, prefix, frequency, padding, compression, chunksize, async)
 end
 
 "Return the filename extension for the `OutputWriter` filetype."
@@ -203,27 +204,27 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
     nccreate(filepath, "u", "xF", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zC", zC, zC_attr,
-                            atts=u_attr, compress=fw.compression)
+                            atts=u_attr, chunksize=fw.chunksize, compress=fw.compression)
 
     nccreate(filepath, "v", "xC", xC, xC_attr,
                             "yF", yC, yC_attr,
                             "zC", zC, zC_attr,
-                            atts=v_attr, compress=fw.compression)
+                            atts=v_attr, chunksize=fw.chunksize, compress=fw.compression)
 
     nccreate(filepath, "w", "xC", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zF", zC, zC_attr,
-                            atts=w_attr, compress=fw.compression)
+                            atts=w_attr, chunksize=fw.chunksize, compress=fw.compression)
 
     nccreate(filepath, "T", "xC", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zC", zC, zC_attr,
-                            atts=T_attr, compress=fw.compression)
+                            atts=T_attr, chunksize=fw.chunksize, compress=fw.compression)
 
     nccreate(filepath, "S", "xC", xC, xC_attr,
                             "yC", yC, yC_attr,
                             "zC", zC, zC_attr,
-                            atts=S_attr, compress=fw.compression)
+                            atts=S_attr, chunksize=fw.chunksize, compress=fw.compression)
 
     ncwrite(u, filepath, "u")
     ncwrite(v, filepath, "v")
