@@ -330,7 +330,7 @@ function idct_permute!(::Val{Dev}, grid::Grid, ϕ, pNHS) where Dev
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= Nz/2
+                if k <= grid.Nz/2
                     @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
                 else
                     @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
