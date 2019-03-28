@@ -90,10 +90,7 @@ function time_step_kernels!(arch::CPU, model, χ, Δt)
 
     calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
 
-    calculate_boundary_source_terms!(device(arch), 0, 0, 0, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
-                               U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-                               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
+    calculate_boundary_source_terms!(device(arch), model)
 
     adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
@@ -151,10 +148,7 @@ function time_step_kernels!(arch::GPU, model, χ, Δt)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
 
-    calculate_boundary_source_terms!(device(arch), Bx, By, Bz, bcs, eos.ρ₀, cfg.κh, cfg.κv, cfg.𝜈h, cfg.𝜈v,
-                               clock.time, clock.iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
-                               U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data,
-                               G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data)
+    calculate_boundary_source_terms!(device(arch), model)
 
     @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
 
@@ -327,10 +321,12 @@ end
 function idct_permute!(::Val{Dev}, grid::Grid, ϕ, pNHS) where Dev
     @setup Dev
 
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= grid.Nz/2
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                if k <= Nz/2
                     @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
                 else
                     @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
@@ -370,13 +366,28 @@ end
 #
 
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(Dev, Bx, By, Bz, bcs, ρ₀, κh, κv, 𝜈h, 𝜈v,
-                                          t, iteration, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz,
-                                          u, v, w, T, S, Gu, Gv, Gw, GT, GS)
+function calculate_boundary_source_terms!(Dev, model)
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
+    Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
+    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
+
+    clock = model.clock
+    eos =  model.eos
+    cfg = model.configuration
+    bcs = model.boundary_conditions
+    U = model.velocities
+    tr = model.tracers
+    G = model.G
+
+    t, iteration = clock.time, clock.iteration
+    u, v, w, T, S = U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data
+    Gu, Gv, Gw, GT, GS = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
+
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-    𝜈 = 𝜈v
-    κ = κv
+    𝜈 = cfg.𝜈v
+    κ = cfg.κv
 
     u_x_bcs = getproperty(bcs.u, coord)
     v_x_bcs = getproperty(bcs.v, coord)
