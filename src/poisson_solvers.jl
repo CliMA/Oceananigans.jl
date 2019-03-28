@@ -1,5 +1,6 @@
 import FFTW
-using GPUifyLoops
+import GPUifyLoops
+import GPUifyLoops: @launch, @loop
 
 function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
     tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
@@ -167,7 +168,7 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 
     solver.FFT_xy! * f.data  # Calculate FFTˣʸ(f) in place.
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(Val(:GPU), g.Nx, g.Ny, g.Nz, f.data, ϕ.data, solver.kx², solver.ky², solver.kz²)
+    @launch GPUifyLoops.CUDA() f2ϕ!(g, f, ϕ, kx², ky², kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
     ϕ.data[1, 1, 1] = 0
 
     solver.IFFT_xy! * ϕ.data  # Calculate IFFTˣʸ(ϕ̂) in place.
@@ -179,12 +180,10 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 end
 
 "Kernel for computing the solution `ϕ` to Poisson equation for source term `f` on a GPU."
-function f2ϕ!(::Val{Dev}, Nx, Ny, Nz, f, ϕ, kx², ky², kz²) where Dev
-    @setup Dev
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+function f2ϕ!(grid::Grid, f, ϕ, kx², ky², kz²)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds ϕ[i, j, k] = -f[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
             end
         end
