@@ -167,7 +167,7 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 
     solver.FFT_xy! * f.data  # Calculate FFTˣʸ(f) in place.
 
-    @launch device(GPU()) f2ϕ!(g, f, ϕ, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    @launch device(GPU()) f2ϕ!(g, f.data, ϕ.data, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
     ϕ.data[1, 1, 1] = 0
 
     solver.IFFT_xy! * ϕ.data  # Calculate IFFTˣʸ(ϕ̂) in place.
