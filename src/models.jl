@@ -47,7 +47,7 @@ function Model(;
              κ = 1.43e-7, κh = κ, κv = κ,
     # Time stepping
     start_time = 0,
-     iteration = 0, # ?
+     iteration = 0,
     # Model architecture and floating point precision
           arch = CPU(),
     float_type = Float64,
@@ -65,7 +65,7 @@ function Model(;
     # Initialize model basics.
     configuration = ModelConfiguration(νh, νv, κh, κv)
              grid = RegularCartesianGrid(float_type, N, L)
-            clock = Clock(start_time, iteration)
+            clock = Clock{float_type}(start_time, iteration)
 
     # Initialize fields, including source terms and temporary variables.
       velocities = VelocityFields(arch, grid)
