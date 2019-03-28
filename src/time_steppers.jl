@@ -374,7 +374,7 @@ apply_bcs!(::Val{:CPU}, ::Val{:z}, Bx, By, Bz, args...) = apply_z_bcs!(Val(:CPU)
 
 apply_bcs!(::Val{:GPU}, ::Val{:x}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_x_bcs!(Val(:GPU), args...)
 apply_bcs!(::Val{:GPU}, ::Val{:y}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_y_bcs!(Val(:GPU), args...)
-apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) apply_z_bcs!(Val(:GPU), args...)
+apply_bcs!(::Val{:GPU}, ::Val{:z}, Bx, By, Bz, args...) = @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By) apply_z_bcs!(Val(:GPU), args...)
 
 #
 # Physics goes here.
