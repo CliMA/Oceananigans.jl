@@ -8,7 +8,7 @@ Oceananigans is a fast non-hydrostatic ocean model written in Julia that can be 
 Oceananigans is still not an official Julia package. But you can install it using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
 ```julia
 julia>]
-(v1.1) pkg> add https://github.com/ali-ramadhan/Oceananigans.jl.git
+(v1.1) pkg> add https://github.com/climate-machine/Oceananigans.jl.git
 ```
 **Note**: We recommend using Julia 1.1 with Oceananigans.
 
