@@ -125,6 +125,15 @@ struct GPU <: Architecture end
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
+@hascuda begin
+    println("CUDA-enabled GPU(s) detected:")
+    for (gpu, dev) in enumerate(CUDAnative.devices())
+        println(dev)
+    end
+end
+
+# @hascuda CuArrays.allowscalar(false)
+
 abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
