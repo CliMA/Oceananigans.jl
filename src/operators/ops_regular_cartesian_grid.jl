@@ -13,10 +13,20 @@ using Oceananigans:
 @inline δx_e2f(f, Nx, i, j, k) = @inbounds f[incmod1(i, Nx), j, k] - f[i, j, k]
 @inline δx_f2e(f, Nx, i, j, k) = @inbounds f[i, j, k] - f[decmod1(i, Nx), j, k]
 
+@inline δx_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[decmod1(i, g.Nx), j, k]
+@inline δx_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[incmod1(i, g.Nx), j, k] - f[i, j, k]
+@inline δx_e2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[incmod1(i, g.Nx), j, k] - f[i, j, k]
+@inline δx_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[decmod1(i, g.Nx), j, k]
+
 @inline δy_c2f(f, Ny, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, Ny), k]
 @inline δy_f2c(f, Ny, i, j, k) = @inbounds f[i, incmod1(j, Ny), k] - f[i, j, k]
 @inline δy_e2f(f, Ny, i, j, k) = @inbounds f[i, incmod1(j, Ny), k] - f[i, j, k]
 @inline δy_f2e(f, Ny, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, Ny), k]
+
+@inline δy_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, g.Ny), k]
+@inline δy_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, incmod1(j, g.Ny), k] - f[i, j, k]
+@inline δy_e2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, incmod1(j, g.Ny), k] - f[i, j, k]
+@inline δy_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, g.Ny), k]
 
 @inline function δz_c2f(f, Nz, i, j, k)
     if k == 1
@@ -50,15 +60,60 @@ end
     end
 end
 
+
+@inline function δz_c2f(g::RegularCartesianGrid, f, i, j, k)
+    if k == 1
+        return 0
+    else
+        @inbounds return f[i, j, k-1] - f[i, j, k]
+    end
+end
+
+@inline function δz_f2c(g::RegularCartesianGrid, f, i, j, k)
+    if k == g.Nz
+        @inbounds return f[i, j, g.Nz]
+    else
+        @inbounds return f[i, j, k] - f[i, j, k+1]
+    end
+end
+
+@inline function δz_e2f(g::RegularCartesianGrid, f, i, j, k)
+    if k == g.Nz
+        @inbounds return f[i, j, g.Nz]
+    else
+        @inbounds return f[i, j, k] - f[i, j, k+1]
+    end
+end
+
+@inline function δz_f2e(g::RegularCartesianGrid, f, i, j, k)
+    if k == 1
+        return 0
+    else
+        @inbounds return f[i, j, k-1] - f[i, j, k]
+    end
+end
+
 @inline avgx_c2f(f, Nx, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
 @inline avgx_f2c(f, Nx, i, j, k) = @inbounds 0.5 * (f[incmod1(i, Nx), j, k] + f[i, j, k])
 @inline avgx_f2e(f, Nx, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, Nx), j, k])
+
+
+@inline avgx_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, g.Nx), j, k])
+@inline avgx_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[incmod1(i, g.Nx), j, k] + f[i, j, k])
+@inline avgx_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[decmod1(i, g.Nx), j, k])
 
 @inline avgy_c2f(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
 @inline avgy_f2c(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, incmod1(j, Ny), k] + f[i, j, k])
 @inline avgy_f2e(f, Ny, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, Ny), k])
 
+
+@inline avgy_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, g.Ny), k])
+@inline avgy_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, incmod1(j, g.Ny), k] + f[i, j, k])
+@inline avgy_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, g.Ny), k])
+
 @inline avg_xy(u, Nx, Ny, i, j, k) = 0.5 * (avgy_f2c(u, Ny, i, j, k) + avgy_f2c(u, Ny, incmod1(i, Nx), j, k))
+
+@inline avg_xy(g::RegularCartesianGrid, u, i, j, k) = 0.5 * (avgy_f2c(g, u, i, j, k) + avgy_f2c(g, u, incmod1(i, g.Nx), j, k))
 
 @inline function avgz_c2f(f, Nz, i, j, k)
     if k == 1
@@ -77,6 +132,31 @@ end
 end
 
 @inline function avgz_f2e(f, Nz, i, j, k)
+    if k == 1
+        @inbounds return f[i, j, k]
+    else
+        @inbounds return 0.5 * (f[i, j, k] + f[i, j, k-1])
+    end
+end
+
+
+@inline function avgz_c2f(g::RegularCartesianGrid, f, i, j, k)
+    if k == 1
+        @inbounds return f[i, j, k]
+    else
+        @inbounds return  0.5 * (f[i, j, k] + f[i, j, k-1])
+    end
+end
+
+@inline function avgz_f2c(g::RegularCartesianGrid, f, i, j, k)
+    if k == g.Nz
+        @inbounds return 0.5 * f[i, j, k]
+    else
+        @inbounds return 0.5 * (f[i, j, incmod1(k, g.Nz)] + f[i, j, k])
+    end
+end
+
+@inline function avgz_f2e(g::RegularCartesianGrid, f, i, j, k)
     if k == 1
         @inbounds return f[i, j, k]
     else
@@ -113,6 +193,15 @@ end
 
 @inline function div_c2f(fx, fy, fz, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
     (δx_c2f(fx, Nx, i, j, k) / Δx) + (δy_c2f(fy, Ny, i, j, k) / Δy) + (δz_c2f(fz, Nz, i, j, k) / Δz)
+end
+
+
+@inline function div_f2c(g::RegularCartesianGrid, fx, fy, fz, i, j, k)
+    (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
+end
+
+@inline function div_c2f(g::RegularCartesianGrid, fx, fy, fz, i, j, k)
+    (δx_c2f(g, fx, i, j, k) / g.Δx) + (δy_c2f(g, fy, i, j, k) / g.Δy) + (δz_c2f(g, fz, i, j, k) / g.Δz)
 end
 
 @inline function δx_f2c_ab̄ˣ(a, b, Nx, i, j, k)
