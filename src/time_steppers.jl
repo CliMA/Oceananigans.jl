@@ -161,29 +161,29 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v,
                                             + fCor*avg_xy(grid, v, i, j, k)
                                             - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
                                             + 𝜈∇²u(grid, u, 𝜈h, 𝜈v, i, j, k)
-                                            + F.u(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+                                            + F.u(grid, u, v, w, T, S, i, j, k))
 
                 # v-momentum equation
                 @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
                                             - fCor*avg_xy(grid, u, i, j, k)
                                             - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
                                             + 𝜈∇²v(grid, v, 𝜈h, 𝜈v, i, j, k)
-                                            + F.v(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+                                            + F.v(grid, u, v, w, T, S, i, j, k))
 
                 # w-momentum equation: comment about how pressure and buoyancy are handled
                 @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
                                             + 𝜈∇²w(grid, w, 𝜈h, 𝜈v, i, j, k)
-                                            + F.w(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+                                            + F.w(grid, u, v, w, T, S, i, j, k))
 
                 # temperature equation
                 @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
                                             + κ∇²(grid, T, κh, κv, i, j, k)
-                                            + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+                                            + F.T(grid, u, v, w, T, S, i, j, k))
 
                 # salinity equation
                 @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
                                             + κ∇²(grid, S, κh, κv, i, j, k)
-                                            + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
+                                            + F.S(grid, u, v, w, T, S, i, j, k))
             end
         end
     end
