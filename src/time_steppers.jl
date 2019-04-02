@@ -157,32 +157,32 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v,
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # u-momentum equation
-                @inbounds Gu[i, j, k] = (-u∇u(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            + fCor*avg_xy(v, Nx, Ny, i, j, k)
-                                            - δx_c2f(pHY′, Nx, i, j, k) / (Δx * ρ₀)
-                                            + 𝜈∇²u(u, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
+                                            + fCor*avg_xy(grid, v, i, j, k)
+                                            - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
+                                            + 𝜈∇²u(grid, u, 𝜈h, 𝜈v, i, j, k)
                                             + F.u(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 # v-momentum equation
-                @inbounds Gv[i, j, k] = (-u∇v(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            - fCor*avg_xy(u, Nx, Ny, i, j, k)
-                                            - δy_c2f(pHY′, Ny, i, j, k) / (Δy * ρ₀)
-                                            + 𝜈∇²v(v, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
+                                            - fCor*avg_xy(grid, u, i, j, k)
+                                            - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
+                                            + 𝜈∇²v(grid, v, 𝜈h, 𝜈v, i, j, k)
                                             + F.v(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 # w-momentum equation: comment about how pressure and buoyancy are handled
-                @inbounds Gw[i, j, k] = (-u∇w(u, v, w, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            + 𝜈∇²w(w, 𝜈h, 𝜈v, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
+                                            + 𝜈∇²w(grid, w, 𝜈h, 𝜈v, i, j, k)
                                             + F.w(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 # temperature equation
-                @inbounds GT[i, j, k] = (-div_flux(u, v, w, T, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            + κ∇²(T, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
+                                            + κ∇²(grid, T, κh, κv, i, j, k)
                                             + F.T(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
 
                 # salinity equation
-                @inbounds GS[i, j, k] = (-div_flux(u, v, w, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
-                                            + κ∇²(S, κh, κv, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
+                                            + κ∇²(grid, S, κh, κv, i, j, k)
                                             + F.S(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k))
             end
         end
@@ -208,14 +208,11 @@ end
 
 "Store previous value of the source term and calculate current source term."
 function calculate_source_term_divergence!(::CPU, grid::Grid, Gu, Gv, Gw, RHS)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-                @inbounds RHS[i, j, k] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                @inbounds RHS[i, j, k] = div_f2c(grid, Gu, Gv, Gw, i, j, k)
             end
         end
     end
@@ -224,17 +221,15 @@ function calculate_source_term_divergence!(::CPU, grid::Grid, Gu, Gv, Gw, RHS)
 end
 
 function calculate_source_term_divergence!(::GPU, grid::Grid, Gu, Gv, Gw, RHS)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation which is the first step in the DCT.
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
+                # which is the first step in the DCT.
                 if CUDAnative.ffs(k) == 1  # isodd(k)
-                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(grid, Gu, Gv, Gw, i, j, k)
                 else
-                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(Gu, Gv, Gw, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(grid, Gu, Gv, Gw, i, j, k)
                 end
             end
         end
@@ -245,7 +240,6 @@ end
 
 function idct_permute!(grid::Grid, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -263,15 +257,12 @@ end
 
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(pNHS, Nx, i, j, k) / Δx)) * Δt
-                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(pNHS, Ny, i, j, k) / Δy)) * Δt
-                @inbounds w[i, j, k] = w[i, j, k] + (Gw[i, j, k] - (δz_c2f(pNHS, Nz, i, j, k) / Δz)) * Δt
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
+                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
+                @inbounds w[i, j, k] = w[i, j, k] + (Gw[i, j, k] - (δz_c2f(grid, pNHS, i, j, k) / grid.Δz)) * Δt
                 @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
                 @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
             end

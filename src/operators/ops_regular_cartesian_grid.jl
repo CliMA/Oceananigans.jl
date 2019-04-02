@@ -405,7 +405,7 @@ end
     end
 end
 
-@inline function δz²_c2f2c(g::RegularCartesianGrid, f::CellField, i, j, k)
+@inline function δz²_c2f2c(g::RegularCartesianGrid, f, i, j, k)
     if k == g.Nz
         return δz_c2f(g, f, i, j, k)
     else
