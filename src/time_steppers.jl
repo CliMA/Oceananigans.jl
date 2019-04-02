@@ -68,12 +68,8 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     tb = (threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
     for n in 1:Nt
-        # Adams-Bashforth (AB2) parameter.
-        χ = ifelse(model.clock.iteration == 0, -0.5, 0.125)
+        χ = ifelse(model.clock.iteration == 0, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
 
-        # time_step_kernels!(arch(), model, χ, Δt)
-
-        ###
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) update_buoyancy!(grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
@@ -90,7 +86,6 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         end
 
         @launch device(arch) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt, threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        ###
 
         clock.time += Δt
         clock.iteration += 1
@@ -108,120 +103,6 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
 end
 
 time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
-
-"Execute one time-step on the CPU."
-function time_step_kernels!(arch::CPU, model, χ, Δt)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
-    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
-
-    grid = model.grid
-    cfg = model.configuration
-    bcs = model.boundary_conditions
-    clock = model.clock
-
-    G = model.G
-    Gp = model.Gp
-    constants = model.constants
-    eos =  model.eos
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    forcing = model.forcing
-    poisson_solver = model.poisson_solver
-
-    δρ = model.stepper_tmp.fC1
-    RHS = model.stepper_tmp.fCC1
-    ϕ = model.stepper_tmp.fCC2
-
-    gΔz = model.constants.g * model.grid.Δz
-    fCor = model.constants.f
-
-    uvw = U.u.data, U.v.data, U.w.data
-    TS = tr.T.data, tr.S.data
-    Guvw = G.Gu.data, G.Gv.data, G.Gw.data
-
-    # Source terms at current (Gⁿ) and previous (G⁻) time steps.
-    Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
-    G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
-
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-
-    store_previous_source_terms!(device(arch), grid, Gⁿ..., G⁻...)
-
-    update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
-
-    calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
-
-    calculate_boundary_source_terms!(device(arch), model)
-
-    adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
-
-    calculate_source_term_divergence!(device(arch), grid, Guvw..., RHS.data)
-
-    solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
-    @. pr.pNHS.data = real(ϕ.data)
-
-    update_velocities_and_tracers!(device(arch), grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-
-    return nothing
-end
-
-"Execute one time-step on the GPU."
-function time_step_kernels!(arch::GPU, model, χ, Δt)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
-    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
-
-    grid = model.grid
-    cfg = model.configuration
-    bcs = model.boundary_conditions
-    clock = model.clock
-
-    G = model.G
-    Gp = model.Gp
-    constants = model.constants
-    eos =  model.eos
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    forcing = model.forcing
-    poisson_solver = model.poisson_solver
-
-    δρ = model.stepper_tmp.fC1
-    RHS = model.stepper_tmp.fCC1
-    ϕ = model.stepper_tmp.fCC2
-
-    gΔz = model.constants.g * model.grid.Δz
-    fCor = model.constants.f
-
-    uvw = U.u.data, U.v.data, U.w.data
-    TS = tr.T.data, tr.S.data
-    Guvw = G.Gu.data, G.Gv.data, G.Gw.data
-
-    # Source terms at current (Gⁿ) and previous (G⁻) time steps.
-    Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
-    G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(device(arch), grid, Gⁿ..., G⁻...)
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_buoyancy!(device(arch), grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data)
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(device(arch), grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
-
-    calculate_boundary_source_terms!(device(arch), model)
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(device(arch), grid, Gⁿ..., G⁻..., χ)
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_source_term_divergence!(device(arch), grid, Guvw..., RHS.data)
-
-    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, grid, RHS, ϕ)
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(device(arch), grid, ϕ.data, pr.pNHS.data)
-
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(device(arch), grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-
-    return nothing
-end
 
 """Store previous source terms before updating them."""
 function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS)
