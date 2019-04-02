@@ -251,23 +251,22 @@ float_types = [Float32, Float64]
     #         @test test_flux_budget(fld)
     #     end
     # end
-    #
-    # @testset "Forcing" begin
-    #     println("  Testing forcings...")
-    #     add_one(args...) = 1.0
-    #     function test_forcing(fld)
-    #         kwarg = Dict(Symbol(:F, fld)=>add_one)
-    #         forcing = Forcing(; kwarg...)
-    #         f = getfield(forcing, fld)
-    #         f() == 1.0
-    #     end
-    #
-    #     for fld in (:u, :v, :w, :T, :S)
-    #         @test test_forcing(fld)
-    #     end
-    # end
-    #
-    #
+
+    @testset "Forcing" begin
+        println("  Testing forcings...")
+        add_one(args...) = 1.0
+        function test_forcing(fld)
+            kwarg = Dict(Symbol(:F, fld)=>add_one)
+            forcing = Forcing(; kwarg...)
+            f = getfield(forcing, fld)
+            f() == 1.0
+        end
+
+        for fld in (:u, :v, :w, :T, :S)
+            @test test_forcing(fld)
+        end
+    end
+
     @testset "Output writers" begin
         println("  Testing output writers...")
         include("test_output_writers.jl")
