@@ -221,9 +221,10 @@ function calculate_source_term_divergence!(::CPU, grid::Grid, Gu, Gv, Gw, RHS)
 end
 
 function calculate_source_term_divergence!(::GPU, grid::Grid, Gu, Gv, Gw, RHS)
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
                 # which is the first step in the DCT.
                 if CUDAnative.ffs(k) == 1  # isodd(k)

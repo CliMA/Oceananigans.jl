@@ -5,13 +5,11 @@ using GPUifyLoops
 
 using Oceananigans.Operators
 
-function ∇²_ppn!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, f, ∇²f) where Dev
-    @setup Dev
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ∇²f[i, j, k] = ∇²_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+function ∇²_ppn!(grid::RegularCartesianGrid, f, ∇²f)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds ∇²f[i, j, k] = ∇²_ppn(grid, f, i, j, k)
             end
         end
     end
@@ -62,7 +60,7 @@ function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
     solver = PoissonSolver(g, RHS, planner_flag)
 
     solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(Val(:CPU), Nx, Ny, Nz, g.Δx, g.Δy, g.Δz, ϕ, ∇²ϕ)
+    ∇²_ppn!(g, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
 end
