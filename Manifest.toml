@@ -76,9 +76,9 @@ version = "2.0.1+"
 
 [[Cassette]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Test"]
-git-tree-sha1 = "1d00c35118babf85c4a9a72c3d3550d498b64a03"
+git-tree-sha1 = "5536cf95a81ff784f4d1eca2df39bb2629a7ee59"
 uuid = "7057c7e9-c182-5462-911a-8362d720325c"
-version = "0.2.2"
+version = "0.2.3"
 
 [[CommonSubexpressions]]
 deps = ["Test"]
@@ -184,8 +184,8 @@ version = "0.6.1"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "4b0bd8981df6da871c4e2c0c4fa34e113d4d90be"
-repo-rev = "vc/interactive"
+git-tree-sha1 = "c00875342fb0d84b4ad894fc684e41bb973d1431"
+repo-rev = "master"
 repo-url = "https://github.com/vchuravy/GPUifyLoops.jl.git"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
 version = "0.2.0"
@@ -294,9 +294,9 @@ version = "0.3.2"
 
 [[NetCDF]]
 deps = ["BinDeps", "CondaBinDeps", "Formatting", "Libdl", "Random", "Test"]
-git-tree-sha1 = "0cf8e9276c5c426e43dad43863a4e86d6ce62c17"
+git-tree-sha1 = "6497cb9cb80aa5b3bb6d05b21abc924cb0ca554c"
 uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
-version = "0.7.2"
+version = "0.7.3"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
