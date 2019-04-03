@@ -117,7 +117,15 @@ float_types = [Float32, Float64]
             println("    Testing 2D operators...")
             Nx, Ny, Nz = 32, 16, 8
             Lx, Ly, Lz = 100, 100, 100
+
+            grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
             A3 = rand(Nx, Ny, Nz)
+
+            A2yz = A3[1:1, :, :]  # A yz-slice with Nx==1.
+            grid_yz = RegularCartesianGrid((1, Ny, Nz), (Lx, Ly, Lz))
+
+            A2xz = A3[:, 1:1, :]  # An xz-slice with Ny==1.
+            grid_xz = RegularCartesianGrid((Nx, 1, Nz), (Lx, Ly, Lz))
 
             test_indices_3d = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
                                (2, 10, 4), (31, 5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),  # Borderlands
@@ -132,24 +140,22 @@ float_types = [Float32, Float64]
                                   (1, 1, 5), (5, 1, 1), (5, 1, 5), (17, 1, 4),
                                   (31, 1, 7), (31, 1, 8), (32, 1, 7), (32, 1, 8)]
 
-            A2yz = A3[1:1, :, :]  # A yz-slice with Nx==1.
             for idx in test_indices_2d_yz
-                @test δx_f2c(A2yz, 1, idx...) ≈ 0
-                @test δx_c2f(A2yz, 1, idx...) ≈ 0
-                @test δy_f2c(A2yz, Ny, idx...) ≈ δy_f2c(A3, Ny, idx...)
-                @test δy_c2f(A2yz, Ny, idx...) ≈ δy_c2f(A3, Ny, idx...)
-                @test δz_f2c(A2yz, Nz, idx...) ≈ δz_f2c(A3, Nz, idx...)
-                @test δz_c2f(A2yz, Nz, idx...) ≈ δz_c2f(A3, Nz, idx...)
+                @test δx_f2c(grid_yz, A2yz, idx...) ≈ 0
+                @test δx_c2f(grid_yz, A2yz, idx...) ≈ 0
+                @test δy_f2c(grid_yz, A2yz, idx...) ≈ δy_f2c(grid_yz, A3, idx...)
+                @test δy_c2f(grid_yz, A2yz, idx...) ≈ δy_c2f(grid_yz, A3, idx...)
+                @test δz_f2c(grid_yz, A2yz, idx...) ≈ δz_f2c(grid_yz, A3, idx...)
+                @test δz_c2f(grid_yz, A2yz, idx...) ≈ δz_c2f(grid_yz, A3, idx...)
             end
 
-            A2xz = A3[:, 1:1, :]  # An xz-slice with Ny==1.
             for idx in test_indices_2d_xz
-                @test δx_f2c(A2xz, Nx, idx...) ≈ δx_f2c(A3, Nx, idx...)
-                @test δx_c2f(A2xz, Nx, idx...) ≈ δx_c2f(A3, Nx, idx...)
-                @test δy_f2c(A2xz, 1, idx...) ≈ 0
-                @test δy_c2f(A2xz, 1, idx...) ≈ 0
-                @test δz_f2c(A2xz, Nz, idx...) ≈ δz_f2c(A3, Nz, idx...)
-                @test δz_c2f(A2xz, Nz, idx...) ≈ δz_c2f(A3, Nz, idx...)
+                @test δx_f2c(grid_xz, A2xz, idx...) ≈ δx_f2c(grid_xz, A3, idx...)
+                @test δx_c2f(grid_xz, A2xz, idx...) ≈ δx_c2f(grid_xz, A3, idx...)
+                @test δy_f2c(grid_xz, A2xz, idx...) ≈ 0
+                @test δy_c2f(grid_xz, A2xz, idx...) ≈ 0
+                @test δz_f2c(grid_xz, A2xz, idx...) ≈ δz_f2c(grid_xz, A3, idx...)
+                @test δz_c2f(grid_xz, A2xz, idx...) ≈ δz_c2f(grid_xz, A3, idx...)
             end
         end
     end
