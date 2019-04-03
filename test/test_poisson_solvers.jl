@@ -5,13 +5,11 @@ using GPUifyLoops
 
 using Oceananigans.Operators
 
-function ∇²_ppn!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, f, ∇²f) where Dev
-    @setup Dev
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ∇²f[i, j, k] = ∇²_ppn(f, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+function ∇²_ppn!(grid::RegularCartesianGrid, f, ∇²f)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds ∇²f[i, j, k] = ∇²_ppn(grid, f, i, j, k)
             end
         end
     end
@@ -19,14 +17,14 @@ function ∇²_ppn!(::Val{Dev}, Nx, Ny, Nz, Δx, Δy, Δz, f, ∇²f) where Dev
     @synchronize
 end
 
-function test_mixed_fft_commutativity(N)
+function mixed_fft_commutes(N)
     A = rand(N, N, N)
     Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
     Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
     Ã1 ≈ Ã2
 end
 
-function test_mixed_ifft_commutativity(N)
+function mixed_ifft_commutes(N)
     A = rand(N, N, N)
 
     Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
@@ -39,22 +37,20 @@ function test_mixed_ifft_commutativity(N)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
-function test_fftw_planner(mm, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
-
-    RHS = CellField(mm, g, Complex{eltype(g)})
-    solver = PoissonSolver(g, RHS, FFTW.PATIENT)
-
-    true  # Just making sure our PoissonSolver does not spit an error.
+function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+    RHS = CellField(Complex{ft}, CPU(), g)
+    solver = PoissonSolver(g, RHS, FFTW.ESTIMATE)
+    true  # Just making sure our PoissonSolver does not error/crash.
 end
 
-function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(mm, (Nx, Ny, Nz), (100, 100, 100))
+function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
+    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
 
-    RHS = CellField(mm, g, Complex{eltype(g)})
-    RHS_orig = CellField(mm, g, Complex{eltype(g)})
-    ϕ = CellField(mm, g, Complex{eltype(g)})
-    ∇²ϕ = CellField(mm, g, Complex{eltype(g)})
+    RHS = CellField(Complex{ft}, CPU(), g)
+    RHS_orig = CellField(Complex{ft}, CPU(), g)
+    ϕ = CellField(Complex{ft}, CPU(), g)
+    ∇²ϕ = CellField(Complex{ft}, CPU(), g)
 
     RHS.data .= rand(Nx, Ny, Nz)
     RHS.data .= RHS.data .- mean(RHS.data)
@@ -64,7 +60,7 @@ function test_3d_poisson_ppn_planned!_div_free(mm, Nx, Ny, Nz, planner_flag)
     solver = PoissonSolver(g, RHS, planner_flag)
 
     solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(Val(mm.arch), Nx, Ny, Nz, g.Δx, g.Δy, g.Δz, ϕ, ∇²ϕ)
+    ∇²_ppn!(g, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
 end

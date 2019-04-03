@@ -45,13 +45,11 @@ function run_deep_convection_golden_master_tests()
 
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2)
 
-    function cooling_disk(u, v, w, T, S, Nx, Ny, Nz, Δx, Δy, Δz, i, j, k)
+    function cooling_disk(grid, u, v, w, T, S, i, j, k)
         if k == 1
-            x = i*Δx
-            y = j*Δy
-            Lx = Nx*Δx
-            Ly = Ny*Δy
-            r² = (x - Lx/2)^2 + (y - Ly/2)^2
+            x = i*grid.Δx
+            y = j*grid.Δy
+            r² = (x - grid.Lx/2)^2 + (y - grid.Ly/2)^2
             if r² < 600^2
                 return -4.5e-6
             else

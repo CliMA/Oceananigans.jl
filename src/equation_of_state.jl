@@ -7,16 +7,16 @@ oceanography as the expansion and contraction β coefficients vary with
 temperature, pressure, and salinity.
 =#
 
-struct LinearEquationOfState <: EquationOfState
-    ρ₀::Float64  # Reference density [kg/m³]
-    βT::Float64  # First thermal expansion coefficient [1/K]
-    βS::Float64  # Haline contraction coefficient [1/ppt]
-    βp::Float64  # Compressibility coefficient [ms²/kg]
-    T₀::Float64  # Reference temperature [K]
-    S₀::Float64  # Reference salinity [g/kg]
-    p₀::Float64  # Reference pressure [Pa].
-    cᵥ::Float64  # Isobaric mass heat capacity [J / kg·K].
-    αᵥ::Float64  # Volumetric coefficient of thermal expansion for water [K⁻¹].
+struct LinearEquationOfState{T<:AbstractFloat} <: EquationOfState
+    ρ₀::T  # Reference density [kg/m³]
+    βT::T  # First thermal expansion coefficient [1/K]
+    βS::T  # Haline contraction coefficient [1/ppt]
+    βp::T  # Compressibility coefficient [ms²/kg]
+    T₀::T  # Reference temperature [K]
+    S₀::T  # Reference salinity [g/kg]
+    p₀::T  # Reference pressure [Pa].
+    cᵥ::T  # Isobaric mass heat capacity [J / kg·K].
+    αᵥ::T  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 end
 
 function LinearEquationOfState(;
@@ -28,8 +28,7 @@ function LinearEquationOfState(;
     S₀ = 35,
     p₀ = 1e5,
     cᵥ = 4181.3,
-    αᵥ = 2.07e-4
-    )
+    αᵥ = 2.07e-4)
 
-    LinearEquationOfState(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
+    LinearEquationOfState{Float64}(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
 end

@@ -3,7 +3,12 @@ module Oceananigans
 export
     # Helper variables and macros for determining if machine is CUDA-enabled.
     HAVE_CUDA,
-    hascuda,
+    @hascuda,
+
+    Architecture,
+    CPU,
+    GPU,
+    device,
 
     # Planetary Constants
     ConstantsCollection,
@@ -56,17 +61,15 @@ export
     # Poisson solver
     PoissonSolver,
     PoissonSolverGPU,
+    init_poisson_solver,
     solve_poisson_3d_ppn,
     solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
     solve_poisson_3d_ppn_gpu!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. metadata, configuration, clock, etc.
-    ModelMetadata,
-    _ModelMetadata,
+    # Model helper structs, e.g. configuration, clock, etc.
     ModelConfiguration,
-    _ModelConfiguration,
     Clock,
     Model,
 
@@ -89,17 +92,19 @@ export
     # Package utilities
     prettytime
 
+# Standard library modules
 using
     Statistics,
     Printf
 
+# Third-party modules
 using
     FFTW,
     JLD,
     NetCDF,
     StaticArrays
 
-using
+import
     GPUifyLoops
 
 const HAVE_CUDA = try
@@ -113,6 +118,13 @@ macro hascuda(ex)
     return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
 end
 
+abstract type Architecture end
+struct CPU <: Architecture end
+struct GPU <: Architecture end
+
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
+
 @hascuda begin
     println("CUDA-enabled GPU(s) detected:")
     for (gpu, dev) in enumerate(CUDAnative.devices())
@@ -120,7 +132,7 @@ end
     end
 end
 
-@hascuda CuArrays.allowscalar(false)
+# @hascuda CuArrays.allowscalar(false)
 
 abstract type Metadata end
 abstract type ConstantsCollection end
@@ -133,7 +145,6 @@ abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type AbstractPoissonSolver end
 
-include("model_metadata.jl")
 include("model_configuration.jl")
 include("clock.jl")
 include("planetary_constants.jl")
