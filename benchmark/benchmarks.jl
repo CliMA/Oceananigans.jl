@@ -12,9 +12,12 @@ Ns = [# (1, 1, 512),
       (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
 
 float_types = [Float32, Float64]  # Float types to benchmark.
-archs = [:CPU]  # Architectures to benchmark on.
+archs = [CPU()]  # Architectures to benchmark on.
 
-Oceananigans.@hascuda archs = [:CPU, :GPU]  # Benchmark GPU on CUDA-enabled computers.
+@hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
+
+arch_name(::CPU) = "CPU"
+arch_name(::GPU) = "GPU"
 
 benchmark_name(N, id)               = benchmark_name(N, id, nothing, nothing)
 benchmark_name(N, id, arch::Symbol) = benchmark_name(N, id, arch, nothing)
@@ -22,7 +25,7 @@ benchmark_name(N, id, ft::DataType) = benchmark_name(N, id, nothing, ft)
 
 function benchmark_name(N, id, arch, ft; npad=3)
     Nx, Ny, Nz = N
-    print_arch = typeof(arch) == Symbol ? true : false
+    print_arch = typeof(arch) <: Architecture ? true : false
     print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
 
     bn = ""
@@ -30,8 +33,10 @@ function benchmark_name(N, id, arch, ft; npad=3)
     bn *= " $id"
 
     if print_arch && print_ft
+        arch = arch_name(arch)
         bn *= " ($arch, $ft)"
     elseif print_arch && !print_ft
+        arch = arch_name(arch)
         bn *= " ($arch)"
     elseif !print_arch && print_ft
         bn *= " ($ft)"
@@ -48,6 +53,7 @@ for arch in archs, float_type in float_types, N in Ns
     time_step!(model, Ni, 1)  # First 1-2 iterations usually slower.
 
     bn =  benchmark_name(N, "static ocean", arch, float_type)
+    @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
         @timeit timer bn time_step!(model, 1, 1)
     end
@@ -59,18 +65,18 @@ bid = "static ocean"  # Benchmark ID. We only have one right now.
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
-    bn32 = benchmark_name(N, bid, :CPU, Float32)
-    bn64 = benchmark_name(N, bid, :CPU, Float64)
+    bn32 = benchmark_name(N, bid, CPU(), Float32)
+    bn64 = benchmark_name(N, bid, CPU(), Float64)
     t32  = TimerOutputs.time(timer[bn32])
     t64  = TimerOutputs.time(timer[bn64])
     @printf("%s: %.3f\n", benchmark_name(N, bid), t64/t32)
 end
 
-Oceananigans.@hascuda begin
+@hascuda begin
     println("\nGPU Float64 -> Float32 speedup:")
     for N in Ns
-        bn32 = benchmark_name(N, bid, :GPU, Float32)
-        bn64 = benchmark_name(N, bid, :GPU, Float64)
+        bn32 = benchmark_name(N, bid, GPU(), Float32)
+        bn64 = benchmark_name(N, bid, GPU(), Float64)
         t32  = TimerOutputs.time(timer[bn32])
         t64  = TimerOutputs.time(timer[bn64])
         @printf("%s: %.3f\n", benchmark_name(N, bid), t64/t32)
@@ -78,8 +84,8 @@ Oceananigans.@hascuda begin
 
     println("\nCPU -> GPU speedup:")
     for N in Ns, ft in float_types
-        bn_cpu = benchmark_name(N, bid, :CPU, ft)
-        bn_gpu = benchmark_name(N, bid, :GPU, ft)
+        bn_cpu = benchmark_name(N, bid, CPU(), ft)
+        bn_gpu = benchmark_name(N, bid, GPU(), ft)
         t_cpu  = TimerOutputs.time(timer[bn_cpu])
         t_gpu  = TimerOutputs.time(timer[bn_gpu])
         @printf("%s: %.3f\n", benchmark_name(N, bid, ft), t_cpu/t_gpu)
