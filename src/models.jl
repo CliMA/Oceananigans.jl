@@ -1,5 +1,4 @@
-mutable struct Model
-    metadata::ModelMetadata
+mutable struct Model{A<:Architecture}
     configuration::ModelConfiguration
     boundary_conditions::ModelBoundaryConditions
     constants::PlanetaryConstants
@@ -10,7 +9,7 @@ mutable struct Model
     pressures::PressureFields
     G::SourceTerms
     Gp::SourceTerms
-    forcing  # ::Forcing  # No type so we can set to nothing while checkpointing.
+    forcing  # ::Forcing  # No type so we can set it to nothing while checkpointing.
     stepper_tmp::StepperTemporaryFields
     poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
@@ -48,9 +47,9 @@ function Model(;
              κ = 1.43e-7, κh = κ, κv = κ,
     # Time stepping
     start_time = 0,
-     iteration = 0, # ?
+     iteration = 0,
     # Model architecture and floating point precision
-          arch = :CPU,
+          arch = CPU(),
     float_type = Float64,
      constants = Earth(),
     # Equation of State
@@ -62,31 +61,23 @@ function Model(;
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
 )
-    
-    arch == :GPU && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    
+
+    arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+
     # Initialize model basics.
-         metadata = ModelMetadata(arch, float_type)
     configuration = ModelConfiguration(νh, νv, κh, κv)
-             grid = RegularCartesianGrid(metadata, N, L)
-            clock = Clock(start_time, iteration)
+             grid = RegularCartesianGrid(float_type, N, L)
+            clock = Clock{float_type}(start_time, iteration)
 
     # Initialize fields, including source terms and temporary variables.
-      velocities = VelocityFields(metadata, grid)
-         tracers = TracerFields(metadata, grid)
-       pressures = PressureFields(metadata, grid)
-               G = SourceTerms(metadata, grid)
-              Gp = SourceTerms(metadata, grid)
-     stepper_tmp = StepperTemporaryFields(metadata, grid)
+      velocities = VelocityFields(arch, grid)
+         tracers = TracerFields(arch, grid)
+       pressures = PressureFields(arch, grid)
+               G = SourceTerms(arch, grid)
+              Gp = SourceTerms(arch, grid)
+     stepper_tmp = StepperTemporaryFields(arch, grid)
 
-    # Initialize Poisson solver.
-    if metadata.arch == :CPU
-        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.MEASURE)
-    elseif metadata.arch == :GPU
-        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
-    end
+     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
 
     # Default initial condition
     velocities.u.data .= 0
@@ -95,13 +86,15 @@ function Model(;
     tracers.S.data .= eos.S₀
     tracers.T.data .= eos.T₀
 
-    Model(metadata, configuration, boundary_conditions, constants, eos, grid,
-          velocities, tracers, pressures, G, Gp, forcing,
-          stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+    Model{typeof(arch)}(configuration, boundary_conditions, constants, eos, grid,
+                        velocities, tracers, pressures, G, Gp, forcing,
+                        stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
 end
 
 "Legacy constructor for `Model`."
 Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
 
+arch(model::Model{A}) where A <: Architecture = A
+float_type(m::Model) = eltype(model.grid)
 
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)

@@ -6,8 +6,12 @@
 
     Forcing(; Fu=zero_func, Fv=zero_func, Fw=zero_func, FT=zero_func, FS=zero_func)
 
-Construct a `Forcing` to specify functions that force `u`, `v`, `w`, `T`, and `S`. 
+Construct a `Forcing` to specify functions that force `u`, `v`, `w`, `T`, and `S`.
 Forcing functions default to `zero_func`, which does nothing.
+
+Forcing functions have the following function signature:
+    f(grid::Grid, u::A, v::A, w::A, T::A, S::A, i::Int, j::Int, k::Int)
+where A <: AbstractArray, e.g. Array or CuArray.
 """
 struct Forcing{Tu,Tv,Tw,TT,TS}
     u::Tu

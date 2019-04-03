@@ -1,5 +1,15 @@
 import FFTW
-using GPUifyLoops
+import GPUifyLoops: @launch, @loop, @synchronize
+
+function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
+    PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
+end
+
+function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
+    tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
+    PoissonSolverGPU(g, tmp_rhs)
+end
 
 # Translations to print FFT timing.
 let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
@@ -14,7 +24,7 @@ end
     PoissonSolver(grid, example_field, planner_flag; verbose=false)
 
 Return a `PoissonSolver` on `grid`, using `example_field` and `planner_flag`
-to plan fast transforms. 
+to plan fast transforms.
 """
 struct PoissonSolver{T<:AbstractArray} <: AbstractPoissonSolver
     kx²::T
@@ -53,17 +63,17 @@ end
 
 """
     solve_poisson_3d_ppn_planned!(args...)
-    
+
 Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
 FFTs and DCTs.
 
   Args
   ----
-  
+
       solver : PoissonSolver
            g : solver grid
            f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation 
+           ϕ : Solution to Poisson equation
 """
 function solve_poisson_3d_ppn_planned!(solver::PoissonSolver, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     solver.DCT!*f.data  # Calculate DCTᶻ(f) in place.
@@ -135,19 +145,19 @@ end
 
 """
     solve_poisson_3d_ppn_gpu_planned!(args...)
-    
+
 Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
 CuFFTs on a GPU.
 
   Args
   ----
-  
+
       Tx, Ty : Thread size in x, y
   Bx, By, Bz : Block size in x, y, z
       solver : PoissonSolverGPU
            g : solver grid
            f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation 
+           ϕ : Solution to Poisson equation
 """
 function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
     # Calculate DCTᶻ(f) in place using the FFT.
@@ -157,7 +167,7 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 
     solver.FFT_xy! * f.data  # Calculate FFTˣʸ(f) in place.
 
-    @hascuda @cuda threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(Val(:GPU), g.Nx, g.Ny, g.Nz, f.data, ϕ.data, solver.kx², solver.ky², solver.kz²)
+    @launch device(GPU()) f2ϕ!(g, f.data, ϕ.data, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
     ϕ.data[1, 1, 1] = 0
 
     solver.IFFT_xy! * ϕ.data  # Calculate IFFTˣʸ(ϕ̂) in place.
@@ -169,16 +179,13 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 end
 
 "Kernel for computing the solution `ϕ` to Poisson equation for source term `f` on a GPU."
-function f2ϕ!(::Val{Dev}, Nx, Ny, Nz, f, ϕ, kx², ky², kz²) where Dev
-    @setup Dev
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+function f2ϕ!(grid::Grid, f, ϕ, kx², ky², kz²)
+    @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds ϕ[i, j, k] = -f[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
             end
         end
     end
-
     @synchronize
 end

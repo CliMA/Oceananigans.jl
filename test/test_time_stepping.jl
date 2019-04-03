@@ -1,12 +1,13 @@
-function test_basic_timestepping(arch, ft)
+function time_stepping_works(arch, ft)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 1, 2, 3
     Δt = 1
+
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=ft)
     time_step!(model, 1, Δt)
 
-    # Just testing that no errors happen when time stepping.
-    return typeof(model) == Model
+    # Just testing that no errors/crashes happen when time stepping.
+    return true
 end
 
 function run_first_AB2_time_step_tests(arch, ft)

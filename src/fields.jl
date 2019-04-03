@@ -3,148 +3,120 @@ import Base:
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
-@hascuda using CuArrays
-
 """
-    CellField{T,G<:Grid{T}} <: Field
+    CellField{A<:AbstractArray, G<:Grid} <: Field
 
-A cell-centered field defined on a grid `G` whose values are stored as
-floating-point values of type T.
+A cell-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct CellField{T<:AbstractArray} <: Field
-    metadata::ModelMetadata
-    grid::Grid
-    data::T
+struct CellField{A<:AbstractArray, G<:Grid} <: Field
+    data::A
+    grid::G
+end
+
+function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = zeros(T, size(g))
+    CellField{typeof(data), typeof(g)}(data, g)
+end
+
+function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    CellField{typeof(data), typeof(g)}(data, g)
+end
+
+function CellField(T, ::CPU, g::RegularCartesianGrid)
+    data = zeros(T, size(g))
+    CellField{typeof(data), typeof(g)}(data, g)
+end
+
+function CellField(T, ::GPU, g::RegularCartesianGrid)
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    CellField{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldX{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
 
-An x-face-centered field defined on a grid `G` whose values are stored as
-floating-point values of type T.
+An x-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldX{T<:AbstractArray} <: FaceField
-    metadata::ModelMetadata
-    grid::Grid
-    data::T
+struct FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
+    data::A
+    grid::G
+end
+
+function FaceFieldX(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = zeros(T, size(g))
+    FaceFieldX{typeof(data), typeof(g)}(data, g)
+end
+
+function FaceFieldX(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    FaceFieldX{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldY{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
 
-A y-face-centered field defined on a grid `G` whose values are stored as
-floating-point values of type T.
+A y-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldY{T<:AbstractArray} <: FaceField
-    metadata::ModelMetadata
-    grid::Grid
-    data::T
+struct FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
+    data::A
+    grid::G
+end
+
+function FaceFieldY(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = zeros(T, size(g))
+    FaceFieldY{typeof(data), typeof(g)}(data, g)
+end
+
+function FaceFieldY(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    FaceFieldY{typeof(data), typeof(g)}(data, g)
 end
 
 """
-    FaceFieldZ{T,G<:Grid{T}} <: FaceField{G}
+    FaceFieldZ{T, G<:Grid{T}} <: FaceField{G}
 
-A z-face-centered field defined on a grid `G` whose values are stored as
-floating-point values of type T.
+A z-face-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct FaceFieldZ{T<:AbstractArray} <: FaceField
-    metadata::ModelMetadata
-    grid::Grid
-    data::T
+struct FaceFieldZ{A<:AbstractArray, G<:Grid} <: FaceField
+    data::A
+    grid::G
+end
+
+function FaceFieldZ(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = zeros(T, size(g))
+    FaceFieldZ{typeof(data), typeof(g)}(data, g)
+end
+
+function FaceFieldZ(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
 
 """
     EdgeField{T<:AbstractArray} <: Field
 
-A field defined on a grid `G` whose values lie on the edges of the cells.
+An edge-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct EdgeField{T<:AbstractArray} <: Field
-    metadata::ModelMetadata
-    grid::Grid
-    data::T
+struct EdgeField{A<:AbstractArray, G<:Grid} <: Field
+    data::A
+    grid::G
 end
 
-"""
-    CellField(metadata::ModelMetadata, grid::Grid, T)
-
-Construct a `CellField` whose values are defined at the center of a cell.
-"""
-function CellField(metadata::ModelMetadata, grid::Grid, T)
-    if metadata.arch == :CPU
-        data = zeros(T, size(grid))
-        return CellField{Array{T,3}}(metadata, grid, data)
-    elseif metadata.arch == :GPU
-        # data = cu(zeros(T, size(grid)))
-        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
-        data .= 0.0
-        return CellField{CuArray{T,3}}(metadata, grid, data)
-    end
+function EdgeField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = zeros(T, size(g))
+    EdgeField{typeof(data), typeof(g)}(data, g)
 end
 
-CellField(mm::ModelMetadata, g::Grid) = CellField(mm, g, eltype(g))
-
-"""
-    FaceFieldX(metadata::ModelMetadata, grid::Grid, T)
-
-A `Field` whose values are defined on the x-face of a cell.
-"""
-function FaceFieldX(metadata::ModelMetadata, grid::Grid, T)
-    if metadata.arch == :CPU
-        data = zeros(eltype(grid), size(grid))
-        return FaceFieldX{Array{eltype(grid),3}}(metadata, grid, data)
-    elseif metadata.arch == :GPU
-        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
-        data .= 0.0
-        return FaceFieldX{CuArray{T,3}}(metadata, grid, data)
-    end
-end
-
-"""
-    FaceFieldY(metadata::ModelMetadata, grid::Grid, T)
-
-A `Field` whose values are defined on the y-face of a cell.
-"""
-function FaceFieldY(metadata::ModelMetadata, grid::Grid, T)
-    if metadata.arch == :CPU
-        data = zeros(eltype(grid), size(grid))
-        return FaceFieldY{Array{eltype(grid),3}}(metadata, grid, data)
-    elseif metadata.arch == :GPU
-        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
-        data .= 0.0
-        return FaceFieldY{CuArray{T,3}}(metadata, grid, data)
-    end
-end
-
-"""
-    FaceFieldZ(metadata::ModelMetadata, grid::Grid, T)
-
-A `Field` whose values are defined on the z-face of a cell.
-"""
-function FaceFieldZ(metadata::ModelMetadata, grid::Grid, T)
-    if metadata.arch == :CPU
-        data = zeros(eltype(grid), size(grid))
-        return FaceFieldZ{Array{eltype(grid),3}}(metadata, grid, data)
-    elseif metadata.arch == :GPU
-        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
-        data .= 0.0
-        return FaceFieldZ{CuArray{T,3}}(metadata, grid, data)
-    end
-end
-
-"""
-    FEdgeField(metadata::ModelMetadata, grid::Grid, T)
-
-A `Field` whose values are defined on the edges of a cell.
-"""
-function EdgeField(metadata::ModelMetadata, grid::Grid, T)
-    if metadata.arch == :CPU
-        data = zeros(eltype(grid), size(grid))
-        return EdgeField{Array{eltype(grid),3}}(metadata, grid, data)
-    elseif metadata.arch == :GPU
-        data = CuArray{T}(undef, grid.Nx, grid.Ny, grid.Nz)
-        data .= 0.0
-        return EdgeField{CuArray{T,3}}(metadata, grid, data)
-    end
+function EdgeField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    data .= 0.0
+    EdgeField{typeof(data), typeof(g)}(data, g)
 end
 
 @inline size(f::Field) = size(f.grid)

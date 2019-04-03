@@ -49,7 +49,7 @@ filename(fw::Checkpointer, iteration) = filename(fw, "model_checkpoint_", iterat
 # Checkpointing functions
 #
 
-function write_output(model::Model, chk::Checkpointer)
+function write_output(model::Model{arch}, chk::Checkpointer) where arch <: Architecture
     filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
 
     forcing_functions = model.forcing
@@ -60,7 +60,7 @@ function write_output(model::Model, chk::Checkpointer)
     model.forcing = nothing
     model.poisson_solver = nothing
 
-    println("WARNING: Forcing functions are not serialized!")
+    println("WARNING: Forcing functions will not be serialized!")
 
     println("[Checkpointer] Serializing model to disk: $filepath")
     f = JLD.jldopen(filepath, "w", compress=true)
@@ -68,14 +68,7 @@ function write_output(model::Model, chk::Checkpointer)
     close(f)
 
     println("[Checkpointer] Reconstructing FFT plans...")
-    metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :CPU
-        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
-    elseif metadata.arch == :GPU
-        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
-    end
+    model.poisson_solver = init_poisson_solver(arch(), model.grid, model.stepper_tmp.fCC1)
 
     # Putting back in the forcing functions.
     model.forcing = forcing_functions
@@ -90,14 +83,7 @@ function restore_from_checkpoint(filepath)
     close(f)
 
     println("Reconstructing FFT plans...")
-    metadata, grid, stepper_tmp = model.metadata, model.grid, model.stepper_tmp
-    if metadata.arch == :CPU
-        stepper_tmp.fCC1.data .= rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz)
-        model.poisson_solver = PoissonSolver(grid, stepper_tmp.fCC1, FFTW.PATIENT)
-    elseif metadata.arch == :GPU
-        stepper_tmp.fCC1.data .= CuArray{Complex{Float64}}(rand(metadata.float_type, grid.Nx, grid.Ny, grid.Nz))
-        model.poisson_solver = PoissonSolverGPU(grid, stepper_tmp.fCC1)
-    end
+    model.poisson_solver = init_poisson_solver(arch(model)(), model.grid, model.stepper_tmp.fCC1)
 
     model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
     println("WARNING: Forcing functions have been set to nothing!")
@@ -158,11 +144,8 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     if fw.async
         # Execute asynchronously on worker 2.
-        println("Using @async...")
-        println("nprocs()=$(nprocs())")
         @async remotecall(write_output_netcdf, 2, fw, fields, model.clock.iteration)
     else
-        println("Regular call...")
         write_output_netcdf(fw, fields, model.clock.iteration)
     end
 
