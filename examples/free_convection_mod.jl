@@ -48,8 +48,10 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)
 
 model.tracers.T.data .= CuArray(T_3d)
 
+
+!isdir(fname) && mkdir(fname)
 # Write temperature field to disk every frequency time steps.
-output_writer = NetCDFOutputWriter(dir=".", prefix=fname, padding = 0,  naming_scheme = :file_number, frequency=3600, async=true)
+output_writer = NetCDFOutputWriter(dir=fname, prefix=fname, padding = 0,  naming_scheme = :file_number, frequency=3600, async=true)
 push!(model.output_writers, output_writer)
 
 #Time stepping
