@@ -17,6 +17,7 @@ mutable struct NetCDFOutputWriter <: OutputWriter
     filename_prefix::AbstractString
     output_frequency::Int
     padding::Int
+    naming_scheme::Symbol
     compression::Int
     async::Bool
 end
@@ -33,8 +34,9 @@ function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
     Checkpointer(dir, prefix, frequency, padding)
 end
 
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9, compression=5, async=false)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, compression, async)
+function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9,
+                              naming_scheme=:iteration, compression=3, async=false)
+    NetCDFOutputWriter(dir, prefix, frequency, padding, naming_scheme, compression, async)
 end
 
 "Return the filename extension for the `OutputWriter` filetype."
@@ -42,8 +44,18 @@ ext(fw::OutputWriter) = throw("Not implemented.")
 ext(fw::NetCDFOutputWriter) = ".nc"
 ext(fw::Checkpointer) = ".jld"
 
-filename(fw, name, iteration) = fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
-filename(fw::Checkpointer, iteration) = filename(fw, "model_checkpoint_", iteration)
+filename(fw::Checkpointer, iteration) = fw.filename_prefix * "model_checkpoint_" * lpad(iteration, fw.padding, "0") * ext(fw)
+
+function filename(fw, name, iteration)
+    if fw.naming_scheme == :iteration
+        fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+    elseif fw.naming_scheme == :file_number
+        file_num = Int(iteration / fw.output_frequency)
+        fw.filename_prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
+    else
+        throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
+    end
+end
 
 #
 # Checkpointing functions
@@ -144,7 +156,8 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
 
     if fw.async
         # Execute asynchronously on worker 2.
-        @async remotecall(write_output_netcdf, 2, fw, fields, model.clock.iteration)
+        i = model.clock.iteration
+        @async remotecall(write_output_netcdf, 2, fw, fields, i)
     else
         write_output_netcdf(fw, fields, model.clock.iteration)
     end
