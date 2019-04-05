@@ -102,10 +102,16 @@ using
     FFTW,
     JLD,
     NetCDF,
+    OffsetArrays,
     StaticArrays
 
+# Third-party module imports (to avoid variable clashes)
 import
+    Adapt,
     GPUifyLoops
+
+# Adapt an offset CuArray to work nicely with CUDA kernels.
+Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(Adapt.adapt(to, parent(x)), x.offsets)
 
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
