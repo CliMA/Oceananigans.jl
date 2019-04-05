@@ -14,9 +14,14 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
     Nx::Int
     Ny::Int
     Nz::Int
-    # Halo size in (x,y).
+    # Halo size in (x,y,z).
     Hx::Int
     Hy::Int
+    Hz::Int
+    # Total number of grid points (including halo regions).
+    Tx::Int
+    Ty::Int
+    Tz::Int
     # Domain size [m].
     Lx::T
     Ly::T
@@ -85,6 +90,11 @@ function RegularCartesianGrid(T, N, L)
     # halos of size 1 are just what we need.
     Hx = 1
     Hy = 1
+    Hz = 0
+
+    Tx = Nx + 2*Hx
+    Ty = Ny + 2*Hy
+    Tz = Nz + 2*Hz
 
     Lx = convert(T, Lx)
     Ly = convert(T, Ly)
@@ -112,8 +122,9 @@ function RegularCartesianGrid(T, N, L)
     !all(typeof.([xC, yC, zC, xF, yF, zF]) .== typeof(xC)) &&
         throw(ArgumentError("At least one coordinate range type did not match."))
 
-    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Hx, Hy, Lx, Ly, Lz, Δx, Δy, Δz,
-                                        Ax, Ay, Az, V, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+                                        Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
+                                        xC, yC, zC, xF, yF, zF)
 end
 
 # Constructor aliases.
