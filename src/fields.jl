@@ -14,7 +14,8 @@ struct CellField{A<:AbstractArray, G<:Grid} <: Field
 end
 
 function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
@@ -25,7 +26,8 @@ function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <
 end
 
 function CellField(T, ::CPU, g::RegularCartesianGrid)
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
@@ -46,7 +48,8 @@ struct FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
 end
 
 function FaceFieldX(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     FaceFieldX{typeof(data), typeof(g)}(data, g)
 end
 
@@ -67,7 +70,8 @@ struct FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
 end
 
 function FaceFieldY(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     FaceFieldY{typeof(data), typeof(g)}(data, g)
 end
 
@@ -88,7 +92,8 @@ struct FaceFieldZ{A<:AbstractArray, G<:Grid} <: FaceField
 end
 
 function FaceFieldZ(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
 
@@ -109,7 +114,8 @@ struct EdgeField{A<:AbstractArray, G<:Grid} <: Field
 end
 
 function EdgeField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
+    underlying_data = zeros(T, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     EdgeField{typeof(data), typeof(g)}(data, g)
 end
 
@@ -144,7 +150,9 @@ similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid, f.metadata.
 similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid, f.metadata.float_type)
 similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid, f.metadata.float_type)
 
-set!(u::Field, v) = u.data .= convert(eltype(u.grid), v)
+" Set all elements of field `f` to `val` (ignoring halo regions). "
+set!(f::Field, val) = @views f.data[1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz] .= convert(eltype(f.grid), val)
+
 set!(u::Field, v::Field) = @. u.data = v.data
 
 # set!(u::Field{G}, f::Function) where {G<:RegularCartesianGrid} = @. u.data = f(u.grid.xCA, u.grid.yCA, u.grid.zCA)
