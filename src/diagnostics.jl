@@ -1,6 +1,9 @@
 using Statistics: mean, std
 using Printf
 
+struct CFLChecker <: Diagnostic end
+struct VelocityDivergence <: Diagnostic end
+
 struct FieldSummary <: Diagnostic
     diagnostic_frequency::Int
     fields::Array{Field,1}
@@ -20,9 +23,22 @@ function run_diagnostic(model::Model, fs::FieldSummary)
     end
 end
 
-struct CheckForNaN <: Diagnostic end
-struct CFLChecker <: Diagnostic end
-struct VelocityDivergence <: Diagnostic end
+struct NaNChecker <: Diagnostic
+    diagnostic_frequency::Int
+    fields::Array{Field,1}
+    field_names::Array{AbstractString,1}
+end
+
+function run_diagnostic(model::Model, nc::NaNChecker)
+    for (field, field_name) in zip(nc.fields, nc.field_names)
+        if any(isnan, field.data)  # This is also fast on CuArrays.
+            t, i = model.clock.time, model.clock.iteration
+            println("time = $t, iteration = $i")
+            println("NaN found in $field_name. Aborting simulation.")
+            exit(1)
+        end
+    end
+end
 
 mutable struct Nusselt_wT <: Diagnostic
     diagnostic_frequency::Int
