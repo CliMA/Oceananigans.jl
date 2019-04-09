@@ -48,7 +48,6 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     forcing = model.forcing
     poisson_solver = model.poisson_solver
 
-    δρ = model.stepper_tmp.fC1
     RHS = model.stepper_tmp.fCC1
     ϕ = model.stepper_tmp.fCC2
 
@@ -71,7 +70,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         χ = ifelse(model.clock.iteration == 0, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        @launch device(arch) update_buoyancy!(grid, constants, eos, δρ.data, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+        @launch device(arch) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By))
         @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
                              calculate_boundary_source_terms!(model)
         @launch device(arch) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
@@ -123,20 +122,15 @@ end
 @inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(grid::Grid, constants, eos, δρ, T, pHY′)
+function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
     ρ₀, T₀, βT = eos.ρ₀, eos.T₀, eos.βT
     gΔz = constants.g * grid.Δz
 
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds δρ[i, j, k] = -ρ₀ * βT * (T[i, j, k] - T₀)
-
-                ∫δρ = (-ρ₀*βT*(T[i, j, 1]-T₀))
-                for k′ in 2:k
-                    ∫δρ += ((-ρ₀*βT*(T[i, j, k′-1]-T₀)) + (-ρ₀*βT*(T[i, j, k′]-T₀)))
-                end
-                @inbounds pHY′[i, j, k] = 0.5 * gΔz * ∫δρ
+    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(ρ₀, βT, T₀, T, i, j, 1)
+            for k in 2:grid.Nz
+                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(ρ₀, βT, T₀, T, i, j, k-1) + δρ(ρ₀, βT, T₀, T, i, j, k))
             end
         end
     end
@@ -348,4 +342,3 @@ function apply_z_bcs!(top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteratio
     end
     @synchronize
 end
-
