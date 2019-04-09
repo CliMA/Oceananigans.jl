@@ -1,12 +1,12 @@
 using Random
 const seed = 420  # Random seed to use for all pseudorandom number generators.
 
-function run_thermal_bubble_golden_master_tests()
+function run_thermal_bubble_golden_master_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2)
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -31,11 +31,11 @@ function run_thermal_bubble_golden_master_tests()
     S = read_output(nc_writer, "S", 10)
 
     # Now test that the model state matches the golden master output.
-    @test all(model.velocities.u.data .≈ u)
-    @test all(model.velocities.v.data .≈ v)
-    @test all(model.velocities.w.data .≈ w)
-    @test all(model.tracers.T.data    .≈ T)
-    @test all(model.tracers.S.data    .≈ S)
+    @test all(Array(model.velocities.u.data) .≈ u)
+    @test all(Array(model.velocities.v.data) .≈ v)
+    @test all(Array(model.velocities.w.data) .≈ w)
+    @test all(Array(model.tracers.T.data)    .≈ T)
+    @test all(Array(model.tracers.S.data)    .≈ S)
 end
 
 function run_deep_convection_golden_master_tests()
