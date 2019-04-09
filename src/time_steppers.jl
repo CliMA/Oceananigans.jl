@@ -119,18 +119,15 @@ function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, 
     @synchronize
 end
 
-@inline δρ(ρ₀, βT, T₀, T, i, j, k) = @inbounds -ρ₀ * βT * (T[i, j, k] - T₀)
-
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
 function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
-    ρ₀, T₀, βT = eos.ρ₀, eos.T₀, eos.βT
     gΔz = constants.g * grid.Δz
 
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(ρ₀, βT, T₀, T, i, j, 1)
+            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, i, j, 1)
             for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(ρ₀, βT, T₀, T, i, j, k-1) + δρ(ρ₀, βT, T₀, T, i, j, k))
+                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, T, i, j, k-1) + δρ(eos, T, i, j, k))
             end
         end
     end
