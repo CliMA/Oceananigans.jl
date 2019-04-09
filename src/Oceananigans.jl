@@ -86,6 +86,7 @@ export
     Diagnostic,
     run_diagnostic,
     FieldSummary,
+    NaNChecker,
     Nusselt_wT,
     Nusselt_Chi,
 
