@@ -292,7 +292,9 @@ float_types = [Float32, Float64]
         include("test_golden_master.jl")
 
         @testset "Thermal bubble" begin
-            run_thermal_bubble_golden_master_tests()
+            for arch in archs
+                run_thermal_bubble_golden_master_tests(arch)
+            end
         end
 
         @testset "Deep convection" begin
