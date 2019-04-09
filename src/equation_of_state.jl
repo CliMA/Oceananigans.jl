@@ -32,3 +32,5 @@ function LinearEquationOfState(;
 
     LinearEquationOfState{Float64}(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
 end
+
+@inline δρ(eos::LinearEquationOfState, T, i, j, k) = @inbounds -eos.ρ₀ * eos.βT * (T[i, j, k] - eos.T₀)
