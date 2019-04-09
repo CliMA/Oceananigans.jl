@@ -43,9 +43,7 @@ export
 
     # Equation of state
     LinearEquationOfState,
-    ρ!,
-    δρ!,
-    ∫δρgdz!,
+    δρ,
 
     # Boundary conditions
     BoundaryConditions,
