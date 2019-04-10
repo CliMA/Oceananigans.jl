@@ -1,3 +1,56 @@
+using ArgParse
+
+s = ArgParseSettings(description="Run simulations of oceanic free convection.")
+
+@add_arg_table s begin
+    "--resolution", "-N"
+        arg_type=Int
+        required=true
+        help="Number of grid points in each dimension (Nx, Ny, Nz) = (N, N, N)."
+    "--heat-flux"
+        arg_type=Float64
+        required=true
+        help="Heat flux to impose at the surface [W/m²]. Negative values imply a cooling flux."
+    "--dTdz"
+        arg_type=Float64
+        required=true
+        help="Temperature gradient to impose at the bottom [K/m]."
+    "--diffusivity"
+        arg_type=Float64
+        required=true
+        help="Diffusivity κ [m²/s]."
+    "--dt"
+        arg_type=Float64
+        required=true
+        help="Time step in seconds."
+    "--days"
+        arg_type=Float64
+        required=true
+        help="Number of simulation days to run the model."
+    "--output-dir", "-d"
+        arg_type=AbstractString
+        required=true
+        help="Base directory to save output to."
+end
+
+parsed_args = parse_args(s)
+N = parsed_args["resolution"]
+Q = parsed_args["heat-flux"]
+dTdz = parsed_args["dTdz"]
+κ = parsed_args["diffusivity"]
+dt = isinteger(parsed_args["dt"]) ? Int(dt) : dt
+days = isinteger(parsed_args["days"]) ? Int(days) : days
+base_dir = parsed_args["output-dir"]
+
+filename_prefix = "free_convection_N" * string(N) * "_Q" * string(heat_flux) *
+                  "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
+                  "_days" * string(days)
+output_dir = joinpath(base_dir, filename_prefix)
+
+if !isdir(output_dir)
+    println("Creating directory: $output_dir")
+    mkpath(output_dir)
+end
 using Distributed
 addprocs(1)  # For asynchronous output writing.
 
