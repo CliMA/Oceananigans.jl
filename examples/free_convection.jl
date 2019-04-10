@@ -51,55 +51,81 @@ if !isdir(output_dir)
     println("Creating directory: $output_dir")
     mkpath(output_dir)
 end
-using Distributed
-addprocs(1)  # For asynchronous output writing.
 
-# Apparently I have to do this even when starting julia with "-p 2 --project"
-# otherwise we get "ERROR: LoadError: On worker 2: ArgumentError: Package Oceananigans
-# not found in current path:"
+# Adding a second worker/proccessor for asynchronous NetCDF output writing.
+using Distributed
+addprocs(1)
+
+# We need to activate the Oceananigans environment on all workers if executing
+# this script from the development repository using "julia --project".
 @everywhere using Pkg
 @everywhere Pkg.activate(".");
 
 @everywhere using Oceananigans
 @everywhere using CuArrays
+@everywhere using Printf
 
-# physical constants
-p0 = 1027
-cp = 4181.3
+# Physical constants.
+ρ₀ = 1027    # Density of seawater [kg/m³]
+cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
 
-# set simulation parameters
-Nx, Ny, Nz = 128, 128, 128
+# Set more simulation parameters.
+Nx, Ny, Nz = N, N, N
 Lx, Ly, Lz = 100, 100, 100
-Nt, Δt = 1000, 1
-ν, κ = 1e-4, 1e-4
-Tz = 0.01
-bottom_gradient = Tz
-top_flux = 75 / (p0 * cp) #for flux bc this should be positive for cooling
+Δt = dt
+Nt = Int(days*60*60*24/dt)
+ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
 
-# create the model
-model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=:GPU, float_type=Float32)
+# To impose a flux boundary condition, the top flux imposed should be negative
+# for a heating flux and positive for a cooling flux, thus the minus sign.
+top_flux = -Q / (ρ₀ * cₚ)
 
-# set boundary conditions
+# Create the model.
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
+
+# Set boundary conditions.
 model.boundary_conditions.T.z.left = BoundaryCondition(Flux, top_flux)
 model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, bottom_gradient)
-# the default boundary conditions for velocity is free-slip
 
-# set initial condition
-T_prof = 273.15 .+ 20 .+ Tz .* model.grid.zC
-# make initial condition into 3D array
-T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)
-@. T_3d[:, :, 1:round(Int, Nz/2)] += 0.01*randn() #add noise to the top half of the domain for convection
+# Set initial conditions.
+T_prof = 273.15 .+ 20 .+ Tz .* model.grid.zC  # Initial temperature profile.
+T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
+
+# Add small normally distributed random noise to the top half of the domain to
+# facilitate numerical convection.
+@. T_3d[:, :, 1:round(Int, Nz/2)] += 0.01*randn()
 
 model.tracers.T.data .= CuArray(T_3d)
 
-# Write temperature field to disk every 10 time steps.
-output_writer = NetCDFOutputWriter(dir=".", prefix="convection", frequency=200, async=true)
-push!(model.output_writers, output_writer)
+# Add a NaN checker diagnostic that will check for NaN values in the vertical
+# velocity and temperature fields every 1,000 time steps and abort the simulation
+# if NaN values are detected.
+nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
+push!(model.diagnostics, nan_checker)
 
-# Time stepping
-for i = 1:Nt
-    tic = time_ns()
-    print("Time: $(model.clock.time) ")
-    time_step!(model, 1, Δt)
-    println(prettytime(time_ns() - tic))
+# Write full output to disk enough times that we end up with 32 outputs.
+n_outputs = 32
+output_freq = floor(Int, Nt / n_outputs)
+netcdf_writer = NetCDFOutputWriter(dir=output_dir, prefix=filename_prefix * "_",
+                                   padding=0, naming_scheme=:file_number,
+                                   frequency=output_freq, async=true)
+push!(model.output_writers, netcdf_writer)
+
+# With asynchronous output writing we need to wrap our time-stepping using
+# an @sync block so that Julia does not just quit if the model finishes time
+# stepping while there are still output files that need to be written to disk
+# on another worker/processor.
+@sync begin
+    # Take Ni "intermediate" time steps at a time and print out the current time
+    # and average wall clock time per time step.
+    Ni = 100
+    for i = 1:ceil(Int, Nt/Ni)
+        progress = 100 * (model.clock.iteration / Nt)  # Progress %
+        @printf("[%06.2f] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
+
+        tic = time_ns()
+        time_step!(model, Ni, Δt)
+
+        @printf("   average wall clock time per iteration: %s", prettytime((time_ns() - tic) / Ni))
+    end
 end
