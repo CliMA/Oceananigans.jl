@@ -38,11 +38,14 @@ N = parsed_args["resolution"]
 Q = parsed_args["heat-flux"]
 dTdz = parsed_args["dTdz"]
 κ = parsed_args["diffusivity"]
-dt = isinteger(parsed_args["dt"]) ? Int(dt) : dt
-days = isinteger(parsed_args["days"]) ? Int(days) : days
+
+dt, days = parsed_args["dt"], parsed_args["days"]
+dt = isinteger(dt) ? Int(dt) : dt
+days = isinteger(days) ? Int(days) : days
+
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "free_convection_N" * string(N) * "_Q" * string(heat_flux) *
+filename_prefix = "free_convection_N" * string(N) * "_Q" * string(Q) *
                   "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
                   "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
@@ -85,10 +88,10 @@ model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_ty
 
 # Set boundary conditions.
 model.boundary_conditions.T.z.left = BoundaryCondition(Flux, top_flux)
-model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, bottom_gradient)
+model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, dTdz)
 
 # Set initial conditions.
-T_prof = 273.15 .+ 20 .+ Tz .* model.grid.zC  # Initial temperature profile.
+T_prof = 273.15 .+ 20 .+ dTdz .* model.grid.zC  # Initial temperature profile.
 T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
 
 # Add small normally distributed random noise to the top half of the domain to
@@ -121,11 +124,11 @@ push!(model.output_writers, netcdf_writer)
     Ni = 100
     for i = 1:ceil(Int, Nt/Ni)
         progress = 100 * (model.clock.iteration / Nt)  # Progress %
-        @printf("[%06.2f] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
+        @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
 
         tic = time_ns()
         time_step!(model, Ni, Δt)
 
-        @printf("   average wall clock time per iteration: %s", prettytime((time_ns() - tic) / Ni))
+        @printf("   average wall clock time per iteration: %s\n", prettytime((time_ns() - tic) / Ni))
     end
 end
