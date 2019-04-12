@@ -1,7 +1,7 @@
 using Statistics: mean
 
 using FFTW
-using GPUifyLoops
+import GPUifyLoops: @launch, @loop, @synchronize
 
 using Oceananigans.Operators
 
