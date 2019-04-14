@@ -140,6 +140,7 @@ end
 # etc; so this API needs to be designed. For now, we simply save u, v, w, and T.
 
 function write_output(model::Model, fw::NetCDFOutputWriter)
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     fields = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
@@ -147,11 +148,11 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         "xF" => collect(model.grid.xF),
         "yF" => collect(model.grid.yF),
         "zF" => collect(model.grid.zF),
-        "u" => Array(model.velocities.u.data),
-        "v" => Array(model.velocities.v.data),
-        "w" => Array(model.velocities.w.data),
-        "T" => Array(model.tracers.T.data),
-        "S" => Array(model.tracers.S.data)
+        "u" => Array(model.velocities.u.data[1:Nx, 1:Ny, 1:Nz]),
+        "v" => Array(model.velocities.v.data[1:Nx, 1:Ny, 1:Nz]),
+        "w" => Array(model.velocities.w.data[1:Nx, 1:Ny, 1:Nz]),
+        "T" => Array(model.tracers.T.data[1:Nx, 1:Ny, 1:Nz]),
+        "S" => Array(model.tracers.S.data[1:Nx, 1:Ny, 1:Nz])
     )
 
     if fw.async
