@@ -57,13 +57,10 @@ export
 
     # Poisson solver
     PoissonSolver,
+    PoissonSolverCPU,
     PoissonSolverGPU,
-    init_poisson_solver,
-    solve_poisson_3d_ppn,
-    solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
-    solve_poisson_3d_ppn_gpu!,
-    solve_poisson_3d_ppn_gpu_planned!,
+    solve_poisson_3d_ppn_planned!,
 
     # Model helper structs, e.g. configuration, clock, etc.
     ModelConfiguration,
@@ -147,7 +144,7 @@ abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
-abstract type AbstractPoissonSolver end
+abstract type PoissonSolver end
 
 include("model_configuration.jl")
 include("clock.jl")

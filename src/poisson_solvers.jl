@@ -1,16 +1,6 @@
 import FFTW
 import GPUifyLoops: @launch, @loop, @synchronize
 
-function init_poisson_solver(::CPU, grid::Grid)
-    tmp_rhs .= rand(Float64, grid.Nx, grid.Ny, grid.Nz)
-    PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
-end
-
-function init_poisson_solver(::GPU, grid::Grid)
-    tmp_rhs .= CuArray{Complex{Float64}}(rand(Float64, grid.Nx, grid.Ny, grid.Nz))
-    PoissonSolverGPU(g, tmp_rhs)
-end
-
 # Translations to print FFT timing.
 let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
                 FFTW.MEASURE    => "FFTW.MEASURE",
@@ -20,45 +10,50 @@ let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
     plannerflag2string(k::Integer) = pf2s[Int(k)]
 end
 
+PoissonSolver(::CPU, grid::Grid) = PoissonSolverCPU(grid)
+PoissonSolver(::GPU, grid::Grid) = PoissonSolverGPU(grid)
+
 """
     PoissonSolver(grid, example_field, planner_flag; verbose=false)
 
 Return a `PoissonSolver` on `grid`, using `example_field` and `planner_flag`
 to plan fast transforms.
 """
-struct PoissonSolver{T<:AbstractArray} <: AbstractPoissonSolver
+struct PoissonSolverCPU{T<:AbstractArray} <: PoissonSolver
     kx²::T
     ky²::T
     kz²::T
+    storage
     FFT!
     DCT!
     IFFT!
     IDCT!
 end
 
-function PoissonSolver(g::Grid, exfield::CellField, planner_flag=FFTW.PATIENT; verbose=false)
-    kx² = zeros(eltype(g), g.Nx)
-    ky² = zeros(eltype(g), g.Ny)
-    kz² = zeros(eltype(g), g.Nz)
+function PoissonSolverCPU(grid::Grid, planner_flag=FFTW.PATIENT)
+    T = eltype(grid)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
 
-    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
-    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
-    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    kx² = zeros(Float64, Nx)
+    ky² = zeros(Float64, Ny)
+    kz² = zeros(Float64, Nz)
 
-    if verbose
-        print("Planning Fourier transforms... (planner_flag=$(plannerflag2string(planner_flag)))\n")
-        print("FFT!:  "); @time FFT!  = FFTW.plan_fft!(exfield.data, [1, 2]; flags=planner_flag)
-        print("IFFT!: "); @time IFFT! = FFTW.plan_ifft!(exfield.data, [1, 2]; flags=planner_flag)
-        print("DCT!:  "); @time DCT!  = FFTW.plan_r2r!(exfield.data, FFTW.REDFT10, 3; flags=planner_flag)
-        print("IDCT!: "); @time IDCT! = FFTW.plan_r2r!(exfield.data, FFTW.REDFT01, 3; flags=planner_flag)
-    else
-        FFT!  = FFTW.plan_fft!(exfield.data, [1, 2]; flags=planner_flag)
-        IFFT! = FFTW.plan_ifft!(exfield.data, [1, 2]; flags=planner_flag)
-        DCT!  = FFTW.plan_r2r!(exfield.data, FFTW.REDFT10, 3; flags=planner_flag)
-        IDCT! = FFTW.plan_r2r!(exfield.data, FFTW.REDFT01, 3; flags=planner_flag)
-    end
+    storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    PoissonSolver{Array{eltype(g),1}}(kx², ky², kz², FFT!, DCT!, IFFT!, IDCT!)
+    for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
+    for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny)    / (Ly/Ny))^2; end
+    for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
+
+    FFT!  = FFTW.plan_fft!(storage, [1, 2]; flags=planner_flag)
+    IFFT! = FFTW.plan_ifft!(storage, [1, 2]; flags=planner_flag)
+    DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, 3; flags=planner_flag)
+    IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, 3; flags=planner_flag)
+
+    PoissonSolverCPU{Array{Float64, 1}}(kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
 
 """
@@ -75,18 +70,23 @@ FFTs and DCTs.
            f : RHS to Poisson equation
            ϕ : Solution to Poisson equation
 """
-function solve_poisson_3d_ppn_planned!(solver::PoissonSolver, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
-    solver.DCT!*f.data  # Calculate DCTᶻ(f) in place.
-    solver.FFT!*f.data  # Calculate FFTˣʸ(f) in place.
+function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
+    RHS, ϕ = solver.storage, solver.storage
 
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
+    solver.DCT! * RHS  # Calculate DCTᶻ(f) in place.
+    solver.FFT! * RHS  # Calculate FFTˣʸ(f) in place.
+
+    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+        @inbounds ϕ[i, j, k] = -RHS[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
     end
-    ϕ.data[1, 1, 1] = 0
 
-    solver.IFFT!*ϕ.data  # Calculate IFFTˣʸ(ϕ) in place.
-    solver.IDCT!*ϕ.data  # Calculate IDCTᶻ(ϕ) in place.
-    @. ϕ.data = ϕ.data / (2*g.Nz)
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
+    solver.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
+
+    @. ϕ = ϕ / (2*grid.Nz)  # Must normalize by 2Nz after using FFTW.REDFT.
+
     nothing
 end
 
@@ -97,19 +97,20 @@ end
 Return a `PoissonSolverGPU` on `grid`, using `example_field` to plan
 CuFFTs on a GPU.
 """
-struct PoissonSolverGPU{T<:AbstractArray} <: AbstractPoissonSolver
-    kx²
-    ky²
-    kz²
-    dct_factors
-    idct_bfactors
+struct PoissonSolverGPU{T<:AbstractArray} <: PoissonSolver
+    kx²::T
+    ky²::T
+    kz²::T
+    dct_factors::T
+    idct_bfactors::T
+    storage
     FFT_xy!
     FFT_z!
     IFFT_xy!
     IFFT_z!
 end
 
-function PoissonSolverGPU(g::Grid, exfield::CellField; verbose=false)
+function PoissonSolverGPU(g::Grid)
     kx² = CuArray{Float64}(undef, g.Nx)
     ky² = CuArray{Float64}(undef, g.Ny)
     kz² = CuArray{Float64}(undef, g.Nz)
