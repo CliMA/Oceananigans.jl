@@ -63,7 +63,7 @@ function run_deep_convection_golden_master_tests()
     model.forcing = Forcing(nothing, nothing, nothing, cooling_disk, nothing)
 
     rng = MersenneTwister(seed)
-    model.tracers.T.data[:, :, 1] .+= 0.01*rand(rng, Nx, Ny)
+    model.tracers.T.data[1:Nx, 1:Ny, 1] .+= 0.01*rand(rng, Nx, Ny)
 
     nc_writer = NetCDFOutputWriter(dir=".",
                                    prefix="deep_convection_golden_master_",
