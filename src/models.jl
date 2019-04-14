@@ -91,9 +91,6 @@ function Model(;
                         stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
 end
 
-"Legacy constructor for `Model`."
-Model(N, L; arch=:CPU, float_type=Float64) = Model(N=N, L=L; arch=arch, float_type=float_type)
-
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 
