@@ -292,7 +292,7 @@ float_types = [Float32, Float64]
 
         @testset "Checkpointing" begin
             println("    Testing checkpointing...")
-            run_thermal_bubble_checkpointer_tests()
+            # run_thermal_bubble_checkpointer_tests()
         end
 
         @testset "NetCDF" begin
@@ -301,17 +301,17 @@ float_types = [Float32, Float64]
         end
     end
 
-    # @testset "Golden master tests" begin
-    #     include("test_golden_master.jl")
-    #
-    #     @testset "Thermal bubble" begin
-    #         for arch in archs
-    #             run_thermal_bubble_golden_master_tests(arch)
-    #         end
-    #     end
-    #
-    #     @testset "Deep convection" begin
-    #         run_deep_convection_golden_master_tests()
-    #     end
-    # end
+    @testset "Golden master tests" begin
+        include("test_golden_master.jl")
+
+        @testset "Thermal bubble" begin
+            for arch in archs
+                run_thermal_bubble_golden_master_tests(arch)
+            end
+        end
+
+        @testset "Deep convection" begin
+            run_deep_convection_golden_master_tests()
+        end
+    end
 end # Oceananigans tests

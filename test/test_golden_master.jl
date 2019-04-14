@@ -31,11 +31,11 @@ function run_thermal_bubble_golden_master_tests(arch)
     S = read_output(nc_writer, "S", 10)
 
     # Now test that the model state matches the golden master output.
-    @test all(Array(model.velocities.u.data) .≈ u)
-    @test all(Array(model.velocities.v.data) .≈ v)
-    @test all(Array(model.velocities.w.data) .≈ w)
-    @test all(Array(model.tracers.T.data)    .≈ T)
-    @test all(Array(model.tracers.S.data)    .≈ S)
+    @test all(u .≈ Array(model.velocities.u.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(v .≈ Array(model.velocities.v.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(w .≈ Array(model.velocities.w.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(T .≈ Array(model.tracers.T.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(S .≈ Array(model.tracers.S.data[1:Nx, 1:Ny, 1:Nz]))
 end
 
 function run_deep_convection_golden_master_tests()
@@ -81,9 +81,9 @@ function run_deep_convection_golden_master_tests()
     S = read_output(nc_writer, "S", 10)
 
     # Now test that the model state matches the golden master output.
-    @test_skip all(model.velocities.u.data .≈ u)
-    @test_skip all(model.velocities.v.data .≈ v)
-    @test_skip all(model.velocities.w.data .≈ w)
-    @test_skip all(model.tracers.T.data    .≈ T)
-    @test_skip all(model.tracers.S.data    .≈ S)
+    @test all(u .≈ Array(model.velocities.u.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(v .≈ Array(model.velocities.v.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(w .≈ Array(model.velocities.w.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(T .≈ Array(model.tracers.T.data[1:Nx, 1:Ny, 1:Nz]))
+    @test all(S .≈ Array(model.tracers.S.data[1:Nx, 1:Ny, 1:Nz]))
 end
