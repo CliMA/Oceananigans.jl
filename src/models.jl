@@ -10,7 +10,6 @@ mutable struct Model{A<:Architecture}
     G::SourceTerms
     Gp::SourceTerms
     forcing  # ::Forcing  # No type so we can set it to nothing while checkpointing.
-    stepper_tmp::StepperTemporaryFields
     poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
     output_writers::Array{OutputWriter,1}
@@ -75,9 +74,8 @@ function Model(;
        pressures = PressureFields(arch, grid)
                G = SourceTerms(arch, grid)
               Gp = SourceTerms(arch, grid)
-     stepper_tmp = StepperTemporaryFields(arch, grid)
 
-     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
+     poisson_solver = init_poisson_solver(arch, grid)
 
     # Default initial condition
     velocities.u.data .= 0
@@ -88,7 +86,7 @@ function Model(;
 
     Model{typeof(arch)}(configuration, boundary_conditions, constants, eos, grid,
                         velocities, tracers, pressures, G, Gp, forcing,
-                        stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+                        poisson_solver, clock, output_writers, diagnostics)
 end
 
 "Legacy constructor for `Model`."

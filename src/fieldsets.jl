@@ -22,12 +22,6 @@ struct SourceTerms <: FieldSet
     GS::CellField
 end
 
-struct StepperTemporaryFields <: FieldSet
-    fC1::CellField
-    fCC1::CellField
-    fCC2::CellField
-end
-
 function VelocityFields(arch::Architecture, grid::Grid)
     u = FaceFieldX(arch, grid)
     v = FaceFieldY(arch, grid)
@@ -54,13 +48,4 @@ function SourceTerms(arch::Architecture, grid::Grid)
     GT = CellField(arch, grid)
     GS = CellField(arch, grid)
     SourceTerms(Gu, Gv, Gw, GT, GS)
-end
-
-function StepperTemporaryFields(arch::Architecture, grid::Grid)
-    fC1 = CellField(arch, grid)
-
-    # Forcing Float64 for these fields as it's needed by the Poisson solver.
-    fCC1 = CellField(Complex{Float64}, arch, grid)
-    fCC2 = CellField(Complex{Float64}, arch, grid)
-    StepperTemporaryFields(fC1, fCC1, fCC2)
 end
