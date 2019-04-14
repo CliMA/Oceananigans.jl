@@ -75,7 +75,7 @@ function Model(;
                G = SourceTerms(arch, grid)
               Gp = SourceTerms(arch, grid)
 
-     poisson_solver = init_poisson_solver(arch, grid)
+     poisson_solver = PoissonSolver(arch, grid)
 
     # Default initial condition
     velocities.u.data .= 0
