@@ -3,6 +3,9 @@ using Statistics: mean
 using FFTW
 import GPUifyLoops: @launch, @loop, @synchronize
 
+@hascuda using CuArrays
+
+using Oceananigans
 using Oceananigans.Operators
 
 function ∇²_ppn!(grid::RegularCartesianGrid, f, ∇²f)
@@ -37,9 +40,9 @@ function mixed_ifft_commutes(N)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
-function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag)
+function poisson_solver_initializes(arch, ft, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(CPU(), grid)
+    solver = PoissonSolver(arch, grid)
     true  # Just making sure our PoissonSolver does not error/crash.
 end
 
@@ -66,4 +69,34 @@ function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
+end
+
+@hascuda begin
+    function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
+        grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+        solver = PoissonSolver(GPU(), grid)
+    
+        RHS = rand(Nx, Ny, Nz)
+        RHS .= RHS .- mean(RHS)
+    
+        RHS_orig = copy(RHS)
+        
+        RHS = CuArray(RHS)
+        RHS_orig = CuArray(RHS_orig)
+        ϕ = CuArray(zeros(Nx, Ny, Nz))
+        ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
+
+        solver.storage .= RHS
+        
+        Tx, Ty = 16, 16  # Threads per block
+        Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+
+        solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
+
+        ϕ .= solver.storage
+
+        @launch device(GPU()) ∇²_ppn!(grid, ϕ, ∇²ϕ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+        
+        ∇²ϕ ≈ RHS_orig
+    end
 end

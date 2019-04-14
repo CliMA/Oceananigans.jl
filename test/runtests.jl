@@ -90,7 +90,7 @@ float_types = [Float32, Float64]
         @testset "Setting fields" begin
             println("    Testing field setting...")
 
-            for arch in archs, ft in float_types
+            for arch in [CPU()], ft in float_types
                 grid = RegularCartesianGrid(ft, N, L)
 
                 for field_type in field_types, val in vals
@@ -174,14 +174,14 @@ float_types = [Float32, Float64]
             end
         end
 
-        @testset "FFTW plans" begin
-            println("    Testing FFTW planning...")
+        @testset "Poisson solver initialization" begin
+            println("    Testing Poisson solver initialization...")
 
-            for ft in float_types
-                @test fftw_planner_works(ft, 32, 32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 1,  32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 32,  1, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft,  1,  1, 32, FFTW.ESTIMATE)
+            for arch in archs, ft in float_types
+                @test poisson_solver_initializes(arch, ft, 32, 32, 32, FFTW.ESTIMATE)
+                @test poisson_solver_initializes(arch, ft, 1,  32, 32, FFTW.ESTIMATE)
+                @test poisson_solver_initializes(arch, ft, 32,  1, 32, FFTW.ESTIMATE)
+                @test poisson_solver_initializes(arch, ft,  1,  1, 32, FFTW.ESTIMATE)
             end
         end
 
@@ -207,6 +207,19 @@ float_types = [Float32, Float64]
             Ns = [5, 7, 10, 15, 20, 29, 32]
             for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
                 @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
+            end
+        end
+
+        @hascuda begin
+            @testset "Divergence-free solution [GPU]" begin
+                println("    Testing divergence-free solution [GPU]...")
+    
+                # Only testing a small number of nice sizes until https://github.com/climate-machine/Oceananigans.jl/issues/64
+                # is resolved.
+                Ns = [16, 32]
+                for Nx in Ns, Ny in Ns, Nz in Ns
+                    # @test poisson_ppn_planned_div_free_gpu(Float64, Nx, Ny, Nz)
+                end
             end
         end
     end
