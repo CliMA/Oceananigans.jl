@@ -93,8 +93,8 @@ struct PoissonSolverGPU{T<:AbstractArray} <: PoissonSolver
     kx²::T
     ky²::T
     kz²::T
-    dct_factors::T
-    idct_bfactors::T
+    dct_factors
+    idct_bfactors
     storage
     FFT_xy!
     FFT_z!
@@ -142,8 +142,8 @@ function PoissonSolverGPU(grid::Grid)
     IFFT_xy! = plan_ifft!(storage, [1, 2])
     IFFT_z!  = plan_ifft!(storage, 3)
 
-    PoissonSolverGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, storage,
-                                       FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
+    PoissonSolverGPU{CuArray{Float64,1}}(kx², ky², kz², dct_factors, idct_bfactors, storage,
+                                         FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
 
 """
@@ -162,7 +162,7 @@ CuFFTs on a GPU.
            f : RHS to Poisson equation
            ϕ : Solution to Poisson equation
 """
-function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+function solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
@@ -173,9 +173,9 @@ function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSo
 
     solver.FFT_xy! * RHS  # Calculate FFTˣʸ(f) in place.
 
-    @launch device(GPU()) f2ϕ!(g, RHS, ϕ, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    @launch device(GPU()) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
-    ϕ.data[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
     solver.IFFT_xy! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
 
