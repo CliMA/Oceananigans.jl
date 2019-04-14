@@ -211,95 +211,94 @@ float_types = [Float32, Float64]
         end
     end
 
-    @testset "Model" begin
-        println("  Testing model...")
-
-        for arch in archs, ft in float_types
-            model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
-
-            # Just testing that a Model was constructed with no errors/crashes.
-            @test true
-        end
-    end
-
-    @testset "Time stepping" begin
-        println("  Testing time stepping...")
-        include("test_time_stepping.jl")
-
-        for arch in archs, ft in float_types
-            @test time_stepping_works(arch, ft)
-        end
-
-        @testset "Adams-Bashforth 2" begin
-            for arch in archs, ft in float_types
-                run_first_AB2_time_step_tests(arch, ft)
-            end
-        end
-    end
-
-    @testset "Boundary conditions" begin
-        println("  Testing boundary conditions...")
-        include("test_boundary_conditions.jl")
-
-        Nx, Ny, Nz = 3, 4, 5 # for simple test
-        funbc(args...) = π
-
-        for fld in (:u, :v, :T, :S)
-            for bctype in (Gradient, Flux)
-                for bc in (0.6, rand(Nx, Ny), funbc)
-                    @test test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
-                end
-            end
-
-            @test test_diffusion_simple(fld)
-            @test test_diffusion_budget(fld)
-            @test test_diffusion_cosine(fld)
-            @test test_flux_budget(fld)
-        end
-    end
-
-    @testset "Forcing" begin
-        println("  Testing forcings...")
-        add_one(args...) = 1.0
-        function test_forcing(fld)
-            kwarg = Dict(Symbol(:F, fld)=>add_one)
-            forcing = Forcing(; kwarg...)
-            f = getfield(forcing, fld)
-            f() == 1.0
-        end
-
-        for fld in (:u, :v, :w, :T, :S)
-            @test test_forcing(fld)
-        end
-    end
-
-    @testset "Output writers" begin
-        println("  Testing output writers...")
-        include("test_output_writers.jl")
-
-        @testset "Checkpointing" begin
-            println("    Testing checkpointing...")
-            run_thermal_bubble_checkpointer_tests()
-        end
-
-        @testset "NetCDF" begin
-            println("    Testing NetCDF output writer...")
-            run_thermal_bubble_netcdf_tests()
-        end
-    end
-
-    @testset "Golden master tests" begin
-        include("test_golden_master.jl")
-
-        @testset "Thermal bubble" begin
-            for arch in archs
-                run_thermal_bubble_golden_master_tests(arch)
-            end
-        end
-
-        @testset "Deep convection" begin
-            run_deep_convection_golden_master_tests()
-        end
-    end
+    # @testset "Model" begin
+    #     println("  Testing model...")
+    #
+    #     for arch in archs, ft in float_types
+    #         model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
+    #
+    #         # Just testing that a Model was constructed with no errors/crashes.
+    #         @test true
+    #     end
+    # end
+    #
+    # @testset "Time stepping" begin
+    #     println("  Testing time stepping...")
+    #     include("test_time_stepping.jl")
+    #
+    #     for arch in archs, ft in float_types
+    #         @test time_stepping_works(arch, ft)
+    #     end
+    #
+    #     @testset "Adams-Bashforth 2" begin
+    #         for arch in archs, ft in float_types
+    #             run_first_AB2_time_step_tests(arch, ft)
+    #         end
+    #     end
+    # end
+    #
+    # @testset "Boundary conditions" begin
+    #     println("  Testing boundary conditions...")
+    #     include("test_boundary_conditions.jl")
+    #
+    #     Nx, Ny, Nz = 3, 4, 5 # for simple test
+    #     funbc(args...) = π
+    #
+    #     for fld in (:u, :v, :T, :S)
+    #         for bctype in (Gradient, Flux)
+    #             for bc in (0.6, rand(Nx, Ny), funbc)
+    #                 @test test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+    #             end
+    #         end
+    #
+    #         @test test_diffusion_simple(fld)
+    #         @test test_diffusion_budget(fld)
+    #         @test test_diffusion_cosine(fld)
+    #         @test test_flux_budget(fld)
+    #     end
+    # end
+    #
+    # @testset "Forcing" begin
+    #     println("  Testing forcings...")
+    #     add_one(args...) = 1.0
+    #     function test_forcing(fld)
+    #         kwarg = Dict(Symbol(:F, fld)=>add_one)
+    #         forcing = Forcing(; kwarg...)
+    #         f = getfield(forcing, fld)
+    #         f() == 1.0
+    #     end
+    #
+    #     for fld in (:u, :v, :w, :T, :S)
+    #         @test test_forcing(fld)
+    #     end
+    # end
+    #
+    # @testset "Output writers" begin
+    #     println("  Testing output writers...")
+    #     include("test_output_writers.jl")
+    #
+    #     @testset "Checkpointing" begin
+    #         println("    Testing checkpointing...")
+    #         run_thermal_bubble_checkpointer_tests()
+    #     end
+    #
+    #     @testset "NetCDF" begin
+    #         println("    Testing NetCDF output writer...")
+    #         run_thermal_bubble_netcdf_tests()
+    #     end
+    # end
+    #
+    # @testset "Golden master tests" begin
+    #     include("test_golden_master.jl")
+    #
+    #     @testset "Thermal bubble" begin
+    #         for arch in archs
+    #             run_thermal_bubble_golden_master_tests(arch)
+    #         end
+    #     end
+    #
+    #     @testset "Deep convection" begin
+    #         run_deep_convection_golden_master_tests()
+    #     end
+    # end
 end # Oceananigans tests
-

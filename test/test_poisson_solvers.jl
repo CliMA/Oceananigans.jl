@@ -38,29 +38,32 @@ function mixed_ifft_commutes(N)
 end
 
 function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
-    RHS = CellField(Complex{ft}, CPU(), g)
-    solver = PoissonSolver(g, RHS, FFTW.ESTIMATE)
+    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(CPU(), grid)
     true  # Just making sure our PoissonSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(CPU(), grid)
 
-    RHS = CellField(Complex{ft}, CPU(), g)
-    RHS_orig = CellField(Complex{ft}, CPU(), g)
-    ϕ = CellField(Complex{ft}, CPU(), g)
-    ∇²ϕ = CellField(Complex{ft}, CPU(), g)
+    RHS = CellField(Complex{ft}, CPU(), grid)
+    RHS_orig = CellField(Complex{ft}, CPU(), grid)
+    ϕ = CellField(Complex{ft}, CPU(), grid)
+    ∇²ϕ = CellField(Complex{ft}, CPU(), grid)
 
-    RHS.data .= rand(Nx, Ny, Nz)
-    RHS.data .= RHS.data .- mean(RHS.data)
+    @views RHS.data[1:Nx, 1:Ny, 1:Nz] .= rand(Nx, Ny, Nz)
+    @views RHS.data[1:Nx, 1:Ny, 1:Nz] .= RHS.data[1:Nx, 1:Ny, 1:Nz] .- mean(RHS.data[1:Nx, 1:Ny, 1:Nz])
 
     RHS_orig.data .= copy(RHS.data)
 
-    solver = PoissonSolver(g, RHS, planner_flag)
+    @views solver.storage .= RHS.data[1:Nx, 1:Ny, 1:Nz]
 
-    solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(g, ϕ, ∇²ϕ)
+    solve_poisson_3d_ppn_planned!(solver, grid)
+
+    @views ϕ.data[1:Nx, 1:Ny, 1:Nz] .= solver.storage
+
+    ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
 end
