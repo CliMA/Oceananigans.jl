@@ -19,7 +19,9 @@ function.
 function correct_field_value_was_set(arch::Architecture, g::Grid, field_type, val::Number)
     f = field_type(arch, g)
     set!(f, val)
-    f.data ≈ val * ones(size(f))
+
+    # Exclude the halo regions.
+    @views f.data[1:g.Nx, 1:g.Ny, 1:g.Nz] ≈ val * ones(size(f))
 end
 
 function correct_field_addition(arch::Architecture, g::Grid, field_type, val1::Number, val2::Number)
