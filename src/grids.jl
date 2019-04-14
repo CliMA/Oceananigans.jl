@@ -86,11 +86,15 @@ function RegularCartesianGrid(T, N, L)
     dim == 3 && !(Nx != 1 && Ny != 1 && Nz != 1) &&
         throw(ArgumentError("For 3D grids, cannot have dimensions of size 1."))
 
-    # Right now we only support periodic horizontal boundary conditions so
-    # halos of size 1 are just what we need.
-    Hx = 1
-    Hy = 1
-    Hz = 0
+    # Right now we only support periodic horizontal boundary conditions and
+    # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
+    # just what we need.
+    if dim == 3
+        Hx, Hy, Hz = 1, 1, 0
+    else
+        # For now we only support halos for 3D grids.
+        Hx, Hy, Hz = 0, 0, 0
+    end
 
     Tx = Nx + 2*Hx
     Ty = Ny + 2*Hy
