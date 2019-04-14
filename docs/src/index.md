@@ -20,7 +20,7 @@ Nx, Ny, Nz = 100, 100, 50      # Number of grid points in each dimension.
 Lx, Ly, Lz = 2000, 2000, 1000  # Domain size (meters).
 Nt, Δt = 10, 60                # Number of time steps, time step size (seconds).
 
-model = Model((Nx, Ny, Nz), (Lx, Ly, Lz))
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))
 time_step!(model, Nt, Δt)
 ```
 You just simulated a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and plot the output.
