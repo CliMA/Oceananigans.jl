@@ -111,6 +111,42 @@ function solve_for_pressure!(::GPU, model::Model)
     @launch device(GPU()) idct_permute!(model.grid, ϕ, model.pr.pNHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
 end
 
+function fill_halo_regions_x!(grid::Grid, fields...)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @unroll for f in fields
+                @unroll for h in 1:Hx
+                    f[1-h,  j, k] = f[Nx-h+1, j, k]
+                    f[Nx+h, j, k] = f[h,      j, k]
+                end
+            end
+        end
+    end
+
+    @synchronize
+end
+
+function fill_halo_regions_y!(grid::Grid, fields...)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
+
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @unroll for f in fields
+                @unroll for h in 1:Hx
+                    f[i,  1-h, k] = f[i, Ny-h+1, k]
+                    f[i, Ny+h, k] = f[i,      h, k]
+                end
+            end
+        end
+    end
+
+    @synchronize
+end
+
 """Store previous source terms before updating them."""
 function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS)
     @loop for k in (1:grid.Nz; blockIdx().z)
