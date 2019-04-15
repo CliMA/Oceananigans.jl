@@ -4,6 +4,7 @@ import GPUifyLoops: @launch, @loop, @unroll, @synchronize
 
 using Oceananigans.Operators
 
+const max_threads = 1024  # Maximum threads per CUDA kernel launch.
 const Tx = 16 # CUDA threads per x-block
 const Ty = 16 # CUDA threads per y-block
 
@@ -109,6 +110,18 @@ function solve_for_pressure!(::GPU, model::Model)
 
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
     @launch device(GPU()) idct_permute!(model.grid, ϕ, model.pr.pNHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+end
+
+function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
+    Ty = min(max_threads, Ny)
+    Tz = min(fld(max_threads, Ty), Nz)
+    By, Bz = cld(Ny, Ty), cld(Nz, Tz)
+    @launch device(arch) fill_halo_regions_x!(grid, fields..., threads=(1, Ty, Tz), blocks=(1, By, Nz))
+
+    Tx = min(max_threads, Nx)
+    Tz = min(fld(max_threads, Tx), Nz)
+    Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
+    @launch device(arch) fill_halo_regions_y!(grid, fields..., threads=(Tx, 1, Tz), blocks=(Bz, 1, Nz))
 end
 
 function fill_halo_regions_x!(grid::Grid, fields...)
