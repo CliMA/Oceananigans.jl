@@ -20,7 +20,8 @@ function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <
 end
 
 function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     CellField{typeof(data), typeof(g)}(data, g)
 end
@@ -32,7 +33,8 @@ function CellField(T, ::CPU, g::RegularCartesianGrid)
 end
 
 function CellField(T, ::GPU, g::RegularCartesianGrid)
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     CellField{typeof(data), typeof(g)}(data, g)
 end
@@ -54,7 +56,8 @@ function FaceFieldX(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T 
 end
 
 function FaceFieldX(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     FaceFieldX{typeof(data), typeof(g)}(data, g)
 end
@@ -76,7 +79,8 @@ function FaceFieldY(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T 
 end
 
 function FaceFieldY(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     FaceFieldY{typeof(data), typeof(g)}(data, g)
 end
@@ -98,7 +102,8 @@ function FaceFieldZ(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T 
 end
 
 function FaceFieldZ(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
@@ -120,7 +125,8 @@ function EdgeField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <
 end
 
 function EdgeField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    underlying_data = CuArray{T}(undef, g.Tx, g.Ty, g.Tz)
+    data = OffsetArray(underlying_data, 1-g.Hx:g.Nx+g.Hx, 1-g.Hy:g.Ny+g.Hy, 1-g.Hz:g.Nz+g.Hz)
     data .= 0.0
     EdgeField{typeof(data), typeof(g)}(data, g)
 end
