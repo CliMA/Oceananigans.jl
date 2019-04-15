@@ -72,11 +72,14 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
 
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By))
+                             fill_halo_regions!(arch, grid, pr.pHY′.data, uvw..., TS...)
         @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
                              calculate_boundary_source_terms!(model)
         @launch device(arch) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+                             fill_halo_regions!(arch, grid, Guvw...)
         @launch device(arch) calculate_source_term_divergence!(arch, grid, Guvw..., RHS, threads=(Tx, Ty), blocks=(Bx, By, Bz))
                              solve_for_pressure!(arch, model)
+                             fill_halo_regions!(arch, grid, pr.pNHS.data)
         @launch device(arch) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt, threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
         clock.time += Δt
@@ -113,6 +116,8 @@ function solve_for_pressure!(::GPU, model::Model)
 end
 
 function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    
     Ty = min(max_threads, Ny)
     Tz = min(fld(max_threads, Ty), Nz)
     By, Bz = cld(Ny, Ty), cld(Nz, Tz)
