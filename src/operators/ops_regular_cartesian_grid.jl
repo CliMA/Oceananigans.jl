@@ -79,24 +79,24 @@ end
     end
 end
 
-function avgx_4(f, Nx, i, j, k)
-    @inbounds (f[i, j, k] + f[decmod1(i, Nx), j, k] -
-		                   (f[incmod1(i, Nx), j, k] - f[i, j, k] -
-                            f[decmod1(i, Nx), j, k] + f[decmod2(i, Nx), j, k]) / 6.0) * 0.5
+@inline function avgx_4(g::RegularCartesianGrid, f, i, j, k)
+    @inbounds (f[i, j, k] + f[i-1, j, k] -
+		                   (f[i+1, j, k] - f[i, j, k] -
+                            f[i-1, j, k] + f[i-2, j, k]) / 6.0) * 0.5
 end
 
-function avgy_4(f, Ny, i, j, k)
-    @inbounds (f[i, j, k] + f[i, decmod1(j, Ny), k] -
-		                   (f[i, incmod1(j, Ny), k] - f[i, j, k] -
-                            f[i, decmod1(j, Ny), k] + f[i, decmod2(j, Ny), k]) / 6.0) * 0.5
+@inline function avgy_4(g::RegularCartesianGrid, f, i, j, k)
+    @inbounds (f[i, j, k] + f[i, j-1, k] -
+		                   (f[i, j+1, k] - f[i, j, k] -
+                            f[i, j-1, k] + f[i, j-2, k]) / 6.0) * 0.5
 end
 
-function avgz_4(f, Nz, i, j, k)
+@inline function avgz_4(g::RegularCartesianGrid, f, i, j, k)
 	if k == 1
 		@inbounds return f[i, j, 1]
 	else
 		@inbounds return (f[i, j, k] + f[i, j, max(1, k-1)] -
-		                              (f[i, j, min(Nz, k+1)] - f[i, j, k] -
+		                              (f[i, j, min(g.Nz, k+1)] - f[i, j, k] -
 							           f[i, j, max(1, k-1)] + f[i, j, max(1, k-2)]) / 6.0 ) * 0.5
     end
     nothing
