@@ -4,7 +4,7 @@ include("utils.jl")
 
 Nx, Ny, Nz = 256, 1, 256
 Lx, Ly, Lz = 1e5, 1e5, 4000
-Nt, Δt = 500, 2
+Nt, Δt = 100, 2
 
 # We're assuming molecular viscosity and diffusivity.
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-2, κ=1e-2)
@@ -35,6 +35,9 @@ model.boundary_conditions.v.z.right = BoundaryCondition(NoSlip, nothing)
 
 nc_writer = NetCDFOutputWriter(dir="netcdf_out", prefix="thermal_wind_", frequency=100)
 push!(model.output_writers, nc_writer)
+
+div_checker = VelocityDivergenceChecker(1, 0, eps(Float32))
+push!(model.diagnostics, div_checker)
 
 time_step!(model, Nt, Δt)
 

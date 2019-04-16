@@ -87,6 +87,7 @@ export
     Diagnostic,
     run_diagnostic,
     FieldSummary,
+    VelocityDivergenceChecker,
     Nusselt_wT,
     Nusselt_Chi,
 
