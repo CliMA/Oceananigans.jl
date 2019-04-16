@@ -3,10 +3,11 @@ using Oceananigans
 include("utils.jl")
 
 Nx, Ny, Nz = 256, 1, 256
-Lx, Ly, Lz = 1e6, 1e6, 4000
-Nt, Δt = 5000, 10
+Lx, Ly, Lz = 1e5, 1e5, 4000
+Nt, Δt = 500, 2
 
-model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))
+# We're assuming molecular viscosity and diffusivity.
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-2, κ=1e-2)
 
 # Set a temperature perturbation with a Gaussian profile located at the center
 # of the vertical slice. It roughly corresponds to a background temperature of
@@ -14,24 +15,24 @@ model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))
 xC, zC = model.grid.xC, model.grid.zC
 zC = zC'
 
-T0 = 283.0 # Reference temperature
-rho0 = 1.027e3 # Reference water density
-DeltaT = 0.1 # Magnitude of temperature perturbation
-alpha = 207e-6 # Coefficient of thermal expansion
-sigma = Lx/10.0 # Characteristic distance over which anomaly is spread
-g = 9.81
-f = 1e-4
+T0 = model.eos.T₀ # Reference temperature
+ρ0 = 1.027e3      # Reference water density
+ΔT = 10           # Magnitude of temperature perturbation
+αᵥ = model.eos.αᵥ # Coefficient of thermal expansion
+σ = Lx/10.0       # Characteristic distance over which anomaly is spread
+g = model.constants.g
+f = model.constants.f
 
-T = T0 .+ DeltaT * exp.( ( -(xC .- Lx/2).^2 ) ./ sigma.^2  )
-V = -2.0*g*alpha*DeltaT.*zC / (rho0*f*sigma.^2) .* (xC .- Lx/2) .* exp.( ( -(xC .- Lx/2).^2 ) ./ sigma.^2  )
+T = T0 .+ ΔT .* exp.((-(xC .- Lx/2).^2 ) ./ σ^2)
+V = ((2g*αᵥ*ΔT .* (zC .+ Lz) ./ (ρ0*f*σ^2)) .* (xC .- Lx/2) .* exp.((-(xC .- Lx/2).^2 ) ./ σ^2))
 
-model.tracers.T.data .= repeat(T, outer = [1, Ny, Nz])
+model.tracers.T.data .= repeat(T, outer=[1, Ny, Nz])
 model.velocities.v.data .= reshape(V, (Nx, Ny, Nz))
-#model.boundary_conditions.v.z.right = BoundaryCondition(Value, 0)
 
+# No-slip boundary conditions at the bottom for u and v.
+model.boundary_conditions.u.z.right = BoundaryCondition(NoSlip, nothing)
+model.boundary_conditions.v.z.right = BoundaryCondition(NoSlip, nothing)
 
-# Add a NetCDF output writer that saves NetCDF files to the current directory
-# "." with a filename prefix of "thermal_bubble_" every 10 iterations.
 nc_writer = NetCDFOutputWriter(dir="netcdf_out", prefix="thermal_wind_", frequency=100)
 push!(model.output_writers, nc_writer)
 
