@@ -89,12 +89,7 @@ function RegularCartesianGrid(T, N, L)
     # Right now we only support periodic horizontal boundary conditions and
     # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
     # just what we need.
-    if dim == 3
-        Hx, Hy, Hz = 1, 1, 0
-    else
-        # For now we only support halos for 3D grids.
-        Hx, Hy, Hz = 0, 0, 0
-    end
+    Hx, Hy, Hz = 1, 1, 0
 
     Tx = Nx + 2*Hx
     Ty = Ny + 2*Hy
