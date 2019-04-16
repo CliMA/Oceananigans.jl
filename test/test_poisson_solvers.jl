@@ -1,6 +1,7 @@
 using Statistics: mean
 
 using FFTW
+using OffsetArrays
 import GPUifyLoops: @launch, @loop, @synchronize
 
 @hascuda using CuArrays
@@ -50,44 +51,44 @@ function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), grid)
 
-    RHS = CellField(Complex{ft}, CPU(), grid)
-    RHS_orig = CellField(Complex{ft}, CPU(), grid)
-    ϕ = CellField(Complex{ft}, CPU(), grid)
-    ∇²ϕ = CellField(Complex{ft}, CPU(), grid)
+    RHS = rand(Nx, Ny, Nz)
+    RHS .= RHS .- mean(RHS)
 
-    @views RHS.data[1:Nx, 1:Ny, 1:Nz] .= rand(Nx, Ny, Nz)
-    @views RHS.data[1:Nx, 1:Ny, 1:Nz] .= RHS.data[1:Nx, 1:Ny, 1:Nz] .- mean(RHS.data[1:Nx, 1:Ny, 1:Nz])
+    RHS_orig = copy(RHS)
 
-    RHS_orig.data .= copy(RHS.data)
-
-    @views solver.storage .= RHS.data[1:Nx, 1:Ny, 1:Nz]
+    solver.storage .= RHS
 
     solve_poisson_3d_ppn_planned!(solver, grid)
 
-    @views ϕ.data[1:Nx, 1:Ny, 1:Nz] .= solver.storage
+    ϕ   = OffsetArray(zeros(Nx+2, Ny+2, Nz), 0:Nx+1, 0:Ny+1, 1:Nz)
+    ∇²ϕ = OffsetArray(zeros(Nx+2, Ny+2, Nz), 0:Nx+1, 0:Ny+1, 1:Nz)
+
+    @. @views ϕ[1:Nx, 1:Ny, 1:Nz] = real(solver.storage)
+
+    Oceananigans.fill_halo_regions!(CPU(), grid, ϕ)
 
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    ∇²ϕ.data ≈ RHS_orig.data
+    @views ∇²ϕ[1:Nx, 1:Ny, 1:Nz] ≈ RHS_orig
 end
 
 @hascuda begin
     function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
         grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
         solver = PoissonSolver(GPU(), grid)
-    
+
         RHS = rand(Nx, Ny, Nz)
         RHS .= RHS .- mean(RHS)
-    
+
         RHS_orig = copy(RHS)
-        
+
         RHS = CuArray(RHS)
         RHS_orig = CuArray(RHS_orig)
         ϕ = CuArray(zeros(Nx, Ny, Nz))
         ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
 
         solver.storage .= RHS
-        
+
         Tx, Ty = 16, 16  # Threads per block
         Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
@@ -96,7 +97,7 @@ end
         ϕ .= solver.storage
 
         @launch device(GPU()) ∇²_ppn!(grid, ϕ, ∇²ϕ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        
+
         ∇²ϕ ≈ RHS_orig
     end
 end
