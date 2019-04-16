@@ -14,6 +14,7 @@ abstract type NonDefault <: BCType end
 struct Flux <: NonDefault end
 struct Gradient <: NonDefault end
 struct Value <: NonDefault end
+struct NoSlip <: NonDefault end
 
 """
     BoundaryCondition(BCType, condition)
@@ -170,6 +171,9 @@ Notes:
 @inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
     Gϕ[i, j, 1] += κ*top_gradient.condition[i, j] / grid.Δz
 
+@inline apply_z_top_bc!(::BC{<:NoSlip, <:Nothing}, ϕ, Gϕ, ν, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, 1] -= (2/grid.Δz^2) * ν * ϕ[i, j, 1]
+
 "Add flux divergence to ∂ϕ/∂t associated with a bottom boundary condition on ϕ."
 @inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
     Gϕ[i, j, grid.Nz] += bottom_flux.condition(t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
@@ -189,3 +193,5 @@ Notes:
 @inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
     Gϕ[i, j, grid.Nz] -= κ*bottom_gradient.condition[i, j] / grid.Δz
 
+@inline apply_z_bottom_bc!(::BC{<:NoSlip, <:Nothing}, ϕ, Gϕ, ν, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, grid.Nz] -= (2/grid.Δz^2) * ν * ϕ[i, j, grid.Nz]

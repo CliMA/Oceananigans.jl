@@ -53,6 +53,7 @@ export
     Default,
     Flux,
     Gradient,
+    NoSlip,
 
     # Time stepping
     time_step!,
