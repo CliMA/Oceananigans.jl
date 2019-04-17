@@ -13,7 +13,22 @@ using Oceananigans:
 @inline δx_e2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[incmod1(i, g.Nx), j, k] - f[i, j, k]
 @inline δx_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[decmod1(i, g.Nx), j, k]
 
-@inline δy_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, g.Ny), k]
+@inline function δy_c2f(g::RegularCartesianGrid, f, i, j, k)
+    if j == 1
+        return 0
+    else
+        @inbounds return f[i, j, k] - f[i, j-1, k]
+    end
+end
+
+@inline function δy_f2c(g::RegularCartesianGrid, f, i, j, k)
+    if j == g.Ny
+        @inbounds return f[i, j, g.Nz]
+    else
+        @inbounds return f[i, j, k] - f[i, j, k+1]
+    end
+end
+
 @inline δy_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, incmod1(j, g.Ny), k] - f[i, j, k]
 @inline δy_e2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, incmod1(j, g.Ny), k] - f[i, j, k]
 @inline δy_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i, j, k] - f[i, decmod1(j, g.Ny), k]
@@ -260,4 +275,3 @@ end
 @inline function ∇²_ppn(g::RegularCartesianGrid, f, i, j, k)
 	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 end
-
