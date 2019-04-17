@@ -46,8 +46,12 @@ dTdz = parsed_args["dTdz"]
 dt = parsed_args["dt"]
 days = parsed_args["days"]
 
-for arg in [N, τ, Q, dTdz, dt, days]
-    arg = isinteger(arg) ? Int(arg) : args
+N = isinteger(N) ? Int(N) : N
+τ = isinteger(τ) ? Int(τ) : τ
+Q = isinteger(Q) ? Int(Q) : Q
+
+dt = isinteger(dt) ? Int(dt) : dt
+days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
 
@@ -96,7 +100,7 @@ heat_flux = -Q / (ρ₀ * cₚ)
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
 
 # Set boundary conditions.
-model.boundary_conditions.u.z.left = BoundaryCondition(Flux, wind_stres_flux)
+model.boundary_conditions.u.z.left = BoundaryCondition(Flux, wind_stress_flux)
 model.boundary_conditions.T.z.left = BoundaryCondition(Flux, heat_flux)
 model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, dTdz)
 
@@ -113,7 +117,7 @@ model.tracers.T.data .= CuArray(T_3d)
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity and temperature fields every 1,000 time steps and abort the simulation
 # if NaN values are detected.
-nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
+nan_checker = NaNChecker(100, [model.velocities.w, model.tracers.T], ["w", "T"])
 push!(model.diagnostics, nan_checker)
 
 # Write full output to disk enough times that we end up with 32 outputs.
