@@ -7,11 +7,12 @@ s = ArgParseSettings(description="Run simulations of a mixed layer over diurnal 
         arg_type=Int
         required=true
         help="Number of grid points in each dimension (Nx, Ny, Nz) = (N, N, N)."
-    "--insolation", "-S"
+    "--cooling-factor"
         arg_type=Float64
-        required=false
-        default=1400
-        help="Maximum solar insolation in the summer (at noon) [W/m²]. 1400 by default. The winter maximum is half this value (700 by default)."
+        required=true
+    "--heating-factor"
+        arg_type=Float64
+        required=true
     "--dTdz"
         arg_type=Float64
         required=true
@@ -36,23 +37,23 @@ end
 
 parsed_args = parse_args(s)
 N = parsed_args["resolution"]
-S = parsed_args["insolation"]
-Q = parsed_args["heat-flux"]
+Sc = parsed_args["cooling-factor"]
+Sh = parsed_args["heating-factor"]
 dTdz = parsed_args["dTdz"]
 κ = parsed_args["diffusivity"]
 dt = parsed_args["dt"]
 days = parsed_args["days"]
 
 N = isinteger(N) ? Int(N) : N
-S = isinteger(S) ? Int(S) : S
-Q = isinteger(Q) ? Int(Q) : Q
+Sc = isinteger(Sc) ? Int(Sc) : Sc
+Sh = isinteger(Sh) ? Int(Sh) : Sh
 
 dt = isinteger(dt) ? Int(dt) : dt
 days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "wind_stress_N" * string(N) * "_tau" * string(τ) * "_Q" * string(Q) *
+filename_prefix = "seasonal_cycle_N" * string(N) * "_Sc" * string(Sc) * "_Sh" * string(Sh) *
                   "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
                   "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
@@ -81,27 +82,20 @@ addprocs(1)
 cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
 
 # Defining functions for the surface forcing over the seasonal and diurnal cycles.
-C₁ = S     # Noon amplitude of insolation [W/m²].
-C₂ = C₁/2  # Noon amplitude of winter [W/m²].
-C₃ = -144  # Long wave loss number? Unused for now.
-C₄ = -117  # Long wave loss winter? Unused for now.
-C₅ = 0     # Below horizon?
-C₆ = -0.4  # Below horizon winter?
+spd = 86400  # Seconds per day.
+dpy = 365    # Days per year.
 
-d = 365    # Number of days in a year.
-s = 86400  # Number of seconds per day.
+ωd = 2π / spd  # Daily frequency.
+ωy = ωd / dpy  # Yearly frequency.
 
-@inline  f(t) = cos(π*t / (s*d/2))  # ??
-@inline qa(t) = (C₁+C₂)/2 - (C₁-C₂)/2 * f(t)  # Annual cycle
-@inline qo(t) = (C₅+C₆)/2 - (C₅-C₆)/2 * f(t)
-@inline  h(t) = (1 - qo(t)) * cos(2π*(t/s - 0.5/s)) + qo(t)
-@inline qd(t) = max(0, h(t))  # Daily cycle.
+@inline C₂(t) = -Sc * (1 + 0.5*cos(ωy*t))
+@inline C₁(t) =  Sh * (1 - 0.5*cos(ωy*t)) - C₂(t)
 
-@inline Qsurface(t) = qa(t) * qd(t) / (ρ₀*cₚ)
+@inline Qsurface(t) = (C₁(t) * max(0, sin(ωd*t - π/2)) + C₂(t)) / (ρ₀*cₚ)
 
 # Set more simulation parameters.
 Nx, Ny, Nz = N, N, N
-Lx, Ly, Lz = 100, 100, 100
+Lx, Ly, Lz = 200, 200, 200
 Δt = dt
 Nt = Int(days*60*60*24/dt)
 ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
@@ -110,22 +104,17 @@ Nt = Int(days*60*60*24/dt)
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
 
 # Interior forcing
-F₁ = 0.62
-F₂ = 1-F₁
-δ₁ = 0.6
-δ₂ = 20
+δL = 20  # Longwave penetration length scale [m].
 
-@inline radiative_factor(z) = F₁*exp(z/δ₁) + F₂*exp(z/δ₂)
-@inline ddz_radiative_factor(z) = (F₁/δ₁)*exp(z/δ₁) + (F₂/δ₂)*exp(z/δ₂)
+@inline radiative_factor(z) = exp(z/δL)
+@inline ddz_radiative_factor(z) = δL*exp(z/δL)
 
-α = model.eos.αᵥ
-g = model.constants.g
-N² = α*g*dTdz
-
-Z = sum(ddz_radiative_factor.(zC)) * Δz
 β = -mean(Qsurface.(ts)) + (κ*N²/(α*g))
+N = sum(ddz_radiative_factor.(zC)) * Δz
 
-@inline Qinterior(z) = (β/Z) * ddz_radiative_factor(z)
+@inline Qinterior(grid, u, v, w, T, S, i, j, k) = (β/N) * ddz_radiative_factor(grid.zC[k])
+
+model.forcing = Forcing(nothing, nothing, nothing, Qinterior, nothing)
 
 # Set boundary conditions.
 model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, dTdz)
@@ -146,13 +135,14 @@ model.tracers.T.data .= CuArray(T_3d)
 nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
 push!(model.diagnostics, nan_checker)
 
-# Add a checkpointer that saves the entire model state
-checkpointer = Checkpointer(dir=".", prefix="test_", frequency=5, padding=1)
-push!(checkpointed_model.output_writers, checkpointer)
+# Add a checkpointer that saves the entire model state.
+checkpoint_freq = Int(7*spd / dt)  # Every 7 days.
+checkpointer = Checkpointer(dir=joinpath(output_dir, "checkpoints"), prefix="seasonal_cycle_",
+                            frequency=checkpoint_freq, padding=2)
+push!(model.output_writers, checkpointer)
 
 # Write full output to disk every 1 hour.
-n_outputs = 32
-output_freq = floor(Int, Nt / n_outputs)
+output_freq = Int(2*3600 / dt)
 netcdf_writer = NetCDFOutputWriter(dir=output_dir, prefix=filename_prefix * "_",
                                    padding=0, naming_scheme=:file_number,
                                    frequency=output_freq, async=true)
@@ -170,10 +160,12 @@ push!(model.output_writers, netcdf_writer)
         progress = 100 * (model.clock.iteration / Nt)  # Progress %
         @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
 
-        # model.boundary_conditions.T.z.left = BoundaryCondition(Flux, heat_flux)
-
         tic = time_ns()
-        time_step!(model, Ni, Δt)
+
+        for j in 1:Ni
+            model.boundary_conditions.T.z.left = BoundaryCondition(Flux, Qsurface(model.clock.time))
+            time_step!(model, 1, Δt)
+        end
 
         @printf("   average wall clock time per iteration: %s\n", prettytime((time_ns() - tic) / Ni))
     end
