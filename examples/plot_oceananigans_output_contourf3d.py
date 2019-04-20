@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 def plot_contourf3d_from_netcdf(nc_filepath, png_filepath, var, dt, vmin, vmax, n_contours, cmap="inferno", var_offset=0, time=0):
     # For some reason I need to do the import here so it shows up on all joblib workers.
     from mpl_toolkits.mplot3d import Axes3D
-
+    
     # Enforcing style in here so that it's applied to all workers launched by joblib.
     plt.style.use("dark_background")
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         return os.path.join("wind_stress_N256_tau0.1_Q-75_dTdz0.01_k0.0001_dt0.25_days4", "wind_stress_N256_tau0.1_Q-75_dTdz0.01_k0.0001_dt0.25_days4_" + str(i) + ".nc")
 
     def output_filepath(i):
-        return os.path.join("frames", "wind_stress_unstable_" + str(i).zfill(4) + ".png")
+        return os.path.join("frames", "wind_stress_" + str(i).zfill(4) + ".png")
 
     # Plot many frames from many NetCDF files in parallel.
     freq = 20  # Output frequency in iterations.
