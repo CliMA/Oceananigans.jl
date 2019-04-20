@@ -73,6 +73,7 @@ addprocs(1)
 @everywhere Pkg.activate(".");
 
 @everywhere using Oceananigans
+@everywhere using CUDAnative
 @everywhere using CuArrays
 @everywhere using Printf
 @everywhere using Statistics: mean
@@ -107,7 +108,7 @@ model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_ty
 δL = 20  # Longwave penetration length scale [m].
 
 @inline radiative_factor(z) = exp(z/δL)
-@inline ddz_radiative_factor(z) = δL*exp(z/δL)
+@inline ddz_radiative_factor(z) = δL*CUDAnative.exp(z/δL)
 
 ts = 0:dt:(spd*dpy)
 β = -mean(Qsurface.(ts)) + (κ*dTdz)
