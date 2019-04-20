@@ -105,16 +105,17 @@ Nt = Int(days*60*60*24/dt)
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
 
 # Interior forcing
-δL = 20  # Longwave penetration length scale [m].
+const δL = 20  # Longwave penetration length scale [m].
 
 @inline radiative_factor(z) = exp(z/δL)
+@inline ddz_radiative_factor_cpu(z) = δL*exp(z/δL)
 @inline ddz_radiative_factor(z) = δL*CUDAnative.exp(z/δL)
 
 ts = 0:dt:(spd*dpy)
-β = -mean(Qsurface.(ts)) + (κ*dTdz)
-N = sum(ddz_radiative_factor.(model.grid.zC)) * model.grid.Δz
+const β = -mean(Qsurface.(ts)) + (κ*dTdz)
+const NN = sum(ddz_radiative_factor_cpu.(model.grid.zC)) * model.grid.Δz
 
-@inline Qinterior(grid, u, v, w, T, S, i, j, k) = (β/N) * ddz_radiative_factor(grid.zC[k])
+@inline Qinterior(grid, u, v, w, T, S, i, j, k) = (β/NN) * ddz_radiative_factor(grid.zC[k])
 
 model.forcing = Forcing(nothing, nothing, nothing, Qinterior, nothing)
 
