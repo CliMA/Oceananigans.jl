@@ -110,7 +110,7 @@ model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_ty
 @inline ddz_radiative_factor(z) = δL*exp(z/δL)
 
 ts = 0:dt:(spd*dpy)
-β = -mean(Qsurface.(ts)) + (κ*N²/(α*g))
+β = -mean(Qsurface.(ts)) + (κ*dTdz)
 N = sum(ddz_radiative_factor.(zC)) * Δz
 
 @inline Qinterior(grid, u, v, w, T, S, i, j, k) = (β/N) * ddz_radiative_factor(grid.zC[k])
