@@ -138,10 +138,10 @@ nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"]
 push!(model.diagnostics, nan_checker)
 
 # Add a checkpointer that saves the entire model state.
-checkpoint_freq = Int(7*spd / dt)  # Every 7 days.
-checkpointer = Checkpointer(dir=joinpath(output_dir, "checkpoints"), prefix="seasonal_cycle_",
-                            frequency=checkpoint_freq, padding=2)
-push!(model.output_writers, checkpointer)
+# checkpoint_freq = Int(7*spd / dt)  # Every 7 days.
+# checkpointer = Checkpointer(dir=joinpath(output_dir, "checkpoints"), prefix="seasonal_cycle_",
+#                             frequency=checkpoint_freq, padding=2)
+# push!(model.output_writers, checkpointer)
 
 # Write full output to disk every 1 hour.
 output_freq = Int(2*3600 / dt)
