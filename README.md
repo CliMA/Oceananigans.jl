@@ -30,6 +30,16 @@ A fast non-hydrostatic ocean model in Julia that can be run in 2 or 3 dimensions
 
 Our goal is to develop friendly and intuitive code allowing users to focus on the science and not on fixing compiler errors. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, or whether running on CPUs or GPUs.
 
+## Development team
+* [Ali Ramadhan](http://aliramadhan.me/) ([@ali-ramadhan](https://github.com/ali-ramadhan))
+* Chris Hill ([@christophernhill](https://github.com/christophernhill))
+* Jean-Michel Campin ([@jm-c](https://github.com/jm-c))
+* [John Marshall](http://oceans.mit.edu/JohnMarshall/) ([@johncmarshall54](https://github.com/johncmarshall54))
+* [Greg Wagner](https://glwagner.github.io/) ([@glwagner](https://github.com/glwagner))
+* [Mukund Gupta](https://mukund-gupta.github.io/) ([@mukund-gupta](https://github.com/mukund-gupta))
+* Andre Souza ([@sandreza](https://github.com/sandreza))
+* Zhen Wu ([@zhenwu0728](https://github.com/zhenwu0728))
+* Also big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
 
 ## Installation instructions
 Oceananigans is still not an official Julia package. But you can install it using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
