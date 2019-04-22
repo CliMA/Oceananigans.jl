@@ -26,8 +26,11 @@ function make_vertical_slice_movie(model::Model, nc_writer::NetCDFOutputWriter, 
     animation = @animate for n in 0:N_frames
         print("\rframe = $n / $N_frames   ")
         var = read_output(nc_writer, var_name, freq*n)
-        Plots.heatmap(model.grid.xC, model.grid.zC, rotl90(var[:, slice_idx, :]) .- var_offset,
-                      color=:balance, clims=(-0.01, 0.01), title="t=$(freq*n*Δt) s ($(round(freq*n*Δt/86400; digits=2)) days)")
+        Plots.contour(model.grid.xC, reverse(model.grid.zC), rotl90(var[:, slice_idx, :] .- 283),
+                      fill=true, levels=9, linewidth=0, color=:balance,
+                      clims=(-0.011, 0.011), title="t=$(freq*n*Δt) s ($(round(freq*n*Δt/86400; digits=2)) days)")
+        # Plots.heatmap(model.grid.xC, model.grid.zC, rotl90(var[:, slice_idx, :]) .- var_offset,
+        #               color=:balance, clims=(-0.01, 0.01), title="t=$(freq*n*Δt) s ($(round(freq*n*Δt/86400; digits=2)) days)")
     end
 
     mp4(animation, nc_writer.filename_prefix * "$(round(Int, time())).mp4", fps=30)
@@ -98,10 +101,10 @@ function make_avg_temperature_profile_movie()
     N_frames = Int(Nt/freq)
     filename_prefix = "convection"
     var_offset = 273.15
-    
+
     Nz, Lz = 128, 100
     dz = Lz/Nz
-    zC = -dz/2:-dz:-Lz 
+    zC = -dz/2:-dz:-Lz
 
     print("Producing movie... ($N_frames frames)\n")
     Plots.gr(dpi=150)
@@ -112,9 +115,9 @@ function make_avg_temperature_profile_movie()
         filepath = filename_prefix * lpad(freq*n, 9, "0") * ".nc"
         field_data = ncread(filepath, "T")
         ncclose(filepath)
-        
+
         T_profile = mean(field_data; dims=[1,2])
-        
+
         Plots.plot(reshape(T_profile, Nz) .- var_offset, zC,
                    title="t=$(freq*n*dt) s ($(round(freq*n*dt/86400; digits=2)) days)")
     end
