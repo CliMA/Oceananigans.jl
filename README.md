@@ -67,7 +67,7 @@ time_step!(model, Nt, Δt)
 ```
 You just simulated a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and plot the output.
 
-### CPU example
+### Interesting CPU example
 Let's add something to make the ocean dynamics a bit more interesting. We can add a hot bubble in the middle of the ocean and watch it rise to the surface. This example also shows how to set an initial condition and write regular output to NetCDF.
 ```julia
 using Oceananigans
@@ -96,6 +96,8 @@ time_step!(model, Nt, Δt)
 ```
 
 Check out [`rising_thermal_bubble.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/examples/rising_thermal_bubble.jl) to see how you can plot a 2D movie with the output.
+
+**Note**: You need to have Plots.jl and ffmpeg installed for the movie to be automatically created by Plots.jl.
 
 ### GPU example
 If you have access to an Nvidia CUDA-enabled graphics processing unit (GPU) you can run ocean models on it! To make sure that the CUDA toolkit is properly installed and that Julia can see your GPU, run the `nvidia-smi` comand at the terminal and it should print out some information about your GPU.
