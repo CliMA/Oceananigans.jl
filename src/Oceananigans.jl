@@ -1,5 +1,9 @@
 module Oceananigans
 
+if VERSION < v"1.1"
+    @error "Oceananigans requires Julia v1.1 or newer."
+end
+
 export
     # Helper variables and macros for determining if machine is CUDA-enabled.
     HAVE_CUDA,
