@@ -42,12 +42,17 @@ Our goal is to develop friendly and intuitive code allowing users to focus on th
 * Also big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
 
 ## Installation instructions
-Oceananigans is still not an official Julia package. But you can install it using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
+You can install the latest stable version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
+```julia
+julia>]
+(v1.1) pkg> add Oceananigans
+```
+or the latest version via
 ```julia
 julia>]
 (v1.1) pkg> add https://github.com/climate-machine/Oceananigans.jl.git
 ```
-**Note**: We recommend using Julia 1.1 with Oceananigans.
+**Note**: Oceananigans requires the latest version of Julia (1.1) to run correctly.
 
 ## Running your first model
 Let's initialize a 3D ocean with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
@@ -93,7 +98,9 @@ time_step!(model, Nt, Δt)
 Check out [`rising_thermal_bubble.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/examples/rising_thermal_bubble.jl) to see how you can plot a 2D movie with the output.
 
 ### GPU example
-If you have access to an Nvidia CUDA-enabled graphics processing unit (GPU) you can run ocean models on it! Just pass `arch=GPU()` as a keyword argument when constructing the model:
+If you have access to an Nvidia CUDA-enabled graphics processing unit (GPU) you can run ocean models on it! To make sure that the CUDA toolkit is properly installed and that Julia can see your GPU, run the `nvidia-smi` comand at the terminal and it should print out some information about your GPU.
+
+Just pass `arch=GPU()` as a keyword argument when constructing the model:
 ```julia
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=GPU())
 ```
