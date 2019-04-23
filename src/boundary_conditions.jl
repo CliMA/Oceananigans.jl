@@ -33,6 +33,8 @@ end
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 
+Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:AbstractArray} = BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
+
 """
     TimeVaryingBoundaryCondition(T, f)
 
