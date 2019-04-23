@@ -163,14 +163,14 @@ function MultiDim_adv(g::grids, q, vel, ΔT)
     for k in 1:g.Nz
         for j in 1:g.Ny
             for i in 1:g.Nx
-                q₁[i, j, k] = q[i, j, k] - ΔT * ((adv_x(g, q, u, incmod1(i, g.Nx), j, k, ΔT) - adv_x(g, q, u, i, j, k, ΔT)) / g.V[i, j, k] - q[i, j, k] * δuTrans(g, u, i, j, k) / g.V[i, j, k])
+                q₁[i, j, k] =  q[i, j, k] - ΔT / g.V[i, j, k] * (adv_x(g, q, u, incmod1(i, g.Nx), j, k, ΔT)  - adv_x(g, q, u, i, j, k, ΔT) - q[i, j, k] * δuTrans(g, u, i, j, k))
             end
         end
     end
     for k in 1:g.Nz
         for j in 1:g.Ny
             for i in 1:g.Nx
-                q₂[i, j, k] = q₁[i, j, k] - ΔT * ((adv_y(g, q₁, v, i, incmod1(j, g.Ny), k, ΔT) - adv_y(g, q₁, v, i, j, k, ΔT)) / g.V[i, j, k] - q[i, j, k] * δvTrans(g, v, i, j, k) / g.V[i, j, k])
+                q₂[i, j, k] = q₁[i, j, k] - ΔT / g.V[i, j, k] * (adv_y(g, q₁, v, i, incmod1(j, g.Ny), k, ΔT) - adv_y(g, q₁, v, i, j, k, ΔT) - q[i, j, k] * δvTrans(g, v, i, j, k))
             end
         end
     end
