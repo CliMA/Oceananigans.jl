@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Ali Ramadhan <ali.hh.ramadhan@gmail.com>"]
-version = "0.5.2"
+version = "0.5.3"
 
 [deps]
 CUDAapi = "3895d2a7-ec45-59b8-82bb-cfc6a382f9b3"
