@@ -54,9 +54,9 @@ days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "periodic_baroclinic_N" * string(N) * "_Q" * string(Q) *
-                  "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
-                  "_days" * string(days)
+filename_prefix = "periodic_baroclinic_N" * string(N) * "_L" * string(L) *
+                  "_Q" * string(Q) * "_dTdz" * string(dTdz) * "_k" * string(κ) *
+                  "_dt" * string(dt) * "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
 
 if !isdir(output_dir)
