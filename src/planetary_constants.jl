@@ -4,9 +4,15 @@ struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
     g::T  # Standard acceleration due to gravity [m/s²].
 end
 
-function Earth()
+function Earth(lat=nothing)
     Ω = 7.2921150e-5
-    f = 1e-4
+
+    if isnothing(lat)
+        f = 1e-4  # Corresponds to a latitude of 43.29°N.
+    else
+        f = 2*Ω*sind(lat)
+    end
+
     g = 9.80665
     PlanetaryConstants(Ω, f, g)
 end
