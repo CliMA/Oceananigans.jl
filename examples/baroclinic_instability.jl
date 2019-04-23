@@ -1,12 +1,16 @@
 using ArgParse
 
-s = ArgParseSettings(description="Run simulations of oceanic free convection.")
+s = ArgParseSettings(description="Run simulations of...")
 
 @add_arg_table s begin
     "--resolution", "-N"
         arg_type=Int
         required=true
         help="Number of grid points in each dimension (Nx, Ny, Nz) = (N, N, N)."
+    "--length", "-L"
+        arg_type=Float64
+        required=true
+        help="Horizontal size of the domain (Lx, Ly). Depth is fixed at 100 meters."
     "--heat-flux"
         arg_type=Float64
         required=true
@@ -35,9 +39,14 @@ end
 
 parsed_args = parse_args(s)
 N = parsed_args["resolution"]
+L = parsed_args["length"]
 Q = parsed_args["heat-flux"]
 dTdz = parsed_args["dTdz"]
 κ = parsed_args["diffusivity"]
+
+N = isinteger(N) ? Int(N) : N
+τ = isinteger(L) ? Int(L) : L
+Q = isinteger(Q) ? Int(Q) : Q
 
 dt, days = parsed_args["dt"], parsed_args["days"]
 dt = isinteger(dt) ? Int(dt) : dt
@@ -45,7 +54,7 @@ days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "free_convection_N" * string(N) * "_Q" * string(Q) *
+filename_prefix = "periodic_baroclinic_N" * string(N) * "_Q" * string(Q) *
                   "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
                   "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
@@ -74,7 +83,7 @@ cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg�
 
 # Set more simulation parameters.
 Nx, Ny, Nz = N, N, N
-Lx, Ly, Lz = 100, 100, 100
+Lx, Ly, Lz = L, L, 100
 Δt = dt
 Nt = Int(days*60*60*24/dt)
 ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
