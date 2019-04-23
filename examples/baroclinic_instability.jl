@@ -88,14 +88,15 @@ Lx, Ly, Lz = L, L, 100
 Nt = Int(days*60*60*24/dt)
 ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
 
-# To impose a flux boundary condition, the top flux imposed should be negative
-# for a heating flux and positive for a cooling flux, thus the minus sign.
-
-top_flux = (-Q + Δ*cos(2π*xC/Lx)) / (ρ₀ * cₚ)
-top_flux = repeat(top_flux, 1, Ny)
-
 # Create the model.
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
+
+# To impose a flux boundary condition, the top flux imposed should be negative
+# for a heating flux and positive for a cooling flux, thus the minus sign.
+Δ = 25
+xC = model.grid.xC
+top_flux = @. (-Q + Δ*cos(2π*xC/Lx)) / (ρ₀ * cₚ)
+top_flux = CuArray(repeat(top_flux, 1, Ny))
 
 # Set boundary conditions.
 model.boundary_conditions.T.z.left = BoundaryCondition(Flux, top_flux)
