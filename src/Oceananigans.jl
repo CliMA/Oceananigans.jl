@@ -108,6 +108,7 @@ using
     StaticArrays
 
 import
+    Adapt,
     GPUifyLoops
 
 const HAVE_CUDA = try
