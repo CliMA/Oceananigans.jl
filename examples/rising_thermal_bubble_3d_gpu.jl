@@ -1,5 +1,7 @@
 using Oceananigans
 
+# We'll want the make_vertical_slice_movie function from utils.jl to turn our
+# rising thermal bubble output into a movie.
 include("utils.jl")
 
 # We'll set up a 2D model with an xz-slice so there's only 1 grid point in y.
