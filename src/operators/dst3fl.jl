@@ -24,6 +24,10 @@ end
 
 ###################################################################################
 # Compute advective flux of tracers using 3rd order DST Scheme with flux limiting #
+# Due to free surface, tracers will not be conserved at each time step.           #
+# Surface flux(τⁿ*Az*wFld) need to be recorded to check tracer conservation.      #
+# There will still be some tiny negative values in tracer field because of multi- #
+# dimensional advection.                                                          #
 ###################################################################################
 const θmax = 1.0e20
 # Increment and decrement integer a with periodic wrapping
@@ -56,8 +60,8 @@ calVCFL(g::grids, ΔT, vFld, i, j, k) = abs(vFld[i, j, k] * ΔT / g.dyC[i, j])
 calWCFL(g::grids, ΔT, wFld, i, j, k) = abs(wFld[i, j, k] * ΔT / g.dzC[k])
 
 # calculate d₀ and d₁ 
-d0(CFL) = (2.0 - CFL) * (1.0 - CFL) / 6 
-d1(CFL) = (1.0 - CFL * CFL) / 6 
+d0(CFL) = (2.0 - CFL) * (1.0 - CFL) / 6.0 
+d1(CFL) = (1.0 - CFL * CFL) / 6.0 
 
 # calculate volume transport, unit: m³/s
 calUTrans(g::grids, uFld, i, j, k) = g.Ax[i, j, k] * uFld[i, j, k]
@@ -65,7 +69,13 @@ calVTrans(g::grids, vFld, i, j, k) = g.Ay[i, j, k] * vFld[i, j, k]
 calWTrans(g::grids, wFld, i, j, k) = g.Az[i, j] * wFld[i, j, k]
 δuTrans(g::grids, uFld, i, j, k) = calUTrans(g, uFld, incmod1(i, g.Nx), j, k) - calUTrans(g, uFld, i, j, k)
 δvTrans(g::grids, vFld, i, j, k) = calVTrans(g, vFld, i, incmod1(j, g.Ny), k) - calVTrans(g, vFld, i, j, k)
-δwTrans(g::grids, wFld, i, j, k) = calWTrans(g, wFld, i, j, k) - calWTrans(g, wFld, i, j, min(k+1, g.Nz))
+function δwTrans(g::grids, wFld, i, j, k)
+    if k == g.Nz
+        return calWTrans(g, wFld, i, j, k)
+    else
+        return (calWTrans(g, wFld, i, j, k) - calWTrans(g, wFld, i, j, min(k+1, g.Nz)))
+    end
+end
 
 # calculate Zonal advection flux with Sweby limiter, unit: mmolC/s
 function adv_x(g::grids, q,  uFld, i, j, k, ΔT)
@@ -167,11 +177,15 @@ function MultiDim_adv(g::grids, q, vel, ΔT)
     for k in 1:g.Nz
         for j in 1:g.Ny
             for i in 1:g.Nx
-                q₃[i, j, k] = q₂[i, j, k] - ΔT * ((adv_z(g, q₂, w, i, j, k, ΔT) - adv_z(g, q₂, w, i, j, min(k+1, g.Nz), ΔT)) / g.V[i, j, k] - q[i, j, k] * δwTrans(g, w, i, j, k) / g.V[i, j, k])
+                if k == g.Nz
+                    q₃[i, j, k] = q₂[i, j, k] - ΔT / g.V[i, j, k] * (adv_z(g, q₂, w, i, j, k, ΔT) - q[i, j, k] * δwTrans(g, w, i, j, k))
+                else
+                    q₃[i, j, k] = q₂[i, j, k] - ΔT / g.V[i, j, k] * (adv_z(g, q₂, w, i, j, k, ΔT) - adv_z(g, q₂, w, i, j, min(k+1, g.Nz), ΔT) - q[i, j, k] * δwTrans(g, w, i, j, k))
+                end
             end
         end
     end
 
-    gtr .= (q₃ .- q) ./ ΔT
-    return gtr
+    adv .= (q₃ .- q) ./ ΔT
+    return adv
 end
