@@ -32,3 +32,39 @@ function EarthStationary()
     g = 9.80665
     PlanetaryConstants(Ω, f, g)
 end
+
+function Europa(; f=nothing, lat=nothing)
+    # Values taken from Soderlund (Table 1, 2019) [arXiv:1901.04093].
+    Ω = 2.1e-5
+    g = 1.3
+
+    if isnothing(f) && isnothing(lat)
+        throw(ArgumentError("Must specify Coriolis parameter f or latitude!"))
+    elseif isnothing(lat)
+        f′ = f
+    elseif isnothing(f)
+        f′ = 2*Ω*sind(lat)
+    else
+        throw(ArgumentError("Cannot specify both f and lat!"))
+    end
+
+    abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
+end
+
+function Enceladus(; f=nothing, lat=nothing)
+    # Values taken from Soderlund (Table 1, 2019) [arXiv:1901.04093].
+    Ω = 5.3e-5
+    g = 0.1
+
+    if isnothing(f) && isnothing(lat)
+        throw(ArgumentError("Must specify Coriolis parameter f or latitude!"))
+    elseif isnothing(lat)
+        f′ = f
+    elseif isnothing(f)
+        f′ = 2*Ω*sind(lat)
+    else
+        throw(ArgumentError("Cannot specify both f and lat!"))
+    end
+
+    abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
+end
