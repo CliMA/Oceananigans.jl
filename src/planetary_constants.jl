@@ -4,17 +4,26 @@ struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
     g::T  # Standard acceleration due to gravity [m/s²].
 end
 
-function Earth(lat=nothing)
-    Ω = 7.2921150e-5
+function choose_f(Ω, f, lat)
+end
 
-    if isnothing(lat)
-        f = 1e-4  # Corresponds to a latitude of 43.29°N.
+function Earth(; f=nothing, lat=nothing)
+    Ω = 7.2921150e-5
+    g = 9.80665
+
+    if isnothing(f) && isnothing(lat)
+        f′ = 1e-4  # Corresponds to a latitude of 43.29°N.
+    elseif isnothing(lat)
+        f′ = f
+    elseif isnothing(f)
+        f′ = 2*Ω*sind(lat)
     else
-        f = 2*Ω*sind(lat)
+        throw(ArgumentError("Cannot specify both f and lat!"))
     end
 
-    g = 9.80665
-    PlanetaryConstants(Ω, f, g)
+    abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
+
+    PlanetaryConstants(Ω, f′, g)
 end
 
 function EarthStationary()
