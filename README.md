@@ -139,9 +139,11 @@ push!(model.output_writers, nc_writer)
 time_step!(model, Nt, Δt)
 ```
 
+**Warning**: Until issue [#64](https://github.com/climate-machine/Oceananigans.jl/issues/64) is resolved, you can only run GPU models with grid sizes where `Nx` and `Ny` are multiples of 16.
+
 To see a more advanced example, see [`free_convection.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/examples/free_convection.jl), which should be decently commented and comes with command line arguments to configure the simulation.
 
-**Warning**: Until issue [#64](https://github.com/climate-machine/Oceananigans.jl/issues/64) is resolved, you can only run GPU models with grid sizes where `Nx` and `Ny` are multiples of 16.
+You can movie output from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/climate-machine/Oceananigans.jl#performance-benchmarks).
 
 ## Getting help
 If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/climate-machine/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
