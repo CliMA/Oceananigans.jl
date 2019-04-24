@@ -159,7 +159,7 @@ end
 # multi-dimensional advetion
 function MultiDim_adv(g::grids, q, vel, ΔT)
     u = vel.u; v = vel.v; w = vel.w;
-    gtr = zeros(size(q)); q₁ = zeros(size(q)); q₂ = zeros(size(q)); q₃ = zeros(size(q));
+    adv = zeros(size(q)); q₁ = zeros(size(q)); q₂ = zeros(size(q)); q₃ = zeros(size(q));
     for k in 1:g.Nz
         for j in 1:g.Ny
             for i in 1:g.Nx
