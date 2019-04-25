@@ -1,6 +1,7 @@
 using ArgParse
 
-s = ArgParseSettings(description="Run simulations of...")
+s = ArgParseSettings(description="Run simulations of free convection with a cosine cooling flux" *
+                                 " in the x-direction to induce horizontal buoyancy gradients at depth.")
 
 @add_arg_table s begin
     "--resolution", "-N"
@@ -78,7 +79,7 @@ addprocs(1)
 @everywhere using Printf
 
 # Physical constants.
-ρ₀ = 1027    # Density of seawater [kg/m³]
+ρ₀ = model.eos.ρ₀    # Density of seawater [kg/m³]
 cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
 
 # Set more simulation parameters.
@@ -86,10 +87,12 @@ Nx, Ny, Nz = N, N, N
 Lx, Ly, Lz = L, L, 100
 Δt = dt
 Nt = Int(days*60*60*24/dt)
-ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
+κv, νv = κ, κ  # This is also implicitly setting the Prandtl number Pr = 1.
+κh, νh = (L/Lz)*κv, (L/Lz)*νv  # Scale horizontal κ and ν by the aspect ratio.
 
 # Create the model.
-model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), νh=νh, κh=κh, νv=νv, κv=κv,
+              arch=GPU(), float_type=Float64)
 
 # To impose a flux boundary condition, the top flux imposed should be negative
 # for a heating flux and positive for a cooling flux, thus the minus sign.
