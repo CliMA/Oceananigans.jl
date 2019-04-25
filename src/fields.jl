@@ -13,25 +13,23 @@ struct CellField{A<:AbstractArray, G<:Grid} <: Field
     grid::G
 end
 
-function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
+function CellField(::CPU, g::Grid{T}) where T
     data = zeros(T, size(g))
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
-function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
+function CellField(::GPU, g::Grid{T}) where T
+    data = CuArray{T}(fill(0, size(g)))
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
-function CellField(T, ::CPU, g::RegularCartesianGrid)
+function CellField(T, ::CPU, g::Grid)
     data = zeros(T, size(g))
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
-function CellField(T, ::GPU, g::RegularCartesianGrid)
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
+function CellField(T, ::GPU, g::Grid)
+    data = CuArray{T}(fill(0, size(g)))
     CellField{typeof(data), typeof(g)}(data, g)
 end
 
@@ -97,6 +95,11 @@ function FaceFieldZ(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T 
     data .= 0.0
     FaceFieldZ{typeof(data), typeof(g)}(data, g)
 end
+
+CellField(g::Grid) = CellField(CPU(), g)
+FaceFieldX(g::Grid) = FaceFieldX(CPU(), g)
+FaceFieldY(g::Grid) = FaceFieldY(CPU(), g)
+FaceFieldZ(g::Grid) = FaceFieldZ(CPU(), g)
 
 """
     EdgeField{T<:AbstractArray} <: Field
@@ -176,3 +179,13 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :EdgeField)
         end
     end
 end
+
+xnodes(c::CellField) = reshape(c.grid.xC, c.grid.Nx, 1, 1)
+ynodes(c::CellField) = reshape(c.grid.yC, 1, c.grid.Ny, 1)
+znodes(c::CellField) = reshape(c.grid.zC, 1, 1, c.grid.Nz)
+
+set!(u, a::AbstractArray) = u.data .= a
+set!(u::Field{A}, a::AbstractArray) where A <: CuArray = u.data .= CuArray(a)
+set!(u, a::Function) = set!(u, a.(xnodes(u), ynodes(u), znodes(u))
+
+setproperty!(φ, U::FieldSet, a) = set!(φ, a)
