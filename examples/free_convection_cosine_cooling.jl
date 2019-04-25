@@ -79,7 +79,7 @@ addprocs(1)
 @everywhere using Printf
 
 # Physical constants.
-ρ₀ = model.eos.ρ₀    # Density of seawater [kg/m³]
+ρ₀ = 1027    # Density of seawater [kg/m³]
 cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
 
 # Set more simulation parameters.
@@ -121,11 +121,11 @@ model.tracers.T.data .= CuArray(T_3d)
 nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
 push!(model.diagnostics, nan_checker)
 
-# Write full output to disk enough times that we end up with 32 outputs.
+# Write full output to disk every 1 hour.
 output_freq = Int(3600/dt)
 netcdf_writer = NetCDFOutputWriter(dir=output_dir, prefix=filename_prefix * "_",
                                    padding=0, naming_scheme=:file_number,
-                                   frequency=output_freq, async=true)
+                                   frequency=output_freq, async=false)
 push!(model.output_writers, netcdf_writer)
 
 # With asynchronous output writing we need to wrap our time-stepping using
