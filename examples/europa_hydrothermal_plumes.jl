@@ -4,11 +4,11 @@ s = ArgParseSettings(description="Run simulations of a deep subsurface ocean on 
                                  " a heating flux at the seafloor inducing hydrothermal plumes.")
 
 @add_arg_table s begin
-    "--horizontal-resolution", "-Nh"
+    "--horizontal-resolution", "-N"
         arg_type=Int
         required=true
         help="Number of grid points in the horizontal (Nx, Ny) = (N, N)."
-    "--vertical-resolution", "-Nz"
+    "--vertical-resolution", "-V"
         arg_type=Int
         required=true
         help="Number of grid points in the vertical Nz."
@@ -67,7 +67,8 @@ days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "europa_hydrothermal_plumes_N" * string(N) * "_L" * string(L) *
+filename_prefix = "europa_hydrothermal_plumes_N" * string(Nh) * "_V" * string(Nz) *
+                   "_L" * string(L) * "_H" * string(H) *
                   "_Q" * string(Q) * "_dTdz" * string(dTdz) * "_k" * string(κ) *
                   "_dt" * string(dt) * "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
