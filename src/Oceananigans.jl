@@ -19,6 +19,8 @@ export
     PlanetaryConstants,
     Earth,
     EarthStationary,
+    Europa,
+    Enceladus,
 
     # Grids
     Grid,
