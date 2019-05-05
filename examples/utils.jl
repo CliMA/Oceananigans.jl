@@ -26,7 +26,7 @@ function make_vertical_slice_movie(model::Model, nc_writer::NetCDFOutputWriter, 
     animation = @animate for n in 0:N_frames
         print("\rframe = $n / $N_frames   ")
         var = read_output(nc_writer, var_name, freq*n)
-        Plots.contour(model.grid.xC, reverse(model.grid.zC), rotl90(var[:, slice_idx, :] .- 283),
+        Plots.contour(model.grid.xC, reverse(model.grid.zC), rotl90(var[:, slice_idx, :] .- var_offset),
                       fill=true, levels=9, linewidth=0, color=:balance,
                       clims=(-0.011, 0.011), title="t=$(freq*n*Δt) s ($(round(freq*n*Δt/86400; digits=2)) days)")
         # Plots.heatmap(model.grid.xC, model.grid.zC, rotl90(var[:, slice_idx, :]) .- var_offset,
