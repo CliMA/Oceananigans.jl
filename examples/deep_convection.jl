@@ -53,7 +53,7 @@ function impose_cooling_disk!(model::Model)
     # until we can figure out the best way of imposing forcings with complex
     # geometries, probably by being able to define, e.g. a forcing only at the
     # top, etc.
-    @inine function cooling_disk(grid, u, v, w, T, S, i, j, k)
+    @inline function cooling_disk(grid, u, v, w, T, S, i, j, k)
         if k == 1
             x = i*grid.Δx
             y = j*grid.Δy
@@ -74,15 +74,15 @@ end
 
 Nx, Ny, Nz = 100, 100, 50
 Lx, Ly, Lz = 2000, 2000, 1000
-Nt, Δt = 1000, 20
+Nt, Δt = 1080, 20   # 6 hour simulation
 
-model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz))  # CPU Model
+model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2 )  # CPU Model
 # model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=:GPU, float_type=Float32)  # GPU Model
 
 impose_cooling_disk!(model)
 
 # Add a NetCDF output writer that saves NetCDF files to the current directory
-# "." with a filename prefix of "deep_convection_" every 200 iterations.
+# "." with a filename prefix of "deep_convection_" every 20 iterations.
 nc_writer = NetCDFOutputWriter(dir=".", prefix="deep_convection_", frequency=20)
 push!(model.output_writers, nc_writer)
 
@@ -93,4 +93,4 @@ for i = 1:Nt
     println("Time: $(model.clock.time)  [$(prettytime(time_ns()-tic))]")
 end
 
-make_vertical_slice_movie(model, nc_writer, "T", Nt, Δt, 293.15, ceil(Int, Ny/2))
+make_vertical_slice_movie(model, nc_writer, "T", Nt, Δt, 293.13, ceil(Int, Ny/2))
