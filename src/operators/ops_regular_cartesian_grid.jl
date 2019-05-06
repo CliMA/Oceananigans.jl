@@ -261,3 +261,88 @@ end
 	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 end
 
+@inline function gU_visc(g::RegularCartesianGrid, u, v, w, 𝜈00, 𝜈12, 𝜈13, i, j, k)
+   #- strain tensor component at 2 locations:
+      str11_i = δx_f2c(g, u, i, j, k) / g.Δx
+      str11_m = δx_f2c(g, u, decmod1(i,g.Nx), j, k) / g.Δx
+      str12_j = ( δy_f2e(g, u, i, j, k) / g.Δy + δx_f2e(g, v, i, j, k) / g.Δx )*0.5
+      str12_p = ( δy_f2e(g, u, i, incmod1(j, g.Ny), k) / g.Δy + δx_f2e(g, v, i, incmod1(j, g.Ny), k) / g.Δx )*0.5
+      str13_k = ( δz_f2e(g, u, i, j, k) / g.Δz + δx_f2e(g, w, i, j, k) / g.Δx )*0.5
+    if k == g.Nz
+      kp = 1
+      str13_p = 0.
+    else
+      kp = k+1
+      str13_p = ( δz_f2e(g, u, i, j, kp) / g.Δz + δx_f2e(g, w, i, j, kp) / g.Δx )*0.5
+    end
+   #-
+    return ( 𝜈00[i,j,k]*str11_i - 𝜈00[decmod1(i, g.Nx),j,k]*str11_m )/ g.Δx
+         + ( 𝜈12[i,incmod1(j, g.Ny),k]*str12_p - 𝜈12[i,j,k]*str12_j )/ g.Δy
+         + ( 𝜈13[i,j,k]*str13_k - 𝜈13[i,j,kp]*str13_p )/ g.Δz
+end
+
+@inline function gV_visc(g::RegularCartesianGrid, u, v, w, 𝜈00, 𝜈12, 𝜈23, i, j, k)
+   #- strain tensor component at 2 locations:
+      str22_j = δy_f2c(g, v, i, j, k) / g.Δy
+      str22_m = δy_f2c(g, v, i,  decmod1(j,g.Ny), k) / g.Δy
+      str12_i = ( δy_f2e(g, u, i, j, k) / g.Δy + δx_f2e(g, v, i, j, k) / g.Δx )*0.5
+      str12_p = ( δy_f2e(g, u, incmod1(i, g.Nx), j, k) / g.Δy + δx_f2e(g, v, incmod1(i, g.Nx), j, k) / g.Δx )*0.5
+      str23_k = ( δz_f2e(g, v, i, j, k) / g.Δz + δy_f2e(g, w, i, j, k) / g.Δy )*0.5
+    if k == g.Nz
+      kp = 1
+      str23_p = 0.
+    else
+      kp = k+1
+      str23_p = ( δz_f2e(g, v, i, j, kp) / g.Δz + δy_f2e(g, w, i, j, kp) / g.Δy )*0.5
+    end
+   #-
+    return ( 𝜈00[i,j,k]*str22_j - 𝜈00[i,decmod1(j, g.Ny),k]*str22_m )/ g.Δy
+         + ( 𝜈12[incmod1(i, g.Nx),j,k]*str12_p - 𝜈12[i,j,k]*str12_i )/ g.Δx
+         + ( 𝜈23[i,j,k]*str23_k - 𝜈23[i,j,kp]*str23_p )/ g.Δz
+end
+
+@inline function gW_visc(g::RegularCartesianGrid, u, v, w, 𝜈00, 𝜈13, 𝜈23, i, j, k)
+  if k == 1
+    return 0
+  else
+   #- strain tensor component at 2 locations:
+      str33_k = δz_f2c(g, w, i, j, k) / g.Δz
+      str33_m = δz_f2c(g, w, i, j, k-1) / g.Δz
+      str13_i = ( δz_f2e(g, u, i, j, k) / g.Δz + δx_f2e(g, w, i, j, k) / g.Δx )*0.5
+      str13_p = ( δz_f2e(g, u, incmod1(i, g.Nx), j, k) / g.Δz + δx_f2e(g, w, incmod1(i, g.Nx), j, k) / g.Δx )*0.5
+      str23_j = ( δz_f2e(g, v, i, j, k) / g.Δz + δy_f2e(g, w, i, j, k) / g.Δy )*0.5
+      str23_p = ( δz_f2e(g, v, i, incmod1(j, g.Ny), k) / g.Δz + δy_f2e(g, w, i, incmod1(j, g.Ny), k) / g.Δy )*0.5
+   #-
+    return ( 𝜈00[i,j,k-1]*str33_m - 𝜈00[i,j,k]*str33_k )/ g.Δz
+         + ( 𝜈13[incmod1(i, g.Nx),j,k]*str13_p - 𝜈13[i,j,k]*str13_i )/ g.Δx
+         + ( 𝜈23[i,incmod1(j, g.Ny),k]*str23_p - 𝜈23[i,j,k]*str23_j )/ g.Δy
+  end
+end
+
+@inline function gTr_diff(g::RegularCartesianGrid, Q, 𝜈00, Pr_num, i, j, k)
+    #- Pr_num :: prandtl number
+    prandtl_number = 1
+    if Pr_num <= 0.
+      return 0
+    else
+    #- note: could remove special case k==Nz below once we extend definition of δz_c2f
+    #        to k = Nz+1 (returning also 0 like for k=1)
+      if k == g.Nz
+        kp = k
+        dQdz_p = 0
+      else
+        kp = k+1
+        dQdz_p = δz_c2f(g, Q, i, j, kp)
+      end
+   #-
+      return (
+         ( avgx_c2f(g, 𝜈00, incmod1(i,g.Nx), j, k) * δx_c2f(g, Q, incmod1(i,g.Nx), j, k)
+           - avgx_c2f(g, 𝜈00, i, j, k) * δx_c2f(g, Q, i, j, k) ) / g.Δx / g.Δx
+       + ( avgy_c2f(g, 𝜈00, i, incmod1(j,g.Ny), k) * δy_c2f(g, Q, i, incmod1(j,g.Ny), k)
+           - avgy_c2f(g, 𝜈00, i, j, k) * δy_c2f(g, Q, i, j, k) ) / g.Δy / g.Δy
+       + ( avgz_c2f(g, 𝜈00, i, j, k) * δz_c2f(g, Q, i, j, k)
+           - avgz_c2f(g, 𝜈00, i, j, kp) * dQdz_p ) / g.Δz / g.Δz
+             ) / Pr_num
+    end
+end
+
