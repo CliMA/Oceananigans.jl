@@ -10,6 +10,7 @@ mutable struct Model{A<:Architecture}
     G::SourceTerms
     Gp::SourceTerms
     forcing  # ::Forcing  # No type so we can set it to nothing while checkpointing.
+    d_viscosity::DynViscosityFields
     stepper_tmp::StepperTemporaryFields
     poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
     clock::Clock
@@ -75,6 +76,7 @@ function Model(;
        pressures = PressureFields(arch, grid)
                G = SourceTerms(arch, grid)
               Gp = SourceTerms(arch, grid)
+     d_viscosity = DynViscosityFields(arch, grid)
      stepper_tmp = StepperTemporaryFields(arch, grid)
 
      poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
@@ -87,7 +89,7 @@ function Model(;
     tracers.T.data .= eos.T₀
 
     Model{typeof(arch)}(configuration, boundary_conditions, constants, eos, grid,
-                        velocities, tracers, pressures, G, Gp, forcing,
+                        velocities, tracers, pressures, G, Gp, forcing, d_viscosity,
                         stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
 end
 

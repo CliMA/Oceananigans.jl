@@ -22,6 +22,13 @@ struct SourceTerms <: FieldSet
     GS::CellField
 end
 
+struct DynViscosityFields <: FieldSet
+    𝜈00::CellField
+    𝜈12::EdgeField
+    𝜈13::EdgeField
+    𝜈23::EdgeField
+end
+
 struct StepperTemporaryFields <: FieldSet
     fC1::CellField
     fCC1::CellField
@@ -54,6 +61,14 @@ function SourceTerms(arch::Architecture, grid::Grid)
     GT = CellField(arch, grid)
     GS = CellField(arch, grid)
     SourceTerms(Gu, Gv, Gw, GT, GS)
+end
+
+function DynViscosityFields(arch::Architecture, grid::Grid)
+    𝜈00 = CellField(arch, grid)
+    𝜈12 = EdgeField(arch, grid)
+    𝜈13 = EdgeField(arch, grid)
+    𝜈23 = EdgeField(arch, grid)
+    DynViscosityFields( 𝜈00 , 𝜈12 , 𝜈13 , 𝜈23 )
 end
 
 function StepperTemporaryFields(arch::Architecture, grid::Grid)
