@@ -58,8 +58,6 @@ end
 @inline avgy_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, incmod1(j, g.Ny), k] + f[i, j, k])
 @inline avgy_f2e(g::RegularCartesianGrid, f, i, j, k) = @inbounds 0.5 * (f[i, j, k] + f[i, decmod1(j, g.Ny), k])
 
-@inline avg_xy(g::RegularCartesianGrid, u, i, j, k) = 0.5 * (avgy_f2c(g, u, i, j, k) + avgy_f2c(g, u, incmod1(i, g.Nx), j, k))
-
 @inline function avgz_c2f(g::RegularCartesianGrid, f, i, j, k)
     if k == 1
         @inbounds return f[i, j, k]
@@ -206,6 +204,14 @@ end
 
 @inline function u∇w(g::RegularCartesianGrid, u, v, w, i, j, k)
     (δx_e2f_ūᶻw̄ˣ(g, u, w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, v, w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, w, i, j, k) / g.Δz)
+end
+
+@inline function gU_cori(g::RegularCartesianGrid, v, fCor, i, j, k)
+    fCor*( avgy_f2c(g, v, decmod1(i, g.Nx), j, k) + avgy_f2c(g, v, i, j, k) )*0.5
+end
+
+@inline function gV_cori(g::RegularCartesianGrid, u, fCor, i, j, k)
+   -fCor*( avgx_f2c(g, u, i, decmod1(j, g.Ny), k) + avgx_f2c(g, u, i, j, k) )*0.5
 end
 
 @inline δx²_c2f2c(g::RegularCartesianGrid, f, i, j, k) = δx_c2f(g, f, incmod1(i, g.Nx), j, k) - δx_c2f(g, f, i, j, k)
