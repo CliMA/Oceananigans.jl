@@ -320,8 +320,7 @@ end
 end
 
 @inline function gTr_diff(g::RegularCartesianGrid, Q, 𝜈00, Pr_num, i, j, k)
-    #- Pr_num :: prandtl number
-    prandtl_number = 1
+    #- Pr_num :: Prandtl number
     if Pr_num <= 0.
       return 0
     else
