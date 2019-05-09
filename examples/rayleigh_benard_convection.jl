@@ -30,8 +30,8 @@ function rayleigh_benard_convection(Ra_desired, Nx, Ny, Nz, Lx, Ly, Lz, Nt, Δt)
     model = Model(model.metadata, configuration, boundary_conditions,
                   model.constants, model.eos, model.grid,
                   model.velocities, model.tracers, model.pressures,
-                  model.G, model.Gp, model.forcings,
-                  model.stepper_tmp, model.operator_tmp, model.poisson_solver, clock,
+                  model.timestepper, model.forcings,
+                  model.operator_tmp, model.poisson_solver, clock,
                   model.output_writers, model.diagnostics)
 
     # Write temperature field to disk every 10 time steps.

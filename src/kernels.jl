@@ -33,29 +33,29 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
 
-    grid = model.grid
-    cfg = model.configuration
-    bcs = model.boundary_conditions
+     grid = model.grid
+      cfg = model.configuration
+      bcs = model.boundary_conditions
     clock = model.clock
 
-    G = model.G
-    Gp = model.Gp
+            G = model.timestepper.G
+           Gp = model.timestepper.Gp
     constants = model.constants
-    eos =  model.eos
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    forcing = model.forcing
+          eos = model.eos
+            U = model.velocities
+           tr = model.tracers
+           pr = model.pressures
+      forcing = model.forcing
     poisson_solver = model.poisson_solver
 
-    RHS = model.stepper_tmp.fCC1
-    ϕ = model.stepper_tmp.fCC2
+    RHS = model.timestepper.tmp.fCC1
+      ϕ = model.timestepper.tmp.fCC2
 
-    gΔz = model.constants.g * model.grid.Δz
+     gΔz = model.constants.g * model.grid.Δz
     fCor = model.constants.f
 
-    uvw = U.u.data, U.v.data, U.w.data
-    TS = tr.T.data, tr.S.data
+     uvw = U.u.data, U.v.data, U.w.data
+      TS = tr.T.data, tr.S.data
     Guvw = G.Gu.data, G.Gv.data, G.Gw.data
 
     # Source terms at current (Gⁿ) and previous (G⁻) time steps.
@@ -67,7 +67,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     tb = (threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
     for n in 1:Nt
-        χ = ifelse(model.clock.iteration == 0, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
+        χ = ifelse(model.clock.iteration == 0, -0.5, model.timestepper.χ) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By))
@@ -284,7 +284,7 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     bcs = model.boundary_conditions
     U = model.velocities
     tr = model.tracers
-    G = model.G
+    G = model.timestepper.G
 
     t, iteration = clock.time, clock.iteration
     u, v, w, T, S = U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data

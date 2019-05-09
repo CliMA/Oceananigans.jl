@@ -41,11 +41,11 @@ function run_thermal_bubble_checkpointer_tests()
     @test all(restored_model.velocities.w.data .≈ true_model.velocities.w.data)
     @test all(restored_model.tracers.T.data    .≈ true_model.tracers.T.data)
     @test all(restored_model.tracers.S.data    .≈ true_model.tracers.S.data)
-    @test all(restored_model.G.Gu.data         .≈ true_model.G.Gu.data)
-    @test all(restored_model.G.Gv.data         .≈ true_model.G.Gv.data)
-    @test all(restored_model.G.Gw.data         .≈ true_model.G.Gw.data)
-    @test all(restored_model.G.GT.data         .≈ true_model.G.GT.data)
-    @test all(restored_model.G.GS.data         .≈ true_model.G.GS.data)
+    @test all(restored_model.timestepper.G.Gu.data .≈ true_model.timestepper.G.Gu.data)
+    @test all(restored_model.timestepper.G.Gv.data .≈ true_model.timestepper.G.Gv.data)
+    @test all(restored_model.timestepper.G.Gw.data .≈ true_model.timestepper.G.Gw.data)
+    @test all(restored_model.timestepper.G.GT.data .≈ true_model.timestepper.G.GT.data)
+    @test all(restored_model.timestepper.G.GS.data .≈ true_model.timestepper.G.GS.data)
 end
 
 """

@@ -87,8 +87,8 @@ end
 
 function run_diagnostic(model::Model, diag::Nusselt_Chi)
     T = model.tracers.T
-    ∇T² = model.stepper_tmp.fC1
-    norm_gradient_squared!(model.grid, T, ∇T², model.stepper_tmp)
+    ∇T² = model.timestepper.tmp.fC1
+    norm_gradient_squared!(model.grid, T, ∇T², model.timestepper.tmp)
 
     V = model.grid.Lx * model.grid.Ly * model.grid.Lz
     ∇T²_avg = sum(∇T²) / V

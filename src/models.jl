@@ -1,20 +1,18 @@
 mutable struct Model{A<:Architecture}
-    configuration::ModelConfiguration
-    boundary_conditions::ModelBoundaryConditions
-    constants::PlanetaryConstants
-    eos::EquationOfState
-    grid::Grid
-    velocities::VelocityFields
-    tracers::TracerFields
-    pressures::PressureFields
-    G::SourceTerms
-    Gp::SourceTerms
-    forcing  # ::Forcing  # No type so we can set it to nothing while checkpointing.
-    stepper_tmp::StepperTemporaryFields
-    poisson_solver  # ::PoissonSolver or ::PoissonSolverGPU
-    clock::Clock
-    output_writers::Array{OutputWriter,1}
-    diagnostics::Array{Diagnostic,1}
+          configuration :: ModelConfiguration
+    boundary_conditions :: ModelBoundaryConditions
+              constants :: PlanetaryConstants
+                    eos :: EquationOfState
+                   grid :: Grid
+             velocities :: VelocityFields
+                tracers :: TracerFields
+              pressures :: PressureFields
+            timestepper :: AdamsBashforthTimestepper
+                forcing    # ::Forcing  # No type so we can set it to nothing while checkpointing.
+         poisson_solver    # ::PoissonSolver or ::PoissonSolverGPU
+                  clock :: Clock
+         output_writers :: Array{OutputWriter, 1}
+            diagnostics :: Array{Diagnostic, 1}
 end
 
 """
@@ -59,7 +57,9 @@ function Model(;
     boundary_conditions = ModelBoundaryConditions(),
     # Output and diagonstics
     output_writers = OutputWriter[],
-       diagnostics = Diagnostic[]
+       diagnostics = Diagnostic[],
+    # Adams Bashforth parameter
+                 χ = 0.125
 )
 
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
@@ -69,15 +69,12 @@ function Model(;
              grid = RegularCartesianGrid(float_type, N, L)
             clock = Clock{float_type}(start_time, iteration)
 
-    # Initialize fields, including source terms and temporary variables.
-      velocities = VelocityFields(arch, grid)
-         tracers = TracerFields(arch, grid)
-       pressures = PressureFields(arch, grid)
-               G = SourceTerms(arch, grid)
-              Gp = SourceTerms(arch, grid)
-     stepper_tmp = StepperTemporaryFields(arch, grid)
-
-     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
+    # Initialize fields.
+         velocities = VelocityFields(arch, grid)
+            tracers = TracerFields(arch, grid)
+          pressures = PressureFields(arch, grid)
+        timestepper = AdamsBashforthTimestepper(arch, grid, χ)
+     poisson_solver = init_poisson_solver(arch, grid, timestepper.tmp.fCC1)
 
     # Default initial condition
     velocities.u.data .= 0
@@ -87,8 +84,8 @@ function Model(;
     tracers.T.data .= eos.T₀
 
     Model{typeof(arch)}(configuration, boundary_conditions, constants, eos, grid,
-                        velocities, tracers, pressures, G, Gp, forcing,
-                        stepper_tmp, poisson_solver, clock, output_writers, diagnostics)
+                        velocities, tracers, pressures, timestepper, forcing,
+                        poisson_solver, clock, output_writers, diagnostics)
 end
 
 arch(model::Model{A}) where A <: Architecture = A
