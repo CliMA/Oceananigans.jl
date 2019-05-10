@@ -148,13 +148,10 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v,
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
-    prandtl_number = 1
-    #- note: prandtl_number should be a model parameter
-    Pr_num = prandtl_number
-
     fCor = constants.f
     ρ₀ = eos.ρ₀
     𝜈h, 𝜈v, κh, κv = cfg.𝜈h, cfg.𝜈v, cfg.κh, cfg.κv
+    Pr_num = cfg.Prandtl_num
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -362,8 +359,7 @@ function calculate_dynamical_viscosity!(grid::Grid, constants, eos, cfg, u, v, w
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
-#   smag_coeff = cfg.smag_coefficient
-    smag_coeff = 0.1
+    smag_coeff = cfg.smag_coeff
     fCor = constants.f
     ρ₀ = eos.ρ₀
 

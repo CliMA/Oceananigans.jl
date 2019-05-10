@@ -46,6 +46,9 @@ function Model(;
     # Molecular parameters
              ν = 1.05e-6, νh = ν, νv = ν,
              κ = 1.43e-7, κh = κ, κv = κ,
+    # Smagorinsky turbulent closer
+             smag_coeff  = 0,
+             Prandtl_num = 0,
     # Time stepping
     start_time = 0,
      iteration = 0,
@@ -66,7 +69,7 @@ function Model(;
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
     # Initialize model basics.
-    configuration = ModelConfiguration(νh, νv, κh, κv)
+    configuration = ModelConfiguration(νh, νv, κh, κv, smag_coeff, Prandtl_num)
              grid = RegularCartesianGrid(float_type, N, L)
             clock = Clock{float_type}(start_time, iteration)
 
