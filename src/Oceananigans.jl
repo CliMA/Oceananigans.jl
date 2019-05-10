@@ -141,7 +141,7 @@ end
 abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
-abstract type Grid end
+abstract type Grid{T} end
 abstract type Field end
 abstract type FaceField <: Field end
 abstract type FieldSet end
