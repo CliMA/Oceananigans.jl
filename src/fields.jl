@@ -13,27 +13,8 @@ struct CellField{A<:AbstractArray, G<:Grid} <: Field
     grid::G
 end
 
-function CellField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
-    CellField{typeof(data), typeof(g)}(data, g)
-end
-
-function CellField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    CellField{typeof(data), typeof(g)}(data, g)
-end
-
-function CellField(T, ::CPU, g::RegularCartesianGrid)
-    data = zeros(T, size(g))
-    CellField{typeof(data), typeof(g)}(data, g)
-end
-
-function CellField(T, ::GPU, g::RegularCartesianGrid)
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    CellField{typeof(data), typeof(g)}(data, g)
-end
+CellField(T, arch, grid) = CellField(zeros(T, arch, grid), grid)
+CellField(arch, grid) = CellField(zeros(arch, grid), grid)
 
 """
     FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
@@ -45,16 +26,8 @@ struct FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
     grid::G
 end
 
-function FaceFieldX(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
-    FaceFieldX{typeof(data), typeof(g)}(data, g)
-end
-
-function FaceFieldX(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    FaceFieldX{typeof(data), typeof(g)}(data, g)
-end
+FaceFieldX(T, arch, grid) = FaceFieldX(zeros(T, arch, grid), grid)
+FaceFieldX(arch, grid) = FaceFieldX(zeros(arch, grid), grid)
 
 """
     FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
@@ -66,16 +39,8 @@ struct FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
     grid::G
 end
 
-function FaceFieldY(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
-    FaceFieldY{typeof(data), typeof(g)}(data, g)
-end
-
-function FaceFieldY(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    FaceFieldY{typeof(data), typeof(g)}(data, g)
-end
+FaceFieldY(T, arch, g) = FaceFieldY(zeros(T, arch, g), g)
+FaceFieldY(arch, g) = FaceFieldY(zeros(arch, g), g)
 
 """
     FaceFieldZ{T, G<:Grid{T}} <: FaceField{G}
@@ -87,16 +52,8 @@ struct FaceFieldZ{A<:AbstractArray, G<:Grid} <: FaceField
     grid::G
 end
 
-function FaceFieldZ(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
-    FaceFieldZ{typeof(data), typeof(g)}(data, g)
-end
-
-function FaceFieldZ(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    FaceFieldZ{typeof(data), typeof(g)}(data, g)
-end
+FaceFieldZ(T, arch, grid) = FaceFieldZ(zeros(T, arch, grid), grid)
+FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
 
 """
     EdgeField{T<:AbstractArray} <: Field
@@ -108,15 +65,26 @@ struct EdgeField{A<:AbstractArray, G<:Grid} <: Field
     grid::G
 end
 
-function EdgeField(::CPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = zeros(T, size(g))
-    EdgeField{typeof(data), typeof(g)}(data, g)
+EdgeField(T, arch, grid) = EdgeField(zeros(T, arch, grid), grid)
+EdgeField(arch, grid) = EdgeField(zeros(arch, grid), grid)
+
+abstract type Location end
+struct Cell <: Location end
+struct Interface <: Location end
+
+"""
+    GeneralField{𝕃𝕩<:AbstractArray} <: Field
+
+A general field at the location determined by Lx, Ly, Lz.
+"""
+struct GeneralField{Lˣ, Lʸ, Lᶻ, A, G} <: Field
+    data :: A
+    grid :: G
 end
 
-function EdgeField(::GPU, g::RegularCartesianGrid{T, <:AbstractRange}) where T <: AbstractFloat
-    data = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    data .= 0.0
-    EdgeField{typeof(data), typeof(g)}(data, g)
+function GeneralField(Lˣ, Lʸ, Lᶻ, arch, grid)
+    data = zeros(arch, grid)
+    return GeneralField{Lˣ, Lʸ, Lᶻ, typeof(data), typeof(grid)}(data, grid)
 end
 
 @inline size(f::Field) = size(f.grid)

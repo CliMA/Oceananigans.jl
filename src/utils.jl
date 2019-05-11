@@ -1,5 +1,7 @@
 using Printf
 
+import Base: zeros
+
 # Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
     if t < 1e3
@@ -18,3 +20,14 @@ function prettytime(t)
     end
     return string(@sprintf("%.3f", value), " ", units)
 end
+
+function zeros(T, ::GPU, g)
+    a = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    a .= 0
+    return a
+end
+
+zeros(T, ::CPU, g) = zeros(T, size(g))
+
+# Default to type of Grid
+zeros(arch, g::Grid{T}) where T = zeros(T, arch, g)
