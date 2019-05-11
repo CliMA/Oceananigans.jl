@@ -149,6 +149,8 @@ abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type AbstractPoissonSolver end
 
+include("utils.jl")
+
 include("model_configuration.jl")
 include("clock.jl")
 include("planetary_constants.jl")
@@ -167,7 +169,5 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
-
-include("utils.jl")
 
 end # module
