@@ -18,3 +18,14 @@ function prettytime(t)
     end
     return string(@sprintf("%.3f", value), " ", units)
 end
+
+function Base.zeros(T, ::GPU, g)
+    a = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
+    a .= 0
+    return a
+end
+
+Base.zeros(T, ::CPU, g) = zeros(T, size(g))
+
+# Default to type of Grid
+Base.zeros(arch, g::Grid{T}) where T = zeros(T, arch, g)
