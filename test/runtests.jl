@@ -301,5 +301,10 @@ float_types = [Float32, Float64]
             run_deep_convection_golden_master_tests()
         end
     end
-end # Oceananigans tests
 
+    @testset "Dynamics tests" begin
+        println("  Testing dynamics...")
+        include("test_dynamics.jl")
+        @test inertial_wave_test()
+    end
+end # Oceananigans tests
