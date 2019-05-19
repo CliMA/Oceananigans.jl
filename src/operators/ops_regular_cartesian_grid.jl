@@ -206,12 +206,12 @@ end
     (δx_e2f_ūᶻw̄ˣ(g, u, w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, v, w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, w, i, j, k) / g.Δz)
 end
 
-@inline function gU_cori(g::RegularCartesianGrid, v, fCor, i, j, k)
-    fCor*( avgy_f2c(g, v, decmod1(i, g.Nx), j, k) + avgy_f2c(g, v, i, j, k) )*0.5
+@inline function Gu_cori(g::RegularCartesianGrid, v, f, i, j, k)
+    f*( avgy_f2c(g, v, decmod1(i, g.Nx), j, k) + avgy_f2c(g, v, i, j, k) )*0.5
 end
 
-@inline function gV_cori(g::RegularCartesianGrid, u, fCor, i, j, k)
-   -fCor*( avgx_f2c(g, u, i, decmod1(j, g.Ny), k) + avgx_f2c(g, u, i, j, k) )*0.5
+@inline function Gv_cori(g::RegularCartesianGrid, u, f, i, j, k)
+   -f*( avgx_f2c(g, u, i, decmod1(j, g.Ny), k) + avgx_f2c(g, u, i, j, k) )*0.5
 end
 
 @inline δx²_c2f2c(g::RegularCartesianGrid, f, i, j, k) = δx_c2f(g, f, incmod1(i, g.Nx), j, k) - δx_c2f(g, f, i, j, k)
@@ -266,4 +266,3 @@ end
 @inline function ∇²_ppn(g::RegularCartesianGrid, f, i, j, k)
 	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 end
-
