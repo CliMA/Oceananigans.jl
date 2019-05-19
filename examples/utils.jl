@@ -3,6 +3,25 @@ using Oceananigans
 
 using Statistics
 
+xnodes(ϕ) = repeat(reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
+ynodes(ϕ) = repeat(reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
+znodes(ϕ) = repeat(reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
+
+xnodes(ϕ::FaceFieldX) = repeat(reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
+ynodes(ϕ::FaceFieldY) = repeat(reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
+znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[2:end],   1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
+
+zerofunk(args...) = 0
+
+function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
+    model.velocities.u.data .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
+    model.velocities.v.data .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
+    model.velocities.w.data .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
+    model.tracers.T.data    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
+    model.tracers.S.data    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
+    return nothing
+end
+
 """
     make_vertical_slice_movie(model::Model, nc_writer::NetCDFOutputWriter,
                               var_name, Nt, Δt, var_offset=0, slice_idx=1)
