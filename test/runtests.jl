@@ -251,9 +251,6 @@ float_types = [Float32, Float64]
                 end
             end
 
-            @test test_diffusion_simple(fld)
-            @test test_diffusion_budget(fld)
-            @test test_diffusion_cosine(fld)
             @test test_flux_budget(fld)
         end
     end
@@ -306,5 +303,12 @@ float_types = [Float32, Float64]
         println("  Testing dynamics...")
         include("test_dynamics.jl")
         @test inertial_wave_test()
+        @test passive_tracer_advection_test()
+
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_simple(fld)
+            @test test_diffusion_budget(fld)
+            @test test_diffusion_cosine(fld)
+        end
     end
 end # Oceananigans tests
