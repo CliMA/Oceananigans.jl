@@ -99,6 +99,7 @@ export
 # Standard library modules
 using
     Statistics,
+    LinearAlgebra,
     Printf
 
 # Third-party modules
