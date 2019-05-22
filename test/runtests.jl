@@ -242,6 +242,12 @@ float_types = [Float32, Float64]
                 run_first_AB2_time_step_tests(arch, ft)
             end
         end
+
+        @testset "Incompressibility" begin
+            for Nt in [1, 10, 100]
+                @test incompressible_in_time(CPU(), Float64, Nt)
+            end
+        end
     end
 
     @testset "Boundary conditions" begin
