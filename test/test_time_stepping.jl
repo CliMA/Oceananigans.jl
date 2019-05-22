@@ -31,3 +31,24 @@ function run_first_AB2_time_step_tests(arch, ft)
 
     return nothing
 end
+
+function incompressible_in_time(arch, ft, Nt)
+    Nx, Ny, Nz = 32, 32, 32
+    Lx, Ly, Lz = 10, 10, 10
+
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=ft)
+
+    grid = model.grid
+    u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
+
+    div_u = CellField(arch, model.grid)
+
+    # Just add a temperature perturbation so we get some velocity field.
+    @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
+
+    time_step!(model, Nt, 1)
+
+    Oceananigans.velocity_div!(grid, u, v, w, div_u)
+
+    all(div_u.data .< eps(ft))
+end
