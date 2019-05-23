@@ -12,7 +12,7 @@ struct LinearEquationOfState{T<:AbstractFloat} <: EquationOfState
     βT::T  # First thermal expansion coefficient [1/K]
     βS::T  # Haline contraction coefficient [1/ppt]
     βp::T  # Compressibility coefficient [ms²/kg]
-    T₀::T  # Reference temperature [K]
+    T₀::T  # Reference temperature [°C]
     S₀::T  # Reference salinity [g/kg]
     p₀::T  # Reference pressure [Pa].
     cᵥ::T  # Isobaric mass heat capacity [J / kg·K].
@@ -24,7 +24,7 @@ function LinearEquationOfState(;
     βT = 1.67e-4,
     βS = 0.78e-3,
     βp = 4.39e-10,
-    T₀ = 283,
+    T₀ = 9.85,
     S₀ = 35,
     p₀ = 1e5,
     cᵥ = 4181.3,
