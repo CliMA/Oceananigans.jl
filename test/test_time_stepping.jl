@@ -1,4 +1,5 @@
-using Oceananigans: velocity_div!
+using Oceananigans: velocity_div!, compute_w_from_continuity!
+
 
 function time_stepping_works(arch, ft)
     Nx, Ny, Nz = 16, 16, 16
@@ -32,6 +33,41 @@ function run_first_AB2_time_step_tests(arch, ft)
     @test all(model.G.GS.data .≈ 0)
 
     return nothing
+end
+
+"""
+    This test ensures that when we compute w from the continuity equation that the full velocity field
+    is divergence-free.
+"""
+function test_compute_w_from_continuity(arch, ft)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 16, 16, 16
+
+    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (Lx, Ly, Lz))
+
+    u = FaceFieldX(arch, grid)
+    v = FaceFieldY(arch, grid)
+    w = FaceFieldZ(arch, grid)
+    div_u = CellField(arch, grid)
+
+    u.data .= rand(Nx, Ny, Nz)
+    v.data .= rand(Nx, Ny, Nz)
+
+    compute_w_from_continuity!(grid, u.data, v.data, w.data)
+
+    velocity_div!(grid, u.data, v.data, w.data, div_u.data)
+
+    # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
+    # so we end up some divergence at the bottom if we don't do this.
+    div_u.data[:, :, end] .= zero(ft)
+
+    min_div = minimum(div_u)
+    max_div = minimum(div_u)
+    sum_div = sum(div_u)
+    abs_sum_div = sum(abs.(div_u))
+    @info "Velocity divergence after recomputing w ($arch, $ft): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+
+    all(isapprox.(div_u.data, 0; atol=2*eps(ft)))
 end
 
 """
