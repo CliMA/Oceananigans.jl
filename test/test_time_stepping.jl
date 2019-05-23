@@ -34,6 +34,11 @@ function run_first_AB2_time_step_tests(arch, ft)
     return nothing
 end
 
+"""
+    This tests to make sure that the velocity field remains incompressible (or divergence-free) as the model is time
+    stepped. It just initializes a cube shaped hot bubble perturbation in the center of the 3D domain to induce a
+    velocity field.
+"""
 function incompressible_in_time(arch, ft, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
@@ -58,5 +63,12 @@ function incompressible_in_time(arch, ft, Nt)
     abs_sum_div = sum(abs.(div_u))
     @info "Velocity divergence after $Nt time steps ($arch, $ft): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
-    isapprox(abs_sum_div, 0; atol=1e-14)
+    # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
+    # because we are summing over the absolute value of many machine epsilons. A better atol value may be
+    # Nx*Ny*Nz*eps(ft) but it's much higher than the observed abs_sum_div.
+    if ft == Float64
+        return isapprox(abs_sum_div, 0; atol=1e-14)
+    elseif ft == Float32
+        return isapprox(abs_sum_div, 0; atol=2e-6)
+    end
 end
