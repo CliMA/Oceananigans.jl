@@ -85,6 +85,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         end
 
         @launch device(arch) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+        @launch device(arch) compute_w_from_continuity!(grid, uvw..., threads=(Tx, Ty), blocks=(Bx, By))
 
         clock.time += Δt
         clock.iteration += 1
@@ -253,9 +254,7 @@ function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv,
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
-                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
-                @inbounds w[i, j, k] = w[i, j, k] + (Gw[i, j, k] - (δz_c2f(grid, pNHS, i, j, k) / grid.Δz)) * Δt
-                @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
+                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt                @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
                 @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
             end
         end
@@ -264,6 +263,21 @@ function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv,
     @synchronize
 end
 
+@inline ∇ₕu(i, j, k, grid, u, v) = δx_f2c(grid, u, i, j, k) / grid.Δx + δy_f2c(grid, v, i, j, k) / grid.Δy
+
+"Compute the vertical velocity w from the continuity equation."
+function compute_w_from_continuity!(grid::Grid{T}, u, v, w) where T
+    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds w[i, j, 1] = 0
+            @unroll for k in 2:grid.Nz
+                @inbounds w[i, j, k] = w[i, j, k-1] + grid.Δz * ∇ₕu(i, j, k-1, grid, u, v)
+            end
+        end
+    end
+
+    @synchronize
+end
 
 #
 # Boundary condition physics specification
