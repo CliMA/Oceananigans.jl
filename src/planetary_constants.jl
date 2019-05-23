@@ -4,6 +4,8 @@ struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
     g::T  # Standard acceleration due to gravity [m/s²].
 end
 
+PlanetaryConstants(; Ω=1.0, f=0.0, g=1.0) = PlanetaryConstants(Ω, f, g)
+
 function choose_f(Ω, f, lat)
 end
 

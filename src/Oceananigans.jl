@@ -143,13 +143,15 @@ end
 abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
-abstract type Grid end
+abstract type Grid{T} end
 abstract type Field end
 abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type AbstractPoissonSolver end
+
+include("utils.jl")
 
 include("model_configuration.jl")
 include("clock.jl")
@@ -169,7 +171,5 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
-
-include("utils.jl")
 
 end # module
