@@ -203,7 +203,7 @@ function calculate_source_term_divergence!(::CPU, grid::Grid, Δt, u, v, w, Gu, 
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-                @inbounds RHS[i, j, k] = div_f2c(grid, u, v, w, i, j, k) + Δt*div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                @inbounds RHS[i, j, k] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
             end
         end
     end

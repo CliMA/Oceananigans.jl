@@ -53,7 +53,7 @@ function incompressible_in_time(arch, ft, Nt)
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
-    time_step!(model, Nt, 1)
+    time_step!(model, Nt, 0.05)
 
     velocity_div!(grid, u, v, w, div_u)
 
@@ -67,8 +67,8 @@ function incompressible_in_time(arch, ft, Nt)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
     # Nx*Ny*Nz*eps(ft) but it's much higher than the observed abs_sum_div.
     if ft == Float64
-        return isapprox(abs_sum_div, 0; atol=1e-14)
+        return isapprox(abs_sum_div, 0; atol=2e-15)
     elseif ft == Float32
-        return isapprox(abs_sum_div, 0; atol=2e-6)
+        return isapprox(abs_sum_div, 0; atol=7e-7)
     end
 end
