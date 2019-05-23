@@ -244,7 +244,7 @@ float_types = [Float32, Float64]
         end
 
         @testset "Incompressibility" begin
-            for ft in float_types, Nt in [1, 10, 100, 1000]
+            for ft in float_types, Nt in [1, 10, 100]
                 @test incompressible_in_time(CPU(), ft, Nt)
             end
         end

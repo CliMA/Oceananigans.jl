@@ -67,8 +67,8 @@ function incompressible_in_time(arch, ft, Nt)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
     # Nx*Ny*Nz*eps(ft) but it's much higher than the observed abs_sum_div.
     if ft == Float64
-        return isapprox(abs_sum_div, 0; atol=2e-15)
+        return isapprox(abs_sum_div, 0; atol=5e-16)
     elseif ft == Float32
-        return isapprox(abs_sum_div, 0; atol=7e-7)
+        return isapprox(abs_sum_div, 0; atol=1e-7)
     end
 end
