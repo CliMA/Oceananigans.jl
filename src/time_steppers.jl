@@ -74,7 +74,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
                              calculate_boundary_source_terms!(model)
         @launch device(arch) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        @launch device(arch) calculate_source_term_divergence!(arch, grid, Δt, uvw..., Guvw..., RHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+        @launch device(arch) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
         if arch == CPU()
             solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
@@ -198,7 +198,7 @@ function adams_bashforth_update_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gp
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_source_term_divergence!(::CPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::CPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -211,7 +211,7 @@ function calculate_source_term_divergence!(::CPU, grid::Grid, Δt, u, v, w, Gu, 
     @synchronize
 end
 
-function calculate_source_term_divergence!(::GPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::GPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
