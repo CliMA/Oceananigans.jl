@@ -1,3 +1,5 @@
+using Oceananigans: velocity_div!
+
 function time_stepping_works(arch, ft)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 1, 2, 3
@@ -48,7 +50,13 @@ function incompressible_in_time(arch, ft, Nt)
 
     time_step!(model, Nt, 1)
 
-    Oceananigans.velocity_div!(grid, u, v, w, div_u)
+    velocity_div!(grid, u, v, w, div_u)
 
-    all(div_u.data .< eps(ft))
+    min_div = minimum(div_u)
+    max_div = minimum(div_u)
+    sum_div = sum(div_u)
+    abs_sum_div = sum(abs.(div_u))
+    @info "Velocity divergence after $Nt time steps ($arch, $ft): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+
+    isapprox(abs_sum_div, 0; atol=1e-14)
 end
