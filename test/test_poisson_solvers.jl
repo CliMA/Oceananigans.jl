@@ -1,7 +1,8 @@
-using Statistics: mean
-
 using FFTW
-using GPUifyLoops
+using Statistics: mean
+using LinearAlgebra: norm
+
+import GPUifyLoops: @launch, @loop, @unroll, @synchronize
 
 using Oceananigans.Operators
 
@@ -63,4 +64,36 @@ function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
     ∇²_ppn!(g, ϕ, ∇²ϕ)
 
     ∇²ϕ.data ≈ RHS_orig.data
+end
+
+"""
+    Test that the Poisson solver can recover an analytic solution. In this test, we are trying to see if the solver
+    can recover the solution ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
+    by giving it the source term or right hand side (RHS), which is ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
+    -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
+"""
+function poisson_ppn_recover_sine_cosine_solution(ft, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
+    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (Lx, Ly, Lz))
+
+    RHS = CellField(Complex{ft}, CPU(), grid)
+    ϕ = CellField(Complex{ft}, CPU(), grid)
+
+    solver = PoissonSolver(grid, RHS)
+
+    xC, yC, zC = grid.xC, grid.yC, grid.zC
+    xC = reshape(xC, (Nx, 1, 1))
+    yC = reshape(yC, (1, Ny, 1))
+    zC = reshape(zC, (1, 1, Nz))
+
+    Ψ(x, y, z) = cos(π*mz*z/Lz) * sin(2π*my*y/Ly) * sin(2π*mx*x/Lx)
+    f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
+
+    @. RHS.data = f(xC, yC, zC)
+    solve_poisson_3d_ppn_planned!(solver, grid, RHS, ϕ)
+
+    error = norm(ϕ.data - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
+
+    @info "Error (ℓ²-norm), $ft, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
+
+    isapprox(real.(ϕ.data),  Ψ.(xC, yC, zC); rtol=5e-2)
 end

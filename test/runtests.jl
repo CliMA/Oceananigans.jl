@@ -209,6 +209,13 @@ float_types = [Float32, Float64]
                 @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
+
+        @testset "Analytic solution reconstruction" begin
+            println("    Testing analytic solution reconstruction...")
+            for N in [32, 48, 64], m in [1, 2, 3]
+                @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
+            end
+        end
     end
 
     @testset "Model" begin
@@ -233,6 +240,12 @@ float_types = [Float32, Float64]
         @testset "Adams-Bashforth 2" begin
             for arch in archs, ft in float_types
                 run_first_AB2_time_step_tests(arch, ft)
+            end
+        end
+
+        @testset "Incompressibility" begin
+            for ft in float_types, Nt in [1, 10, 100]
+                @test incompressible_in_time(CPU(), ft, Nt)
             end
         end
     end
@@ -298,7 +311,7 @@ float_types = [Float32, Float64]
             run_deep_convection_golden_master_tests()
         end
     end
-
+  
     @testset "Dynamics tests" begin
         println("  Testing dynamics...")
         include("test_dynamics.jl")

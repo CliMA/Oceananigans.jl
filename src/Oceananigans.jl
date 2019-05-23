@@ -89,6 +89,7 @@ export
     run_diagnostic,
     FieldSummary,
     NaNChecker,
+    VelocityDivergenceChecker,
     Nusselt_wT,
     Nusselt_Chi,
 
@@ -98,6 +99,7 @@ export
 # Standard library modules
 using
     Statistics,
+    LinearAlgebra,
     Printf
 
 # Third-party modules
