@@ -4,18 +4,18 @@
 #
 
 # Diagonal
-∂x_u(i, j, k, grid, u) = ∂x_faa(i, j, k, grid, u)
-∂y_v(i, j, k, grid, v) = ∂y_afa(i, j, k, grid, v)
-∂z_w(i, j, k, grid, w) = ∂z_aaf(i, j, k, grid, w)
+∂x_u(i, j, k, grid, u) = ∂x_caa(i, j, k, grid, u)
+∂y_v(i, j, k, grid, v) = ∂y_aca(i, j, k, grid, v)
+∂z_w(i, j, k, grid, w) = ∂z_aac(i, j, k, grid, w)
 
-∂x_v(i, j, k, grid, v) = ∂x_caa(i, j, k, grid, v)
-∂x_w(i, j, k, grid, w) = ∂x_caa(i, j, k, grid, w)
+∂x_v(i, j, k, grid, v) = ∂x_faa(i, j, k, grid, v)
+∂x_w(i, j, k, grid, w) = ∂x_faa(i, j, k, grid, w)
 
-∂y_u(i, j, k, grid, u) = ∂y_aca(i, j, k, grid, u)
-∂y_w(i, j, k, grid, w) = ∂y_aca(i, j, k, grid, w)
+∂y_u(i, j, k, grid, u) = ∂y_afa(i, j, k, grid, u)
+∂y_w(i, j, k, grid, w) = ∂y_afa(i, j, k, grid, w)
 
-∂z_u(i, j, k, grid, u) = ∂z_aac(i, j, k, grid, u)
-∂z_v(i, j, k, grid, v) = ∂z_aac(i, j, k, grid, v)
+∂z_u(i, j, k, grid, u) = ∂z_aaf(i, j, k, grid, u)
+∂z_v(i, j, k, grid, v) = ∂z_aaf(i, j, k, grid, v)
 
 #
 # Strain
@@ -79,24 +79,3 @@ tr_Σ²(ijk...) = Σ₁₁(ijk...)^2 +  Σ₂₂(ijk...)^2 +  Σ₃₃(ijk...)^2
 Σ₁₂²(i, j, k, grid, u, v, w) = Σ₁₂²(i, j, k, grid, u, v)
 Σ₁₃²(i, j, k, grid, u, v, w) = Σ₁₃²(i, j, k, grid, u, w)
 Σ₂₃²(i, j, k, grid, u, v, w) = Σ₂₃²(i, j, k, grid, v, w)
-
-#
-# Interpolation of velocity gradient components to cell centers
-#
-
-Σ₁₁_ccc = ∂x_u_ccc = ∂x_u
-Σ₂₂_ccc = ∂y_v_ccc = ∂y_v
-Σ₃₃_ccc = ∂z_w_ccc = ∂z_w
-
-Σ₁₂_ccc(i, j, k, grid, u, v, w) = ▶xy_ffc(i, j, k, grid, Σ₁₂, u, v, w)
-Σ₁₃_ccc(i, j, k, grid, u, v, w) = ▶xz_fcf(i, j, k, grid, Σ₁₃, u, v, w)
-Σ₂₃_ccc(i, j, k, grid, u, v, w) = ▶yz_cff(i, j, k, grid, Σ₂₃, u, v, w)
-
-∂y_u_ccc(i, j, k, grid, u, v, w) = ▶xy_ffc(i, j, k, grid, ∂y_u, u, v, w)
-∂x_v_ccc(i, j, k, grid, u, v, w) = ▶xy_ffc(i, j, k, grid, ∂x_v, u, v, w)
-
-∂z_u_ccc(i, j, k, grid, u, v, w) = ▶xz_fcf(i, j, k, grid, ∂z_u, u, v, w)
-∂x_w_ccc(i, j, k, grid, u, v, w) = ▶xz_fcf(i, j, k, grid, ∂x_w, u, v, w)
-
-∂z_v_ccc(i, j, k, grid, u, v, w) = ▶yz_cff(i, j, k, grid, ∂z_v, u, v, w)
-∂y_w_ccc(i, j, k, grid, u, v, w) = ▶yz_cff(i, j, k, grid, ∂y_w, u, v, w)
