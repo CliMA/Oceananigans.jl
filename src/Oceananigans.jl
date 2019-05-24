@@ -94,7 +94,10 @@ export
     Nusselt_Chi,
 
     # Package utilities
-    prettytime
+    prettytime,
+
+    # Turbulence closures
+    TurbulenceClosures
 
 # Standard library modules
 using
@@ -162,6 +165,8 @@ include("fieldsets.jl")
 include("forcing.jl")
 
 include("operators/operators.jl")
+
+include("closures/turbulence_closures.jl")
 
 include("boundary_conditions.jl")
 include("equation_of_state.jl")
