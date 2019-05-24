@@ -73,17 +73,17 @@ end
 Δ_fcf = Δ
 Δ_cff = Δ
 
-ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
+ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, eos, g, u, v, w, T, S) =
     (clo.C * Δ_ccc(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)) + clo.ν_background
 
-ν_ffc(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
+ν_ffc(i, j, k, grid, clo::ConstantSmagorinsky, eos, g, u, v, w, T, S) =
     (clo.C * Δ_ffc(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_ffc(i, j, k, grid, u, v, w)) + clo.ν_background
 
-ν_fcf(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
+ν_fcf(i, j, k, grid, clo::ConstantSmagorinsky, eos, g, u, v, w, T, S) =
     (clo.C * Δ_fcf(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_fcf(i, j, k, grid, u, v, w)) + clo.ν_background
 
-ν_cff(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
+ν_cff(i, j, k, grid, clo::ConstantSmagorinsky, eos, g, u, v, w, T, S) =
     (clo.C * Δ_cff(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_cff(i, j, k, grid, u, v, w)) + clo.ν_background
 
-κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
+κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, eos, g, u, v, w, T, S) =
     (clo.C * Δ_ccc(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)) / clo.Pr + clo.κ_background
