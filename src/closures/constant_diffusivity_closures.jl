@@ -8,10 +8,12 @@
 Return a `ConstantIsotropicDiffusivity` closure object of type `T` with
 viscosity `ν` and scalar diffusivity `κ`.
 """
-Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: ScalarDiffusivity{T}
+Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: IsotropicDiffusivity{T}
     ν :: T = 1e-6
     κ :: T = 1e-7
 end
+
+const MolecularDiffusivity = ConstantIsotropicDiffusivity
 
 ConstantIsotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantIsotropicDiffusivity; kwargs...)
