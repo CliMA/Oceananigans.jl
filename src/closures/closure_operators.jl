@@ -417,7 +417,7 @@ Return the ``x``-component of the turbulent diffusive flux divergence:
 
 at the location `fcc`.
 """
-∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ScalarDiffusivityClosure, uvwTS...) = (
+∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ScalarDiffusivity, uvwTS...) = (
     ∂x_2ν_Σ₁₁(i, j, k, grid, closure, uvwTS...)
   + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, uvwTS...)
   + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, uvwTS...)
@@ -432,7 +432,7 @@ Return the ``y``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ScalarDiffusivityClosure, uvwTS...) = (
+∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ScalarDiffusivity, uvwTS...) = (
     ∂x_2ν_Σ₂₁(i, j, k, grid, closure, uvwTS...)
   + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, uvwTS...)
   + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, uvwTS...)
@@ -447,7 +447,7 @@ Return the ``z``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ScalarDiffusivityClosure, uvwTS...) = (
+∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ScalarDiffusivity, uvwTS...) = (
     ∂x_2ν_Σ₃₁(i, j, k, grid, closure, uvwTS...)
   + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, uvwTS...)
   + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, uvwTS...)
@@ -525,7 +525,7 @@ data located at cell centers.
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
 `closure`, where `ϕ` is an array of scalar data located at cell centers.
 """
-∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ScalarDiffusivityClosure, uvwTS...) = (
+∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ScalarDiffusivity, uvwTS...) = (
       ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
     + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
     + ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
