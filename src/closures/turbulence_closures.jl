@@ -11,11 +11,22 @@ export
   ∂ⱼ_2ν_Σ₂ⱼ,
   ∂ⱼ_2ν_Σ₃ⱼ,
 
-  ν_ccc,
-  ν_ffc,
-  ν_fcf,
-  ν_cff,
-  κ_ccc
+  ν_ccc, ν_ffc, ν_fcf, ν_cff,
+  
+  κ_ccc,
+
+  ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
+  ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
+  ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
+
+  ▶x_caa, ▶x_faa,
+  ▶y_aca, ▶y_afa,
+  ▶z_aac, ▶z_aaf,
+  
+  ▶xy_cca, ▶xz_cac, ▶yz_acc,
+  ▶xy_cfa, ▶xz_caf, ▶yz_acf,
+  ▶xy_fca, ▶xz_fac, ▶yz_afc,
+  ▶xy_ffa, ▶xz_faf, ▶yz_aff
 
 using Oceananigans, Oceananigans.Operators
 

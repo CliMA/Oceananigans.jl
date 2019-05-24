@@ -1,5 +1,5 @@
 #
-# Renamed operators with consistent signatures
+# Differential operators for regular grids
 #
 
 ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
@@ -10,9 +10,9 @@
 ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
 
 #
-# Differention and interpolation operators for functions
+# Differentiation and interpolation operators for functions
 #
-# The geometry of the grid (in one dimension) is
+# The geometry of the Oceananigans grid (in one dimension) is
 #
 # face   cell   face   cell   face
 #
@@ -131,7 +131,7 @@ Differentiate the function or callable object
 located at `aaf` in `z`, across `aac`.
 """
 function ∂z_aac(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    if k >= grid.Nz
+    if k == grid.Nz
         return -zero(T)
     else
         return (F(i, j, k, grid, args...) - F(i, j, k+1, grid, args...)) / grid.Δz
@@ -221,7 +221,7 @@ Interpolate the function or callable object
 from `aac` to `aaf`.
 """
 function ▶z_aaf(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    if k < 2
+    if k == 1
         return T(0.5) * F(i, j, k, grid, args...)
     else
         return T(0.5) * (F(i, j, k, grid, args...) + F(i, j, k-1, grid, args...))
@@ -238,7 +238,7 @@ Interpolate the function or callable object
 from `aaf` to `aac`.
 """
 function ▶z_aac(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    if k >= grid.Nz
+    if k == grid.Nz
         return T(0.5) * F(i, j, k, grid, args...)
     else
         return T(0.5) * (F(i, j, k+1, grid, args...) + F(i, j, k, grid, args...))
@@ -397,14 +397,14 @@ are diffusivity and strain functions that return quantities
 at the location `faa`, where `a` is either `f` or `c`.
 The quantity returned has the location `caa`.
 """
-function ∂x_caa(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂x_caa(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     i⁺¹ = incmod1(i, grid.Nx)
 
     Σ⁺¹ = Σ(i⁺¹, j, k, grid, u, v, w)
     Σ⁻¹ = Σ(i,   j, k, grid, u, v, w)
 
-    κ⁺¹ = κ(i⁺¹, j, k, grid, closure, u, v, w, T, S)
-    κ⁻¹ = κ(i,   j, k, grid, closure, u, v, w, T, S)
+    κ⁺¹ = κ(i⁺¹, j, k, grid, closure, eos, g, u, v, w, T, S)
+    κ⁻¹ = κ(i,   j, k, grid, closure, eos, g, u, v, w, T, S)
 
     return (κ⁺¹ * Σ⁺¹ - κ⁻¹ * Σ⁻¹) / grid.Δx
 end
@@ -417,14 +417,14 @@ are diffusivity and strain functions that return quantities
 at the location `caa`, where `a` is either `f` or `c`.
 The quantity returned has the location `faa`.
 """
-function ∂x_faa(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂x_faa(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     i⁻¹ = decmod1(i, grid.Nx)
 
     Σ⁺¹ = Σ(i,   j, k, grid, u, v, w)
     Σ⁻¹ = Σ(i⁻¹, j, k, grid, u, v, w)
 
-    κ⁺¹ = κ(i,   j, k, grid, closure, u, v, w, T, S)
-    κ⁻¹ = κ(i⁻¹, j, k, grid, closure, u, v, w, T, S)
+    κ⁺¹ = κ(i,   j, k, grid, closure, eos, g, u, v, w, T, S)
+    κ⁻¹ = κ(i⁻¹, j, k, grid, closure, eos, g, u, v, w, T, S)
 
     return (κ⁺¹ * Σ⁺¹ - κ⁻¹ * Σ⁻¹) / grid.Δx
 end
@@ -437,14 +437,14 @@ are diffusivity and strain functions that return quantities
 at the location `afa`, where `a` is either `f` or `c`.
 The quantity returned has the location `aca`.
 """
-function ∂y_aca(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂y_aca(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     j⁺¹ = incmod1(j, grid.Ny)
 
     Σ⁺¹ = Σ(i, j⁺¹, k, grid, u, v, w)
     Σ⁻¹ = Σ(i, j,   k, grid, u, v, w)
 
-    κ⁺¹ = κ(i, j⁺¹, k, grid, closure, u, v, w, T, S)
-    κ⁻¹ = κ(i, j,   k, grid, closure, u, v, w, T, S)
+    κ⁺¹ = κ(i, j⁺¹, k, grid, closure, eos, g, u, v, w, T, S)
+    κ⁻¹ = κ(i, j,   k, grid, closure, eos, g, u, v, w, T, S)
 
     return (κ⁺¹ * Σ⁺¹ - κ⁻¹ * Σ⁻¹) / grid.Δy
 end
@@ -457,14 +457,14 @@ are diffusivity and strain functions that return quantities
 at the location `aca`, where `a` is either `f` or `c`.
 The quantity returned has the location `afa`.
 """
-function ∂y_afa(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂y_afa(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     j⁻¹ = decmod1(j, grid.Ny)
 
     Σ⁺¹ = Σ(i, j,   k, grid, u, v, w)
     Σ⁻¹ = Σ(i, j⁻¹, k, grid, u, v, w)
 
-    κ⁺¹ = κ(i, j,   k, grid, closure, u, v, w, T, S)
-    κ⁻¹ = κ(i, j⁻¹, k, grid, closure, u, v, w, T, S)
+    κ⁺¹ = κ(i, j,   k, grid, closure, eos, g, u, v, w, T, S)
+    κ⁻¹ = κ(i, j⁻¹, k, grid, closure, eos, g, u, v, w, T, S)
 
     return (κ⁺¹ * Σ⁺¹ - κ⁻¹ * Σ⁻¹) / grid.Δy
 end
@@ -477,15 +477,15 @@ are diffusivity and strain functions that return quantities
 at the location `aaf`, where `a` is either `f` or `c`.
 The quantity returned has the location `aac`.
 """
-function ∂z_aac(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂z_aac(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     Σ⁻¹ = Σ(i, j, k, grid, u, v, w)
-    κ⁻¹ = κ(i, j, k, grid, closure, u, v, w, T, S)
+    κ⁻¹ = κ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
-    if k >= grid.Nz
+    if k == grid.Nz
         return κ⁻¹ * Σ⁻¹ / grid.Δz
     else
         Σ⁺¹ = Σ(i, j, k+1, grid, u, v, w)
-        κ⁺¹ = κ(i, j, k+1, grid, closure, u, v, w, T, S)
+        κ⁺¹ = κ(i, j, k+1, grid, closure, eos, g, u, v, w, T, S)
 
         # Reversed due to inverse convention for z-indexing
         return (κ⁻¹ * Σ⁻¹ - κ⁺¹ * Σ⁺¹) / grid.Δz
@@ -500,15 +500,15 @@ are diffusivity and strain functions that return quantities
 at the location `aac`, where `a` is either `f` or `c`.
 The quantity returned has the location `aaf`.
 """
-function ∂z_aaf(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T, S)
+function ∂z_aaf(κ::Function, Σ::Function, i, j, k, grid, closure, eos, g, u, v, w, T, S)
     Σ⁺¹ = Σ(i, j, k, grid, u, v, w)
-    κ⁺¹ = κ(i, j, k, grid, closure, u, v, w, T, S)
+    κ⁺¹ = κ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
-    if k < 2
+    if k == 1
         return - κ⁺¹ * Σ⁺¹ / grid.Δz
     else
         Σ⁻¹ = Σ(i, j, k-1, grid, u, v, w)
-        κ⁻¹ = κ(i, j, k-1, grid, closure, u, v, w, T, S)
+        κ⁻¹ = κ(i, j, k-1, grid, closure, eos, g, u, v, w, T, S)
 
         # Reversed due to inverse convention for z-indexing
         return (κ⁻¹ * Σ⁻¹ - κ⁺¹ * Σ⁺¹) / grid.Δz
@@ -516,22 +516,22 @@ function ∂z_aaf(κ::Function, Σ::Function, i, j, k, grid, closure, u, v, w, T
 end
 
 # At fcc
-∂x_2ν_Σ₁₁(ijk...) = 2 * ∂x_caa(ν_ccc, Σ₁₁, ijk...)
-∂y_2ν_Σ₁₂(ijk...) = 2 * ∂y_afa(ν_ffc, Σ₁₂, ijk...)
-∂z_2ν_Σ₁₃(ijk...) = 2 * ∂z_aaf(ν_fcf, Σ₁₃, ijk...)
+∂x_2ν_Σ₁₁(ijk...) = 2 * ∂x_faa(ν_ccc, Σ₁₁, ijk...)
+∂y_2ν_Σ₁₂(ijk...) = 2 * ∂y_aca(ν_ffc, Σ₁₂, ijk...)
+∂z_2ν_Σ₁₃(ijk...) = 2 * ∂z_aac(ν_fcf, Σ₁₃, ijk...)
 
 # At cfc
-∂x_2ν_Σ₂₁(ijk...) = 2 * ∂x_faa(ν_ffc, Σ₂₁, ijk...)
-∂y_2ν_Σ₂₂(ijk...) = 2 * ∂y_aca(ν_ccc, Σ₂₂, ijk...)
-∂z_2ν_Σ₂₃(ijk...) = 2 * ∂z_aaf(ν_cff, Σ₂₃, ijk...)
+∂x_2ν_Σ₂₁(ijk...) = 2 * ∂x_caa(ν_ffc, Σ₂₁, ijk...)
+∂y_2ν_Σ₂₂(ijk...) = 2 * ∂y_afa(ν_ccc, Σ₂₂, ijk...)
+∂z_2ν_Σ₂₃(ijk...) = 2 * ∂z_aac(ν_cff, Σ₂₃, ijk...)
 
 # At ccf
-∂x_2ν_Σ₃₁(ijk...) = 2 * ∂x_faa(ν_fcf, Σ₃₁, ijk...)
-∂y_2ν_Σ₃₂(ijk...) = 2 * ∂y_afa(ν_cff, Σ₃₂, ijk...)
-∂z_2ν_Σ₃₃(ijk...) = 2 * ∂z_aac(ν_ccc, Σ₃₃, ijk...)
+∂x_2ν_Σ₃₁(ijk...) = 2 * ∂x_caa(ν_fcf, Σ₃₁, ijk...)
+∂y_2ν_Σ₃₂(ijk...) = 2 * ∂y_aca(ν_cff, Σ₃₂, ijk...)
+∂z_2ν_Σ₃₃(ijk...) = 2 * ∂z_aaf(ν_ccc, Σ₃₃, ijk...)
 
 """
-    ∂ⱼ_2ν_Σ₁ⱼ
+    ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
 Return the ``x``-component of the turbulent diffusive flux divergence:
 
@@ -539,14 +539,14 @@ Return the ``x``-component of the turbulent diffusive flux divergence:
 
 at the location `fcc`.
 """
-∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, uvwTS...) = (
-    ∂x_2ν_Σ₁₁(i, j, k, grid, closure, uvwTS...)
-  + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, uvwTS...)
-  + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, uvwTS...)
+∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, args...) = (
+    ∂x_2ν_Σ₁₁(i, j, k, grid, closure, args...)
+  + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, args...)
+  + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, args...)
 )
 
 """
-    ∂ⱼ_2ν_Σ₂ⱼ
+    ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
 Return the ``y``-component of the turbulent diffusive flux divergence:
 
@@ -554,14 +554,14 @@ Return the ``y``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, uvwTS...) = (
-    ∂x_2ν_Σ₂₁(i, j, k, grid, closure, uvwTS...)
-  + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, uvwTS...)
-  + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, uvwTS...)
+∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, args...) = (
+    ∂x_2ν_Σ₂₁(i, j, k, grid, closure, args...)
+  + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, args...)
+  + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, args...)
 )
 
 """
-    ∂ⱼ_2ν_Σ₃ⱼ
+    ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
 Return the ``z``-component of the turbulent diffusive flux divergence:
 
@@ -569,53 +569,53 @@ Return the ``z``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, uvwTS...) = (
-    ∂x_2ν_Σ₃₁(i, j, k, grid, closure, uvwTS...)
-  + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, uvwTS...)
-  + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, uvwTS...)
+∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, args...) = (
+    ∂x_2ν_Σ₃₁(i, j, k, grid, closure, args...)
+  + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, args...)
+  + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, args...)
 )
 
 """
-    κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `κ ∂x ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
 data located at cell centers.
 """
-function κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
-    κ = ▶x_faa(i, j, k, grid, κ, closure, u, v, w, T, S)
+function κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+    κ = ▶x_faa(i, j, k, grid, κ, closure, args...)
     ∂x_ϕ = ∂x_faa(i, j, k, grid, ϕ)
     return κ * ∂x_ϕ
 end
 
 """
-    κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `κ ∂y ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
 data located at cell centers.
 """
-function κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
-    κ = ▶y_afa(i, j, k, grid, κ, closure, u, v, w, T, S)
+function κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+    κ = ▶y_afa(i, j, k, grid, κ, closure, args...)
     ∂y_ϕ = ∂y_afa(i, j, k, grid, ϕ)
     return κ * ∂y_ϕ
 end
 
 """
-    κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `κ ∂z ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
 data located at cell centers.
 """
-function κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
-    κ = ▶z_aaf(i, j, k, grid, κ, closure, u, v, w, T, S)
+function κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+    κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
     ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
     return κ * ∂z_ϕ
 end
 
 """
-    ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `(∂x κ ∂x) ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
@@ -624,7 +624,7 @@ data located at cell centers.
 ∂x_κ_∂x_ϕ(i, j, k, grid, ϕκ...) = ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕκ...)
 
 """
-    ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `(∂y κ ∂y) ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
@@ -633,7 +633,7 @@ data located at cell centers.
 ∂y_κ_∂y_ϕ(i, j, k, grid, ϕκ...) = ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕκ...)
 
 """
-    ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, u, v, w, T, S)
+    ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
 
 Return `(∂z κ ∂z) ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
@@ -642,13 +642,13 @@ data located at cell centers.
 ∂z_κ_∂z_ϕ(i, j, k, grid, ϕκ...) = ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕκ...)
 
 """
-    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, u, v, w, T, S)
+    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, eos, g, u, v, w, T, S)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
 `closure`, where `ϕ` is an array of scalar data located at cell centers.
 """
-∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, uvwTS...) = (
-      ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
-    + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
-    + ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, uvwTS...)
+∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, args...) = (
+      ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
+    + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
+    + ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
     )
