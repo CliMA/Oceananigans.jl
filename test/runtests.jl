@@ -14,7 +14,6 @@ float_types = (Float32, Float64)
 @testset "Oceananigans" begin
     println("Testing Oceananigans...")
 
-    #=
     @testset "Grid" begin
         println("  Testing grids...")
         include("test_grids.jl")
@@ -332,7 +331,6 @@ float_types = (Float32, Float64)
             @test test_diffusion_cosine(fld)
         end
     end
-    =#
 
     @testset "Turbulence closures tests" begin
         println("  Testing turbulence closures...")
