@@ -31,38 +31,38 @@ ConstantSmagorinsky(T; kwargs...) =
 function ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
     return (
                     tr_Σ²(i, j, k, grid, u, v, w)
-            + 2 * ▶xy_ffa(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ▶xz_faf(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ▶yz_aff(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ▶xy_cca(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ▶xz_cac(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ▶yz_acc(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `ffc`."
 function ΣᵢⱼΣᵢⱼ_ffc(i, j, k, grid, u, v, w)
     return (
-                  ▶xy_cca(i, j, k, grid, tr_Σ², u, v, w)
+                  ▶xy_ffa(i, j, k, grid, tr_Σ², u, v, w)
             + 2 *    Σ₁₂²(i, j, k, grid, u, v, w)
-            + 2 * ▶yz_acf(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ▶xz_caf(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ▶yz_afc(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ▶xz_fac(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `fcf`."
 function ΣᵢⱼΣᵢⱼ_fcf(i, j, k, grid, u, v, w)
     return (
-                  ▶xz_cac(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶yz_afc(i, j, k, grid, Σ₁₂², u, v, w)
+                  ▶xz_faf(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ▶yz_acf(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 *    Σ₁₃²(i, j, k, grid, u, v, w)
-            + 2 * ▶xy_cfa(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ▶xy_fca(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `cff`."
 function ΣᵢⱼΣᵢⱼ_cff(i, j, k, grid, u, v, w)
     return (
-                  ▶yz_acc(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶xz_fac(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ▶xy_fca(i, j, k, grid, Σ₁₃², u, v, w)
+                  ▶yz_aff(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ▶xz_caf(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ▶xy_cfa(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
