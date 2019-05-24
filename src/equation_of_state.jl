@@ -34,3 +34,5 @@ function LinearEquationOfState(;
 end
 
 @inline δρ(eos::LinearEquationOfState, T, i, j, k) = @inbounds -eos.ρ₀ * eos.βT * (T[i, j, k] - eos.T₀)
+
+buoyancy(i, j, k, grid, eos::LinearEquationOfState, g, T, S) = g * ( eos.βT * (T[i, j, k] - eos.T₀) - eos.βS * (S[i, j, k] - eos.S₀) )
