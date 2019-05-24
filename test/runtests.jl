@@ -331,7 +331,7 @@ float_types = [Float32, Float64]
         end
     end
 
-    @testset "Turbulence closure tests" begin
+    @testset "Turbulence closures tests" begin
         println("  Testing turbulence closures...")
         include("test_turbulence_closures.jl")
         @test test_function_interpolation()
