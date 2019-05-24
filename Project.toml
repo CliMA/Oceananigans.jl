@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Ali Ramadhan <ali.hh.ramadhan@gmail.com>"]
-version = "0.5.3"
+version = "0.5.4"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -24,4 +24,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
-julia = ">= 1.1"
+julia = "1.1"
