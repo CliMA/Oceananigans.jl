@@ -70,11 +70,20 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         χ = ifelse(model.clock.iteration == 0, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        @launch device(arch) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By))
-        @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+
+        @launch device(arch) update_hydrostatic_pressure!(
+            pr.pHY′.data, grid, constants, eos, tr.T.data, tr.S.data, threads=(Tx, Ty), blocks=(Bx, By))
+
+        @launch device(arch) calculate_interior_source_terms!(
+            grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+
                              calculate_boundary_source_terms!(model)
-        @launch device(arch) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
-        @launch device(arch) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+
+        @launch device(arch) adams_bashforth_update_source_terms!(
+            grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+
+        @launch device(arch) calculate_poisson_right_hand_side!(
+            arch, grid, Δt, uvw..., Guvw..., RHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
 
         if arch == CPU()
             solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
@@ -120,15 +129,58 @@ function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, 
     @synchronize
 end
 
-"Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
-    gΔz = constants.g * grid.Δz
+"""
+    ▶z_aac(i, j, k, grid, F, args...)
 
+Interpolate the function or callable object
+
+    `F(i, j, k, grid, args...)`
+
+from `aac` to `aaf`.
+"""
+function ▶z_aac(i, j, k, grid::Grid{T}, F::Function, args...) where T
+    if k < 2
+        return T(0.5) * F(i, j, k, grid, args...)
+    else
+        return T(0.5) * (F(i, j, k, grid, args...) + F(i, j, k-1, grid, args...))
+    end
+end
+
+"""
+    update_hydrostatic_pressure!(pHY′, grid, constants, eos, T, S)
+
+Calculate the hydrostatic pressure `pHY′` from the buoyancy field
+associated with the temperature field `T`, salinity field `S`,
+and equation of state `eos`.
+
+The (perturbation) hydrostatic pressure `ph` is defined in terms of buoyancy,
+
+`0 = -∂z ph + b`.
+
+Pressure and buoyancy are both are defined at cell centers.
+Thus evaluting the discrete hydrostatic pressure equation on face `k`
+requires interpolating the buoyancy field.
+Given the reverse indexing convention, the hydrostatic pressure gradient
+on face `k` is `(phᵏ⁻¹ - phᵏ) / Δz`.
+The discrete hydrostatic pressure equation is therefore:
+
+`0 = -(phᵏ⁻¹ - phᵏ) / Δz + (bᵏ + bᵏ⁻¹) / 2`,
+
+which, rearranged and using the notation `▶z_aac(bᵏ) = (bᵏ + bᵏ⁻¹) / 2`,
+yields
+
+`pᵏ = pᵏ⁻¹ - Δz * ▶z_aac(bᵏ)`.
+
+We solve this discrete equation by integrating from the top down,
+using the surface buoyancy to set the boundary condition.
+"""
+function update_hydrostatic_pressure!(pHY′, grid, constants, eos, T, S)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, i, j, 1)
+            @inbounds pHY′[i, j, 1] = - grid.Δz * ▶z_aac(i, j, 1, grid, buoyancy, eos, constants.g, T, S)
             @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, T, i, j, k-1) + δρ(eos, T, i, j, k))
+                @inbounds pHY′[i, j, k] =
+                    pHY′[i, j, k-1] - grid.Δz * ▶z_aac(i, j, k, grid, buoyancy, eos, constants.g, T, S)
             end
         end
     end
@@ -151,14 +203,14 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v,
                 # u-momentum equation
                 @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
                                             + Gu_cori(grid, v, fCor, i, j, k)
-                                            - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
+                                            - δx_c2f(grid, pHY′, i, j, k) / Δx
                                             + 𝜈∇²u(grid, u, 𝜈h, 𝜈v, i, j, k)
                                             + F.u(grid, u, v, w, T, S, i, j, k))
 
                 # v-momentum equation
                 @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
                                             + Gv_cori(grid, u, fCor, i, j, k)
-                                            - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
+                                            - δy_c2f(grid, pHY′, i, j, k) / Δy
                                             + 𝜈∇²v(grid, v, 𝜈h, 𝜈v, i, j, k)
                                             + F.v(grid, u, v, w, T, S, i, j, k))
 
