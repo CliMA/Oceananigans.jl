@@ -1,18 +1,20 @@
-using Test
+using
+    Test,
+    Oceananigans,
+    Oceananigans.Operators,
+    Oceananigans.TurbulenceClosures
 
 import FFTW
 
-using Oceananigans
-using Oceananigans.Operators
+archs = (CPU())
+@hascuda archs = (CPU(), GPU())
 
-archs = [CPU()]
-@hascuda archs = [CPU(), GPU()]
-
-float_types = [Float32, Float64]
+float_types = (Float32, Float64)
 
 @testset "Oceananigans" begin
     println("Testing Oceananigans...")
 
+    #=
     @testset "Grid" begin
         println("  Testing grids...")
         include("test_grids.jl")
@@ -330,6 +332,7 @@ float_types = [Float32, Float64]
             @test test_diffusion_cosine(fld)
         end
     end
+    =#
 
     @testset "Turbulence closures tests" begin
         println("  Testing turbulence closures...")
@@ -337,12 +340,18 @@ float_types = [Float32, Float64]
         @test test_function_interpolation()
         @test test_function_differentiation()
 
-        @test test_closure_instantiation()
-        @test test_constant_isotropic_diffusivity_basic()
-        @test test_constant_isotropic_diffusivity_fluxdiv()
-        @test test_directional_diffusivity_fluxdiv(νv=0., νh=0.)
-        @test test_directional_diffusivity_fluxdiv()
+        for T in float_types
+            for closure in (:ConstantIsotropicDiffusivity, :ConstantAnisotropicDiffusivity,
+                            :ConstantSmagorinsky)
+                @test test_closure_instantiation(T, closure)
+            end
 
-        @test test_smag_divflux_finiteness()
+            @test test_constant_isotropic_diffusivity_basic(T)
+            @test test_constant_isotropic_diffusivity_fluxdiv(T)
+            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+            @test test_anisotropic_diffusivity_fluxdiv(T)
+
+            @test test_smag_divflux_finiteness(T)
+        end
     end
 end # Oceananigans tests
