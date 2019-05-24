@@ -1,8 +1,8 @@
-Base.@kwdef struct ConstantSmagorinsky{T} <: ScalarDiffusivity{T}
+Base.@kwdef struct ConstantSmagorinsky{T} <: IsotropicDiffusivity{T}
                C :: T = 0.23
-         prandtl :: T = 1.0
-    ν_background :: T = 1e-6
-    κ_background :: T = 1e-7
+              Pr :: T = 1.0
+    ν_background :: T = 0.0
+    κ_background :: T = 0.0
 end
 
 """
@@ -12,7 +12,7 @@ end
 Returns a `ConstantSmagorinsky` closure object of type `T` with
 
 * `C`            : Smagorinsky constant
-* `prandtl`      : Prandtl number
+* `Pr`           : Prandtl number
 * `ν_background` : background viscosity
 * `κ_background` : background diffusivity
 """

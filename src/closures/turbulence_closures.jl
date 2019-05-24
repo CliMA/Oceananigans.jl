@@ -1,8 +1,9 @@
 module TurbulenceClosures
 
 export
+  MolecularDiffusivity,
   ConstantIsotropicDiffusivity,
-  DirectionalDiffusivity,
+  AnisotropicDiffusivity,
   ConstantSmagorinsky,
 
   ∇_κ_∇ϕ,
@@ -21,7 +22,7 @@ using Oceananigans, Oceananigans.Operators
 using Oceananigans.Operators: incmod1, decmod1
 
 abstract type TurbulenceClosure{T} end
-abstract type ScalarDiffusivity{T} <: TurbulenceClosure{T} end
+abstract type IsotropicDiffusivity{T} <: TurbulenceClosure{T} end
 abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 
 geo_mean_Δ(grid::RegularCartesianGrid) = (grid.Δx * grid.Δy * grid.Δz)^(1/3)
