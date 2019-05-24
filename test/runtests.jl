@@ -6,7 +6,7 @@ using
 
 import FFTW
 
-archs = (CPU())
+archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 
 float_types = (Float32, Float64)
