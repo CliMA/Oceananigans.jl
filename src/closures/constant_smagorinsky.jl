@@ -6,7 +6,7 @@ Base.@kwdef struct ConstantSmagorinsky{T} <: IsotropicDiffusivity{T}
 end
 
 """
-    ConstantSmagorinsky(T=Float64; C=0.23, prandtl=1.0, ν_background=1e-6,
+    ConstantSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν_background=1e-6,
                             κ_background=1e-7)
 
 Returns a `ConstantSmagorinsky` closure object of type `T` with
@@ -86,4 +86,4 @@ end
     (clo.C * Δ_cff(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_cff(i, j, k, grid, u, v, w)) + clo.ν_background
 
 κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, u, v, w, T, S) =
-    (clo.C * Δ_ccc(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)) / clo.prandtl + clo.κ_background
+    (clo.C * Δ_ccc(i, j, k, grid, clo))^2 * sqrt(2 * ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)) / clo.Pr + clo.κ_background
