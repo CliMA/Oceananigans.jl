@@ -1,4 +1,3 @@
-
 #
 # Velocity gradients
 #
@@ -8,6 +7,7 @@
 ∂y_v(i, j, k, grid, v) = ∂y_aca(i, j, k, grid, v)
 ∂z_w(i, j, k, grid, w) = ∂z_aac(i, j, k, grid, w)
 
+# Off-diagonal
 ∂x_v(i, j, k, grid, v) = ∂x_faa(i, j, k, grid, v)
 ∂x_w(i, j, k, grid, w) = ∂x_faa(i, j, k, grid, w)
 
@@ -18,7 +18,7 @@
 ∂z_v(i, j, k, grid, v) = ∂z_aaf(i, j, k, grid, v)
 
 #
-# Strain
+# Strain components
 #
 
 # ccc strain components
@@ -26,7 +26,6 @@
 Σ₂₂(i, j, k, grid, v) = ∂y_v(i, j, k, grid, v)
 Σ₃₃(i, j, k, grid, w) = ∂z_w(i, j, k, grid, w)
 
-# ccc
 tr_Σ(i, j, k, grid, u, v, w) =
     Σ₁₁(i, j, k, grid, u) + Σ₂₂(i, j, k, grid, v) + Σ₃₃(i, j, k, grid, w)
 
@@ -70,10 +69,12 @@ tr_Σ(i, j, k, grid, u, v, w) =
 Σ₁₃(i, j, k, grid, u, v, w) = Σ₁₃(i, j, k, grid, u, w)
 Σ₂₃(i, j, k, grid, u, v, w) = Σ₂₃(i, j, k, grid, v, w)
 
+# Symmetry relations
 Σ₂₁ = Σ₁₂
 Σ₃₁ = Σ₁₃
 Σ₃₂ = Σ₂₃
 
+# Trace and squared strains
 tr_Σ²(ijk...) = Σ₁₁(ijk...)^2 +  Σ₂₂(ijk...)^2 +  Σ₃₃(ijk...)^2
 
 Σ₁₂²(i, j, k, grid, u, v, w) = Σ₁₂²(i, j, k, grid, u, v)
