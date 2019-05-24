@@ -19,7 +19,7 @@ Returns a `ConstantSmagorinsky` closure object of type `T` with
 ConstantSmagorinsky(T; kwargs...) =
       typed_keyword_constructor(T, ConstantSmagorinsky; kwargs...)
 
-"Return the square filter width for Constant Smagorinsky on a Regular Cartesian grid."
+"Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
 Δ(i, j, k, grid::RegularCartesianGrid, ::ConstantSmagorinsky) = geo_mean_Δ(grid)
 
 # tr_Σ² : ccc
@@ -27,7 +27,7 @@ ConstantSmagorinsky(T; kwargs...) =
 #   Σ₁₃ : fcf
 #   Σ₂₃ : cff
 
-"Return the double dot product of strain at `ccc`"
+"Return the double dot product of strain at `ccc`."
 function ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
     return (
                     tr_Σ²(i, j, k, grid, u, v, w)
@@ -37,7 +37,7 @@ function ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
             )
 end
 
-"Return the double dot product of strain at `ffc`"
+"Return the double dot product of strain at `ffc`."
 function ΣᵢⱼΣᵢⱼ_ffc(i, j, k, grid, u, v, w)
     return (
                   ▶xy_ffa(i, j, k, grid, tr_Σ², u, v, w)
@@ -47,7 +47,7 @@ function ΣᵢⱼΣᵢⱼ_ffc(i, j, k, grid, u, v, w)
             )
 end
 
-"Return the double dot product of strain at `fcf`"
+"Return the double dot product of strain at `fcf`."
 function ΣᵢⱼΣᵢⱼ_fcf(i, j, k, grid, u, v, w)
     return (
                   ▶xz_faf(i, j, k, grid, tr_Σ², u, v, w)
@@ -57,7 +57,7 @@ function ΣᵢⱼΣᵢⱼ_fcf(i, j, k, grid, u, v, w)
             )
 end
 
-"Return the double dot product of strain at `cff`"
+"Return the double dot product of strain at `cff`."
 function ΣᵢⱼΣᵢⱼ_cff(i, j, k, grid, u, v, w)
     return (
                   ▶yz_aff(i, j, k, grid, tr_Σ², u, v, w)
