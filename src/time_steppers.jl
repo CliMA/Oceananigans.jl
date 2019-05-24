@@ -147,21 +147,21 @@ function ▶z_aac(i, j, k, grid::Grid{T}, F::Function, args...) where T
 end
 
 """
-    update_hydrostatic_pressure!(pHY′, grid, constants, eos, T, S)
+    update_hydrostatic_pressure!(ph, grid, constants, eos, T, S)
 
-Calculate the hydrostatic pressure `pHY′` from the buoyancy field
-associated with the temperature field `T`, salinity field `S`,
-and equation of state `eos`.
+Calculate the perbutation hydrostatic pressure `ph` from the buoyancy field
+associated with temperature `T`, salinity `S`, gravitational constant
+`constants.g`, and equation of state `eos`.
 
-The (perturbation) hydrostatic pressure `ph` is defined in terms of buoyancy,
+The perturbation hydrostatic pressure `ph` is defined as the part of pressure
+that balances buoyancy in the vertical momentum equation,
 
 `0 = -∂z ph + b`.
 
 Pressure and buoyancy are both are defined at cell centers.
 Thus evaluting the discrete hydrostatic pressure equation on face `k`
-requires interpolating the buoyancy field.
-Given the reverse indexing convention, the hydrostatic pressure gradient
-on face `k` is `(phᵏ⁻¹ - phᵏ) / Δz`.
+requires interpolating the buoyancy field. Given the reverse indexing convention,
+the hydrostatic pressure gradient on face `k` is `(phᵏ⁻¹ - phᵏ) / Δz`.
 The discrete hydrostatic pressure equation is therefore:
 
 `0 = -(phᵏ⁻¹ - phᵏ) / Δz + (bᵏ + bᵏ⁻¹) / 2`,
