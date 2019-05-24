@@ -321,7 +321,7 @@ float_types = [Float32, Float64]
     @testset "Dynamics tests" begin
         println("  Testing dynamics...")
         include("test_dynamics.jl")
-        @test inertial_wave_test()
+        @test internal_wave_test()
         @test passive_tracer_advection_test()
 
         for fld in (:u, :v, :T, :S)
