@@ -3,7 +3,7 @@ module TurbulenceClosures
 export
   MolecularDiffusivity,
   ConstantIsotropicDiffusivity,
-  AnisotropicDiffusivity,
+  ConstantAnisotropicDiffusivity,
   ConstantSmagorinsky,
 
   ∇_κ_∇ϕ,

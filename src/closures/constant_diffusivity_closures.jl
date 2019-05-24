@@ -39,46 +39,46 @@ ConstantIsotropicDiffusivity(T; kwargs...) =
     )
 
 #
-# Directional diffusivity (tensor diffusivity with heterogeneous
+# ConstantAnisotropic diffusivity (tensor diffusivity with heterogeneous
 #                          diagonal components)
 #
 
 """
-    DirectionalDiffusivity(T=Float64; νh=1e-6, νv=1e-6, κh=1e-6, κv=1e-6)
+    ConstantAnisotropicDiffusivity(T=Float64; νh=1e-6, νv=1e-6, κh=1e-6, κv=1e-6)
 
-Returns a DirectionalDiffusivity object with horizontal viscosity and
+Returns a ConstantAnisotropicDiffusivity object with horizontal viscosity and
 diffusivity `νh` and `κh`, and vertical viscosity and diffusivity
 `νv` and `κv`.
 """
-Base.@kwdef struct DirectionalDiffusivity{T} <: TensorDiffusivity{T}
+Base.@kwdef struct ConstantAnisotropicDiffusivity{T} <: TensorDiffusivity{T}
     νh :: T = 1e-6
     νv :: T = 1e-6
     κh :: T = 1e-6
     κv :: T = 1e-6
 end
 
-DirectionalDiffusivity(T; kwargs...) =
-    typed_keyword_constructor(T, DirectionalDiffusivity; kwargs...)
+ConstantAnisotropicDiffusivity(T; kwargs...) =
+    typed_keyword_constructor(T, ConstantAnisotropicDiffusivity; kwargs...)
 
-∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::DirectionalDiffusivity, uvwTS...) = (
+∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ConstantAnisotropicDiffusivity, uvwTS...) = (
       ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, closure.κh, closure, uvwTS...)
     + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, closure.κh, closure, uvwTS...)
     + ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, closure.κv, closure, uvwTS...)
     )
 
-∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::DirectionalDiffusivity, u, v, w, T, S) = (
+∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, T, S) = (
       closure.νh * ∂x²_faa(i, j, k, grid, u)
     + closure.νh * ∂y²_aca(i, j, k, grid, u)
     + closure.νv * ∂z²_aac(i, j, k, grid, u)
     )
 
-∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::DirectionalDiffusivity, u, v, w, T, S) = (
+∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, T, S) = (
       closure.νh * ∂x²_caa(i, j, k, grid, v)
     + closure.νh * ∂y²_afa(i, j, k, grid, v)
     + closure.νv * ∂z²_aac(i, j, k, grid, v)
     )
 
-∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::DirectionalDiffusivity, u, v, w, T, S) = (
+∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, T, S) = (
       closure.νh * ∂x²_caa(i, j, k, grid, w)
     + closure.νh * ∂y²_aca(i, j, k, grid, w)
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
