@@ -21,8 +21,8 @@ using Oceananigans, Oceananigans.Operators
 using Oceananigans.Operators: incmod1, decmod1
 
 abstract type TurbulenceClosure{T} end
-abstract type ScalarDiffusivityClosure{T} <: TurbulenceClosure{T} end
-abstract type TensorDiffusivityClosure{T} <: TurbulenceClosure{T} end
+abstract type ScalarDiffusivity{T} <: TurbulenceClosure{T} end
+abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 
 geo_mean_Δ(grid::RegularCartesianGrid) = (grid.Δx * grid.Δy * grid.Δz)^(1/3)
 

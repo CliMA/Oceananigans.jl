@@ -1,4 +1,4 @@
-Base.@kwdef struct ConstantSmagorinsky{T} <: ScalarDiffusivityClosure{T}
+Base.@kwdef struct ConstantSmagorinsky{T} <: ScalarDiffusivity{T}
                C :: T = 0.23
          prandtl :: T = 1.0
     ν_background :: T = 1e-6
