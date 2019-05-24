@@ -243,6 +243,12 @@ float_types = [Float32, Float64]
             end
         end
 
+        @testset "Recomputing w from continuity" begin
+            for ft in float_types
+                test_compute_w_from_continuity(CPU(), ft)
+            end
+        end
+
         @testset "Incompressibility" begin
             for ft in float_types, Nt in [1, 10, 100]
                 @test incompressible_in_time(CPU(), ft, Nt)
