@@ -8,7 +8,7 @@
 Return a `ConstantIsotropicDiffusivity` closure object of type `T` with
 viscosity `ν` and scalar diffusivity `κ`.
 """
-Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: ScalarDiffusivityClosure{T}
+Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: ScalarDiffusivity{T}
     ν :: T = 1e-6
     κ :: T = 1e-7
 end
@@ -48,7 +48,7 @@ Returns a DirectionalDiffusivity object with horizontal viscosity and
 diffusivity `νh` and `κh`, and vertical viscosity and diffusivity
 `νv` and `κv`.
 """
-Base.@kwdef struct DirectionalDiffusivity{T} <: TensorDiffusivityClosure{T}
+Base.@kwdef struct DirectionalDiffusivity{T} <: TensorDiffusivity{T}
     νh :: T = 1e-6
     νv :: T = 1e-6
     κh :: T = 1e-6
