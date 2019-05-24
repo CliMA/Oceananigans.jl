@@ -330,4 +330,19 @@ float_types = [Float32, Float64]
             @test test_diffusion_cosine(fld)
         end
     end
+
+    @testset "Turbulence closure tests" begin
+        println("  Testing turbulence closures...")
+        include("test_turbulence_closures.jl")
+        @test test_function_interpolation()
+        @test test_function_differentiation()
+
+        @test test_closure_instantiation()
+        @test test_constant_isotropic_diffusivity_basic()
+        @test test_constant_isotropic_diffusivity_fluxdiv()
+        @test test_directional_diffusivity_fluxdiv(νv=0., νh=0.)
+        @test test_directional_diffusivity_fluxdiv()
+
+        @test test_smag_divflux_finiteness()
+    end
 end # Oceananigans tests
