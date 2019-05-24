@@ -9,7 +9,7 @@ znodes(ϕ) = repeat(reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.N
 
 xnodes(ϕ::FaceFieldX) = repeat(reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
 ynodes(ϕ::FaceFieldY) = repeat(reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
-znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[2:end],   1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
+znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
 
 zerofunk(args...) = 0
 
@@ -20,6 +20,69 @@ function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofu
     model.tracers.T.data    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
     model.tracers.S.data    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
     return nothing
+end
+
+plotxzslice(ϕ, slice=1, args...; kwargs...) = pcolormesh(
+    view(xnodes(ϕ), :, slice, :), view(znodes(ϕ), :, slice, :), view(ϕ.data, :, slice, :), args...; kwargs...)
+
+plotxyslice(ϕ, slice=1, args...; kwargs...) = pcolormesh(
+    view(xnodes(ϕ), :, :, slice), view(ynodes(ϕ), :, :, slice), view(ϕ.data, :, :, slice), args...; kwargs...)
+
+function total_kinetic_energy(model)
+    return 0.5 * (
+          sum(model.velocities.u.data.^2)
+        + sum(model.velocities.v.data.^2)
+        + sum(model.velocities.w.data.^2)
+        )
+end
+
+function total_kinetic_energy(u, v, w)
+    return 0.5 * (sum(u.data.^2) + sum(v.data.^2) + sum(w.data.^2))
+end
+
+function total_energy(model, N)
+    b = model.tracers.T.data .- mean(model.tracers.T.data, dims=(1, 2))
+    return 0.5 * (
+          sum(model.velocities.u.data.^2)
+        + sum(model.velocities.v.data.^2)
+        + sum(model.velocities.w.data.^2)
+        + sum(b.^2) / N^2
+        )
+end
+
+
+function w_relative_error(model, w)
+    w_ans = FaceFieldZ(w.(
+        xnodes(model.velocities.w),
+        ynodes(model.velocities.w),
+        znodes(model.velocities.w),
+        model.clock.time), model.grid)
+
+    return mean(
+        (model.velocities.w.data .- w_ans.data).^2) / mean(w_ans.data.^2)
+
+end
+
+function u_relative_error(model, u)
+    u_ans = FaceFieldX(u.(
+        xnodes(model.velocities.u),
+        ynodes(model.velocities.u),
+        znodes(model.velocities.u),
+        model.clock.time), model.grid)
+
+    return mean(
+        (model.velocities.u.data .- u_ans.data).^2 ) / mean(u_ans.data.^2)
+end
+
+function T_relative_error(model, T)
+    T_ans = CellField(T.(
+        xnodes(model.tracers.T),
+        ynodes(model.tracers.T),
+        znodes(model.tracers.T),
+        model.clock.time), model.grid)
+
+    return mean(
+        (model.tracers.T.data .- T_ans.data).^2 ) / mean(T_ans.data.^2)
 end
 
 """
