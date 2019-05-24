@@ -25,7 +25,7 @@ function u_relative_error(model, u)
         model.grid)
 
     return mean(
-        (u_num.data .- u_ans.data).^2 ) / mean(u_ans.data[1, 1, :].^2)
+        (u_num.data .- u_ans.data).^2 ) / mean(u_ans.data.^2)
 end
 
 function w_relative_error(model, w)
@@ -136,39 +136,54 @@ function test_diffusion_cosine(fld)
 end
 
 
-function inertial_wave_test(; N=256, Δt=0.01, κ=1e-6, m=12, k=8, Nt=100)
-    # Numerical parameters
+function internal_wave_test(; N=128, Nt=10)
+
+    # Internal wave parameters
+     ν = κ = 1e-9
      L = 2π
-     f = 1.0
-    # Wave parameters
-    z₀ = -L/2
-    a₀ = 1e-9
-     σ = f*m/sqrt(k^2 + m^2)
-     δ = L/15
+    z₀ = -L/3
+     δ = L/20
+    a₀ = 1e-3
+     m = 16
+     k = 1
+     f = 0.2
+     ℕ = 1.0
+     σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
 
-    # Analytical solution for an inviscid inertial wave
+    # Numerical parameters
+     N = 128
+    Δt = 0.01 * 1/σ
+
+    @show σ/f
     cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
-     U = k * σ / (σ^2 - f^2)
-     V = k * f / (σ^2 - f^2)
-     W = m / σ
+     U = a₀ * k * σ   / (σ^2 - f^2)
+     V = a₀ * k * f   / (σ^2 - f^2)
+     W = a₀ * m * σ   / (σ^2 - ℕ^2)
+     Θ = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
 
-    a(x, y, z, t) = a₀ * exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
-    u(x, y, z, t) = a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-    v(x, y, z, t) = a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-    w(x, y, z, t) = a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
+    a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
+
+    u(x, y, z, t) =           a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
+    v(x, y, z, t) =           a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
+    w(x, y, z, t) =           a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
+    T(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * Θ * sin(k*x + m*z - σ*t)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
     w₀(x, y, z) = w(x, y, z, 0)
+    T₀(x, y, z) = T(x, y, z, 0)
 
-    # Create the model.
-    model = Model(N=(N, 1, N), L=(L, L, L), ν=κ, κ=κ, constants=PlanetaryConstants(f=f))
+    # Create a model where temperature = buoyancy.
+    model = Model(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
+                    eos=LinearEquationOfState(βT=1.),
+                    constants=PlanetaryConstants(f=f, g=1.))
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀)
+    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+
     time_step!(model, Nt, Δt)
 
-    # Error tolerance is a bit arbitrary
-    u_relative_error(model, u) < 1e-2
+    # Tolerance was found by trial and error...
+    u_relative_error(model, u) < 1e-4
 end
 
 function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
