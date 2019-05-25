@@ -319,37 +319,46 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
 
     # Apply boundary conditions. We assume there is one molecular 'diffusivity'
     # value, which is passed to apply_bcs.
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, u, Gu, 𝜈, u, v, w, T, S, t, iteration, grid)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, v, Gv, 𝜈, u, v, w, T, S, t, iteration, grid)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, w, Gw, 𝜈, u, v, w, T, S, t, iteration, grid)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, T, GT, κ, u, v, w, T, S, t, iteration, grid)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, S, GS, κ, u, v, w, T, S, t, iteration, grid)
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, u, Gu, 𝜈, t, iteration, u, v, w, T, S)
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, v, Gv, 𝜈, t, iteration, u, v, w, T, S)
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, grid, w, Gw, 𝜈, t, iteration, u, v, w, T, S)
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, T, GT, κ, t, iteration, u, v, w, T, S)
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, S, GS, κ, t, iteration, u, v, w, T, S)
 
     return nothing
 end
 
 # Do nothing if both boundary conditions are default.
-apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::CPU, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::CPU, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::CPU, ::Val{:y}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::CPU, ::Val{:z}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
 
-apply_bcs!(::GPU, ::Val{:x}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::GPU, ::Val{:y}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
-apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz, left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::GPU, ::Val{:x}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::GPU, ::Val{:y}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
+    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
 
 # First, dispatch on coordinate.
-apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) = @launch device(arch) apply_x_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
-apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) = @launch device(arch) apply_y_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
-apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) = @launch device(arch) apply_z_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By))
+apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
+    @launch device(arch) apply_x_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
+apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
+    @launch device(arch) apply_y_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
+apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
+    @launch device(arch) apply_z_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By))
 
 "Apply a top and/or bottom boundary condition to variable ϕ. Note that this kernel
 MUST be launched with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz), the
 boundary condition will be applied Bz times!"
-function apply_z_bcs!(top_bc, bottom_bc, ϕ, Gϕ, κ, u, v, w, T, S, t, iteration, grid::RegularCartesianGrid)
+function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_top_bc!(top_bc, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j)
-            apply_z_bottom_bc!(bottom_bc, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j)
+            apply_z_top_bc!(top_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
+            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
         end
     end
     @synchronize
