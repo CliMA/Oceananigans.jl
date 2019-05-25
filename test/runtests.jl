@@ -7,9 +7,11 @@ using
 
 import FFTW
 
+import GPUifyLoops: @launch, @loop, @synchronize
+
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
-@hascuda using CuArrays
+@hascuda using CuArrays, CUDAnative
 
 float_types = (Float32, Float64)
 
@@ -180,23 +182,28 @@ float_types = (Float32, Float64)
         @testset "FFTW plans" begin
             println("    Testing FFTW planning...")
 
-            for ft in float_types
-                @test fftw_planner_works(ft, 32, 32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 1,  32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 32,  1, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft,  1,  1, 32, FFTW.ESTIMATE)
+            for T in float_types
+                for arch in archs
+                    @test fftw_planner_works(T, 32, 32, 32, FFTW.ESTIMATE, arch)
+                end
+                @test fftw_planner_works(T, 1,  32, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(T, 32,  1, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(T,  1,  1, 32, FFTW.ESTIMATE)
             end
         end
 
-        @testset "Divergence-free solution [CPU]" begin
-            println("    Testing divergence-free solution [CPU]...")
+        @testset "Divergence-free solution" begin
+            println("    Testing divergence-free solution...")
 
-            for N in [5, 7, 10, 15, 20, 29, 32]
-                for ft in float_types
-                    @test poisson_ppn_planned_div_free_cpu(ft, N, N, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, 1, N, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, N, 1, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, 1, 1, N, FFTW.ESTIMATE)
+            for T in float_types
+                for N in (32, 64)
+                    for arch in archs
+                        @test poisson_ppn_planned_div_free(T, N, N, N, FFTW.ESTIMATE, arch)
+                    end
+
+                    @test poisson_ppn_planned_div_free(T, 1, N, N, FFTW.ESTIMATE, CPU())
+                    @test poisson_ppn_planned_div_free(T, N, 1, N, FFTW.ESTIMATE, CPU())
+                    @test poisson_ppn_planned_div_free(T, 1, 1, N, FFTW.ESTIMATE, CPU())
 
                     # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
                     # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
@@ -205,11 +212,6 @@ float_types = (Float32, Float64)
                     #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
                     # end
                 end
-            end
-
-            Ns = [5, 7, 10, 15, 20, 29, 32]
-            for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
-                @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
         end
 

@@ -38,32 +38,58 @@ function mixed_ifft_commutes(N)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
-function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag)
+Oceananigans.PoissonSolver(::CPU, grid, ϕ, args...; kwargs...) = PoissonSolver(grid, ϕ, args...; kwargs...)
+Oceananigans.PoissonSolver(::GPU, grid, ϕ, args...; kwargs...) = PoissonSolverGPU(grid, ϕ; kwargs...)
+
+function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag, arch=CPU())
     g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
-    RHS = CellField(Complex{ft}, CPU(), g)
-    solver = PoissonSolver(g, RHS, FFTW.ESTIMATE)
+    RHS = CellField(Complex{ft}, arch, g)
+    solver = PoissonSolver(arch, g, RHS, FFTW.ESTIMATE)
     true  # Just making sure our PoissonSolver does not error/crash.
 end
 
-function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+function solve_poisson!(ϕ, solver::PoissonSolver, grid, rhs, ϕcomplex, args...) 
+    solve_poisson_3d_ppn_planned!(solver, grid, rhs, ϕcomplex)
+    @. ϕ.data = real(ϕcomplex.data)
+    return nothing
+end
 
-    RHS = CellField(Complex{ft}, CPU(), g)
-    RHS_orig = CellField(Complex{ft}, CPU(), g)
-    ϕ = CellField(Complex{ft}, CPU(), g)
-    ∇²ϕ = CellField(Complex{ft}, CPU(), g)
+function solve_poisson!(ϕ, solver::PoissonSolverGPU, grid, rhs, ϕcomplex, Tx, Ty, Bx, By, Bz) #threads, blocks)
+    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver, grid, rhs, ϕcomplex)
+    @launch device(GPU()) Oceananigans.idct_permute!(grid, ϕcomplex.data, ϕ.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    return nothing
+end
 
-    RHS.data .= rand(Nx, Ny, Nz)
-    RHS.data .= RHS.data .- mean(RHS.data)
+function poisson_ppn_planned_div_free(T, Nx, Ny, Nz, planner_flag, arch=CPU(); 
+                                        Tx=16, Ty=16, Bx=floor(Int, Nx/Tx), By=floor(Int, Ny/Ty), Bz=Nz)
 
-    RHS_orig.data .= copy(RHS.data)
+    grid = RegularCartesianGrid(T, (Nx, Ny, Nz), (7.1, 6.3, 5.6))
 
-    solver = PoissonSolver(g, RHS, planner_flag)
+         rhs = CellField(Complex{T}, arch, grid)
+         tmp = CellField(Complex{T}, arch, grid)
+    rhs_orig = CellField(T, arch, grid)
+           ϕ = CellField(T, arch, grid)
+         ∇²ϕ = CellField(T, arch, grid)
 
-    solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(g, ϕ, ∇²ϕ)
+    if arch == CPU()
+        random_rhs = rand(T, Nx, Ny, Nz)
+    else
+        random_rhs = CuArray{T}(rand(Nx, Ny, Nz))
+    end
 
-    ∇²ϕ.data ≈ RHS_orig.data
+    @. rhs.data .= random_rhs
+    rhs.data .= rhs.data .- mean(rhs.data)
+    @. rhs_orig.data .= real(rhs.data) # Store original array (because rhs data is destroyed... ?)
+
+    solver = PoissonSolver(arch, grid, rhs, planner_flag)
+
+    solve_poisson!(ϕ, solver, grid, rhs, tmp, Tx, Ty, Bx, By, Bz)
+    @launch device(arch) ∇²_ppn!(grid, ϕ.data, ∇²ϕ.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+
+    error = norm(∇²ϕ.data - rhs_orig.data) / √(Nx*Ny*Nz)
+    @info "Random poisson solve error (ℓ²-norm) $(arch), $T, N=($Nx, $Ny, $Nz): $error"
+
+    ∇²ϕ.data ≈ rhs_orig.data
 end
 
 """
