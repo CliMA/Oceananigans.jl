@@ -53,6 +53,26 @@ end
 
 CoordinateBoundaryConditions() = CoordinateBoundaryConditions(DefaultBC(), DefaultBC())
 
+const CBC = CoordinateBoundaryConditions
+
+#=
+Here we overload setproperty! and getproperty to permit users to call
+the 'right' and 'left' bcs in the z-direction 'bottom' and 'top'.
+
+Note that 'right' technically corresponds to face point N+1. Thus
+the fact that right == bottom is associated with the reverse z-indexing
+convention. With ordinary indexing, right == top.
+=#
+Base.setproperty!(cbc::CBC, side::Symbol, bc) = setbc!(cbc, Val(side), bc)
+setbc!(cbc::CBC, ::Val{S}, bc) where S = setfield!(cbc, S, bc)
+setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :right, bc)
+setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :left, bc)
+
+Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
+getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
+getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
+getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
+
 """
     FieldBoundaryConditions()
 
@@ -92,17 +112,6 @@ end
 #
 # User API
 #
-# Note:
-#
-# The syntax model.boundary_conditions.u.x.left = bc works, out of the box.
-# How can we make it easier for users to set boundary conditions?
-
-const BC = BoundaryCondition
-const FBCs = FieldBoundaryConditions
-
-#
-# Physics goes here.
-#
 
 #=
 Notes:
@@ -125,6 +134,9 @@ Notes:
 
 =#
 
+const BC = BoundaryCondition
+const FBCs = FieldBoundaryConditions
+
 # Do nothing in default case. These functions are called in cases where one of the
 # z-boundaries is set, but not the other.
 @inline apply_z_top_bc!(args...) = nothing
@@ -135,12 +147,11 @@ Notes:
 @inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, ΔzC, ΔzF) = ( κ*(ϕb₊₁ - ϕb)/ΔzC +       flux        ) / ΔzF
 
 # Multiple dispatch on the type of boundary condition
-getbc(bc::BC{C, <:Number},        i, j, grid, t, iteration, u, v, w, T, S) where C =
-    bc.condition
-getbc(bc::BC{C, <:AbstractArray}, i, j, grid, t, iteration, u, v, w, T, S) where C =
-    bc.condition[i, j]
-getbc(bc::BC{C, <:Function},      i, j, grid, t, iteration, u, v, w, T, S) where C =
-    bc.condition(t, grid, u, v, w, T, S, iteration, i, j)
+getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
+getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
+getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
+
+Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
 
 """
     apply_z_top_bc!(top_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
