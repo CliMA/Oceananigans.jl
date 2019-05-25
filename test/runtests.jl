@@ -1,5 +1,6 @@
 using
     Test,
+    Statistics,
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
@@ -8,6 +9,7 @@ import FFTW
 
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
+@hascuda using CuArrays
 
 float_types = (Float32, Float64)
 
@@ -261,17 +263,28 @@ float_types = (Float32, Float64)
         println("  Testing boundary conditions...")
         include("test_boundary_conditions.jl")
 
-        Nx, Ny, Nz = 3, 4, 5 # for simple test
         funbc(args...) = π
 
-        for fld in (:u, :v, :T, :S)
-            for bctype in (Gradient, Flux)
-                for bc in (0.6, rand(Nx, Ny), funbc)
-                    @test test_z_boundary_condition_simple(fld, bctype, bc, Nx, Ny, Nz)
+        Nx = Ny = 16
+        for arch in archs
+            for TF in float_types
+                for fld in (:u, :v, :T, :S)
+                    for bctype in (Gradient, Flux, Value)
+
+                        arraybc = rand(TF, Nx, Ny)
+                        if arch == GPU()
+                            arraybc = CuArray(arraybc)
+                        end
+
+                        for bc in (TF(0.6), arraybc, funbc)
+                            @test test_z_boundary_condition_simple(arch, TF, fld, bctype, bc, Nx, Ny)
+                        end
+                    end
+                    @test test_z_boundary_condition_top_bottom_alias(arch, TF, fld)
+                    @test test_z_boundary_condition_array(arch, TF, fld)
+                    @test test_flux_budget(arch, TF, fld)
                 end
             end
-
-            @test test_flux_budget(fld)
         end
     end
 
