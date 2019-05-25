@@ -345,9 +345,9 @@ apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
 
 # First, dispatch on coordinate.
 apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
-    @launch device(arch) apply_x_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    @launch device(arch) apply_x_bcs!(args..., threads=(Tx, Ty), blocks=(By, Bz))
 apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
-    @launch device(arch) apply_y_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    @launch device(arch) apply_y_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, Bz))
 apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
     @launch device(arch) apply_z_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By))
 
