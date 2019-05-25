@@ -153,41 +153,20 @@ Notes:
 @inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, ΔzC, ΔzF) = (      -flux        - κ*(ϕt - ϕt₋₁)/ΔzC ) / ΔzF
 @inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, ΔzC, ΔzF) = ( κ*(ϕb₊₁ - ϕb)/ΔzC +       flux        ) / ΔzF
 
+getbc(bc::BC{C, <:Function},      t, grid, u, v, w, T, S, iteration, i, j) where C = bc.condition(t, grid, u, v, w, T, S, iteration, i, j)
+getbc(bc::BC{C, <:Number},        t, grid, u, v, w, T, S, iteration, i, j) where C = bc.condition
+getbc(bc::BC{C, <:AbstractArray}, t, grid, u, v, w, T, S, iteration, i, j) where C = bc.condition[i, j]
+
 "Add flux divergence to ∂ϕ/∂t associated with a top boundary condition on ϕ."
-@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] -= top_flux.condition(t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
+@inline apply_z_top_bc!(top_flux::BC{<:Flux}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, 1] -= getbc(top_flux, t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
 
-@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] -= top_flux.condition / grid.Δz
-
-@inline apply_z_top_bc!(top_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] -= top_flux.condition[i, j] / grid.Δz
-
-@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] += κ*top_gradient.condition(t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
-
-@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] += κ*top_gradient.condition / grid.Δz
-
-@inline apply_z_top_bc!(top_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, 1] += κ*top_gradient.condition[i, j] / grid.Δz
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, 1] += κ * getbc(top_gradient, t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
 
 "Add flux divergence to ∂ϕ/∂t associated with a bottom boundary condition on ϕ."
-@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Function}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] += bottom_flux.condition(t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, grid.Nz] += getbc(bottom_flux, t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
 
-@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:Number}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] += bottom_flux.condition / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] += bottom_flux.condition[i, j] / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Function}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] -= κ*bottom_gradient.condition(t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:Number}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] -= κ*bottom_gradient.condition / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient, <:AbstractArray}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
-    Gϕ[i, j, grid.Nz] -= κ*bottom_gradient.condition[i, j] / grid.Δz
-
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, ϕ, Gϕ, κ, t, grid, u, v, w, T, S, iteration, i, j) =
+    Gϕ[i, j, grid.Nz] -= κ * getbc(bottom_gradient, t, grid, u, v, w, T, S, iteration, i, j) / grid.Δz
