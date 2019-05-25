@@ -1,6 +1,5 @@
 function test_z_boundary_condition_simple(arch, TF, field_name, bctype, bc, Nx, Ny, Nz)
-    Lx, Ly, Lz = 0.1, 0.2, 0.3
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=TF)
+    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=TF)
 
     bc = BoundaryCondition(bctype, bc)
     bcs = getfield(model.boundary_conditions, field_name)
@@ -12,8 +11,7 @@ function test_z_boundary_condition_simple(arch, TF, field_name, bctype, bc, Nx, 
 end
 
 function test_z_boundary_condition_top_bottom_alias(arch, TF, field_name, Nx, Ny, Nz)
-    Lx, Ly, Lz = 0.1, 0.2, 0.3
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=TF)
+    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=TF)
 
     bcval = 1.0
     bcs = getfield(model.boundary_conditions, field_name)
@@ -26,8 +24,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, TF, field_name, Nx, Ny
 end
 
 function test_z_boundary_condition_array(arch, TF, field_name, Nx, Ny, Nz)
-    Lx, Ly, Lz = 0.1, 0.2, 0.3
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=TF)
+    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=TF)
 
     bcarray = rand(Nx, Ny)
     bcs = getfield(model.boundary_conditions, field_name)
@@ -39,13 +36,8 @@ function test_z_boundary_condition_array(arch, TF, field_name, Nx, Ny, Nz)
 end
 
 function test_flux_budget(arch, TF, field_name)
-    Nx, Ny, Nz = 1, 1, 16
-    Lx, Ly, Lz = 1, 1, 0.7
-    κ = 1
-    eos = LinearEquationOfState(βS=0, βT=0)
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos,
-        arch=arch, float_type=TF)
+    model = Model(N=(1, 1, 16), L=(1, 1, 0.7), ν=1, κ=1,
+        arch=arch, float_type=TF, eos=LinearEquationOfState(βS=0, βT=0)
 
     if field_name ∈ (:u, :v, :w)
         field = getfield(model.velocities, field_name)
@@ -58,7 +50,7 @@ function test_flux_budget(arch, TF, field_name)
     bottom_flux = TF(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
     bcs = getfield(model.boundary_conditions, field_name)
-    bcs.z.bottom = flux_bc # "right" = "bottom" in the convention where k=Nz is the bottom.
+    bcs.z.bottom = flux_bc
 
     mean_init = mean(field.data)
 
