@@ -55,6 +55,9 @@ export
     Default,
     Flux,
     Gradient,
+    Value,
+    getbc,
+    setbc!,
 
     # Time stepping
     time_step!,
