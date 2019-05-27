@@ -119,6 +119,7 @@ import
     Adapt,
     GPUifyLoops
 
+# Import CUDA utilities if cuda is detected.
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
     true
@@ -168,7 +169,6 @@ include("fieldsets.jl")
 include("forcing.jl")
 
 include("operators/operators.jl")
-
 include("closures/turbulence_closures.jl")
 
 include("boundary_conditions.jl")
