@@ -66,6 +66,38 @@ function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
     ∇²ϕ.data ≈ RHS_orig.data
 end
 
+function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
+    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+
+    RHS = CellField(Complex{ft}, GPU(), grid)
+    RHS_orig = CellField(Complex{ft}, GPU(), grid)
+    ϕ = CellField(Complex{ft}, GPU(), grid)
+    ∇²ϕ = CellField(Complex{ft}, GPU(), grid)
+
+    solver = init_poisson_solver(GPU(), grid, RHS)
+
+    RHS.data .= CuArray(rand(Nx, Ny, Nz))
+    RHS.data .= RHS.data .- mean(RHS.data)
+
+    RHS_orig.data .= copy(RHS.data)
+
+    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
+    # the DCT in the Poisson solver.
+    RHS.data .= cat(RHS.data[:, :, 1:2:Nz], RHS.data[:, :, Nz:-2:2]; dims=3)
+
+    Tx, Ty = 16, 16
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver, grid, RHS, ϕ)
+
+    # Undoing the permutation made above to complete the IDCT.
+    ϕ.data .= CuArray{eltype(ϕ.data)}(reshape(permutedims(cat(ϕ.data[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    @. ϕ.data = real(ϕ.data)
+
+    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+
+    ∇²ϕ.data ≈ RHS_orig.data
+end
+
 """
     Test that the Poisson solver can recover an analytic solution. In this test, we are trying to see if the solver
     can recover the solution ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
