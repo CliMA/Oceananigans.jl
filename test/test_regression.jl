@@ -11,12 +11,12 @@ end
 
 ext(::JLDOutputWriter) = ".jld"
 
-function JLDOutputWriter(; dir=".", prefix="", fieldsets=(:velocities, :tracers, :G), frequency=1, padding=9) 
+function JLDOutputWriter(; dir=".", prefix="", fieldsets=(:velocities, :tracers, :G), frequency=1, padding=9)
     return JLDOutputWriter(dir, prefix, fieldsets, frequency, padding)
 end
 
 filename(iter, fw::JLDOutputWriter) = joinpath(fw.dir, fw.prefix * lpad(iter, fw.padding, "0") * ext(fw))
-    
+
 function Oceananigans.write_output(model, fw::JLDOutputWriter)
     filepath = filename(model.clock.iteration, fw)
     write_jld_output(Tuple(getproperty(model, s) for s in fw.fieldsets), filepath)
@@ -69,6 +69,19 @@ function run_thermal_bubble_regression_tests(arch)
     T = read_output(nc_writer, "T", 10)
     S = read_output(nc_writer, "S", 10)
 
+    field_names = ["u", "v", "w", "T", "S"]
+    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields_gm = [u, v, w, T, S]
+    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
+        φ_min = minimum(Array(φ) - φ_gm)
+        φ_max = maximum(Array(φ) - φ_gm)
+        φ_mean = mean(Array(φ) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
+        φ_std = std(Array(φ) - φ_gm)
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+
     # Now test that the model state matches the regression output.
     @test all(Array(model.velocities.u.data) .≈ u)
     @test all(Array(model.velocities.v.data) .≈ v)
@@ -119,6 +132,19 @@ function run_deep_convection_regression_tests()
     T = read_output(nc_writer, "T", 10)
     S = read_output(nc_writer, "S", 10)
 
+    field_names = ["u", "v", "w", "T", "S"]
+    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields_gm = [u, v, w, T, S]
+    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
+        φ_min = minimum(Array(φ) - φ_gm)
+        φ_max = maximum(Array(φ) - φ_gm)
+        φ_mean = mean(Array(φ) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
+        φ_std = std(Array(φ) - φ_gm)
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+
     # Now test that the model state matches the regression output.
     @test_skip all(model.velocities.u.data .≈ u)
     @test_skip all(model.velocities.v.data .≈ v)
@@ -147,15 +173,15 @@ function run_rayleigh_benard_regression_test(arch)
     ν = sqrt(Δb * Pr * Lz^3 / Ra)
     κ = ν / Pr
 
-    # 
+    #
     # Model setup
-    # 
+    #
 
     model = Model(
-         arch = arch, 
-            N = (Nx, Ny, Nz), 
-            L = (Lx, Ly, Lz), 
-            ν = ν, 
+         arch = arch,
+            N = (Nx, Ny, Nz),
+            L = (Lx, Ly, Lz),
+            ν = ν,
             κ = κ,
           eos = LinearEquationOfState(βT=1., βS=0.),
     constants = PlanetaryConstants(g=1., f=0.)
@@ -179,7 +205,7 @@ function run_rayleigh_benard_regression_test(arch)
     prefix = "data_rayleigh_benard_regression_"
     outputwriter = JLDOutputWriter(dir=".", prefix=prefix, frequency=test_steps)
 
-    # 
+    #
     # Initial condition and spinup steps for creating regression test data
     #
 
@@ -187,7 +213,7 @@ function run_rayleigh_benard_regression_test(arch)
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
     b₀(x, y, z) = (ξ(z) - z) / Lz
 
-    x, y, z = model.grid.xC, model.grid.yC, model.grid.zC 
+    x, y, z = model.grid.xC, model.grid.yC, model.grid.zC
     x, y, z = reshape(x, Nx, 1, 1), reshape(y, 1, Ny, 1), reshape(z, 1, 1, Nz)
 
     model.tracers.T.data .= ArrayType(b₀.(x, y, z))
@@ -202,7 +228,7 @@ function run_rayleigh_benard_regression_test(arch)
     time_step!(model, 2test_steps, Δt)
     =#
 
-    # 
+    #
     # Regression test
     #
 
@@ -212,7 +238,7 @@ function run_rayleigh_benard_regression_test(arch)
     w₀ = read_output("w",  spinup_steps, outputwriter)
     T₀ = read_output("T",  spinup_steps, outputwriter)
     S₀ = read_output("S",  spinup_steps, outputwriter)
-                                        
+
     Gu = read_output("Gu", spinup_steps, outputwriter)
     Gv = read_output("Gv", spinup_steps, outputwriter)
     Gw = read_output("Gw", spinup_steps, outputwriter)
@@ -243,7 +269,20 @@ function run_rayleigh_benard_regression_test(arch)
     T₁ = read_output("T", spinup_steps + test_steps, outputwriter)
     S₁ = read_output("S", spinup_steps + test_steps, outputwriter)
 
-    @test all(Array(model.velocities.u.data) .≈ u₁) 
+    field_names = ["u", "v", "w", "T", "S"]
+    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields_gm = [u₁, v₁, w₁, T₁, S₁]
+    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
+        φ_min = minimum(Array(φ) - φ_gm)
+        φ_max = maximum(Array(φ) - φ_gm)
+        φ_mean = mean(Array(φ) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
+        φ_std = std(Array(φ) - φ_gm)
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+
+    @test all(Array(model.velocities.u.data) .≈ u₁)
     @test all(Array(model.velocities.v.data) .≈ v₁)
     @test all(Array(model.velocities.w.data) .≈ w₁)
     @test all(Array(model.tracers.T.data)    .≈ T₁)
