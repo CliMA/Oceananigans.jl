@@ -65,19 +65,15 @@ version = "0.6.3"
 
 [[CUDAdrv]]
 deps = ["CUDAapi", "Libdl", "Printf"]
-git-tree-sha1 = "ac4ff4daf5d5c031ad52ae2b360a99dbd2a423ce"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaGPU/CUDAdrv.jl.git"
+git-tree-sha1 = "9b2d99981b984378799ec70dd005cb7e7b4e914c"
 uuid = "c5f51814-7f29-56b8-a69c-e4d8f6be1fde"
-version = "3.0.0"
+version = "3.0.1"
 
 [[CUDAnative]]
 deps = ["Adapt", "CUDAapi", "CUDAdrv", "DataStructures", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Pkg", "Printf", "TimerOutputs"]
-git-tree-sha1 = "b4f7ba69cece0a9dcfcbfc944ef33fe464256399"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaGPU/CUDAnative.jl.git"
+git-tree-sha1 = "5cfc4cf4cbadd59f0465669fdf3ef7366bedaa7c"
 uuid = "be33ccc6-a3ff-5ff2-a52e-74243cff1e17"
-version = "2.1.0"
+version = "2.1.1"
 
 [[Cassette]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Test"]
@@ -111,9 +107,7 @@ version = "4.0.0"
 
 [[CuArrays]]
 deps = ["AbstractFFTs", "Adapt", "CUDAapi", "CUDAdrv", "CUDAnative", "GPUArrays", "LinearAlgebra", "MacroTools", "NNlib", "Printf", "Random", "Requires", "SparseArrays", "TimerOutputs"]
-git-tree-sha1 = "6cf34328710154e64166b24e7dc8d8abe17b9463"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaGPU/CuArrays.jl.git"
+git-tree-sha1 = "f95cbe4fe78b1fff00691aa1d2e533542f095358"
 uuid = "3a865a2d-5b23-5a0f-bc46-62713ec82fae"
 version = "1.0.2"
 
@@ -166,12 +160,10 @@ uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
 version = "0.7.0"
 
 [[GPUifyLoops]]
-deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "c00875342fb0d84b4ad894fc684e41bb973d1431"
-repo-rev = "master"
-repo-url = "https://github.com/vchuravy/GPUifyLoops.jl.git"
+deps = ["Cassette", "Pkg", "Requires", "StaticArrays", "Test"]
+git-tree-sha1 = "a905cb174c46d8c6c37587773230460af77c8b92"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.0"
+version = "0.2.3"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Homebrew", "Libdl", "Mmap", "WinRPM"]
@@ -266,8 +258,6 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 [[NNlib]]
 deps = ["Libdl", "LinearAlgebra", "Requires", "Statistics", "TimerOutputs"]
 git-tree-sha1 = "0c667371391fc6bb31f7f12f96a56a17098b3de8"
-repo-rev = "master"
-repo-url = "https://github.com/FluxML/NNlib.jl.git"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.6.0"
 
