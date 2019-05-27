@@ -222,9 +222,9 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, Δt, u, v, w, Gu,
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
                 # which is the first step in the DCT.
                 if CUDAnative.ffs(k) == 1  # isodd(k)
-                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(grid, u, v, w, i, j, k) + Δt*div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
                 else
-                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(grid, u, v, w, i, j, k) + Δt*div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
                 end
             end
         end
