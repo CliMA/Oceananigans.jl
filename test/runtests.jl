@@ -211,6 +211,13 @@ float_types = (Float32, Float64)
             for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
                 @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
+
+            @hascuda begin
+                for ft in float_types
+                    @test poisson_ppn_planned_div_free_gpu(ft, 16, 16, 16)
+                    @test poisson_ppn_planned_div_free_gpu(ft, 32, 32, 32)
+                end
+            end
         end
 
         @testset "Analytic solution reconstruction" begin
