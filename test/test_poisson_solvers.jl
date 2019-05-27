@@ -3,6 +3,7 @@ using Statistics: mean
 using LinearAlgebra: norm
 
 import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+@hascuda using CuArrays
 
 using Oceananigans.Operators
 
@@ -90,7 +91,7 @@ function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver, grid, RHS, ϕ)
 
     # Undoing the permutation made above to complete the IDCT.
-    ϕ.data .= CuArray{eltype(ϕ.data)}(reshape(permutedims(cat(ϕ.data[:, :, 1:Int(Nz/2)], f[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    ϕ.data .= CuArray{eltype(ϕ.data)}(reshape(permutedims(cat(ϕ.data[:, :, 1:Int(Nz/2)], ϕ.data[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
     @. ϕ.data = real(ϕ.data)
 
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
