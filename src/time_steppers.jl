@@ -143,7 +143,8 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
 
     fCor = constants.f
     ρ₀ = eos.ρ₀
-    𝜈h, 𝜈v, κh, κv = closure.ν, closure.ν, closure.κ, closure.κ
+    𝜈h, 𝜈v = closure.νh, closure.νv
+    κh, κv = closure.κh, closure.κv
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -308,8 +309,8 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-    𝜈 = closure.ν
-    κ = closure.κ
+    𝜈 = closure.νv
+    κ = closure.κv
 
     u_x_bcs = getproperty(bcs.u, coord)
     v_x_bcs = getproperty(bcs.v, coord)

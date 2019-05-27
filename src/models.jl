@@ -6,19 +6,19 @@ mutable struct Model{A<:Architecture, G, TC, T}
              clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`.
                eos :: EquationOfState    # Defines relationship between temperature,  salinity, and 
                                          # buoyancy in the Boussinesq vertical momentum equation.
-         constants :: PlanetaryConstants # A set of physical constants, inc. gravitational acceleration.
-        velocities :: VelocityFields     # A container for velocity fields `u`, `v`, and `w`.
-           tracers :: TracerFields       # A container for tracer fields.
-         pressures :: PressureFields     # A container for hydrostatic and nonhydrostatic pressure.
-           forcing                       # A container for forcing functions defined by the user
+         constants :: PlanetaryConstants # Set of physical constants, inc. gravitational acceleration.
+        velocities :: VelocityFields     # Container for velocity fields `u`, `v`, and `w`.
+           tracers :: TracerFields       # Container for tracer fields.
+         pressures :: PressureFields     # Container for hydrostatic and nonhydrostatic pressure.
+           forcing                       # Container for forcing functions defined by the user
            closure :: TC                 # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: ModelBoundaryConditions # A container for 3d boundary conditions on all model fields.
-                 G :: SourceTerms        # A container for the right-hand-side of the PDE that governs `Model`
-                Gp :: SourceTerms        # The rhs at a previous time-step used for Adams-Bashforth time integration
+    boundary_conditions :: ModelBoundaryConditions # Container for 3d bcs on all fields.
+                 G :: SourceTerms        # Container for right-hand-side of PDE that governs `Model`
+                 Gp :: SourceTerms       # RHS at previous time-step (for Adams-Bashforth time integration)
     poisson_solver                       # ::PoissonSolver or ::PoissonSolverGPU
        stepper_tmp :: StepperTemporaryFields # Temporary fields used for the Poisson solver.
-    output_writers :: Array{OutputWriter, 1} # Array of objects that write data to disk.
-       diagnostics :: Array{Diagnostic, 1}   # Array of objects that calc diagnostics on-line during a simulation.
+    output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
+       diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation.
 end
 
 
@@ -36,9 +36,9 @@ function Model(;
     float_type = Float64,
           grid = RegularCartesianGrid(float_type, N, L),
     # Isotropic transport coefficients (exposed to `Model` constructor for convenience)
-             ν = 1.05e-6,
-             κ = 1.43e-7,
-       closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+             ν = 1.05e-6, νh=ν, νv=ν, 
+             κ = 1.43e-7, κh=κ, κv=κ, 
+       closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv),
     # Time stepping
     start_time = 0,
      iteration = 0,
