@@ -96,7 +96,7 @@ function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
 
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    ∇²ϕ.data ≈ RHS_orig.data
+    Array(∇²ϕ.data) ≈ Array(RHS_orig.data)
 end
 
 """
