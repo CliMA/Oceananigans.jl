@@ -211,7 +211,10 @@ float_types = (Float32, Float64)
             for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
                 @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
             end
+        end
 
+        @testset "Divergence-free solution [GPU]" begin
+            println("    Testing divergence-free solution [GPU]...")
             @hascuda begin
                 for ft in float_types
                     @test poisson_ppn_planned_div_free_gpu(ft, 16, 16, 16)
