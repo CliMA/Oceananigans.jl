@@ -35,11 +35,11 @@ function run_thermal_bubble_golden_master_tests(arch)
     fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(φ - Array(φ_gm))
-        φ_max = maximum(φ - Array(φ_gm))
-        φ_mean = mean(φ - Array(φ_gm))
-        φ_abs_mean = mean(abs.(φ - Array(φ_gm)))
-        φ_std = std(φ - Array(φ_gm))
+        φ_min = minimum(Array(φ) - φ_gm)
+        φ_max = maximum(Array(φ) - φ_gm)
+        φ_mean = mean(Array(φ) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
+        φ_std = std(Array(φ) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
