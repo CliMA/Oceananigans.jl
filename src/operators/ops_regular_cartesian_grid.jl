@@ -266,3 +266,5 @@ end
 @inline function ∇²_ppn(g::RegularCartesianGrid, f, i, j, k)
 	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 end
+
+@inline ∇h_u(i, j, k, grid, u, v) = δx_f2c(grid, u, i, j, k) / grid.Δx + δy_f2c(grid, v, i, j, k) / grid.Δy
