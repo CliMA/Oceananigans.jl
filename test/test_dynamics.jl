@@ -154,7 +154,6 @@ function internal_wave_test(; N=128, Nt=10)
      N = 128
     Δt = 0.01 * 1/σ
 
-    @show σ/f
     cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
      U = a₀ * k * σ   / (σ^2 - f^2)
      V = a₀ * k * f   / (σ^2 - f^2)
