@@ -318,17 +318,21 @@ float_types = (Float32, Float64)
         end
     end
 
-    @testset "Golden master tests" begin
-        include("test_golden_master.jl")
+    @testset "Regression tests" begin
+        include("test_regression.jl")
 
-        @testset "Thermal bubble" begin
-            for arch in archs
-                run_thermal_bubble_golden_master_tests(arch)
+        for arch in archs
+            @testset "Thermal bubble $(typeof(arch))" begin
+                run_thermal_bubble_regression_tests(arch)
+            end
+
+            @testset "Rayleigh-Benard-tracer $(typeof(arch))" begin
+                run_rayleigh_benard_regression_test(arch)
             end
         end
 
         @testset "Deep convection" begin
-            run_deep_convection_golden_master_tests()
+            run_deep_convection_regression_tests()
         end
     end
 
