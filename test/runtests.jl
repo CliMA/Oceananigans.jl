@@ -16,7 +16,6 @@ float_types = (Float32, Float64)
 @testset "Oceananigans" begin
     println("Testing Oceananigans...")
 
-    #=
     @testset "Grid" begin
         println("  Testing grids...")
         include("test_grids.jl")
@@ -318,17 +317,16 @@ float_types = (Float32, Float64)
             run_thermal_bubble_netcdf_tests()
         end
     end
-    =#
 
     @testset "Regression tests" begin
         include("test_regression.jl")
 
         for arch in archs
-            @testset "Thermal bubble $(typeof(arch)) test" begin
+            @testset "Thermal bubble $(typeof(arch))" begin
                 run_thermal_bubble_regression_tests(arch)
             end
 
-            @testset "Rayleigh-Benard with passive tracer $(typeof(arch))" begin
+            @testset "Rayleigh-Benard-tracer $(typeof(arch))" begin
                 run_rayleigh_benard_regression_test(arch)
             end
         end
@@ -338,7 +336,6 @@ float_types = (Float32, Float64)
         end
     end
 
-    #=
     @testset "Dynamics tests" begin
         println("  Testing dynamics...")
         include("test_dynamics.jl")
@@ -372,5 +369,4 @@ float_types = (Float32, Float64)
             @test test_smag_divflux_finiteness(T)
         end
     end
-    =#
 end # Oceananigans tests
