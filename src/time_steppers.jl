@@ -264,8 +264,6 @@ function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv,
     @synchronize
 end
 
-@inline ∇h_u(i, j, k, grid, u, v) = δx_f2c(grid, u, i, j, k) / grid.Δx + δy_f2c(grid, v, i, j, k) / grid.Δy
-
 "Compute the vertical velocity w from the continuity equation."
 function compute_w_from_continuity!(grid::Grid, u, v, w)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
