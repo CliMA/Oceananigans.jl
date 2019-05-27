@@ -141,6 +141,7 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
+    grav = constants.g
     fCor = constants.f
     ρ₀ = eos.ρ₀
     𝜈h, 𝜈v = closure.νh, closure.νv
@@ -153,29 +154,29 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
                 @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
                                             + Gu_cori(grid, v, fCor, i, j, k)
                                             - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
-                                            + 𝜈∇²u(grid, u, 𝜈h, 𝜈v, i, j, k)
+                                            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
                                             + F.u(grid, u, v, w, T, S, i, j, k))
 
                 # v-momentum equation
                 @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
                                             + Gv_cori(grid, u, fCor, i, j, k)
                                             - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
-                                            + 𝜈∇²v(grid, v, 𝜈h, 𝜈v, i, j, k)
+                                            + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
                                             + F.v(grid, u, v, w, T, S, i, j, k))
 
                 # w-momentum equation: comment about how pressure and buoyancy are handled
                 @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
-                                            + 𝜈∇²w(grid, w, 𝜈h, 𝜈v, i, j, k)
+                                            + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
                                             + F.w(grid, u, v, w, T, S, i, j, k))
 
                 # temperature equation
                 @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
-                                            + κ∇²(grid, T, κh, κv, i, j, k)
+                                            + ∇_κ_∇ϕ(i, j, k, grid, T, closure, eos, grav, u, v, w, T, S)
                                             + F.T(grid, u, v, w, T, S, i, j, k))
 
                 # salinity equation
                 @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
-                                            + κ∇²(grid, S, κh, κv, i, j, k)
+                                            + ∇_κ_∇ϕ(i, j, k, grid, S, closure, eos, grav, u, v, w, T, S)
                                             + F.S(grid, u, v, w, T, S, i, j, k))
             end
         end
@@ -302,6 +303,7 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     tr = model.tracers
     G = model.G
 
+    grav = model.constants.g
     t, iteration = clock.time, clock.iteration
     u, v, w, T, S = U.u.data, U.v.data, U.w.data, tr.T.data, tr.S.data
     Gu, Gv, Gw, GT, GS = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
@@ -309,8 +311,6 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-    𝜈 = closure.νv
-    κ = closure.κv
 
     u_x_bcs = getproperty(bcs.u, coord)
     v_x_bcs = getproperty(bcs.v, coord)
@@ -318,13 +318,25 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     T_x_bcs = getproperty(bcs.T, coord)
     S_x_bcs = getproperty(bcs.S, coord)
 
-    # Apply boundary conditions. We assume there is one molecular 'diffusivity'
-    # value, which is passed to apply_bcs.
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, u, Gu, 𝜈, t, iteration, u, v, w, T, S)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, v, Gv, 𝜈, t, iteration, u, v, w, T, S)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, grid, w, Gw, 𝜈, t, iteration, u, v, w, T, S)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, T, GT, κ, t, iteration, u, v, w, T, S)
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, S, GS, κ, t, iteration, u, v, w, T, S)
+    # Apply boundary conditions in the vertical direction.
+
+    # *Note*: for vertical boundaries in xz or yz, the transport coefficients should be evaluated at
+    # different locations than the ones speciifc below, which are specific to boundaries in the xy-plane.
+
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, u, Gu, ν₃₃.ffc,
+        closure, eos, grav, t, iteration, u, v, w, T, S)
+
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, v, Gv, ν₃₃.fcf,
+        closure, eos, grav, t, iteration, u, v, w, T, S)
+
+    #apply_bcs!(arch, Val(coord), Bx, By, Bz, w_x_bcs.left, w_x_bcs.right, grid, w, Gw, ν₃₃.cff,
+    #    closure, eos, grav, t, iteration, u, v, w, T, S)
+
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, T, GT, κ₃₃.ccc,
+        closure, eos, grav, t, iteration, u, v, w, T, S)
+
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, S, GS, κ₃₃.ccc,
+        closure, eos, grav, t, iteration, u, v, w, T, S)
 
     return nothing
 end
@@ -355,11 +367,16 @@ apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
 "Apply a top and/or bottom boundary condition to variable ϕ. Note that this kernel
 MUST be launched with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz), the
 boundary condition will be applied Bz times!"
-function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
+function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, u, v, w, T, S)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_top_bc!(top_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
-            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
+
+               κ_top = κ(i, j, 1,       grid, closure, eos, g, u, v, w, T, S)
+            κ_bottom = κ(i, j, grid.Nz, grid, closure, eos, g, u, v, w, T, S)
+
+               apply_z_top_bc!(top_bc,    i, j, grid, ϕ, Gϕ, κ_top,    t, iteration, u, v, w, T, S)
+            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ_bottom, t, iteration, u, v, w, T, S)
+
         end
     end
     @synchronize
