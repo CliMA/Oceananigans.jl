@@ -216,6 +216,8 @@ float_types = (Float32, Float64)
                 for ft in float_types
                     @test poisson_ppn_planned_div_free_gpu(ft, 16, 16, 16)
                     @test poisson_ppn_planned_div_free_gpu(ft, 32, 32, 32)
+                    @test poisson_ppn_planned_div_free_gpu(ft, 32, 32, 16)
+                    @test poisson_ppn_planned_div_free_gpu(ft, 16, 32, 24)
                 end
             end
         end
