@@ -33,21 +33,21 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
 
-    grid = model.grid
-    cfg = model.configuration
-    bcs = model.boundary_conditions
-    clock = model.clock
-
-    G = model.G
-    Gp = model.Gp
+    # Unpack model fields
+         grid = model.grid
+        clock = model.clock
+          eos = model.eos
     constants = model.constants
-    eos =  model.eos
-    U = model.velocities
-    tr = model.tracers
-    pr = model.pressures
-    forcing = model.forcing
+            U = model.velocities
+           tr = model.tracers
+           pr = model.pressures
+      forcing = model.forcing
+      closure = model.closure
     poisson_solver = model.poisson_solver
 
+    bcs = model.boundary_conditions
+    G = model.G
+    Gp = model.Gp
     RHS = model.stepper_tmp.fCC1
     ϕ = model.stepper_tmp.fCC2
 
@@ -71,7 +71,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
 
         @launch device(arch) store_previous_source_terms!(grid, Gⁿ..., G⁻..., threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data, threads=(Tx, Ty), blocks=(Bx, By))
-        @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+        @launch device(arch) calculate_interior_source_terms!(grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing, threads=(Tx, Ty), blocks=(Bx, By, Bz))
                              calculate_boundary_source_terms!(model)
         @launch device(arch) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ, threads=(Tx, Ty), blocks=(Bx, By, Bz))
         @launch device(arch) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
@@ -137,13 +137,13 @@ function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
     fCor = constants.f
     ρ₀ = eos.ρ₀
-    𝜈h, 𝜈v, κh, κv = cfg.𝜈h, cfg.𝜈v, cfg.κh, cfg.κv
+    𝜈h, 𝜈v, κh, κv = closure.ν, closure.ν, closure.κ, closure.κ
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -295,7 +295,7 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     grid = model.grid
     clock = model.clock
     eos =  model.eos
-    cfg = model.configuration
+    closure = model.closure
     bcs = model.boundary_conditions
     U = model.velocities
     tr = model.tracers
@@ -308,8 +308,8 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-    𝜈 = cfg.𝜈v
-    κ = cfg.κv
+    𝜈 = closure.ν
+    κ = closure.κ
 
     u_x_bcs = getproperty(bcs.u, coord)
     v_x_bcs = getproperty(bcs.v, coord)
