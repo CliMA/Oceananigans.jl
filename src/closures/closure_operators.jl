@@ -26,7 +26,7 @@ end
     if k == grid.Nz
         return @inbounds w[i, j, k] / grid.Δz
     else
-        return @inbounds (w[i, j, k+1] - w[i, j, k]) / grid.Δz
+        return @inbounds (w[i, j, k] - w[i, j, k-1]) / grid.Δz
     end
 end
 
@@ -34,7 +34,7 @@ end
     if k == 1
         return -zero(T)
     else
-        return @inbounds (ϕ[i, j, k] - ϕ[i, j, k-1]) / grid.Δz
+        return @inbounds (ϕ[i, j, k-1] - ϕ[i, j, k]) / grid.Δz
     end
 end
     
