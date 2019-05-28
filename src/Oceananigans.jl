@@ -135,21 +135,21 @@ struct CPU <: Architecture end
 
 # A slightly complex (but fully-featured?) implementation:
 
-struct Layout{NT, NB}
+struct ThreadBlockLayout{NT, NB}
     threads :: NTuple{NT, Int}
      blocks :: NTuple{NB, Int}
 end
 
-XYZLayout(threads, grid) = Layout(threads, 
+XYZThreadBlockLayout(threads, grid) = ThreadBlockLayout(threads, 
     (floor(Int, threads[1]/grid.Nx), floor(Int, threads[2]/grid.Ny), grid.Nz) )
 
-XYLayout(threads, grid) = Layout(threads,
+XYThreadBlockLayout(threads, grid) = ThreadBlockLayout(threads,
     (floor(Int, threads[1]/grid.Nx), floor(Int, threads[2]/grid.Ny)) )
 
-XZLayout(threads, grid) = Layout(threads,
+XZThreadBlockLayout(threads, grid) = ThreadBlockLayout(threads,
     (floor(Int, threads[1]/grid.Nx), grid.Nz) )
 
-YZLayout(threads, grid) = Layout(threads, 
+YZThreadBlockLayout(threads, grid) = ThreadBlockLayout(threads, 
     (floor(Int, threads[2]/grid.Ny), grid.Nz) )
 
 struct GPU{XYZ, XY, XZ, YZ} <: Architecture
@@ -160,8 +160,8 @@ struct GPU{XYZ, XY, XZ, YZ} <: Architecture
 end
 
 GPU(grid; threads=(16, 16)) = GPU(
-    XYZLayout(threads, grid), XYLayout(threads, grid),
-     XZLayout(threads, grid), YZLayout(threads, grid) )
+    XYZThreadBlockLayout(threads, grid), XYThreadBlockLayout(threads, grid),
+     XZThreadBlockLayout(threads, grid), YZThreadBlockLayout(threads, grid) )
 
 GPU() = GPU(nothing, nothing, nothing, nothing) # stopgap while code is unchanged.
 
