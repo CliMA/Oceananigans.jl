@@ -39,7 +39,7 @@ end
     This test ensures that when we compute w from the continuity equation that the full velocity field
     is divergence-free.
 """
-function test_compute_w_from_continuity(arch, FT)
+function compute_w_from_continuity(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 16, 16, 16
 
