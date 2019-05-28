@@ -160,7 +160,7 @@ abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
-abstract type AbstractPoissonSolver end
+abstract type PoissonSolver end
 
 include("utils.jl")
 
