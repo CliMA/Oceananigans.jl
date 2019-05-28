@@ -69,23 +69,23 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     for n in 1:Nt
         χ = ifelse(model.clock.iteration == 0, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
 
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By)     update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
                                                                    calculate_boundary_source_terms!(model)
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data)
 
         if arch == CPU()
             solve_poisson_3d_ppn_planned!(poisson_solver, grid, RHS, ϕ)
             @. pr.pNHS.data = real(ϕ.data)
         elseif arch == GPU()
             solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, poisson_solver, grid, RHS, ϕ)
-            @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) idct_permute!(grid, ϕ.data, pr.pNHS.data)
+            @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(grid, ϕ.data, pr.pNHS.data)
         end
 
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-        @launch device(arch) threads=(Tx, Ty), blocks=(Bx, By)     compute_w_from_continuity!(grid, uvw...)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     compute_w_from_continuity!(grid, uvw...)
 
         clock.time += Δt
         clock.iteration += 1
@@ -343,11 +343,11 @@ apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
 
 # First, dispatch on coordinate.
 apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
-    @launch device(arch) apply_x_bcs!(args..., threads=(Tx, Ty), blocks=(By, Bz))
+    @launch device(arch) threads=(Tx, Ty) blocks=(By, Bz) apply_x_bcs!(args...)
 apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
-    @launch device(arch) apply_y_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, Bz))
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, Bz) apply_y_bcs!(args...)
 apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
-    @launch device(arch) apply_z_bcs!(args..., threads=(Tx, Ty), blocks=(Bx, By))
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By) apply_z_bcs!(args...)
 
 "Apply a top and/or bottom boundary condition to variable ϕ. Note that this kernel
 MUST be launched with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz), the
