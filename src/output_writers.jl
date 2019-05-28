@@ -147,11 +147,11 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         "xF" => collect(model.grid.xF),
         "yF" => collect(model.grid.yF),
         "zF" => collect(model.grid.zF),
-        "u" => Array(model.velocities.u.data),
-        "v" => Array(model.velocities.v.data),
-        "w" => Array(model.velocities.w.data),
-        "T" => Array(model.tracers.T.data),
-        "S" => Array(model.tracers.S.data)
+        "u" => Array(data(model.velocities.u)),
+        "v" => Array(data(model.velocities.v)),
+        "w" => Array(data(model.velocities.w)),
+        "T" => Array(data(model.tracers.T)),
+        "S" => Array(data(model.tracers.S))
     )
 
     if fw.async
