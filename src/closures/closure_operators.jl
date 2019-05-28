@@ -2,14 +2,52 @@
 # Differential operators for regular grids
 #
 
-@inline ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
-@inline ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = δx_c2f(grid, ϕ, i, j, k) / grid.Δx
+@inline function ∂x_caa(i, j, k, grid, u::AbstractArray) 
+    i⁺ = incmod1(i, grid.Nx)    
+    return @inbounds (u[i⁺, j, k] - u[i, j, k]) / grid.Δx
+end
 
-@inline ∂y_aca(i, j, k, grid, v::AbstractArray) = δy_f2c(grid, v, i, j, k) / grid.Δy
-@inline ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = δy_c2f(grid, ϕ, i, j, k) / grid.Δy
+@inline function ∂x_faa(i, j, k, grid, ϕ::AbstractArray) 
+    i⁻ = decmod1(i, grid.Nx)    
+    return @inbounds (ϕ[i, j, k] - ϕ[i⁻, j, k]) / grid.Δx
+end
 
-@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = δz_f2c(grid, w, i, j, k) / grid.Δz
-@inline ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
+@inline function ∂y_aca(i, j, k, grid, v::AbstractArray) 
+    j⁺ = incmod1(j, grid.Ny)    
+    return @inbounds (v[i, j⁺, k] - v[i, j, k]) / grid.Δy
+end
+
+@inline function ∂y_afa(i, j, k, grid, ϕ::AbstractArray) 
+    j⁻ = decmod1(j, grid.Ny)    
+    return @inbounds (ϕ[i, j, k] - ϕ[i, j⁻, k]) / grid.Δy
+end
+
+@inline function ∂z_aac(i, j, k, grid, w::AbstractArray) 
+    if k == grid.Nz
+        return @inbounds w[i, j, k] / grid.Δz
+    else
+        return @inbounds (w[i, j, k+1] - w[i, j, k]) / grid.Δz
+    end
+end
+
+@inline function ∂z_aaf(i, j, k, grid::Grid{T}, ϕ::AbstractArray) where T
+    if k == 1
+        return -zero(T)
+    else
+        return @inbounds (ϕ[i, j, k] - ϕ[i, j, k-1]) / grid.Δz
+    end
+end
+    
+#=    
+@inline function ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
+@inline function ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = δx_c2f(grid, ϕ, i, j, k) / grid.Δx
+
+@inline function ∂y_aca(i, j, k, grid, v::AbstractArray) = δy_f2c(grid, v, i, j, k) / grid.Δy
+@inline function ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = δy_c2f(grid, ϕ, i, j, k) / grid.Δy
+
+@inline function ∂z_aac(i, j, k, grid, w::AbstractArray) = δz_f2c(grid, w, i, j, k) / grid.Δz
+@inline function ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
+=#
 
 #
 # Differentiation and interpolation operators for functions
