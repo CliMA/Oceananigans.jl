@@ -74,7 +74,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(grid, constants, eos, cfg, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
                                                                   calculate_boundary_source_terms!(model)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS.data)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS)
                                                                   solve_for_pressure!(arch, model)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     compute_w_from_continuity!(grid, uvw...)
@@ -101,7 +101,7 @@ function solve_for_pressure!(::CPU, model::Model)
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
     solve_poisson_3d_ppn_planned!(model.poisson_solver, model.grid)
-    @. @views data(model.pressures.pNHS) = real(ϕ)
+    @views data(model.pressures.pNHS) .= real(ϕ)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
