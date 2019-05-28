@@ -57,9 +57,8 @@ so it will also be stored in solver.storage.
 
   Args
   ----
-
-      solver : Poisson solver (CPU)
-        grid : solver grid
+  solver : Poisson solver (CPU)
+    grid : solver grid
 """
 function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -84,57 +83,53 @@ function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCa
     nothing
 end
 
-
-"""
-    PoissonSolverGPU(grid, example_field)
-
-Return a `PoissonSolverGPU` on `grid`, using `example_field` to plan
-CuFFTs on a GPU.
-"""
-struct PoissonSolverGPU{T<:AbstractArray} <: PoissonSolver
-    kx²
-    ky²
-    kz²
-    dct_factors
-    idct_bfactors
+struct PoissonSolverGPU{A1<:AbstractArray, A3<:AbstractArray} <: PoissonSolver
+    kx²::A1
+    ky²::A1
+    kz²::A1
+    dct_factors::A1
+    idct_bfactors::A1
+    storage::A3
     FFT_xy!
     FFT_z!
     IFFT_xy!
     IFFT_z!
 end
 
-function PoissonSolverGPU(g::Grid, exfield::CellField; verbose=false)
-    kx² = CuArray{Float64}(undef, g.Nx)
-    ky² = CuArray{Float64}(undef, g.Ny)
-    kz² = CuArray{Float64}(undef, g.Nz)
+function PoissonSolverGPU(grid::Grid)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
 
-    for i in 1:g.Nx; kx²[i] = (2sin((i-1)*π/g.Nx)    / (g.Lx/g.Nx))^2; end
-    for j in 1:g.Ny; ky²[j] = (2sin((j-1)*π/g.Ny)    / (g.Ly/g.Ny))^2; end
-    for k in 1:g.Nz; kz²[k] = (2sin((k-1)*π/(2g.Nz)) / (g.Lz/g.Nz))^2; end
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    kx² = zeros(Float64, Nx)
+    ky² = zeros(Float64, Ny)
+    kz² = zeros(Float64, Nz)
+
+    storage = CuArray(zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz))
+
+    # Creating Arrays for ki² and converting them to CuArrays to avoid scalar operations.
+    for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
+    for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny)    / (Ly/Ny))^2; end
+    for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
+    kx², ky², kz² = CuArray(kx²), CuArray(ky²), CuArray(kz²)
 
     # Exponential factors required to calculate the DCT on the GPU.
-    factors = 2 * exp.(collect(-1im*π*(0:g.Nz-1) / (2*g.Nz)))
-    dct_factors = CuArray{Complex{Float64}}(repeat(reshape(factors, 1, 1, g.Nz), g.Nx, g.Ny, 1))
+    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2Nz)))
+    dct_factors = CuArray{Complex{Float64}}(reshape(factors, 1, 1, Nz))
 
     # "Backward" exponential factors required to calculate the IDCT on the GPU.
-    bfactors = exp.(collect(1im*π*(0:g.Nz-1) / (2*g.Nz)))
-    bfactors[1] *= 0.5
-    idct_bfactors = CuArray{Complex{Float64}}(repeat(reshape(bfactors, 1, 1, g.Nz), g.Nx, g.Ny, 1))
+    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2Nz)))
+    bfactors[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
+    idct_bfactors = CuArray{Complex{Float64}}(reshape(bfactors, 1, 1, Nz))
 
-    if verbose
-        print("Creating CuFFT plans...\n")
-        print("FFT_xy!:  "); @time FFT_xy!  = plan_fft!(exfield.data, [1, 2])
-        print("FFT_z!:   "); @time FFT_z!   = plan_fft!(exfield.data, 3)
-        print("IFFT_xy!: "); @time IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
-        print("IFFT_z!:  "); @time IFFT_z!  = plan_ifft!(exfield.data, 3)
-    else
-        FFT_xy!  = plan_fft!(exfield.data, [1, 2])
-        FFT_z!   = plan_fft!(exfield.data, 3)
-        IFFT_xy! = plan_ifft!(exfield.data, [1, 2])
-        IFFT_z!  = plan_ifft!(exfield.data, 3)
-    end
+    FFT_xy!  = plan_fft!(storage, [1, 2])
+    FFT_z!   = plan_fft!(storage, 3)
+    IFFT_xy! = plan_ifft!(storage, [1, 2])
+    IFFT_z!  = plan_ifft!(storage, 3)
 
-    PoissonSolverGPU{CuArray{Float64}}(kx², ky², kz², dct_factors, idct_bfactors, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
+    PoissonSolverGPU{typeof(kx²), typeof(storage)}(kx², ky², kz², dct_factors, idct_bfactors, storage,
+                                                   FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
 
 """
