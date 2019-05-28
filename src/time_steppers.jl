@@ -150,14 +150,14 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, cfg, u, v,
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # u-momentum equation
                 @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
-                                            + Gu_coriolis(grid, v, fCor, i, j, k)
+                                            + fv(grid, v, fCor, i, j, k)
                                             - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
                                             + 𝜈∇²u(grid, u, 𝜈h, 𝜈v, i, j, k)
                                             + F.u(grid, u, v, w, T, S, i, j, k))
 
                 # v-momentum equation
                 @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
-                                            + Gv_coriolis(grid, u, fCor, i, j, k)
+                                            - fu(grid, u, fCor, i, j, k)
                                             - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
                                             + 𝜈∇²v(grid, v, 𝜈h, 𝜈v, i, j, k)
                                             + F.v(grid, u, v, w, T, S, i, j, k))
