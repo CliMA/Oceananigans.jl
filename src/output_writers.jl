@@ -80,7 +80,7 @@ function write_output(model::Model{arch}, chk::Checkpointer) where arch <: Archi
     close(f)
 
     println("[Checkpointer] Reconstructing FFT plans...")
-    model.poisson_solver = init_poisson_solver(arch(), model.grid, model.stepper_tmp.fCC1)
+    model.poisson_solver = PoissonSolver(arch(), model.grid)
 
     # Putting back in the forcing functions.
     model.forcing = forcing_functions
@@ -95,7 +95,7 @@ function restore_from_checkpoint(filepath)
     close(f)
 
     println("Reconstructing FFT plans...")
-    model.poisson_solver = init_poisson_solver(arch(model)(), model.grid, model.stepper_tmp.fCC1)
+    model.poisson_solver = PoissonSolver(arch(model)(), model.grid)
 
     model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
     println("WARNING: Forcing functions have been set to nothing!")
