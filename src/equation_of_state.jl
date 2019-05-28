@@ -19,7 +19,7 @@ struct LinearEquationOfState{T<:AbstractFloat} <: EquationOfState
     αᵥ::T  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 end
 
-function LinearEquationOfState(;
+function LinearEquationOfState(T=Float64;
     ρ₀ = 1.027e3,
     βT = 1.67e-4,
     βS = 0.78e-3,
@@ -30,7 +30,7 @@ function LinearEquationOfState(;
     cᵥ = 4181.3,
     αᵥ = 2.07e-4)
 
-    LinearEquationOfState{Float64}(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
+    LinearEquationOfState{T}(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
 end
 
 @inline δρ(eos::LinearEquationOfState, T, i, j, k) = @inbounds -eos.ρ₀ * eos.βT * (T[i, j, k] - eos.T₀)

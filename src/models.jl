@@ -38,14 +38,14 @@ function Model(;
     # Isotropic transport coefficients (exposed to `Model` constructor for convenience)
              ν = 1.05e-6, νh=ν, νv=ν, 
              κ = 1.43e-7, κh=κ, κv=κ, 
-       closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv),
+       closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
     # Time stepping
     start_time = 0,
      iteration = 0,
          clock = Clock{float_type}(start_time, iteration),
     # Fluid and physical parameters
-     constants = Earth(),
-           eos = LinearEquationOfState(),
+     constants = Earth(float_type),
+           eos = LinearEquationOfState(float_type),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
     boundary_conditions = ModelBoundaryConditions(),
