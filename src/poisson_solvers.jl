@@ -49,31 +49,38 @@ function PoissonSolverCPU(grid::Grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve_poisson_3d_ppn_planned!(args...)
+    solve_poisson_3d_ppn_planned!(solver, grid)
 
 Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
-FFTs and DCTs.
+FFTs and DCTs. The right-hand-side RHS is stored in solver.storage which the solver mutates to produce the solution,
+so it will also be stored in solver.storage.
 
   Args
   ----
 
-      solver : PoissonSolver
-           g : solver grid
-           f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation
+      solver : Poisson solver (CPU)
+        grid : solver grid
 """
-function solve_poisson_3d_ppn_planned!(solver::PoissonSolver, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
-    solver.DCT!*f.data  # Calculate DCTᶻ(f) in place.
-    solver.FFT!*f.data  # Calculate FFTˣʸ(f) in place.
+function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
-    for k in 1:g.Nz, j in 1:g.Ny, i in 1:g.Nx
-        @inbounds ϕ.data[i, j, k] = -f.data[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
+    # We can use the same storage for the RHS and the solution ϕ.
+    RHS, ϕ = solver.storage, solver.storage
+
+    solver.DCT! * RHS  # Calculate DCTᶻ(f) in place.
+    solver.FFT! * RHS  # Calculate FFTˣʸ(f) in place.
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        @inbounds ϕ[i, j, k] = -RHS[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
     end
-    ϕ.data[1, 1, 1] = 0
 
-    solver.IFFT!*ϕ.data  # Calculate IFFTˣʸ(ϕ) in place.
-    solver.IDCT!*ϕ.data  # Calculate IDCTᶻ(ϕ) in place.
-    @. ϕ.data = ϕ.data / (2*g.Nz)
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
+    solver.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
+
+    @. ϕ = ϕ / (2Nz)  # Must normalize by 2Nz after using FFTW.REDFT.
+
     nothing
 end
 
