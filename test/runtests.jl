@@ -266,7 +266,7 @@ float_types = (Float32, Float64)
 
         @testset "Incompressibility" begin
             for FT in float_types, Nt in [1, 10, 100]
-                @test incompressible_in_time(CPU(), ft, Nt)
+                @test incompressible_in_time(CPU(), FT, Nt)
             end
         end
     end
