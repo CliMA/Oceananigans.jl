@@ -18,8 +18,8 @@ model.boundary_conditions.T.z.top = BoundaryCondition(Value, 0.0)
 model.boundary_conditions.T.z.bottom = BoundaryCondition(Value, Δb)
 
 # Force salinity as a passive tracer (βS=0)
-S★(x, z) = exp(4z) * sin(2π/L[1] * x)
-FS(grid, u, v, w, T, S, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - S[i, j, k])
+S★(x, z, Lx) = exp(4z) * sin(2π/Lx * x)
+FS(grid, u, v, w, T, S, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k], grid.Lx) - S[i, j, k])
 model.forcing = Forcing(FS=FS)
 
 Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
