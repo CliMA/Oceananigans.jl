@@ -109,7 +109,7 @@ function solve_for_pressure!(::GPU, model::Model)
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
-    @launch device(GPU()) idct_permute!(model.grid, ϕ, model.pr.pNHS.data, threads=(Tx, Ty), blocks=(Bx, By, Bz))
+    @launch device(GPU()) threads=(Tx, Ty), blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pr.pNHS.data)
 end
 
 """Store previous source terms before updating them."""
