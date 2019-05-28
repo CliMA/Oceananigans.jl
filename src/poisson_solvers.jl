@@ -140,30 +140,32 @@ CuFFTs on a GPU.
 
   Args
   ----
-
       Tx, Ty : Thread size in x, y
   Bx, By, Bz : Block size in x, y, z
       solver : PoissonSolverGPU
-           g : solver grid
-           f : RHS to Poisson equation
-           ϕ : Solution to Poisson equation
+        grid : solver grid
 """
-function solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, g::RegularCartesianGrid, f::CellField, ϕ::CellField)
+function solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+    # We can use the same storage for the RHS and the solution ϕ.
+    RHS, ϕ = solver.storage, solver.storage
+
     # Calculate DCTᶻ(f) in place using the FFT.
-    solver.FFT_z! * f.data
-    f.data .*= solver.dct_factors
-    @. f.data = real(f.data)
+    solver.FFT_z! * RHS
+    RHS .*= solver.dct_factors
+    @. RHS = real(RHS)
 
-    solver.FFT_xy! * f.data  # Calculate FFTˣʸ(f) in place.
+    solver.FFT_xy! * RHS  # Calculate FFTˣʸ(f) in place.
 
-    @launch device(GPU()) f2ϕ!(g, f.data, ϕ.data, solver.kx², solver.ky², solver.kz², threads=(Tx, Ty), blocks=(Bx, By, Bz))
-    ϕ.data[1, 1, 1] = 0
+    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
 
-    solver.IFFT_xy! * ϕ.data  # Calculate IFFTˣʸ(ϕ̂) in place.
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT_xy! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
 
     # Calculate IDCTᶻ(ϕ̂) in place using the FFT.
-    ϕ.data .*= solver.idct_bfactors
-    solver.IFFT_z! * ϕ.data
+    ϕ .*= solver.idct_bfactors
+    solver.IFFT_z! * ϕ
+
     nothing
 end
 
