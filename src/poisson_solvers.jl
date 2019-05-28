@@ -1,14 +1,9 @@
 import FFTW
 import GPUifyLoops: @launch, @loop, @synchronize
 
-function init_poisson_solver(::CPU, g::Grid, tmp_rhs)
-    tmp_rhs.data .= rand(Float64, g.Nx, g.Ny, g.Nz)
-    PoissonSolver(g, tmp_rhs, FFTW.MEASURE)
-end
+PoissonSolver(::CPU, grid::Grid) = PoissonSolverCPU(grid)
+PoissonSolver(::GPU, grid::Grid) = PoissonSolverGPU(grid)
 
-function init_poisson_solver(::GPU, g::Grid, tmp_rhs)
-    tmp_rhs.data .= CuArray{Complex{Float64}}(rand(Float64, g.Nx, g.Ny, g.Nz))
-    PoissonSolverGPU(g, tmp_rhs)
 end
 
 # Translations to print FFT timing.
