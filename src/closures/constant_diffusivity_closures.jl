@@ -69,6 +69,31 @@ end
 ConstantAnisotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantAnisotropicDiffusivity; kwargs...)
 
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+      closure.νh/grid.Δx^2 * δx²_f2c2f(grid, u, i, j, k) 
+    + closure.νh/grid.Δy^2 * δy²_f2e2f(grid, u, i, j, k) 
+    + closure.νv/grid.Δz^2 * δz²_f2e2f(grid, u, i, j, k)
+)
+
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+      closure.νh/grid.Δx^2 * δx²_f2c2f(grid, v, i, j, k) 
+    + closure.νh/grid.Δy^2 * δy²_f2e2f(grid, v, i, j, k) 
+    + closure.νv/grid.Δz^2 * δz²_f2e2f(grid, v, i, j, k)
+)
+
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+      closure.νh/grid.Δx^2 * δx²_f2c2f(grid, w, i, j, k) 
+    + closure.νh/grid.Δy^2 * δy²_f2e2f(grid, w, i, j, k) 
+    + closure.νv/grid.Δz^2 * δz²_f2e2f(grid, w, i, j, k)
+)
+
+@inline ∇_κ_∇ϕ(i, j, k, g, Q, closure::ConstantAnisotropicDiffusivity, args...) = (
+      closure.κh/g.Δx^2 * δx²_c2f2c(g, Q, i, j, k) 
+    + closure.κh/g.Δy^2 * δy²_c2f2c(g, Q, i, j, k) 
+    + closure.κv/g.Δz^2 * δz²_c2f2c(g, Q, i, j, k)
+)
+
+#=
 @inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ConstantAnisotropicDiffusivity, args...) = (
       ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, closure.κh, closure, args...)
     + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, closure.κh, closure, args...)
@@ -92,6 +117,7 @@ ConstantAnisotropicDiffusivity(T; kwargs...) =
     + closure.νh * ∂y²_aca(i, j, k, grid, w)
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
     )
+=#
 
 # These functions are used to specify Gradient and Value boundary conditions.
 @inline κ₁₁_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.κh
