@@ -32,6 +32,7 @@ export
     FaceFieldY,
     FaceFieldZ,
     EdgeField,
+    data,
     set!,
 
     # FieldSets (collections of related fields)
