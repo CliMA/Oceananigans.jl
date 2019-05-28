@@ -26,7 +26,7 @@ end
     if k == grid.Nz
         return @inbounds w[i, j, k] / grid.Δz
     else
-        return @inbounds (w[i, j, k] - w[i, j, k-1]) / grid.Δz
+        return @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
     end
 end
 
@@ -38,15 +38,15 @@ end
     end
 end
     
-#=    
-@inline function ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
-@inline function ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = δx_c2f(grid, ϕ, i, j, k) / grid.Δx
+#=
+@inline ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
+@inline ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = δx_c2f(grid, ϕ, i, j, k) / grid.Δx
 
-@inline function ∂y_aca(i, j, k, grid, v::AbstractArray) = δy_f2c(grid, v, i, j, k) / grid.Δy
-@inline function ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = δy_c2f(grid, ϕ, i, j, k) / grid.Δy
+@inline ∂y_aca(i, j, k, grid, v::AbstractArray) = δy_f2c(grid, v, i, j, k) / grid.Δy
+@inline ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = δy_c2f(grid, ϕ, i, j, k) / grid.Δy
 
-@inline function ∂z_aac(i, j, k, grid, w::AbstractArray) = δz_f2c(grid, w, i, j, k) / grid.Δz
-@inline function ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
+@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = δz_f2c(grid, w, i, j, k) / grid.Δz
+@inline ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
 =#
 
 #
@@ -525,14 +525,17 @@ Return `κ ∂z ϕ`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_ϕ(i, j, k, grid::Grid{T}, ϕ, κ, closure, args...) where T
-    if k == 1
-        return -zero(T)
-    else
-        κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
-        ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
-        return κ * ∂z_ϕ
-    end
+@inline function κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+    κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
+    ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
+    return κ * ∂z_ϕ
+    #if k == 1
+    #    return -zero(T)
+    #else
+    #    κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
+    #    ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
+    #    return κ * ∂z_ϕ
+    #end
 end
 
 """
