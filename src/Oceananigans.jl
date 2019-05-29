@@ -34,6 +34,7 @@ export
     EdgeField,
     data,
     set!,
+    fill_halo_regions!,
 
     # FieldSets (collections of related fields)
     FieldSet,
