@@ -1,11 +1,14 @@
 using
     Test,
     Statistics,
+    OffsetArrays
+
+import FFTW
+
+using
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
-
-import FFTW
 
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
@@ -122,12 +125,22 @@ float_types = (Float32, Float64)
             Lx, Ly, Lz = 100, 100, 100
 
             grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
-            A3 = rand(Nx, Ny, Nz)
 
-            A2yz = A3[1:1, :, :]  # A yz-slice with Nx==1.
+            Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+            Tx, Ty, Tz = grid.Tx, grid.Ty, grid.Tz
+
+            A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+            @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
+            Oceananigans.fill_halo_regions!(CPU(), grid, A3)
+
+            # A yz-slice with Nx==1.
+            A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+            A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
             grid_yz = RegularCartesianGrid((1, Ny, Nz), (Lx, Ly, Lz))
 
-            A2xz = A3[:, 1:1, :]  # An xz-slice with Ny==1.
+            # An xz-slice with Ny==1.
+            A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
+            A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]
             grid_xz = RegularCartesianGrid((Nx, 1, Nz), (Lx, Ly, Lz))
 
             test_indices_3d = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
@@ -160,7 +173,7 @@ float_types = (Float32, Float64)
                 @test δz_f2c(grid_xz, A2xz, idx...) ≈ δz_f2c(grid_xz, A3, idx...)
                 @test δz_c2f(grid_xz, A2xz, idx...) ≈ δz_c2f(grid_xz, A3, idx...)
             end
-        end
+end
     end
 
     @testset "Poisson solvers" begin
