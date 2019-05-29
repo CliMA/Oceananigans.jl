@@ -26,7 +26,7 @@ function u_relative_error(model, u)
         model.grid)
 
     return mean(
-        (u_num.data .- u_ans.data).^2 ) / mean(u_ans.data.^2)
+        (data(u_num) .- u_ans.data).^2 ) / mean(u_ans.data.^2)
 end
 
 function w_relative_error(model, w)
@@ -37,7 +37,7 @@ function w_relative_error(model, w)
         model.grid)
 
     return mean(
-        (w_num.data .- w_ans.data).^2 ) / mean(w_ans.data.^2)
+        (data(w_num) .- w_ans.data).^2 ) / mean(w_ans.data.^2)
 end
 
 function T_relative_error(model, T)
@@ -48,7 +48,7 @@ function T_relative_error(model, T)
         model.grid)
 
     return mean(
-        (T_num.data .- T_ans.data).^2 ) / mean(T_ans.data.^2)
+        (data(T_num) .- T_ans.data).^2 ) / mean(T_ans.data.^2)
 end
 
 function test_diffusion_simple(fld)
@@ -131,7 +131,7 @@ function test_diffusion_cosine(fld)
 
     time_step!(model, Nt, Δt)
 
-    field_numerical = dropdims(field.data, dims=(1, 2))
+    field_numerical = dropdims(data(field), dims=(1, 2))
 
     !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
 end
