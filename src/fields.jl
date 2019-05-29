@@ -3,8 +3,6 @@ import Base:
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
-
 """
     CellField{A<:AbstractArray, G<:Grid} <: Field
 
@@ -146,55 +144,4 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :EdgeField)
             end
         end
     end
-end
-
-function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    max_threads = 1024
-
-    Ty = min(max_threads, Ny)
-    Tz = min(fld(max_threads, Ty), Nz)
-    By, Bz = cld(Ny, Ty), cld(Nz, Tz)
-    @launch device(arch) fill_halo_regions_x!(grid, fields..., threads=(1, Ty, Tz), blocks=(1, By, Nz))
-
-    Tx = min(max_threads, Nx)
-    Tz = min(fld(max_threads, Tx), Nz)
-    Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
-    @launch device(arch) fill_halo_regions_y!(grid, fields..., threads=(Tx, 1, Tz), blocks=(Bz, 1, Nz))
-end
-
-function fill_halo_regions_x!(grid::Grid, fields...)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @unroll for f in fields
-                @unroll for h in 1:Hx
-                    f[1-h,  j, k] = f[Nx-h+1, j, k]
-                    f[Nx+h, j, k] = f[h,      j, k]
-                end
-            end
-        end
-    end
-
-    @synchronize
-end
-
-function fill_halo_regions_y!(grid::Grid, fields...)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
-
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @unroll for f in fields
-                @unroll for h in 1:Hx
-                    f[i,  1-h, k] = f[i, Ny-h+1, k]
-                    f[i, Ny+h, k] = f[i,      h, k]
-                end
-            end
-        end
-    end
-
-    @synchronize
 end
