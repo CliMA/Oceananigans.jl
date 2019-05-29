@@ -4,6 +4,7 @@ using LinearAlgebra: norm
 
 import GPUifyLoops: @launch, @loop, @unroll, @synchronize
 @hascuda using CuArrays
+using OffsetArrays
 
 using Oceananigans.Operators
 
@@ -39,64 +40,71 @@ function mixed_ifft_commutes(N)
     A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
-function fftw_planner_works(ft, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
-    RHS = CellField(Complex{ft}, CPU(), g)
-    solver = PoissonSolver(g, RHS, FFTW.ESTIMATE)
-    true  # Just making sure our PoissonSolver does not error/crash.
+function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(CPU(), grid)
+    true  # Just making sure the PoissonSolver does not error/crash.
 end
 
-function poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, planner_flag)
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(CPU(), grid)
 
-    RHS = CellField(Complex{ft}, CPU(), g)
-    RHS_orig = CellField(Complex{ft}, CPU(), g)
-    ϕ = CellField(Complex{ft}, CPU(), g)
-    ∇²ϕ = CellField(Complex{ft}, CPU(), g)
+    RHS = rand(Nx, Ny, Nz)
+    RHS .= RHS .- mean(RHS)
 
-    RHS.data .= rand(Nx, Ny, Nz)
-    RHS.data .= RHS.data .- mean(RHS.data)
+    RHS_orig = copy(RHS)
 
-    RHS_orig.data .= copy(RHS.data)
+    solver.storage .= RHS
 
-    solver = PoissonSolver(g, RHS, planner_flag)
+    solve_poisson_3d_ppn_planned!(solver, grid)
 
-    solve_poisson_3d_ppn_planned!(solver, g, RHS, ϕ)
-    ∇²_ppn!(g, ϕ, ∇²ϕ)
+    ϕ   = zeros(Nx, Ny, Nz)
+    ∇²ϕ = zeros(Nx, Ny, Nz)
 
-    ∇²ϕ.data ≈ RHS_orig.data
-end
-
-function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
-    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
-
-    RHS = CellField(Complex{ft}, GPU(), grid)
-    RHS_orig = CellField(Complex{ft}, GPU(), grid)
-    ϕ = CellField(Complex{ft}, GPU(), grid)
-    ∇²ϕ = CellField(Complex{ft}, GPU(), grid)
-
-    solver = init_poisson_solver(GPU(), grid, RHS)
-
-    RHS.data .= CuArray(rand(Nx, Ny, Nz))
-    RHS.data .= RHS.data .- mean(RHS.data)
-
-    RHS_orig.data .= copy(RHS.data)
-
-    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
-    # the DCT in the Poisson solver.
-    RHS.data .= cat(RHS.data[:, :, 1:2:Nz], RHS.data[:, :, Nz:-2:2]; dims=3)
-
-    Tx, Ty = 16, 16
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver, grid, RHS, ϕ)
-
-    # Undoing the permutation made above to complete the IDCT.
-    ϕ.data .= CuArray{eltype(ϕ.data)}(reshape(permutedims(cat(ϕ.data[:, :, 1:Int(Nz/2)], ϕ.data[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
-    @. ϕ.data = real(ϕ.data)
+    @. ϕ = real(solver.storage)
 
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    Array(∇²ϕ.data) ≈ Array(RHS_orig.data)
+    ∇²ϕ ≈ RHS_orig
+end
+
+function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(GPU(), grid)
+
+    RHS = rand(Nx, Ny, Nz)
+    RHS .= RHS .- mean(RHS)
+    RHS = CuArray(RHS)
+
+    RHS_orig = copy(RHS)
+
+    solver.storage .= RHS
+
+    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
+    # the DCT in the Poisson solver.
+    solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
+
+    Tx, Ty = 16, 16
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
+
+    # Undoing the permutation made above to complete the IDCT.
+    solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
+                                                      solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+
+    ϕ   = CuArray(zeros(Nx, Ny, Nz))
+    ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
+
+    @. ϕ = real(solver.storage)
+
+    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+
+    ∇²ϕ ≈ RHS_orig
 end
 
 """
@@ -105,13 +113,9 @@ end
     by giving it the source term or right hand side (RHS), which is ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
-function poisson_ppn_recover_sine_cosine_solution(ft, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (Lx, Ly, Lz))
-
-    RHS = CellField(Complex{ft}, CPU(), grid)
-    ϕ = CellField(Complex{ft}, CPU(), grid)
-
-    solver = PoissonSolver(grid, RHS)
+function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
+    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    solver = PoissonSolver(CPU(), grid)
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
     xC = reshape(xC, (Nx, 1, 1))
@@ -121,12 +125,13 @@ function poisson_ppn_recover_sine_cosine_solution(ft, Nx, Ny, Nz, Lx, Ly, Lz, mx
     Ψ(x, y, z) = cos(π*mz*z/Lz) * sin(2π*my*y/Ly) * sin(2π*mx*x/Lx)
     f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
-    @. RHS.data = f(xC, yC, zC)
-    solve_poisson_3d_ppn_planned!(solver, grid, RHS, ϕ)
+    @. solver.storage = f(xC, yC, zC)
+    solve_poisson_3d_ppn_planned!(solver, grid)
+    ϕ = real.(solver.storage)
 
-    error = norm(ϕ.data - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
+    error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
 
-    @info "Error (ℓ²-norm), $ft, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
+    @info "Error (ℓ²-norm), $FT, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
 
-    isapprox(real.(ϕ.data),  Ψ.(xC, yC, zC); rtol=5e-2)
+    isapprox(ϕ,  Ψ.(xC, yC, zC); rtol=5e-2)
 end

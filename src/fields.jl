@@ -56,50 +56,50 @@ end
 # Constructors
 
 """
-    CellField([T=eltype(g)], arch, g)
+    CellField([T=eltype(grid)], arch, grid)
 
-Return a `CellField` with element type `T` on `arch` and grid `g`.
-`T` defaults to the element type of `g`.
+Return a `CellField` with element type `T` on `arch` and `grid`.
+`T` defaults to the element type of `grid`.
 """
-CellField(T, arch, g) = CellField(zeros(T, arch, g), g)
-
-"""
-    FaceFieldX(T, arch, g)
-
-Return a `FaceFieldX` with element type `T` on `arch` and grid `g`.
-`T` defaults to the element type of `g`.
-"""
-FaceFieldX(T, arch, g) = FaceFieldX(zeros(T, arch, g), g)
+CellField(T, arch, grid) = CellField(zeros(T, arch, grid), grid)
 
 """
-    FaceFieldY(T, arch, g)
+    FaceFieldX([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldY` with element type `T` on `arch` and grid `g`.
-`T` defaults to the element type of `g`.
+Return a `FaceFieldX` with element type `T` on `arch` and `grid`.
+`T` defaults to the element type of `grid`.
 """
-FaceFieldY(T, arch, g) = FaceFieldY(zeros(T, arch, g), g)
-
-"""
-    FaceFieldZ(T, arch, g)
-
-Return a `FaceFieldZ` with element type `T` on `arch` and grid `g`.
-`T` defaults to the element type of `g`.
-"""
-FaceFieldZ(T, arch, g) = FaceFieldZ(zeros(T, arch, g), g)
+FaceFieldX(T, arch, grid) = FaceFieldX(zeros(T, arch, grid), grid)
 
 """
-    EdgeField(T, arch, g)
+    FaceFieldY([T=eltype(grid)], arch, grid)
 
-Return a `EdgeField` with element type `T` on `arch` and grid `g`.
-`T` defaults to the element type of `g`.
+Return a `FaceFieldY` with element type `T` on `arch` and `grid`.
+`T` defaults to the element type of `grid`.
 """
- EdgeField(T, arch, g) =  EdgeField(zeros(T, arch, g), g)
+FaceFieldY(T, arch, grid) = FaceFieldY(zeros(T, arch, grid), grid)
 
- CellField(arch, g) =  CellField(zeros(arch, g), g)
-FaceFieldX(arch, g) = FaceFieldX(zeros(arch, g), g)
-FaceFieldY(arch, g) = FaceFieldY(zeros(arch, g), g)
-FaceFieldZ(arch, g) = FaceFieldZ(zeros(arch, g), g)
- EdgeField(arch, g) =  EdgeField(zeros(arch, g), g)
+"""
+    FaceFieldZ([T=eltype(grid)], arch, grid)
+
+Return a `FaceFieldZ` with element type `T` on `arch` and `grid`.
+`T` defaults to the element type of `grid`.
+"""
+FaceFieldZ(T, arch, grid) = FaceFieldZ(zeros(T, arch, grid), grid)
+
+"""
+    EdgeField([T=eltype(grid)], arch, grid)
+
+Return an `EdgeField` with element type `T` on `arch` and `grid`.
+`T` defaults to the element type of `grid`.
+"""
+ EdgeField(T, arch, grid) =  EdgeField(zeros(T, arch, grid), grid)
+
+ CellField(arch, grid) =  CellField(zeros(arch, grid), grid)
+FaceFieldX(arch, grid) = FaceFieldX(zeros(arch, grid), grid)
+FaceFieldY(arch, grid) = FaceFieldY(zeros(arch, grid), grid)
+FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
+ EdgeField(arch, grid) =  EdgeField(zeros(arch, grid), grid)
 
 @inline size(f::Field) = size(f.grid)
 @inline length(f::Field) = length(f.data)
@@ -109,15 +109,11 @@ FaceFieldZ(arch, g) = FaceFieldZ(zeros(arch, g), g)
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 @inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
+@inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
+
 show(io::IO, f::Field) = show(io, f.data)
 
 iterate(f::Field, state=1) = iterate(f.data, state)
-
-similar(f::CellField{T})  where {T} = CellField(f.metadata, f.grid, f.metadata.float_type)
-similar(f::FaceFieldX{T}) where {T} = FaceFieldX(f.metadata, f.grid, f.metadata.float_type)
-similar(f::FaceFieldY{T}) where {T} = FaceFieldY(f.metadata, f.grid, f.metadata.float_type)
-similar(f::FaceFieldZ{T}) where {T} = FaceFieldZ(f.metadata, f.grid, f.metadata.float_type)
-similar(f::EdgeField{T})  where {T} = EdgeField(f.metadata, f.grid, f.metadata.float_type)
 
 set!(u::Field, v) = u.data .= convert(eltype(u.grid), v)
 set!(u::Field, v::Field) = @. u.data = v.data
