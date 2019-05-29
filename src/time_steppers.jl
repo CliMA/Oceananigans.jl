@@ -101,7 +101,7 @@ function solve_for_pressure!(::CPU, model::Model)
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
     solve_poisson_3d_ppn_planned!(model.poisson_solver, model.grid)
-    @views data(model.pressures.pNHS) .= real(ϕ)
+    @views model.pressures.pNHS.data[1:Nx, 1:Ny, 1:Nz] .= real.(ϕ)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
