@@ -50,8 +50,8 @@ function compute_w_from_continuity(arch, FT)
     w = FaceFieldZ(FT, arch, grid)
     div_u = CellField(FT, arch, grid)
 
-    @views data(u) .= rand(FT, Nx, Ny, Nz)
-    @views data(v) .= rand(FT, Nx, Ny, Nz)
+    data(u) .= rand(FT, Nx, Ny, Nz)
+    data(v) .= rand(FT, Nx, Ny, Nz)
 
     compute_w_from_continuity!(grid, u.data, v.data, w.data)
 
@@ -59,7 +59,7 @@ function compute_w_from_continuity(arch, FT)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
     # so we end up some divergence at the bottom if we don't do this.
-    @views data(div_u)[:, :, end] .= zero(FT)
+    data(div_u)[:, :, end] .= zero(FT)
 
     min_div = minimum(data(div_u))
     max_div = minimum(data(div_u))

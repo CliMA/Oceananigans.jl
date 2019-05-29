@@ -245,17 +245,17 @@ function run_rayleigh_benard_regression_test(arch)
     GT = read_output("GT", spinup_steps, outputwriter)
     GS = read_output("GS", spinup_steps, outputwriter)
 
-    @views model.velocities.u.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(u₀)
-    @views model.velocities.v.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(v₀)
-    @views model.velocities.w.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(w₀)
-    @views    model.tracers.T.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(T₀)
-    @views    model.tracers.S.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(S₀)
+    data(model.velocities.u) .= ArrayType(u₀)
+    data(model.velocities.v) .= ArrayType(v₀)
+    data(model.velocities.w) .= ArrayType(w₀)
+    data(model.tracers.T)    .= ArrayType(T₀)
+    data(model.tracers.S)    .= ArrayType(S₀)
 
-    @views model.G.Gu.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gu)
-    @views model.G.Gv.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gv)
-    @views model.G.Gw.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gw)
-    @views model.G.GT.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(GT)
-    @views model.G.GS.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(GS)
+    data(model.G.Gu) .= ArrayType(Gu)
+    data(model.G.Gv) .= ArrayType(Gv)
+    data(model.G.Gw) .= ArrayType(Gw)
+    data(model.G.GT) .= ArrayType(GT)
+    data(model.G.GS) .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt

@@ -10,11 +10,11 @@ zerofunk(args...) = 0
 
 function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    @views model.velocities.u.data[1:Nx, 1:Ny, 1:Nz] .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
-    @views model.velocities.v.data[1:Nx, 1:Ny, 1:Nz] .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
-    @views model.velocities.w.data[1:Nx, 1:Ny, 1:Nz] .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
-    @views    model.tracers.T.data[1:Nx, 1:Ny, 1:Nz] .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
-    @views    model.tracers.S.data[1:Nx, 1:Ny, 1:Nz] .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
+    data(model.velocities.u) .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
+    data(model.velocities.v) .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
+    data(model.velocities.w) .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
+    data(model.tracers.T)    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
+    data(model.tracers.S)    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
     return nothing
 end
 
@@ -91,8 +91,8 @@ function test_diffusion_budget(field_name)
     end
 
     half_Nz = floor(Int, Nz/2)
-    @views @. field.data[:, :, 1:half_Nz]  = -1
-    @views @. field.data[:, :, half_Nz:end] =  1
+    data(field)[:, :,   1:half_Nz] .= -1
+    data(field)[:, :, half_Nz:end] .=  1
 
     mean_init = mean(field.data)
     τκ = Lz^2 / κ # diffusion time-scale
@@ -121,7 +121,7 @@ function test_diffusion_cosine(fld)
 
     zC = model.grid.zC
     m = 2
-    @views @. field.data[1, 1, :] = cos.(m*zC)
+    data(field)[1, 1, :] .= cos.(m*zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
