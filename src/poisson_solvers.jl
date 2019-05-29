@@ -83,17 +83,17 @@ function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCa
     nothing
 end
 
-struct PoissonSolverGPU{A1<:AbstractArray, A3<:AbstractArray} <: PoissonSolver
-    kx²::A1
-    ky²::A1
-    kz²::A1
-    dct_factors::A1
-    idct_bfactors::A1
-    storage::A3
-    FFT_xy!
-    FFT_z!
-    IFFT_xy!
-    IFFT_z!
+struct PoissonSolverGPU{KT, FT, A, FFTXYT, FFTZT, IFFTXYT, IFFTZT} <: PoissonSolver
+    kx²::KT
+    ky²::KT
+    kz²::KT
+    dct_factors::FT
+    idct_bfactors::FT
+    storage::A
+    FFT_xy!::FFTXYT
+    FFT_z!::FFTZT
+    IFFT_xy!::IFFTXYT
+    IFFT_z!::IFFTZT
 end
 
 function PoissonSolverGPU(grid::Grid)
@@ -128,8 +128,7 @@ function PoissonSolverGPU(grid::Grid)
     IFFT_xy! = plan_ifft!(storage, [1, 2])
     IFFT_z!  = plan_ifft!(storage, 3)
 
-    PoissonSolverGPU{typeof(kx²), typeof(storage)}(kx², ky², kz², dct_factors, idct_bfactors, storage,
-                                                   FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
+    PoissonSolverGPU(kx², ky², kz², dct_factors, idct_bfactors, storage, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
 end
 
 """
