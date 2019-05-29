@@ -4,12 +4,12 @@ struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
     g::T  # Standard acceleration due to gravity [m/s²].
 end
 
-PlanetaryConstants(; Ω=1.0, f=0.0, g=1.0) = PlanetaryConstants(Ω, f, g)
+PlanetaryConstants(T=Float64; Ω=1.0, f=0.0, g=1.0) = PlanetaryConstants{T}(Ω, f, g)
 
 function choose_f(Ω, f, lat)
 end
 
-function Earth(; f=nothing, lat=nothing)
+function Earth(T=Float64; f=nothing, lat=nothing)
     Ω = 7.2921150e-5
     g = 9.80665
 
@@ -25,17 +25,17 @@ function Earth(; f=nothing, lat=nothing)
 
     abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
 
-    PlanetaryConstants(Ω, f′, g)
+    PlanetaryConstants{T}(Ω, f′, g)
 end
 
-function EarthStationary()
+function EarthStationary(T=Float64)
     Ω = 0
     f = 0
     g = 9.80665
-    PlanetaryConstants(Ω, f, g)
+    PlanetaryConstants{T}(Ω, f, g)
 end
 
-function Europa(; f=nothing, lat=nothing)
+function Europa(T=Float64; f=nothing, lat=nothing)
     # Values taken from Soderlund (Table 1, 2019) [arXiv:1901.04093].
     Ω = 2.1e-5
     g = 1.3
@@ -52,10 +52,10 @@ function Europa(; f=nothing, lat=nothing)
 
     abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
 
-    PlanetaryConstants(Ω, f, g)
+    PlanetaryConstants{T}(Ω, f, g)
 end
 
-function Enceladus(; f=nothing, lat=nothing)
+function Enceladus(T=Float64; f=nothing, lat=nothing)
     # Values taken from Soderlund (Table 1, 2019) [arXiv:1901.04093].
     Ω = 5.3e-5
     g = 0.1
@@ -72,5 +72,5 @@ function Enceladus(; f=nothing, lat=nothing)
 
     abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
 
-    PlanetaryConstants(Ω, f, g)
+    PlanetaryConstants{T}(Ω, f, g)
 end

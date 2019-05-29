@@ -374,6 +374,7 @@ float_types = (Float32, Float64)
             end
 
             @test test_constant_isotropic_diffusivity_basic(T)
+            @test test_tensor_diffusivity_tuples(T)
             @test test_constant_isotropic_diffusivity_fluxdiv(T)
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
