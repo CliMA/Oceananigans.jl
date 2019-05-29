@@ -19,13 +19,26 @@ function prettytime(t)
     return string(@sprintf("%.3f", value), " ", units)
 end
 
-function Base.zeros(T, ::GPU, g)
-    a = CuArray{T}(undef, g.Nx, g.Ny, g.Nz)
-    a .= 0
-    return a
+function Base.zeros(T, ::CPU, grid)
+    # Starting and ending indices for the offset array.
+    i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
+    j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
+    k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
+
+    underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
+    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-Base.zeros(T, ::CPU, g) = zeros(T, size(g))
+function Base.zeros(T, ::GPU, grid)
+    # Starting and ending indices for the offset CuArray.
+    i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
+    j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
+    k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
+
+    underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
+    underlying_data .= 0
+    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+end
 
 # Default to type of Grid
 Base.zeros(arch, g::Grid{T}) where T = zeros(T, arch, g)

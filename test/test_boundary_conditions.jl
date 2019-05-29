@@ -1,5 +1,5 @@
 function test_z_boundary_condition_simple(arch, T, field_name, bctype, bc, Nx, Ny)
-    Nz = 16 
+    Nz = 16
     model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T)
 
     bc = BoundaryCondition(bctype, bc)
@@ -44,8 +44,9 @@ end
 
 function test_flux_budget(arch, TF, field_name)
     N, κ, Lz = 16, 1, 0.7
+
     model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ,
-        arch=arch, float_type=TF, eos=LinearEquationOfState(βS=0, βT=0))
+                  arch=arch, float_type=TF, eos=LinearEquationOfState(βS=0, βT=0))
 
     if field_name ∈ (:u, :v, :w)
         field = getfield(model.velocities, field_name)
@@ -60,15 +61,15 @@ function test_flux_budget(arch, TF, field_name)
     bcs = getfield(model.boundary_conditions, field_name)
     bcs.z.bottom = flux_bc
 
-    mean_init = mean(field.data)
+    mean_init = mean(data(field))
 
-    τκ = Lz^2 / κ # diffusion time-scale
-    Δt = 1e-6 * τκ # time-step much less than diffusion time-scale
-    Nt = 100
+    τκ = Lz^2 / κ   # Diffusion time-scale
+    Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
+    Nt = 100        # Number of time steps
 
     time_step!(model, Nt, Δt)
 
     # budget is Lz * ∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right);
     # therefore <ϕ> = bottom_flux * t / Lz
-    isapprox(mean(field.data) - mean_init, bottom_flux * model.clock.time / Lz)
+    isapprox(mean(data(field)) - mean_init, bottom_flux * model.clock.time / Lz)
 end

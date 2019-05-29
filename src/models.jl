@@ -14,7 +14,7 @@ mutable struct Model{A<:Architecture, G, TC, T}
            closure :: TC                 # Diffusive 'turbulence closure' for all model fields
     boundary_conditions :: ModelBoundaryConditions # Container for 3d bcs on all fields.
                  G :: SourceTerms        # Container for right-hand-side of PDE that governs `Model`
-                 Gp :: SourceTerms       # RHS at previous time-step (for Adams-Bashforth time integration)
+                Gp :: SourceTerms        # RHS at previous time-step (for Adams-Bashforth time integration)
     poisson_solver                       # ::PoissonSolver or ::PoissonSolverGPU
        stepper_tmp :: StepperTemporaryFields # Temporary fields used for the Poisson solver.
     output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
@@ -56,14 +56,16 @@ function Model(;
 
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
-    # Model components not initialized in function signature:
-         velocities = VelocityFields(arch, grid)
-            tracers = TracerFields(arch, grid)
-          pressures = PressureFields(arch, grid)
-                  G = SourceTerms(arch, grid)
-                 Gp = SourceTerms(arch, grid)
-        stepper_tmp = StepperTemporaryFields(arch, grid)
-     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
+    # Initialize fields, including source terms and temporary variables.
+      velocities = VelocityFields(arch, grid)
+         tracers = TracerFields(arch, grid)
+       pressures = PressureFields(arch, grid)
+               G = SourceTerms(arch, grid)
+              Gp = SourceTerms(arch, grid)
+     stepper_tmp = StepperTemporaryFields(arch, grid)
+
+    # Initialize Poisson solver.
+    poisson_solver = PoissonSolver(arch, grid)
 
     # Set the default initial condition
     initialize_with_defaults!(eos, tracers, velocities, G, Gp)
