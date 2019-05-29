@@ -70,24 +70,24 @@ function run_thermal_bubble_regression_tests(arch)
     S = read_output(nc_writer, "S", 10)
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(φ) - φ_gm)
-        φ_max = maximum(Array(φ) - φ_gm)
-        φ_mean = mean(Array(φ) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
-        φ_std = std(Array(φ) - φ_gm)
+        φ_min = minimum(Array(data(φ)) - φ_gm)
+        φ_max = maximum(Array(data(φ)) - φ_gm)
+        φ_mean = mean(Array(data(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
+        φ_std = std(Array(data(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(model.velocities.u.data) .≈ u)
-    @test all(Array(model.velocities.v.data) .≈ v)
-    @test all(Array(model.velocities.w.data) .≈ w)
-    @test all(Array(model.tracers.T.data)    .≈ T)
-    @test all(Array(model.tracers.S.data)    .≈ S)
+    @test all(Array(data(model.velocities.u)) .≈ u)
+    @test all(Array(data(model.velocities.v)) .≈ v)
+    @test all(Array(data(model.velocities.w)) .≈ w)
+    @test all(Array(data(model.tracers.T))    .≈ T)
+    @test all(Array(data(model.tracers.S))    .≈ S)
 end
 
 function run_deep_convection_regression_tests()
@@ -115,7 +115,7 @@ function run_deep_convection_regression_tests()
     model.forcing = Forcing(nothing, nothing, nothing, cooling_disk, nothing)
 
     rng = MersenneTwister(seed)
-    model.tracers.T.data[:, :, 1] .+= 0.01*rand(rng, Nx, Ny)
+    model.tracers.T.data[1:Nx, 1:Ny, 1] .+= 0.01*rand(rng, Nx, Ny)
 
     nc_writer = NetCDFOutputWriter(dir=".",
                                    prefix="deep_convection_regression_",
@@ -133,24 +133,24 @@ function run_deep_convection_regression_tests()
     S = read_output(nc_writer, "S", 10)
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(φ) - φ_gm)
-        φ_max = maximum(Array(φ) - φ_gm)
-        φ_mean = mean(Array(φ) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
-        φ_std = std(Array(φ) - φ_gm)
+        φ_min = minimum(Array(data(φ)) - φ_gm)
+        φ_max = maximum(Array(data(φ)) - φ_gm)
+        φ_mean = mean(Array(data(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
+        φ_std = std(Array(data(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test_skip all(model.velocities.u.data .≈ u)
-    @test_skip all(model.velocities.v.data .≈ v)
-    @test_skip all(model.velocities.w.data .≈ w)
-    @test_skip all(model.tracers.T.data    .≈ T)
-    @test_skip all(model.tracers.S.data    .≈ S)
+    @test_skip all(Array(data(model.velocities.u)) .≈ u)
+    @test_skip all(Array(data(model.velocities.v)) .≈ v)
+    @test_skip all(Array(data(model.velocities.w)) .≈ w)
+    @test_skip all(Array(data(model.tracers.T))    .≈ T)
+    @test_skip all(Array(data(model.tracers.S))    .≈ S)
 end
 
 function run_rayleigh_benard_regression_test(arch)
@@ -196,7 +196,7 @@ function run_rayleigh_benard_regression_test(arch)
     FS(grid, u, v, w, T, S, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - S[i, j, k])
     model.forcing = Forcing(FS=FS)
 
-    ArrayType = typeof(model.velocities.u.data)
+    ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
     Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
 
     spinup_steps = 1000
@@ -245,17 +245,17 @@ function run_rayleigh_benard_regression_test(arch)
     GT = read_output("GT", spinup_steps, outputwriter)
     GS = read_output("GS", spinup_steps, outputwriter)
 
-    model.velocities.u.data .= ArrayType(u₀)
-    model.velocities.v.data .= ArrayType(v₀)
-    model.velocities.w.data .= ArrayType(w₀)
-       model.tracers.T.data .= ArrayType(T₀)
-       model.tracers.S.data .= ArrayType(S₀)
+    @views model.velocities.u.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(u₀)
+    @views model.velocities.v.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(v₀)
+    @views model.velocities.w.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(w₀)
+    @views    model.tracers.T.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(T₀)
+    @views    model.tracers.S.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(S₀)
 
-    model.G.Gu.data .= ArrayType(Gu)
-    model.G.Gv.data .= ArrayType(Gv)
-    model.G.Gw.data .= ArrayType(Gw)
-    model.G.GT.data .= ArrayType(GT)
-    model.G.GS.data .= ArrayType(GS)
+    @views model.G.Gu.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gu)
+    @views model.G.Gv.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gv)
+    @views model.G.Gw.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(Gw)
+    @views model.G.GT.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(GT)
+    @views model.G.GS.data[1:Nx, 1:Ny, 1:Nz] .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -270,23 +270,23 @@ function run_rayleigh_benard_regression_test(arch)
     S₁ = read_output("S", spinup_steps + test_steps, outputwriter)
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u.data, model.velocities.v.data, model.velocities.w.data, model.tracers.T.data, model.tracers.S.data]
+    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u₁, v₁, w₁, T₁, S₁]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(φ) - φ_gm)
-        φ_max = maximum(Array(φ) - φ_gm)
-        φ_mean = mean(Array(φ) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(φ) - φ_gm))
-        φ_std = std(Array(φ) - φ_gm)
+        φ_min = minimum(Array(data(φ)) - φ_gm)
+        φ_max = maximum(Array(data(φ)) - φ_gm)
+        φ_mean = mean(Array(data(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
+        φ_std = std(Array(data(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
-    @test all(Array(model.velocities.u.data) .≈ u₁)
-    @test all(Array(model.velocities.v.data) .≈ v₁)
-    @test all(Array(model.velocities.w.data) .≈ w₁)
-    @test all(Array(model.tracers.T.data)    .≈ T₁)
-    @test all(Array(model.tracers.S.data)    .≈ S₁)
-
+    # Now test that the model state matches the regression output.
+    @test all(Array(data(model.velocities.u)) .≈ u₁)
+    @test all(Array(data(model.velocities.v)) .≈ v₁)
+    @test all(Array(data(model.velocities.w)) .≈ w₁)
+    @test all(Array(data(model.tracers.T))    .≈ T₁)
+    @test all(Array(data(model.tracers.S))    .≈ S₁)
     return nothing
 end
