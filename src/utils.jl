@@ -36,6 +36,7 @@ function Base.zeros(T, ::GPU, grid)
     k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
 
     underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
+    underlying_data .= 0
     OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
