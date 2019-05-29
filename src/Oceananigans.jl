@@ -32,6 +32,7 @@ export
     FaceFieldY,
     FaceFieldZ,
     EdgeField,
+    data,
     set!,
 
     # FieldSets (collections of related fields)
@@ -113,11 +114,15 @@ using
     FFTW,
     JLD,
     NetCDF,
-    StaticArrays
+    StaticArrays,
+    OffsetArrays
 
 import
     Adapt,
     GPUifyLoops
+
+# Adapt an offset CuArray to work nicely with CUDA kernels.
+Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(Adapt.adapt(to, parent(x)), x.offsets)
 
 const HAVE_CUDA = try
     using CUDAdrv, CUDAnative, CuArrays
@@ -155,7 +160,7 @@ abstract type FaceField <: Field end
 abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
-abstract type AbstractPoissonSolver end
+abstract type PoissonSolver end
 
 include("utils.jl")
 

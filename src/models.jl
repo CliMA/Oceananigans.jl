@@ -77,7 +77,8 @@ function Model(;
               Gp = SourceTerms(arch, grid)
      stepper_tmp = StepperTemporaryFields(arch, grid)
 
-     poisson_solver = init_poisson_solver(arch, grid, stepper_tmp.fCC1)
+    # Initialize Poisson solver.
+    poisson_solver = PoissonSolver(arch, grid)
 
     # Default initial condition
     velocities.u.data .= 0

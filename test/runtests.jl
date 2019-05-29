@@ -260,7 +260,7 @@ float_types = (Float32, Float64)
 
         @testset "Recomputing w from continuity" begin
             for FT in float_types
-                test_compute_w_from_continuity(CPU(), FT)
+                @test compute_w_from_continuity(CPU(), FT)
             end
         end
 

@@ -14,6 +14,14 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid{T}
     Nx::Int
     Ny::Int
     Nz::Int
+    # Halo size in (x,y,z).
+    Hx::Int
+    Hy::Int
+    Hz::Int
+    # Total number of grid points (including halo regions).
+    Tx::Int
+    Ty::Int
+    Tz::Int
     # Domain size [m].
     Lx::T
     Ly::T
@@ -78,6 +86,15 @@ function RegularCartesianGrid(T, N, L)
     dim == 3 && !(Nx != 1 && Ny != 1 && Nz != 1) &&
         throw(ArgumentError("For 3D grids, cannot have dimensions of size 1."))
 
+    # Right now we only support periodic horizontal boundary conditions and
+    # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
+    # just what we need.
+    Hx, Hy, Hz = 1, 1, 0
+
+    Tx = Nx + 2*Hx
+    Ty = Ny + 2*Hy
+    Tz = Nz + 2*Hz
+
     Lx = convert(T, Lx)
     Ly = convert(T, Ly)
     Lz = convert(T, Lz)
@@ -104,8 +121,9 @@ function RegularCartesianGrid(T, N, L)
     !all(typeof.([xC, yC, zC, xF, yF, zF]) .== typeof(xC)) &&
         throw(ArgumentError("At least one coordinate range type did not match."))
 
-    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay,
-                                        Az, V, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+                                        Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
+                                        xC, yC, zC, xF, yF, zF)
 end
 
 # Constructor aliases.
