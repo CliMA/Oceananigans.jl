@@ -62,9 +62,31 @@ end
 
 function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
     closure = ConstantIsotropicDiffusivity(T, κ=κ, ν=ν)
-    return (                    closure.ν == ν &&
-                                closure.κ == κ &&
-        κ_ccc(nothing, nothing, nothing, nothing, closure) == κ
+    return closure.ν == ν && closure.κ == κ
+end
+
+function test_tensor_diffusivity_tuples(T=Float64; ν=T(0.3), κ=T(0.7))
+    closure = ConstantIsotropicDiffusivity(T, κ=κ, ν=ν)
+    return (
+            κ₁₁.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
+            κ₂₂.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
+            κ₃₃.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
+
+            ν₁₁.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₂₂.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₃₃.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
+
+            ν₁₁.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₂₂.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₃₃.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
+
+            ν₁₁.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₂₂.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₃₃.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
+
+            ν₁₁.cff(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₂₂.cff(nothing, nothing, nothing, nothing, closure) == ν &&
+            ν₃₃.cff(nothing, nothing, nothing, nothing, closure) == ν
     )
 end
 
@@ -105,6 +127,7 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
     v[:, 1, 1] .= [0,  1, 0]
     v[:, 1, 2] .= [0, -2, 0]
     v[:, 1, 3] .= [0,  1, 0]
+
     w[:, 1, 1] .= [0,  1, 0]
     w[:, 1, 2] .= [0, -3, 0]
     w[:, 1, 3] .= [0,  1, 0]
