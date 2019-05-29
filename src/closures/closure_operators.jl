@@ -38,17 +38,6 @@ end
     end
 end
     
-#=
-@inline ∂x_caa(i, j, k, grid, u::AbstractArray) = δx_f2c(grid, u, i, j, k) / grid.Δx
-@inline ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = δx_c2f(grid, ϕ, i, j, k) / grid.Δx
-
-@inline ∂y_aca(i, j, k, grid, v::AbstractArray) = δy_f2c(grid, v, i, j, k) / grid.Δy
-@inline ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = δy_c2f(grid, ϕ, i, j, k) / grid.Δy
-
-@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = δz_f2c(grid, w, i, j, k) / grid.Δz
-@inline ∂z_aaf(i, j, k, grid, ϕ::AbstractArray) = δz_c2f(grid, ϕ, i, j, k) / grid.Δz
-=#
-
 #
 # Differentiation and interpolation operators for functions
 #
@@ -529,41 +518,7 @@ data located at cell centers.
     κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
     ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
     return κ * ∂z_ϕ
-    #if k == 1
-    #    return -zero(T)
-    #else
-    #    κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
-    #    ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
-    #    return κ * ∂z_ϕ
-    #end
 end
-
-"""
-    ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
-
-Return `(∂x κ ∂x) ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
-data located at cell centers.
-"""
-@inline ∂x_κ_∂x_ϕ(i, j, k, grid, ϕκ...) = ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕκ...)
-
-"""
-    ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
-
-Return `(∂y κ ∂y) ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
-data located at cell centers.
-"""
-@inline ∂y_κ_∂y_ϕ(i, j, k, grid, ϕκ...) = ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕκ...)
-
-"""
-    ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
-
-Return `(∂z κ ∂z) ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
-data located at cell centers.
-"""
-@inline ∂z_κ_∂z_ϕ(i, j, k, grid, ϕκ...) = ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕκ...)
 
 """
     ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, eos, g, u, v, w, T, S)
@@ -572,7 +527,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
 `closure`, where `ϕ` is an array of scalar data located at cell centers.
 """
 @inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, args...) = (
-      ∂x_κ_∂x_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
-    + ∂y_κ_∂y_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
-    + ∂z_κ_∂z_ϕ(i, j, k, grid, ϕ, κ_ccc, closure, args...)
+      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕ, κ_ccc, closure, args...)
+    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕ, κ_ccc, closure, args...)
+    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕ, κ_ccc, closure, args...)
     )
