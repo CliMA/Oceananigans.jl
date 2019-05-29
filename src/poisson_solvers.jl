@@ -4,15 +4,15 @@ import GPUifyLoops: @launch, @loop, @synchronize
 PoissonSolver(::CPU, grid::Grid) = PoissonSolverCPU(grid)
 PoissonSolver(::GPU, grid::Grid) = PoissonSolverGPU(grid)
 
-struct PoissonSolverCPU{A1<:AbstractArray, A3<:AbstractArray} <: PoissonSolver
-    kx²::A1
-    ky²::A1
-    kz²::A1
-    storage::A3
-    FFT!
-    DCT!
-    IFFT!
-    IDCT!
+struct PoissonSolverCPU{KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+    kx²::KT
+    ky²::KT
+    kz²::KT
+    storage::A
+    FFT!::FFTT
+    DCT!::DCTT
+    IFFT!::IFFTT
+    IDCT!::IDCTT
 end
 
 # Translate FFTW planner flag to string. Useful for logging and to print FFT plan creation timing.
@@ -45,7 +45,7 @@ function PoissonSolverCPU(grid::Grid, planner_flag=FFTW.PATIENT)
     DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, 3; flags=planner_flag)
     IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, 3; flags=planner_flag)
 
-    PoissonSolverCPU{typeof(kx²), typeof(storage)}(kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
+    PoissonSolverCPU(kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
 
 """
