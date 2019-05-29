@@ -105,11 +105,14 @@ function solve_for_pressure!(::CPU, model::Model)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
+    
+    Tx, Ty = 16, 16  # Not sure why I have to do this. Will be superseded soon.
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
-    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
-    @launch device(GPU()) threads=(Tx, Ty), blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pr.pNHS.data)
+    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
+    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
 end
 
 """Store previous source terms before updating them."""
