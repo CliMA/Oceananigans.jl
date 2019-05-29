@@ -109,7 +109,7 @@ FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 @inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
-@inline data(f::Field) = f.data[1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz]
+@inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
 show(io::IO, f::Field) = show(io, f.data)
 

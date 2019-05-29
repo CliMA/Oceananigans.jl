@@ -101,13 +101,13 @@ function solve_for_pressure!(::CPU, model::Model)
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
     solve_poisson_3d_ppn_planned!(model.poisson_solver, model.grid)
-    @views model.pressures.pNHS.data[1:Nx, 1:Ny, 1:Nz] .= real.(ϕ)
+    data(model.pressures.pNHS) .= real.(ϕ)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
-    
+
     Tx, Ty = 16, 16  # Not sure why I have to do this. Will be superseded soon.
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
