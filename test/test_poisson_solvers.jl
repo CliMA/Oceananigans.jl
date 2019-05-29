@@ -71,36 +71,40 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     ∇²ϕ ≈ RHS_orig
 end
 
-function poisson_ppn_planned_div_free_gpu(ft, Nx, Ny, Nz)
-    grid = RegularCartesianGrid(ft, (Nx, Ny, Nz), (100, 100, 100))
+function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(GPU(), grid)
 
-    RHS = CellField(Complex{ft}, GPU(), grid)
-    RHS_orig = CellField(Complex{ft}, GPU(), grid)
-    ϕ = CellField(Complex{ft}, GPU(), grid)
-    ∇²ϕ = CellField(Complex{ft}, GPU(), grid)
+    RHS = rand(Nx, Ny, Nz)
+    RHS .= RHS .- mean(RHS)
+    RHS = CuArray(RHS)
 
-    solver = init_poisson_solver(GPU(), grid, RHS)
+    RHS_orig = copy(RHS)
 
-    RHS.data .= CuArray(rand(Nx, Ny, Nz))
-    RHS.data .= RHS.data .- mean(RHS.data)
-
-    RHS_orig.data .= copy(RHS.data)
+    solver.storage .= RHS
 
     # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
     # the DCT in the Poisson solver.
-    RHS.data .= cat(RHS.data[:, :, 1:2:Nz], RHS.data[:, :, Nz:-2:2]; dims=3)
+    solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
     Tx, Ty = 16, 16
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d_ppn_gpu_planned!(Tx, Ty, Bx, By, Bz, solver, grid, RHS, ϕ)
+    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
-    ϕ.data .= CuArray{eltype(ϕ.data)}(reshape(permutedims(cat(ϕ.data[:, :, 1:Int(Nz/2)], ϕ.data[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
-    @. ϕ.data = real(ϕ.data)
+    solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
+                                                      solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+
+    ϕ   = CuArray(zeros(Nx, Ny, Nz))
+    ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
+
+    @. ϕ = real(solver.storage)
 
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    Array(∇²ϕ.data) ≈ Array(RHS_orig.data)
+    ∇²ϕ ≈ RHS_orig
 end
 
 """
