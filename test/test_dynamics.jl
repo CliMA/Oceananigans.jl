@@ -9,11 +9,12 @@ znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[2:end],   1, 1, ϕ.grid.Nz), 
 zerofunk(args...) = 0
 
 function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
-    model.velocities.u.data .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
-    model.velocities.v.data .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
-    model.velocities.w.data .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
-    model.tracers.T.data    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
-    model.tracers.S.data    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
+    data(model.velocities.u) .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
+    data(model.velocities.v) .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
+    data(model.velocities.w) .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
+    data(model.tracers.T)    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
+    data(model.tracers.S)    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
     return nothing
 end
 
@@ -25,7 +26,7 @@ function u_relative_error(model, u)
         model.grid)
 
     return mean(
-        (u_num.data .- u_ans.data).^2 ) / mean(u_ans.data.^2)
+        (data(u_num) .- u_ans.data).^2 ) / mean(u_ans.data.^2)
 end
 
 function w_relative_error(model, w)
@@ -36,7 +37,7 @@ function w_relative_error(model, w)
         model.grid)
 
     return mean(
-        (w_num.data .- w_ans.data).^2 ) / mean(w_ans.data.^2)
+        (data(w_num) .- w_ans.data).^2 ) / mean(w_ans.data.^2)
 end
 
 function T_relative_error(model, T)
@@ -47,7 +48,7 @@ function T_relative_error(model, T)
         model.grid)
 
     return mean(
-        (T_num.data .- T_ans.data).^2 ) / mean(T_ans.data.^2)
+        (data(T_num) .- T_ans.data).^2 ) / mean(T_ans.data.^2)
 end
 
 function test_diffusion_simple(fld)
@@ -90,8 +91,8 @@ function test_diffusion_budget(field_name)
     end
 
     half_Nz = floor(Int, Nz/2)
-    @views @. field.data[:, :, 1:half_Nz]  = -1
-    @views @. field.data[:, :, half_Nz:end] =  1
+    data(field)[:, :,   1:half_Nz] .= -1
+    data(field)[:, :, half_Nz:end] .=  1
 
     mean_init = mean(field.data)
     τκ = Lz^2 / κ # diffusion time-scale
@@ -120,7 +121,7 @@ function test_diffusion_cosine(fld)
 
     zC = model.grid.zC
     m = 2
-    @views @. field.data[1, 1, :] = cos.(m*zC)
+    data(field)[1, 1, :] .= cos.(m*zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
@@ -130,7 +131,7 @@ function test_diffusion_cosine(fld)
 
     time_step!(model, Nt, Δt)
 
-    field_numerical = dropdims(field.data, dims=(1, 2))
+    field_numerical = dropdims(data(field), dims=(1, 2))
 
     !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
 end

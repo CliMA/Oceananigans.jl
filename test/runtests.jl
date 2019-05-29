@@ -22,43 +22,43 @@ float_types = (Float32, Float64)
 
         @testset "Grid initialization" begin
             println("    Testing grid initialization...")
-            for ft in float_types
-                @test correct_grid_size(ft)
-                @test correct_cell_volume(ft)
-                @test faces_start_at_zero(ft)
-                @test end_faces_match_grid_length(ft)
+            for FT in float_types
+                @test correct_grid_size(FT)
+                @test correct_cell_volume(FT)
+                @test faces_start_at_zero(FT)
+                @test end_faces_match_grid_length(FT)
             end
         end
 
         @testset "Grid dimensions" begin
             println("    Testing grid dimensions...")
             L = (100, 100, 100)
-            for ft in float_types
-                @test isbitstype(typeof(RegularCartesianGrid(ft, (16, 16, 16), (1, 1, 1))))
+            for FT in float_types
+                @test isbitstype(typeof(RegularCartesianGrid(FT, (16, 16, 16), (1, 1, 1))))
 
-                @test RegularCartesianGrid(ft, (25, 25, 25), L).dim == 3
-                @test RegularCartesianGrid(ft, (5, 25, 125), L).dim == 3
-                @test RegularCartesianGrid(ft, (64, 64, 64), L).dim == 3
-                @test RegularCartesianGrid(ft, (32, 32,  1), L).dim == 2
-                @test RegularCartesianGrid(ft, (32,  1, 32), L).dim == 2
-                @test RegularCartesianGrid(ft, (1,  32, 32), L).dim == 2
-                @test RegularCartesianGrid(ft, (1,  1,  64), L).dim == 1
+                @test RegularCartesianGrid(FT, (25, 25, 25), L).dim == 3
+                @test RegularCartesianGrid(FT, (5, 25, 125), L).dim == 3
+                @test RegularCartesianGrid(FT, (64, 64, 64), L).dim == 3
+                @test RegularCartesianGrid(FT, (32, 32,  1), L).dim == 2
+                @test RegularCartesianGrid(FT, (32,  1, 32), L).dim == 2
+                @test RegularCartesianGrid(FT, (1,  32, 32), L).dim == 2
+                @test RegularCartesianGrid(FT, (1,  1,  64), L).dim == 1
 
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32,), L)
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 64), L)
-                @test_throws ArgumentError RegularCartesianGrid(ft, (1, 1, 1), L)
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32, 16), L)
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100,))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (100, 100, -100))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32,), L)
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 64), L)
+                @test_throws ArgumentError RegularCartesianGrid(FT, (1, 1, 1), L)
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32, 16), L)
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100,))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, -100))
 
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32.0), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (20.1, 32, 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, nothing, 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, "32", 32), (1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (1, nothing, 1))
-                @test_throws ArgumentError RegularCartesianGrid(ft, (32, 32, 32), (1, "1", 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32.0), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (20.1, 32, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, nothing, 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, "32", 32), (1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, nothing, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, "1", 1))
             end
         end
     end
@@ -74,8 +74,8 @@ float_types = (Float32, Float64)
 
         @testset "Field initialization" begin
             println("    Testing field initialization...")
-            for arch in archs, ft in float_types
-                grid = RegularCartesianGrid(ft, N, L)
+            for arch in archs, FT in float_types
+                grid = RegularCartesianGrid(FT, N, L)
 
                 for field_type in field_types
                     @test correct_field_size(arch, grid, field_type)
@@ -93,8 +93,8 @@ float_types = (Float32, Float64)
         @testset "Setting fields" begin
             println("    Testing field setting...")
 
-            for arch in archs, ft in float_types
-                grid = RegularCartesianGrid(ft, N, L)
+            for arch in archs, FT in float_types
+                grid = RegularCartesianGrid(FT, N, L)
 
                 for field_type in field_types, val in vals
                     @test correct_field_value_was_set(arch, grid, field_type, val)
@@ -103,8 +103,8 @@ float_types = (Float32, Float64)
         end
 
         # @testset "Field operations" begin
-        #     for arch in archs, ft in float_types
-        #         grid = RegularCartesianGrid(ft, N, L)
+        #     for arch in archs, FT in float_types
+        #         grid = RegularCartesianGrid(FT, N, L)
         #
         #         for field_type in field_types, val1 in vals, val2 in vals
         #             @test correct_field_addition(arch, grid, field_type, val1, val2)
@@ -180,11 +180,11 @@ float_types = (Float32, Float64)
         @testset "FFTW plans" begin
             println("    Testing FFTW planning...")
 
-            for ft in float_types
-                @test fftw_planner_works(ft, 32, 32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 1,  32, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft, 32,  1, 32, FFTW.ESTIMATE)
-                @test fftw_planner_works(ft,  1,  1, 32, FFTW.ESTIMATE)
+            for FT in float_types
+                @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+                @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
             end
         end
 
@@ -192,11 +192,11 @@ float_types = (Float32, Float64)
             println("    Testing divergence-free solution [CPU]...")
 
             for N in [5, 7, 10, 15, 20, 29, 32]
-                for ft in float_types
-                    @test poisson_ppn_planned_div_free_cpu(ft, N, N, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, 1, N, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, N, 1, N, FFTW.ESTIMATE)
-                    @test poisson_ppn_planned_div_free_cpu(ft, 1, 1, N, FFTW.ESTIMATE)
+                for FT in float_types
+                    @test poisson_ppn_planned_div_free_cpu(FT, N, N, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, FFTW.ESTIMATE)
+                    @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, FFTW.ESTIMATE)
 
                     # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
                     # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
@@ -208,8 +208,20 @@ float_types = (Float32, Float64)
             end
 
             Ns = [5, 7, 10, 15, 20, 29, 32]
-            for Nx in Ns, Ny in Ns, Nz in Ns, ft in float_types
-                @test poisson_ppn_planned_div_free_cpu(ft, Nx, Ny, Nz, FFTW.ESTIMATE)
+            for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
+                @test poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+            end
+        end
+
+        @testset "Divergence-free solution [GPU]" begin
+            println("    Testing divergence-free solution [GPU]...")
+            @hascuda begin
+                for FT in float_types
+                    @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
+                    @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
+                    @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
+                    @test poisson_ppn_planned_div_free_gpu(FT, 16, 32, 24)
+                end
             end
         end
 
@@ -224,8 +236,8 @@ float_types = (Float32, Float64)
     @testset "Model" begin
         println("  Testing model...")
 
-        for arch in archs, ft in float_types
-            model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=ft)
+        for arch in archs, FT in float_types
+            model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=FT)
 
             # Just testing that a Model was constructed with no errors/crashes.
             @test true
@@ -236,25 +248,25 @@ float_types = (Float32, Float64)
         println("  Testing time stepping...")
         include("test_time_stepping.jl")
 
-        for arch in archs, ft in float_types
-            @test time_stepping_works(arch, ft)
+        for arch in archs, FT in float_types
+            @test time_stepping_works(arch, FT)
         end
 
         @testset "Adams-Bashforth 2" begin
-            for arch in archs, ft in float_types
-                run_first_AB2_time_step_tests(arch, ft)
+            for arch in archs, FT in float_types
+                run_first_AB2_time_step_tests(arch, FT)
             end
         end
 
         @testset "Recomputing w from continuity" begin
-            for ft in float_types
-                test_compute_w_from_continuity(CPU(), ft)
+            for FT in float_types
+                @test compute_w_from_continuity(CPU(), FT)
             end
         end
 
         @testset "Incompressibility" begin
-            for ft in float_types, Nt in [1, 10, 100]
-                @test incompressible_in_time(CPU(), ft, Nt)
+            for FT in float_types, Nt in [1, 10, 100]
+                @test incompressible_in_time(CPU(), FT, Nt)
             end
         end
     end
