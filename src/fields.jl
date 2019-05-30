@@ -155,12 +155,12 @@ function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
     Ty = min(max_threads, Ny)
     Tz = min(fld(max_threads, Ty), Nz)
     By, Bz = cld(Ny, Ty), cld(Nz, Tz)
-    @launch device(arch) fill_halo_regions_x!(grid, fields..., threads=(1, Ty, Tz), blocks=(1, By, Nz))
+    @launch device(arch) threads=(1, Ty, Tz) blocks=(1, By, Nz) fill_halo_regions_x!(grid, fields...)
 
     Tx = min(max_threads, Nx)
     Tz = min(fld(max_threads, Tx), Nz)
     Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
-    @launch device(arch) fill_halo_regions_y!(grid, fields..., threads=(Tx, 1, Tz), blocks=(Bz, 1, Nz))
+    @launch device(arch) threads=(Tx, 1, Tz) blocks=(Bz, 1, Nz) fill_halo_regions_y!(grid, fields...)
 end
 
 function fill_halo_regions_x!(grid::Grid, fields...)
