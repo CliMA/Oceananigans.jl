@@ -27,7 +27,7 @@ Both hydrostatic (HY) and non-hydrostatic (NHY) algorithms are presented, althou
 Lay out a Cartesian array $(x,y,z)$ of cubes of horizontal dimensions $\Delta x, \Delta y$ and vertical dimension $\Delta z$ as in the figure below.
 Define the areas of the cell faces as $A_x = \Delta y \Delta z$, $A_y = \Delta x \Delta z$, and $A_z = \Delta x \Delta y$.
 Each cell encloses a volume $V = \Delta x \Delta y \Delta z$.
-Velocities $(u,\upsilon,w) = (\upsilon_x, \upsilon_y, \upsilon_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
+Velocities $(u,\v,w) = (\v_x, \v_y, \v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
 
 ![Schematic of a single volume](assets/single_volume.png)
 
