@@ -127,12 +127,14 @@ float_types = (Float32, Float64)
               (1, 1, 8)]
 
         @testset "Initializing halo regions" begin
+            println("    Testing initializing halo regions...")
             for arch in archs, FT in float_types, N in Ns
                 @test halo_regions_initalized_correctly(arch, FT, N...)
             end
         end
 
         @testset "Filling halo regions" begin
+            println("    Testing filling halo regions...")
             for arch in archs, FT in float_types, N in Ns
                 @test halo_regions_correctly_filled(arch, FT, N...)
             end
@@ -196,7 +198,7 @@ float_types = (Float32, Float64)
                 @test δz_f2c(grid_xz, A2xz, idx...) ≈ δz_f2c(grid_xz, A3, idx...)
                 @test δz_c2f(grid_xz, A2xz, idx...) ≈ δz_c2f(grid_xz, A3, idx...)
             end
-end
+        end
     end
 
     @testset "Poisson solvers" begin
