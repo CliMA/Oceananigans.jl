@@ -116,6 +116,15 @@ float_types = (Float32, Float64)
         # end
     end
 
+    @testset "Halo regions" begin
+        println("  Testing halo regions...")
+        include("test_halo_regions.jl")
+
+        for arch in archs, FT in float_types
+            @test halo_regions_initalized_correctly(arch, FT, 8, 8, 8)
+        end
+    end
+
     @testset "Operators" begin
         println("  Testing operators...")
 
