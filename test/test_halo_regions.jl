@@ -18,3 +18,20 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
      all(field.data[:,               :,     1-Hz:0] .== 0) &&
      all(field.data[:,               :, Nz+1:Nz+Hz] .== 0))
 end
+
+function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
+    # Just choose something anisotropic to catch Δx/Δy type errors.
+    Lx, Ly, Lz = 100, 200, 300
+
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    field = CellField(FT, arch, grid)
+
+    data(field) .= rand(FT, Nx, Ny, Nz)
+    fill_halo_regions!(arch, grid, field)
+
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    (all(field.data[1-Hx:0,   1:Ny,   1:Nz] .== field[Nx-Hx+1:Nx, 1:Ny,           1:Nz]) &&
+     all(field.data[1:Nx,   1-Hy:0,   1:Nz] .== field[1:Nx,      Ny-Hy+1:Ny,      1:Nz]) &&
+     all(field.data[1:Nx,     1:Ny, 1-Hz:0] .== field[1:Nx,      1:Ny,      Nz-Hz+1:Nz]))
+end
