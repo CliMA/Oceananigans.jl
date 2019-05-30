@@ -120,8 +120,22 @@ float_types = (Float32, Float64)
         println("  Testing halo regions...")
         include("test_halo_regions.jl")
 
-        for arch in archs, FT in float_types
-            @test halo_regions_initalized_correctly(arch, FT, 8, 8, 8)
+        Ns = [(8, 8, 8), (8, 8, 4), (10, 7, 5),
+              (1, 8, 8), (1, 9, 5),
+              (8, 1, 8), (5, 1, 9),
+              (8, 8, 1), (5, 9, 1),
+              (1, 1, 8)]
+
+        @testset "Initializing halo regions" begin
+            for arch in archs, FT in float_types, N in Ns
+                @test halo_regions_initalized_correctly(arch, FT, N...)
+            end
+        end
+
+        @testset "Filling halo regions" begin
+            for arch in archs, FT in float_types, N in Ns
+                @test halo_regions_correctly_filled(arch, FT, N...)
+            end
         end
     end
 
