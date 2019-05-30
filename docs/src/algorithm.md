@@ -346,8 +346,8 @@ Viscous dissipation operators are discretized similarly to the momentum advectio
     \bnabla \cdotp (\nu \bnabla w)
     = \frac{1}{V} \left[
         \delta_x^{e \rightarrow f} \left( \nu_h \overline{A_x}^{x,f \rightarrow e} \delta_x^{f \rightarrow e} u \right)
-        \delta_y^{e \rightarrow f} \left( \nu_h \overline{A_y}^{y,f \rightarrow e} \delta_y^{f \rightarrow e} v \right) \nonumber \\
-        \delta_z^{c \rightarrow f} \left( \nu_v \overline{A_z}^{z,f \rightarrow c} \delta_z^{f \rightarrow c} w \right)
+        + \delta_y^{e \rightarrow f} \left( \nu_h \overline{A_y}^{y,f \rightarrow e} \delta_y^{f \rightarrow e} v \right) 
+        + \delta_z^{c \rightarrow f} \left( \nu_v \overline{A_z}^{z,f \rightarrow c} \delta_z^{f \rightarrow c} w \right)
     \right] ,
 \end{multline}
 ```
