@@ -188,7 +188,7 @@ function fill_halo_regions_y!(grid::Grid, fields...)
     @loop for k in (1:Nz; blockIdx().z)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             @unroll for f in fields
-                @unroll for h in 1:Hx
+                @unroll for h in 1:Hy
                     f[i,  1-h, k] = f[i, Ny-h+1, k]
                     f[i, Ny+h, k] = f[i,      h, k]
                 end
