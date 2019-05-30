@@ -53,8 +53,10 @@ function compute_w_from_continuity(arch, FT)
     data(u) .= rand(FT, Nx, Ny, Nz)
     data(v) .= rand(FT, Nx, Ny, Nz)
 
+    fill_halo_regions!(arch, grid, u.data, v.data)
     compute_w_from_continuity!(grid, u.data, v.data, w.data)
 
+    fill_halo_regions!(arch, grid, w.data)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
@@ -67,7 +69,7 @@ function compute_w_from_continuity(arch, FT)
     abs_sum_div = sum(abs.(data(div_u)))
     @info "Velocity divergence after recomputing w ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
-    all(isapprox.(data(div_u), 0; atol=2*eps(FT)))
+    all(isapprox.(data(div_u), 0; atol=5*eps(FT)))
 end
 
 """
