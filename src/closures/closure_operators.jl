@@ -2,27 +2,12 @@
 # Differential operators for regular grids
 #
 
-@inline function ∂x_caa(i, j, k, grid, u::AbstractArray) 
-    i⁺ = incmod1(i, grid.Nx)    
-    return @inbounds (u[i⁺, j, k] - u[i, j, k]) / grid.Δx
-end
+@inline ∂x_caa(i, j, k, grid, u::AbstractArray) = @inbounds (u[i+1, j, k] - u[i,   j, k]) / grid.Δx
+@inline ∂x_faa(i, j, k, grid, ϕ::AbstractArray) = @inbounds (ϕ[i,   j, k] - ϕ[i-1, j, k]) / grid.Δx
+@inline ∂y_aca(i, j, k, grid, v::AbstractArray) = @inbounds (v[i, j+1, k] - v[i,   j, k]) / grid.Δy
+@inline ∂y_afa(i, j, k, grid, ϕ::AbstractArray) = @inbounds (ϕ[i,   j, k] - ϕ[i, j-1, k]) / grid.Δy
 
-@inline function ∂x_faa(i, j, k, grid, ϕ::AbstractArray) 
-    i⁻ = decmod1(i, grid.Nx)    
-    return @inbounds (ϕ[i, j, k] - ϕ[i⁻, j, k]) / grid.Δx
-end
-
-@inline function ∂y_aca(i, j, k, grid, v::AbstractArray) 
-    j⁺ = incmod1(j, grid.Ny)    
-    return @inbounds (v[i, j⁺, k] - v[i, j, k]) / grid.Δy
-end
-
-@inline function ∂y_afa(i, j, k, grid, ϕ::AbstractArray) 
-    j⁻ = decmod1(j, grid.Ny)    
-    return @inbounds (ϕ[i, j, k] - ϕ[i, j⁻, k]) / grid.Δy
-end
-
-@inline function ∂z_aac(i, j, k, grid, w::AbstractArray) 
+@inline function ∂z_aac(i, j, k, grid, w::AbstractArray)
     if k == grid.Nz
         return @inbounds w[i, j, k] / grid.Δz
     else
@@ -37,7 +22,7 @@ end
         return @inbounds (ϕ[i, j, k-1] - ϕ[i, j, k]) / grid.Δz
     end
 end
-    
+
 #
 # Differentiation and interpolation operators for functions
 #
@@ -87,8 +72,7 @@ Differentiate the function or callable object
 located at `caa` in `x`, across `faa`.
 """
 @inline function ∂x_faa(i, j, k, grid, F::Function, args...)
-    i⁻ = decmod1(i, grid.Nx)
-    return (F(i, j, k, grid, args...) - F(i⁻, j, k, grid, args...)) / grid.Δx
+    (F(i, j, k, grid, args...) - F(i-1, j, k, grid, args...)) / grid.Δx
 end
 
 """
@@ -101,8 +85,7 @@ Differentiate the function or callable object
 located at `faa` in `x`, across `caa`.
 """
 @inline function ∂x_caa(i, j, k, grid, F::Function, args...)
-    i⁺ = incmod1(i, grid.Nx)
-    return (F(i⁺, j, k, grid, args...) - F(i, j, k, grid, args...)) / grid.Δx
+    (F(i+1, j, k, grid, args...) - F(i, j, k, grid, args...)) / grid.Δx
 end
 
 """
@@ -115,8 +98,7 @@ Differentiate the function or callable object
 located at `aca` in `y`, across `afa`.
 """
 @inline function ∂y_afa(i, j, k, grid, F::Function, args...)
-    j⁻ = decmod1(j, grid.Ny)
-    return (F(i, j, k, grid, args...) - F(i, j⁻, k, grid, args...)) / grid.Δy
+    (F(i, j, k, grid, args...) - F(i, j-1, k, grid, args...)) / grid.Δy
 end
 
 """
@@ -129,8 +111,7 @@ Differentiate the function or callable object
 located at `afa` in `y`, across `aca`.
 """
 @inline function ∂y_aca(i, j, k, grid, F::Function, args...)
-    j⁺ = incmod1(j, grid.Ny)
-    return (F(i, j⁺, k, grid, args...) - F(i, j, k, grid, args...)) / grid.Δy
+    (F(i, j+1, k, grid, args...) - F(i, j, k, grid, args...)) / grid.Δy
 end
 
 """
@@ -194,8 +175,7 @@ Interpolate the function or callable object
 from `caa` to `faa`."
 """
 @inline function ▶x_faa(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    i⁻¹ = decmod1(i, grid.Nx)
-    return T(0.5) * (F(i, j, k, grid, args...) + F(i⁻¹, j, k, grid, args...))
+    return T(0.5) * (F(i, j, k, grid, args...) + F(i-1, j, k, grid, args...))
 end
 
 """
@@ -208,8 +188,7 @@ Interpolate the function or callable object
 from `faa` to `caa`."
 """
 @inline function ▶x_caa(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    i⁺¹ = incmod1(i, grid.Nx)
-    return T(0.5) * (F(i⁺¹, j, k, grid, args...) + F(i, j, k, grid, args...))
+    T(0.5) * (F(i+1, j, k, grid, args...) + F(i, j, k, grid, args...))
 end
 
 """
@@ -222,8 +201,7 @@ Interpolate the function or callable object
 from `aca` to `afa`.
 """
 @inline function ▶y_afa(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    j⁻¹ = decmod1(j, grid.Ny)
-    return T(0.5) * (F(i, j, k, grid, args...) + F(i, j⁻¹, k, grid, args...))
+    T(0.5) * (F(i, j, k, grid, args...) + F(i, j-1, k, grid, args...))
 end
 
 """
@@ -236,8 +214,7 @@ Interpolate the function or callable object
 from `afa` to `aca`."
 """
 @inline function ▶y_aca(i, j, k, grid::Grid{T}, F::Function, args...) where T
-    j⁺¹ = incmod1(j, grid.Ny)
-    return T(0.5) * (F(i, j⁺¹, k, grid, args...) + F(i, j, k, grid, args...))
+    T(0.5) * (F(i, j+1, k, grid, args...) + F(i, j, k, grid, args...))
 end
 
 """

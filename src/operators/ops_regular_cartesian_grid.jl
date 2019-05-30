@@ -68,7 +68,7 @@ end
     if k == g.Nz
         @inbounds return T(0.5) * f[i, j, k]
     else
-        @inbounds return T(0.5) * (f[i, j, incmod1(k, g.Nz)] + f[i, j, k])
+        @inbounds return T(0.5) * (f[i, j, k+1] + f[i, j, k])
     end
 end
 
