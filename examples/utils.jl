@@ -14,38 +14,39 @@ znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz), 
 zerofunk(args...) = 0
 
 function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
-    model.velocities.u.data .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
-    model.velocities.v.data .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
-    model.velocities.w.data .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
-    model.tracers.T.data    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
-    model.tracers.S.data    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
+    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
+    data(model.velocities.u) .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
+    data(model.velocities.v) .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
+    data(model.velocities.w) .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
+    data(model.tracers.T)    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
+    data(model.tracers.S)    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
     return nothing
 end
 
 plotxzslice(ϕ, slice=1, args...; kwargs...) = pcolormesh(
-    view(xnodes(ϕ), :, slice, :), view(znodes(ϕ), :, slice, :), view(ϕ.data, :, slice, :), args...; kwargs...)
+    view(xnodes(ϕ), :, slice, :), view(znodes(ϕ), :, slice, :), view(data(ϕ), :, slice, :), args...; kwargs...)
 
 plotxyslice(ϕ, slice=1, args...; kwargs...) = pcolormesh(
-    view(xnodes(ϕ), :, :, slice), view(ynodes(ϕ), :, :, slice), view(ϕ.data, :, :, slice), args...; kwargs...)
+    view(xnodes(ϕ), :, :, slice), view(ynodes(ϕ), :, :, slice), view(data(ϕ), :, :, slice), args...; kwargs...)
 
 function total_kinetic_energy(model)
     return 0.5 * (
-          sum(model.velocities.u.data.^2)
-        + sum(model.velocities.v.data.^2)
-        + sum(model.velocities.w.data.^2)
+          sum(data(model.velocities.u).^2)
+        + sum(data(model.velocities.v).^2)
+        + sum(data(model.velocities.w).^2)
         )
 end
 
 function total_kinetic_energy(u, v, w)
-    return 0.5 * (sum(u.data.^2) + sum(v.data.^2) + sum(w.data.^2))
+    return 0.5 * (sum(data(u).^2) + sum(data(v).^2) + sum(data(w).^2))
 end
 
 function total_energy(model, N)
-    b = model.tracers.T.data .- mean(model.tracers.T.data, dims=(1, 2))
+    b = data(model.tracers.T) .- mean(data(model.tracers.T), dims=(1, 2))
     return 0.5 * (
-          sum(model.velocities.u.data.^2)
-        + sum(model.velocities.v.data.^2)
-        + sum(model.velocities.w.data.^2)
+          sum(data(model.velocities.u).^2)
+        + sum(data(model.velocities.v).^2)
+        + sum(data(model.velocities.w).^2)
         + sum(b.^2) / N^2
         )
 end
@@ -59,7 +60,7 @@ function w_relative_error(model, w)
         model.clock.time), model.grid)
 
     return mean(
-        (model.velocities.w.data .- w_ans.data).^2) / mean(w_ans.data.^2)
+        (data(model.velocities.w) .- data(w_ans)).^2) / mean(data(w_ans).^2)
 
 end
 
@@ -71,7 +72,7 @@ function u_relative_error(model, u)
         model.clock.time), model.grid)
 
     return mean(
-        (model.velocities.u.data .- u_ans.data).^2 ) / mean(u_ans.data.^2)
+        (data(model.velocities.u) .- data(u_ans)).^2 ) / mean(data(u_ans).^2)
 end
 
 function T_relative_error(model, T)
@@ -82,7 +83,7 @@ function T_relative_error(model, T)
         model.clock.time), model.grid)
 
     return mean(
-        (model.tracers.T.data .- T_ans.data).^2 ) / mean(T_ans.data.^2)
+        (data(model.tracers.T) .- data(T_ans)).^2 ) / mean(data(T_ans).^2)
 end
 
 """
