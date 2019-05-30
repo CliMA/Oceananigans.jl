@@ -137,6 +137,7 @@ float_types = (Float32, Float64)
             println("    Testing filling halo regions...")
             for arch in archs, FT in float_types, N in Ns
                 @test halo_regions_correctly_filled(arch, FT, N...)
+                @test multiple_halo_regions_correctly_filled(arch, FT, N...)
             end
         end
     end
