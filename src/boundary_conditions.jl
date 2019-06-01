@@ -46,12 +46,30 @@ Construct `CoordinateBoundaryCondition` to be applied along coordinate `c`, wher
 `left` and `right` that store boundary conditions on the 'left' (negative side)
 and 'right' (positive side) of a given coordinate.
 """
-mutable struct CoordinateBoundaryConditions
-     left :: BoundaryCondition
-    right :: BoundaryCondition
+mutable struct CoordinateBoundaryConditions{L, R}
+     left :: L
+    right :: R
 end
 
-CoordinateBoundaryConditions() = CoordinateBoundaryConditions(DefaultBC(), DefaultBC())
+function CoordinateBoundaryConditions(; 
+     left = DefaultBC(), 
+    right = DefaultBC()
+   )
+    return CoordinateBoundaryConditions(left, right)
+end
+
+"""
+    ZBoundaryConditions(top=DefaultBC(), bottom=DefaultBC())
+
+Returns `CoordinateBoundaryConditions` with specified `top`
+and `bottom` boundary conditions.
+"""
+function ZBoundaryConditions(; 
+       top = DefaultBC(), 
+    bottom = DefaultBC()
+   )
+    return CoordinateBoundaryConditions(top, bottom)
+end
 
 const CBC = CoordinateBoundaryConditions
 
@@ -80,10 +98,18 @@ Construct `FieldBoundaryConditions` for a field.
 A FieldBoundaryCondition has `CoordinateBoundaryConditions` in
 `x`, `y`, and `z`.
 """
-struct FieldBoundaryConditions <: FieldVector{dims, CoordinateBoundaryConditions}
-    x :: CoordinateBoundaryConditions
-    y :: CoordinateBoundaryConditions
-    z :: CoordinateBoundaryConditions
+struct FieldBoundaryConditions{X, Y, Z}
+    x :: X 
+    y :: Y 
+    z :: Z 
+end
+
+function FieldBoundaryConditions(; 
+    x = CoordinateBoundaryConditions(),
+    y = CoordinateBoundaryConditions(),
+    z = CoordinateBoundaryConditions()
+    )
+    return FieldBoundaryConditions(x, y, z)
 end
 
 """
@@ -92,22 +118,50 @@ end
 Construct a boundary condition type full of default
 `FieldBoundaryConditions` for u, v, w, T, S.
 """
-struct ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions}
-    u :: FieldBoundaryConditions
-    v :: FieldBoundaryConditions
-    w :: FieldBoundaryConditions
-    T :: FieldBoundaryConditions
-    S :: FieldBoundaryConditions
+struct ModelBoundaryConditions{UBC, VBC, WBC, TBC, SBC}
+    u :: UBC
+    v :: VBC
+    w :: WBC
+    T :: TBC
+    S :: SBC
 end
 
-FieldBoundaryConditions() = FieldBoundaryConditions(CoordinateBoundaryConditions(),
-                                                    CoordinateBoundaryConditions(),
-                                                    CoordinateBoundaryConditions())
-
-function ModelBoundaryConditions()
-    bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
+function ModelBoundaryConditions(;
+    u = FieldBoundaryConditions(),
+    v = FieldBoundaryConditions(),
+    w = FieldBoundaryConditions(),
+    T = FieldBoundaryConditions(),
+    S = FieldBoundaryConditions()
+   )
+    return ModelBoundaryConditions(u, v, w, T, S)
 end
+
+ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
+    ModelBoundaryConditions(fld, coord, Val(s), bc)
+
+ModelBoundaryConditions(fld, coord, ::Val{:bottom}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:right), bc)
+
+ModelBoundaryConditions(fld, coord, ::Val{:top}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:left), bc)
+
+"""
+    BoundaryConditions(u=FieldBoundaryConditions(), ...)
+
+    BoundaryConditions(fld, coord, side, bc)
+
+Return an instance of `ModelBoundaryConditions` with one non-default
+boundary condition `bc` on `fld` along coordinate `coord` at `side`.
+"""
+function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
+    coordbcs = CoordinateBoundaryConditions(; Dict((S => bc))...)
+      fldbcs = FieldBoundaryConditions(; Dict((coord => coordbcs))...)
+    modelbcs = ModelBoundaryConditions(; Dict((fld => fldbcs))...)
+    return modelbcs
+end
+
+# sensible alias
+const BoundaryConditions = ModelBoundaryConditions
 
 #
 # User API

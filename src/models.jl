@@ -1,6 +1,6 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, Grid, TC, T, F,
+mutable struct Model{A<:Architecture, Grid, TC, BCS<:ModelBoundaryConditions, T, F,
                     PC<:PlanetaryConstants, PS, VC<:VelocityFields,
                     EOS<:EquationOfState, TG, TGp,
                     Tracers<:TracerFields, PF<:PressureFields}
@@ -15,7 +15,7 @@ mutable struct Model{A<:Architecture, Grid, TC, T, F,
          pressures :: PF                 # Container for hydrostatic and nonhydrostatic pressure.
            forcing :: F                  # Container for forcing functions defined by the user
            closure :: TC                 # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: ModelBoundaryConditions # Container for 3d bcs on all fields.
+    boundary_conditions :: BCS           # Container for 3d bcs on all fields.
                  G :: TG        # Container for right-hand-side of PDE that governs `Model`
                 Gp :: TGp      # RHS at previous time-step (for Adams-Bashforth time integration)
     poisson_solver :: PS                 # ::PoissonSolver or ::PoissonSolverGPU
@@ -51,11 +51,12 @@ function Model(;
            eos = LinearEquationOfState(float_type),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = ModelBoundaryConditions(),
+           bcs = ModelBoundaryConditions(),
+    boundary_conditions = bcs,
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
-)
+    )
 
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
