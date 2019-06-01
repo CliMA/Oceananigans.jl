@@ -373,11 +373,11 @@ float_types = (Float32, Float64)
         include("test_regression.jl")
 
         for arch in archs
-            @testset "Thermal bubble $(typeof(arch))" begin
+            @testset "Thermal bubble [$(typeof(arch))]" begin
                 run_thermal_bubble_regression_tests(arch)
             end
 
-            @testset "Rayleigh-Benard-tracer $(typeof(arch))" begin
+            @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
                 run_rayleigh_benard_regression_test(arch)
             end
         end
@@ -390,35 +390,81 @@ float_types = (Float32, Float64)
     @testset "Dynamics tests" begin
         println("  Testing dynamics...")
         include("test_dynamics.jl")
-        @test internal_wave_test()
-        @test passive_tracer_advection_test()
 
-        for fld in (:u, :v, :T, :S)
-            @test test_diffusion_simple(fld)
-            @test test_diffusion_budget(fld)
-            @test test_diffusion_cosine(fld)
+        @testset "Simple diffusion" begin
+            println("    Testing simple diffusion...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_simple(fld)
+            end
+        end
+
+        @testset "Diffusion budget" begin
+            println("    Testing diffusion budget...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_budget(fld)
+            end
+        end
+
+        @testset "Diffusion cosine" begin
+            println("    Testing diffusion cosine...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_cosine(fld)
+            end
+        end
+
+        @testset "Passive tracer advection" begin
+            println("    Testing passive tracer advection...")
+            @test passive_tracer_advection_test()
+        end
+
+        @testset "Internal wave" begin
+            println("    Testing internal wave...")
+            @test internal_wave_test()
         end
     end
 
     @testset "Turbulence closures tests" begin
         println("  Testing turbulence closures...")
         include("test_turbulence_closures.jl")
-        @test test_function_interpolation()
-        @test test_function_differentiation()
 
-        for T in float_types
-            for closure in (:ConstantIsotropicDiffusivity, :ConstantAnisotropicDiffusivity,
-                            :ConstantSmagorinsky)
-                @test test_closure_instantiation(T, closure)
+        @testset "Closure operators" begin
+            println("    Testing closure operators...")
+            @test test_function_interpolation()
+            @test test_function_differentiation()
+        end
+
+        @testset "Closure instantiation" begin
+            println("    Testing closure instantiation...")
+            for T in float_types
+                for closure in (:ConstantIsotropicDiffusivity, :ConstantAnisotropicDiffusivity,
+                                :ConstantSmagorinsky)
+                    @test test_closure_instantiation(T, closure)
+                end
             end
+        end
 
-            @test test_constant_isotropic_diffusivity_basic(T)
-            @test test_tensor_diffusivity_tuples(T)
-            @test test_constant_isotropic_diffusivity_fluxdiv(T)
-            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
-            @test test_anisotropic_diffusivity_fluxdiv(T)
+        @testset "Constant isotropic diffusivity" begin
+            println("    Testing constant isotropic diffusivity...")
+            for T in float_types
+                @test test_constant_isotropic_diffusivity_basic(T)
+                @test test_tensor_diffusivity_tuples(T)
+                @test test_constant_isotropic_diffusivity_fluxdiv(T)
+            end
+        end
 
-            @test test_smag_divflux_finiteness(T)
+        @testset "Constant anisotropic diffusivity" begin
+            println("    Testing constant anisotropic diffusivity...")
+            for T in float_types
+                @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+                @test test_anisotropic_diffusivity_fluxdiv(T)
+            end
+        end
+
+        @testset "Constant Smagorinsky" begin
+            println("    Testing constant Smagorinsky...")
+            for T in float_types
+                @test test_smag_divflux_finiteness(T)
+            end
         end
     end
 end # Oceananigans tests
