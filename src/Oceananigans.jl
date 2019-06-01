@@ -52,7 +52,11 @@ export
 
     # Boundary conditions
     BoundaryConditions,
+    ZBoundaryConditions,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions,
     BoundaryCondition,
+    DefaultBC,
     Default,
     Flux,
     Gradient,
