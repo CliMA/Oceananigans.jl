@@ -112,8 +112,6 @@ using
 # Third-party modules
 using
     FFTW,
-    JLD,
-    NetCDF,
     StaticArrays,
     OffsetArrays
 
@@ -182,7 +180,7 @@ include("poisson_solvers.jl")
 include("models.jl")
 include("time_steppers.jl")
 
-include("output_writers.jl")
+# include("output_writers.jl")
 include("diagnostics.jl")
 
 end # module
