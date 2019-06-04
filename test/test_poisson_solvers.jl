@@ -100,15 +100,16 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    ϕ   = CellField(Float64, GPU(), grid)
+    ∇²ϕ = CellField(Float64, GPU(), grid)
 
-    ϕ   = CuArray(zeros(Nx, Ny, Nz))
-    ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
+    data(ϕ) .= real.(solver.storage)
 
-    @. ϕ = real(solver.storage)
+    fill_halo_regions!(GPU(), grid, ϕ.data)
 
-    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+    ∇²_ppn!(grid, ϕ.data, ∇²ϕ.data)
 
-    ∇²ϕ ≈ RHS_orig
+    data(∇²ϕ) ≈ RHS_orig
 end
 
 """
