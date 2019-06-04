@@ -17,7 +17,6 @@ function informative_message(model, u, w, ℕ)
 end
 
 function makeplot(axs, model, w)
-
     w_num = model.velocities.w
 
     w_ans = FaceFieldZ(w.(xnodes(w_num), ynodes(w_num), znodes(w_num),
@@ -27,9 +26,8 @@ function makeplot(axs, model, w)
 
     sca(axs[1, 1])
 
-    PyPlot.plot(w_ans[1, 1, :], view(znodes(w_num), 1, 1, :),
-        "-", linewidth=2, alpha=0.4)
-    PyPlot.plot(w_num[1, 1, :], view(znodes(w_num), 1, 1, :), "--", linewidth=1)
+    PyPlot.plot(data(w_ans)[1, 1, :], view(znodes(w_num), 1, 1, :),  "-", linewidth=2, alpha=0.4)
+    PyPlot.plot(data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "--", linewidth=1)
 
     xlim(-wmax, wmax)
 
@@ -40,7 +38,7 @@ function makeplot(axs, model, w)
     ylabel(L"z")
 
     sca(axs[2, 1])
-    PyPlot.plot(w_ans[1, 1, :] .- w_num[1, 1, :], view(znodes(w_num), 1, 1, :), "-")
+    PyPlot.plot(data(w_ans)[1, 1, :] .- data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "-")
 
     xlim(-wmax, wmax)
 
