@@ -67,10 +67,10 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(CPU(), grid, ϕ)
+    fill_halo_regions!(CPU(), grid, ϕ.data)
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(CPU(), grid, ∇²ϕ)
+    fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
