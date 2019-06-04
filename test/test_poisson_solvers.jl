@@ -52,23 +52,27 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), grid)
 
-    RHS = rand(Nx, Ny, Nz)
-    RHS .= RHS .- mean(RHS)
+    RHS = CellField(FT, CPU(), grid)
+    data(RHS) .= rand(Nx, Ny, Nz)
+    data(RHS) .= data(RHS) .- mean(data(RHS))
 
-    RHS_orig = copy(RHS)
+    RHS_orig = deepcopy(RHS)
 
-    solver.storage .= RHS
+    solver.storage .= data(RHS)
 
     solve_poisson_3d_ppn_planned!(solver, grid)
 
-    ϕ   = zeros(Nx, Ny, Nz)
-    ∇²ϕ = zeros(Nx, Ny, Nz)
+    ϕ   = CellField(FT, CPU(), grid)
+    ∇²ϕ = CellField(FT, CPU(), grid)
 
-    @. ϕ = real(solver.storage)
+    data(ϕ) .= real.(solver.storage)
 
+    fill_halo_regions!(CPU(), grid, ϕ.data)
     ∇²_ppn!(grid, ϕ, ∇²ϕ)
 
-    ∇²ϕ ≈ RHS_orig
+    fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
+
+    data(∇²ϕ) ≈ data(RHS_orig)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
@@ -96,15 +100,16 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
+    ϕ   = CellField(Float64, GPU(), grid)
+    ∇²ϕ = CellField(Float64, GPU(), grid)
 
-    ϕ   = CuArray(zeros(Nx, Ny, Nz))
-    ∇²ϕ = CuArray(zeros(Nx, Ny, Nz))
+    data(ϕ) .= real.(solver.storage)
 
-    @. ϕ = real(solver.storage)
+    fill_halo_regions!(GPU(), grid, ϕ.data)
 
-    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+    ∇²_ppn!(grid, ϕ.data, ∇²ϕ.data)
 
-    ∇²ϕ ≈ RHS_orig
+    data(∇²ϕ) ≈ RHS_orig
 end
 
 """

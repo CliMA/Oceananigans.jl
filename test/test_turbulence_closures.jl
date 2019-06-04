@@ -96,18 +96,24 @@ function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=
     eos = LinearEquationOfState()
     g = 1.0
 
-    u = zeros(TF, 3, 1, 1); v = zeros(TF, 3, 1, 1); w = zeros(TF, 3, 1, 1)
-    T = zeros(TF, 3, 1, 1); S = zeros(TF, 3, 1, 1)
+    arch = CPU()
+    u = FaceFieldX(TF, arch, grid)
+    v = FaceFieldY(TF, arch, grid)
+    w = FaceFieldZ(TF, arch, grid)
+    T =  CellField(TF, arch, grid)
+    S =  CellField(TF, arch, grid)
 
-    u[:, 1, 1] .= [0, -1, 0]
-    v[:, 1, 1] .= [0, -2, 0]
-    w[:, 1, 1] .= [0, -3, 0]
-    T[:, 1, 1] .= [0, -1, 0]
+    data(u)[:, 1, 1] .= [0, -1, 0]
+    data(v)[:, 1, 1] .= [0, -2, 0]
+    data(w)[:, 1, 1] .= [0, -3, 0]
+    data(T)[:, 1, 1] .= [0, -1, 0]
 
-    return (∇_κ_∇ϕ(2, 1, 1, grid, T, closure, eos, g, u, v, w, T, S) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, g, u, v, w, T, S) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, eos, g, u, v, w, T, S) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, eos, g, u, v, w, T, S) == 6ν
+    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
+
+    return (∇_κ_∇ϕ(2, 1, 1, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6ν
             )
 end
 
@@ -117,29 +123,35 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
     eos = LinearEquationOfState()
     g = 1.0
 
-    u = zeros(TF, 3, 1, 3); v = zeros(TF, 3, 1, 3); w = zeros(TF, 3, 1, 3)
-    T = zeros(TF, 3, 1, 3); S = zeros(TF, 3, 1, 3)
+    arch = CPU()
+    u = FaceFieldX(TF, arch, grid)
+    v = FaceFieldY(TF, arch, grid)
+    w = FaceFieldZ(TF, arch, grid)
+    T =  CellField(TF, arch, grid)
+    S =  CellField(TF, arch, grid)
 
-    u[:, 1, 1] .= [0,  1, 0]
-    u[:, 1, 2] .= [0, -1, 0]
-    u[:, 1, 3] .= [0,  1, 0]
+    data(u)[:, 1, 1] .= [0,  1, 0]
+    data(u)[:, 1, 2] .= [0, -1, 0]
+    data(u)[:, 1, 3] .= [0,  1, 0]
 
-    v[:, 1, 1] .= [0,  1, 0]
-    v[:, 1, 2] .= [0, -2, 0]
-    v[:, 1, 3] .= [0,  1, 0]
+    data(v)[:, 1, 1] .= [0,  1, 0]
+    data(v)[:, 1, 2] .= [0, -2, 0]
+    data(v)[:, 1, 3] .= [0,  1, 0]
 
-    w[:, 1, 1] .= [0,  1, 0]
-    w[:, 1, 2] .= [0, -3, 0]
-    w[:, 1, 3] .= [0,  1, 0]
+    data(w)[:, 1, 1] .= [0,  1, 0]
+    data(w)[:, 1, 2] .= [0, -3, 0]
+    data(w)[:, 1, 3] .= [0,  1, 0]
 
-    T[:, 1, 1] .= [0,  1, 0]
-    T[:, 1, 2] .= [0, -4, 0]
-    T[:, 1, 3] .= [0,  1, 0]
+    data(T)[:, 1, 1] .= [0,  1, 0]
+    data(T)[:, 1, 2] .= [0, -4, 0]
+    data(T)[:, 1, 3] .= [0,  1, 0]
 
-    return (∇_κ_∇ϕ(2, 1, 2, grid, T, closure, eos, g, u, v, w, T, S) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S) == 6νh + 8νv
+    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
+
+    return (∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6νh + 8νv
             )
 end
 
@@ -148,13 +160,20 @@ function test_smag_divflux_finiteness(TF=Float64)
     grid = RegularCartesianGrid(TF, (3, 3, 3), (3, 3, 3))
     eos = LinearEquationOfState()
     g = 1.0
-    u, v, w = rand(TF, size(grid)...), rand(TF, size(grid)...), rand(TF, size(grid)...)
-    T, S = rand(TF, size(grid)...), rand(TF, size(grid)...)
+
+    arch = CPU()
+    u = FaceFieldX(TF, arch, grid)
+    v = FaceFieldY(TF, arch, grid)
+    w = FaceFieldZ(TF, arch, grid)
+    T =  CellField(TF, arch, grid)
+    S =  CellField(TF, arch, grid)
+
+    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
 
     return (
-        isfinite(∇_κ_∇ϕ(2, 1, 2, grid, T, closure, eos, g, u, v, w, T, S)) &&
-        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S)) &&
-        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S)) &&
-        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u, v, w, T, S))
+        isfinite(∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
+        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
+        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
+        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data))
         )
 end
