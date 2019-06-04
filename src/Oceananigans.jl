@@ -150,7 +150,7 @@ device(::GPU) = GPUifyLoops.CUDA()
     end
 end
 
-# @hascuda CuArrays.allowscalar(false)
+@hascuda CuArrays.allowscalar(false)
 
 abstract type Metadata end
 abstract type ConstantsCollection end
