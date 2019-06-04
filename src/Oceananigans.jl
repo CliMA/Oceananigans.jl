@@ -33,6 +33,7 @@ export
     FaceFieldZ,
     EdgeField,
     data,
+    underlying_data,
     set!,
 
     # FieldSets (collections of related fields)
@@ -94,8 +95,6 @@ export
     FieldSummary,
     NaNChecker,
     VelocityDivergenceChecker,
-    Nusselt_wT,
-    Nusselt_Chi,
 
     # Package utilities
     prettytime,
