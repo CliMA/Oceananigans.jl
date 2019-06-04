@@ -80,18 +80,15 @@ float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
 
 function initialize_with_defaults!(eos, tracers, sets...)
-
     # Default tracer initial condition is deteremined by eos.
-    tracers.S.data.parent    .= eos.S₀
-    tracers.T.data.parent    .= eos.T₀
+    underlying_data(tracers.S) .= eos.S₀
+    underlying_data(tracers.T) .= eos.T₀
 
     # Set all further fields to 0
     for set in sets
         for fldname in propertynames(set)
             fld = getproperty(set, fldname)
-            fld.data.parent .= 0 # promotes to eltype of fld.data
+            underlying_data(fld) .= 0 # promotes to eltype of fld.data
         end
     end
-    
-    return nothing
 end
