@@ -21,7 +21,7 @@ xC, zC = reshape(xC, (Nx, 1, 1)), reshape(zC, (1, 1, Nz))
 # of the vertical slice. It roughly corresponds to a background temperature of
 # T = 282.99 K and a bubble temperature of T = 283.01 K.
 hot_bubble_perturbation = @. 0.01 * exp(-100 * ((xC - Lx/2)^2 + (zC + Lz/2)^2) / (Lx^2 + Lz^2))
-data(model.tracers.T) .= 282.99 .+ 2 .* reshape(hot_bubble_perturbation, (Nx, Ny, Nz))
+data(model.tracers.T) .= model.eos.T₀ .- 0.01 .+ 2 .* reshape(hot_bubble_perturbation, (Nx, Ny, Nz))
 
 # Add a NetCDF output writer that saves NetCDF files to the current directory
 # "." with a filename prefix of "thermal_bubble_2d_" every 10 iterations.

@@ -1,11 +1,14 @@
 using
     Test,
     Statistics,
+    OffsetArrays
+
+import FFTW
+
+using
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
-
-import FFTW
 
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
@@ -113,6 +116,32 @@ float_types = (Float32, Float64)
         # end
     end
 
+    @testset "Halo regions" begin
+        println("  Testing halo regions...")
+        include("test_halo_regions.jl")
+
+        Ns = [(8, 8, 8), (8, 8, 4), (10, 7, 5),
+              (1, 8, 8), (1, 9, 5),
+              (8, 1, 8), (5, 1, 9),
+              (8, 8, 1), (5, 9, 1),
+              (1, 1, 8)]
+
+        @testset "Initializing halo regions" begin
+            println("    Testing initializing halo regions...")
+            for arch in archs, FT in float_types, N in Ns
+                @test halo_regions_initalized_correctly(arch, FT, N...)
+            end
+        end
+
+        @testset "Filling halo regions" begin
+            println("    Testing filling halo regions...")
+            for arch in archs, FT in float_types, N in Ns
+                @test halo_regions_correctly_filled(arch, FT, N...)
+                @test multiple_halo_regions_correctly_filled(arch, FT, N...)
+            end
+        end
+    end
+
     @testset "Operators" begin
         println("  Testing operators...")
 
@@ -122,12 +151,22 @@ float_types = (Float32, Float64)
             Lx, Ly, Lz = 100, 100, 100
 
             grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
-            A3 = rand(Nx, Ny, Nz)
 
-            A2yz = A3[1:1, :, :]  # A yz-slice with Nx==1.
+            Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+            Tx, Ty, Tz = grid.Tx, grid.Ty, grid.Tz
+
+            A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+            @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
+            Oceananigans.fill_halo_regions!(CPU(), grid, A3)
+
+            # A yz-slice with Nx==1.
+            A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+            A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
             grid_yz = RegularCartesianGrid((1, Ny, Nz), (Lx, Ly, Lz))
 
-            A2xz = A3[:, 1:1, :]  # An xz-slice with Ny==1.
+            # An xz-slice with Ny==1.
+            A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
+            A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]
             grid_xz = RegularCartesianGrid((Nx, 1, Nz), (Lx, Ly, Lz))
 
             test_indices_3d = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
@@ -334,11 +373,11 @@ float_types = (Float32, Float64)
         include("test_regression.jl")
 
         for arch in archs
-            @testset "Thermal bubble $(typeof(arch))" begin
+            @testset "Thermal bubble [$(typeof(arch))]" begin
                 run_thermal_bubble_regression_tests(arch)
             end
 
-            @testset "Rayleigh-Benard-tracer $(typeof(arch))" begin
+            @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
                 run_rayleigh_benard_regression_test(arch)
             end
         end
@@ -351,35 +390,82 @@ float_types = (Float32, Float64)
     @testset "Dynamics tests" begin
         println("  Testing dynamics...")
         include("test_dynamics.jl")
-        @test internal_wave_test()
-        @test passive_tracer_advection_test()
 
-        for fld in (:u, :v, :T, :S)
-            @test test_diffusion_simple(fld)
-            @test test_diffusion_budget(fld)
-            @test test_diffusion_cosine(fld)
+        @testset "Simple diffusion" begin
+            println("    Testing simple diffusion...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_simple(fld)
+            end
+        end
+
+        @testset "Diffusion budget" begin
+            println("    Testing diffusion budget...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_budget(fld)
+            end
+        end
+
+        @testset "Diffusion cosine" begin
+            println("    Testing diffusion cosine...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_cosine(fld)
+            end
+        end
+
+        @testset "Passive tracer advection" begin
+            println("    Testing passive tracer advection...")
+            @test passive_tracer_advection_test()
+        end
+
+        @testset "Internal wave" begin
+            println("    Testing internal wave...")
+            @test internal_wave_test()
         end
     end
 
     @testset "Turbulence closures tests" begin
         println("  Testing turbulence closures...")
         include("test_turbulence_closures.jl")
-        @test test_function_interpolation()
-        @test test_function_differentiation()
 
-        for T in float_types
-            for closure in (:ConstantIsotropicDiffusivity, :ConstantAnisotropicDiffusivity,
-                            :ConstantSmagorinsky)
-                @test test_closure_instantiation(T, closure)
+        @testset "Closure operators" begin
+            println("    Testing closure operators...")
+            @test test_function_interpolation()
+            @test test_function_differentiation()
+        end
+
+        @testset "Closure instantiation" begin
+            println("    Testing closure instantiation...")
+            for T in float_types
+                for closure in (:ConstantIsotropicDiffusivity,
+                                :ConstantAnisotropicDiffusivity,
+                                :ConstantSmagorinsky)
+                    @test test_closure_instantiation(T, closure)
+                end
             end
+        end
 
-            @test test_constant_isotropic_diffusivity_basic(T)
-            @test test_tensor_diffusivity_tuples(T)
-            @test test_constant_isotropic_diffusivity_fluxdiv(T)
-            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
-            @test test_anisotropic_diffusivity_fluxdiv(T)
+        @testset "Constant isotropic diffusivity" begin
+            println("    Testing constant isotropic diffusivity...")
+            for T in float_types
+                @test test_constant_isotropic_diffusivity_basic(T)
+                @test test_tensor_diffusivity_tuples(T)
+                @test test_constant_isotropic_diffusivity_fluxdiv(T)
+            end
+        end
 
-            @test test_smag_divflux_finiteness(T)
+        @testset "Constant anisotropic diffusivity" begin
+            println("    Testing constant anisotropic diffusivity...")
+            for T in float_types
+                @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+                @test test_anisotropic_diffusivity_fluxdiv(T)
+            end
+        end
+
+        @testset "Constant Smagorinsky" begin
+            println("    Testing constant Smagorinsky...")
+            for T in float_types
+                @test_skip test_smag_divflux_finiteness(T)
+            end
         end
     end
 end # Oceananigans tests
