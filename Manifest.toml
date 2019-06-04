@@ -143,9 +143,9 @@ version = "1.0.6"
 
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "4c9269860074f5e9cf3f9078c49228bf13e4b33b"
+git-tree-sha1 = "9ab8f76758cbabba8d7f103c51dce7f73fcf8e92"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.6.1"
+version = "0.6.3"
 
 [[Formatting]]
 deps = ["Compat"]
@@ -155,15 +155,15 @@ version = "0.3.5"
 
 [[GPUArrays]]
 deps = ["Adapt", "FFTW", "FillArrays", "LinearAlgebra", "Printf", "Random", "Serialization", "StaticArrays", "Test"]
-git-tree-sha1 = "83abe5537d6f35f558cef7af309a428d055394db"
+git-tree-sha1 = "414250733f00f3b38acbf31f1f8e2cdad3907b42"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "0.7.0"
+version = "0.7.1"
 
 [[GPUifyLoops]]
-deps = ["Cassette", "Pkg", "Requires", "StaticArrays", "Test"]
-git-tree-sha1 = "a905cb174c46d8c6c37587773230460af77c8b92"
+deps = ["Cassette", "Requires", "StaticArrays"]
+git-tree-sha1 = "c8177843e45b3b81676cc95fe48ca218c1f649ed"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.3"
+version = "0.2.4"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Homebrew", "Libdl", "Mmap", "WinRPM"]
