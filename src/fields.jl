@@ -154,10 +154,17 @@ function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
     for f in fields
-        @views @inbounds @. f[1-Hx:0,     :, :] = f[Nx-Hx+1:Nx, :, :]
-        @views @inbounds @. f[Nx+1:Nx+Hx, :, :] = f[1:Hx,       :, :]
-        @views @inbounds @. f[:,     1-Hy:0, :] = f[:, Ny-Hy+1:Ny, :]
-        @views @inbounds @. f[:, Ny+1:Ny+Hy, :] = f[:,       1:Hy, :]
+        # @views @inbounds @. f[1-Hx:0,     :, :] = f[Nx-Hx+1:Nx, :, :]
+        # @views @inbounds @. f[Nx+1:Nx+Hx, :, :] = f[1:Hx,       :, :]
+        # @views @inbounds @. f[:,     1-Hy:0, :] = f[:, Ny-Hy+1:Ny, :]
+        # @views @inbounds @. f[:, Ny+1:Ny+Hy, :] = f[:,       1:Hy, :]
+
+        # Directly index the underlying Array or CuArray to avoid the issue that
+        # broadcasting over an OffsetArray{CuArray} is extremely inefficient.
+        @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
+        @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
+        @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, Ny+1:Ny+Hy, :]
+        @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[:, 1+Hy:2Hy,   :]
     end
 
     # max_threads = 256
