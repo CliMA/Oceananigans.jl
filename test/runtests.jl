@@ -436,7 +436,8 @@ float_types = (Float32, Float64)
         @testset "Closure instantiation" begin
             println("    Testing closure instantiation...")
             for T in float_types
-                for closure in (:ConstantIsotropicDiffusivity, :ConstantAnisotropicDiffusivity,
+                for closure in (:ConstantIsotropicDiffusivity,
+                                :ConstantAnisotropicDiffusivity,
                                 :ConstantSmagorinsky)
                     @test test_closure_instantiation(T, closure)
                 end

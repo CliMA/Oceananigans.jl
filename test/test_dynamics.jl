@@ -66,13 +66,14 @@ function test_diffusion_simple(fld)
     end
 
     value = π
-    field.data .= value
+    data(field) .= value
 
     Δt = 0.01 # time-step much less than diffusion time-scale
     Nt = 10
     time_step!(model, Nt, Δt)
 
-    !any(@. !isapprox(value, field.data))
+    field_data = data(field)
+    !any(@. !isapprox(value, field_data))
 end
 
 
@@ -94,13 +95,13 @@ function test_diffusion_budget(field_name)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    mean_init = mean(field.data)
+    mean_init = mean(data(field))
     τκ = Lz^2 / κ # diffusion time-scale
     Δt = 0.0001 * τκ # time-step much less than diffusion time-scale
     Nt = 100
 
     time_step!(model, Nt, Δt)
-    isapprox(mean_init, mean(field.data))
+    isapprox(mean_init, mean(data(field)))
 end
 
 function test_diffusion_cosine(fld)
