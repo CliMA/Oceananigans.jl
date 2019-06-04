@@ -63,9 +63,26 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
     G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
 
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+    # dynamic launch configuration
+    function get_config(dims)
+        return (kernel) -> begin
+            fun = kernel.fun
+            config = launch_configuration(fun)
 
-    tb = (threads=(Tx, Ty), blocks=(Bx, By, Bz))
+            # adapt the suggested config from 1D to the requested grid dimensions
+            threads = floor(Int, sqrt(config.threads))
+            blocks = ceil.(Int, [Nx,Ny] ./ threads)
+            if dims == 3
+                push!(blocks, Nz)
+            else
+                @assert dims == 2
+            end
+
+            return (threads=(threads,threads),
+                    blocks=Tuple(blocks))
+        end
+    end
+
     FT = eltype(grid)
 
     # Field tuples for fill_halo_regions.
@@ -87,19 +104,19 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     for n in 1:Nt
         χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
 
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
-                                                                  fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
-                                                                  calculate_interior_source_terms!(arch, grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
-                                                                  calculate_boundary_source_terms!(model)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
-                                                                  fill_halo_regions!(grid, Guvw_ft...)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, uvw..., Guvw..., RHS)
-                                                                  solve_for_pressure!(arch, model)
-                                                                  fill_halo_regions!(grid, pNHS_ft)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-                                                                  fill_halo_regions!(grid, uvw_ft...)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     compute_w_from_continuity!(grid, uvw...)
+        @launch device(arch) config=get_config(3) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
+        @launch device(arch) config=get_config(2) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
+                                                  fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
+                                                  calculate_interior_source_terms!(arch, grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
+                                                  calculate_boundary_source_terms!(model)
+        @launch device(arch) config=get_config(3) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
+                                                  fill_halo_regions!(grid, Guvw_ft...)
+        @launch device(arch) config=get_config(3) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, uvw..., Guvw..., RHS)
+                                                  solve_for_pressure!(arch, model)
+                                                  fill_halo_regions!(grid, pNHS_ft)
+        @launch device(arch) config=get_config(3) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
+                                                  fill_halo_regions!(grid, uvw_ft...)
+        @launch device(arch) config=get_config(2) compute_w_from_continuity!(grid, uvw...)
 
         clock.time += Δt
         clock.iteration += 1
