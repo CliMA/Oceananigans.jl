@@ -150,17 +150,26 @@ end
 
 function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    max_threads = 1024
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    Ty = min(max_threads, Ny)
-    Tz = min(fld(max_threads, Ty), Nz)
-    By, Bz = cld(Ny, Ty), cld(Nz, Tz)
-    @launch device(arch) threads=(1, Ty, Tz) blocks=(1, By, Nz) fill_halo_regions_x!(grid, fields...)
+    for f in fields
+        @views @inbounds @. f[1-Hx:0,     :, :] = f[Nx-Hx+1:Nx, :, :]
+        @views @inbounds @. f[Nx+1:Nx+Hx, :, :] = f[1:Hx,       :, :]
+        @views @inbounds @. f[:,     1-Hy:0, :] = f[:, Ny-Hy+1:Ny, :]
+        @views @inbounds @. f[:, Ny+1:Ny+Hy, :] = f[:,       1:Hy, :]
+    end
 
-    Tx = min(max_threads, Nx)
-    Tz = min(fld(max_threads, Tx), Nz)
-    Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
-    @launch device(arch) threads=(Tx, 1, Tz) blocks=(Bz, 1, Nz) fill_halo_regions_y!(grid, fields...)
+    # max_threads = 256
+    #
+    # Ty = min(max_threads, Ny)
+    # Tz = min(fld(max_threads, Ty), Nz)
+    # By, Bz = cld(Ny, Ty), cld(Nz, Tz)
+    # @launch device(arch) threads=(1, Ty, Tz) blocks=(1, By, Nz) fill_halo_regions_x!(grid, fields...)
+    #
+    # Tx = min(max_threads, Nx)
+    # Tz = min(fld(max_threads, Tx), Nz)
+    # Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
+    # @launch device(arch) threads=(Tx, 1, Tz) blocks=(Bz, 1, Nz) fill_halo_regions_y!(grid, fields...)
 end
 
 function fill_halo_regions_x!(grid::Grid, fields...)
