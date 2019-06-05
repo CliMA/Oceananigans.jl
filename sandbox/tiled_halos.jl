@@ -4,15 +4,15 @@ using Oceananigans
 @inline decmod1(a, n) = ifelse(a==1, n, a - 1)
 @inline index2rank(I, J, Mx, My) = J*My + I
 
-@inline  east_halo(tile) = @views @inbounds tile.data[tile.grid.Nx+1:tile.grid.Nx+tile.grid.Hx, :, :]
-@inline  west_halo(tile) = @views @inbounds tile.data[1-tile.grid.Hx:0, :, :]
-@inline north_halo(tile) = @views @inbounds tile.data[:, 1-tile.grid.Hy:0, :]
-@inline south_halo(tile) = @views @inbounds tile.data[:, tile.grid.Ny+1:tile.grid.Ny+tile.grid.Hy, :]
+@inline north_halo(tile) = @views @inbounds tile.data[1-tile.grid.Hx:0, :, :]
+@inline south_halo(tile) = @views @inbounds tile.data[tile.grid.Nx+1:tile.grid.Nx+tile.grid.Hx, :, :]
+@inline  west_halo(tile) = @views @inbounds tile.data[:, 1-tile.grid.Hy:0, :]
+@inline  east_halo(tile) = @views @inbounds tile.data[:, tile.grid.Ny+1:tile.grid.Ny+tile.grid.Hy, :]
 
-@inline  east_data(tile) = @views @inbounds tile.data[1:tile.grid.Hx, :, :]
-@inline  west_data(tile) = @views @inbounds tile.data[tile.grid.Nx-tile.grid.Hx+1:tile.grid.Nx, :, :]
-@inline north_data(tile) = @views @inbounds tile.data[:, 1:tile.grid.Hy, :]
-@inline south_data(tile) = @views @inbounds tile.data[:, tile.grid.Ny-tile.grid.Hy+1:tile.grid.Ny, :]
+@inline north_data(tile) = @views @inbounds tile.data[1:tile.grid.Hx, :, :]
+@inline south_data(tile) = @views @inbounds tile.data[tile.grid.Nx-tile.grid.Hx+1:tile.grid.Nx, :, :]
+@inline  west_data(tile) = @views @inbounds tile.data[:, 1:tile.grid.Hy, :]
+@inline  east_data(tile) = @views @inbounds tile.data[:, tile.grid.Ny-tile.grid.Hy+1:tile.grid.Ny, :]
 
 function fill_halo_regions_tiled!(tiles, Mx, My)
     for J in 0:My-1, I in 0:Mx-1
