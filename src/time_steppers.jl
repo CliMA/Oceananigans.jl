@@ -63,40 +63,20 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
     G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
 
-    # dynamic launch configuration
-    function get_config(dims)
-        return (kernel) -> begin
-            fun = kernel.fun
-            config = launch_configuration(fun)
-
-            # adapt the suggested config from 1D to the requested grid dimensions
-            threads = floor(Int, sqrt(config.threads))
-            blocks = ceil.(Int, [Nx,Ny] ./ threads)
-            if dims == 3
-                push!(blocks, Nz)
-            else
-                @assert dims == 2
-            end
-
-            return (threads=(threads,threads),
-                    blocks=Tuple(blocks))
-        end
-    end
-
     FT = eltype(grid)
 
     for n in 1:Nt
         χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
 
-        @launch device(arch) config=get_config(3) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
-        @launch device(arch) config=get_config(2) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
-        @launch device(arch) config=get_config(3) calculate_interior_source_terms!(grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
-                                                  calculate_boundary_source_terms!(model)
-        @launch device(arch) config=get_config(3) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
-        @launch device(arch) config=get_config(3) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS)
-                                                  solve_for_pressure!(arch, model)
-        @launch device(arch) config=get_config(3) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-        @launch device(arch) config=get_config(2) compute_w_from_continuity!(grid, uvw...)
+        @launch device(arch) config=launch_config(grid,3) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
+        @launch device(arch) config=launch_config(grid,2) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
+        @launch device(arch) config=launch_config(grid,3) calculate_interior_source_terms!(grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
+                                                          calculate_boundary_source_terms!(model)
+        @launch device(arch) config=launch_config(grid,3) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
+        @launch device(arch) config=launch_config(grid,3) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS)
+                                                          solve_for_pressure!(arch, model)
+        @launch device(arch) config=launch_config(grid,3) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
+        @launch device(arch) config=launch_config(grid,2) compute_w_from_continuity!(grid, uvw...)
 
         clock.time += Δt
         clock.iteration += 1
@@ -113,10 +93,29 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     return nothing
 end
 
+# dynamic launch configuration
+function launch_config(grid, dims)
+    return function (kernel)
+        fun = kernel.fun
+        config = launch_configuration(fun)
+
+        # adapt the suggested config from 1D to the requested grid dimensions
+        threads = floor(Int, sqrt(config.threads))
+        blocks = ceil.(Int, [grid.Nx,grid.Ny] ./ threads)
+        if dims == 3
+            push!(blocks, grid.Nz)
+        else
+            @assert dims == 2
+        end
+
+        return (threads=(threads,threads),
+                blocks=Tuple(blocks))
+    end
+end
+
 time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
 
 function solve_for_pressure!(::CPU, model::Model)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
     solve_poisson_3d_ppn_planned!(model.poisson_solver, model.grid)
@@ -124,14 +123,10 @@ function solve_for_pressure!(::CPU, model::Model)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
-    Tx, Ty = 16, 16  # Not sure why I have to do this. Will be superseded soon.
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-
-    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
+    solve_poisson_3d_ppn_planned!(model.poisson_solver, model.grid)
+    @launch device(GPU()) config=launch_config(model.grid, 3) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
 end
 
 """Store previous source terms before updating them."""

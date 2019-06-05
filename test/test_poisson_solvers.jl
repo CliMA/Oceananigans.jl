@@ -89,9 +89,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # the DCT in the Poisson solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
-    Tx, Ty = 16, 16
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
+    solve_poisson_3d_ppn_planned!(solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
