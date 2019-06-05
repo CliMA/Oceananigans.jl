@@ -151,7 +151,7 @@ end
 
 """Store previous source terms before updating them."""
 function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gpu[i, j, k] = Gu[i, j, k]
@@ -187,7 +187,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
     ρ₀ = eos.ρ₀
 
     function calculate_Gu(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
@@ -201,7 +201,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
     end
 
     function calculate_Gv(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
@@ -215,7 +215,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
     end
 
     function calculate_Gw(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
@@ -227,7 +227,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
     end
 
     function calculate_GT(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
@@ -239,7 +239,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
     end
 
     function calculate_GS(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
@@ -259,7 +259,7 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gu[i, j, k] = (FT(1.5) + χ)*Gu[i, j, k] - (FT(0.5) + χ)*Gpu[i, j, k]
@@ -274,7 +274,7 @@ end
 
 "Store previous value of the source term and calculate current source term."
 function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt, u, v, w, Gu, Gv, Gw, RHS)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
@@ -292,7 +292,7 @@ which is the first step in the DCT.
 """
 function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if (k & 1) == 1  # isodd(k)
@@ -308,7 +308,7 @@ end
 
 function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v, w, Gu, Gv, Gw, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if (k & 1) == 1  # isodd(k)
@@ -331,7 +331,7 @@ end
 
 function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if k <= Nz/2
@@ -346,7 +346,7 @@ end
 
 function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if k <= Nz/2
@@ -369,7 +369,7 @@ end
 
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
