@@ -1,4 +1,4 @@
-using Oceananigans
+using Oceananigans, Test
 
 @inline incmod1(a, n) = ifelse(a==n, 1, a + 1)
 @inline decmod1(a, n) = ifelse(a==1, n, a - 1)
@@ -63,3 +63,8 @@ end
 
 fill_halo_regions_tiled!(tiles, Mx, My)
 fill_halo_regions_tiled!(tiles, Mx, My)
+
+@test all(tiles[1].data[1:end,     1:end, :] .== R[1:9,   1:9,   :])
+@test all(tiles[2].data[1:end,   0:end-1, :] .== R[1:9,   8:end, :])
+@test all(tiles[3].data[0:end-1,   1:end, :] .== R[8:end, 1:9,   :])
+@test all(tiles[4].data[0:end-1, 0:end-1, :] .== R[8:end, 8:end, :])
