@@ -112,6 +112,7 @@ FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
 @inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
 @inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
+@inline ardata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx, 1+f.grid.Hy:f.grid.Ny+f.grid.Hy, 1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 @inline underlying_data(f::Field) = f.data.parent
 
 show(io::IO, f::Field) = show(io, f.data)

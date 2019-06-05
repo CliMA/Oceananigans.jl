@@ -33,6 +33,7 @@ export
     FaceFieldZ,
     EdgeField,
     data,
+    ardata,
     underlying_data,
     set!,
     fill_halo_regions!,
