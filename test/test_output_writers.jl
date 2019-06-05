@@ -36,16 +36,16 @@ function run_thermal_bubble_checkpointer_tests()
     time_step!(restored_model, 5, Δt)
 
     # Now the true_model and restored_model should be identical.
-    @test_skip all(restored_model.velocities.u.data .≈ true_model.velocities.u.data)
-    @test_skip all(restored_model.velocities.v.data .≈ true_model.velocities.v.data)
-    @test_skip all(restored_model.velocities.w.data .≈ true_model.velocities.w.data)
-    @test_skip all(restored_model.tracers.T.data    .≈ true_model.tracers.T.data)
-    @test_skip all(restored_model.tracers.S.data    .≈ true_model.tracers.S.data)
-    @test_skip all(restored_model.G.Gu.data         .≈ true_model.G.Gu.data)
-    @test_skip all(restored_model.G.Gv.data         .≈ true_model.G.Gv.data)
-    @test_skip all(restored_model.G.Gw.data         .≈ true_model.G.Gw.data)
-    @test_skip all(restored_model.G.GT.data         .≈ true_model.G.GT.data)
-    @test_skip all(restored_model.G.GS.data         .≈ true_model.G.GS.data)
+    @test all(restored_model.velocities.u.data .≈ true_model.velocities.u.data)
+    @test all(restored_model.velocities.v.data .≈ true_model.velocities.v.data)
+    @test all(restored_model.velocities.w.data .≈ true_model.velocities.w.data)
+    @test all(restored_model.tracers.T.data    .≈ true_model.tracers.T.data)
+    @test all(restored_model.tracers.S.data    .≈ true_model.tracers.S.data)
+    @test all(restored_model.G.Gu.data         .≈ true_model.G.Gu.data)
+    @test all(restored_model.G.Gv.data         .≈ true_model.G.Gv.data)
+    @test all(restored_model.G.Gw.data         .≈ true_model.G.Gw.data)
+    @test all(restored_model.G.GT.data         .≈ true_model.G.GT.data)
+    @test all(restored_model.G.GS.data         .≈ true_model.G.GS.data)
 end
 
 """
