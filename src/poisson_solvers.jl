@@ -144,7 +144,7 @@ CuFFTs on a GPU.
       solver : PoissonSolverGPU
         grid : solver grid
 """
-function solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+function solve_poisson_3d_ppn_planned!(solver::PoissonSolverGPU, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
@@ -155,7 +155,7 @@ function solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolver
 
     solver.FFT_xy! * RHS  # Calculate FFTˣʸ(f) in place.
 
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
+    @launch device(GPU()) config=launch_config(grid,3) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
 
     ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
