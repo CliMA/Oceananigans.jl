@@ -30,7 +30,7 @@ end
 
 function run_diagnostic(model::Model, nc::NaNChecker)
     for (field, field_name) in zip(nc.fields, nc.field_names)
-        if any(isnan, field.data)  # This is also fast on CuArrays.
+        if any(isnan, field.data.parent)  # This is also fast on CuArrays.
             t, i = model.clock.time, model.clock.iteration
             println("time = $t, iteration = $i")
             println("NaN found in $field_name. Aborting simulation.")
