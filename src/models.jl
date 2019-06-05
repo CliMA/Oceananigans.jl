@@ -1,24 +1,21 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, Grid, TC, T, F,
-                    PC<:PlanetaryConstants, PS, VC<:VelocityFields,
-                    EOS<:EquationOfState, TG, TGp,
-                    Tracers<:TracerFields, PF<:PressureFields}
+mutable struct Model{A<:Architecture, G, TC, T}
               arch :: A                  # Computer `Architecture` on which `Model` is run.
-              grid :: Grid               # Grid of physical points on which `Model` is solved.
+              grid :: G                  # Grid of physical points on which `Model` is solved.
              clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`.
-               eos :: EOS                # Defines relationship between temperature,  salinity, and 
+               eos :: EquationOfState    # Defines relationship between temperature,  salinity, and 
                                          # buoyancy in the Boussinesq vertical momentum equation.
-         constants :: PC                 # Set of physical constants, inc. gravitational acceleration.
-        velocities :: VC                 # Container for velocity fields `u`, `v`, and `w`.
-           tracers :: Tracers            # Container for tracer fields.
-         pressures :: PF                 # Container for hydrostatic and nonhydrostatic pressure.
-           forcing :: F                  # Container for forcing functions defined by the user
+         constants :: PlanetaryConstants # Set of physical constants, inc. gravitational acceleration.
+        velocities :: VelocityFields     # Container for velocity fields `u`, `v`, and `w`.
+           tracers :: TracerFields       # Container for tracer fields.
+         pressures :: PressureFields     # Container for hydrostatic and nonhydrostatic pressure.
+           forcing                       # Container for forcing functions defined by the user
            closure :: TC                 # Diffusive 'turbulence closure' for all model fields
     boundary_conditions :: ModelBoundaryConditions # Container for 3d bcs on all fields.
-                 G :: TG        # Container for right-hand-side of PDE that governs `Model`
-                Gp :: TGp      # RHS at previous time-step (for Adams-Bashforth time integration)
-    poisson_solver :: PS                 # ::PoissonSolver or ::PoissonSolverGPU
+                 G :: SourceTerms        # Container for right-hand-side of PDE that governs `Model`
+                Gp :: SourceTerms        # RHS at previous time-step (for Adams-Bashforth time integration)
+    poisson_solver                       # ::PoissonSolver or ::PoissonSolverGPU
        stepper_tmp :: StepperTemporaryFields # Temporary fields used for the Poisson solver.
     output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
        diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation.

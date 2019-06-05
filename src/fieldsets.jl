@@ -1,25 +1,25 @@
-struct VelocityFields{U<:FaceFieldX, V<:FaceFieldY, W<:FaceFieldZ} <: FieldSet
-    u::U
-    v::V
-    w::W
+struct VelocityFields <: FieldSet
+    u::FaceFieldX
+    v::FaceFieldY
+    w::FaceFieldZ
 end
 
-struct TracerFields{CFT<:CellField, CFS<:CellField} <: FieldSet
-    T::CFT
-    S::CFS
+struct TracerFields <: FieldSet
+    T::CellField
+    S::CellField
 end
 
-struct PressureFields{CF1<:CellField, CF2<:CellField} <: FieldSet
-    pHY′::CF1
-    pNHS::CF2
+struct PressureFields <: FieldSet
+    pHY′::CellField
+    pNHS::CellField
 end
 
-struct SourceTerms{U<:FaceFieldX, V<:FaceFieldY, W<:FaceFieldZ, T<:CellField, S<:CellField} <: FieldSet
-    Gu::U
-    Gv::V
-    Gw::W
-    GT::T
-    GS::S
+struct SourceTerms <: FieldSet
+    Gu::FaceFieldX
+    Gv::FaceFieldY
+    Gw::FaceFieldZ
+    GT::CellField
+    GS::CellField
 end
 
 struct StepperTemporaryFields <: FieldSet
