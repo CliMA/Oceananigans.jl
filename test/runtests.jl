@@ -320,8 +320,8 @@ float_types = (Float32, Float64)
         include("test_output_writers.jl")
 
         @testset "Checkpointing" begin
-            println("    Testing checkpointing...")
-            run_thermal_bubble_checkpointer_tests()
+            # println("    Testing checkpointing...")
+            # run_thermal_bubble_checkpointer_tests()
         end
 
         @testset "NetCDF" begin
