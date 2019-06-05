@@ -131,7 +131,7 @@ end
 
 """Store previous source terms before updating them."""
 function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gpu[i, j, k] = Gu[i, j, k]
@@ -173,7 +173,7 @@ function calculate_interior_source_terms!(arch, grid::Grid, constants, eos, clos
     config = launch_config(grid, 3)
 
     function step_1(grid::Grid, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     # u-momentum equation
@@ -197,7 +197,7 @@ function calculate_interior_source_terms!(arch, grid::Grid, constants, eos, clos
     @launch device(arch) config=config step_1(grid::Grid, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
 
     function step_2(grid::Grid, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-        @loop for k in (1:grid.Nz; blockIdx().z)
+        @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                     # w-momentum equation: comment about how pressure and buoyancy are handled
@@ -223,7 +223,7 @@ function calculate_interior_source_terms!(arch, grid::Grid, constants, eos, clos
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gu[i, j, k] = (FT(1.5) + χ)*Gu[i, j, k] - (FT(0.5) + χ)*Gpu[i, j, k]
@@ -239,7 +239,7 @@ end
 
 "Store previous value of the source term and calculate current source term."
 function calculate_poisson_right_hand_side!(::CPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
@@ -253,7 +253,7 @@ end
 
 function calculate_poisson_right_hand_side!(::GPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
@@ -272,7 +272,7 @@ end
 
 function idct_permute!(grid::Grid, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
+    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if k <= Nz/2
@@ -289,7 +289,7 @@ end
 
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt

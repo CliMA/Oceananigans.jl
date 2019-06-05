@@ -170,7 +170,7 @@ end
 
 "Kernel for computing the solution `ϕ` to Poisson equation for source term `f` on a GPU."
 function f2ϕ!(grid::Grid, f, ϕ, kx², ky², kz²)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds ϕ[i, j, k] = -f[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
