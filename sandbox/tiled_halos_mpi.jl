@@ -81,11 +81,16 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
 
     MPI.Barrier(comm)
 
+     west_buf = zeros(size(west_halo(tile)))
+     east_buf = zeros(size(east_halo(tile)))
+    north_buf = zeros(size(north_halo(tile)))
+    south_buf = zeros(size(south_halo(tile)))
+
     println("[rank $rank] Receiving halo data...")
-    re_req = MPI.Irecv!(west_halo(tile),  east_rank,  send_west_tag(east_rank),  comm)
-    rw_req = MPI.Irecv!(east_halo(tile),  west_rank,  send_east_tag(west_rank),  comm)
-    rn_req = MPI.Irecv!(south_halo(tile), north_rank, send_south_tag(north_rank), comm)
-    rs_req = MPI.Irecv!(north_halo(tile), south_rank, send_north_tag(south_rank), comm)
+    re_req = MPI.Irecv!(west_buf,  east_rank,  send_west_tag(east_rank),  comm)
+    rw_req = MPI.Irecv!(east_buf,  west_rank,  send_east_tag(west_rank),  comm)
+    rn_req = MPI.Irecv!(south_buf, north_rank, send_south_tag(north_rank), comm)
+    rs_req = MPI.Irecv!(north_buf, south_rank, send_north_tag(south_rank), comm)
 
     MPI.Barrier(comm)
 end
