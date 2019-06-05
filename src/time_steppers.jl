@@ -100,16 +100,19 @@ function launch_config(grid, dims)
         config = launch_configuration(fun)
 
         # adapt the suggested config from 1D to the requested grid dimensions
-        threads = floor(Int, sqrt(config.threads))
-        blocks = ceil.(Int, [grid.Nx,grid.Ny] ./ threads)
         if dims == 3
-            push!(blocks, grid.Nz)
+            threads = floor(Int, cbrt(config.threads))
+            blocks = ceil.(Int, [grid.Nx,grid.Ny,grid.Nz] ./ threads)
+            threads = [threads,threads,threads]
+        elseif dims == 2
+            threads = floor(Int, sqrt(config.threads))
+            blocks = ceil.(Int, [grid.Nx,grid.Ny] ./ threads)
+            threads = [threads,threads]
         else
-            @assert dims == 2
+            error("unsupported launch configuration")
         end
 
-        return (threads=(threads,threads),
-                blocks=Tuple(blocks))
+        return (threads=Tuple(threads), blocks=Tuple(blocks))
     end
 end
 
