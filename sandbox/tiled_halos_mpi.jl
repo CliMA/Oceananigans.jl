@@ -21,14 +21,13 @@ using Oceananigans
 @inline send_north_tag(rank) = 400 + rank
 @inline send_south_tag(rank) = 500 + rank
 
-function send_halo_data(tile)
+function send_halo_data(tile, Mx, My)
+    comm = MPI.COMM_WORLD
     rank = MPI.Comm_rank(comm)
 
     I, J = rank2index(rank, Mx, My)
     I⁻, I⁺ = mod(I-1, Mx), mod(I+1, Mx)
     J⁻, J⁺ = mod(J-1, My), mod(J+1, My)
-    Nx′, Ny′, Nz′ = Int(Nx/Mx), Int(Ny/My), Nz
-    Lx′, Ly′, Lz′ = Lx/Mx, Ly/My, Lz
 
     north_rank = index2rank(I,  J⁻, Mx, My)
     south_rank = index2rank(I,  J⁺, Mx, My)
@@ -58,7 +57,19 @@ function send_halo_data(tile)
    MPI.Waitall!([se_req, sw_req, sn_req, ss_req])
 end
 
-function receive_halo_data(tile)
+function receive_halo_data(tile, Mx, My)
+    comm = MPI.COMM_WORLD
+    rank = MPI.Comm_rank(comm)
+
+    I, J = rank2index(rank, Mx, My)
+    I⁻, I⁺ = mod(I-1, Mx), mod(I+1, Mx)
+    J⁻, J⁺ = mod(J-1, My), mod(J+1, My)
+
+    north_rank = index2rank(I,  J⁻, Mx, My)
+    south_rank = index2rank(I,  J⁺, Mx, My)
+    east_rank  = index2rank(I⁺, J,  Mx, My)
+    west_rank  = index2rank(I⁻, J,  Mx, My)
+    
     west_halo_buf = zeros(size(west_halo(tile)))
     east_halo_buf = zeros(size(east_halo(tile)))
    north_halo_buf = zeros(size(north_halo(tile)))
@@ -134,16 +145,16 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     data(tile) .= recv_mesg
 
     println("[rank $rank] Sending halo data...")
-    send_halo_data(tile)
+    send_halo_data(tile, Mx, My)
 
     println("[rank $rank] Receiving halo data...")
-    receive_halo_data(tile)
+    receive_halo_data(tile, Mx, My)
 
     println("[rank $rank] Sending halo data...")
-    send_halo_data(tile)
+    send_halo_data(tile, Mx, My)
 
     println("[rank $rank] Receiving halo data...")
-    receive_halo_data(tile)
+    receive_halo_data(tile, Mx, My)
 
     if rank == 3
         display(tile.data)
