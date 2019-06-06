@@ -75,10 +75,10 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
 
     println("[rank $rank] Sending halo data...")
 
-    west_data_buf = zeros(size(west_data(tile)))
-    east_data_buf = zeros(size(east_data(tile)))
-   north_data_buf = zeros(size(north_data(tile)))
-   south_data_buf = zeros(size(south_data(tile)))
+    west_data_buf = copy(west_data(tile))
+    east_data_buf = copy(east_data(tile))
+   north_data_buf = copy(north_data(tile))
+   south_data_buf = copy(south_data(tile))
 
     se_req = MPI.Isend(west_data_buf,  east_rank,  send_east_tag(rank),  comm)
     sw_req = MPI.Isend(east_data_buf,  west_rank,  send_west_tag(rank),  comm)
@@ -99,6 +99,11 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     rs_req = MPI.Irecv!(north_halo_buf, south_rank, send_north_tag(south_rank), comm)
 
     MPI.Barrier(comm)
+
+    east_halo(tile) .=  west_halo_buf
+    west_halo(tile) .=  east_halo_buf
+   north_halo(tile) .= south_halo_buf
+   south_halo(tile) .= north_halo_buf
 end
 
 MPI.Init()
