@@ -1,6 +1,40 @@
+using Printf
+
 import MPI
 
 using Oceananigans
+
+# Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
+function prettytime(t)
+    if t < 1e3
+        value, units = t, "ns"
+    elseif t < 1e6
+        value, units = t / 1e3, "μs"
+    elseif t < 1e9
+        value, units = t / 1e6, "ms"
+    else
+        s = t / 1e9
+        if s < 60
+            value, units = s, "s"
+        else
+            value, units = (s / 60), "min"
+        end
+    end
+    return string(@sprintf("%.3f", value), " ", units)
+end
+
+function prettybandwidth(b)
+    if b < 1024
+        val, units = b, "B/s"
+    elseif b < 1024^2
+        val, units = b / 1024, "KiB/s"
+    elseif b < 1024^3
+        val, units = b / 1024^2, "MiB/s"
+    else
+        val, units = b / 1024^3, "GiB/s"
+    end
+    return string(@sprintf("%.3f", val), " ", units)
+end
 
 @inline index2rank(I, J, Mx, My) = J*My + I
 @inline rank2index(r, Mx, My) = mod(r, Mx), div(r, My)
@@ -21,8 +55,7 @@ using Oceananigans
 @inline send_north_tag(rank) = 400 + rank
 @inline send_south_tag(rank) = 500 + rank
 
-function send_halo_data(tile, Mx, My)
-    comm = MPI.COMM_WORLD
+function send_halo_data(tile, Mx, My, comm)
     rank = MPI.Comm_rank(comm)
 
     I, J = rank2index(rank, Mx, My)
@@ -53,12 +86,9 @@ function send_halo_data(tile, Mx, My)
    @debug "[rank $rank] sending #$(send_west_tag(rank)) to rank $west_rank"
    @debug "[rank $rank] sending #$(send_north_tag(rank)) to rank $north_rank"
    @debug "[rank $rank] sending #$(send_south_tag(rank)) to rank $south_rank"
-
-   MPI.Waitall!([se_req, sw_req, sn_req, ss_req])
 end
 
-function receive_halo_data(tile, Mx, My)
-    comm = MPI.COMM_WORLD
+function receive_halo_data(tile, Mx, My, comm)
     rank = MPI.Comm_rank(comm)
 
     I, J = rank2index(rank, Mx, My)
@@ -100,10 +130,11 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     Lx′, Ly′, Lz′ = Lx/Mx, Ly/My, Lz
 
     comm = MPI.COMM_WORLD
-
+    
     MPI.Barrier(comm)
 
     rank = MPI.Comm_rank(comm)
+       R = MPI.Comm_size(comm)
 
     I, J = rank2index(rank, Mx, My)
     I⁻, I⁺ = mod(I-1, Mx), mod(I+1, Mx)
@@ -116,51 +147,67 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     east_rank  = index2rank(I⁺, J,  Mx, My)
     west_rank  = index2rank(I⁻, J,  Mx, My)
 
+    tile_grid = RegularCartesianGrid((Nx′, Ny′, Nz′), (Lx′, Ly′, Lz′))
+    tile = CellField(FT, arch, tile_grid)
+    
     send_reqs = MPI.Request[]
     if rank == 0
         rands = rand(Nx, Ny, Nz)
 
-        for r in 0:Mx*My-1
+        for r in 1:Mx*My-1
             I′, J′ = rank2index(r, Mx, My)
             i1, i2 = I′*Nx′+1, (I′+1)*Nx′
             j1, j2 = J′*Ny′+1, (J′+1)*Ny′
             send_mesg = rands[i1:i2, j1:j2, :]
 
-            println("[rank $rank] Sending R[$i1:$i2, $j1:$j2, :] to rank $r...")
+            println("[rank $rank] Sending rands[$i1:$i2, $j1:$j2, :] to rank $r...")
             sreq = MPI.Isend(send_mesg, r, distribute_tag(r), comm)
             push!(send_reqs, sreq)
         end
 
+        data(tile) .= rands[1:Nx′, 1:Ny′, :]
+
         MPI.Waitall!(send_reqs)
     end
 
-    tile_grid = RegularCartesianGrid((Nx′, Ny′, Nz′), (Lx′, Ly′, Lz′))
-    tile = CellField(FT, arch, tile_grid)
+    if rank != 0
+        println("[rank $rank] Receiving tile from rank 0...")
+        recv_mesg = zeros(FT, Nx′, Ny′, Nz′)
+        rreq = MPI.Irecv!(recv_mesg, 0, distribute_tag(rank), comm)
 
-    println("[rank $rank] Receiving tile from rank 0...")
-    recv_mesg = zeros(FT, Nx′, Ny′, Nz′)
-    rreq = MPI.Irecv!(recv_mesg, 0, distribute_tag(rank), comm)
-
-    stats = MPI.Wait!(rreq)
-    data(tile) .= recv_mesg
-
-    println("[rank $rank] Sending halo data...")
-    send_halo_data(tile, Mx, My)
-
-    println("[rank $rank] Receiving halo data...")
-    receive_halo_data(tile, Mx, My)
-
-    println("[rank $rank] Sending halo data...")
-    send_halo_data(tile, Mx, My)
-
-    println("[rank $rank] Receiving halo data...")
-    receive_halo_data(tile, Mx, My)
-
-    if rank == 3
-        display(tile.data)
+        stats = MPI.Wait!(rreq)
+        data(tile) .= recv_mesg
     end
+    
+    println("[rank $rank] Sending halo data...")
+    send_halo_data(tile, Mx, My, comm)
+
+    println("[rank $rank] Receiving halo data...")
+    receive_halo_data(tile, Mx, My, comm)
+    
+    MPI.Barrier(comm)
+    if rank == 0
+        tic = time_ns() 
+    end
+
+    println("[rank $rank] Sending halo data...")
+    send_halo_data(tile, Mx, My, comm)
+
+    println("[rank $rank] Receiving halo data...")
+    receive_halo_data(tile, Mx, My, comm)
+
+	MPI.Barrier(comm)
+	if rank == 0
+		t = (time_ns() - tic)
+		ts = t / 1e9
+        @info "$R ranks halo communication time: $(prettytime(t))"
+        
+        Hx, Hy = 1, 1
+        data_size = sizeof(FT) * 2Nz*(Hx*Nx + Hy*Ny)
+        @info "$R ranks halo communication bandwidth: $(prettybandwidth(data_size/ts))"
+	end
 end
 
 MPI.Init()
-fill_halo_regions_mpi!(Float64, CPU(), 16, 16, 16, 2, 2)
+fill_halo_regions_mpi!(Float64, CPU(), 512, 512, 512, 2, 2)
 MPI.Finalize()
