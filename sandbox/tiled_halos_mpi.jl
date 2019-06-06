@@ -21,6 +21,67 @@ using Oceananigans
 @inline send_north_tag(rank) = 400 + rank
 @inline send_south_tag(rank) = 500 + rank
 
+function send_halo_data(tile)
+    rank = MPI.Comm_rank(comm)
+
+    I, J = rank2index(rank, Mx, My)
+    I⁻, I⁺ = mod(I-1, Mx), mod(I+1, Mx)
+    J⁻, J⁺ = mod(J-1, My), mod(J+1, My)
+    Nx′, Ny′, Nz′ = Int(Nx/Mx), Int(Ny/My), Nz
+    Lx′, Ly′, Lz′ = Lx/Mx, Ly/My, Lz
+
+    north_rank = index2rank(I,  J⁻, Mx, My)
+    south_rank = index2rank(I,  J⁺, Mx, My)
+    east_rank  = index2rank(I⁺, J,  Mx, My)
+    west_rank  = index2rank(I⁻, J,  Mx, My)
+
+    west_data_buf = zeros(size(west_data(tile)))
+    east_data_buf = zeros(size(east_data(tile)))
+   north_data_buf = zeros(size(north_data(tile)))
+   south_data_buf = zeros(size(south_data(tile)))
+
+    west_data_buf .= copy(west_data(tile))
+    east_data_buf .= copy(east_data(tile))
+   north_data_buf .= copy(north_data(tile))
+   south_data_buf .= copy(south_data(tile))
+
+   se_req = MPI.Isend(east_data_buf,  east_rank,  send_east_tag(rank),  comm)
+   sw_req = MPI.Isend(west_data_buf,  west_rank,  send_west_tag(rank),  comm)
+   sn_req = MPI.Isend(north_data_buf, north_rank, send_north_tag(rank), comm)
+   ss_req = MPI.Isend(south_data_buf, south_rank, send_south_tag(rank), comm)
+
+   @debug "[rank $rank] sending #$(send_east_tag(rank)) to rank $east_rank"
+   @debug "[rank $rank] sending #$(send_west_tag(rank)) to rank $west_rank"
+   @debug "[rank $rank] sending #$(send_north_tag(rank)) to rank $north_rank"
+   @debug "[rank $rank] sending #$(send_south_tag(rank)) to rank $south_rank"
+
+   MPI.Waitall!([se_req, sw_req, sn_req, ss_req])
+end
+
+function receive_halo_data(tile)
+    west_halo_buf = zeros(size(west_halo(tile)))
+    east_halo_buf = zeros(size(east_halo(tile)))
+   north_halo_buf = zeros(size(north_halo(tile)))
+   south_halo_buf = zeros(size(south_halo(tile)))
+
+   re_req = MPI.Irecv!(west_halo_buf,  west_rank,  send_east_tag(west_rank),  comm)
+   rw_req = MPI.Irecv!(east_halo_buf,  east_rank,  send_west_tag(east_rank),  comm)
+   rn_req = MPI.Irecv!(south_halo_buf, south_rank, send_north_tag(south_rank), comm)
+   rs_req = MPI.Irecv!(north_halo_buf, north_rank, send_south_tag(north_rank), comm)
+
+   @debug "[rank $rank] waiting for #$(send_east_tag(west_rank)) from rank $west_rank..."
+   @debug "[rank $rank] waiting for #$(send_west_tag(east_rank)) from rank $east_rank..."
+   @debug "[rank $rank] waiting for #$(send_north_tag(south_rank)) from rank $south_rank..."
+   @debug "[rank $rank] waiting for #$(send_south_tag(north_rank)) from rank $north_rank..."
+
+   MPI.Waitall!([re_req, rw_req, rn_req, rs_req])
+
+    east_halo(tile) .=  east_halo_buf
+    west_halo(tile) .=  west_halo_buf
+   north_halo(tile) .= north_halo_buf
+   south_halo(tile) .= south_halo_buf
+end
+
 function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     Lx, Ly, Lz = 10, 10, 10
 
@@ -32,7 +93,6 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     MPI.Barrier(comm)
 
     rank = MPI.Comm_rank(comm)
-    # size = MPI.Comm_size(comm)
 
     I, J = rank2index(rank, Mx, My)
     I⁻, I⁺ = mod(I-1, Mx), mod(I+1, Mx)
@@ -66,7 +126,7 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     tile_grid = RegularCartesianGrid((Nx′, Ny′, Nz′), (Lx′, Ly′, Lz′))
     tile = CellField(FT, arch, tile_grid)
 
-    println("[rank $rank] Receiving message from rank 0...")
+    println("[rank $rank] Receiving tile from rank 0...")
     recv_mesg = zeros(FT, Nx′, Ny′, Nz′)
     rreq = MPI.Irecv!(recv_mesg, 0, distribute_tag(rank), comm)
 
@@ -74,51 +134,20 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
     data(tile) .= recv_mesg
 
     println("[rank $rank] Sending halo data...")
-
-     west_data_buf = zeros(size(west_data(tile)))
-     east_data_buf = zeros(size(east_data(tile)))
-    north_data_buf = zeros(size(north_data(tile)))
-    south_data_buf = zeros(size(south_data(tile)))
-
-     west_data_buf .= copy(west_data(tile))
-     east_data_buf .= copy(east_data(tile))
-    north_data_buf .= copy(north_data(tile))
-    south_data_buf .= copy(south_data(tile))
-
-    se_req = MPI.Isend(east_data_buf,  east_rank,  send_east_tag(rank),  comm)
-    sw_req = MPI.Isend(west_data_buf,  west_rank,  send_west_tag(rank),  comm)
-    sn_req = MPI.Isend(north_data_buf, north_rank, send_north_tag(rank), comm)
-    ss_req = MPI.Isend(south_data_buf, south_rank, send_south_tag(rank), comm)
-
-    @debug "[rank $rank] sending #$(send_east_tag(rank)) to rank $east_rank"
-    @debug "[rank $rank] sending #$(send_west_tag(rank)) to rank $west_rank"
-    @debug "[rank $rank] sending #$(send_north_tag(rank)) to rank $north_rank"
-    @debug "[rank $rank] sending #$(send_south_tag(rank)) to rank $south_rank"
-
-    MPI.Waitall!([se_req, sw_req, sn_req, ss_req])
-
-     west_halo_buf = zeros(size(west_halo(tile)))
-     east_halo_buf = zeros(size(east_halo(tile)))
-    north_halo_buf = zeros(size(north_halo(tile)))
-    south_halo_buf = zeros(size(south_halo(tile)))
+    send_halo_data(tile)
 
     println("[rank $rank] Receiving halo data...")
-    re_req = MPI.Irecv!(west_halo_buf,  west_rank,  send_east_tag(west_rank),  comm)
-    rw_req = MPI.Irecv!(east_halo_buf,  east_rank,  send_west_tag(east_rank),  comm)
-    rn_req = MPI.Irecv!(south_halo_buf, south_rank, send_north_tag(south_rank), comm)
-    rs_req = MPI.Irecv!(north_halo_buf, north_rank, send_south_tag(north_rank), comm)
+    receive_halo_data(tile)
 
-    @debug "[rank $rank] waiting for #$(send_east_tag(west_rank)) from rank $west_rank..."
-    @debug "[rank $rank] waiting for #$(send_west_tag(east_rank)) from rank $east_rank..."
-    @debug "[rank $rank] waiting for #$(send_north_tag(south_rank)) from rank $south_rank..."
-    @debug "[rank $rank] waiting for #$(send_south_tag(north_rank)) from rank $north_rank..."
+    println("[rank $rank] Sending halo data...")
+    send_halo_data(tile)
 
-    MPI.Waitall!([re_req, rw_req, rn_req, rs_req])
+    println("[rank $rank] Receiving halo data...")
+    receive_halo_data(tile)
 
-    east_halo(tile) .=  east_halo_buf
-    west_halo(tile) .=  west_halo_buf
-   north_halo(tile) .= north_halo_buf
-   south_halo(tile) .= south_halo_buf
+    if rank == 3
+        display(tile.data)
+    end
 end
 
 MPI.Init()
