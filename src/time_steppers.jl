@@ -1,6 +1,6 @@
 @hascuda using CUDAnative, CuArrays
 
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll, @synchronize, stencil
 
 using Oceananigans.Operators
 
@@ -149,7 +149,6 @@ function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
     @synchronize
 end
 
-"Store previous value of the source term and calculate current source term."
 function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
@@ -158,43 +157,86 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
     fCor = constants.f
     ρ₀ = eos.ρ₀
 
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # u-momentum equation
-                @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
-                                            + fv(grid, v, fCor, i, j, k)
-                                            - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
-                                            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.u(grid, u, v, w, T, S, i, j, k))
-
-                # v-momentum equation
-                @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
-                                            - fu(grid, u, fCor, i, j, k)
-                                            - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
-                                            + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.v(grid, u, v, w, T, S, i, j, k))
-
-                # w-momentum equation: comment about how pressure and buoyancy are handled
-                @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
-                                            + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.w(grid, u, v, w, T, S, i, j, k))
-
-                # temperature equation
-                @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
-                                            + ∇_κ_∇ϕ(i, j, k, grid, T, closure, eos, grav, u, v, w, T, S)
-                                            + F.T(grid, u, v, w, T, S, i, j, k))
-
-                # salinity equation
-                @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
-                                            + ∇_κ_∇ϕ(i, j, k, grid, S, closure, eos, grav, u, v, w, T, S)
-                                            + F.S(grid, u, v, w, T, S, i, j, k))
-            end
-        end
+    for (i, j, k, uₛ, vₛ, wₛ, Tₛ, Sₛ) in stencil((Nx, Ny, Nz), u, v, w, T, S)
+        # u-momentum equation
+        @inbounds Gu[i, j, k] = (-u∇u(grid, uₛ, vₛ, wₛ, 2, 2, 2)
+                                    + fv(grid, vₛ, fCor, 2, 2, 2)
+                                    - δx_c2f(grid, pHY′, 2, 2, 2) / (Δx * ρ₀)
+                                    + ∂ⱼ_2ν_Σ₁ⱼ(2, 2, 2, grid, closure, eos, grav, uₛ, vₛ, wₛ, Tₛ, Sₛ)
+                                    + F.u(grid, uₛ, vₛ, wₛ, Tₛ, Sₛ, 2, 2, 2))
+        #
+        # # v-momentum equation
+        # @inbounds Gv[i, j, k] = (-u∇v(grid, uₛ, vₛ, wₛ, 2, 2, 2)
+        #                             - fu(grid, uₛ, fCor, 2, 2, 2)
+        #                             - δy_c2f(grid, pHY′, 2, 2, 2) / (Δy * ρ₀)
+        #                             + ∂ⱼ_2ν_Σ₂ⱼ(2, 2, 2, grid, closure, eos, grav, uₛ, vₛ, wₛ, Tₛ, Sₛ)
+        #                             + F.v(grid, uₛ, vₛ, wₛ, Tₛ, Sₛ, 2, 2, 2))
+        #
+        # # w-momentum equation: comment about how pressure and buoyancy are handled
+        # @inbounds Gw[i, j, k] = (-u∇w(grid, uₛ, vₛ, wₛ, 2, 2, 2)
+        #                             + ∂ⱼ_2ν_Σ₃ⱼ(2, 2, 2, grid, closure, eos, grav, uₛ, vₛ, wₛ, Tₛ, Sₛ)
+        #                             + F.w(grid, uₛ, vₛ, wₛ, Tₛ, Sₛ, 2, 2, 2))
+        #
+        # # temperature equation
+        # @inbounds GT[i, j, k] = (-div_flux(grid, uₛ, vₛ, wₛ, Tₛ, 2, 2, 2)
+        #                             + ∇_κ_∇ϕ(2, 2, 2, grid, Tₛ, closure, eos, grav, uₛ, vₛ, wₛ, Tₛ, Sₛ)
+        #                             + F.T(grid, uₛ, vₛ, wₛ, Tₛ, Sₛ, 2, 2, 2))
+        #
+        # # salinity equation
+        # @inbounds GS[i, j, k] = (-div_flux(grid, uₛ, vₛ, wₛ, Sₛ, 2, 2, 2)
+        #                             + ∇_κ_∇ϕ(2, 2, 2, grid, Sₛ, closure, eos, grav, uₛ, vₛ, wₛ, Tₛ, Sₛ)
+        #                             + F.S(grid, uₛ, vₛ, wₛ, Tₛ, Sₛ, 2, 2, 2))
     end
 
-    @synchronize
+    return nothing
 end
+
+# "Store previous value of the source term and calculate current source term."
+# function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+#     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+#     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
+#
+#     grav = constants.g
+#     fCor = constants.f
+#     ρ₀ = eos.ρ₀
+#
+#     @loop for k in (1:grid.Nz; blockIdx().z)
+#         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+#             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+#                 # u-momentum equation
+#                 @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
+#                                             + fv(grid, v, fCor, i, j, k)
+#                                             - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
+#                                             + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+#                                             + F.u(grid, u, v, w, T, S, i, j, k))
+#
+#                 # v-momentum equation
+#                 @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
+#                                             - fu(grid, u, fCor, i, j, k)
+#                                             - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
+#                                             + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+#                                             + F.v(grid, u, v, w, T, S, i, j, k))
+#
+#                 # w-momentum equation: comment about how pressure and buoyancy are handled
+#                 @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
+#                                             + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+#                                             + F.w(grid, u, v, w, T, S, i, j, k))
+#
+#                 # temperature equation
+#                 @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
+#                                             + ∇_κ_∇ϕ(i, j, k, grid, T, closure, eos, grav, u, v, w, T, S)
+#                                             + F.T(grid, u, v, w, T, S, i, j, k))
+#
+#                 # salinity equation
+#                 @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
+#                                             + ∇_κ_∇ϕ(i, j, k, grid, S, closure, eos, grav, u, v, w, T, S)
+#                                             + F.S(grid, u, v, w, T, S, i, j, k))
+#             end
+#         end
+#     end
+#
+#     @synchronize
+# end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
     @loop for k in (1:grid.Nz; blockIdx().z)
