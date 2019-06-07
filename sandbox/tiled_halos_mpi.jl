@@ -1,5 +1,6 @@
 using Printf
 
+using CuArrays
 import MPI
 
 using Oceananigans
@@ -117,10 +118,10 @@ function receive_halo_data(tile, Mx, My, comm)
 
    MPI.Waitall!([re_req, rw_req, rn_req, rs_req])
 
-    east_halo(tile) .=  east_halo_buf
-    west_halo(tile) .=  west_halo_buf
-   north_halo(tile) .= north_halo_buf
-   south_halo(tile) .= south_halo_buf
+     east_halo(tile) .= CuArray(east_halo_buf)
+     west_halo(tile) .= CuArray(west_halo_buf)
+    north_halo(tile) .= CuArray(north_halo_buf)
+    south_halo(tile) .= CuArray(south_halo_buf)
 end
 
 function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
@@ -209,5 +210,5 @@ function fill_halo_regions_mpi!(FT, arch, Nx, Ny, Nz, Mx, My)
 end
 
 MPI.Init()
-fill_halo_regions_mpi!(Float64, CPU(), 512, 512, 512, 2, 2)
+fill_halo_regions_mpi!(Float64, GPU(), 192, 192, 192, 3, 3)
 MPI.Finalize()
