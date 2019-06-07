@@ -68,6 +68,7 @@ function send_halo_data(tile, Mx, My, comm)
     east_rank  = index2rank(I⁺, J,  Mx, My)
     west_rank  = index2rank(I⁻, J,  Mx, My)
 
+    # cuzeros doesn't exist anymore. Use similar!
     west_data_buf = zeros(size(west_data(tile)))
     east_data_buf = zeros(size(east_data(tile)))
    north_data_buf = zeros(size(north_data(tile)))
