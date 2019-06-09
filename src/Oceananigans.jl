@@ -77,8 +77,7 @@ export
     solve_poisson_3d_ppn_gpu!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. configuration, clock, etc.
-    ModelConfiguration,
+    # Model helper structs, e.g. clock, etc.
     Clock,
     Model,
 
@@ -166,7 +165,6 @@ abstract type PoissonSolver end
 
 include("utils.jl")
 
-include("model_configuration.jl")
 include("clock.jl")
 include("planetary_constants.jl")
 include("grids.jl")
