@@ -36,10 +36,11 @@ Our goal is to develop friendly and intuitive code allowing users to focus on th
 * Jean-Michel Campin ([@jm-c](https://github.com/jm-c))
 * [John Marshall](http://oceans.mit.edu/JohnMarshall/) ([@johncmarshall54](https://github.com/johncmarshall54))
 * [Greg Wagner](https://glwagner.github.io/) ([@glwagner](https://github.com/glwagner))
-* [Mukund Gupta](https://mukund-gupta.github.io/) ([@mukund-gupta](https://github.com/mukund-gupta))
 * Andre Souza ([@sandreza](https://github.com/sandreza))
+* [James Schloss](http://leios.github.io/) ([@leios](https://github.com/leios/simuleios))
+* [Mukund Gupta](https://mukund-gupta.github.io/) ([@mukund-gupta](https://github.com/mukund-gupta))
 * Zhen Wu ([@zhenwu0728](https://github.com/zhenwu0728))
-* Also big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
+* On the Julia side, big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)), Tim Besard ([@maleadt](https://github.com/maleadt)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
 
 ## Installation instructions
 You can install the latest stable version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
