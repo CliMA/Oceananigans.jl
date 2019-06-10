@@ -60,3 +60,38 @@ end
         @inbounds return f[i, j, k-1] - f[i, j, k]
     end
 end
+
+@inline ϊx_c2f(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i-1,  j, k])
+@inline ϊx_f2c(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i+1, j, k] + f[i,    j, k])
+@inline ϊx_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i-1,  j, k])
+
+@inline ϊy_c2f(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i,  j-1, k])
+@inline ϊy_f2c(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i, j+1, k] + f[i,    j, k])
+@inline ϊy_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i,  j-1, k])
+
+@inline fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgy_f2c(i-1,  j, k, grid, v) + avgy_f2c(i, j, k, grid, v))
+@inline fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgx_f2c(i,  j-1, k, grid, u) + avgx_f2c(i, j, k, grid, u))
+
+@inline function ϊz_c2f(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == 1
+        @inbounds return f[i, j, k]
+    else
+        @inbounds return T(0.5) * (f[i, j, k] + f[i, j, k-1])
+    end
+end
+
+@inline function ϊz_f2c(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == grid.Nz
+        @inbounds return T(0.5) * f[i, j, k]
+    else
+        @inbounds return T(0.5) * (f[i, j, k+1] + f[i, j, k])
+    end
+end
+
+@inline function ϊz_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == 1
+        @inbounds return f[i, j, k]
+    else
+        @inbounds return T(0.5) * (f[i, j, k] + f[i, j, k-1])
+    end
+end
