@@ -72,6 +72,8 @@ addprocs(1)
 @everywhere using Printf
 @everywhere using Statistics: mean
 
+# @everywhere CuArrays.allowscalar(false)
+
 # Physical constants.
 ρ₀ = 1027    # Density of seawater [kg/m³]
 cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
@@ -83,12 +85,12 @@ Lx, Ly, Lz = 200, 200, 200
 Nt = Int(T/dt)
 ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
 
-ωy = 2π / T  # Seasonal frequency.
+ωs = 2π / T  # Seasonal frequency.
 Φavg = dTdz * Lz^2 / (8T)
 a = 1.1 * Φavg
 @inline Qsurface(t) = (Φavg + a*sin(c*ωs*t)) / (ρ₀*cₚ)
 
-@info "Φavg = $Φavg W/m²"
+@info "Φavg = $(Φavg*ρ₀*cₚ) W/m²"
 
 # Create the model.
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
@@ -104,7 +106,7 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
 # facilitate numerical convection.
 @. T_3d[:, :, 1:round(Int, Nz/2)] += 0.00001*randn()
 
-model.tracers.T.data .= CuArray(T_3d)
+ardata(model.tracers.T) .= CuArray(T_3d)
 
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity and temperature fields every 1,000 time steps and abort the simulation
