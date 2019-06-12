@@ -19,6 +19,10 @@ s = ArgParseSettings(description="Run simulations of a mixed layer over an ideal
         arg_type=Float64
         required=true
         help="Time step in seconds."
+    "--cycles"
+        arg_type=Int
+        required=true
+        help="Number of idealized seasonal cycles."
     "--simulation-time", "-T"
         arg_type=Float64
         required=true
@@ -34,16 +38,18 @@ N = parsed_args["resolution"]
 dTdz = parsed_args["dTdz"]
 κ = parsed_args["diffusivity"]
 dt = parsed_args["dt"]
+c = parsed_args["cycles"]
 T = parsed_args["simulation-time"]
 
 N  = isinteger(N) ? Int(N) : N
 dt = isinteger(dt) ? Int(dt) : dt
+c  = isinteger(c) ? Int(c) : c
 T  = isinteger(T) ? Int(T) : T
 
 base_dir = parsed_args["output-dir"]
 
 filename_prefix = "seasonal_cycle_N" * string(N) * "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
-                  "_T" * string(T)
+                  "_c" * string(c) * "_T" * string(T)
 output_dir = joinpath(base_dir, filename_prefix)
 
 if !isdir(output_dir)
@@ -80,7 +86,7 @@ Nt = Int(T/dt)
 ωy = 2π / T  # Seasonal frequency.
 Φavg = dTdz * Lz^2 / (8T)
 a = 1.1 * Φavg
-@inline Qsurface(t) = (Φavg + a*sin(ωs*t)) / (ρ₀*cₚ)
+@inline Qsurface(t) = (Φavg + a*sin(c*ωs*t)) / (ρ₀*cₚ)
 
 @info "Φavg = $Φavg W/m²"
 
