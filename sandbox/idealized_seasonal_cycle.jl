@@ -48,7 +48,7 @@ T  = isinteger(T) ? Int(T) : T
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "seasonal_cycle_N" * string(N) * "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
+filename_prefix = "idealized_seasonal_cycle_N" * string(N) * "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
                   "_c" * string(c) * "_T" * string(T)
 output_dir = joinpath(base_dir, filename_prefix)
 
@@ -88,7 +88,7 @@ Nt = Int(T/dt)
 ωs = 2π / T  # Seasonal frequency.
 Φavg = dTdz * Lz^2 / (8T)
 a = 1.1 * Φavg
-@inline Qsurface(t) = (Φavg + a*sin(c*ωs*t)) / (ρ₀*cₚ)
+@inline Qsurface(t) = (Φavg + a*sin(c*ωs*t))
 
 @info "Φavg = $(Φavg*ρ₀*cₚ) W/m²"
 
@@ -106,7 +106,7 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
 # facilitate numerical convection.
 @. T_3d[:, :, 1:round(Int, Nz/2)] += 0.00001*randn()
 
-ardata(model.tracers.T) .= CuArray(T_3d)
+ardata_view(model.tracers.T) .= CuArray(T_3d)
 
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity and temperature fields every 1,000 time steps and abort the simulation
