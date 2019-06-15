@@ -34,6 +34,7 @@ export
     EdgeField,
     data,
     ardata,
+    ardata_view,
     underlying_data,
     set!,
 
