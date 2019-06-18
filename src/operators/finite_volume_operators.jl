@@ -80,13 +80,9 @@ operators.
 
 @inline δx_caa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i+1, j, k] - f[i,   j, k]
 @inline δx_faa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i,   j, k] - f[i-1, j, k]
-# @inline δx_e2f(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i+1, j, k] - f[i,   j, k]
-# @inline δx_f2e(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i,   j, k] - f[i-1, j, k]
 
 @inline δy_aca(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j+1, k] - f[i, j,   k]
 @inline δy_afa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j,   k] - f[i, j-1, k]
-# @inline δy_e2f(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j+1, k] - f[i, j,   k]
-# @inline δy_f2e(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j,   k] - f[i, j-1, k]
 
 @inline function δz_aac(i, j, k, g::Grid{T}, f::AbstractArray) where T
     if k == grid.Nz
@@ -103,22 +99,6 @@ end
         @inbounds return f[i, j, k-1] - f[i, j, k]
     end
 end
-
-# @inline function δz_e2f(i, j, k, g::Grid{T}, f::AbstractArray) where T
-#     if k == grid.Nz
-#         @inbounds return f[i, j, k]
-#     else
-#         @inbounds return f[i, j, k] - f[i, j, k+1]
-#     end
-# end
-#
-# @inline function δz_f2e(i, j, k, g::Grid{T}, f::AbstractArray) where T
-#     if k == 1
-#         return -zero(T)
-#     else
-#         @inbounds return f[i, j, k-1] - f[i, j, k]
-#     end
-# end
 
 @inline δxA_caa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ax(i+1, j, k, grid) * f[i+1, j, k] - Ax(i,   j, k) * f[i,   j, k]
 @inline δxA_faa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ax(i,   j, k, grid) * f[i,   j, k] - Ax(i-1, j, k) * f[i-1, j, k]
@@ -144,11 +124,9 @@ end
 
 @inline ϊx_caa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i+1, j, k] + f[i,    j, k])
 @inline ϊx_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i-1,  j, k])
-# @inline ϊx_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i-1,  j, k])
 
 @inline ϊy_aca(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i, j+1, k] + f[i,    j, k])
 @inline ϊy_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i,  j-1, k])
-# @inline ϊy_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i,  j-1, k])
 
 @inline fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgy_aca(i-1,  j, k, grid, v) + avgy_aca(i, j, k, grid, v))
 @inline fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgx_caa(i,  j-1, k, grid, u) + avgx_caa(i, j, k, grid, u))
@@ -169,23 +147,17 @@ end
     end
 end
 
-# @inline function ϊz_f2e(i, j, k, grid::Grid{T}, f::AbstractArray) where T
-#     if k == 1
-#         @inbounds return f[i, j, k]
-#     else
-#         @inbounds return T(0.5) * (f[i, j, k] + f[i, j, k-1])
-#     end
-# end
-
 @inline ϊxAx_caa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ax(i+1, j, k, grid) * f[i+1, j, k] + Ax(i,   j, k, grid) * f[i,    j, k])
 @inline ϊxAx_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ax(i,   j, k, grid) * f[i,   j, k] + Ax(i-1, j, k, grid) * f[i-1,  j, k])
 @inline ϊxAy_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i,   j, k, grid) * f[i,   j, k] + Ay(i-1, j, k, grid) * f[i-1,  j, k])
 @inline ϊxAz_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Az(i,   j, k, grid) * f[i,   j, k] + Az(i-1, j, k, grid) * f[i-1,  j, k])
 
 @inline ϊyAy_aca(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i, j+1, k, grid) * f[i, j+1, k] + Ay(i,   j, k, grid) * f[i,    j, k])
+@inline ϊyAx_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ax(i,   j, k, grid) * f[i,   j, k] + Ax(i, j-1, k, grid) * f[i,  j-1, k])
 @inline ϊyAy_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i,   j, k, grid) * f[i,   j, k] + Ay(i, j-1, k, grid) * f[i,  j-1, k])
+@inline ϊyAz_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Az(i,   j, k, grid) * f[i,   j, k] + Az(i, j-1, k, grid) * f[i,  j-1, k])
 
-@inline function ϊzA_aac(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+@inline function ϊzAz_aac(i, j, k, grid::Grid{T}, f::AbstractArray) where T
     if k == grid.Nz
         @inbounds return T(0.5) * Az(i, j, k, grid) * f[i, j, k]
     else
@@ -193,7 +165,23 @@ end
     end
 end
 
-@inline function ϊzA_aaf(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+@inline function ϊzAx_aaf(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == 1
+        @inbounds return Ax(i, j, k, grid) * f[i, j, k]
+    else
+        @inbounds return T(0.5) * (Ax(i, j, k, grid) * f[i, j, k] + Ax(i, j, k-1, grid) * f[i, j, k-1])
+    end
+end
+
+@inline function ϊzAy_aaf(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == 1
+        @inbounds return Ay(i, j, k, grid) * f[i, j, k]
+    else
+        @inbounds return T(0.5) * (Ay(i, j, k, grid) * f[i, j, k] + Ay(i, j, k-1, grid) * f[i, j, k-1])
+    end
+end
+
+@inline function ϊzAz_aaf(i, j, k, grid::Grid{T}, f::AbstractArray) where T
     if k == 1
         @inbounds return Az(i, j, k, grid) * f[i, j, k]
     else
@@ -280,4 +268,69 @@ which will end up at the location `fcc`.
 """
 @inline function u∇u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray)
     ϊx_V⁻¹(i, j, k, grid) * (δx_faa_Aūˣūˣ(i, j, k, grid, u) + δy_fca_Av̄ˣūʸ(i, j, k, grid, u, v) + δz_fac_Aw̄ˣūᶻ(i, j, k, grid, u, w))
+end
+
+""" Calculates δx_cfa(ϊy_afa(Ax * u) * ϊx_faa(v)). """
+@inline function δx_cfa_Aūʸv̄ˣ(i, j, k, grid::RegularCartesianGrid, u::AbstractArray, v::AbstractArray)
+    ϊyAx_afa(i+1, j, k, grid, u) * ϊx_faa(i+1, j, k, grid, v) -
+    ϊyAx_afa(i,   j, k, grid, u) * ϊx_faa(i,   j, k, grid, v)
+end
+
+""" Calculates δy_afa(ϊy_aca(Ay * v) * ϊy_aca(v)). """
+@inline function δy_afa_Av̄ʸv̄ʸ(i, j, k, grid::Grid, v::AbstractArray)
+    ϊyAy_aca(i,   j, k, grid, v) * ϊy_aca(i,   j, k, grid, v) -
+    ϊyAy_aca(i, j-1, k, grid, v) * ϊy_aca(i, j-1, k, grid, v)
+end
+
+""" Calculates δz_afc(ϊx_faa(Az * w) * ϊz_aaf(w)) """
+@inline function δz_afc_Aw̄ʸv̄ᶻ(i, j, k, grid::Grid, v::AbstractArray, w::AbstractArray)
+    if k == grid.Nz
+        @inbounds return ϊyAz_afa(i, j, k, grid, w) * ϊz_aaf(i, j, k, grid, v)
+    else
+        @inbounds return ϊyAz_afa(i, j,   k, grid, w) * ϊz_aaf(i, j,   k, grid, v) -
+                         ϊyAz_afa(i, j, k+1, grid, w) * ϊz_aaf(i, j, k+1, grid, v)
+    end
+end
+
+"""
+Calculates the advection of momentum in the y-direction V·∇v with a velocity field V = (u, v, w) via
+
+    (v̅ʸ)⁻¹ * [δx_cfa(ϊy_afa(Ax * u) * ϊx_faa(v)) + δy_afa(ϊy_aca(Ay * v) * ϊy_aca(v)) + δz_afc(ϊx_faa(Az * w) * ϊz_aaf(w))]
+
+which will end up at the location `cfc`.
+"""
+@inline function u∇v(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray)
+    ϊy_V⁻¹(i, j, k, grid) * (δx_cfa_Aūʸv̄ˣ(i, j, k, grid, u, v) + δy_afa_Av̄ʸv̄ʸ(i, j, k, grid, v) + δz_afc_Aw̄ʸv̄ᶻ(i, j, k, grid, v, w))
+end
+
+""" Calculates δx_caf(ϊz_aaf(Ax * u) * ϊx_faa(w)). """
+@inline function δx_caf_Aūᶻw̄ˣ(i, j, k, grid::Grid, u::AbstractArray, w::AbstractArray)
+    ϊzAx_aaf(i+1, j, k, grid, u) * ϊx_faa(i+1, j, k, grid, w) -
+    ϊzAx_aaf(i,   j, k, grid, u) * ϊx_faa(i,   j, k, grid, w)
+end
+
+""" Calculates δy_acf(ϊz_aaf(Ay * v) * ϊy_afa(w)). """
+@inline function δy_acf_Av̄ᶻw̄ʸ(i, j, k, grid::Grid, v::AbstractArray, w::AbstractArray)
+    ϊzAy_aaf(i, j+1, k, grid, v) * ϊy_afa(i, j+1, k, grid, w) -
+    ϊzAy_aaf(i, j,   k, grid, v) * ϊy_afa(i, j,   k, grid, w)
+end
+
+""" Calculates δz_aaf(ϊz_aac(Az * w) * ϊz_aac(w)). """
+@inline function δz_aaf_Aw̄ᶻw̄ᶻ(i, j, k, grid::Grid{T}, w::AbstractArray) where T
+    if k == 1
+        return -zero(T)
+    else
+        return ϊzAz_aac(i, j, k-1, grid, w) * ϊz_aac(i, j, k-1, grid, w) - ϊzAz_aac(i, j, k, grid, w) * ϊz_aac(i, j, k, grid, w)
+    end
+end
+
+"""
+Calculates the advection of momentum in the z-direction V·∇w with a velocity field V = (u, v, w) via
+
+    (v̅ᶻ)⁻¹ * [δx_caf(ϊz_aaf(Ax * u) * ϊx_faa(w)) + δy_acf(ϊz_aaf(Ay * v) * ϊy_afa(w)) + δz_aaf(ϊz_aac(Az * w) * ϊz_aac(w))]
+
+which will end up at the location `ccf`.
+"""
+@inline function u∇w(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray)
+    ϊz_V⁻¹(i, j, k, grid) * (δx_caf_Aūᶻw̄ˣ(i, j, k, grid, u, w) + δy_acf_Av̄ᶻw̄ʸ(i, j, k, grid, v, w) + δz_aaf_Aw̄ᶻw̄ᶻ(i, j, k, grid, w))
 end
