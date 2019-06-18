@@ -20,6 +20,56 @@ using Oceananigans:
 @inline V(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * Δz(i, j, k, grid)
 @inline V⁻¹(i, j, k, grid::Grid) = 1 / V(i, j, k, grid)
 
+#=
+Differentiation and interpolation operators for functions
+
+The geometry of the staggerd grid used by Oceananigans (the Arakawa C-grid)
+is (in one dimension) shown below
+
+face   cell   face   cell   face
+
+        i-1            i
+         ↓             ↓
+  |      ×      |      ×      |
+  ↑             ↑             ↑
+ i-1            i            i+1
+
+Difference operators are denoted by a `δ` (`\delta`). Calculating the difference
+of a cell-centered quantity ϕ at cell i will return the difference at face i
+
+δϕᵢ = ϕᵢ - ϕᵢ₋₁
+
+and so this operation, if applied along the x-dimension, is denoted by `δx_faa`.
+
+The difference of a face-centered quantity u at face i will return the difference
+at cell i
+
+δuᵢ = uᵢ₊₁ - uᵢ
+
+and is thus denoted `δx_caa` when applied along the x-dimension.
+
+The three characters at the end of the function name, `faa` for example, indicates that
+the output will lie on the cell faces in the x-dimension but will remain at their original
+positions in the y- and z-dimensions. Thus we further identify this operator by `_faa`
+where the `a` stands for any as the location is unchanged by the operator and is determined
+by the input.
+
+As a result the interpolation of a quantity ϕ from a cell i to face i
+(this operation is denoted "ϊx_faa" in the code below) is
+
+ϊx_faa(ϕ)ᵢ = (ϕᵢ + ϕᵢ₋₁) / 2
+
+Conversely, the interpolation of a quantity u from a face i to cell i is given by
+
+ϊx_caa(u)ᵢ = (uᵢ₊₁ + uᵢ) / 2
+
+The `ϊ` (`\iota\ddot`) symbol indicates that an interpolation is being performed.
+`ϊx`, for example, indicates that the interpolation is performed along the x-dimension.
+The three following characters in the interpolation function name indicate the
+position that is being interpolated to following the same convention used for difference
+operators.
+=#
+
 @inline δx_caa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i+1, j, k] - f[i,   j, k]
 @inline δx_faa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i,   j, k] - f[i-1, j, k]
 # @inline δx_e2f(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i+1, j, k] - f[i,   j, k]
@@ -128,12 +178,12 @@ end
                Ax(i, j, k, grid) * a[i,   j, k] * ϊx_faa(i,   j, k, grid, b))
 end
 
-@inline function δy_aca_ab̄ʸ(i, j, k, grid::Grid, a::AbstractArray, b::AbstractArray)
+@inline function δyA_aca_ab̄ʸ(i, j, k, grid::Grid, a::AbstractArray, b::AbstractArray)
     @inbounds (Ay(i, j, k, grid) * a[i, j+1, k] * ϊy_afa(i, j+1, k, grid, b) -
                Ay(i, j, k, grid) * a[i,   j, k] * ϊy_afa(i, j,   k, grid, b))
 end
 
-@inline function δz_aac_ab̄ᶻ(i, j, k, grid::Grid, a::AbstractArray, b::AbstractArray)
+@inline function δzA_aac_ab̄ᶻ(i, j, k, grid::Grid, a::AbstractArray, b::AbstractArray)
     if k == grid.Nz
         @inbounds return Az(i, j, k, grid) * a[i, j, k] * ϊz_aaf(i, j, k, grid, b)
     else
