@@ -20,6 +20,14 @@ using Oceananigans:
 @inline V(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * Δz(i, j, k, grid)
 @inline V⁻¹(i, j, k, grid::Grid) = 1 / V(i, j, k, grid)
 
+@inline ϊx_V(i, j, k, grid::Grid{T}) where T = T(0.5) * (V(i+1, j, k, grid) + V(i, j, k, grid))
+@inline ϊy_V(i, j, k, grid::Grid{T}) where T = T(0.5) * (V(i, j+1, k, grid) + V(i, j, k, grid))
+@inline ϊz_V(i, j, k, grid::Grid{T}) where T = T(0.5) * (V(i, j, k+1, grid) + V(i, j, k, grid))
+
+@inline ϊx_V⁻¹(i, j, k, grid::Grid{T}) = 1 / ϊx_V(i, j, k, grid)
+@inline ϊy_V⁻¹(i, j, k, grid::Grid{T}) = 1 / ϊy_V(i, j, k, grid)
+@inline ϊz_V⁻¹(i, j, k, grid::Grid{T}) = 1 / ϊz_V(i, j, k, grid)
+
 #=
 Differentiation and interpolation operators for functions
 
@@ -169,6 +177,30 @@ end
 #     end
 # end
 
+@inline ϊxAx_caa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ax(i+1, j, k, grid) * f[i+1, j, k] + Ax(i,   j, k, grid) * f[i,    j, k])
+@inline ϊxAx_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ax(i,   j, k, grid) * f[i,   j, k] + Ax(i-1, j, k, grid) * f[i-1,  j, k])
+@inline ϊxAy_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i,   j, k, grid) * f[i,   j, k] + Ay(i-1, j, k, grid) * f[i-1,  j, k])
+@inline ϊxAz_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Az(i,   j, k, grid) * f[i,   j, k] + Az(i-1, j, k, grid) * f[i-1,  j, k])
+
+@inline ϊyAy_aca(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i, j+1, k, grid) * f[i, j+1, k] + Ay(i,   j, k, grid) * f[i,    j, k])
+@inline ϊyAy_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (Ay(i,   j, k, grid) * f[i,   j, k] + Ay(i, j-1, k, grid) * f[i,  j-1, k])
+
+@inline function ϊzA_aac(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == grid.Nz
+        @inbounds return T(0.5) * Az(i, j, k, grid) * f[i, j, k]
+    else
+        @inbounds return T(0.5) * (Az(i, j, k+1, grid) * f[i, j, k+1] + Az(i, j, k, grid) * f[i, j, k])
+    end
+end
+
+@inline function ϊzA_aaf(i, j, k, grid::Grid{T}, f::AbstractArray) where T
+    if k == 1
+        @inbounds return Az(i, j, k, grid) * f[i, j, k]
+    else
+        @inbounds return T(0.5) * (Az(i, j, k, grid) * f[i, j, k] + Az(i, j, k-1, grid) * f[i, j, k-1])
+    end
+end
+
 """
 Calculates the divergence ∇·f of a vector field f = (fx, fy, fz) via the discrete operation
 
@@ -206,6 +238,8 @@ end
 Calculates the divergence of a flux ∇·(VQ) with a velocity field V = (u, v, w) and scalar quantity Q via
 
     V⁻¹ * [δx_caa(Ax * u * ϊx_faa(Q)) + δy_aca(Ay * v * ϊy_afa(Q)) + δz_aac(Az * w * ϊz_aaf(Q))]
+
+which will end up at the location `ccc`.
 """
 @inline function div_flux(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray, Q::AbstractArray)
     if k == 1
@@ -215,24 +249,35 @@ Calculates the divergence of a flux ∇·(VQ) with a velocity field V = (u, v, w
     end
 end
 
-@inline function δxA_faa_ūˣūˣ(i, j, k, g::Grid, u::AbstractArray)
-    avgx_f2c(i, j, k, grid, u)^2 - avgx_f2c(i-1, j, k, grid, u)^2
+""" Calculates δx_faa(ϊx_caa(Ax * u) * ϊx_caa(u)). """
+@inline function δx_faa_Aūˣūˣ(i, j, k, grid::Grid, u::AbstractArray)
+    ϊxAx_caa(i,   j, k, grid, u) * ϊx_caa(i,   j, k, grid, u) -
+    ϊxAx_caa(i-1, j, k, grid, u) * ϊx_caa(i-1, j, k, grid, u)
 end
 
-@inline function δy_e2f_v̄ˣūʸ(g::RegularCartesianGrid, u, v, i, j, k)
-    avgx_f2e(g, v, i, j+1, k) * avgy_f2e(g, u, i, j+1, k) -
-    avgx_f2e(g, v, i,   j, k) * avgy_f2e(g, u, i,   j, k)
+""" Calculates δy_fca(ϊx_faa(Ay * v) * ϊy_afa(u)). """
+@inline function δy_fca_Av̄ˣūʸ(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray)
+    ϊxAy_faa(i, j+1, k, grid, v) * ϊy_afa(i, j+1, k, grid, u) -
+    ϊxAy_faa(i,   j, k, grid, v) * ϊy_afa(i,   j, k, grid, u)
 end
 
-@inline function δz_e2f_w̄ˣūᶻ(g::RegularCartesianGrid, u, w, i, j, k)
-    if k == g.Nz
-        @inbounds return avgx_f2e(g, w, i, j, k) * avgz_f2e(g, u, i, j, k)
+""" Calculates δz_fac(ϊx_faa(Az * w) * ϊz_aaf(u)). """
+@inline function δz_fac_Aw̄ˣūᶻ(i, j, k, grid::Grid, u::AbstractArray, w::AbstractArray)
+    if k == grid.Nz
+        @inbounds return ϊxAz_faa(i, j, k, grid, w) * ϊz_aaf(i, j, k, grid, u)
     else
-        @inbounds return avgx_f2e(g, w, i, j,   k) * avgz_f2e(g, u, i, j,   k) -
-                         avgx_f2e(g, w, i, j, k+1) * avgz_f2e(g, u, i, j, k+1)
+        @inbounds return ϊxAz_faa(i, j,   k, grid, w) * ϊz_aaf(i, j,   k, grid, u) -
+                         ϊxAz_faa(i, j, k+1, grid, w) * ϊz_aaf(i, j, k+1, grid, u)
     end
 end
 
-@inline function u∇u(g::RegularCartesianGrid, u, v, w, i, j, k)
-    (δx_c2f_ūˣūˣ(g, u, i, j, k) / g.Δx) + (δy_e2f_v̄ˣūʸ(g, u, v, i, j, k) / g.Δy) + (δz_e2f_w̄ˣūᶻ(g, u, w, i, j, k) / g.Δz)
+"""
+Calculates the advection of momentum in the x-direction V·∇u with a velocity field V = (u, v, w) via
+
+    (v̅ˣ)⁻¹ * [δx_faa(ϊx_caa(Ax * u) * ϊx_caa(u)) + δy_fca(ϊx_faa(Ay * v) * ϊy_afa(u)) + δz_fac(ϊx_faa(Az * w) * ϊz_aaf(u))]
+
+which will end up at the location `fcc`.
+"""
+@inline function u∇u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray)
+    ϊx_V⁻¹(i, j, k, grid) * (δx_faa_Aūˣūˣ(i, j, k, grid, u) + δy_fca_Av̄ˣūʸ(i, j, k, grid, u, v) + δz_fac_Aw̄ˣūᶻ(i, j, k, grid, u, w))
 end
