@@ -17,6 +17,14 @@ using Oceananigans:
 @inline Ay(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δz(i, j, k, grid)
 @inline Az(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
+@inline ϊAx_caa(i, j, k, grid::Grid) where T = T(0.5) * (Ax(i, j, k, grid) + Ax(i+1, j, k, grid))
+@inline ϊAy_aca(i, j, k, grid::Grid) where T = T(0.5) * (Ay(i, j, k, grid) + Ay(i, j+1, k, grid))
+@inline ϊAz_aac(i, j, k, grid::Grid) where T = T(0.5) * (Az(i, j, k, grid) + Az(i, j, k+1, grid))
+
+@inline ϊAx_faa(i, j, k, grid::Grid) where T = T(0.5) * (Ax(i-1, j, k, grid) + Ax(i, j, k, grid))
+@inline ϊAy_afa(i, j, k, grid::Grid) where T = T(0.5) * (Ay(i, j-1, k, grid) + Ay(i, j, k, grid))
+@inline ϊAz_aaf(i, j, k, grid::Grid) where T = T(0.5) * (Az(i, j, k-1, grid) + Az(i, j, k, grid))
+
 @inline V(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * Δz(i, j, k, grid)
 @inline V⁻¹(i, j, k, grid::Grid) = 1 / V(i, j, k, grid)
 
@@ -335,19 +343,19 @@ which will end up at the location `ccf`.
     ϊz_V⁻¹(i, j, k, grid) * (δx_caf_Aūᶻw̄ˣ(i, j, k, grid, u, w) + δy_acf_Av̄ᶻw̄ʸ(i, j, k, grid, v, w) + δz_aaf_Aw̄ᶻw̄ᶻ(i, j, k, grid, w))
 end
 
-""" Calculates δx_caa(Ax² * κ * δx_faa(f)). Should be κ_fcc(i+1, j, k) and κ_fcc(i, j, k) with LES. """
+""" Calculates δx_caa(Ax² * κ * δx_faa(f)). For LES, κ should be κ_fcc(i+1, j, k) and κ_fcc(i, j, k). """
 @inline function δx²Aκ_caa(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
     Ax(i+1, j, k, grid)^2 * κ * δx_faa(i+1, j, k, Q) -
     Ax(i,   j, k, grid)^2 * κ * δx_faa(i,   j, k, Q)
 end
 
-""" Calculates δy_aca(Ay² * κ * δy_afa(f)). Should be κ_cfc(i, j+1, k) and κ_cfc(i, j, k) with LES. """
+""" Calculates δy_aca(Ay² * κ * δy_afa(f)). For LES, κ should be κ_cfc(i, j+1, k) and κ_cfc(i, j, k). """
 @inline function δy²Aκ_aca(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
     Ay(i, j+1, k, grid)^2 * κ * δy_afa(i, j+1, k, Q) -
     Ay(i,   j, k, grid)^2 * κ * δy_afa(i,   j, k, Q)
 end
 
-""" Calculates δz_aac(Az² * κ * δz_aaf(f)). Should be κ_ccf(i, j, k+1) and κ_ccf(i, j, k) with LES. """
+""" Calculates δz_aac(Az² * κ * δz_aaf(f)). For LES, κ should be κ_ccf(i, j, k+1) and κ_ccf(i, j, k). """
 @inline function δz²Aκ_aac(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
     if k == grid.Nz
         Az(i, j, k, grid)^2 * κ * δz_aaf(i, j, k, Q)
@@ -367,6 +375,84 @@ which will end up at the location `ccc`.
 @inline function ∇κ∇Q(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
     V⁻¹(i, j, k, grid)^2 * (δx²Aκ_caa(i, j, k, grid, Q, κ) + δy²Aκ_aca(i, j, k, grid, Q, κ) + δz²Aκ_aac(i, j, k, grid, Q, κ))
 end
+
+""" Calculates δx_faa(Ax * ν * ϊx_caa(Ax) * δx_caa(u)). For LES, ν should be ν_cff(i, j, k) and ν_cff(i-1, j, k). """
+@inline function δx²Aν_faa(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    Ax(i,   j, k, grid) * ν * ϊAx_caa(i,   j, k, grid) * δx_caa(i,   j, k, grid, u) -
+    Ax(i-1, j, k, grid) * ν * ϊAx_caa(i-1, j, k, grid) * δx_caa(i-1, j, k, grid, u)
+end
+
+""" Calculates δy_aca(Ay * ν * ϊy_afa(Ay) * δy_afa(u)). For LES, ν should be ν_cff(i, j, k) and ν_cff(i, j+1, k). """
+@inline function δy²Aν_aca(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    Ay(i, j+1, k, grid) * ν * ϊAy_afa(i, j+1, k, grid) * δy_afa(i, j+1, k, grid, u) -
+    Ay(i,   j, k, grid) * ν * ϊAy_afa(i,   j, k, grid) * δy_afa(i,   j, k, grid, u)
+end
+
+""" Calculates δz_aac(Az * ν * ϊz_aaf(Az) * δz_aaf(u)). For LES, ν should be ν_cff(i, j, k) and ν_cff(i, j, k+1). """
+@inline function δz²Aν_aac(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    if k == grid.Nz
+        return Az(i, j, k, grid) * ν * ϊAz_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, u)
+    else
+        return Az(i, j,   k, grid) * ν * ϊAz_aaf(i, j,   k, grid) * δz_aaf(i, j,   k, grid, u) -
+               Az(i, j, k+1, grid) * ν * ϊAz_aaf(i, j, k+1, grid) * δz_aaf(i, j, k+1, grid, u)
+    end
+end
+
+"""
+Calculates viscous dissipation for the u-velocity via
+
+    (V * Vᵘ)⁻¹ * [δx_faa(Ax * ν * ϊx_caa(Ax) * δx_caa(u)) + δy_aca(Ay * ν * ϊy_afa(Ay) * δy_afa(u)) + δz_aac(Az * ν * ϊz_aaf(Az) * δz_aaf(u))]
+
+which will end up at the location `fcc`.
+"""
+@inline function ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    V⁻¹(i, j, k, grid) * ϊx_V⁻¹(i, j, k, grid) * (δx²Aν_faa(i, j, k, grid, u, ν) + δy²Aν_aca(i, j, k, grid, u, ν) + δz²Aν_aac(i, j, k, grid, u, ν))
+end
+
+""" Calculates δx_caa(Ax * ν * ϊx_faa(Ax) * δx_faa(u)). For LES, ν should be ν_fcf(i, j, k) and ν_fcf(i+1, j, k). """
+@inline function δx²Aν_caa(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    Ax(i+1, j, k, grid) * ν * ϊAx_faa(i+1, j, k, grid) * δx_faa(i+1, j, k, grid, u) -
+    Ax(i,   j, k, grid) * ν * ϊAx_faa(i,   j, k, grid) * δx_faa(i,   j, k, grid, u)
+end
+
+""" Calculates δy_afa(Ay * ν * ϊx_aca(Ay) * δy_afa(u)). For LES, ν should be ν_fcf(i, j, k) and ν_fcf(i-1, j, k). """
+@inline function δy²Aν_afa(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    Ay(i,   j, k, grid) * ν * ϊAy_aca(i,   j, k, grid) * δy_aca(i,   j, k, grid, u) -
+    Ay(i, j-1, k, grid) * ν * ϊAy_aca(i, j-1, k, grid) * δy_aca(i, j-1, k, grid, u)
+end
+
+"""
+Calculates viscous dissipation for the v-velocity via
+
+    (V * Vᵛ)⁻¹ * [δx_caa(Ax * ν * ϊx_faa(Ax) * δx_faa(v)) + δy_afa(Ay * ν * ϊy_aca(Ay) * δy_aca(v)) + δz_aac(Az * ν * ϊz_aaf(Az) * δz_aaf(v))]
+
+which will end up at the location `cfc`.
+"""
+@inline function ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
+    V⁻¹(i, j, k, grid) * ϊy_V⁻¹(i, j, k, grid) * (δx²Aν_caa(i, j, k, grid, v, ν) + δy²Aν_afa(i, j, k, grid, v, ν) + δz²Aν_aac(i, j, k, grid, v, ν))
+end
+
+""" Calculates δz_aaf(Az * ν * ϊz_aac(Az) * δz_aac(u)).  """
+@inline function δz²Aν_aaf(i, j, k, grid::Grid{T}, u::AbstractArray, ν::AbstractFloat) where T
+    if k == 1
+        return -zero(T)
+    else
+        return Az(i, j, k-1, grid) * ν * ϊAz_aac(i, j, k-1, grid) * δz_aac(i, j, k-1, grid, u) -
+               Az(i, j,   k, grid) * ν * ϊAz_aac(i, j,   k, grid) * δz_aac(i, j,   k, grid, u)
+    end
+end
+
+"""
+Calculates viscous dissipation for the w-velocity via
+
+    (V * Vʷ)⁻¹ * [δx_caa(Ax * ν * ϊx_faa(Ax) * δx_faa(w)) + δy_aca(Ay * ν * ϊy_afa(Ay) * δy_afa(w)) + δz_aaf(Az * ν * ϊz_aac(Az) * δz_aac(w))]
+
+which will end up at the location `ccf`.
+"""
+@inline function ∇ν∇w(i, j, k, grid::Grid, w::AbstractArray, ν::AbstractFloat)
+    V⁻¹(i, j, k, grid) * ϊz_V⁻¹(i, j, k, grid) * (δx²Aν_caa(i, j, k, grid, v, ν) + δy²Aν_aca(i, j, k, grid, v, ν) + δz²Aν_aaf(i, j, k, grid, v, ν))
+end
+
 
 """ Calculates δx_caa(Ax²/Vᵘ * δx_faa(f)) """
 @inline function δx²A_caa(i, j, k, grid::Grid, f::AbstractArray)
