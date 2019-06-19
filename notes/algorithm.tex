@@ -1,0 +1,31 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{parskip}
+\usepackage{graphicx}
+
+\title{JULES}
+
+\begin{document}
+
+\maketitle
+
+\section{Equation Set}
+
+The equation set is written in terms of five prognostic conservative variables: three momenta, mass density, and specific entropy. While deriving these equations, it will prove convenient to define a 4-vector $u^\alpha = (1, u, v, w)$ for $\alpha = (t, x, y, z)$. This allows us to write a conservation law for a variable $\phi$ as
+\begin{equation*}
+\partial_t \rho \phi + \partial_i \rho u_i \phi = \partial_{\alpha} \rho u^{\alpha} \phi = \textrm{ sources and sinks}.
+\end{equation*}
+Because mass conservation written in this form is just
+\begin{equation*}
+\partial_\alpha \rho u^{\alpha} = 0,
+\end{equation*}
+this immediately provides some useful properties, namely that
+\begin{equation*}
+\partial_\alpha \rho u^{\alpha} \phi = \rho u^{\alpha} \partial_a \phi
+\end{equation*}
+and
+\begin{equation*}
+u^{\alpha} \partial_{\alpha} \rho = \rho \partial_{\alpha} u^{\alpha}.
+\end{equation*}
+\end{document}

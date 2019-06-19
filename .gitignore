@@ -18,3 +18,8 @@ docs/site
 
 # MacOS stuff
 *.DS_Store
+
+# Latex compiler output
+notes/*.aux
+notes/*.log
+notes/*.gz
