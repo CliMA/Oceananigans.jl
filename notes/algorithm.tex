@@ -3,8 +3,11 @@
 \usepackage{amsmath}
 \usepackage{parskip}
 \usepackage{graphicx}
+\usepackage{physics}
 
-\title{JULES}
+\title{JULES.jl}
+\author{Tristan Abbott, Ali Ramadhan, and Raphael Rousseau-Rizzi}
+\date{\today}
 
 \begin{document}
 
@@ -12,20 +15,59 @@
 
 \section{Equation Set}
 
-The equation set is written in terms of five prognostic conservative variables: three momenta, mass density, and specific entropy. While deriving these equations, it will prove convenient to define a 4-vector $u^\alpha = (1, u, v, w)$ for $\alpha = (t, x, y, z)$. This allows us to write a conservation law for a variable $\phi$ as
+The equation set is written in terms of five prognostic conservative variables: three momenta, mass density, and specific entropy. While defining and deriving these equations, it will prove convenient to define a 4-vector $u^\alpha = (1, u, v, w)$ for $\alpha = (t, x, y, z)$. This allows us to write a conservation law for a variable $\phi$ as
 \begin{equation*}
 \partial_t \rho \phi + \partial_i \rho u_i \phi = \partial_{\alpha} \rho u^{\alpha} \phi = \textrm{ sources and sinks}.
 \end{equation*}
 Because mass conservation written in this form is just
-\begin{equation*}
+\begin{equation}
 \partial_\alpha \rho u^{\alpha} = 0,
-\end{equation*}
+\end{equation}
 this immediately provides some useful properties, namely that
 \begin{equation*}
 \partial_\alpha \rho u^{\alpha} \phi = \rho u^{\alpha} \partial_a \phi
 \end{equation*}
 and
 \begin{equation*}
-u^{\alpha} \partial_{\alpha} \rho = \rho \partial_{\alpha} u^{\alpha}.
+u^{\alpha} \partial_{\alpha} \rho = -\rho \partial_{\alpha} u^{\alpha}.
 \end{equation*}
+
+Written with this notation, and using ${\bf \tau}^{(i)}$ to denote the stress tensor for component $i$, the momentum equations are
+\begin{align}
+\partial_{\alpha} \rho u^{\alpha} u &= -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \\
+\partial_{\alpha} \rho u^{\alpha} v &= -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \\
+\partial_{\alpha} \rho u^{\alpha} w &= -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \\
+\end{align}
+
+To derive an equation for specific entropy
+\begin{align*}
+s = s_0 + c_v \ln \qty(\frac{T}{T_0}) - R \ln \qty(\frac{\rho}{\rho_0}),
+\end{align*}
+we can write its conservation law as
+\begin{align*}
+\partial_{\alpha} \rho u^{\alpha} s &= \partial_{\alpha} \rho u^{\alpha} c_v \ln \qty(\frac{T}{T_0}) - \partial_\alpha \rho u^{\alpha} R \ln \qty(\frac{\rho}{\rho_0}) \\
+&= \frac{1}{T} \partial_{\alpha} \rho u^{\alpha} c_v T - \frac{R}{\rho} \partial_{\alpha} \rho u^{\alpha} \rho.
+\end{align*}
+The first law of thermodynamics allows us to express $\partial_{\alpha} \rho u^{\alpha} c_v T$ (a conservation law for the internal energy) in terms of a heating rate $Q - \div J + \epsilon$ (which includes contributions from diabatic heating $Q$, convergence of conductive heat fluxes $J$, and dissipation $\epsilon$) and a work rate $-p \div {\bf u}$. Substituting this back into the entropy equation gives
+\begin{align*}
+\partial_{\alpha} \rho u^{\alpha} s &= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) - \frac{R}{\rho} \partial_{\alpha} \rho u^{\alpha} \rho \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) - R u^{\alpha} \partial_{\alpha} \rho \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) + R \rho \partial_{\alpha} u^{\alpha} \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) + \frac{p}{T} \div {\bf u} \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon).
+\end{align*}
+We probably could have written this equation down without going through the derivation, but the derivation might be a useful starting point when we eventually try to derive equations for moist entropy (which will be much more complicated).
+
+In summary, our equation set is
+\begin{align}
+\partial_\alpha \rho u^{\alpha} &= 0 \\
+\partial_{\alpha} \rho u^{\alpha} u &= -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \\
+\partial_{\alpha} \rho u^{\alpha} v &= -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \\
+\partial_{\alpha} \rho u^{\alpha} w &= -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \\
+\partial_{\alpha} \rho u^{\alpha} s &= \frac{1}{T} \qty(Q - \div J + \epsilon)
+\end{align}
+
+In addition to these prognostic equations, we need a set of diagnostic equations that relate $T$, $p$, ${\bf \tau}$, $Q$, ${\bf J}$, and $\epsilon$ to prognostic fields. Diagnostic equations for $p$ and $T$ can be obtained from the definition of $s$ and the ideal gas law, $Q$ is typically provided by model ``physics'', and ${\bf J}$, ${\bf \tau}$, and $\epsilon$ are provided by a sub-grid-scale turbulence closure.
+
+\section{Time integration}
 \end{document}
