@@ -128,8 +128,8 @@ end
 @inline ϊy_aca(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i, j+1, k] + f[i,    j, k])
 @inline ϊy_afa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i,  j-1, k])
 
-@inline fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgy_aca(i-1,  j, k, grid, v) + avgy_aca(i, j, k, grid, v))
-@inline fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (avgx_caa(i,  j-1, k, grid, u) + avgx_caa(i, j, k, grid, u))
+@inline fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (ϊy_aca(i-1,  j, k, grid, v) + ϊy_aca(i, j, k, grid, v))
+@inline fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat) where T = T(0.5) * f * (ϊx_caa(i,  j-1, k, grid, u) + ϊx_caa(i, j, k, grid, u))
 
 @inline function ϊz_aac(i, j, k, grid::Grid{T}, f::AbstractArray) where T
     if k == grid.Nz
@@ -333,4 +333,48 @@ which will end up at the location `ccf`.
 """
 @inline function u∇w(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray)
     ϊz_V⁻¹(i, j, k, grid) * (δx_caf_Aūᶻw̄ˣ(i, j, k, grid, u, w) + δy_acf_Av̄ᶻw̄ʸ(i, j, k, grid, v, w) + δz_aaf_Aw̄ᶻw̄ᶻ(i, j, k, grid, w))
+end
+
+""" Calculates δx_caa(Ax²/Vᵘ * δx_faa(f)) """
+@inline function δx²A_caa(i, j, k, grid::Grid, f::AbstractArray)
+    Ax(i+1, j, k, grid)^2 * ϊx_V⁻¹(i+1, j, k, grid) * δx_faa(i+1, j, k, grid, f) -
+    Ax(i,   j, k, grid)^2 * ϊx_V⁻¹(i,   j, k, grid) * δx_faa(i,   j, k, grid, f)
+end
+
+""" Calculates δy_aca(Ay²/Vᵛ * δy_afa(f)) """
+@inline function δy²A_aca(i, j, k, grid::Grid, f::AbstractArray)
+    Ay(i, j+1, k, grid)^2 * ϊy_V⁻¹(i, j+1, k, grid) * δy_afa(i, j+1, k, grid, f) -
+    Ay(i,   j, k, grid)^2 * ϊy_V⁻¹(i,   j, k, grid) * δy_afa(i,   j, k, grid, f)
+end
+
+""" Calculates δz_aac(Az²/Vʷ * δz_aaf(f)) """
+@inline function δz²A_aac(i, j, k, grid::Grid, f::AbstractArray)
+    if k == grid.Nz
+        return Az(i, j, k, grid)^2 * ϊz_V⁻¹(i, j, k, grid) * δz_aaf(i, j, k, grid, f)
+    else
+        return Az(i, j,   k, grid)^2 * ϊz_V⁻¹(i, j,   k, grid) * δz_aaf(i, j,   k, grid, f) -
+               Az(i, j, k+1, grid)^2 * ϊz_V⁻¹(i, j, k+1, grid) * δz_aaf(i, j, k+1, grid, f)
+    end
+end
+
+"""
+Calculates the Laplacian of f via
+
+    V⁻¹ * [δx_caa(Ax²/Vᵘ * δx_faa(f)) + δy_aca(Ay²/Vᵛ * δy_afa(f)) + δz_aac(Az²/Vʷ * δz_aaf(f))]
+
+which will end up at the location `ccc`.
+"""
+@inline function ∇²_ppn(i, j, k, grid::Grid, f::AbstractArray)
+    V⁻¹(i, j, k, grid) * (δx²A_caa(i, j, k, grid, f) + δy²A_aca(i, j, k, grid, f) + δz²A_aac(i, j, k, grid, f))
+end
+
+"""
+Calculates the horizontal divergence of the velocity (u, v) via
+
+    V⁻¹ * [δx_caa(Ax * u) + δy_aca(Ay * v)]
+
+which will end up at the location `cca`.
+"""
+@inline function ∇h_u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray)
+    V⁻¹(i, j, k, grid) * (δxA_caa(i, j, k, grid, u) + δyA_aca(i, j, k, grid, v))
 end
