@@ -70,4 +70,55 @@ In summary, our equation set is
 In addition to these prognostic equations, we need a set of diagnostic equations that relate $T$, $p$, ${\bf \tau}$, $Q$, ${\bf J}$, and $\epsilon$ to prognostic fields. Diagnostic equations for $p$ and $T$ can be obtained from the definition of $s$ and the ideal gas law, $Q$ is typically provided by model ``physics'', and ${\bf J}$, ${\bf \tau}$, and $\epsilon$ are provided by a sub-grid-scale turbulence closure.
 
 \section{Time integration}
+
+The time integration scheme follows Klemp et. al. (2007). To describe the temporally-discretized equations used for time integration, we'll first define shorthand for the total tendency for each prognostic variable:
+\begin{align*}
+\partial_t \rho &= -\div \rho {\bf u} \equiv R_\rho \\
+\partial_t \rho u &= -\div \rho {\bf u} u -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \equiv R_u\\
+\partial_t \rho v &= -\div \rho {\bf u} v -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \equiv R_v \\
+\partial_t \rho w &= -\div \rho {\bf u} w -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \equiv R_w \\
+\partial_t \rho s &= -\div \rho {\bf u} s + \frac{1}{T} \qty(Q - \div J + \epsilon) \equiv R_s.
+\end{align*}
+At the beginning of each large time step, we evaluate the total tendencies to obtain $R_{\rho}^t, R_u^t, R_v^T, R_w^t, R_s^t$. (Because these tendencies are responsible for almost all transport, they are typically computed with a fancy (high-order, non-oscillatory, but computationally expensive) advection scheme.) Then, on the small time steps, we integrate these tendencies (evaluated only at the start of the long time step) plus terms responsible for gravity and acoustic modes, plus linearized flux terms for entropy and density (required to keep the acoustic time steps stable). The equations integrated on the acoustic time steps are cast in terms of perturbations $(\cdot)' = (\cdot) - (\cdot)^t$ from the state at the start of the long time step $(\cdot)^t$:
+\begin{align*}
+\partial_t \rho' &= -\div \qty(\rho {\bf u})' + R_\rho^t \\
+\partial_t \qty(\rho u)' &= -\partial_x p' + R_u^t \\
+\partial_t \qty(\rho v)' &= \partial_y p' + R_v^t \\
+\partial_t \qty(\rho w)' &= \partial_z p' - g \rho' + R_w^t \\
+\partial_t \qty(\rho s)' &= -\div \qty(\rho {\bf u})' s^t + R_s^t.
+\end{align*}
+For computational efficiency, these equations are typically integrated using forward-backward time differencing and fairly simple spatial differencing. The only complication is that, because atmospheric models typically have much finer vertical resolution than horizontal resolution, terms involving vertical derivatives are usually treated implicitly. Using $(\cdot)^0$ to denote a perturbation at the start of an acoustic time step, $(\cdot)^1$ to indicate a perturbation at the end of an acoustic time step, $(\cdot)^{1/2}$ to indicate a (weighted) average of the initial and final perturbations, and $\delta \tau$ to indicate the length of a small time step, the temporally discrete forms of these equations are
+\begin{align}
+\qty(\rho u)^1 &= \qty(\rho u)^0 + \delta \tau \qty(-\partial_x p^0 + R_u^t) \\
+\qty(\rho v)^1 &= \qty(\rho v)^0 + \delta \tau \qty(-\partial_x p^0 + R_u^t) \\
+\qty(\rho w)^1 &= \qty(\rho w)^0 + \delta \tau \qty(-\partial_z p^{1/2} - g \rho^{1/2} + R_w^t) \\
+\rho^1 &= \rho^0 + \delta \tau \qty(-\grad_h \cdot \qty(\rho {\bf u}_h)^{1} -\partial_z (\rho w)^{1/2} + R_{\rho}^t) \\
+\qty(\rho s)^1 &= \qty(\rho s)^0 + \delta \tau \qty(-\grad_h \cdot \qty(\rho {\bf u}_h)^{1} s^t - \partial_z \qty(\rho w)^{1/2} s^t + R_s^t).
+\end{align} 
+By substituting expressions for $\rho^1$ and $(\rho s)^1$ into the equation for $(\rho w)^1$, these equations can be converted to a single implicit equation for $(\rho w)^1$ and explicit equations for all other prognostic fields. After doing so, the system can be stepped forward by solving (1) equations for $(\rho u)^1$ and $(\rho v)^1$ (explicit), (2) the equation for $(\rho w)^1$ (implicit; requires inverting a tridiagonal matrix), and (3) equations for $\rho^1$ and $(\rho s)^1$ (explicit), in that order.
+
+After iterating this procedure for the required number of small time steps $N$, we obtain a set of perturbation fields $(\rho u)', (\rho v)', (\rho w)', \rho', (\rho s)'$. These provide numerical approximations to tendencies over the large time step,
+\begin{align*}
+\partial_t \rho &\approx \frac{1}{N \delta \tau} \rho' \\
+\partial_t \qty(\rho u) &\approx \frac{1}{N \delta \tau} \qty(\rho u)' \\
+\partial_t \qty(\rho v) &\approx \frac{1}{N \delta \tau} \qty(\rho v)' \\
+\partial_t \qty(\rho w) &\approx \frac{1}{N \delta \tau} \qty(\rho w)' \\
+\partial_t \qty(\rho s) &\approx \frac{1}{N \delta \tau} \qty(\rho s)',
+\end{align*}
+that can be used as input to a Runge-Kutta or Adams-Bashforth time integrator.
+
+\subsection{Diagnosing $p'$}
+
+During the acoustic time steps, $p'$ must be diagnosed from $\rho'$ and $(\rho s)'$. This represents a minor challenge: solving the expression for entropy to get $p(s,t)$ can easily provide an equation for $p'(s', \rho')$, but we need an equation for $p'((\rho s)', \rho')$. An easy way to derive one such equation is to write
+\begin{align*}
+\dd{\rho s} &= s \dd{\rho} + \rho \dd{s} \\
+&= s \dd{\rho} + \rho \dd \qty(c_v \ln \qty(\frac{p}{p_0}) - c_p \ln \qty(\frac{\rho}{\rho_0})) \\
+&= s \dd{\rho} + \rho c_v \frac{\dd{p}}{p} - c_p \dd{\rho} \\
+\dd{p} &= \frac{p}{\rho c_v} \qty(\dd{\rho s} + \qty(c_p - s) \dd{\rho}).
+\end{align*}
+Because perturbations remain small over a single large time step, this provides the basis for a sufficiently accurate expression for for $p'$ in terms of $(\rho s)'$:
+\begin{equation}
+p' = \frac{p^t}{\rho^t c_v} \qty(\qty(\rho s)' + (c_p - s^t) \rho').
+\end{equation}
+
 \end{document}
