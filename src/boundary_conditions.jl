@@ -8,12 +8,11 @@ const solution_fields = (:u, :v, :w, :T, :S)
 const nsolution = length(solution_fields)
 
 abstract type BCType end
-struct Default <: BCType end
-
-abstract type NonDefault <: BCType end
-struct Flux <: NonDefault end
-struct Gradient <: NonDefault end
-struct Value <: NonDefault end
+struct Periodic <: BCType end
+struct FreeSlip <: BCType end
+struct Flux <: BCType end
+struct Gradient <: BCType end
+struct Value <: BCType end
 
 """
     BoundaryCondition(BCType, condition)
@@ -33,10 +32,9 @@ end
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 
+# Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:AbstractArray} =
     BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
-
-DefaultBC() = BoundaryCondition{Default, Nothing}(nothing)
 
 """
     CoordinateBoundaryConditions(c)
@@ -50,8 +48,6 @@ mutable struct CoordinateBoundaryConditions
      left :: BoundaryCondition
     right :: BoundaryCondition
 end
-
-CoordinateBoundaryConditions() = CoordinateBoundaryConditions(DefaultBC(), DefaultBC())
 
 const CBC = CoordinateBoundaryConditions
 
@@ -74,7 +70,7 @@ getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
 
 """
-    FieldBoundaryConditions()
+    FieldBoundaryConditions
 
 Construct `FieldBoundaryConditions` for a field.
 A FieldBoundaryCondition has `CoordinateBoundaryConditions` in
@@ -87,7 +83,7 @@ struct FieldBoundaryConditions <: FieldVector{dims, CoordinateBoundaryConditions
 end
 
 """
-    BoundaryConditions()
+    ModelBoundaryConditions
 
 Construct a boundary condition type full of default
 `FieldBoundaryConditions` for u, v, w, T, S.
@@ -100,13 +96,24 @@ struct ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions
     S :: FieldBoundaryConditions
 end
 
-FieldBoundaryConditions() = FieldBoundaryConditions(CoordinateBoundaryConditions(),
-                                                    CoordinateBoundaryConditions(),
-                                                    CoordinateBoundaryConditions())
+"""
+    ModelBoundaryConditions()
 
+Return a default set of model boundary conditions. For now, this corresponds to a
+doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
+with free-slip (`FreeSlip`) boundary conditions at the top and bottom.
+"""
 function ModelBoundaryConditions()
-    bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
+    periodic_bc = BoundaryCondition(Periodic, nothing)
+    free_slip_bc = BoundaryCondition(FreeSlip, nothing)
+
+    default_x_bc = CoordinateBoundaryConditions(periodic_bc, periodic_bc)
+    default_y_bc = CoordinateBoundaryConditions(periodic_bc, periodic_bc)
+    default_z_bc = CoordinateBoundaryConditions(free_slip_bc, free_slip_bc)
+
+    default_bc = FieldBoundaryConditions(default_x_bc, default_y_bc, default_z_bc)
+
+    return ModelBoundaryConditions(default_bc, default_bc, default_bc, default_bc, default_bc)
 end
 
 #
