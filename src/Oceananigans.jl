@@ -36,7 +36,6 @@ export
     ardata,
     underlying_data,
     set!,
-    fill_halo_regions!,
 
     # FieldSets (collections of related fields)
     FieldSet,
@@ -66,6 +65,9 @@ export
     getbc,
     setbc!,
 
+    # Halo regions
+    fill_halo_regions!,
+
     # Time stepping
     time_step!,
 
@@ -75,9 +77,12 @@ export
     solve_poisson_3d_ppn_planned!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. clock, etc.
+    # Clock
     Clock,
+
+    # Models
     Model,
+    ChannelModel,
 
     # Model output writers
     OutputWriter,
@@ -174,6 +179,7 @@ include("operators/operators.jl")
 include("closures/turbulence_closures.jl")
 
 include("boundary_conditions.jl")
+include("halo_regions.jl")
 include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
