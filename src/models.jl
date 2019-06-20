@@ -75,6 +75,31 @@ function Model(;
           G, Gp, poisson_solver, stepper_tmp, output_writers, diagnostics)
 end
 
+"""
+    ChannelModel(; kwargs...)
+
+    Construct a `Model` with walls in the y-direction. This is done by imposing
+    `FreeSlip` boundary conditions in the y-direction instead of `Periodic`.
+
+    kwargs are passed to the regular `Model` constructor.
+"""
+function ChannelModel(; kwargs...)
+    model = Model(; kwargs...)
+
+    model.boundary_conditions.u.y.left  = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.u.y.right = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.v.y.left  = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.v.y.right = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.w.y.left  = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.w.y.right = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.T.y.left  = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.T.y.right = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.S.y.left  = BoundaryCondition(FreeSlip, nothing)
+    model.boundary_conditions.S.y.right = BoundaryCondition(FreeSlip, nothing)
+
+    return model
+end
+
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
