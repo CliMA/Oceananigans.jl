@@ -96,24 +96,27 @@ struct ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions
     S :: FieldBoundaryConditions
 end
 
+FieldBoundaryConditions() = FieldBoundaryConditions(
+                                CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                                CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                                CoordinateBoundaryConditions(
+                                    BoundaryCondition(FreeSlip, nothing),
+                                    BoundaryCondition(FreeSlip, nothing)))
+
 """
     ModelBoundaryConditions()
 
 Return a default set of model boundary conditions. For now, this corresponds to a
 doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
-with free-slip (`FreeSlip`) boundary conditions at the top and bottom.
+with `FreeSlip` boundary conditions at the top and bottom.
 """
 function ModelBoundaryConditions()
-    periodic_bc = BoundaryCondition(Periodic, nothing)
-    free_slip_bc = BoundaryCondition(FreeSlip, nothing)
-
-    default_x_bc = CoordinateBoundaryConditions(periodic_bc, periodic_bc)
-    default_y_bc = CoordinateBoundaryConditions(periodic_bc, periodic_bc)
-    default_z_bc = CoordinateBoundaryConditions(free_slip_bc, free_slip_bc)
-
-    default_bc = FieldBoundaryConditions(default_x_bc, default_y_bc, default_z_bc)
-
-    return ModelBoundaryConditions(default_bc, default_bc, default_bc, default_bc, default_bc)
+    bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
+    return ModelBoundaryConditions(bcs...)
 end
 
 #
