@@ -1,6 +1,5 @@
 import GPUifyLoops: @launch, @loop, @unroll, @synchronize
 
-function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
 """
     fill_halo_regions!(arch::Architecture, grid::Grid, bcs::ModelBoundaryConditions, fields...)
 
@@ -12,36 +11,37 @@ boundary conditions for a reentrant channel model.
 
 Knowledge of `arch` and `grid` is needed to fill in the halo regions.
 """
+function fill_halo_regions!(arch::Architecture, grid::Grid, bcs::ModelBoundaryConditions, fields...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    for f in fields
-        # Index over the offset array but this is commented out as it induces
-        # scalars operations on CuArrays right now which are extremely inefficient.
-        # @views @inbounds @. f[1-Hx:0,     :, :] = f[Nx-Hx+1:Nx, :, :]
-        # @views @inbounds @. f[Nx+1:Nx+Hx, :, :] = f[1:Hx,       :, :]
-        # @views @inbounds @. f[:,     1-Hy:0, :] = f[:, Ny-Hy+1:Ny, :]
-        # @views @inbounds @. f[:, Ny+1:Ny+Hy, :] = f[:,       1:Hy, :]
+    # Indexing over the offset array but this is commented out as it induces
+    # scalars operations on CuArrays right now which are extremely inefficient.
+    # Below we directly index the underlying Array or CuArray to avoid the issue of
+    # broadcasting over an OffsetArray{CuArray}.
 
-        # Directly index the underlying Array or CuArray to avoid the issue of
-        # broadcasting over an OffsetArray{CuArray}.
-        @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
-        @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
-        @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, Ny+1:Ny+Hy, :]
-        @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[:, 1+Hy:2Hy,   :]
+    # @views @inbounds @. f[1-Hx:0,     :, :] = f[Nx-Hx+1:Nx, :, :]
+    # @views @inbounds @. f[Nx+1:Nx+Hx, :, :] = f[1:Hx,       :, :]
+    # @views @inbounds @. f[:,     1-Hy:0, :] = f[:, Ny-Hy+1:Ny, :]
+    # @views @inbounds @. f[:, Ny+1:Ny+Hy, :] = f[:,       1:Hy, :]
+
+    if bcs.u.y.left == BoundaryCondition(Periodic, nothing)
+        # Doubly periodic domain
+        for f in fields
+            @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
+            @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
+            @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, Ny+1:Ny+Hy, :]
+            @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[:, 1+Hy:2Hy,   :]
+        end
+    elseif bcs.u.y.left == BoundaryCondition(FreeSlip, nothing)
+        # Reentrant channel model
+        for f in fields
+            @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
+            @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
+            @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, 1+Hy:2Hy,   :]
+            @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = 0
+        end
     end
-
-    # max_threads = 256
-    #
-    # Ty = min(max_threads, Ny)
-    # Tz = min(fld(max_threads, Ty), Nz)
-    # By, Bz = cld(Ny, Ty), cld(Nz, Tz)
-    # @launch device(arch) threads=(1, Ty, Tz) blocks=(1, By, Nz) fill_halo_regions_x!(grid, fields...)
-    #
-    # Tx = min(max_threads, Nx)
-    # Tz = min(fld(max_threads, Tx), Nz)
-    # Bx, Bz = cld(Nx, Tx), cld(Nz, Tz)
-    # @launch device(arch) threads=(Tx, 1, Tz) blocks=(Bz, 1, Nz) fill_halo_regions_y!(grid, fields...)
 end
 
 """
