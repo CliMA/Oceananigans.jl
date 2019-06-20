@@ -1,6 +1,17 @@
 import GPUifyLoops: @launch, @loop, @unroll, @synchronize
 
 function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
+"""
+    fill_halo_regions!(arch::Architecture, grid::Grid, bcs::ModelBoundaryConditions, fields...)
+
+Fill in the halo regions for each field in `fields` appropriately based on the
+models' boundary conditions specified by `bcs`. For now, the two scenarios are
+implementing periodic boundary conditions in the horizontal (for a doubly
+periodic domain) and placing walls in the y-direction to impose free-slip
+boundary conditions for a reentrant channel model.
+
+Knowledge of `arch` and `grid` is needed to fill in the halo regions.
+"""
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -33,6 +44,12 @@ function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
     # @launch device(arch) threads=(Tx, 1, Tz) blocks=(Bz, 1, Nz) fill_halo_regions_y!(grid, fields...)
 end
 
+"""
+    fill_halo_regions_x!(grid::Grid, fields...)
+
+Kernel that fill in the "eastern" and "western" halo regions for each field in
+`fields` to impose horizontally periodic boundary conditions.
+"""
 function fill_halo_regions_x!(grid::Grid, fields...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
@@ -51,6 +68,12 @@ function fill_halo_regions_x!(grid::Grid, fields...)
     @synchronize
 end
 
+"""
+    fill_halo_regions_y!(grid::Grid, fields...)
+
+Kernel that fill in the "northern" and "southern" halo regions for each field in
+`fields` to impose horizontally periodic boundary conditions.
+"""
 function fill_halo_regions_y!(grid::Grid, fields...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz  # Number of grid points.
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz  # Size of halo regions.
