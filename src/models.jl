@@ -92,3 +92,29 @@ function initialize_with_defaults!(eos, tracers, sets...)
         end
     end
 end
+
+"""
+    add_sponge_layer!(model; damping_timescale)
+
+Adds a sponge layer to the bottom layer of the `model`. The purpose of the
+sponge layer is to effectively dampen out waves reaching the bottom of the
+domain and avoid having waves being continuously generated and reflecting from
+the bottom, some of which may grow unphysically large in amplitude.
+
+Numerically the sponge layer acts as an extra source term in the momentum
+equations. It takes on the form Gu[i, j, k] += -u[i, j, k]/τ for each momentum
+source term where τ is a damping timescale. Typially, Δt << τ.
+"""
+function add_sponge_layer!(model; damping_timescale)
+    τ = damping_timescale
+
+    @inline wave_damping_u(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -u[i, j, k] / τ, 0)
+    @inline wave_damping_v(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -v[i, j, k] / τ, 0)
+    @inline wave_damping_w(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -w[i, j, k] / τ, 0)
+
+    Fu, Fv, Fw = model.forcing.Fu, model.forcing.Fv, model.forcing.Fw
+    FT, FS     = model.forcing.FT, model.forcing.FS
+
+    # Append wave damping
+    model.forcing = Forcing(Fu + wave_damping_u, Fv + wave_damping_v, Fw + wave_damping_w, FT, FS)
+end
