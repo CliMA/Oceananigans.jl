@@ -94,6 +94,76 @@ function initialize_with_defaults!(eos, tracers, sets...)
 end
 
 """
+    add_u_forcing!(model::Model, Fu::Function)
+
+Appends Fu to the model's u forcing function.
+"""
+function add_u_forcing!(model::Model, Fu::Function)
+    old_Fu, old_Fv, old_Fw = model.forcing.u, model.forcing.v, model.forcing.w
+    old_FT, old_FS         = model.forcing.T, model.forcing.S
+
+    @inline new_Fu(args...) = old_Fu(args...) + Fu(args...)
+
+    model.forcing = Forcing(Fu=new_Fu, Fv=old_Fv, Fw=old_Fw, FT=old_FT, FS=old_FS)
+end
+
+"""
+    add_v_forcing!(model::Model, Fv::Function)
+
+Appends Fv to the model's v forcing function.
+"""
+function add_v_forcing!(model::Model, Fv::Function)
+    old_Fu, old_Fv, old_Fw = model.forcing.u, model.forcing.v, model.forcing.w
+    old_FT, old_FS         = model.forcing.T, model.forcing.S
+
+    @inline new_Fv(args...) = old_Fv(args...) + Fv(args...)
+
+    model.forcing = Forcing(Fu=old_Fu, Fv=new_Fv, Fw=old_Fw, FT=old_FT, FS=old_FS)
+end
+
+"""
+    add_w_forcing!(model::Model, Fw::Function)
+
+Appends Fw to the model's w forcing function.
+"""
+function add_w_forcing!(model::Model, Fw::Function)
+    old_Fu, old_Fv, old_Fw = model.forcing.u, model.forcing.v, model.forcing.w
+    old_FT, old_FS         = model.forcing.T, model.forcing.S
+
+    @inline new_Fw(args...) = old_Fw(args...) + Fw(args...)
+
+    model.forcing = Forcing(Fu=old_Fu, Fv=old_Fv, Fw=new_Fw, FT=old_FT, FS=old_FS)
+end
+
+"""
+    add_T_forcing!(model::Model, FT::Function)
+
+Appends FT to the model's T forcing function.
+"""
+function add_T_forcing!(model::Model, FT::Function)
+    old_Fu, old_Fv, old_Fw = model.forcing.u, model.forcing.v, model.forcing.w
+    old_FT, old_FS         = model.forcing.T, model.forcing.S
+
+    @inline new_FT(args...) = old_FT(args...) + FT(args...)
+
+    model.forcing = Forcing(Fu=old_Fu, Fv=old_Fv, Fw=old_Fw, FT=new_FT, FS=old_FS)
+end
+
+"""
+    add_S_forcing!(model::Model, FS::Function)
+
+Appends FS to the model's S forcing function.
+"""
+function add_S_forcing!(model::Model, FS::Function)
+    old_Fu, old_Fv, old_Fw = model.forcing.u, model.forcing.v, model.forcing.w
+    old_FT, old_FS         = model.forcing.T, model.forcing.S
+
+    @inline new_FS(args...) = old_FS(args...) + FS(args...)
+
+    model.forcing = Forcing(Fu=old_Fu, Fv=old_Fv, Fw=old_Fw, FT=old_FT, FS=new_FS)
+end
+
+"""
     add_sponge_layer!(model; damping_timescale)
 
 Adds a sponge layer to the bottom layer of the `model`. The purpose of the
@@ -112,9 +182,7 @@ function add_sponge_layer!(model; damping_timescale)
     @inline wave_damping_v(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -v[i, j, k] / τ, 0)
     @inline wave_damping_w(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -w[i, j, k] / τ, 0)
 
-    Fu, Fv, Fw = model.forcing.Fu, model.forcing.Fv, model.forcing.Fw
-    FT, FS     = model.forcing.FT, model.forcing.FS
-
-    # Append wave damping
-    model.forcing = Forcing(Fu + wave_damping_u, Fv + wave_damping_v, Fw + wave_damping_w, FT, FS)
+    add_u_forcing!(model, wave_damping_u)
+    add_v_forcing!(model, wave_damping_v)
+    add_w_forcing!(model, wave_damping_w)
 end
