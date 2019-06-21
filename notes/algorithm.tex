@@ -116,9 +116,21 @@ During the acoustic time steps, $p'$ must be diagnosed from $\rho'$ and $(\rho s
 &= s \dd{\rho} + \rho c_v \frac{\dd{p}}{p} - c_p \dd{\rho} \\
 \dd{p} &= \frac{p}{\rho c_v} \qty(\dd{\rho s} + \qty(c_p - s) \dd{\rho}).
 \end{align*}
-Because perturbations remain small over a single large time step, this provides the basis for a sufficiently accurate expression for for $p'$ in terms of $(\rho s)'$:
+Because perturbations remain small over a single large time step, this provides the basis for a sufficiently accurate expression for $p'$ in terms of $(\rho s)'$:
 \begin{equation}
 p' = \frac{p^t}{\rho^t c_v} \qty(\qty(\rho s)' + (c_p - s^t) \rho').
+\end{equation}
+
+\section{Advection scheme}
+
+Since we plan on using this model to carry long integrations and RCE simulations, it is desirable to have a model that is conservative to numerical precision. Furthermore, for certain applications like tropical cyclone simulations it is also desirable to have an advection scheme that can minimize the implicit dispersion near sharp gradient changes. For these reasons, we are using finite volume methods for approximating the advective terms of the prognostic equations.
+
+\subsection{Flux reconstruction for scalars}
+
+Following Durran (2002) (after Zalesak, 1979), we approximate the conservation law with the finite difference equation
+
+\begin{equation}
+\partial{s}{t} + \Big(\frac{F_{j+\frac{1}{2}}-F_{j-\frac{1}{2}}}{\Delta x}\Big) = 0
 \end{equation}
 
 \end{document}
