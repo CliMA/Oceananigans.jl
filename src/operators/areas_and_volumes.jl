@@ -30,4 +30,9 @@
 @inline Az(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
 # Volume of a cell.
-@inline V(i, j, k, grid::Grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * Δz(i, j, k, grid)
+@inline VF(i, j, k, grid::Grid) = ΔxF(i, j, k, grid) * ΔyF(i, j, k, grid) * Δz(i, j, k, grid)
+@inline VC(i, j, k, grid::Grid) = ΔxC(i, j, k, grid) * ΔyC(i, j, k, grid) * Δz(i, j, k, grid)
+
+@inline Vᵘ(i, j, k, grid::Grid{T}) where T = T(0.5) * (VF(i, j, k, grid) + VF(i+1, j, k, grid))
+@inline Vᵛ(i, j, k, grid::Grid{T}) where T = T(0.5) * (VF(i, j, k, grid) + VF(i, j+1, k, grid))
+@inline Vʷ(i, j, k, grid::Grid{T}) where T = T(0.5) * (VF(i, j, k, grid) + VF(i, j, k+1, grid))
