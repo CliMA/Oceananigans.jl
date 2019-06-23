@@ -29,21 +29,6 @@
     end
 end
 
-"""
-    ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
-
-Calculates viscous dissipation for the u-velocity via
-
-    1/V * [δx_faa(ν * ϊx_caa(Ax) * δx_caa(u)) + δy_aca(ν * ϊy_afa(Ay) * δy_afa(u)) + δz_aac(ν * ϊz_aaf(Az) * δz_aaf(u))]
-
-which will end up at the location `fcc`.
-"""
-@inline function ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
-    1/Vᵘ(i, j, k, grid) * (δx_viscous_flux_u(i, j, k, grid, u, ν) +
-                           δy_viscous_flux_u(i, j, k, grid, u, ν) +
-                           δz_viscous_flux_u(i, j, k, grid, u, ν))
-end
-
 # Calculate viscous fluxes for v-velocity field.
 """ Calculate ν * (Ax)ˣ * δx_faa(v) -> ffc. """
 @inline viscous_flux_vx(i, j, k, grid::Grid, v::AbstractArray, ν_ffc::AbstractFloat) =
@@ -75,21 +60,6 @@ end
     end
 end
 
-"""
-    ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
-
-Calculates viscous dissipation for the v-velocity via
-
-    1/Vᵛ * [δx_caa(ν * ϊx_faa(Ax) * δx_faa(v)) + δy_afa(ν * ϊy_aca(Ay) * δy_aca(v)) + δz_aac(ν * ϊz_aaf(Az) * δz_aaf(v))]
-
-which will end up at the location `cfc`.
-"""
-@inline function ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
-    1/Vᵛ(i, j, k, grid) * (δx_viscous_flux_v(i, j, k, grid, v, ν) +
-                           δy_viscous_flux_v(i, j, k, grid, v, ν) +
-                           δz_viscous_flux_v(i, j, k, grid, v, ν))
-end
-
 # Calculate viscous fluxes for v-velocity field.
 """ Calculate ν * (Ax)ˣ * δx_faa(w) -> fcf. """
 @inline viscous_flux_wx(i, j, k, grid::Grid, w::AbstractArray, ν_fcf::AbstractFloat) =
@@ -119,6 +89,36 @@ end
     else
         return viscous_flux_wz(i, j, k-1, grid, w, ν_ccc) - viscous_flux_wz(i, j, k, grid, w, ν_ccc)
     end
+end
+
+"""
+    ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+
+Calculates viscous dissipation for the u-velocity via
+
+    1/V * [δx_faa(ν * ϊx_caa(Ax) * δx_caa(u)) + δy_aca(ν * ϊy_afa(Ay) * δy_afa(u)) + δz_aac(ν * ϊz_aaf(Az) * δz_aaf(u))]
+
+which will end up at the location `fcc`.
+"""
+@inline function ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    1/Vᵘ(i, j, k, grid) * (δx_viscous_flux_u(i, j, k, grid, u, ν) +
+                           δy_viscous_flux_u(i, j, k, grid, u, ν) +
+                           δz_viscous_flux_u(i, j, k, grid, u, ν))
+end
+
+"""
+    ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
+
+Calculates viscous dissipation for the v-velocity via
+
+    1/Vᵛ * [δx_caa(ν * ϊx_faa(Ax) * δx_faa(v)) + δy_afa(ν * ϊy_aca(Ay) * δy_aca(v)) + δz_aac(ν * ϊz_aaf(Az) * δz_aaf(v))]
+
+which will end up at the location `cfc`.
+"""
+@inline function ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
+    1/Vᵛ(i, j, k, grid) * (δx_viscous_flux_v(i, j, k, grid, v, ν) +
+                           δy_viscous_flux_v(i, j, k, grid, v, ν) +
+                           δz_viscous_flux_v(i, j, k, grid, v, ν))
 end
 
 """
