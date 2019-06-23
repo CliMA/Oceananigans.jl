@@ -6,13 +6,13 @@
 @inline flux_z(i, j, k, grid::Grid, fz::AbstractArray) = @inbounds  Az(i, j, k, grid) * fz[i, j, k]
 
 # Calculate components of the divergence of a flux (fx, fy, fz).
-@inline δx_caa_flux(i, j, k, grid::Grid, fx::AbstractArray) =
+@inline δx_flux(i, j, k, grid::Grid, fx::AbstractArray) =
     flux_x(i+1, j, k, grid, fx) - flux_x(i, j, k, grid, fx)
 
-@inline δy_aca_flux(i, j, k, grid::Grid, fy::AbstractArray) =
+@inline δy_flux(i, j, k, grid::Grid, fy::AbstractArray) =
     flux_y(i, j+1, k, grid, fx) - flux_y(i, j, k, grid, fy)
 
-@inline function δz_aac_flux(i, j, k, grid::Grid, fz::AbstractArray)
+@inline function δz_flux(i, j, k, grid::Grid, fz::AbstractArray)
     if k == grid.Nz
         return flux_z(i, j, k, grid, fz)
     else
@@ -30,18 +30,18 @@ end
     @inbounds AyF(i, j, k, grid) * v[i, j, k] * ϊy_afa(i, j, k, grid, Q)
 
 @inline tracer_flux_z(i, j, k, grid::Grid, w::AbstractArray, Q::AbstractArray) =
-    @inbounds Ax(i, j, k, grid)  * w[i, j, k] * ϊz_aaf(i, j, k, grid, Q)
+    @inbounds Az(i, j, k, grid)  * w[i, j, k] * ϊz_aaf(i, j, k, grid, Q)
 
 
 # Calculate the components of the divergence of the flux of a tracer quantity Q
 # over a cell.
-@inline δx_caa_tracer_flux(i, j, k, grid::Grid, u::AbstractArray, Q::AbstractArray) =
+@inline δx_tracer_flux(i, j, k, grid::Grid, u::AbstractArray, Q::AbstractArray) =
     tracer_flux_x(i+1, j, k, grid, u, Q) - tracer_flux_x(i, j, k, grid, u, Q)
 
-@inline δy_aca_tracer_flux(i, j, k, grid::Grid, v::AbstractArray, Q::AbstractArray) =
+@inline δy_tracer_flux(i, j, k, grid::Grid, v::AbstractArray, Q::AbstractArray) =
     tracer_flux_y(i, j+1, k, grid, v, Q) - tracer_flux_y(i, j, k, grid, v, Q)
 
-@inline function δz_aac_tracer_flux(i, j, k, grid::Grid, w::AbstractArray, Q::AbstractArray)
+@inline function δz_tracer_flux(i, j, k, grid::Grid, w::AbstractArray, Q::AbstractArray)
     if k == grid.Nz
         return tracer_flux_z(i, j, k, grid, w, Q)
     else
@@ -59,7 +59,7 @@ Calculates the horizontal divergence ∇ₕ·(u, v) of the velocity (u, v) via
 which will end up at the location `cca`.
 """
 @inline function divh_u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray)
-    1/V(i, j, k, grid) * (δx_caa_flux(i, j, k, grid, u) + δy_aca_flux(i, j, k, grid, v))
+    1/V(i, j, k, grid) * (δx_flux(i, j, k, grid, u) + δy_flux(i, j, k, grid, v))
 end
 
 """
@@ -72,9 +72,9 @@ Calculates the divergence ∇·f of a vector field f = (fx, fy, fz),
 which will end up at the cell centers `ccc`.
 """
 @inline function div_ccc(i, j, k, grid::Grid, fx::AbstractArray, fy::AbstractArray, fz::AbstractArray)
-    1/V(i, j, k, grid) * (δx_caa_flux(i, j, k, grid, fx) +
-                          δy_aca_flux(i, j, k, grid, fy) +
-                          δz_aac_flux(i, j, k, grid, fz))
+    1/V(i, j, k, grid) * (δx_flux(i, j, k, grid, fx) +
+                          δy_flux(i, j, k, grid, fy) +
+                          δz_flux(i, j, k, grid, fz))
 end
 
 """
@@ -89,12 +89,12 @@ which will end up at the location `ccc`.
 """
 @inline function div_flux(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray, Q::AbstractArray)
     if k == 1
-        return @inbounds 1/V(i, j, k, grid) * (δx_caa_tracer_flux(i, j, k, grid, u, Q) +
-                                               δy_aca_tracer_flux(i, j, k, grid, v, Q) -
+        return @inbounds 1/V(i, j, k, grid) * (δx_tracer_flux(i, j, k, grid, u, Q) +
+                                               δy_tracer_flux(i, j, k, grid, v, Q) -
                                                tracer_flux_z(i, j, 2, w, Q))
     else
-        return 1/V(i, j, k, grid) * (δx_caa_tracer_flux(i, j, k, grid, u, Q) +
-                                     δy_aca_tracer_flux(i, j, k, grid, v, Q) +
-                                     δz_aac_tracer_flux(i, j, k, grid, w, Q))
+        return 1/V(i, j, k, grid) * (δx_tracer_flux(i, j, k, grid, u, Q) +
+                                     δy_tracer_flux(i, j, k, grid, v, Q) +
+                                     δz_tracer_flux(i, j, k, grid, w, Q))
     end
 end
