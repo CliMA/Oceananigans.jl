@@ -4,7 +4,7 @@ mutable struct Model{A<:Architecture, G, TC, T}
               arch :: A                  # Computer `Architecture` on which `Model` is run.
               grid :: G                  # Grid of physical points on which `Model` is solved.
              clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`.
-               eos :: EquationOfState    # Defines relationship between temperature,  salinity, and 
+               eos :: EquationOfState    # Defines relationship between temperature,  salinity, and
                                          # buoyancy in the Boussinesq vertical momentum equation.
          constants :: PlanetaryConstants # Set of physical constants, inc. gravitational acceleration.
         velocities :: VelocityFields     # Container for velocity fields `u`, `v`, and `w`.
@@ -36,8 +36,8 @@ function Model(;
     float_type = Float64,
           grid = RegularCartesianGrid(float_type, N, L),
     # Isotropic transport coefficients (exposed to `Model` constructor for convenience)
-             ν = 1.05e-6, νh=ν, νv=ν, 
-             κ = 1.43e-7, κh=κ, κv=κ, 
+             ν = 1.05e-6, νh=ν, νv=ν,
+             κ = 1.43e-7, κh=κ, κv=κ,
        closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
     # Time stepping
     start_time = 0,
@@ -65,7 +65,7 @@ function Model(;
      stepper_tmp = StepperTemporaryFields(arch, grid)
 
     # Initialize Poisson solver.
-    poisson_solver = PoissonSolver(arch, grid)
+    poisson_solver = PoissonSolver(arch, PPN(), grid)
 
     # Set the default initial condition
     initialize_with_defaults!(eos, tracers, velocities, G, Gp)
@@ -96,6 +96,8 @@ function ChannelModel(; kwargs...)
     model.boundary_conditions.T.y.right = BoundaryCondition(FreeSlip, nothing)
     model.boundary_conditions.S.y.left  = BoundaryCondition(FreeSlip, nothing)
     model.boundary_conditions.S.y.right = BoundaryCondition(FreeSlip, nothing)
+
+    model.poisson_solver = PoissonSolver(model.arch, PNN(), model.grid)
 
     return model
 end
