@@ -72,9 +72,12 @@ export
     time_step!,
 
     # Poisson solver
+    PoissonBCs,
+    PPN, PNN,
     PoissonSolver,
+    PoissonSolverCPU,
     PoissonSolverGPU,
-    solve_poisson_3d_ppn_planned!,
+    solve_poisson_3d_planned!,
     solve_poisson_3d_ppn_gpu_planned!,
 
     # Clock
