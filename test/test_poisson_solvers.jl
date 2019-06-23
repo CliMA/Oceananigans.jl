@@ -42,7 +42,7 @@ end
 
 function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(CPU(), grid)
+    solver = PoissonSolver(CPU(), PPN(), grid)
     true  # Just making sure the PoissonSolver does not error/crash.
 end
 
@@ -50,7 +50,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(CPU(), grid)
+    solver = PoissonSolver(CPU(), PPN(), grid)
 
     RHS = CellField(FT, CPU(), grid)
     data(RHS) .= rand(Nx, Ny, Nz)
@@ -60,7 +60,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solver.storage .= data(RHS)
 
-    solve_poisson_3d_ppn_planned!(solver, grid)
+    solve_poisson_3d_planned!(solver, grid)
 
     ϕ   = CellField(FT, CPU(), grid)
     ∇²ϕ = CellField(FT, CPU(), grid)
@@ -113,14 +113,21 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 end
 
 """
-    Test that the Poisson solver can recover an analytic solution. In this test, we are trying to see if the solver
-    can recover the solution ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
-    by giving it the source term or right hand side (RHS), which is ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
+    poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
+
+Test that the Poisson solver can recover an analytic solution. In this test, we
+are trying to see if the solver can recover the solution
+
+    ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
+
+by giving it the source term or right hand side (RHS), which is
+
+    ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    solver = PoissonSolver(CPU(), grid)
+    solver = PoissonSolver(CPU(), PPN(), grid)
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
     xC = reshape(xC, (Nx, 1, 1))
@@ -131,7 +138,7 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
-    solve_poisson_3d_ppn_planned!(solver, grid)
+    solve_poisson_3d_planned!(solver, grid)
     ϕ = real.(solver.storage)
 
     error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)

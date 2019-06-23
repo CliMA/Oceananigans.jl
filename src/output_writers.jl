@@ -65,6 +65,7 @@ function write_output(model::Model{arch}, chk::Checkpointer) where arch <: Archi
     filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
 
     forcing_functions = model.forcing
+    poisson_bcs = model.poisson_solver.bcs
 
     # Do not include forcing functions and FFT plans. We want to avoid serializing
     # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
@@ -80,7 +81,7 @@ function write_output(model::Model{arch}, chk::Checkpointer) where arch <: Archi
     close(f)
 
     println("[Checkpointer] Reconstructing FFT plans...")
-    model.poisson_solver = PoissonSolver(arch(), model.grid)
+    model.poisson_solver = PoissonSolver(arch(), poisson_bcs, model.grid)
 
     # Putting back in the forcing functions.
     model.forcing = forcing_functions
@@ -95,7 +96,7 @@ function restore_from_checkpoint(filepath)
     close(f)
 
     println("Reconstructing FFT plans...")
-    model.poisson_solver = PoissonSolver(arch(model)(), model.grid)
+    model.poisson_solver = PoissonSolver(arch(model)(), PPN(), model.grid)
 
     model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
     println("WARNING: Forcing functions have been set to nothing!")

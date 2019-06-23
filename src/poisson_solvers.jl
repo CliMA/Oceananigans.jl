@@ -1,10 +1,15 @@
 import FFTW
 import GPUifyLoops: @launch, @loop, @synchronize
 
-PoissonSolver(::CPU, grid::Grid) = PoissonSolverCPU(grid)
-PoissonSolver(::GPU, grid::Grid) = PoissonSolverGPU(grid)
+abstract type PoissonBCs end
+struct PPN <: PoissonBCs end  # Periodic BCs in x,y. Neumann BC in z.
+struct PNN <: PoissonBCs end  # Periodic BCs in x. Neumann BC in y,z.
 
-struct PoissonSolverCPU{KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
+PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(grid)
+
+struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+    bcs::BC
     kx²::KT
     ky²::KT
     kz²::KT
@@ -15,7 +20,8 @@ struct PoissonSolverCPU{KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
     IDCT!::IDCTT
 end
 
-# Translate FFTW planner flag to string. Useful for logging and to print FFT plan creation timing.
+# Translate FFTW planner flag to string. Useful for logging and to print FFT
+# plan creation timing.
 let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
                 FFTW.MEASURE    => "FFTW.MEASURE",
                 FFTW.PATIENT    => "FFTW.PATIENT",
@@ -24,11 +30,12 @@ let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
     plannerflag2string(k::Integer) = pf2s[Int(k)]
 end
 
-function PoissonSolverCPU(grid::Grid, planner_flag=FFTW.PATIENT)
+function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
 
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     kx² = zeros(Float64, Nx)
     ky² = zeros(Float64, Ny)
@@ -37,30 +44,43 @@ function PoissonSolverCPU(grid::Grid, planner_flag=FFTW.PATIENT)
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
     for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
-    for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny)    / (Ly/Ny))^2; end
     for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
 
-    FFT!  = FFTW.plan_fft!(storage, [1, 2]; flags=planner_flag)
-    IFFT! = FFTW.plan_ifft!(storage, [1, 2]; flags=planner_flag)
-    DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, 3; flags=planner_flag)
-    IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, 3; flags=planner_flag)
+    if pbcs == PPN()
+        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny) / (Ly/Ny))^2; end
+    elseif pbcs == PNN()
+        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/(2Ny)) / (Ly/Ny))^2; end
+    end
 
-    PoissonSolverCPU(kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
+    if pbcs == PPN()
+        FFT!  = FFTW.plan_fft!(storage, [1, 2]; flags=planner_flag)
+        IFFT! = FFTW.plan_ifft!(storage, [1, 2]; flags=planner_flag)
+        DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, 3; flags=planner_flag)
+        IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, 3; flags=planner_flag)
+    elseif pbcs == PNN()
+        FFT!  = FFTW.plan_fft!(storage, 1; flags=planner_flag)
+        IFFT! = FFTW.plan_ifft!(storage, 1; flags=planner_flag)
+        DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, [2, 3]; flags=planner_flag)
+        IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, [2, 3]; flags=planner_flag)
+    end
+
+    PoissonSolverCPU(pbcs, kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
 
 """
-    solve_poisson_3d_ppn_planned!(solver, grid)
+    solve_poisson_3d_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
 
-Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
-FFTs and DCTs. The right-hand-side RHS is stored in solver.storage which the solver mutates to produce the solution,
-so it will also be stored in solver.storage.
+Solve Poisson equation on a staggered grid (Arakawa C-grid) with with
+appropriate boundary conditions as specified by solver.bcs  using planned FFTs
+and DCTs. The right-hand-side RHS is stored in solver.storage which the solver
+mutates to produce the solution, so it will also be stored in solver.storage.
 
   Args
   ----
   solver : Poisson solver (CPU)
     grid : solver grid
 """
-function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
+function solve_poisson_3d_planned!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     # We can use the same storage for the RHS and the solution ϕ.
@@ -79,6 +99,29 @@ function solve_poisson_3d_ppn_planned!(solver::PoissonSolverCPU, grid::RegularCa
     solver.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
 
     @. ϕ = ϕ / (2Nz)  # Must normalize by 2Nz after using FFTW.REDFT.
+
+    nothing
+end
+
+function solve_poisson_3d_planned!(solver::PoissonSolverCPU{<:PNN}, grid::RegularCartesianGrid)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+
+    # We can use the same storage for the RHS and the solution ϕ.
+    RHS, ϕ = solver.storage, solver.storage
+
+    solver.DCT! * RHS  # Calculate DCTʸᶻ(f) in place.
+    solver.FFT! * RHS  # Calculate FFTˣ(f) in place.
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        @inbounds ϕ[i, j, k] = -RHS[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
+    end
+
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT! * ϕ  # Calculate IFFTˣ(ϕ) in place.
+    solver.IDCT! * ϕ  # Calculate IDCTʸᶻ(ϕ) in place.
+
+    @. ϕ = ϕ / (4Ny*Nz)  # Must normalize by 2Ny*2Nz after using FFTW.REDFT.
 
     nothing
 end
