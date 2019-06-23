@@ -25,7 +25,7 @@
     if k == grid.Nz
         return mom_flux_uw(i, j, k, grid, u, w)
     else
-        return mom_flux_uw(i, j, k+1, grid, u, w) - mom_flux_uw(i, j, k, grid, u, w)
+        return mom_flux_uw(i, j, k, grid, u, w) - mom_flux_uw(i, j, k+1, grid, u, w)
     end
 end
 
@@ -65,21 +65,21 @@ end
 @inline mom_flux_wu(i, j, k, grid::Grid, u::AbstractArray, w::AbstractArray) =
     ϊzAxF_aaf(i, j, k, grid, u) * ϊx_faa(i, j, k, grid, w)
 
-""" Calculate δx_caa[(AxF * u)ᶻ * w̅ˣ] -> ccf. """
-@inline δx_mom_flux_w(i, j, k, grid::Grid, u::AbstractArray, w::AbstractArray) =
-    mom_flux_wu(i+1, j, k, grid, u, w) - mom_flux_wu(i, j, k, grid, u, w)
-
 """ Calculate (AyF * v)ᶻ * w̅ʸ -> cff. """
 @inline mom_flux_wv(i, j, k, grid::Grid, v::AbstractArray, w::AbstractArray) =
     ϊzAyF_afa(i, j, k, grid, v) * ϊy_afa(i, j, k, grid, w)
 
-""" Calculate δy_aca[(AyF * v)ᶻ * w̅ʸ] -> ccf. """
-@inline δy_mom_flux_v(i, j, k, grid::Grid, v::AbstractArray, w::AbstractArray) =
-    mom_flux_wv(i, j+1, k, grid, v, w) - mom_flux_wv(i, j, k, grid, v, w)
-
 """ Calculate (Az * w)ᶻ * w̅ᶻ -> ccc. """
 @inline mom_flux_ww(i, j, k, grid::Grid{T}, w::AbstractArray) =
     ϊzAz_aac(i, j, k, grid, w) * ϊz_aac(i, j, k, grid, w)
+
+""" Calculate δx_caa[(AxF * u)ᶻ * w̅ˣ] -> ccf. """
+@inline δx_mom_flux_w(i, j, k, grid::Grid, u::AbstractArray, w::AbstractArray) =
+    mom_flux_wu(i+1, j, k, grid, u, w) - mom_flux_wu(i, j, k, grid, u, w)
+
+""" Calculate δy_aca[(AyF * v)ᶻ * w̅ʸ] -> ccf. """
+@inline δy_mom_flux_v(i, j, k, grid::Grid, v::AbstractArray, w::AbstractArray) =
+    mom_flux_wv(i, j+1, k, grid, v, w) - mom_flux_wv(i, j, k, grid, v, w)
 
 """ Calculate δz_aaf[(Az * w)ᶻ * w̅ᶻ] -> ccf. """
 @inline function δz_mom_flux_w(i, j, k, grid::Grid{T}, w::AbstractArray) where T

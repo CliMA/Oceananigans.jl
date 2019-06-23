@@ -18,7 +18,7 @@ Calculate the Coriolis term in the u-momentum equation, 1/Vᵘ * (fVv̅ʸ)ˣ -> 
 """
     fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat)
 
-Calculate the Coriolis term in the v-momentum equation, 1/Vᵛ * (fVu̅ˣ)ʸ.
+Calculate the Coriolis term in the v-momentum equation, 1/Vᵛ * (fVu̅ˣ)ʸ -> cfc.
 
 Note that the minus sign is not included in here as this operator just computes
 the "magnitude of fu". The reasoning behind this is so that the minus sign can
