@@ -21,6 +21,15 @@ end
     end
 end
 
+# Operators that interpolate areas.
+@inline ϊAxF_caa(i, j, k, grid::Grid) where T = T(0.5) * (AxF(i, j, k, grid) + AxF(i+1, j, k, grid))
+@inline ϊAyF_aca(i, j, k, grid::Grid) where T = T(0.5) * (AyF(i, j, k, grid) + AyF(i, j+1, k, grid))
+@inline ϊAz_aac(i, j, k, grid::Grid) where T = T(0.5) * (Az(i, j, k, grid) + Az(i, j, k+1, grid))
+
+@inline ϊAxF_faa(i, j, k, grid::Grid) where T = T(0.5) * (AxF(i-1, j, k, grid) + AxF(i, j, k, grid))
+@inline ϊAyF_afa(i, j, k, grid::Grid) where T = T(0.5) * (AyF(i, j-1, k, grid) + AyF(i, j, k, grid))
+@inline ϊAz_aaf(i, j, k, grid::Grid) where T = T(0.5) * (Az(i, j, k-1, grid) + Az(i, j, k, grid))
+
 # Interpolation operators of the form ϊ(A*f) where A is an area and f is an array.
 @inline ϊxAxF_caa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (AxF(i+1, j, k, grid) * f[i+1, j, k] + AxF(i,   j, k, grid) * f[i,    j, k])
 @inline ϊxAxF_faa(i, j, k, grid::Grid{T}, f::AbstractArray) where T = @inbounds T(0.5) * (AxF(i,   j, k, grid) * f[i,   j, k] + AxF(i-1, j, k, grid) * f[i-1,  j, k])
