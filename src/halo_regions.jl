@@ -39,7 +39,7 @@ function fill_halo_regions!(arch::Architecture, grid::Grid, bcs::ModelBoundaryCo
             @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
             @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
             @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, 1+Hy:2Hy,   :]
-            @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = 0
+            @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[]
         end
     end
 end
@@ -53,6 +53,18 @@ function fill_halo_regions!(arch::Architecture, grid::Grid, fields...)
         @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
         @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, Ny+1:Ny+Hy, :]
         @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[:, 1+Hy:2Hy,   :]
+    end
+end
+
+function fill_halo_regions_channel!(arch::Architecture, grid::Grid, fields...)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    for f in fields
+        @views @inbounds @. f.parent[1:Hx,           :, :] = f.parent[Nx+1:Nx+Hx, :, :]
+        @views @inbounds @. f.parent[Nx+Hx+1:Nx+2Hx, :, :] = f.parent[1+Hx:2Hx,   :, :]
+        @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, 1+Hy:2Hy,   :]
+        @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = f.parent[:, Ny+1:Ny+Hy, :]
     end
 end
 
