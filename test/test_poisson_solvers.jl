@@ -67,7 +67,37 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     data(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(CPU(), grid, ϕ.data)
-    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+    ∇²!(grid, ϕ, ∇²ϕ)
+
+    fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
+
+    data(∇²ϕ) ≈ data(RHS_orig)
+end
+
+function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    solver = PoissonSolver(CPU(), PNN(), grid)
+
+    RHS = CellField(FT, CPU(), grid)
+    data(RHS) .= rand(Nx, Ny, Nz)
+    data(RHS) .= data(RHS) .- mean(data(RHS))
+
+    RHS_orig = deepcopy(RHS)
+
+    solver.storage .= data(RHS)
+
+    solve_poisson_3d_planned!(solver, grid)
+
+    ϕ   = CellField(FT, CPU(), grid)
+    ∇²ϕ = CellField(FT, CPU(), grid)
+
+    data(ϕ) .= real.(solver.storage)
+
+    fill_halo_regions_channel!(CPU(), grid, ϕ.data)
+    ∇²!(grid, ϕ, ∇²ϕ)
 
     fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
 
@@ -106,7 +136,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     fill_halo_regions!(GPU(), grid, ϕ.data)
 
-    ∇²_ppn!(grid, ϕ.data, ∇²ϕ.data)
+    ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
     data(∇²ϕ) ≈ RHS_orig
 end
