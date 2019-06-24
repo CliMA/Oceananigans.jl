@@ -246,7 +246,7 @@ end
     ((𝜈h/g.Δx^2) * δx²_f2e2f(g, w, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2e2f(g, w, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2c2f(g, w, i, j, k))
 end
 
-@inline function ∇²_ppn(g::RegularCartesianGrid, f, i, j, k)
+@inline function ∇²(g::RegularCartesianGrid, f, i, j, k)
 	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 end
 
