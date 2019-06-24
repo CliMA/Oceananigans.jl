@@ -99,7 +99,7 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     fill_halo_regions_channel!(CPU(), grid, ϕ.data)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
+    fill_halo_regions_channel!(CPU(), grid, ∇²ϕ.data)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
