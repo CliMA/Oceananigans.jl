@@ -127,10 +127,30 @@ Since we plan on using this model to carry long integrations and RCE simulations
 
 \subsection{Flux reconstruction for scalars}
 
-Following Durran (2002) (after Zalesak, 1979), we approximate the conservation law with the finite difference equation
+We approximate the conservation law $\partial_\alpha \phi u^{\alpha} = 0$, with the finite difference equation (in 1D for now).
 
 \begin{equation}
-\partial{s}{t} + \Big(\frac{F_{j+\frac{1}{2}}-F_{j-\frac{1}{2}}}{\Delta x}\Big) = 0
+\pdv{\phi}{t} + \Big(\frac{F_{j+\frac{1}{2}}-F_{j-\frac{1}{2}}}{\Delta x}\Big) = 0,
 \end{equation}
+
+which is a conservative form, where $\phi$ is some scalar, and where F is the flux of $\phi$ across an edge of the cell. There are two main ways to go about estimating the integrated flux over one time step, using finite-volumes-like methods.
+
+1) The one that fits best the definition of finite volumes entails to reconstruct the subgrid profile of $\phi$. This requires knowing the values of $\phi_{j+\frac{1}{2}}$ and $\phi_{j-\frac{1}{2}}$, which can be estimated either by interpolation (Durran, 2002) or by matching the first derivatives of the volume-conserving subgrid reconstruction (spline method, e.g. Zerroukat et al, 2006). Once this subgrid reconstruction is complete, the integrated flux across a boundary during a time step is given be the space integral over the reconstructed spline, where the bounds are given by the Courant number. In that case, no additional time-integration scheme needs to be derived!
+
+2) An simpler-to-implement alternative (e.g., Hunsdorfer et al, 1995 or Wicker and Skamarock, 2002) entails to use finite difference methods for integral equations. In that case, we use (in 1D) $F_{j+\frac{1}{2}} = (u\phi)_{j+\frac{1}{2}}$. This is one of the instances where a C-grid comes in handy. Since the edges of the scalar cells where we need to reconstruct the flux are where the velocities are defined, all we need to estimate is $\phi_{j+\frac{1}{2}}$.
+
+Lest we redo all the work, we will simply state, using that method, that, to the third order,
+
+\begin{equation}
+F_{j-\frac{1}{2}}^{3rd} = F_{j-\frac{1}{2}}^{4th} - \frac{|u_{j-\frac{1}{2}}|}{12}[3(\phi_i - \phi_{i-1}) - (\phi_{i+1}- \phi_{i-2})],
+\end{equation}
+
+where
+
+\begin{equation}
+F_{j-\frac{1}{2}}^{4th} = \frac{u_{j-\frac{1}{2}}}{12}[7(\phi_i + \phi_{i-1}) - (\phi_{i+1} + \phi_{i-2})].
+\end{equation}
+
+An interesting property of this decomposition is that the third order flux can be written as the sum of the fourth order flux and a numerical dissipation term. Using the third order flux form, we will be able to diagnose the next order numerical dissipation, and to compare it with parameterized diffusion, thus providing interesting insight into the behavior of the model. We will be using third order flux here because odd ordered schemes are more stable than even ordered schemes. 
 
 \end{document}
