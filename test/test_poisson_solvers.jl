@@ -8,16 +8,14 @@ using OffsetArrays
 
 using Oceananigans.Operators
 
-function ∇²_ppn!(grid::RegularCartesianGrid, f, ∇²f)
+function ∇²!(grid::RegularCartesianGrid, f, ∇²f)
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ∇²f[i, j, k] = ∇²_ppn(grid, f, i, j, k)
+                @inbounds ∇²f[i, j, k] = ∇²(grid, f, i, j, k)
             end
         end
     end
-
-    @synchronize
 end
 
 function mixed_fft_commutes(N)
@@ -47,7 +45,8 @@ function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PPN(), grid)

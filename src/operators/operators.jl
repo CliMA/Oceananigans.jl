@@ -55,7 +55,7 @@ export
     𝜈∇²u,
     𝜈∇²v,
     𝜈∇²w,
-    ∇²_ppn,
+    ∇²,
     ∇h_u
 
 include("ops_regular_cartesian_grid.jl")
