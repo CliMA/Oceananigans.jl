@@ -9,7 +9,6 @@ const nsolution = length(solution_fields)
 
 abstract type BCType end
 struct Periodic <: BCType end
-struct FreeSlip <: BCType end
 struct Flux <: BCType end
 struct Gradient <: BCType end
 struct Value <: BCType end
@@ -104,15 +103,15 @@ FieldBoundaryConditions() = FieldBoundaryConditions(
                                     BoundaryCondition(Periodic, nothing),
                                     BoundaryCondition(Periodic, nothing)),
                                 CoordinateBoundaryConditions(
-                                    BoundaryCondition(FreeSlip, nothing),
-                                    BoundaryCondition(FreeSlip, nothing)))
+                                    BoundaryCondition(Flux, 0),
+                                    BoundaryCondition(Flux, 0)))
 
 """
     ModelBoundaryConditions()
 
 Return a default set of model boundary conditions. For now, this corresponds to a
 doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
-with `FreeSlip` boundary conditions at the top and bottom.
+with no-flux boundary conditions at the top and bottom.
 """
 function ModelBoundaryConditions()
     bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
