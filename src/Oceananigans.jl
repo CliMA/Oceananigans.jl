@@ -54,9 +54,11 @@ export
     δρ,
 
     # Boundary conditions
-    BoundaryConditions,
     BoundaryCondition,
-    Default,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions,
+    ModelBoundaryConditions,
+    Periodic,
     Flux,
     Gradient,
     Value,
@@ -65,16 +67,11 @@ export
 
     # Time stepping
     time_step!,
-    time_step_kernel!,
 
     # Poisson solver
     PoissonSolver,
     PoissonSolverGPU,
-    init_poisson_solver,
-    solve_poisson_3d_ppn,
-    solve_poisson_3d_ppn!,
     solve_poisson_3d_ppn_planned!,
-    solve_poisson_3d_ppn_gpu!,
     solve_poisson_3d_ppn_gpu_planned!,
 
     # Model helper structs, e.g. clock, etc.
