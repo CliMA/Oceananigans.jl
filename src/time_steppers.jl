@@ -295,10 +295,6 @@ function compute_w_from_continuity!(grid::Grid, u, v, w)
     @synchronize
 end
 
-#
-# Boundary condition physics specification
-#
-
 "Apply boundary conditions by modifying the source term G."
 function calculate_boundary_source_terms!(model::Model{A}) where A <: Architecture
     arch = A()
@@ -352,45 +348,4 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
         closure, eos, grav, t, iteration, u, v, w, T, S)
 
     return nothing
-end
-
-# Do nothing if both left and right boundary conditions are periodic.
-apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-apply_bcs!(::CPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-apply_bcs!(::CPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-
-apply_bcs!(::GPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-apply_bcs!(::GPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
-
-# First, dispatch on coordinate.
-apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(By, Bz) apply_x_bcs!(args...)
-apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, Bz) apply_y_bcs!(args...)
-apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By) apply_z_bcs!(args...)
-
-"Apply a top and/or bottom boundary condition to variable ϕ. Note that this kernel
-MUST be launched with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz), the
-boundary condition will be applied Bz times!"
-function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, u, v, w, T, S)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-
-               κ_top = κ(i, j, 1,       grid, closure, eos, g, u, v, w, T, S)
-            κ_bottom = κ(i, j, grid.Nz, grid, closure, eos, g, u, v, w, T, S)
-
-               apply_z_top_bc!(top_bc,    i, j, grid, ϕ, Gϕ, κ_top,    t, iteration, u, v, w, T, S)
-            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ_bottom, t, iteration, u, v, w, T, S)
-
-        end
-    end
-    @synchronize
 end
