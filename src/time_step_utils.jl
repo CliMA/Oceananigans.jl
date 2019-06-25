@@ -77,6 +77,15 @@ cell_diffusion_timescale(model) =
                              model.closure.κ,
                              model.grid)
 
+"""
+    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
+
+Instantiate a `TimeStepWizard`. On calling `update_Δt!(wizard, model)`,
+the `TimeStepWizard` computes a time-step such that the Courant-Freidrichs-Levy
+number is equal to `cfl`. The new `Δt` is constrained to change by a multiplicative
+factor no more than `max_change` or no less than `min_change` from the previous 
+`Δt`, and to be no greater in absolute magnitude than `max_Δt`. 
+"""
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1
     cfl_diffusion :: T = 2e-2
@@ -86,6 +95,13 @@ Base.@kwdef mutable struct TimeStepWizard{T}
                Δt :: T = 0.01
 end
 
+
+"""
+    update_Δt!(wizard, model)
+
+Compute `wizard.Δt` given the velocities and diffusivities
+of `model`, and the parameters of `wizard`.
+"""
 function update_Δt!(wizard, model)
     Δt_advection = wizard.cfl           * cell_advection_timescale(model)
     Δt_diffusion = wizard.cfl_diffusion * cell_diffusion_timescale(model)
