@@ -59,7 +59,6 @@ export
     FieldBoundaryConditions,
     ModelBoundaryConditions,
     Periodic,
-    FreeSlip,
     Flux,
     Gradient,
     Value,
