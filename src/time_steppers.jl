@@ -354,20 +354,20 @@ function calculate_boundary_source_terms!(model::Model{A}) where A <: Architectu
     return nothing
 end
 
-# Do nothing if both boundary conditions are default.
+# Do nothing if both left and right boundary conditions are periodic.
 apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 apply_bcs!(::CPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 apply_bcs!(::CPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 
 apply_bcs!(::GPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 apply_bcs!(::GPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Default, T}, right_bc::BC{<:Default, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
 
 # First, dispatch on coordinate.
 apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
