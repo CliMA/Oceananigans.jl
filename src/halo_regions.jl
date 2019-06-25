@@ -155,6 +155,8 @@ function fill_halo_region(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, f
     elseif bcs.y.left == NoFluxBC
         @views @inbounds @. f.parent[:, 1:Hy,           :] = f.parent[:, 1+Hy:2Hy,   :]
         @views @inbounds @. f.parent[:, Ny+Hy+1:Ny+2Hy, :] = 0
+
+        f[:, 1, :] .= 0  # Enforce v=0 at the wall
     end
 end
 
