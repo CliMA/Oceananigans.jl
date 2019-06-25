@@ -187,7 +187,7 @@ CuFFTs on a GPU.
       solver : PoissonSolverGPU
         grid : solver grid
 """
-function solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+function solve_poisson_3d_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
