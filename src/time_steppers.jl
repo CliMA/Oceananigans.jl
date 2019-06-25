@@ -133,7 +133,7 @@ function solve_for_pressure!(::GPU, model::Model)
     Tx, Ty = 16, 16  # Not sure why I have to do this. Will be superseded soon.
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
-    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
+    solve_poisson_3d_planned!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
     @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
 end
 
