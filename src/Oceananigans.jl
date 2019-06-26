@@ -77,7 +77,7 @@ export
     PoissonSolver,
     PoissonSolverCPU,
     PoissonSolverGPU,
-    solve_poisson_3d_planned!,
+    solve_poisson_3d!,
     solve_poisson_3d_ppn_gpu_planned!,
 
     # Clock
