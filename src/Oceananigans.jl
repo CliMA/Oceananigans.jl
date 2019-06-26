@@ -68,7 +68,6 @@ export
 
     # Halo regions
     fill_halo_regions!,
-    fill_halo_regions_channel!,
 
     # Time stepping
     time_step!,
