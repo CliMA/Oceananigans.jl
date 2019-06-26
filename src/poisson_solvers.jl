@@ -68,7 +68,7 @@ function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIEN
 end
 
 """
-    solve_poisson_3d_planned!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
+    solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
 
 Solve Poisson equation on a staggered grid (Arakawa C-grid) with with
 appropriate boundary conditions as specified by solver.bcs  using planned FFTs
@@ -80,7 +80,7 @@ mutates to produce the solution, so it will also be stored in solver.storage.
   solver : Poisson solver (CPU)
     grid : solver grid
 """
-function solve_poisson_3d_planned!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     # We can use the same storage for the RHS and the solution ϕ.
@@ -103,7 +103,7 @@ function solve_poisson_3d_planned!(solver::PoissonSolverCPU{<:PPN}, grid::Regula
     nothing
 end
 
-function solve_poisson_3d_planned!(solver::PoissonSolverCPU{<:PNN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverCPU{<:PNN}, grid::RegularCartesianGrid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     # We can use the same storage for the RHS and the solution ϕ.
@@ -187,7 +187,7 @@ CuFFTs on a GPU.
       solver : PoissonSolverGPU
         grid : solver grid
 """
-function solve_poisson_3d_planned!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 

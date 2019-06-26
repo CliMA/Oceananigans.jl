@@ -59,7 +59,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solver.storage .= data(RHS)
 
-    solve_poisson_3d_planned!(solver, grid)
+    solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, CPU(), grid)
     ∇²ϕ = CellField(FT, CPU(), grid)
@@ -89,7 +89,7 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solver.storage .= data(RHS)
 
-    solve_poisson_3d_planned!(solver, grid)
+    solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, CPU(), grid)
     ∇²ϕ = CellField(FT, CPU(), grid)
@@ -124,7 +124,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     Tx, Ty = 16, 16
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
+    solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
@@ -167,7 +167,7 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
-    solve_poisson_3d_planned!(solver, grid)
+    solve_poisson_3d!(solver, grid)
     ϕ = real.(solver.storage)
 
     error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
