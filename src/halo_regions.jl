@@ -119,14 +119,14 @@ function fill_halo_regions_y!(grid::Grid, fields...)
     @synchronize
 end
 
-function fill_halo_regions(grid, field_tuples...)
+function fill_halo_regions!(grid, field_tuples...)
     for ft in field_tuples
         field, fbcs, data = ft
-        fill_halo_region(grid, Val(field), fbcs, data)
+        fill_halo_region!(grid, Val(field), fbcs, data)
     end
 end
 
-function fill_halo_region(grid::Grid, ::Val{:u}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:u}, bcs::FieldBoundaryConditions, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -142,7 +142,7 @@ function fill_halo_region(grid::Grid, ::Val{:u}, bcs::FieldBoundaryConditions, f
     end
 end
 
-function fill_halo_region(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -160,7 +160,7 @@ function fill_halo_region(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, f
     end
 end
 
-function fill_halo_region(grid::Grid, ::Val{:w}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:w}, bcs::FieldBoundaryConditions, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -176,7 +176,7 @@ function fill_halo_region(grid::Grid, ::Val{:w}, bcs::FieldBoundaryConditions, f
     end
 end
 
-function fill_halo_region(grid::Grid, ::Val{:T}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:T}, bcs::FieldBoundaryConditions, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -192,7 +192,7 @@ function fill_halo_region(grid::Grid, ::Val{:T}, bcs::FieldBoundaryConditions, f
     end
 end
 
-function fill_halo_region(grid::Grid, ::Val{:S}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:S}, bcs::FieldBoundaryConditions, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 

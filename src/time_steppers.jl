@@ -89,16 +89,16 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
 
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
-                                                                  fill_halo_regions(grid, uvw_ft..., TS_ft..., pHY′_ft)
+                                                                  fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
                                                                   calculate_boundary_source_terms!(model)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
-                                                                  fill_halo_regions(grid, Guvw_ft...)
+                                                                  fill_halo_regions!(grid, Guvw_ft...)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS)
                                                                   solve_for_pressure!(arch, model)
-                                                                  fill_halo_regions(grid, pNHS_ft)
+                                                                  fill_halo_regions!(grid, pNHS_ft)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
-                                                                  fill_halo_regions(grid, uvw_ft...)
+                                                                  fill_halo_regions!(grid, uvw_ft...)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     compute_w_from_continuity!(grid, uvw...)
 
         clock.time += Δt
