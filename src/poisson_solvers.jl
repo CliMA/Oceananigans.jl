@@ -6,7 +6,7 @@ struct PPN <: PoissonBCs end  # Periodic BCs in x,y. Neumann BC in z.
 struct PNN <: PoissonBCs end  # Periodic BCs in x. Neumann BC in y,z.
 
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
-PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(grid)
+PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
 
 struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
     bcs::BC
@@ -126,20 +126,23 @@ function solve_poisson_3d!(solver::PoissonSolverCPU{<:PNN}, grid::RegularCartesi
     nothing
 end
 
-struct PoissonSolverGPU{KT, FT, A, FFTXYT, FFTZT, IFFTXYT, IFFTZT} <: PoissonSolver
+struct PoissonSolverGPU{BC, KT, FTY, FTZ, A, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
+    bcs::BC
     kx²::KT
     ky²::KT
     kz²::KT
-    dct_factors::FT
-    idct_bfactors::FT
+    dct_factors_y::FTY
+    idct_bfactors_y::FTY
+    dct_factors_z::FTZ
+    idct_bfactors_z::FTZ
     storage::A
-    FFT_xy!::FFTXYT
-    FFT_z!::FFTZT
-    IFFT_xy!::IFFTXYT
-    IFFT_z!::IFFTZT
+    FFT!::FFT
+    FFT_DCT!::FFTD
+    IFFT!::IFFT
+    IFFT_DCT!::IFFTD
 end
 
-function PoissonSolverGPU(grid::Grid)
+function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
 
@@ -153,25 +156,47 @@ function PoissonSolverGPU(grid::Grid)
 
     # Creating Arrays for ki² and converting them to CuArrays to avoid scalar operations.
     for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
-    for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny)    / (Ly/Ny))^2; end
     for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
+
+    if pbcs == PPN()
+        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny) / (Ly/Ny))^2; end
+    elseif pbcs == PNN()
+        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/(2Ny)) / (Ly/Ny))^2; end
+    end
+
     kx², ky², kz² = CuArray(kx²), CuArray(ky²), CuArray(kz²)
 
     # Exponential factors required to calculate the DCT on the GPU.
-    factors = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2Nz)))
-    dct_factors = CuArray{Complex{Float64}}(reshape(factors, 1, 1, Nz))
+    factors_y = 2 * exp.(collect(-1im*π*(0:Ny-1) / (2Ny)))
+    dct_factors_y = CuArray{Complex{Float64}}(reshape(factors_y, 1, Ny, 1))
+
+    factors_z = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2Nz)))
+    dct_factors_z = CuArray{Complex{Float64}}(reshape(factors_z, 1, 1, Nz))
 
     # "Backward" exponential factors required to calculate the IDCT on the GPU.
-    bfactors = exp.(collect(1im*π*(0:Nz-1) / (2Nz)))
-    bfactors[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
-    idct_bfactors = CuArray{Complex{Float64}}(reshape(bfactors, 1, 1, Nz))
+    bfactors_y = exp.(collect(1im*π*(0:Ny-1) / (2Ny)))
+    bfactors_y[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
+    idct_bfactors_y = CuArray{Complex{Float64}}(reshape(bfactors_y, 1, Ny, 1))
 
-    FFT_xy!  = plan_fft!(storage, [1, 2])
-    FFT_z!   = plan_fft!(storage, 3)
-    IFFT_xy! = plan_ifft!(storage, [1, 2])
-    IFFT_z!  = plan_ifft!(storage, 3)
+    bfactors_z = exp.(collect(1im*π*(0:Nz-1) / (2Nz)))
+    bfactors_z[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
+    idct_bfactors_z = CuArray{Complex{Float64}}(reshape(bfactors_z, 1, 1, Nz))
 
-    PoissonSolverGPU(kx², ky², kz², dct_factors, idct_bfactors, storage, FFT_xy!, FFT_z!, IFFT_xy!, IFFT_z!)
+    if pbcs == PPN()
+        FFT!      = plan_fft!(storage, [1, 2])
+        FFT_DCT!  = plan_fft!(storage, 3)
+        IFFT!     = plan_ifft!(storage, [1, 2])
+        IFFT_DCT! = plan_ifft!(storage, 3)
+    elseif pbcs == PNN()
+        FFT!      = plan_fft!(storage, 1)
+        FFT_DCT!  = plan_fft!(storage, [2, 3])
+        IFFT!     = plan_ifft!(storage, 1)
+        IFFT_DCT! = plan_ifft!(storage, [2, 3])
+    end
+
+    PoissonSolverGPU(pbcs, kx², ky², kz², dct_factors_y, idct_bfactors_y,
+                     dct_factors_z, idct_bfactors_z, storage,
+                     FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
 end
 
 """
@@ -187,26 +212,26 @@ CuFFTs on a GPU.
       solver : PoissonSolverGPU
         grid : solver grid
 """
-function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU, grid::RegularCartesianGrid)
+function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
     # Calculate DCTᶻ(f) in place using the FFT.
-    solver.FFT_z! * RHS
-    RHS .*= solver.dct_factors
+    solver.FFT_DCT! * RHS
+    RHS .*= solver.dct_factors_z
     @. RHS = real(RHS)
 
-    solver.FFT_xy! * RHS  # Calculate FFTˣʸ(f) in place.
+    solver.FFT! * RHS  # Calculate FFTˣʸ(f) in place.
 
     @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
 
     ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
-    solver.IFFT_xy! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
+    solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
 
     # Calculate IDCTᶻ(ϕ̂) in place using the FFT.
-    ϕ .*= solver.idct_bfactors
-    solver.IFFT_z! * ϕ
+    ϕ .*= solver.idct_bfactors_z
+    solver.IFFT_DCT! * ϕ
 
     nothing
 end
