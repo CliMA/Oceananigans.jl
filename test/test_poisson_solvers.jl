@@ -50,6 +50,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PPN(), grid)
+    fbcs = DoublyPeriodicBCs()
 
     RHS = CellField(FT, CPU(), grid)
     data(RHS) .= rand(Nx, Ny, Nz)
@@ -80,6 +81,8 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PNN(), grid)
+
+    fbcs = ChannelBCs()
 
     RHS = CellField(FT, CPU(), grid)
     data(RHS) .= rand(Nx, Ny, Nz)

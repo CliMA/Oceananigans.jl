@@ -54,13 +54,15 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    CoordinateBoundaryConditions,
-    FieldBoundaryConditions,
-    ModelBoundaryConditions,
     Periodic,
     Flux,
     Gradient,
     Value,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions,
+    ModelBoundaryConditions,
+    DoublyPeriodicBCs,
+    ChannelBCs,
     getbc,
     setbc!,
 
