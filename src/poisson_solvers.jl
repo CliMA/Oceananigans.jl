@@ -236,6 +236,32 @@ function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, 
     nothing
 end
 
+function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid)
+    # We can use the same storage for the RHS and the solution ϕ.
+    RHS, ϕ = solver.storage, solver.storage
+
+    # Calculate DCTʸᶻ(f) in place using the FFT.
+    solver.FFT_DCT! * RHS
+    RHS .*= solver.dct_factors_z
+    RHS .*= solver.dct_factors_y
+    @. RHS = real(RHS)
+
+    solver.FFT! * RHS  # Calculate FFTˣ(f) in place.
+
+    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
+
+    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT! * ϕ  # Calculate IFFTˣ(ϕ̂) in place.
+
+    # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
+    ϕ .*= solver.idct_bfactors_z
+    ϕ .*= solver.idct_bfactors_y
+    solver.IFFT_DCT! * ϕ
+
+    nothing
+end
+
 "Kernel for computing the solution `ϕ` to Poisson equation for source term `f` on a GPU."
 function f2ϕ!(grid::Grid, f, ϕ, kx², ky², kz²)
     @loop for k in (1:grid.Nz; blockIdx().z)
