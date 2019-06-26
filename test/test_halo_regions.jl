@@ -27,7 +27,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     field = CellField(FT, arch, grid)
 
     data(field) .= rand(FT, Nx, Ny, Nz)
-    fill_halo_regions!(arch, grid, field.data)
+    fill_halo_regions!(grid, (:u, fbcs, field.data))
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -46,7 +46,7 @@ function multiple_halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     data(field1) .= rand(FT, Nx, Ny, Nz)
     data(field2) .= rand(FT, Nx, Ny, Nz)
-    fill_halo_regions!(arch, grid, field1.data, field2.data)
+    fill_halo_regions!(grid, (:u, fbcs, field1.data), (:u, fbcs, field2.data))
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
