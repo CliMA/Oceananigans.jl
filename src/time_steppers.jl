@@ -94,7 +94,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
                                                                   calculate_boundary_source_terms!(model)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
                                                                   fill_halo_regions!(grid, Guvw_ft...)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, Δt, uvw..., Guvw..., RHS)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, uvw..., Guvw..., RHS)
                                                                   solve_for_pressure!(arch, model)
                                                                   fill_halo_regions!(grid, pNHS_ft)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
@@ -134,7 +134,7 @@ function solve_for_pressure!(::GPU, model::Model)
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
 
     solve_poisson_3d!(Tx, Ty, Bx, By, Bz, model.poisson_solver, model.grid)
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
+    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, model.pressures.pNHS.data)
 end
 
 """Store previous source terms before updating them."""
@@ -232,7 +232,7 @@ function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_poisson_right_hand_side!(::CPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt, u, v, w, Gu, Gv, Gw, RHS)
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -245,18 +245,29 @@ function calculate_poisson_right_hand_side!(::CPU, grid::Grid, Δt, u, v, w, Gu,
     @synchronize
 end
 
-function calculate_poisson_right_hand_side!(::GPU, grid::Grid, Δt, u, v, w, Gu, Gv, Gw, RHS)
+"""
+    calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
+
+Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
+which is the first step in the DCT.
+"""
+function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
-                # which is the first step in the DCT.
                 if CUDAnative.ffs(k) == 1  # isodd(k)
-                    @inbounds RHS[i, j, convert(UInt32, CUDAnative.floor(k/2) + 1)] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                    k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
                 else
-                    @inbounds RHS[i, j, convert(UInt32, Nz - CUDAnative.floor((k-1)/2))] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                    k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
                 end
+                @inbounds RHS[i, j, k′] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+            end
+        end
+    end
+
+    @synchronize
+end
             end
         end
     end
@@ -264,7 +275,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, Δt, u, v, w, Gu,
     @synchronize
 end
 
-function idct_permute!(grid::Grid, ϕ, pNHS)
+function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
