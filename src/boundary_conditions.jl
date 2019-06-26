@@ -93,16 +93,27 @@ struct ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions
     S :: FieldBoundaryConditions
 end
 
-FieldBoundaryConditions() = FieldBoundaryConditions(
-                                CoordinateBoundaryConditions(
-                                    BoundaryCondition(Periodic, nothing),
-                                    BoundaryCondition(Periodic, nothing)),
-                                CoordinateBoundaryConditions(
-                                    BoundaryCondition(Periodic, nothing),
-                                    BoundaryCondition(Periodic, nothing)),
-                                CoordinateBoundaryConditions(
-                                    BoundaryCondition(Flux, 0),
-                                    BoundaryCondition(Flux, 0)))
+DoublyPeriodicBCs() = FieldBoundaryConditions(
+                          CoordinateBoundaryConditions(
+                              BoundaryCondition(Periodic, nothing),
+                              BoundaryCondition(Periodic, nothing)),
+                          CoordinateBoundaryConditions(
+                              BoundaryCondition(Periodic, nothing),
+                              BoundaryCondition(Periodic, nothing)),
+                          CoordinateBoundaryConditions(
+                              BoundaryCondition(Flux, 0),
+                              BoundaryCondition(Flux, 0)))
+
+ChannelBCs() = FieldBoundaryConditions(
+                   CoordinateBoundaryConditions(
+                       BoundaryCondition(Periodic, nothing),
+                       BoundaryCondition(Periodic, nothing)),
+                   CoordinateBoundaryConditions(
+                       BoundaryCondition(Flux, 0),
+                       BoundaryCondition(Flux, 0)),
+                   CoordinateBoundaryConditions(
+                       BoundaryCondition(Flux, 0),
+                       BoundaryCondition(Flux, 0)))
 
 """
     ModelBoundaryConditions()
@@ -112,7 +123,7 @@ doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dim
 with no-flux boundary conditions at the top and bottom.
 """
 function ModelBoundaryConditions()
-    bcs = (FieldBoundaryConditions() for i = 1:length(solution_fields))
+    bcs = (DoublyPeriodicBCs() for i = 1:length(solution_fields))
     return ModelBoundaryConditions(bcs...)
 end
 
