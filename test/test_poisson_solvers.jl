@@ -81,7 +81,6 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PNN(), grid)
-
     fbcs = ChannelBCs()
 
     RHS = CellField(FT, CPU(), grid)
@@ -108,10 +107,12 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(GPU(), PPN(), grid)
+    fbcs = DoublyPeriodicBCs()
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
@@ -121,8 +122,9 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     solver.storage .= RHS
 
-    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
-    # the DCT in the Poisson solver.
+    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b]
+    # in the z-direction in preparation to calculate the DCT in the Poisson
+    # solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
     Tx, Ty = 16, 16
@@ -137,10 +139,10 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(GPU(), grid, ϕ.data)
-
+    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
+    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
     data(∇²ϕ) ≈ RHS_orig
 end
 

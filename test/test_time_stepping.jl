@@ -44,6 +44,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    fbcs = DoublyPeriodicBCs()
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
@@ -53,10 +54,10 @@ function compute_w_from_continuity(arch, FT)
     data(u) .= rand(FT, Nx, Ny, Nz)
     data(v) .= rand(FT, Nx, Ny, Nz)
 
-    fill_halo_regions!(arch, grid, u.data, v.data)
+    fill_halo_regions!(grid, (:u, fbcs, u.data), (:v, fbcs, v.data))
     compute_w_from_continuity!(grid, u.data, v.data, w.data)
 
-    fill_halo_regions!(arch, grid, w.data)
+    fill_halo_regions!(grid, (:w, fbcs, w.data))
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
