@@ -268,6 +268,25 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v,
 
     @synchronize
 end
+
+function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v, w, Gu, Gv, Gw, RHS)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                if CUDAnative.ffs(k) == 1  # isodd(k)
+                    k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
+                else
+                    k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
+                end
+
+                if CUDAnative.ffs(j) == 1  # isodd(j)
+                    j′ = convert(UInt32, CUDAnative.floor(j/2) + 1)
+                else
+                    j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
+                end
+
+                @inbounds RHS[i, j′, k′] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
             end
         end
     end
@@ -292,6 +311,30 @@ function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
     @synchronize
 end
 
+function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                if k <= Nz/2
+                    k′ = 2k-1
+                else
+                    k′ = 2(Nz-k+1)
+                end
+
+                if j <= Ny/2
+                    j′ = 2j-1
+                else
+                    j′ = 2(Ny-j+1)
+                end
+
+                @inbounds pNHS[i, j′, k′] = real(ϕ[i, j, k])
+            end
+        end
+    end
+
+    @synchronize
+end
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
     @loop for k in (1:grid.Nz; blockIdx().z)
