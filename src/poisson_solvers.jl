@@ -20,16 +20,6 @@ struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
     IDCT!::IDCTT
 end
 
-# Translate FFTW planner flag to string. Useful for logging and to print FFT
-# plan creation timing.
-let pf2s = Dict(FFTW.ESTIMATE   => "FFTW.ESTIMATE",
-                FFTW.MEASURE    => "FFTW.MEASURE",
-                FFTW.PATIENT    => "FFTW.PATIENT",
-                FFTW.EXHAUSTIVE => "FFTW.EXHAUSTIVE")
-    global plannerflag2string
-    plannerflag2string(k::Integer) = pf2s[Int(k)]
-end
-
 function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
