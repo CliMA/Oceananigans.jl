@@ -206,16 +206,6 @@ float_types = (Float32, Float64)
         println("  Testing Poisson solvers...")
         include("test_poisson_solvers.jl")
 
-        @testset "FFTW commutativity" begin
-            println("    Testing FFTW commutativity...")
-
-            # Testing for nice powers of two and not-so-nice prime numbers.
-            for N in [4, 7, 8, 10, 48, 64, 79, 128]
-                @test mixed_fft_commutes(N)
-                @test mixed_ifft_commutes(N)
-            end
-        end
-
         @testset "FFTW plans" begin
             println("    Testing FFTW planning...")
 
