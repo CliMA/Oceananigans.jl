@@ -132,7 +132,9 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PPN(), solver.storage, solver.storage)
+    # @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PPN(), solver.storage, solver.storage)
+    solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
+                                                      solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
 
     ϕ   = CellField(Float64, GPU(), grid)
     ∇²ϕ = CellField(Float64, GPU(), grid)
@@ -151,7 +153,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(GPU(), PPN(), grid)
+    solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
     RHS = rand(Nx, Ny, Nz)
