@@ -38,8 +38,8 @@ function update_plot!(ax, model)
     PyPlot.draw()
 end
 
-Lx, Ly, Lz = 160e3, 500e3, 1e3  # 160×500×1 km
-Δh, Δz = 10e3, 50  # Horizontal and vertical grid spacing [m].
+Lx, Ly, Lz = 160e3, 512e3, 1024  # 160×512×1 km
+Δh, Δz = 1e3, 8  # Horizontal and vertical grid spacing [m].
 Nx, Ny, Nz = Int(Lx/Δh), Int(Ly/Δh), Int(Lz/Δz)
 
 α = Δz/Δh # Grid cell aspect ratio.
@@ -49,10 +49,10 @@ Nx, Ny, Nz = Int(Lx/Δh), Int(Ly/Δh), Int(Lz/Δz)
 @show Nx, Ny, Nz
 @show νh, κh, νv, κv
 
-model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz),
+model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=GPU(),
                        νh=νh, νv=νv, κh=κh, κv=κv)
 
-nan_checker = NaNChecker(10, [model.velocities.w, model.tracers.T], ["w", "T"])
+nan_checker = NaNChecker(100, [model.velocities.w, model.tracers.T], ["w", "T"])
 push!(model.diagnostics, nan_checker)
 
 Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -72,7 +72,11 @@ for n in 1:1000
     @info "i = $i, t = $(Int(round(t/3600))) hours, ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
     update_plot!(ax, model)
+
+    tic = time_ns()
     time_step!(model; Nt=100, Δt=5*60)
+    @info "average wall clock time per iteration: $(prettytime((time_ns() - tic) / 100))"
+    
     @show mean(abs.(data(model.velocities.v))[:, 1, :])
     @show mean(abs.(data(model.velocities.v))[:, end, :])
     @show mean(abs.(data(model.velocities.w))[:, :, 1])
