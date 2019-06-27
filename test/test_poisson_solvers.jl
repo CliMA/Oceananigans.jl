@@ -18,26 +18,6 @@ function ∇²!(grid::RegularCartesianGrid, f, ∇²f)
     end
 end
 
-function mixed_fft_commutes(N)
-    A = rand(N, N, N)
-    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
-    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
-    Ã1 ≈ Ã2
-end
-
-function mixed_ifft_commutes(N)
-    A = rand(N, N, N)
-
-    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
-    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
-
-    A11 = FFTW.irfft(FFTW.idct(Ã1, 3), N, [1, 2])
-    A12 = FFTW.idct(FFTW.irfft(Ã1, N, [1, 2]), 3)
-    A21 = FFTW.irfft(FFTW.idct(Ã2, 3), N, [1, 2])
-    A22 = FFTW.idct(FFTW.irfft(Ã2, N, [1, 2]), 3)
-    A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
-end
-
 function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PPN(), grid)
