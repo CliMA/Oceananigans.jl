@@ -25,10 +25,7 @@ function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
-    # because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PPN(), grid)
     fbcs = DoublyPeriodicBCs()
 
@@ -56,10 +53,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
-    # because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(CPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
@@ -87,10 +81,7 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
-    # because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(GPU(), PPN(), grid)
     fbcs = DoublyPeriodicBCs()
 
@@ -129,10 +120,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
-    # because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
     solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
@@ -183,7 +171,7 @@ by giving it the source term or right hand side (RHS), which is
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
     solver = PoissonSolver(CPU(), PPN(), grid)
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
