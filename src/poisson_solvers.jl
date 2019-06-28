@@ -10,6 +10,14 @@ PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid
 
 unpack_grid(grid::Grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
+
+"""
+    ω(M, k)
+
+Return the `M`th root of unity raised to the `k`th power.
+"""
+@inline ω(M, k) = exp(-2im*π*k/M)
+
 """
     λi(grid::Grid, ::PoissonBCs)
 
@@ -98,12 +106,12 @@ function plan_transforms(::PNN, A::Array, planner_flag=FFTW.PATIENT)
     return FFT!, IFFT!, DCT!, IDCT!
 end
 
-struct PoissonSolverCPU{BC, AAX, AAY, AAZ, AA3, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+struct PoissonSolverCPU{BC, AAR, AAC, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
     bcs::BC
-    kx²::AAX
-    ky²::AAY
-    kz²::AAZ
-    storage::AA3
+    kx²::AAR
+    ky²::AAR
+    kz²::AAR
+    storage::AAC
     FFT!::FFTT
     DCT!::DCTT
     IFFT!::IFFTT
@@ -136,10 +144,12 @@ normalize_idct_output(::PNN, grid::Grid, ϕ::Array) = (@. ϕ = ϕ / (4grid.Ny*gr
 """
     solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
 
-Solve Poisson equation on a staggered grid (Arakawa C-grid) with with
+Solve Poisson equation on a uniform staggered grid (Arakawa C-grid) with
 appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
 and DCTs. The right-hand-side RHS is stored in solver.storage which the solver
 mutates to produce the solution, so it will also be stored in solver.storage.
+
+We should describe the algorithm in detail in the documentation.
 """
 function solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
@@ -170,16 +180,16 @@ function solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     nothing
 end
 
-struct PoissonSolverGPU{BC, KT, FTY, FTZ, A, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
+struct PoissonSolverGPU{BC, AAR, AAC, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
     bcs::BC
-    kx²::KT
-    ky²::KT
-    kz²::KT
-    dct_factors_y::FTY
-    idct_bfactors_y::FTY
-    dct_factors_z::FTZ
-    idct_bfactors_z::FTZ
-    storage::A
+    kx²::AAR
+    ky²::AAR
+    kz²::AAR
+    ω_4Ny⁺::AAC
+    ω_4Ny⁻::AAC
+    ω_4Nz⁺::AAC
+    ω_4Nz⁻::AAC
+    storage::AAC
     FFT!::FFT
     FFT_DCT!::FFTD
     IFFT!::IFFT
@@ -187,44 +197,31 @@ struct PoissonSolverGPU{BC, KT, FTY, FTZ, A, FFT, FFTD, IFFT, IFFTD} <: PoissonS
 end
 
 function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
+    Nx, Ny, Nz, _ = unpack_grid(grid)
 
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
+    # The eigenvalues of the discrete form of Poisson's equation correspond
+    # to discrete wavenumbers so we call them k² to make the analogy with
+    # solving Poisson's equation in spectral space.
+    kx² = λi(grid, pbcs) |> CuArray
+    ky² = λj(grid, pbcs) |> CuArray
+    kz² = λk(grid, pbcs) |> CuArray
+
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    kx² = zeros(Float64, Nx)
-    ky² = zeros(Float64, Ny)
-    kz² = zeros(Float64, Nz)
+    storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz) |> CuArray
 
-    storage = CuArray(zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz))
+    ky⁺ = reshape(0:Ny-1,       1, Ny, 1)
+    kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
+    ky⁻ = reshape(0:-1:-(Ny-1), 1, Ny, 1)
+    kz⁻ = reshape(0:-1:-(Nz-1), 1, 1, Nz)
 
-    # Creating Arrays for ki² and converting them to CuArrays to avoid scalar operations.
-    for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
-    for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
+    ω_4Ny⁺ = ω.(4Ny, ky⁺) |> CuArray
+    ω_4Nz⁺ = ω.(4Nz, kz⁺) |> CuArray
+    ω_4Ny⁻ = ω.(4Ny, ky⁻) |> CuArray
+    ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
 
-    if pbcs == PPN()
-        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny) / (Ly/Ny))^2; end
-    elseif pbcs == PNN()
-        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/(2Ny)) / (Ly/Ny))^2; end
-    end
-
-    kx², ky², kz² = CuArray(kx²), CuArray(ky²), CuArray(kz²)
-
-    # Exponential factors required to calculate the DCT on the GPU.
-    factors_y = 2 * exp.(collect(-1im*π*(0:Ny-1) / (2Ny)))
-    dct_factors_y = CuArray{Complex{Float64}}(reshape(factors_y, 1, Ny, 1))
-
-    factors_z = 2 * exp.(collect(-1im*π*(0:Nz-1) / (2Nz)))
-    dct_factors_z = CuArray{Complex{Float64}}(reshape(factors_z, 1, 1, Nz))
-
-    # "Backward" exponential factors required to calculate the IDCT on the GPU.
-    bfactors_y = exp.(collect(1im*π*(0:Ny-1) / (2Ny)))
-    bfactors_y[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
-    idct_bfactors_y = CuArray{Complex{Float64}}(reshape(bfactors_y, 1, Ny, 1))
-
-    bfactors_z = exp.(collect(1im*π*(0:Nz-1) / (2Nz)))
-    bfactors_z[1] *= 0.5  # Zeroth coefficient of FFTW's REDFT01 is not multiplied by 2.
-    idct_bfactors_z = CuArray{Complex{Float64}}(reshape(bfactors_z, 1, 1, Nz))
+    ω_4Nz⁻[1] *= 1/2
 
     if pbcs == PPN()
         FFT!      = plan_fft!(storage, [1, 2])
@@ -238,43 +235,53 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
         IFFT_DCT! = plan_ifft!(storage, [2, 3])
     end
 
-    PoissonSolverGPU(pbcs, kx², ky², kz², dct_factors_y, idct_bfactors_y,
-                     dct_factors_z, idct_bfactors_z, storage,
-                     FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
+    PoissonSolverGPU(pbcs, kx², ky², kz², ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻,
+                     storage, FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
 end
 
 """
-    solve_poisson_3d_ppn_gpu_planned!(args...)
+    solve_poisson_3d!(solver::PoissonSolverGPU, grid::RegularCartesianGrid)
 
-Solve Poisson equation with Periodic, Periodic, Neumann boundary conditions in x, y, z using planned
-CuFFTs on a GPU.
+Similar to solve_poisson_3d!(solver::PoissonSolverCPU, ...) except that since
+the discrete cosine transform is not available through cuFFT, we perform our
+own fast cosine transform (FCT) via an algorithm that utilizes the FFT.
 
-  Args
-  ----
-      Tx, Ty : Thread size in x, y
-  Bx, By, Bz : Block size in x, y, z
-      solver : PoissonSolverGPU
-        grid : solver grid
+Note that for the FCT algorithm to work, the input must have been permuted along
+the dimension the FCT is to be calculated by ordering the odd elements first
+followed by the even elements. For example,
+
+    [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
+
+The output will be permuted in this way and so the permutation must be undone.
+
+We should describe the algorithm in detail in the documentation.
 """
 function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
+    ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
+
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
     # Calculate DCTᶻ(f) in place using the FFT.
     solver.FFT_DCT! * RHS
-    RHS .*= solver.dct_factors_z
-    @. RHS = real(RHS)
+    @. RHS = 2 * real(ω_4Nz⁺ * RHS)
 
     solver.FFT! * RHS  # Calculate FFTˣʸ(f) in place.
 
+    # Solve the discrete Poisson equation in spectral space. We are essentially
+    # computing the Fourier coefficients of the solution from the Fourier
+    # coefficients of the RHS.
     @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
 
-    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    # Setting DC component of the solution (the mean) to be zero. This is also
+    # necessary because the source term to the Poisson equation has zero mean
+    # and so the DC component comes out to be ∞.
+    ϕ[1, 1, 1] = 0
 
     solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
 
     # Calculate IDCTᶻ(ϕ̂) in place using the FFT.
-    ϕ .*= solver.idct_bfactors_z
+    ϕ .*= ω_4Nz⁻
     solver.IFFT_DCT! * ϕ
 
     nothing
