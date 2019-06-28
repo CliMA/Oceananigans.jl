@@ -73,3 +73,31 @@ function test_flux_budget(arch, TF, field_name)
     # therefore <ϕ> = bottom_flux * t / Lz
     isapprox(mean(data(field)) - mean_init, bottom_flux * model.clock.time / Lz)
 end
+
+@testset "Boundary conditions" begin
+    println("Testing boundary conditions...")
+
+    funbc(args...) = π
+
+    Nx = Ny = 16
+    for arch in archs
+        for TF in float_types
+            for fld in (:u, :v, :T, :S)
+                for bctype in (Gradient, Flux, Value)
+
+                    arraybc = rand(TF, Nx, Ny)
+                    if arch == GPU()
+                        arraybc = CuArray(arraybc)
+                    end
+
+                    for bc in (TF(0.6), arraybc, funbc)
+                        @test test_z_boundary_condition_simple(arch, TF, fld, bctype, bc, Nx, Ny)
+                    end
+                end
+                @test test_z_boundary_condition_top_bottom_alias(arch, TF, fld)
+                @test test_z_boundary_condition_array(arch, TF, fld)
+                @test test_flux_budget(arch, TF, fld)
+            end
+        end
+    end
+end

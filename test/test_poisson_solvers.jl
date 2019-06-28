@@ -183,3 +183,69 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
 
     isapprox(ϕ, Ψ.(xC, yC, zC); rtol=5e-2)
 end
+
+@testset "Poisson solvers" begin
+    println("Testing Poisson solvers...")
+
+    @testset "FFTW plans" begin
+        println("  Testing FFTW planning...")
+
+        for FT in float_types
+            @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
+        end
+    end
+
+    @testset "Divergence-free solution [CPU]" begin
+        println("  Testing divergence-free solution [CPU]...")
+
+        for N in [7, 10, 16, 20]
+            for FT in float_types
+                @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
+                @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, FFTW.ESTIMATE)
+                @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, FFTW.ESTIMATE)
+
+                @test poisson_pnn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
+
+                # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
+                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                # end
+            end
+        end
+
+        Ns = [5, 11, 20, 32]
+        for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
+            @test poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+            @test poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+        end
+    end
+
+    @testset "Divergence-free solution [GPU]" begin
+        println("  Testing divergence-free solution [GPU]...")
+        @hascuda begin
+            for FT in [Float64]
+                @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
+                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
+                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
+                @test poisson_ppn_planned_div_free_gpu(FT, 16, 32, 24)
+
+                @test poisson_pnn_planned_div_free_gpu(FT, 16, 16, 16)
+                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 32)
+                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 16)
+                @test poisson_pnn_planned_div_free_gpu(FT, 16, 32, 24)
+            end
+        end
+    end
+
+    @testset "Analytic solution reconstruction" begin
+        println("  Testing analytic solution reconstruction...")
+        for N in [32, 48, 64], m in [1, 2, 3]
+            @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
+        end
+    end
+end

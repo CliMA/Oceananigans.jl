@@ -173,3 +173,39 @@ function tracer_conserved_in_channel(arch, FT, Nt)
         return isapprox(Tavg, Tavg0; rtol=1e-4)
     end
 end
+
+@testset "Time stepping" begin
+    println("Testing time stepping...")
+
+    for arch in archs, FT in float_types
+        @test time_stepping_works(arch, FT)
+    end
+
+    @testset "2nd-order Adams-Bashforth" begin
+        println("  Testing 2nd-order Adams-Bashforth...")
+        for arch in archs, FT in float_types
+            run_first_AB2_time_step_tests(arch, FT)
+        end
+    end
+
+    @testset "Recomputing w from continuity" begin
+        println("  Testing recomputing w from continuity...")
+        for arch in archs, FT in float_types
+            @test compute_w_from_continuity(arch, FT)
+        end
+    end
+
+    @testset "Incompressibility" begin
+        println("  Testing incompressibility...")
+        for arch in archs, FT in float_types, Nt in [1, 10, 100]
+            @test incompressible_in_time(arch, FT, Nt)
+        end
+    end
+
+    @testset "Tracer conservation in channel" begin
+        println("  Testing tracer conservation in channel...")
+        for arch in archs, FT in float_types
+            @test tracer_conserved_in_channel(arch, FT, 10)
+        end
+    end
+end
