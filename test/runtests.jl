@@ -17,14 +17,12 @@ archs = (CPU(),)
 float_types = (Float32, Float64)
 
 @testset "Oceananigans" begin
-    println("Testing Oceananigans...")
-
     @testset "Grid" begin
-        println("  Testing grids...")
+        println("Testing grids...")
         include("test_grids.jl")
 
         @testset "Grid initialization" begin
-            println("    Testing grid initialization...")
+            println("  Testing grid initialization...")
             for FT in float_types
                 @test correct_grid_size(FT)
                 @test correct_cell_volume(FT)
@@ -34,7 +32,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Grid dimensions" begin
-            println("    Testing grid dimensions...")
+            println("  Testing grid dimensions...")
             L = (100, 100, 100)
             for FT in float_types
                 @test isbitstype(typeof(RegularCartesianGrid(FT, (16, 16, 16), (1, 1, 1))))
@@ -67,7 +65,7 @@ float_types = (Float32, Float64)
     end
 
     @testset "Fields" begin
-        println("  Testing fields...")
+        println("Testing fields...")
         include("test_fields.jl")
 
         N = (4, 6, 8)
@@ -76,7 +74,7 @@ float_types = (Float32, Float64)
         field_types = [CellField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField]
 
         @testset "Field initialization" begin
-            println("    Testing field initialization...")
+            println("  Testing field initialization...")
             for arch in archs, FT in float_types
                 grid = RegularCartesianGrid(FT, N, L)
 
@@ -94,7 +92,7 @@ float_types = (Float32, Float64)
         vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
         @testset "Setting fields" begin
-            println("    Testing field setting...")
+            println("  Testing field setting...")
 
             for arch in archs, FT in float_types
                 grid = RegularCartesianGrid(FT, N, L)
@@ -117,7 +115,7 @@ float_types = (Float32, Float64)
     end
 
     @testset "Halo regions" begin
-        println("  Testing halo regions...")
+        println("Testing halo regions...")
         include("test_halo_regions.jl")
 
         Ns = [(8, 8, 8), (8, 8, 4), (10, 7, 5),
@@ -127,14 +125,14 @@ float_types = (Float32, Float64)
               (1, 1, 8)]
 
         @testset "Initializing halo regions" begin
-            println("    Testing initializing halo regions...")
+            println("  Testing initializing halo regions...")
             for arch in archs, FT in float_types, N in Ns
                 @test halo_regions_initalized_correctly(arch, FT, N...)
             end
         end
 
         @testset "Filling halo regions" begin
-            println("    Testing filling halo regions...")
+            println("  Testing filling halo regions...")
             for arch in archs, FT in float_types, N in Ns
                 @test halo_regions_correctly_filled(arch, FT, N...)
                 @test multiple_halo_regions_correctly_filled(arch, FT, N...)
@@ -143,10 +141,10 @@ float_types = (Float32, Float64)
     end
 
     @testset "Operators" begin
-        println("  Testing operators...")
+        println("Testing operators...")
 
         @testset "2D operators" begin
-            println("    Testing 2D operators...")
+            println("  Testing 2D operators...")
             Nx, Ny, Nz = 32, 16, 8
             Lx, Ly, Lz = 100, 100, 100
 
@@ -203,11 +201,11 @@ float_types = (Float32, Float64)
     end
 
     @testset "Poisson solvers" begin
-        println("  Testing Poisson solvers...")
+        println("Testing Poisson solvers...")
         include("test_poisson_solvers.jl")
 
         @testset "FFTW plans" begin
-            println("    Testing FFTW planning...")
+            println("  Testing FFTW planning...")
 
             for FT in float_types
                 @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
@@ -218,7 +216,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Divergence-free solution [CPU]" begin
-            println("    Testing divergence-free solution [CPU]...")
+            println("  Testing divergence-free solution [CPU]...")
 
             for N in [7, 10, 16, 20]
                 for FT in float_types
@@ -245,9 +243,9 @@ float_types = (Float32, Float64)
         end
 
         @testset "Divergence-free solution [GPU]" begin
-            println("    Testing divergence-free solution [GPU]...")
+            println("  Testing divergence-free solution [GPU]...")
             @hascuda begin
-                for FT in float_types
+                for FT in [Float64]
                     @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
                     @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
                     @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
@@ -257,7 +255,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Analytic solution reconstruction" begin
-            println("    Testing analytic solution reconstruction...")
+            println("  Testing analytic solution reconstruction...")
             for N in [32, 48, 64], m in [1, 2, 3]
                 @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
             end
@@ -265,10 +263,10 @@ float_types = (Float32, Float64)
     end
 
     @testset "Model" begin
-        println("  Testing model...")
+        println("Testing model...")
 
         @testset "Doubly periodic model" begin
-            println("    Testing doubly periodic model...")
+            println("  Testing doubly periodic model...")
             for arch in archs, FT in float_types
                 model = Model(N=(4, 5, 6), L=(1, 2, 3), arch=arch, float_type=FT)
 
@@ -278,7 +276,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Reentrant channel model" begin
-            println("    Testing reentrant channel model...")
+            println("  Testing reentrant channel model...")
             for arch in archs, FT in float_types
                 model = ChannelModel(N=(6, 5, 4), L=(3, 2, 1), arch=arch, float_type=FT)
 
@@ -289,7 +287,7 @@ float_types = (Float32, Float64)
     end
 
     @testset "Time stepping" begin
-        println("  Testing time stepping...")
+        println("Testing time stepping...")
         include("test_time_stepping.jl")
 
         for arch in archs, FT in float_types
@@ -316,7 +314,7 @@ float_types = (Float32, Float64)
     end
 
     @testset "Boundary conditions" begin
-        println("  Testing boundary conditions...")
+        println("Testing boundary conditions...")
         include("test_boundary_conditions.jl")
 
         funbc(args...) = π
@@ -345,7 +343,7 @@ float_types = (Float32, Float64)
     end
 
     @testset "Forcing" begin
-        println("  Testing forcings...")
+        println("Testing forcings...")
         add_one(args...) = 1.0
         function test_forcing(fld)
             kwarg = Dict(Symbol(:F, fld)=>add_one)
@@ -360,16 +358,16 @@ float_types = (Float32, Float64)
     end
 
     @testset "Output writers" begin
-        println("  Testing output writers...")
+        println("Testing output writers...")
         include("test_output_writers.jl")
 
         @testset "Checkpointing" begin
-            println("    Testing checkpointing...")
+            println("  Testing checkpointing...")
             run_thermal_bubble_checkpointer_tests()
         end
 
         @testset "NetCDF" begin
-            println("    Testing NetCDF output writer...")
+            println("  Testing NetCDF output writer...")
             run_thermal_bubble_netcdf_tests()
         end
     end
@@ -393,53 +391,53 @@ float_types = (Float32, Float64)
     end
 
     @testset "Dynamics tests" begin
-        println("  Testing dynamics...")
+        println("Testing dynamics...")
         include("test_dynamics.jl")
 
         @testset "Simple diffusion" begin
-            println("    Testing simple diffusion...")
+            println("  Testing simple diffusion...")
             for fld in (:u, :v, :T, :S)
                 @test test_diffusion_simple(fld)
             end
         end
 
         @testset "Diffusion budget" begin
-            println("    Testing diffusion budget...")
+            println("  Testing diffusion budget...")
             for fld in (:u, :v, :T, :S)
                 @test test_diffusion_budget(fld)
             end
         end
 
         @testset "Diffusion cosine" begin
-            println("    Testing diffusion cosine...")
+            println("  Testing diffusion cosine...")
             for fld in (:u, :v, :T, :S)
                 @test test_diffusion_cosine(fld)
             end
         end
 
         @testset "Passive tracer advection" begin
-            println("    Testing passive tracer advection...")
+            println("  Testing passive tracer advection...")
             @test passive_tracer_advection_test()
         end
 
         @testset "Internal wave" begin
-            println("    Testing internal wave...")
+            println("  Testing internal wave...")
             @test internal_wave_test()
         end
     end
 
     @testset "Turbulence closures tests" begin
-        println("  Testing turbulence closures...")
+        println("Testing turbulence closures...")
         include("test_turbulence_closures.jl")
 
         @testset "Closure operators" begin
-            println("    Testing closure operators...")
+            println("  Testing closure operators...")
             @test test_function_interpolation()
             @test test_function_differentiation()
         end
 
         @testset "Closure instantiation" begin
-            println("    Testing closure instantiation...")
+            println("  Testing closure instantiation...")
             for T in float_types
                 for closure in (:ConstantIsotropicDiffusivity,
                                 :ConstantAnisotropicDiffusivity,
@@ -450,7 +448,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Constant isotropic diffusivity" begin
-            println("    Testing constant isotropic diffusivity...")
+            println("  Testing constant isotropic diffusivity...")
             for T in float_types
                 @test test_constant_isotropic_diffusivity_basic(T)
                 @test test_tensor_diffusivity_tuples(T)
@@ -459,7 +457,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Constant anisotropic diffusivity" begin
-            println("    Testing constant anisotropic diffusivity...")
+            println("  Testing constant anisotropic diffusivity...")
             for T in float_types
                 @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
                 @test test_anisotropic_diffusivity_fluxdiv(T)
@@ -467,7 +465,7 @@ float_types = (Float32, Float64)
         end
 
         @testset "Constant Smagorinsky" begin
-            println("    Testing constant Smagorinsky...")
+            println("  Testing constant Smagorinsky...")
             for T in float_types
                 @test_skip test_smag_divflux_finiteness(T)
             end
