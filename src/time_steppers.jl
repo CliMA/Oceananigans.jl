@@ -131,7 +131,12 @@ function solve_for_pressure!(::GPU, model::Model)
     RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
 
     solve_poisson_3d!(model.poisson_solver, model.grid)
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, model.pressures.pNHS.data)
+
+    ϕNH = model.pressures.pNHS.data
+    p_z_inds = [1:2:Nz..., Nz:-2:2...]
+    ϕNH_p = view(ϕNH, 1:Nx, 1:Ny, p_z_inds)
+
+    @. ϕNH_p = real(ϕ)
 end
 
 """Store previous source terms before updating them."""
@@ -284,23 +289,6 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
                 end
 
                 @inbounds RHS[i, j′, k′] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
-            end
-        end
-    end
-
-    @synchronize
-end
-
-function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= Nz/2
-                    @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
-                else
-                    @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
-                end
             end
         end
     end
