@@ -196,7 +196,7 @@ function plan_transforms(::PNN, A::CuArray)
     return FFT!, FFT_DCT!, IFFT!, IFFT_DCT!
 end
 
-struct PoissonSolverGPU{BC, AAR, AAC, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
+struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
     bcs::BC
     kx²::AAR
     ky²::AAR
@@ -205,6 +205,12 @@ struct PoissonSolverGPU{BC, AAR, AAC, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
     ω_4Ny⁻::AAC
     ω_4Nz⁺::AAC
     ω_4Nz⁻::AAC
+    p_y_inds::AAI
+    p_z_inds::AAI
+    r_y_inds::AAI
+    r_z_inds::AAI
+    M_ky::AAR
+    M_kz::AAR
     storage::AAC
     FFT!::FFT
     FFT_DCT!::FFTD
@@ -245,9 +251,27 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
         ω_4Nz⁻[1] *= 1/2
     end
 
+    # Indices used when we need views to permuted arrays where the odd indices
+    # are iterated over first followed by the even indices.
+    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
+    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
+
+    # Indices used when we need views with reverse indexing but index N+1 should
+    # return a 0. This can't be enforced using views so we just map N+1 to 1,
+    # and use masks M_ky and M_kz to enforce that the value at N+1 is 0.
+    r_y_inds = [1, collect(Ny:-1:2)...] |> CuArray
+    r_z_inds = [1, collect(Nz:-1:2)...] |> CuArray
+
+    M_ky = ones(1, Ny, 1) |> CuArray
+    M_kz = ones(1, 1, Nz) |> CuArray
+
+    M_ky[1] = 0
+    M_kz[1] = 0
+
     FFT!, FFT_DCT!, IFFT!, IFFT_DCT! = plan_transforms(pbcs, storage)
 
     PoissonSolverGPU(pbcs, kx², ky², kz², ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻,
+                     p_y_inds, p_z_inds, r_y_inds, r_z_inds, M_ky, M_kz,
                      storage, FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
 end
 
@@ -304,6 +328,8 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesi
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
     ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
+    r_y_inds, r_z_inds = solver.r_y_inds, solver.r_z_inds
+    M_ky, M_kz = solver.M_ky, solver.M_kz
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -311,8 +337,7 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesi
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.FFT_DCT! * RHS
 
-    r_inds = [1, collect(Ny:-1:2)...] |> CuArray
-    RHS⁻ = view(RHS, 1:Nx, r_inds, 1:Nz)
+    RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
     @. tmp = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
 
     solver.FFT! * tmp  # Calculate FFTˣ(f) in place.
@@ -324,18 +349,9 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesi
     solver.IFFT! * tmp  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
-    r_y_inds = [1, collect(Ny:-1:2)...] |> CuArray
-    r_z_inds = [1, collect(Nz:-1:2)...] |> CuArray
-
     tmp⁻⁺ = view(tmp, 1:Nx, r_y_inds, 1:Nz)
     tmp⁺⁻ = view(tmp, 1:Nx, 1:Ny, r_z_inds)
     tmp⁻⁻ = view(tmp, 1:Nx, r_y_inds, r_z_inds)
-
-    M_ky = ones(1, Ny, 1) |> CuArray
-    M_kz = ones(1, 1, Nz) |> CuArray
-
-    M_ky[1] = 0
-    M_kz[1] = 0
 
     @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((tmp - M_ky * M_kz * tmp⁻⁻) - im*(M_kz * tmp⁺⁻ + M_ky * tmp⁻⁺))
 

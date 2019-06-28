@@ -101,7 +101,6 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solve_poisson_3d!(solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
-    # @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PPN(), solver.storage, solver.storage)
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
 
@@ -140,9 +139,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     solve_poisson_3d!(solver, grid, tmp)
 
-    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
-    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
-    tmp_p = view(tmp, 1:Nx, p_y_inds, p_z_inds)
+    tmp_p = view(tmp, 1:Nx, solver.p_y_inds, solver.p_z_inds)
 
     @. tmp_p = real(solver.storage)
 
