@@ -25,7 +25,7 @@ function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(CPU(), PPN(), grid)
     fbcs = DoublyPeriodicBCs()
 
@@ -53,7 +53,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(CPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
@@ -81,7 +81,7 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(GPU(), PPN(), grid)
     fbcs = DoublyPeriodicBCs()
 
@@ -117,7 +117,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
