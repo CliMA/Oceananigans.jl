@@ -179,7 +179,7 @@ function solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     nothing
 end
 
-function plan_transforms(::PPN, A::CuArray)
+function plan_transforms(::PPN, A)
     FFT!      = plan_fft!(A, [1, 2])
     FFT_DCT!  = plan_fft!(A, 3)
     IFFT!     = plan_ifft!(A, [1, 2])
@@ -187,7 +187,7 @@ function plan_transforms(::PPN, A::CuArray)
     return FFT!, FFT_DCT!, IFFT!, IFFT_DCT!
 end
 
-function plan_transforms(::PNN, A::CuArray)
+function plan_transforms(::PNN, A)
     FFT!      = plan_fft!(A, 1)
     FFT_DCT!  = plan_fft!(A, [2, 3])
     IFFT!     = plan_ifft!(A, 1)
