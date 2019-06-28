@@ -2,7 +2,7 @@ using FFTW
 using Statistics: mean
 using LinearAlgebra: norm
 
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll
 @hascuda using CuArrays
 using OffsetArrays
 

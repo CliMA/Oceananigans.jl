@@ -1,6 +1,6 @@
 @hascuda using CUDAnative, CuArrays
 
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll
 
 using Oceananigans.Operators
 
@@ -157,13 +157,11 @@ function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, 
             end
         end
     end
-    @synchronize
 end
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
 function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
     gΔz = constants.g * grid.Δz
-
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, i, j, 1)
@@ -172,8 +170,6 @@ function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
             end
         end
     end
-
-    @synchronize
 end
 
 "Store previous value of the source term and calculate current source term."
@@ -219,8 +215,6 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
             end
         end
     end
-
-    @synchronize
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
@@ -235,7 +229,6 @@ function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS
             end
         end
     end
-    @synchronize
 end
 
 "Store previous value of the source term and calculate current source term."
@@ -248,8 +241,6 @@ function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt
             end
         end
     end
-
-    @synchronize
 end
 
 """
@@ -272,8 +263,6 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v,
             end
         end
     end
-
-    @synchronize
 end
 
 function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v, w, Gu, Gv, Gw, RHS)
@@ -297,8 +286,6 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
             end
         end
     end
-
-    @synchronize
 end
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
@@ -312,8 +299,6 @@ function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv,
             end
         end
     end
-
-    @synchronize
 end
 
 "Compute the vertical velocity w from the continuity equation."
@@ -326,8 +311,6 @@ function compute_w_from_continuity!(grid::Grid, u, v, w)
             end
         end
     end
-
-    @synchronize
 end
 
 "Apply boundary conditions by modifying the source term G."

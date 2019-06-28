@@ -1,5 +1,5 @@
 import FFTW
-import GPUifyLoops: @launch, @loop, @synchronize
+import GPUifyLoops: @launch, @loop
 
 abstract type PoissonBCs end
 struct PPN <: PoissonBCs end  # Periodic BCs in x,y. Neumann BC in z.
@@ -9,7 +9,6 @@ PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
 
 unpack_grid(grid::Grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
-
 
 """
     ω(M, k)
