@@ -301,31 +301,6 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
     @synchronize
 end
 
-function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; blockIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= Nz/2
-                    k′ = 2k-1
-                else
-                    k′ = 2(Nz-k+1)
-                end
-
-                if j <= Ny/2
-                    j′ = 2j-1
-                else
-                    j′ = 2(Ny-j+1)
-                end
-
-                @inbounds pNHS[i, j′, k′] = real(ϕ[i, j, k])
-            end
-        end
-    end
-
-    @synchronize
-end
-
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
