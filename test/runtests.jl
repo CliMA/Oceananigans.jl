@@ -299,21 +299,31 @@ float_types = (Float32, Float64)
             @test time_stepping_works(arch, FT)
         end
 
-        @testset "Adams-Bashforth 2" begin
+        @testset "2nd-order Adams-Bashforth" begin
+            println("  Testing 2nd-order Adams-Bashforth...")
             for arch in archs, FT in float_types
                 run_first_AB2_time_step_tests(arch, FT)
             end
         end
 
         @testset "Recomputing w from continuity" begin
+            println("  Testing recomputing w from continuity...")
             for FT in float_types
                 @test compute_w_from_continuity(CPU(), FT)
             end
         end
 
         @testset "Incompressibility" begin
+            println("  Testing incompressibility...")
             for FT in float_types, Nt in [1, 10, 100]
                 @test incompressible_in_time(CPU(), FT, Nt)
+            end
+        end
+
+        @testset "Tracer conservation in channel" begin
+            println("  Testing tracer conservation in channel...")
+            for arch in archs, FT in float_types
+                @test tracer_conserved_in_channel(arch, FT, 10)
             end
         end
     end
