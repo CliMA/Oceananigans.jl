@@ -180,6 +180,22 @@ function solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     nothing
 end
 
+function plan_transforms(::PPN, A::CuArray)
+    FFT!      = plan_fft!(A, [1, 2])
+    FFT_DCT!  = plan_fft!(A, 3)
+    IFFT!     = plan_ifft!(A, [1, 2])
+    IFFT_DCT! = plan_ifft!(A, 3)
+    return FFT!, FFT_DCT!, IFFT!, IFFT_DCT!
+end
+
+function plan_transforms(::PNN, A::CuArray)
+    FFT!      = plan_fft!(A, 1)
+    FFT_DCT!  = plan_fft!(A, [2, 3])
+    IFFT!     = plan_ifft!(A, 1)
+    IFFT_DCT! = plan_ifft!(A, [2, 3])
+    return FFT!, FFT_DCT!, IFFT!, IFFT_DCT!
+end
+
 struct PoissonSolverGPU{BC, AAR, AAC, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
     bcs::BC
     kx²::AAR
@@ -223,17 +239,7 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
 
     ω_4Nz⁻[1] *= 1/2
 
-    if pbcs == PPN()
-        FFT!      = plan_fft!(storage, [1, 2])
-        FFT_DCT!  = plan_fft!(storage, 3)
-        IFFT!     = plan_ifft!(storage, [1, 2])
-        IFFT_DCT! = plan_ifft!(storage, 3)
-    elseif pbcs == PNN()
-        FFT!      = plan_fft!(storage, 1)
-        FFT_DCT!  = plan_fft!(storage, [2, 3])
-        IFFT!     = plan_ifft!(storage, 1)
-        IFFT_DCT! = plan_ifft!(storage, [2, 3])
-    end
+    FFT!, FFT_DCT!, IFFT!, IFFT_DCT! = plan_transforms(pbcs, storage)
 
     PoissonSolverGPU(pbcs, kx², ky², kz², ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻,
                      storage, FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
@@ -257,8 +263,8 @@ The output will be permuted in this way and so the permutation must be undone.
 We should describe the algorithm in detail in the documentation.
 """
 function solve_poisson_3d!(solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
-    ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
