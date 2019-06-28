@@ -8,7 +8,6 @@ struct PNN <: PoissonBCs end  # Periodic BCs in x. Neumann BC in y,z.
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
 
-struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
 unpack_grid(grid::Grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
 """
@@ -58,6 +57,48 @@ function λk(grid::Grid, ::PoissonBCs)
     ks = reshape(1:Nz, 1, 1, Nz)
     @. (2sin((ks-1)*π/(2Nz)) / (Lz/Nz))^2
 end
+
+"""
+    plan_transforms(::PPN, A::Array; planner_flag=FFTW.PATIENT)
+
+Return the transforms required to solve Poisson's equation with periodic
+boundary conditions in the x,y dimensions and staggered Neumann boundary
+conditions in the z-dimension.
+
+Fast Fourier transforms (FFTs) are used in the x,y dimensions and real-to-real
+discrete cosine transforms are used in the z dimension. Note that the DCT-II is
+used for the DCT and the DCT-III for the IDCT which correspond to REDFT10 and
+REDFT01 in FFTW.
+
+They operatore on an array with the shape of `A`, which is needed to plan
+efficient transforms. `A` will be mutated.
+
+Note that the transforms returns operate on Arrays and so only work on CPUs.
+"""
+function plan_transforms(::PPN, A::Array, planner_flag=FFTW.PATIENT)
+    FFT!  = FFTW.plan_fft!(A, [1, 2]; flags=planner_flag)
+    IFFT! = FFTW.plan_ifft!(A, [1, 2]; flags=planner_flag)
+    DCT!  = FFTW.plan_r2r!(A, FFTW.REDFT10, 3; flags=planner_flag)
+    IDCT! = FFTW.plan_r2r!(A, FFTW.REDFT01, 3; flags=planner_flag)
+    return FFT!, IFFT!, DCT!, IDCT!
+end
+
+"""
+    plan_transforms(::PPN, A::Array; planer_flag=FFTW.PATIENT)
+
+Similar to `plan_transforms(::PPN, ...)` but return the transforms required to
+solve Poisson's equation with periodic boundary conditions in the x dimension
+and staggered Neumann boundary conditions in the y,z dimensions.
+"""
+function plan_transforms(::PNN, A::Array, planner_flag=FFTW.PATIENT)
+    FFT!  = FFTW.plan_fft!(A, 1; flags=planner_flag)
+    IFFT! = FFTW.plan_ifft!(A, 1; flags=planner_flag)
+    DCT!  = FFTW.plan_r2r!(A, FFTW.REDFT10, [2, 3]; flags=planner_flag)
+    IDCT! = FFTW.plan_r2r!(A, FFTW.REDFT01, [2, 3]; flags=planner_flag)
+    return FFT!, IFFT!, DCT!, IDCT!
+end
+
+struct PoissonSolverCPU{BC, AAX, AAY, AAZ, AA3, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
     bcs::BC
     kx²::AAX
     ky²::AAY
@@ -84,18 +125,7 @@ function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIEN
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-
-    if pbcs == PPN()
-        FFT!  = FFTW.plan_fft!(storage, [1, 2]; flags=planner_flag)
-        IFFT! = FFTW.plan_ifft!(storage, [1, 2]; flags=planner_flag)
-        DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, 3; flags=planner_flag)
-        IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, 3; flags=planner_flag)
-    elseif pbcs == PNN()
-        FFT!  = FFTW.plan_fft!(storage, 1; flags=planner_flag)
-        IFFT! = FFTW.plan_ifft!(storage, 1; flags=planner_flag)
-        DCT!  = FFTW.plan_r2r!(storage, FFTW.REDFT10, [2, 3]; flags=planner_flag)
-        IDCT! = FFTW.plan_r2r!(storage, FFTW.REDFT01, [2, 3]; flags=planner_flag)
-    end
+    FFT!, IFFT!, DCT!, IDCT! = plan_transforms(pbcs, storage, planner_flag)
 
     PoissonSolverCPU(pbcs, kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
@@ -104,14 +134,14 @@ end
     solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
 
 Solve Poisson equation on a staggered grid (Arakawa C-grid) with with
-appropriate boundary conditions as specified by solver.bcs  using planned FFTs
+appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
 and DCTs. The right-hand-side RHS is stored in solver.storage which the solver
 mutates to produce the solution, so it will also be stored in solver.storage.
 
   Args
   ----
   solver : Poisson solver (CPU)
-    grid : solver grid
+    grid : model grid
 """
 function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
