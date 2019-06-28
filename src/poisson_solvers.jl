@@ -9,11 +9,60 @@ PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
 
 struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+unpack_grid(grid::Grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
+
+"""
+    λi(grid::Grid, ::PoissonBCs)
+
+Return an Nx×1×1 array of eigenvalues satisfying the discrete form of Poisson's
+equation with periodic boundary conditions in the x-dimension on `grid`.
+"""
+function λi(grid::Grid, ::PoissonBCs)
+    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+    is = reshape(1:Nx, Nx, 1, 1)
+    @. (2sin((is-1)*π/Nx) / (Lx/Nx))^2
+end
+
+"""
+    λj(grid::Grid, ::PPN)
+
+Return an 1×Ny×1 array of eigenvalues satisfying the discrete form of Poisson's
+equation with periodic boundary conditions in the y-dimension on `grid`.
+"""
+function λj(grid::Grid, ::PPN)
+    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+    js = reshape(1:Ny, 1, Ny, 1)
+    @. (2sin((js-1)*π/Ny) / (Ly/Ny))^2
+end
+
+"""
+    λj(grid::Grid, ::PNN)
+
+Return an 1×Ny×1 array of eigenvalues satisfying the discrete form of Poisson's
+equation with staggered Neumann boundary conditions in the y-dimension on `grid`.
+"""
+function λj(grid::Grid, ::PNN)
+    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+    js = reshape(1:Ny, 1, Ny, 1)
+    @. (2sin((js-1)*π/(2Ny)) / (Ly/Ny))^2
+end
+
+"""
+    λk(grid::Grid, ::PoissonBCs)
+
+Return an 1×1×Nz array of eigenvalues satisfying the discrete form of Poisson's
+equation with staggered Neumann boundary conditions in the y-dimension on `grid`.
+"""
+function λk(grid::Grid, ::PoissonBCs)
+    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+    ks = reshape(1:Nz, 1, 1, Nz)
+    @. (2sin((ks-1)*π/(2Nz)) / (Lz/Nz))^2
+end
     bcs::BC
-    kx²::KT
-    ky²::KT
-    kz²::KT
-    storage::A
+    kx²::AAX
+    ky²::AAY
+    kz²::AAZ
+    storage::AA3
     FFT!::FFTT
     DCT!::DCTT
     IFFT!::IFFTT
@@ -21,26 +70,20 @@ struct PoissonSolverCPU{BC, KT, A, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
 end
 
 function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Lx, Ly, Lz = grid.Lx, grid.Ly, grid.Lz
+    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+
+    # The eigenvalues of the discrete form of Poisson's equation correspond
+    # to discrete wavenumbers so we call them k² to make the analogy with
+    # solving Poisson's equation in spectral space.
+    kx² = λi(grid, pbcs)
+    ky² = λj(grid, pbcs)
+    kz² = λk(grid, pbcs)
 
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
     # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    kx² = zeros(Float64, Nx)
-    ky² = zeros(Float64, Ny)
-    kz² = zeros(Float64, Nz)
-
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    for i in 1:Nx; kx²[i] = (2sin((i-1)*π/Nx)    / (Lx/Nx))^2; end
-    for k in 1:Nz; kz²[k] = (2sin((k-1)*π/(2Nz)) / (Lz/Nz))^2; end
-
-    if pbcs == PPN()
-        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/Ny) / (Ly/Ny))^2; end
-    elseif pbcs == PNN()
-        for j in 1:Ny; ky²[j] = (2sin((j-1)*π/(2Ny)) / (Ly/Ny))^2; end
-    end
 
     if pbcs == PPN()
         FFT!  = FFTW.plan_fft!(storage, [1, 2]; flags=planner_flag)
