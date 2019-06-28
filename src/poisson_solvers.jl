@@ -130,6 +130,9 @@ function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIEN
     PoissonSolverCPU(pbcs, kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
 
+normalize_idct_output(::PPN, grid::Grid, ϕ::Array) = (@. ϕ = ϕ / (2grid.Nz))
+normalize_idct_output(::PNN, grid::Grid, ϕ::Array) = (@. ϕ = ϕ / (4grid.Ny*grid.Nz))
+
 """
     solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
 
@@ -137,13 +140,8 @@ Solve Poisson equation on a staggered grid (Arakawa C-grid) with with
 appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
 and DCTs. The right-hand-side RHS is stored in solver.storage which the solver
 mutates to produce the solution, so it will also be stored in solver.storage.
-
-  Args
-  ----
-  solver : Poisson solver (CPU)
-    grid : model grid
 """
-function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
@@ -166,30 +164,8 @@ function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesi
     solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
     solver.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
 
-    @. ϕ = ϕ / (2Nz)  # Must normalize by 2Nz after using FFTW.REDFT.
-
-    nothing
-end
-
-function solve_poisson_3d!(solver::PoissonSolverCPU{<:PNN}, grid::RegularCartesianGrid)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-
-    # We can use the same storage for the RHS and the solution ϕ.
-    RHS, ϕ = solver.storage, solver.storage
-
-    solver.DCT! * RHS  # Calculate DCTʸᶻ(f) in place.
-    solver.FFT! * RHS  # Calculate FFTˣ(f) in place.
-
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        @inbounds ϕ[i, j, k] = -RHS[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
-    end
-
-    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
-
-    solver.IFFT! * ϕ  # Calculate IFFTˣ(ϕ) in place.
-    solver.IDCT! * ϕ  # Calculate IDCTʸᶻ(ϕ) in place.
-
-    @. ϕ = ϕ / (4Ny*Nz)  # Must normalize by 2Ny*2Nz after using FFTW.REDFT.
+    # Must normalize by 2N for each dimension transformed via FFTW.REDFT.
+    normalize_idct_output(solver.bcs, grid, ϕ)
 
     nothing
 end
