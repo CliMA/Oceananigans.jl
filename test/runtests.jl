@@ -308,15 +308,15 @@ float_types = (Float32, Float64)
 
         @testset "Recomputing w from continuity" begin
             println("  Testing recomputing w from continuity...")
-            for FT in float_types
-                @test compute_w_from_continuity(CPU(), FT)
+            for arch in archs, FT in float_types
+                @test compute_w_from_continuity(arch, FT)
             end
         end
 
         @testset "Incompressibility" begin
             println("  Testing incompressibility...")
-            for FT in float_types, Nt in [1, 10, 100]
-                @test incompressible_in_time(CPU(), FT, Nt)
+            for arch in archs, FT in float_types, Nt in [1, 10, 100]
+                @test incompressible_in_time(arch, FT, Nt)
             end
         end
 
