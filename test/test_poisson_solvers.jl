@@ -122,7 +122,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
-    tmp = zeros(Nx, Ny, Nz) |> CuArray
+    tmp = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
