@@ -372,79 +372,7 @@ float_types = (Float32, Float64)
         end
     end
 
-    @testset "Output writers" begin
-        println("Testing output writers...")
-        include("test_output_writers.jl")
-
-        @testset "Checkpointing" begin
-            println("  Testing checkpointing...")
-            run_thermal_bubble_checkpointer_tests()
-        end
-
-        @testset "NetCDF" begin
-            println("  Testing NetCDF output writer...")
-            run_thermal_bubble_netcdf_tests()
-        end
-    end
-
-    @testset "Regression tests" begin
-        include("test_regression.jl")
-
-        for arch in archs
-            @testset "Thermal bubble [$(typeof(arch))]" begin
-                println("  Testing thermal bubble regression [$(typeof(arch))]")
-                run_thermal_bubble_regression_tests(arch)
-            end
-
-            @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
-                println("  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]")
-                run_rayleigh_benard_regression_test(arch)
-            end
-        end
-
-        @testset "Deep convection" begin
-            println("  Testing deep convection regression [CPU]")
-            run_deep_convection_regression_tests()
-        end
-    end
-
-    @testset "Dynamics tests" begin
-        println("Testing dynamics...")
-        include("test_dynamics.jl")
-
-        @testset "Simple diffusion" begin
-            println("  Testing simple diffusion...")
-            for fld in (:u, :v, :T, :S)
-                @test test_diffusion_simple(fld)
-            end
-        end
-
-        @testset "Diffusion budget" begin
-            println("  Testing diffusion budget...")
-            for fld in (:u, :v, :T, :S)
-                @test test_diffusion_budget(fld)
-            end
-        end
-
-        @testset "Diffusion cosine" begin
-            println("  Testing diffusion cosine...")
-            for fld in (:u, :v, :T, :S)
-                @test test_diffusion_cosine(fld)
-            end
-        end
-
-        @testset "Passive tracer advection" begin
-            println("  Testing passive tracer advection...")
-            @test passive_tracer_advection_test()
-        end
-
-        @testset "Internal wave" begin
-            println("  Testing internal wave...")
-            @test internal_wave_test()
-        end
-    end
-
-    @testset "Turbulence closures tests" begin
+    @testset "Turbulence closures" begin
         println("Testing turbulence closures...")
         include("test_turbulence_closures.jl")
 
@@ -487,6 +415,78 @@ float_types = (Float32, Float64)
             for T in float_types
                 @test_skip test_smag_divflux_finiteness(T)
             end
+        end
+    end
+
+    @testset "Dynamics" begin
+        println("Testing dynamics...")
+        include("test_dynamics.jl")
+
+        @testset "Simple diffusion" begin
+            println("  Testing simple diffusion...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_simple(fld)
+            end
+        end
+
+        @testset "Diffusion budget" begin
+            println("  Testing diffusion budget...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_budget(fld)
+            end
+        end
+
+        @testset "Diffusion cosine" begin
+            println("  Testing diffusion cosine...")
+            for fld in (:u, :v, :T, :S)
+                @test test_diffusion_cosine(fld)
+            end
+        end
+
+        @testset "Passive tracer advection" begin
+            println("  Testing passive tracer advection...")
+            @test passive_tracer_advection_test()
+        end
+
+        @testset "Internal wave" begin
+            println("  Testing internal wave...")
+            @test internal_wave_test()
+        end
+    end
+
+    @testset "Output writers" begin
+        println("Testing output writers...")
+        include("test_output_writers.jl")
+
+        @testset "Checkpointing" begin
+            println("  Testing checkpointing...")
+            run_thermal_bubble_checkpointer_tests()
+        end
+
+        @testset "NetCDF" begin
+            println("  Testing NetCDF output writer...")
+            run_thermal_bubble_netcdf_tests()
+        end
+    end
+
+    @testset "Regression" begin
+        include("test_regression.jl")
+
+        for arch in archs
+            @testset "Thermal bubble [$(typeof(arch))]" begin
+                println("  Testing thermal bubble regression [$(typeof(arch))]")
+                run_thermal_bubble_regression_tests(arch)
+            end
+
+            @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
+                println("  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]")
+                run_rayleigh_benard_regression_test(arch)
+            end
+        end
+
+        @testset "Deep convection" begin
+            println("  Testing deep convection regression [CPU]")
+            run_deep_convection_regression_tests()
         end
     end
 end # Oceananigans tests
