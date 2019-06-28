@@ -43,7 +43,6 @@ export
     TracerFields,
     PressureFields,
     SourceTerms,
-    StepperTemporaryFields,
 
     # Forcing functions
     Forcing,

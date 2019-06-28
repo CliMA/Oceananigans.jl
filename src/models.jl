@@ -16,7 +16,6 @@ mutable struct Model{A<:Architecture, G, TC, T}
                  G :: SourceTerms        # Container for right-hand-side of PDE that governs `Model`
                 Gp :: SourceTerms        # RHS at previous time-step (for Adams-Bashforth time integration)
     poisson_solver                       # ::PoissonSolver or ::PoissonSolverGPU
-       stepper_tmp :: StepperTemporaryFields # Temporary fields used for the Poisson solver.
     output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
        diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation.
 end
@@ -56,13 +55,12 @@ function Model(;
 
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
-    # Initialize fields, including source terms and temporary variables.
+    # Initialize fields.
       velocities = VelocityFields(arch, grid)
          tracers = TracerFields(arch, grid)
        pressures = PressureFields(arch, grid)
                G = SourceTerms(arch, grid)
               Gp = SourceTerms(arch, grid)
-     stepper_tmp = StepperTemporaryFields(arch, grid)
 
     # Initialize Poisson solver.
     poisson_solver = PoissonSolver(arch, PPN(), grid)
@@ -72,7 +70,7 @@ function Model(;
 
     Model(arch, grid, clock, eos, constants,
           velocities, tracers, pressures, forcing, closure, boundary_conditions,
-          G, Gp, poisson_solver, stepper_tmp, output_writers, diagnostics)
+          G, Gp, poisson_solver, output_writers, diagnostics)
 end
 
 """
