@@ -98,17 +98,15 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
-    Tx, Ty = 16, 16
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver, grid)
+    solve_poisson_3d!(solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     # @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PPN(), solver.storage, solver.storage)
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
 
-    ϕ   = CellField(Float64, GPU(), grid)
-    ∇²ϕ = CellField(Float64, GPU(), grid)
+    ϕ   = CellField(FT, GPU(), grid)
+    ∇²ϕ = CellField(FT, GPU(), grid)
 
     data(ϕ) .= real.(solver.storage)
 
@@ -138,15 +136,16 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
     solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
 
+    solve_poisson_3d!(solver, grid)
+
     Tx, Ty = 16, 16
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PNN(), solver.storage, solver.storage)
 
-    ϕ   = CellField(Float64, GPU(), grid)
-    ∇²ϕ = CellField(Float64, GPU(), grid)
+    ϕ   = CellField(FT, GPU(), grid)
+    ∇²ϕ = CellField(FT, GPU(), grid)
 
     data(ϕ) .= real.(solver.storage)
 

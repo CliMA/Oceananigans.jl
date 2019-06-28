@@ -256,7 +256,7 @@ The output will be permuted in this way and so the permutation must be undone.
 
 We should describe the algorithm in detail in the documentation.
 """
-function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
     ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
@@ -288,7 +288,7 @@ function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, 
     nothing
 end
 
-function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
