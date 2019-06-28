@@ -258,6 +258,7 @@ We should describe the algorithm in detail in the documentation.
 """
 function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesianGrid)
     ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
+    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -271,7 +272,7 @@ function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PPN}, 
     # Solve the discrete Poisson equation in spectral space. We are essentially
     # computing the Fourier coefficients of the solution from the Fourier
     # coefficients of the RHS.
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
+    @. ϕ = -RHS / (kx² + ky² + kz²)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
@@ -299,7 +300,7 @@ function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PNN}, 
 
     solver.FFT! * RHS  # Calculate FFTˣ(f) in place.
 
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) f2ϕ!(grid, RHS, ϕ, solver.kx², solver.ky², solver.kz²)
+    @. ϕ = -RHS / (kx² + ky² + kz²)
 
     ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
@@ -311,16 +312,4 @@ function solve_poisson_3d!(Tx, Ty, Bx, By, Bz, solver::PoissonSolverGPU{<:PNN}, 
     solver.IFFT_DCT! * ϕ
 
     nothing
-end
-
-"Kernel for computing the solution `ϕ` to Poisson equation for source term `f` on a GPU."
-function f2ϕ!(grid::Grid, f, ϕ, kx², ky², kz²)
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ϕ[i, j, k] = -f[i, j, k] / (kx²[i] + ky²[j] + kz²[k])
-            end
-        end
-    end
-    @synchronize
 end
