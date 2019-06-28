@@ -59,3 +59,28 @@ function multiple_halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
      all(field2.data[1:Nx,   1-Hy:0,   1:Nz] .== field2[1:Nx,      Ny-Hy+1:Ny,      1:Nz]) &&
      all(field2.data[1:Nx,     1:Ny, 1-Hz:0] .== field2[1:Nx,      1:Ny,      Nz-Hz+1:Nz]))
 end
+
+@testset "Halo regions" begin
+    println("Testing halo regions...")
+
+    Ns = [(8, 8, 8), (8, 8, 4), (10, 7, 5),
+          (1, 8, 8), (1, 9, 5),
+          (8, 1, 8), (5, 1, 9),
+          (8, 8, 1), (5, 9, 1),
+          (1, 1, 8)]
+
+    @testset "Initializing halo regions" begin
+        println("  Testing initializing halo regions...")
+        for arch in archs, FT in float_types, N in Ns
+            @test halo_regions_initalized_correctly(arch, FT, N...)
+        end
+    end
+
+    @testset "Filling halo regions" begin
+        println("  Testing filling halo regions...")
+        for arch in archs, FT in float_types, N in Ns
+            @test halo_regions_correctly_filled(arch, FT, N...)
+            @test multiple_halo_regions_correctly_filled(arch, FT, N...)
+        end
+    end
+end

@@ -27,3 +27,49 @@ function end_faces_match_grid_length(ft::DataType)
      g.yF[end] - g.yF[1] ≈ π^2 &&
      g.zF[1] - g.zF[end] ≈ π^3)
 end
+
+@testset "Grids" begin
+    println("Testing grids...")
+
+    @testset "Grid initialization" begin
+        println("  Testing grid initialization...")
+        for FT in float_types
+            @test correct_grid_size(FT)
+            @test correct_cell_volume(FT)
+            @test faces_start_at_zero(FT)
+            @test end_faces_match_grid_length(FT)
+        end
+    end
+
+    @testset "Grid dimensions" begin
+        println("  Testing grid dimensions...")
+        L = (100, 100, 100)
+        for FT in float_types
+            @test isbitstype(typeof(RegularCartesianGrid(FT, (16, 16, 16), (1, 1, 1))))
+
+            @test RegularCartesianGrid(FT, (25, 25, 25), L).dim == 3
+            @test RegularCartesianGrid(FT, (5, 25, 125), L).dim == 3
+            @test RegularCartesianGrid(FT, (64, 64, 64), L).dim == 3
+            @test RegularCartesianGrid(FT, (32, 32,  1), L).dim == 2
+            @test RegularCartesianGrid(FT, (32,  1, 32), L).dim == 2
+            @test RegularCartesianGrid(FT, (1,  32, 32), L).dim == 2
+            @test RegularCartesianGrid(FT, (1,  1,  64), L).dim == 1
+
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32,), L)
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 64), L)
+            @test_throws ArgumentError RegularCartesianGrid(FT, (1, 1, 1), L)
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32, 16), L)
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100,))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, -100))
+
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32.0), (1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (20.1, 32, 32), (1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, nothing, 32), (1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, "32", 32), (1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, nothing, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, "1", 1))
+        end
+    end
+end

@@ -201,3 +201,48 @@ function test_smag_divflux_finiteness(TF=Float64)
         isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data))
         )
 end
+
+@testset "Turbulence closures" begin
+    println("Testing turbulence closures...")
+
+    @testset "Closure operators" begin
+        println("  Testing closure operators...")
+        @test test_function_interpolation()
+        @test test_function_differentiation()
+    end
+
+    @testset "Closure instantiation" begin
+        println("  Testing closure instantiation...")
+        for T in float_types
+            for closure in (:ConstantIsotropicDiffusivity,
+                            :ConstantAnisotropicDiffusivity,
+                            :ConstantSmagorinsky)
+                @test test_closure_instantiation(T, closure)
+            end
+        end
+    end
+
+    @testset "Constant isotropic diffusivity" begin
+        println("  Testing constant isotropic diffusivity...")
+        for T in float_types
+            @test test_constant_isotropic_diffusivity_basic(T)
+            @test test_tensor_diffusivity_tuples(T)
+            @test test_constant_isotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Constant anisotropic diffusivity" begin
+        println("  Testing constant anisotropic diffusivity...")
+        for T in float_types
+            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+            @test test_anisotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Constant Smagorinsky" begin
+        println("  Testing constant Smagorinsky...")
+        for T in float_types
+            @test_skip test_smag_divflux_finiteness(T)
+        end
+    end
+end
