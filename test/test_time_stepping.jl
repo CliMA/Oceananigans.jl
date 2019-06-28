@@ -145,9 +145,6 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νh, κh = 20.0, 20.0
     νv, κv = α*νh, α*κh
 
-    @show Nx, Ny, Nz
-    @show νh, κh, νv, κv
-
     model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz),
                          arch=arch, float_type=FT,
                          νh=νh, νv=νv, κh=κh, κv=κv)
@@ -168,8 +165,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     @info "Tracer conservation after $Nt time steps ($arch, $FT): ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
     # Interestingly, it's very well conserved (almost to machine epsilon) for
-    # Float64, but not as close for Float32... But it does seem constant for
-    # Float32 so at least energy is conserved.
+    # Float64, but not as close for Float32... But it does seem constant in time
+    # for Float32 so at least it is conserved.
     if FT == Float64
         return isapprox(Tavg, Tavg0; rtol=1e-14)
     elseif FT == Float32
