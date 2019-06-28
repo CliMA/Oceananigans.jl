@@ -258,7 +258,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v,
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if CUDAnative.ffs(k) == 1  # isodd(k)
+                if (k & 1) == 1  # isodd(k)
                     k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
                 else
                     k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
@@ -276,13 +276,13 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if CUDAnative.ffs(k) == 1  # isodd(k)
+                if (k & 1) == 1  # isodd(k)
                     k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
                 else
                     k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
                 end
 
-                if CUDAnative.ffs(j) == 1  # isodd(j)
+                if (j & 1) == 1  # isodd(j)
                     j′ = convert(UInt32, CUDAnative.floor(j/2) + 1)
                 else
                     j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
