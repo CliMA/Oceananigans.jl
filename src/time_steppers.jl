@@ -134,15 +134,7 @@ function solve_for_pressure!(::GPU, model::Model)
 
     Tx, Ty = 16, 16  # Not sure why I have to do this. Will be superseded soon.
     Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    
-    if model.poisson_solver.bcs == PPN()
-        @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, ϕ, model.pressures.pNHS.data)
-    elseif model.poisson_solver.bcs == PNN()
-        ϕNH = model.pressures.pNHS.data
-        p_y_inds, p_z_inds = model.poisson_solver.p_y_inds, model.poisson_solver.p_z_inds
-        ϕNH_p = view(ϕNH, 1:Nx, p_y_inds, p_z_inds)
-        @. ϕNH_p = real(ϕ)
-    end
+    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, model.pressures.pNHS.data)
 end
 
 """Store previous source terms before updating them."""
@@ -289,7 +281,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
     end
 end
 
-function idct_permute!(grid::Grid, ϕ, pNHS)
+function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; blockIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -303,6 +295,30 @@ function idct_permute!(grid::Grid, ϕ, pNHS)
         end
     end
 end
+
+function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    @loop for k in (1:Nz; blockIdx().z)
+        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                if k <= Nz/2
+                    k′ = 2k-1
+                else
+                    k′ = 2(Nz-k+1)
+                end
+
+                if j <= Ny/2
+                    j′ = 2j-1
+                else
+                    j′ = 2(Ny-j+1)
+                end
+
+                @inbounds pNHS[i, j′, k′] = real(ϕ[i, j, k])
+            end
+        end
+    end
+end
+
 
 function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
     @loop for k in (1:grid.Nz; blockIdx().z)
