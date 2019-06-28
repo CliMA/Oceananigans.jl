@@ -111,7 +111,7 @@ struct PoissonSolverCPU{BC, AAX, AAY, AAZ, AA3, FFTT, DCTT, IFFTT, IDCTT} <: Poi
 end
 
 function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
-    Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
+    Nx, Ny, Nz, _ = unpack_grid(grid)
 
     # The eigenvalues of the discrete form of Poisson's equation correspond
     # to discrete wavenumbers so we call them k² to make the analogy with
@@ -144,7 +144,8 @@ mutates to produce the solution, so it will also be stored in solver.storage.
     grid : model grid
 """
 function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesianGrid)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Nx, Ny, Nz, _ = unpack_grid(grid)
+    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -152,11 +153,15 @@ function solve_poisson_3d!(solver::PoissonSolverCPU{<:PPN}, grid::RegularCartesi
     solver.DCT! * RHS  # Calculate DCTᶻ(f) in place.
     solver.FFT! * RHS  # Calculate FFTˣʸ(f) in place.
 
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        @inbounds ϕ[i, j, k] = -RHS[i, j, k] / (solver.kx²[i] + solver.ky²[j] + solver.kz²[k])
-    end
+    # Solve the discrete Poisson equation in spectral space. We are essentially
+    # computing the Fourier coefficients of the solution from the Fourier
+    # coefficients of the RHS.
+    @. ϕ = -RHS / (kx² + ky² + kz²)
 
-    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    # Setting DC component of the solution (the mean) to be zero. This is also
+    # necessary because the source term to the Poisson equation has zero mean
+    # and so the DC component comes out to be ∞.
+    ϕ[1, 1, 1] = 0
 
     solver.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
     solver.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
