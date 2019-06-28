@@ -121,8 +121,6 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
-    tmp = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
-
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
     RHS = CuArray(RHS)
@@ -131,22 +129,17 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     solver.storage .= RHS
 
-    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b]
-    # in the y,z-directions in preparation to calculate the DCT in the Poisson
-    # solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
     solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
 
-    solve_poisson_3d!(solver, grid, tmp)
-
-    tmp_p = view(tmp, 1:Nx, solver.p_y_inds, solver.p_z_inds)
-
-    @. tmp_p = real(solver.storage)
+    solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, GPU(), grid)
     ∇²ϕ = CellField(FT, GPU(), grid)
 
-    data(ϕ) .= tmp
+    ϕ_p = view(data(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
+
+    @. ϕ_p = real(solver.storage)
 
     fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
     ∇²!(grid, ϕ.data, ∇²ϕ.data)

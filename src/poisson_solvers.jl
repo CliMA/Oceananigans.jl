@@ -212,6 +212,7 @@ struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: PoissonSol
     M_ky::AAR
     M_kz::AAR
     storage::AAC
+    storage2::AAC
     FFT!::FFT
     FFT_DCT!::FFTD
     IFFT!::IFFT
@@ -232,6 +233,17 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
     # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz) |> CuArray
+
+    # For solving the Poisson equation with PNN boundary conditions, we need a
+    # second storage/buffer array to perform the 2D fast cosine transform. Maybe
+    # we can get around this but for now we'll just use up a second array. It's
+    # not needed for the PPN case so we just use the smallest 3D array we can
+    # to keep the struct concretely typed.
+    if pbcs == PPN()
+        storage2 = zeros(Complex{Float64}, 1, 1, 1) |> CuArray
+    elseif pbcs == PNN()
+        storage2 = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz) |> CuArray
+    end
 
     ky⁺ = reshape(0:Ny-1,       1, Ny, 1)
     kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
@@ -272,7 +284,7 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
 
     PoissonSolverGPU(pbcs, kx², ky², kz², ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻,
                      p_y_inds, p_z_inds, r_y_inds, r_z_inds, M_ky, M_kz,
-                     storage, FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
+                     storage, storage2, FFT!, FFT_DCT!, IFFT!, IFFT_DCT!)
 end
 
 """
@@ -324,7 +336,7 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesi
     nothing
 end
 
-function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid, tmp)
+function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
     ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
@@ -334,26 +346,28 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesi
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
+    B = solver.storage2  # Complex buffer storage.
+
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.FFT_DCT! * RHS
 
     RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
-    @. tmp = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
+    @. B = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
 
-    solver.FFT! * tmp  # Calculate FFTˣ(f) in place.
+    solver.FFT! * B # Calculate FFTˣ(f) in place.
 
-    @. tmp = -tmp / (kx² + ky² + kz²)
+    @. B = -B / (kx² + ky² + kz²)
 
-    tmp[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
-    solver.IFFT! * tmp  # Calculate IFFTˣ(ϕ̂) in place.
+    solver.IFFT! * B  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
-    tmp⁻⁺ = view(tmp, 1:Nx, r_y_inds, 1:Nz)
-    tmp⁺⁻ = view(tmp, 1:Nx, 1:Ny, r_z_inds)
-    tmp⁻⁻ = view(tmp, 1:Nx, r_y_inds, r_z_inds)
+    B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
+    B⁺⁻ = view(B, 1:Nx, 1:Ny, r_z_inds)
+    B⁻⁻ = view(B, 1:Nx, r_y_inds, r_z_inds)
 
-    @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((tmp - M_ky * M_kz * tmp⁻⁻) - im*(M_kz * tmp⁺⁻ + M_ky * tmp⁻⁺))
+    @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((B - M_ky * M_kz * B⁻⁻) - im*(M_kz * B⁺⁻ + M_ky * B⁻⁺))
 
     solver.IFFT_DCT! * ϕ
 
