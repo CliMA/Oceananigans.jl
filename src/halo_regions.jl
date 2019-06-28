@@ -1,4 +1,4 @@
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll
 
 const PeriodicBC = BoundaryCondition(Periodic, nothing)
 const NoFluxBC = BoundaryCondition(Flux, 0)

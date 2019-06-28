@@ -53,8 +53,6 @@ function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
             end
         end
     end
-
-    @synchronize
 end
 
 function run_diagnostic(model::Model, diag::VelocityDivergenceChecker)

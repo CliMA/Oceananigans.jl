@@ -1,4 +1,4 @@
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll
 
 const coordinates = (:x, :y, :z)
 const dims = length(coordinates)
@@ -247,5 +247,4 @@ function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, 
 
         end
     end
-    @synchronize
 end
