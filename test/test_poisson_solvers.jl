@@ -2,55 +2,32 @@ using FFTW
 using Statistics: mean
 using LinearAlgebra: norm
 
-import GPUifyLoops: @launch, @loop, @unroll, @synchronize
+import GPUifyLoops: @launch, @loop, @unroll
 @hascuda using CuArrays
 using OffsetArrays
 
 using Oceananigans.Operators
 
-function ∇²_ppn!(grid::RegularCartesianGrid, f, ∇²f)
+function ∇²!(grid::RegularCartesianGrid, f, ∇²f)
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ∇²f[i, j, k] = ∇²_ppn(grid, f, i, j, k)
+                @inbounds ∇²f[i, j, k] = ∇²(grid, f, i, j, k)
             end
         end
     end
-
-    @synchronize
-end
-
-function mixed_fft_commutes(N)
-    A = rand(N, N, N)
-    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
-    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
-    Ã1 ≈ Ã2
-end
-
-function mixed_ifft_commutes(N)
-    A = rand(N, N, N)
-
-    Ã1 = FFTW.dct(FFTW.rfft(A, [1, 2]), 3)
-    Ã2 = FFTW.rfft(FFTW.dct(A, 3), [1, 2])
-
-    A11 = FFTW.irfft(FFTW.idct(Ã1, 3), N, [1, 2])
-    A12 = FFTW.idct(FFTW.irfft(Ã1, N, [1, 2]), 3)
-    A21 = FFTW.irfft(FFTW.idct(Ã2, 3), N, [1, 2])
-    A22 = FFTW.idct(FFTW.irfft(Ã2, N, [1, 2]), 3)
-    A ≈ A11 && A ≈ A12 && A ≈ A21 && A ≈ A22
 end
 
 function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(CPU(), grid)
+    solver = PoissonSolver(CPU(), PPN(), grid)
     true  # Just making sure the PoissonSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(CPU(), grid)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
+    solver = PoissonSolver(CPU(), PPN(), grid)
+    fbcs = DoublyPeriodicBCs()
 
     RHS = CellField(FT, CPU(), grid)
     data(RHS) .= rand(Nx, Ny, Nz)
@@ -60,26 +37,53 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solver.storage .= data(RHS)
 
-    solve_poisson_3d_ppn_planned!(solver, grid)
+    solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, CPU(), grid)
     ∇²ϕ = CellField(FT, CPU(), grid)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(CPU(), grid, ϕ.data)
-    ∇²_ppn!(grid, ϕ, ∇²ϕ)
+    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(CPU(), grid, ∇²ϕ.data)
+    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+
+    data(∇²ϕ) ≈ data(RHS_orig)
+end
+
+function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
+    solver = PoissonSolver(CPU(), PNN(), grid)
+    fbcs = ChannelBCs()
+
+    RHS = CellField(FT, CPU(), grid)
+    data(RHS) .= rand(Nx, Ny, Nz)
+    data(RHS) .= data(RHS) .- mean(data(RHS))
+
+    RHS_orig = deepcopy(RHS)
+
+    solver.storage .= data(RHS)
+
+    solve_poisson_3d!(solver, grid)
+
+    ϕ   = CellField(FT, CPU(), grid)
+    ∇²ϕ = CellField(FT, CPU(), grid)
+
+    data(ϕ) .= real.(solver.storage)
+
+    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    ∇²!(grid, ϕ, ∇²ϕ)
+
+    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    # Storage for RHS and Fourier coefficients is hard-coded to be Float64 because of precision issues with Float32.
-    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (100, 100, 100))
-    solver = PoissonSolver(GPU(), grid)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
+    solver = PoissonSolver(GPU(), PPN(), grid)
+    fbcs = DoublyPeriodicBCs()
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
@@ -89,38 +93,77 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     solver.storage .= RHS
 
-    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b] in the z-direction in preparation to calculate
-    # the DCT in the Poisson solver.
+    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b]
+    # in the z-direction in preparation to calculate the DCT in the Poisson
+    # solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
-    Tx, Ty = 16, 16
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    solve_poisson_3d_ppn_planned!(Tx, Ty, Bx, By, Bz, solver, grid)
+    solve_poisson_3d!(solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
-    ϕ   = CellField(Float64, GPU(), grid)
-    ∇²ϕ = CellField(Float64, GPU(), grid)
+
+    ϕ   = CellField(FT, GPU(), grid)
+    ∇²ϕ = CellField(FT, GPU(), grid)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(GPU(), grid, ϕ.data)
+    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    ∇²_ppn!(grid, ϕ.data, ∇²ϕ.data)
+    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+    data(∇²ϕ) ≈ RHS_orig
+end
 
+function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
+    solver = PoissonSolver(GPU(), PNN(), grid)
+    fbcs = ChannelBCs()
+
+    RHS = rand(Nx, Ny, Nz)
+    RHS .= RHS .- mean(RHS)
+    RHS = CuArray(RHS)
+
+    RHS_orig = copy(RHS)
+
+    solver.storage .= RHS
+
+    solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
+    solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
+
+    solve_poisson_3d!(solver, grid)
+
+    ϕ   = CellField(FT, GPU(), grid)
+    ∇²ϕ = CellField(FT, GPU(), grid)
+
+    ϕ_p = view(data(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
+
+    @. ϕ_p = real(solver.storage)
+
+    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    ∇²!(grid, ϕ.data, ∇²ϕ.data)
+
+    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
     data(∇²ϕ) ≈ RHS_orig
 end
 
 """
-    Test that the Poisson solver can recover an analytic solution. In this test, we are trying to see if the solver
-    can recover the solution ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
-    by giving it the source term or right hand side (RHS), which is ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
+    poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
+
+Test that the Poisson solver can recover an analytic solution. In this test, we
+are trying to see if the solver can recover the solution
+
+    ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
+
+by giving it the source term or right hand side (RHS), which is
+
+    ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(Float64, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    solver = PoissonSolver(CPU(), grid)
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    solver = PoissonSolver(CPU(), PPN(), grid)
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
     xC = reshape(xC, (Nx, 1, 1))
@@ -131,12 +174,78 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
-    solve_poisson_3d_ppn_planned!(solver, grid)
+    solve_poisson_3d!(solver, grid)
     ϕ = real.(solver.storage)
 
     error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
 
     @info "Error (ℓ²-norm), $FT, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
 
-    isapprox(ϕ,  Ψ.(xC, yC, zC); rtol=5e-2)
+    isapprox(ϕ, Ψ.(xC, yC, zC); rtol=5e-2)
+end
+
+@testset "Poisson solvers" begin
+    println("Testing Poisson solvers...")
+
+    @testset "FFTW plans" begin
+        println("  Testing FFTW planning...")
+
+        for FT in float_types
+            @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
+        end
+    end
+
+    @testset "Divergence-free solution [CPU]" begin
+        println("  Testing divergence-free solution [CPU]...")
+
+        for N in [7, 10, 16, 20]
+            for FT in float_types
+                @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
+                @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, FFTW.ESTIMATE)
+                @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, FFTW.ESTIMATE)
+
+                @test poisson_pnn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
+
+                # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
+                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
+                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
+                # end
+            end
+        end
+
+        Ns = [5, 11, 20, 32]
+        for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
+            @test poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+            @test poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+        end
+    end
+
+    @testset "Divergence-free solution [GPU]" begin
+        println("  Testing divergence-free solution [GPU]...")
+        @hascuda begin
+            for FT in [Float64]
+                @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
+                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
+                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
+                @test poisson_ppn_planned_div_free_gpu(FT, 16, 32, 24)
+
+                @test poisson_pnn_planned_div_free_gpu(FT, 16, 16, 16)
+                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 32)
+                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 16)
+                @test poisson_pnn_planned_div_free_gpu(FT, 16, 32, 24)
+            end
+        end
+    end
+
+    @testset "Analytic solution reconstruction" begin
+        println("  Testing analytic solution reconstruction...")
+        for N in [32, 48, 64], m in [1, 2, 3]
+            @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
+        end
+    end
 end
