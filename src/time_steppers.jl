@@ -133,8 +133,13 @@ function solve_for_pressure!(::GPU, model::Model)
     solve_poisson_3d!(model.poisson_solver, model.grid)
 
     ϕNH = model.pressures.pNHS.data
-    p_z_inds = [1:2:Nz..., Nz:-2:2...]
-    ϕNH_p = view(ϕNH, 1:Nx, 1:Ny, p_z_inds)
+
+    p_y_inds, p_z_inds = model.poisson_solver.p_y_inds, model.poisson_solver.p_z_inds
+    if model.poisson_solver.bcs == PPN()
+        ϕNH_p = view(ϕNH, 1:Nx, 1:Ny, p_z_inds)
+    elseif model.poisson_solver.bcs == PNN()
+        ϕNH_p = view(ϕNH, 1:Nx, p_y_inds, p_z_inds)
+    end
 
     @. ϕNH_p = real(ϕ)
 end
