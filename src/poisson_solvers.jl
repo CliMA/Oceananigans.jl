@@ -294,27 +294,45 @@ function solve_poisson_3d!(solver::PoissonSolverGPU{<:PPN}, grid::RegularCartesi
     nothing
 end
 
-function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid)
+function solve_poisson_3d!(solver::PoissonSolverGPU{<:PNN}, grid::RegularCartesianGrid, tmp)
+    Nx, Ny, Nz, _ = unpack_grid(grid)
+    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    ω_4Ny⁺, ω_4Ny⁻, ω_4Nz⁺, ω_4Nz⁻ = solver.ω_4Ny⁺, solver.ω_4Ny⁻, solver.ω_4Nz⁺, solver.ω_4Nz⁻
+
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.FFT_DCT! * RHS
-    RHS .*= solver.dct_factors_z
-    RHS .*= solver.dct_factors_y
-    @. RHS = real(RHS)
 
-    solver.FFT! * RHS  # Calculate FFTˣ(f) in place.
+    r_inds = [1, collect(Ny:-1:2)...] |> CuArray
+    RHS⁻ = view(RHS, 1:Nx, r_inds, 1:Nz)
+    @. tmp = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
 
-    @. ϕ = -RHS / (kx² + ky² + kz²)
+    solver.FFT! * tmp  # Calculate FFTˣ(f) in place.
 
-    ϕ[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    @. tmp = -tmp / (kx² + ky² + kz²)
 
-    solver.IFFT! * ϕ  # Calculate IFFTˣ(ϕ̂) in place.
+    tmp[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+
+    solver.IFFT! * tmp  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
-    ϕ .*= solver.idct_bfactors_z
-    ϕ .*= solver.idct_bfactors_y
+    r_y_inds = [1, collect(Ny:-1:2)...] |> CuArray
+    r_z_inds = [1, collect(Nz:-1:2)...] |> CuArray
+
+    tmp⁻⁺ = view(tmp, 1:Nx, r_y_inds, 1:Nz)
+    tmp⁺⁻ = view(tmp, 1:Nx, 1:Ny, r_z_inds)
+    tmp⁻⁻ = view(tmp, 1:Nx, r_y_inds, r_z_inds)
+
+    M_ky = ones(1, Ny, 1) |> CuArray
+    M_kz = ones(1, 1, Nz) |> CuArray
+
+    M_ky[1] = 0
+    M_kz[1] = 0
+
+    @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((tmp - M_ky * M_kz * tmp⁻⁻) - im*(M_kz * tmp⁺⁻ + M_ky * tmp⁻⁺))
+
     solver.IFFT_DCT! * ϕ
 
     nothing

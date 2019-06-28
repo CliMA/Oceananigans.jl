@@ -122,6 +122,8 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver = PoissonSolver(GPU(), PNN(), grid)
     fbcs = ChannelBCs()
 
+    tmp = zeros(Nx, Ny, Nz) |> CuArray
+
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
     RHS = CuArray(RHS)
@@ -136,18 +138,18 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
     solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
 
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_3d!(solver, grid, tmp)
 
-    Tx, Ty = 16, 16
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
+    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
+    tmp_p = view(tmp, 1:Nx, p_y_inds, p_z_inds)
 
-    # Undoing the permutation made above to complete the IDCT.
-    @launch device(GPU()) threads=(Tx, Ty) blocks=(Bx, By, Bz) Oceananigans.idct_permute!(grid, PNN(), solver.storage, solver.storage)
+    @. tmp_p = real(solver.storage)
 
     ϕ   = CellField(FT, GPU(), grid)
     ∇²ϕ = CellField(FT, GPU(), grid)
 
-    data(ϕ) .= real.(solver.storage)
+    data(ϕ) .= tmp
 
     fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
