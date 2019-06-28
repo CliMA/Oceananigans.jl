@@ -206,3 +206,38 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     # Error tolerance is a bit arbitrary
     return T_relative_error(model, T) < 1e-4
 end
+
+@testset "Dynamics" begin
+    println("Testing dynamics...")
+
+    @testset "Simple diffusion" begin
+        println("  Testing simple diffusion...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_simple(fld)
+        end
+    end
+
+    @testset "Diffusion budget" begin
+        println("  Testing diffusion budget...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_budget(fld)
+        end
+    end
+
+    @testset "Diffusion cosine" begin
+        println("  Testing diffusion cosine...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_cosine(fld)
+        end
+    end
+
+    @testset "Passive tracer advection" begin
+        println("  Testing passive tracer advection...")
+        @test passive_tracer_advection_test()
+    end
+
+    @testset "Internal wave" begin
+        println("  Testing internal wave...")
+        @test internal_wave_test()
+    end
+end

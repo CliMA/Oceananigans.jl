@@ -93,6 +93,7 @@ end
 function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=TF(0.7))
     closure = ConstantIsotropicDiffusivity(TF, κ=κ, ν=ν)
     grid = RegularCartesianGrid(TF, (3, 1, 1), (3, 1, 1))
+    fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
@@ -103,12 +104,19 @@ function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=
     T =  CellField(TF, arch, grid)
     S =  CellField(TF, arch, grid)
 
+    u_ft = (:u, fbcs, u.data)
+    v_ft = (:v, fbcs, v.data)
+    w_ft = (:w, fbcs, w.data)
+    T_ft = (:T, fbcs, T.data)
+    S_ft = (:S, fbcs, S.data)
+    uvwTS_ft = (u_ft, v_ft, w_ft, T_ft, S_ft)
+
     data(u)[:, 1, 1] .= [0, -1, 0]
     data(v)[:, 1, 1] .= [0, -2, 0]
     data(w)[:, 1, 1] .= [0, -3, 0]
     data(T)[:, 1, 1] .= [0, -1, 0]
 
-    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
+    fill_halo_regions!(grid, uvwTS_ft...)
 
     return (∇_κ_∇ϕ(2, 1, 1, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2κ &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2ν &&
@@ -120,6 +128,7 @@ end
 function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.7), νv=TF(0.1), κv=TF(0.5))
     closure = ConstantAnisotropicDiffusivity(TF, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+    fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
@@ -129,6 +138,13 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
     w = FaceFieldZ(TF, arch, grid)
     T =  CellField(TF, arch, grid)
     S =  CellField(TF, arch, grid)
+
+    u_ft = (:u, fbcs, u.data)
+    v_ft = (:v, fbcs, v.data)
+    w_ft = (:w, fbcs, w.data)
+    T_ft = (:T, fbcs, T.data)
+    S_ft = (:S, fbcs, S.data)
+    uvwTS_ft = (u_ft, v_ft, w_ft, T_ft, S_ft)
 
     data(u)[:, 1, 1] .= [0,  1, 0]
     data(u)[:, 1, 2] .= [0, -1, 0]
@@ -146,7 +162,7 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
     data(T)[:, 1, 2] .= [0, -4, 0]
     data(T)[:, 1, 3] .= [0,  1, 0]
 
-    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
+    fill_halo_regions!(grid, uvwTS_ft...)
 
     return (∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2νh + 4νv &&
@@ -158,6 +174,7 @@ end
 function test_smag_divflux_finiteness(TF=Float64)
     closure = ConstantSmagorinsky(TF)
     grid = RegularCartesianGrid(TF, (3, 3, 3), (3, 3, 3))
+    fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
@@ -168,7 +185,14 @@ function test_smag_divflux_finiteness(TF=Float64)
     T =  CellField(TF, arch, grid)
     S =  CellField(TF, arch, grid)
 
-    fill_halo_regions!(arch, grid, u.data, v.data, w.data, T.data, S.data)
+    u_ft = (:u, fbcs, u.data)
+    v_ft = (:v, fbcs, v.data)
+    w_ft = (:w, fbcs, w.data)
+    T_ft = (:T, fbcs, T.data)
+    S_ft = (:S, fbcs, S.data)
+    uvwTS_ft = (u_ft, v_ft, w_ft, T_ft, S_ft)
+
+    fill_halo_regions!(grid, uvwTS_ft...)
 
     return (
         isfinite(∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
@@ -176,4 +200,49 @@ function test_smag_divflux_finiteness(TF=Float64)
         isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
         isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data))
         )
+end
+
+@testset "Turbulence closures" begin
+    println("Testing turbulence closures...")
+
+    @testset "Closure operators" begin
+        println("  Testing closure operators...")
+        @test test_function_interpolation()
+        @test test_function_differentiation()
+    end
+
+    @testset "Closure instantiation" begin
+        println("  Testing closure instantiation...")
+        for T in float_types
+            for closure in (:ConstantIsotropicDiffusivity,
+                            :ConstantAnisotropicDiffusivity,
+                            :ConstantSmagorinsky)
+                @test test_closure_instantiation(T, closure)
+            end
+        end
+    end
+
+    @testset "Constant isotropic diffusivity" begin
+        println("  Testing constant isotropic diffusivity...")
+        for T in float_types
+            @test test_constant_isotropic_diffusivity_basic(T)
+            @test test_tensor_diffusivity_tuples(T)
+            @test test_constant_isotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Constant anisotropic diffusivity" begin
+        println("  Testing constant anisotropic diffusivity...")
+        for T in float_types
+            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+            @test test_anisotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Constant Smagorinsky" begin
+        println("  Testing constant Smagorinsky...")
+        for T in float_types
+            @test_skip test_smag_divflux_finiteness(T)
+        end
+    end
 end

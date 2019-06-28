@@ -36,7 +36,6 @@ export
     ardata,
     underlying_data,
     set!,
-    fill_halo_regions!,
 
     # FieldSets (collections of related fields)
     FieldSet,
@@ -44,7 +43,6 @@ export
     TracerFields,
     PressureFields,
     SourceTerms,
-    StepperTemporaryFields,
 
     # Forcing functions
     Forcing,
@@ -55,28 +53,39 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    CoordinateBoundaryConditions,
-    FieldBoundaryConditions,
-    ModelBoundaryConditions,
     Periodic,
     Flux,
     Gradient,
     Value,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions,
+    ModelBoundaryConditions,
+    DoublyPeriodicBCs,
+    ChannelBCs,
     getbc,
     setbc!,
+
+    # Halo regions
+    fill_halo_regions!,
 
     # Time stepping
     time_step!,
 
     # Poisson solver
+    PoissonBCs,
+    PPN, PNN,
     PoissonSolver,
+    PoissonSolverCPU,
     PoissonSolverGPU,
-    solve_poisson_3d_ppn_planned!,
+    solve_poisson_3d!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. clock, etc.
+    # Clock
     Clock,
+
+    # Models
     Model,
+    ChannelModel,
 
     # Model output writers
     OutputWriter,
@@ -108,18 +117,23 @@ using
 
 # Third-party modules
 using
+    Adapt,
     FFTW,
-    JLD,
-    NetCDF,
     StaticArrays,
-    OffsetArrays
+    OffsetArrays,
+    JLD,
+    NetCDF
 
 import
-    Adapt,
     GPUifyLoops
 
 # Adapt an offset CuArray to work nicely with CUDA kernels.
-Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(Adapt.adapt(to, parent(x)), x.offsets)
+Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
+
+# Need to adapt SubArray indices as well.
+# See: https://github.com/JuliaGPU/Adapt.jl/issues/16
+Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
+    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 # Import CUDA utilities if cuda is detected.
 const HAVE_CUDA = try
@@ -173,6 +187,7 @@ include("operators/operators.jl")
 include("closures/turbulence_closures.jl")
 
 include("boundary_conditions.jl")
+include("halo_regions.jl")
 include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
