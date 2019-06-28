@@ -237,7 +237,13 @@ function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
     ω_4Ny⁻ = ω.(4Ny, ky⁻) |> CuArray
     ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
 
-    ω_4Nz⁻[1] *= 1/2
+    # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01) is not
+    # multiplied by 2. For some reason, we only need to account for this when
+    # doing a 1D IDCT (for PPN boundary conditions) but not for a 2D IDCT. It's
+    # possible that the masks are effectively doing this job.
+    if pbcs == PPN()
+        ω_4Nz⁻[1] *= 1/2
+    end
 
     FFT!, FFT_DCT!, IFFT!, IFFT_DCT! = plan_transforms(pbcs, storage)
 
