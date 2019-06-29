@@ -37,7 +37,7 @@ Our goal is to develop friendly and intuitive code allowing users to focus on th
 * [John Marshall](http://oceans.mit.edu/JohnMarshall/) ([@johncmarshall54](https://github.com/johncmarshall54))
 * [Greg Wagner](https://glwagner.github.io/) ([@glwagner](https://github.com/glwagner))
 * Andre Souza ([@sandreza](https://github.com/sandreza))
-* [James Schloss](http://leios.github.io/) ([@leios](https://github.com/leios/simuleios))
+* [James Schloss](http://leios.github.io/) ([@leios](https://github.com/leios))
 * [Mukund Gupta](https://mukund-gupta.github.io/) ([@mukund-gupta](https://github.com/mukund-gupta))
 * Zhen Wu ([@zhenwu0728](https://github.com/zhenwu0728))
 * On the Julia side, big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)), Tim Besard ([@maleadt](https://github.com/maleadt)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
