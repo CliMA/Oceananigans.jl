@@ -115,28 +115,46 @@ model.tracers.T.data .= CuArray(T_3d)
 nan_checker = NaNChecker(1000, [model.velocities.w], ["w"])
 push!(model.diagnostics, nan_checker)
 
-# Write full output to disk every 2500 iterations.
-output_freq = 2500
-netcdf_writer = NetCDFOutputWriter(dir=output_dir, prefix=filename_prefix * "_",
-                                   padding=0, naming_scheme=:file_number,
-                                   frequency=output_freq, async=false)
-push!(model.output_writers, netcdf_writer)
+Δt_wizard = TimeStepWizard(cfl=0.15, Δt=10.0, max_change=1.2, max_Δt=300.0)
 
-# With asynchronous output writing we need to wrap our time-stepping using
-# an @sync block so that Julia does not just quit if the model finishes time
-# stepping while there are still output files that need to be written to disk
-# on another worker/processor.
-@sync begin
-    # Take Ni "intermediate" time steps at a time and print out the current time
-    # and average wall clock time per time step.
-    Ni = 100
-    for i = 1:ceil(Int, Nt/Ni)
-        progress = 100 * (model.clock.iteration / Nt)  # Progress %
-        @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
+# Take Ni "intermediate" time steps at a time before printing a progress
+# statement and updating the time step.
+Ni = 50
 
-        tic = time_ns()
-        time_step!(model, Ni, Δt)
+# Write output to disk every No time steps.
+No = 1000
 
-        @printf("   average wall clock time per iteration: %s\n", prettytime((time_ns() - tic) / Ni))
-    end
+end_time = spd * days
+while model.clock.time < end_time
+    walltime = @elapsed time_step!(model; Nt=Ni, Δt=Δt_wizard.Δt)
+
+    progress = 100 * (model.clock.time / end_time)
+
+    umax = maximum(abs, model.velocities.u.data.parent)
+    vmax = maximum(abs, model.velocities.v.data.parent)
+    wmax = maximum(abs, model.velocities.w.data.parent)
+    CFL = Δt_wizard.Δt / cell_advection_timescale(model)
+
+    update_Δt!(Δt_wizard, model)
+
+    @printf("[%06.2f%%] i: %d, t: %.3f days, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, next Δt: %3.2f s, ⟨wall time⟩: %s",
+            progress, model.clock.iteration, model.clock.time / spd,
+            umax, vmax, wmax, CFL, Δt_wizard.Δt, prettytime(1e9*walltime / Ni))
+
+    if model.clock.iteration % No == 0
+        filename = filename_prefix  * "_" * string(model.clock.iteration) * ".jld2"
+        io_time = @elapsed save(filename,
+            Dict("t" => model.clock.time,
+                 "xC" => Array(model.grid.xC),
+                 "yC" => Array(model.grid.yC),
+                 "zC" => Array(model.grid.zC),
+                 "xF" => Array(model.grid.xF),
+                 "yF" => Array(model.grid.yF),
+                 "zF" => Array(model.grid.zF),
+                 "u"  => Array(model.velocities.u.data.parent),
+                 "v"  => Array(model.velocities.v.data.parent),
+                 "w"  => Array(model.velocities.w.data.parent),
+                 "T"  => Array(model.tracers.T.data.parent)))
+        @printf(", IO time: %s", prettytime(1e9*io_time))
+     end
 end
