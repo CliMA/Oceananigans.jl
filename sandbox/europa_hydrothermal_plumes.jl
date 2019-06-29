@@ -77,6 +77,8 @@ using Printf
 using CuArrays
 using Oceananigans
 
+include("../src/time_step_utils.jl")
+
 # Physical constants.
 ρ₀ = 1027    # Density of seawater [kg/m³]
 cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
@@ -107,7 +109,8 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
 # facilitate numerical convection.
 @. T_3d[:, :, Nz] += 0.001*randn()
 
-model.tracers.T.data .= CuArray(T_3d)
+@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx, 1+f.grid.Hy:f.grid.Ny+f.grid.Hy, 1+f.grid.Hz:f.grid.Nz+f.grid.Hz)
+ardata_view(model.tracers.T) .= CuArray(T_3d)
 
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity and temperature fields every 1,000 time steps and abort the simulation
@@ -157,4 +160,5 @@ while model.clock.time < end_time
                  "T"  => Array(model.tracers.T.data.parent)))
         @printf(", IO time: %s", prettytime(1e9*io_time))
      end
+     @printf("\n")
 end
