@@ -123,17 +123,16 @@ push!(model.diagnostics, nan_checker)
 # push!(model.output_writers, checkpointer)
 
 
-# Take Ni "intermediate" time steps at a time and print out the current time
-# and average wall clock time per time step.
-Ni = 100
+Δt_wizard = TimeStepWizard(cfl=0.15, Δt=3.0, max_change=1.5, max_Δt=10.0)
+
+# Take Ni "intermediate" time steps at a time before printing a progress
+# statement and updating the time step.
+Ni = 50
 
 # Write output to disk every No time steps.
 No = 1000
 
 while model.clock.time < T
-    progress = 100 * (model.clock.time / T)  # Progress %
-    @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
-
     tic = time_ns()
     for j in 1:Ni
         model.boundary_conditions.T.z.left = BoundaryCondition(Flux, Qsurface(model.clock.time))
@@ -141,17 +140,35 @@ while model.clock.time < T
     end
     toc = time_ns()
 
-    filename = filename_prefix  * "_" * string(model.clock.iteration) * ".jld2"
-    io_time = @elapsed save(filename,
-        Dict("t" => model.clock.time,
-             "xC" => Array(model.grid.xC),
-             "yC" => Array(model.grid.yC),
-             "zC" => Array(model.grid.zC),
-             "xF" => Array(model.grid.xF),
-             "yF" => Array(model.grid.yF),
-             "zF" => Array(model.grid.zF),
-             "u" => Array(model.velocities.u.data.parent),
-             "v" => Array(model.velocities.v.data.parent),
-             "w" => Array(model.velocities.w.data.parent),
-             "T" => Array(model.tracers.T.data.parent)))
+    progress = 100 * (model.clock.time / T)
+
+    umax = maximum(abs, model.velocities.u.data.parent)
+    vmax = maximum(abs, model.velocities.v.data.parent)
+    wmax = maximum(abs, model.velocities.w.data.parent)
+    CFL = Δt_wizard.Δt / cell_advection_timescale(model)
+
+    update_Δt!(Δt_wizard, model)
+
+    @printf("[%06.2f%%] i: %d, t: %.3f days, umax: (%6.3g, %6.3g, %6.3g) m/s, " *
+            "CFL: %6.4g, next Δt: %3.2f s, ⟨wall time⟩: %s",
+            progress, model.clock.iteration, model.clock.time / 86400,
+            umax, vmax, wmax, CFL, Δt_wizard.Δt, prettytime(1e9*(toc-tic) / Ni))
+
+    if model.clock.iteration % No == 0
+        filename = filename_prefix  * "_" * string(model.clock.iteration) * ".jld2"
+        io_time = @elapsed save(filename,
+            Dict("t" => model.clock.time,
+                 "xC" => Array(model.grid.xC),
+                 "yC" => Array(model.grid.yC),
+                 "zC" => Array(model.grid.zC),
+                 "xF" => Array(model.grid.xF),
+                 "yF" => Array(model.grid.yF),
+                 "zF" => Array(model.grid.zF),
+                 "u"  => Array(model.velocities.u.data.parent),
+                 "v"  => Array(model.velocities.v.data.parent),
+                 "w"  => Array(model.velocities.w.data.parent),
+                 "T"  => Array(model.tracers.T.data.parent)))
+        @printf(", IO time: %s", prettytime(1e9*io_time))
+     end
+     @printf("\n")
 end
