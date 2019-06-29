@@ -112,7 +112,7 @@ model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), νh=νh, κh=κh, νv=νv, κv=κv
               constants=Europa(lat=45), arch=GPU(), float_type=Float64)
 
 # Set heating flux at the bottom.
-bottom_flux = -Q / (ρ₀ * cₚ)
+bottom_flux = Q / (ρ₀ * cₚ)
 model.boundary_conditions.T.z.right = BoundaryCondition(Flux, bottom_flux)
 
 # Set initial conditions.
