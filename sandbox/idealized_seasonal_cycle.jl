@@ -113,7 +113,7 @@ ardata_view(model.tracers.T) .= CuArray(T_3d)
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity field every 1,000 time steps and abort the simulation if NaN values
 # are detected.
-nan_checker = NaNChecker(1000, [model.velocities], ["w"])
+nan_checker = NaNChecker(1000, [model.velocities.w], ["w"])
 push!(model.diagnostics, nan_checker)
 
 # Add a checkpointer that saves the entire model state.
@@ -123,7 +123,7 @@ push!(model.diagnostics, nan_checker)
 # push!(model.output_writers, checkpointer)
 
 
-Δt_wizard = TimeStepWizard(cfl=0.15, Δt=3.0, max_change=1.5, max_Δt=10.0)
+Δt_wizard = TimeStepWizard(cfl=0.1, Δt=10.0, max_change=1.2, max_Δt=60.0)
 
 # Take Ni "intermediate" time steps at a time before printing a progress
 # statement and updating the time step.
@@ -136,7 +136,7 @@ while model.clock.time < T
     tic = time_ns()
     for j in 1:Ni
         model.boundary_conditions.T.z.left = BoundaryCondition(Flux, Qsurface(model.clock.time))
-        time_step!(model, 1, Δt)
+        time_step!(model, 1, Δt_wizard.Δt)
     end
     toc = time_ns()
 
@@ -149,10 +149,9 @@ while model.clock.time < T
 
     update_Δt!(Δt_wizard, model)
 
-    @printf("[%06.2f%%] i: %d, t: %.3f days, umax: (%6.3g, %6.3g, %6.3g) m/s, " *
-            "CFL: %6.4g, next Δt: %3.2f s, ⟨wall time⟩: %s",
+    @printf("[%06.2f%%] i: %d, t: %.3f days, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, next Δt: %3.2f s, ⟨wall time⟩: %s",
             progress, model.clock.iteration, model.clock.time / 86400,
-            umax, vmax, wmax, CFL, Δt_wizard.Δt, prettytime(1e9*(toc-tic) / Ni))
+            umax, vmax, wmax, CFL, Δt_wizard.Δt, prettytime((toc-tic) / Ni))
 
     if model.clock.iteration % No == 0
         filename = filename_prefix  * "_" * string(model.clock.iteration) * ".jld2"
