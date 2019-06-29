@@ -1,6 +1,8 @@
 using TimerOutputs, Printf
 using Oceananigans
 
+include("benchmark_utils.jl")
+
 const timer = TimerOutput()
 
 Ni = 2   # Number of iterations before benchmarking starts.
@@ -15,34 +17,6 @@ archs = [CPU()]  # Architectures to benchmark on.
 # Benchmark GPU on systems with CUDA-enabled GPUs.
 @hascuda archs = [CPU(), GPU()]
 
-arch_name(::CPU) = "CPU"
-arch_name(::GPU) = "GPU"
-
-benchmark_name(N)               = benchmark_name(N, nothing, nothing)
-benchmark_name(N, arch::Symbol) = benchmark_name(N, arch, nothing)
-benchmark_name(N, ft::DataType) = benchmark_name(N, nothing, ft)
-
-function benchmark_name(N, arch, ft; npad=3)
-    Nx, Ny, Nz = N
-    print_arch = typeof(arch) <: Architecture ? true : false
-    print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
-
-    bn = ""
-    bn *= lpad(Nx, npad, " ") * "×" * lpad(Ny, npad, " ") * "×" * lpad(Nz, npad, " ")
-
-    if print_arch && print_ft
-        arch = arch_name(arch)
-        bn *= " ($arch, $ft)"
-    elseif print_arch && !print_ft
-        arch = arch_name(arch)
-        bn *= " ($arch)"
-    elseif !print_arch && print_ft
-        bn *= " ($ft)"
-    end
-
-    return bn
-end
-
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 100, 100, 100
@@ -51,7 +25,7 @@ for arch in archs, float_type in float_types, N in Ns
     time_step!(model, Ni, 1)  # First 1~2 iterations are usually slower.
 
     bname =  benchmark_name(N, arch, float_type)
-    @printf("Running benchmark: %s...\n", bname)
+    @printf("Running static ocean benchmark: %s...\n", bname)
     for i in 1:Nt
         @timeit timer bname time_step!(model, 1, 1)
     end
