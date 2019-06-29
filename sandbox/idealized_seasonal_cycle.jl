@@ -57,6 +57,28 @@ if !isdir(output_dir)
     mkpath(output_dir)
 end
 
+"""
+    add_sponge_layer!(model; damping_timescale)
+
+Adds a sponge layer to the bottom layer of the `model`. The purpose of this
+sponge layer is to effectively dampen out waves reaching the bottom of the
+domain and avoid having waves being continuously generated and reflecting from
+the bottom, some of which may grow unrealistically large in amplitude.
+
+Numerically the sponge layer acts as an extra source term in the momentum
+equations. It takes on the form Gu[i, j, k] += -u[i, j, k]/τ for each momentum
+source term where τ is a damping timescale. Typially, Δt << τ.
+"""
+function add_sponge_layer!(model; damping_timescale)
+    τ = damping_timescale
+
+    @inline damping_u(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -u[i, j, k] / τ, 0)
+    @inline damping_v(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -v[i, j, k] / τ, 0)
+    @inline damping_w(grid, u, v, w, T, S, i, j, k) = ifelse(k == grid.Nz, -w[i, j, k] / τ, 0)
+
+    model.forcing = Forcing(damping_u, damping_v, wave_damping_w, nothing, nothing)
+end
+
 # Adding a second worker/proccessor for asynchronous NetCDF output writing.
 using Distributed
 addprocs(1)
