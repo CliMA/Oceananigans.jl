@@ -90,7 +90,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By)     update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
                                                                   fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_interior_source_terms!(grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
+                                                                  calculate_interior_source_terms!(arch, grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
                                                                   calculate_boundary_source_terms!(model)
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
                                                                   fill_halo_regions!(grid, Guvw_ft...)
@@ -166,7 +166,7 @@ function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+function calculate_interior_source_terms!(arch::Architecture, grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
@@ -174,40 +174,76 @@ function calculate_interior_source_terms!(grid::Grid, constants, eos, closure, u
     fCor = constants.f
     ρ₀ = eos.ρ₀
 
-    @loop for k in (1:grid.Nz; blockIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # u-momentum equation
-                @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
-                                            + fv(grid, v, fCor, i, j, k)
-                                            - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
-                                            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.u(grid, u, v, w, T, S, i, j, k))
-
-                # v-momentum equation
-                @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
-                                            - fu(grid, u, fCor, i, j, k)
-                                            - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
-                                            + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.v(grid, u, v, w, T, S, i, j, k))
-
-                # w-momentum equation: comment about how pressure and buoyancy are handled
-                @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
-                                            + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
-                                            + F.w(grid, u, v, w, T, S, i, j, k))
-
-                # temperature equation
-                @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
-                                            + ∇_κ_∇ϕ(i, j, k, grid, T, closure, eos, grav, u, v, w, T, S)
-                                            + F.T(grid, u, v, w, T, S, i, j, k))
-
-                # salinity equation
-                @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
-                                            + ∇_κ_∇ϕ(i, j, k, grid, S, closure, eos, grav, u, v, w, T, S)
-                                            + F.S(grid, u, v, w, T, S, i, j, k))
+    function calculate_Gu(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+        @loop for k in (1:grid.Nz; blockIdx().z)
+            @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds Gu[i, j, k] = (-u∇u(grid, u, v, w, i, j, k)
+                                                + fv(grid, v, fCor, i, j, k)
+                                                - δx_c2f(grid, pHY′, i, j, k) / (Δx * ρ₀)
+                                                + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+                                                + F.u(grid, u, v, w, T, S, i, j, k))
+                end
             end
         end
     end
+
+    function calculate_Gv(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+        @loop for k in (1:grid.Nz; blockIdx().z)
+            @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds Gv[i, j, k] = (-u∇v(grid, u, v, w, i, j, k)
+                                                - fu(grid, u, fCor, i, j, k)
+                                                - δy_c2f(grid, pHY′, i, j, k) / (Δy * ρ₀)
+                                                + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+                                                + F.v(grid, u, v, w, T, S, i, j, k))
+                end
+            end
+        end
+    end
+
+    function calculate_Gw(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+        @loop for k in (1:grid.Nz; blockIdx().z)
+            @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds Gw[i, j, k] = (-u∇w(grid, u, v, w, i, j, k)
+                                                + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, eos, grav, u, v, w, T, S)
+                                                + F.w(grid, u, v, w, T, S, i, j, k))
+                end
+            end
+        end
+    end
+
+    function calculate_GT(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+        @loop for k in (1:grid.Nz; blockIdx().z)
+            @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds GT[i, j, k] = (-div_flux(grid, u, v, w, T, i, j, k)
+                                                + ∇_κ_∇ϕ(i, j, k, grid, T, closure, eos, grav, u, v, w, T, S)
+                                                + F.T(grid, u, v, w, T, S, i, j, k))
+                end
+            end
+        end
+    end
+
+    function calculate_GS(grid::Grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+        @loop for k in (1:grid.Nz; blockIdx().z)
+            @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    @inbounds GS[i, j, k] = (-div_flux(grid, u, v, w, S, i, j, k)
+                                                + ∇_κ_∇ϕ(i, j, k, grid, S, closure, eos, grav, u, v, w, T, S)
+                                                + F.S(grid, u, v, w, T, S, i, j, k))
+                end
+            end
+        end
+    end
+
+    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
