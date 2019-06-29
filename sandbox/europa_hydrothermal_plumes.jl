@@ -32,10 +32,6 @@ s = ArgParseSettings(description="Run simulations of a deep subsurface ocean on 
         arg_type=Float64
         required=true
         help="Vertical diffusivity κv [m²/s]. Horizontal diffusivity κh will be scaled by aspect ratio (L/H)."
-    "--dt"
-        arg_type=Float64
-        required=true
-        help="Time step in seconds."
     "--days"
         arg_type=Float64
         required=true
@@ -61,8 +57,7 @@ L = isinteger(L) ? Int(L) : L
 H = isinteger(H) ? Int(H) : H
 Q = isinteger(Q) ? Int(Q) : Q
 
-dt, days = parsed_args["dt"], parsed_args["days"]
-dt = isinteger(dt) ? Int(dt) : dt
+days = parsed_args["days"]
 days = isinteger(days) ? Int(days) : days
 
 base_dir = parsed_args["output-dir"]
@@ -70,7 +65,7 @@ base_dir = parsed_args["output-dir"]
 filename_prefix = "europa_hydrothermal_plumes_N" * string(Nh) * "_V" * string(Nz) *
                    "_L" * string(L) * "_H" * string(H) *
                   "_Q" * string(Q) * "_dTdz" * string(dTdz) * "_k" * string(κ) *
-                  "_dt" * string(dt) * "_days" * string(days)
+                  "_days" * string(days)
 output_dir = joinpath(base_dir, filename_prefix)
 
 if !isdir(output_dir)
@@ -78,18 +73,9 @@ if !isdir(output_dir)
     mkpath(output_dir)
 end
 
-# Adding a second worker/proccessor for asynchronous NetCDF output writing.
-using Distributed
-addprocs(1)
-
-# We need to activate the Oceananigans environment on all workers if executing
-# this script from the development repository using "julia --project".
-@everywhere using Pkg
-@everywhere Pkg.activate(".");
-
-@everywhere using Oceananigans
-@everywhere using CuArrays
-@everywhere using Printf
+using Printf
+using CuArrays
+using Oceananigans
 
 # Physical constants.
 ρ₀ = 1027    # Density of seawater [kg/m³]
@@ -102,8 +88,6 @@ spd = 35430
 # Set more simulation parameters.
 Nx, Ny, Nz = Nh, Nh, Nz
 Lx, Ly, Lz = L, L, H
-Δt = dt
-Nt = Int(days*spd/dt)
 κv, νv = κ, κ  # This is also implicitly setting the Prandtl number Pr = 1.
 κh, νh = (L/H)*κv, (L/H)*νv  # Scale horizontal κ and ν by the aspect ratio.
 
@@ -128,7 +112,7 @@ model.tracers.T.data .= CuArray(T_3d)
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
 # velocity and temperature fields every 1,000 time steps and abort the simulation
 # if NaN values are detected.
-nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
+nan_checker = NaNChecker(1000, [model.velocities.w], ["w"])
 push!(model.diagnostics, nan_checker)
 
 # Write full output to disk every 2500 iterations.
