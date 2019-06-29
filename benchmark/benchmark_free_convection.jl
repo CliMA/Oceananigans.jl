@@ -21,17 +21,31 @@ for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 100, 100, 100
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type)
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-4, κ=1e-4,
+                  arch=arch, float_type=float_type)
+
+    # Free convection model setup.
+    cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
+    dTdz = 0.01  # [K/m]
+    top_flux = -25 / (model.eos.ρ₀ * cₚ)  # 25 W/m² cooling flux.
+
+    model.boundary_conditions.T.z.left = BoundaryCondition(Flux, top_flux)
+    model.boundary_conditions.T.z.right = BoundaryCondition(Gradient, dTdz)
+
+    # Initial temperature profile.
+    T_prof = 20 .+ dTdz .* reshape(model.grid.zC, 1, 1, Nz)
+    data(model.tracers.T) .= T_prof
+
     time_step!(model, Ni, 1)  # First 1~2 iterations are usually slower.
 
     bname =  benchmark_name(N, arch, float_type)
-    @printf("Running static ocean benchmark: %s...\n", bname)
+    @printf("Running free convection benchmark: %s...\n", bname)
     for i in 1:Nt
         @timeit timer bname time_step!(model, 1, 1)
     end
 end
 
-print_timer(timer, title="Oceananigans.jl static ocean benchmarks")
+print_timer(timer, title="Oceananigans.jl free convection benchmarks")
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
