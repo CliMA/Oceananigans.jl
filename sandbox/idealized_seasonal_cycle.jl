@@ -15,10 +15,6 @@ s = ArgParseSettings(description="Run simulations of a mixed layer over an ideal
         arg_type=Float64
         required=true
         help="Diffusivity κ [m²/s]."
-    "--dt"
-        arg_type=Float64
-        required=true
-        help="Time step in seconds."
     "--cycles"
         arg_type=Int
         required=true
@@ -37,19 +33,17 @@ parsed_args = parse_args(s)
 N = parsed_args["resolution"]
 dTdz = parsed_args["dTdz"]
 κ = parsed_args["diffusivity"]
-dt = parsed_args["dt"]
 c = parsed_args["cycles"]
 T = parsed_args["simulation-time"]
 
 N  = isinteger(N) ? Int(N) : N
-dt = isinteger(dt) ? Int(dt) : dt
 c  = isinteger(c) ? Int(c) : c
 T  = isinteger(T) ? Int(T) : T
 
 base_dir = parsed_args["output-dir"]
 
-filename_prefix = "idealized_seasonal_cycle_N" * string(N) * "_dTdz" * string(dTdz) * "_k" * string(κ) * "_dt" * string(dt) *
-                  "_c" * string(c) * "_T" * string(T)
+filename_prefix = "idealized_seasonal_cycle_N" * string(N) * "_dTdz" * string(dTdz) *
+                  "_k" * string(κ) * "_c" * string(c) * "_T" * string(T)
 output_dir = joinpath(base_dir, filename_prefix)
 
 if !isdir(output_dir)
@@ -79,22 +73,9 @@ function add_sponge_layer!(model; damping_timescale)
     model.forcing = Forcing(damping_u, damping_v, wave_damping_w, nothing, nothing)
 end
 
-# Adding a second worker/proccessor for asynchronous NetCDF output writing.
-using Distributed
-addprocs(1)
-
-# We need to activate the Oceananigans environment on all workers if executing
-# this script from the development repository using "julia --project".
-@everywhere using Pkg
-@everywhere Pkg.activate(".");
-
-@everywhere using Oceananigans
-@everywhere using CUDAnative
-@everywhere using CuArrays
-@everywhere using Printf
-@everywhere using Statistics: mean
-
-# @everywhere CuArrays.allowscalar(false)
+using Statistics, Printf
+using CUDAnative, CuArrays, JLD2, FileIO
+using Oceananigans
 
 # Physical constants.
 ρ₀ = 1027    # Density of seawater [kg/m³]
@@ -103,16 +84,15 @@ cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg�
 # Set more simulation parameters.
 Nx, Ny, Nz = N, N, N
 Lx, Ly, Lz = 200, 200, 200
-Δt = dt
-Nt = Int(T/dt)
 ν = κ  # This is also implicitly setting the Prandtl number Pr = 1.
 
 ωs = 2π / T  # Seasonal frequency.
 Φavg = dTdz * Lz^2 / (8T)
-a = 1.1 * Φavg
+a = 1.5 * Φavg
 @inline Qsurface(t) = (Φavg + a*sin(c*ωs*t))
 
-@info "Φavg = $(Φavg*ρ₀*cₚ) W/m²"
+@info @sprintf("Φavg = %.3f W/m², Φmax = %.3f W/m², Φmin = %.3f W/m²",
+               Φavg*ρ₀*cₚ, (Φavg+a)*ρ₀*cₚ, (Φavg-a)*ρ₀*cₚ)
 
 # Create the model.
 model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=ν, κ=κ, arch=GPU(), float_type=Float64)
@@ -131,9 +111,9 @@ T_3d = repeat(reshape(T_prof, 1, 1, Nz), Nx, Ny, 1)  # Convert to a 3D array.
 ardata_view(model.tracers.T) .= CuArray(T_3d)
 
 # Add a NaN checker diagnostic that will check for NaN values in the vertical
-# velocity and temperature fields every 1,000 time steps and abort the simulation
-# if NaN values are detected.
-nan_checker = NaNChecker(1000, [model.velocities.w, model.tracers.T], ["w", "T"])
+# velocity field every 1,000 time steps and abort the simulation if NaN values
+# are detected.
+nan_checker = NaNChecker(1000, [model.velocities], ["w"])
 push!(model.diagnostics, nan_checker)
 
 # Add a checkpointer that saves the entire model state.
@@ -142,32 +122,36 @@ push!(model.diagnostics, nan_checker)
 #                             frequency=checkpoint_freq, padding=2)
 # push!(model.output_writers, checkpointer)
 
-# Write full output to disk every 6 hour.
-output_freq = Int(6*3600 / dt)
-netcdf_writer = NetCDFOutputWriter(dir=output_dir, prefix=filename_prefix * "_",
-                                   padding=0, naming_scheme=:file_number,
-                                   frequency=output_freq, async=true)
-push!(model.output_writers, netcdf_writer)
 
-# With asynchronous output writing we need to wrap our time-stepping using
-# an @sync block so that Julia does not just quit if the model finishes time
-# stepping while there are still output files that need to be written to disk
-# on another worker/processor.
-@sync begin
-    # Take Ni "intermediate" time steps at a time and print out the current time
-    # and average wall clock time per time step.
-    Ni = 100
-    for i = 1:ceil(Int, Nt/Ni)
-        progress = 100 * (model.clock.iteration / Nt)  # Progress %
-        @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
+# Take Ni "intermediate" time steps at a time and print out the current time
+# and average wall clock time per time step.
+Ni = 100
 
-        tic = time_ns()
+# Write output to disk every No time steps.
+No = 1000
 
-        for j in 1:Ni
-            model.boundary_conditions.T.z.left = BoundaryCondition(Flux, Qsurface(model.clock.time))
-            time_step!(model, 1, Δt)
-        end
+while model.clock.time < T
+    progress = 100 * (model.clock.time / T)  # Progress %
+    @printf("[%06.2f%%] Time: %.1f / %.1f...", progress, model.clock.time, Nt*Δt)
 
-        @printf("   average wall clock time per iteration: %s\n", prettytime((time_ns() - tic) / Ni))
+    tic = time_ns()
+    for j in 1:Ni
+        model.boundary_conditions.T.z.left = BoundaryCondition(Flux, Qsurface(model.clock.time))
+        time_step!(model, 1, Δt)
     end
+    toc = time_ns()
+
+    filename = filename_prefix  * "_" * string(model.clock.iteration) * ".jld2"
+    io_time = @elapsed save(filename,
+        Dict("t" => model.clock.time,
+             "xC" => Array(model.grid.xC),
+             "yC" => Array(model.grid.yC),
+             "zC" => Array(model.grid.zC),
+             "xF" => Array(model.grid.xF),
+             "yF" => Array(model.grid.yF),
+             "zF" => Array(model.grid.zF),
+             "u" => Array(model.velocities.u.data.parent),
+             "v" => Array(model.velocities.v.data.parent),
+             "w" => Array(model.velocities.w.data.parent),
+             "T" => Array(model.tracers.T.data.parent)))
 end
