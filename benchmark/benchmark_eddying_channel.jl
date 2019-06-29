@@ -1,12 +1,14 @@
 using TimerOutputs, Printf
 using Oceananigans
 
+@hascuda using CuArrays
+
 include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-Ni = 2   # Number of iterations before benchmarking starts.
-Nt = 10  # Number of iterations to use for benchmarking time stepping.
+Ni = 2  # Number of iterations before benchmarking starts.
+Nt = 5  # Number of iterations to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks. Focusing on 3D models for GPU.
 Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
@@ -17,21 +19,40 @@ archs = [CPU()]  # Architectures to benchmark on.
 # Benchmark GPU on systems with CUDA-enabled GPUs.
 @hascuda archs = [CPU(), GPU()]
 
+@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx, 1+f.grid.Hy:f.grid.Ny+f.grid.Hy, 1+f.grid.Hz:f.grid.Nz+f.grid.Hz)
+
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
-    Lx, Ly, Lz = 100, 100, 100
+    Lx, Ly, Lz = 250e3, 250e3, 1000
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type)
+    model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-2, κ=1e-2,
+                  arch=arch, float_type=float_type)
+
+    # Eddying channel model setup.
+    Ty = 4e-5  # Meridional temperature gradient [K/m].
+    Tz = 2e-3  # Vertical temperature gradient [K/m].
+
+    # Initial temperature field [°C].
+    T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
+
+    xs = reshape(model.grid.xC, Nx, 1, 1)
+    ys = reshape(model.grid.yC, 1, Ny, 1)
+    zs = reshape(model.grid.zC, 1, 1, Nz)
+
+    T0 = T₀.(xs, ys, zs)
+    @hascuda T0 = CuArray(T0)
+    ardata_view(model.tracers.T) .= T0
+
     time_step!(model, Ni, 1)  # First 1~2 iterations are usually slower.
 
     bname =  benchmark_name(N, arch, float_type)
-    @printf("Running static ocean benchmark: %s...\n", bname)
+    @printf("Running eddying channel benchmark: %s...\n", bname)
     for i in 1:Nt
         @timeit timer bname time_step!(model, 1, 1)
     end
 end
 
-print_timer(timer, title="Oceananigans.jl static ocean benchmarks")
+print_timer(timer, title="Oceananigans.jl eddying channel benchmarks")
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
