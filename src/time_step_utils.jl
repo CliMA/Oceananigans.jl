@@ -3,9 +3,9 @@ function cell_advection_timescale(u, v, w, grid)
     vmax = maximum(abs, v)
     wmax = maximum(abs, w)
 
-    Δx = model.grid.Δx
-    Δy = model.grid.Δy
-    Δz = model.grid.Δz
+    Δx = grid.Δx
+    Δy = grid.Δy
+    Δz = grid.Δz
 
     return min(Δx/umax, Δy/vmax, Δz/wmax)
 end
