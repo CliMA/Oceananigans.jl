@@ -52,7 +52,7 @@ function Europa(T=Float64; f=nothing, lat=nothing)
 
     abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
 
-    PlanetaryConstants{T}(Ω, f, g)
+    PlanetaryConstants{T}(Ω, f′, g)
 end
 
 function Enceladus(T=Float64; f=nothing, lat=nothing)
@@ -72,5 +72,5 @@ function Enceladus(T=Float64; f=nothing, lat=nothing)
 
     abs(f′) <= 2Ω || throw(ArgumentError("Coriolis parameter |f| cannot be larger than 2Ω!"))
 
-    PlanetaryConstants{T}(Ω, f, g)
+    PlanetaryConstants{T}(Ω, f′, g)
 end
