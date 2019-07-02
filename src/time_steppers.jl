@@ -253,12 +253,11 @@ function calculate_interior_source_terms!(arch::Architecture, grid::Grid, consta
         end
     end
 
-    Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz  # Blocks in grid
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) config=launch_config(grid, 3) calculate_Gu(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) config=launch_config(grid, 3) calculate_Gv(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) config=launch_config(grid, 3) calculate_Gw(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) config=launch_config(grid, 3) calculate_GT(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
+    @launch device(arch) config=launch_config(grid, 3) calculate_GS(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
