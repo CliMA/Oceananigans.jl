@@ -413,6 +413,57 @@ in `y` and `z`, from `afc` to `acf`.
 @inline ∂y_2ν_Σ₃₂(i, j, k, grid, args...) = 2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ, ν_cff, Σ₃₂, args...)
 @inline ∂z_2ν_Σ₃₃(i, j, k, grid, args...) = 2 * ∂z_aaf(i, j, k, grid, ν_Σᵢⱼ, ν_ccc, Σ₃₃, args...)
 
+# Turbulent stresses
+@inline ν_Σᵢⱼ_ccc(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ν[i, j, k] * Σᵢⱼ(i, j, k, grid, u, v, w)
+
+@inline ν_Σᵢⱼ_ffc(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶xy_ffa(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+
+@inline ν_Σᵢⱼ_fcf(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶xz_faf(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+
+@inline ν_Σᵢⱼ_cff(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶yz_aff(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+
+#
+# Stress divergences with precomputed diffusivities
+#
+
+# At fcc
+@inline ∂x_2ν_Σ₁₁(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂x_faa(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₁₁, u, v, w)
+
+@inline ∂y_2ν_Σ₁₂(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ_ffc, diffusivities.νₑ, Σ₁₂, u, v, w)
+
+@inline ∂z_2ν_Σ₁₃(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ_fcf, diffusivities.νₑ, Σ₁₃, u, v, w)
+
+# At cfc
+@inline ∂x_2ν_Σ₂₁(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ_ffc, diffusivities.νₑ, Σ₂₁, u, v, w)
+
+@inline ∂y_2ν_Σ₂₂(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂y_afa(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₂₂, u, v, w)
+
+@inline ∂z_2ν_Σ₂₃(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ_cff, diffusivities.νₑ, Σ₂₃, u, v, w)
+
+# At ccf
+@inline ∂x_2ν_Σ₃₁(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ_fcf, diffusivities.νₑ, Σ₃₁, u, v, w)
+
+@inline ∂y_2ν_Σ₃₂(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ_cff, diffusivities.νₑ, Σ₃₂, u, v, w)
+
+@inline ∂z_2ν_Σ₃₃(i, j, k, grid, closure, u, v, w, diffusivities) =
+    2 * ∂z_aaf(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₃₃, u, v, w)
+
+# 
+# Stress divergences without precomputed diffusivities
+# 
+
 """
     ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, eos, g, u, v, w, T, S)
 
@@ -496,6 +547,64 @@ data located at cell centers.
     ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
     return κ * ∂z_ϕ
 end
+
+
+"""
+    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, diffusivities)
+
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
+`closure`, where `ϕ` is an array of scalar data located at cell centers.
+"""
+@inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, diffusivities) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕ, diffusivities.κₑ, closure)
+    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕ, diffusivities.κₑ, closure)
+    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕ, diffusivities.κₑ, closure)
+)
+
+"""
+    ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, u, v, w, diffusivities)
+
+Return the ``x``-component of the turbulent diffusive flux divergence:
+
+`∂x(2 ν Σ₁₁) + ∂y(2 ν Σ₁₁) + ∂z(2 ν Σ₁₁)`
+
+at the location `fcc`.
+"""
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
+      ∂x_2ν_Σ₁₁(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, u, v, w, diffusivities)
+)
+
+"""
+    ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, u, v, w, diffusivities)
+
+Return the ``y``-component of the turbulent diffusive flux divergence:
+
+`∂x(2 ν Σ₂₁) + ∂y(2 ν Σ₂₂) + ∂z(2 ν Σ₂₂)`
+
+at the location `ccf`.
+"""
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
+      ∂x_2ν_Σ₂₁(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, u, v, w, diffusivities)
+)
+
+"""
+    ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, diffusivities)
+
+Return the ``z``-component of the turbulent diffusive flux divergence:
+
+`∂x(2 ν Σ₃₁) + ∂y(2 ν Σ₃₂) + ∂z(2 ν Σ₃₃)`
+
+at the location `ccf`.
+"""
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
+      ∂x_2ν_Σ₃₁(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, u, v, w, diffusivities)
+    + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, u, v, w, diffusivities)
+)
 
 """
     ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, eos, g, u, v, w, T, S)
