@@ -22,6 +22,9 @@ const MolecularDiffusivity = ConstantIsotropicDiffusivity
 ConstantIsotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantIsotropicDiffusivity; kwargs...)
 
+calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
+                     args...) = nothing
+
 # These functions are used to specify Gradient and Value boundary conditions.
 @inline κ_ccc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.κ
 @inline ν_ccc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
@@ -65,6 +68,9 @@ Base.@kwdef struct ConstantAnisotropicDiffusivity{T} <: TensorDiffusivity{T}
     κh :: T = 1e-6
     κv :: T = 1e-6
 end
+
+calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,
+                     args...) = nothing
 
 ConstantAnisotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantAnisotropicDiffusivity; kwargs...)
