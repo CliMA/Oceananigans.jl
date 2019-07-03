@@ -29,6 +29,8 @@ export
 
 using Oceananigans, Oceananigans.Operators
 
+@hascuda using CUDAdrv, CUDAnative
+
 abstract type TurbulenceClosure{T} end
 abstract type IsotropicDiffusivity{T} <: TurbulenceClosure{T} end
 abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
@@ -54,7 +56,10 @@ abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 ν₂₂_cff(i, j, k, grid, closure::IsotropicDiffusivity, args...) = ν_cff(i, j, k, grid, closure, args...)
 ν₃₃_cff(i, j, k, grid, closure::IsotropicDiffusivity, args...) = ν_cff(i, j, k, grid, closure, args...)
 
-geo_mean_Δ(grid::RegularCartesianGrid) = (grid.Δx * grid.Δy * grid.Δz)^(1/3)
+@inline ∇_κ_∇T(args...) = ∇_κ_∇ϕ(args...)
+@inline ∇_κ_∇S(args...) = ∇_κ_∇ϕ(args...)
+
+@inline geo_mean_Δ(grid::RegularCartesianGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 function typed_keyword_constructor(T, Closure; kwargs...)
     closure = Closure(; kwargs...)
@@ -78,5 +83,16 @@ include("constant_smagorinsky.jl")
 κ₁₁ = (ccc=κ₁₁_ccc, )
 κ₂₂ = (ccc=κ₂₂_ccc, )
 κ₃₃ = (ccc=κ₃₃_ccc, )
+
+basetype(::ConstantSmagorinsky) = ConstantSmagorinsky
+basetype(::ConstantIsotropicDiffusivity) = ConstantIsotropicDiffusivity
+basetype(::AnisotropicMinimumDissipation) = AnisotropicMinimumDissipation
+
+function Base.convert(::TurbulenceClosure{T2}, closure::TurbulenceClosure{T1}) where {T1, T2}
+    paramdict = Dict((p, convert(T2, getproperty(closure, p))) for p in propertynames(closure))
+    return basetype(closure)(T2; paramdict...)
+end
+
+TurbulentDiffusivities(arch::Architecture, grid::Grid, args...) = nothing
 
 end # module
