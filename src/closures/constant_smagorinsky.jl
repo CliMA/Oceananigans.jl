@@ -12,10 +12,10 @@ end
 
 Returns a `ConstantSmagorinsky` closure object of type `T` with
 
-* `C`            : Smagorinsky constant
-* `Pr`           : Prandtl number
-* `ν_background` : background viscosity
-* `κ_background` : background diffusivity
+*  `C` : Smagorinsky constant
+* `Pr` : Prandtl number
+*  `ν` : background viscosity
+*  `κ` : background diffusivity
 """
 ConstantSmagorinsky(T; kwargs...) =
       typed_keyword_constructor(T, ConstantSmagorinsky; kwargs...)
@@ -49,7 +49,7 @@ const Δ_cff = Δ
 
 Return the stability function
 
-``1 - Cb N^2 / (Pr Σ^2)``
+``1 - \\sqrt( Cb N^2 / (Pr Σ^2) )``
 
 when ``N^2 > 0``, and 1 otherwise.
 """
@@ -181,4 +181,3 @@ end
             + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
-
