@@ -20,6 +20,11 @@ Returns a `ConstantSmagorinsky` closure object of type `T` with
 ConstantSmagorinsky(T; kwargs...) =
       typed_keyword_constructor(T, ConstantSmagorinsky; kwargs...)
 
+function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::ConstantSmagorinsky)
+    νₑ = zeros(arch, grid)
+    return (νₑ=νₑ,)
+end
+
 "Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
 @inline Δ(i, j, k, grid::RegularCartesianGrid, ::ConstantSmagorinsky) = geo_mean_Δ(grid)
 
