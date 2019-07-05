@@ -125,6 +125,27 @@ function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=
             )
 end
 
+datatuple(args...) = Tuple(data(a) for a in args)
+
+function test_calc_diffusivities(arch, closurename, TF=Float64)
+
+    closure = getproperty(TurbulenceClosures, closurename)(TF)
+    grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
+    eos = LinearEquationOfState(TF)
+    grav = 1.0
+    u = FaceFieldX(TF, arch, grid)
+    v = FaceFieldY(TF, arch, grid)
+    w = FaceFieldZ(TF, arch, grid)
+    T = CellField(TF, arch, grid)
+    S = CellField(TF, arch, grid)
+    ϕ = datatuple(u, v, w, T, S)
+
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, ϕ...)
+
+    return true
+end
+
 function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.7), νv=TF(0.1), κv=TF(0.5))
     closure = ConstantAnisotropicDiffusivity(TF, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
@@ -211,13 +232,18 @@ end
         @test test_function_differentiation()
     end
 
-    @testset "Closure instantiation" begin
+    @testset "Closure instantiation and basic operation" begin
         println("  Testing closure instantiation...")
         for T in float_types
             for closure in (:ConstantIsotropicDiffusivity,
                             :ConstantAnisotropicDiffusivity,
-                            :ConstantSmagorinsky)
+                            :ConstantSmagorinsky,
+                            :AnisotropicMinimumDissipation)
+
                 @test test_closure_instantiation(T, closure)
+                for arch in archs
+                    @test test_calc_diffusivities(arch, closure, T)
+                end
             end
         end
     end
