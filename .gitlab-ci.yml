@@ -1,5 +1,5 @@
 include:
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v3/common.yml'
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v4/common.yml'
 
 .projecttest:
   extends: .test
@@ -48,4 +48,12 @@ gpu:test:dev:
   extends: .gputest
   variables:
     CI_VERSION_TAG: 'dev'
+  allow_failure: true
+
+coverage:
+  extends: .coverage
+  variables:
+    CI_VERSION_TAG: 'v1.1'
+  dependencies:
+    - gpu:test:v1.1
   allow_failure: true

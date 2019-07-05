@@ -19,6 +19,8 @@ export
     PlanetaryConstants,
     Earth,
     EarthStationary,
+    Europa,
+    Enceladus,
 
     # Grids
     Grid,
@@ -33,6 +35,9 @@ export
     FaceFieldZ,
     EdgeField,
     data,
+    ardata,
+    ardata_view,
+    underlying_data,
     set!,
 
     # FieldSets (collections of related fields)
@@ -41,7 +46,6 @@ export
     TracerFields,
     PressureFields,
     SourceTerms,
-    StepperTemporaryFields,
 
     # Forcing functions
     Forcing,
@@ -51,37 +55,45 @@ export
     δρ,
 
     # Boundary conditions
-    BoundaryConditions,
-    ZBoundaryConditions,
-    CoordinateBoundaryConditions,
-    FieldBoundaryConditions,
-    BoundaryCondition,
-    DefaultBC,
-    Default,
+    BoundaryCondition,    
+    Periodic,
     Flux,
     Gradient,
     Value,
+    CoordinateBoundaryConditions,
+    ZBoundaryConditions,
+    FieldBoundaryConditions,
+    ModelBoundaryConditions,
+    BoundaryConditions,
+    DoublyPeriodicBCs,
+    ChannelBCs,
     getbc,
     setbc!,
 
+    # Halo regions
+    fill_halo_regions!,
+
     # Time stepping
+    TimeStepWizard,
+    cell_advection_timescale,
+    update_Δt!,
     time_step!,
-    time_step_kernel!,
 
     # Poisson solver
+    PoissonBCs,
+    PPN, PNN,
     PoissonSolver,
+    PoissonSolverCPU,
     PoissonSolverGPU,
-    init_poisson_solver,
-    solve_poisson_3d_ppn,
-    solve_poisson_3d_ppn!,
-    solve_poisson_3d_ppn_planned!,
-    solve_poisson_3d_ppn_gpu!,
+    solve_poisson_3d!,
     solve_poisson_3d_ppn_gpu_planned!,
 
-    # Model helper structs, e.g. configuration, clock, etc.
-    ModelConfiguration,
+    # Clock
     Clock,
+
+    # Models
     Model,
+    ChannelModel,
 
     # Model output writers
     OutputWriter,
@@ -96,8 +108,6 @@ export
     FieldSummary,
     NaNChecker,
     VelocityDivergenceChecker,
-    Nusselt_wT,
-    Nusselt_Chi,
 
     # Package utilities
     prettytime,
@@ -113,18 +123,23 @@ using
 
 # Third-party modules
 using
+    Adapt,
     FFTW,
-    JLD,
-    NetCDF,
     StaticArrays,
-    OffsetArrays
+    OffsetArrays,
+    JLD,
+    NetCDF
 
 import
-    Adapt,
     GPUifyLoops
 
 # Adapt an offset CuArray to work nicely with CUDA kernels.
-Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(Adapt.adapt(to, parent(x)), x.offsets)
+Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
+
+# Need to adapt SubArray indices as well.
+# See: https://github.com/JuliaGPU/Adapt.jl/issues/16
+Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
+    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 # Import CUDA utilities if cuda is detected.
 const HAVE_CUDA = try
@@ -152,7 +167,7 @@ device(::GPU) = GPUifyLoops.CUDA()
     end
 end
 
-# @hascuda CuArrays.allowscalar(false)
+@hascuda CuArrays.allowscalar(false)
 
 abstract type Metadata end
 abstract type ConstantsCollection end
@@ -167,7 +182,6 @@ abstract type PoissonSolver end
 
 include("utils.jl")
 
-include("model_configuration.jl")
 include("clock.jl")
 include("planetary_constants.jl")
 include("grids.jl")
@@ -179,9 +193,11 @@ include("operators/operators.jl")
 include("closures/turbulence_closures.jl")
 
 include("boundary_conditions.jl")
+include("halo_regions.jl")
 include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
+include("time_step_utils.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")

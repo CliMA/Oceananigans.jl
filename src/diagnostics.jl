@@ -30,7 +30,7 @@ end
 
 function run_diagnostic(model::Model, nc::NaNChecker)
     for (field, field_name) in zip(nc.fields, nc.field_names)
-        if any(isnan, field.data)  # This is also fast on CuArrays.
+        if any(isnan, field.data.parent)  # This is also fast on CuArrays.
             t, i = model.clock.time, model.clock.iteration
             println("time = $t, iteration = $i")
             println("NaN found in $field_name. Aborting simulation.")
@@ -46,15 +46,13 @@ struct VelocityDivergenceChecker <: Diagnostic
 end
 
 function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
-    @loop for k in (1:grid.Nz; blockIdx().z)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds div[i, j, k] = div_f2c(grid, u, v, w, i, j, k)
             end
         end
     end
-
-    @synchronize
 end
 
 function run_diagnostic(model::Model, diag::VelocityDivergenceChecker)
