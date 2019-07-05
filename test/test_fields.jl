@@ -34,3 +34,52 @@ function correct_field_addition(arch::Architecture, g::Grid, field_type, val1::N
     f_ans = val3 * ones(size(f1))
     f3.data ≈ f_ans
 end
+
+@testset "Fields" begin
+    println("Testing fields...")
+
+    N = (4, 6, 8)
+    L = (2π, 3π, 5π)
+
+    field_types = [CellField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField]
+
+    @testset "Field initialization" begin
+        println("  Testing field initialization...")
+        for arch in archs, FT in float_types
+            grid = RegularCartesianGrid(FT, N, L)
+
+            for field_type in field_types
+                @test correct_field_size(arch, grid, field_type)
+            end
+        end
+    end
+
+    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
+    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+    float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
+    rational_vals = Any[1//11, -23//7]
+    other_vals = Any[π]
+    vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
+
+    @testset "Setting fields" begin
+        println("  Testing field setting...")
+
+        for arch in archs, FT in float_types
+            grid = RegularCartesianGrid(FT, N, L)
+
+            for field_type in field_types, val in vals
+                @test correct_field_value_was_set(arch, grid, field_type, val)
+            end
+        end
+    end
+
+    # @testset "Field operations" begin
+    #     for arch in archs, FT in float_types
+    #         grid = RegularCartesianGrid(FT, N, L)
+    #
+    #         for field_type in field_types, val1 in vals, val2 in vals
+    #             @test correct_field_addition(arch, grid, field_type, val1, val2)
+    #         end
+    #     end
+    # end
+end

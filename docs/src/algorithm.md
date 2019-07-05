@@ -8,8 +8,9 @@
 \newcommand{\bnabla}    {\b{\nabla}}
 \newcommand{\bnablah}   {\bnabla_h}
 
-\newcommand{\bv}        {\b{v}}
-\newcommand{\bvh}       {\b{v}_h}
+\newcommand{\v}        {\upsilon}
+\newcommand{\bv}        {\b{\v}}
+\newcommand{\bvh}       {\b{\v}_h}
 
 \newcommand{\bnh}       {\b{\widehat{n}}}
 
@@ -26,7 +27,7 @@ Both hydrostatic (HY) and non-hydrostatic (NHY) algorithms are presented, althou
 Lay out a Cartesian array $(x,y,z)$ of cubes of horizontal dimensions $\Delta x, \Delta y$ and vertical dimension $\Delta z$ as in the figure below.
 Define the areas of the cell faces as $A_x = \Delta y \Delta z$, $A_y = \Delta x \Delta z$, and $A_z = \Delta x \Delta y$.
 Each cell encloses a volume $V = \Delta x \Delta y \Delta z$.
-Velocities $(u,v,w) = (v_x, v_y, v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
+Velocities $(u,\v,w) = (\v_x, \v_y, \v_z)$ are normal to the requisite face, that is, they are defined on the faces of the cells.
 
 ![Schematic of a single volume](assets/single_volume.png)
 
@@ -61,8 +62,8 @@ The Boussinesq equations are
 
 ```math
 \begin{gather}
-        \p{\bvh}{t} = \b{G}_{\bv h} - \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
-           \p{w}{t} = G_w - \p{p}{z} ,                  \label{eqn:verticalMomentum} \\
+        \p{\bvh}{t} = \b{G}_{\bv h} - \frac{1}{\rho_0} \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
+           \p{w}{t} = G_w - \frac{1}{\rho_0} \p{p}{z} ,                  \label{eqn:verticalMomentum} \\
   \bnabla \cdotp \bv = 0 ,                               \label{eqn:continuity} \\
            \p{T}{t} = G_T ,                             \label{eqn:TTendency} \\
            \p{S}{t} = G_S ,                             \label{eqn:STendency} \\
@@ -70,8 +71,7 @@ The Boussinesq equations are
 \end{gather}
 ```
 
-where $\bv = (u, v, w)$ is the velocity, $\bvh = (u, v)$ is the horizontal velocity,
-$\bnabla = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\bnablah = (\partial_x, \partial_y)$
+where $\bv = (u, \v, w)$ is the velocity, $\bvh = (u, \v)$ is the horizontal velocity, $\rho_0$ is a reference density corresponding to an ocean at rest, $\bnabla = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\bnablah = (\partial_x, \partial_y)$
 is the horizontal del operator.
 Equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} are the horizontal
 and vertical momentum equations respectively.
@@ -83,14 +83,13 @@ represent inertial, Coriolis, gravitational, forcing, and dissipation terms:
 
 ```math
 \begin{align}
-    G_u &= -\bv \cdotp \bnabla u + fv - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
-    G_v &= -\bv \cdotp \bnabla v - fu - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla v} + F_v  ,\\
+    G_u &= -\bv \cdotp \bnabla u + f\v - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
+    G_\v &= -\bv \cdotp \bnabla \v - f u - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla \v} + F_\v  ,\\
     G_w &= -\bv \cdotp \bnabla w                                        + \div{\nu \bnabla w} + F_w ,
 \end{align}
 ```
 
-where $f = 2 \Omega \sin \phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, $p'_{HY}$ is the hydrostatic pressure anomaly, $\rho_0$ is a reference density
-corresponding to an ocean at rest, and $\nu$ is the viscosity. $F_u$, $F_v$, and $F_w$ represent other forcing terms that may be imposed.
+where $f = 2 \Omega \sin \phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, $p'_{HY}$ is the hydrostatic pressure anomaly, and $\nu$ is the viscosity. $F_u$, $F_\v$, and $F_w$ represent other forcing terms that may be imposed.
 Note that the buoyancy term $-g \delta \rho / \rho_0$ (with $g$ the acceleration due to gravity) that is usually present in the vertical momentum equation has been expressed in terms
 of the hydrostatic pressure anomaly $p'_{HY}$ which ends up in the horizontal momentum equations. (This step will be shown in an appendix.)
 
@@ -150,7 +149,7 @@ Another strategy employed is to split the pressure field into three components
 ```
 where the first term, $p_S$, is the surface pressure---the pressure exerted by the fluid under the rigid lid at the surface;
 it is only a function of horizontal position and is found by inverting a 2D elliptic Poisson equation.
-The second term is the hydrostatic pressure $p_{HY}$ defined in terms of the weight of water in a vertical column above the depth $z$
+The second term is the hydrostatic pressure $p_{HY}$ defined in terms of the weight of water in a vertical column above the depth $z$,
 
 ```math
 \beq \label{eqn:hydrostaticPressure}
@@ -293,7 +292,7 @@ The divergence of the flux of $T$ over a cell, $\bnabla \cdotp (\bv T)$, require
 
 ```math
 \beq
-    \bnabla \cdotp (\bv T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
+    \bnabla \cdotp (\bv T) = \frac{1}{V} \left[ \delta_x^{f \rightarrow c} (A_x u \overline{T}^x) + \delta_y^{f \rightarrow c} (A_y \v \overline{T}^y) + \delta_z^{f \rightarrow c} (A_z w \overline{T}^z) \right]
 \eeq
 ```
 
@@ -305,7 +304,7 @@ The advection terms that make up the $\mathbf{G}$ terms in equations \eqref{eqn:
 ```math
 \beq
     \bv \cdotp \bnabla u
-    = \bnabla \cdotp (u\bv) - v(\underbrace{\bnabla\cdotp\bv}_{=0})
+    = \bnabla \cdotp (u\bv) - u(\underbrace{\bnabla\cdotp\bv}_{=0})
     = \bnabla \cdotp (u\bv) ,
 \eeq
 ```
@@ -321,7 +320,7 @@ For example, the $x$-momentum advection operator is discretized as
       + \delta_z^{e \rightarrow f} \left( \overline{A_z w}^{x, f \rightarrow e} \overline{u}^{z, f \rightarrow e} \right) \right] ,
 \eeq
 ```
-where $\overline{V}^x$ is the average of the volumes of the cells on either side of the face in question. Calculating $\partial(uu)/\partial x$ can be performed by interpolating $A_x u$ and $u$ onto the cell centers then multiplying them and differencing them back onto the faces. However, in the case of the the two other terms, $\partial(vu)/\partial y$ and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then differenced back onto the cell faces.
+where $\overline{V}^x$ is the average of the volumes of the cells on either side of the face in question. Calculating $\partial(uu)/\partial x$ can be performed by interpolating $A_x u$ and $u$ onto the cell centers then multiplying them and differencing them back onto the faces. However, in the case of the the two other terms, $\partial(\v u)/\partial y$ and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then differenced back onto the cell faces.
 
 ### Laplacian diffusion operator
 
@@ -345,9 +344,9 @@ Viscous dissipation operators are discretized similarly to the momentum advectio
 \begin{multline}
     \bnabla \cdotp (\nu \bnabla w)
     = \frac{1}{V} \left[
-        \delta_x^{e \rightarrow f} \left( \nu_h \overline{A_x}^{x,f \rightarrow e} \delta_x^{f \rightarrow e} u \right)
-        \delta_y^{e \rightarrow f} \left( \nu_h \overline{A_y}^{y,f \rightarrow e} \delta_y^{f \rightarrow e} v \right) \nonumber \\
-        \delta_z^{c \rightarrow f} \left( \nu_v \overline{A_z}^{z,f \rightarrow c} \delta_z^{f \rightarrow c} w \right)
+        \delta_x^{e \rightarrow f} \left( \nu_h \overline{A_x}^{x,f \rightarrow e} \delta_x^{f \rightarrow e} w \right)
+        + \delta_y^{e \rightarrow f} \left( \nu_h \overline{A_y}^{y,f \rightarrow e} \delta_y^{f \rightarrow e} w \right) 
+        + \delta_z^{c \rightarrow f} \left( \nu_v \overline{A_z}^{z,f \rightarrow c} \delta_z^{f \rightarrow c} w \right)
     \right] ,
 \end{multline}
 ```
@@ -417,7 +416,7 @@ $\bv \cdotp \bnh = 0$, the following equation for $p_S$ results:
 
 ```math
 \beq \label{eqn:ellipticPS}
-    \bnabla_h \cdotp \left( H \bnabla_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \bnabla_h \left( H \overline{\bv_h}^H \right) \right]^n}{\Delta t} ,
+    \bnabla_h \cdotp \left( H \bnabla_h \phi_S^{n+1/2} \right) = \mathscr{S}_{HY}^n - \frac{\left[ \bnabla_h \cdotp \left( H \overline{\bv_h}^H \right) \right]^n}{\Delta t} ,
 \eeq
 ```
 where

@@ -66,13 +66,14 @@ function test_diffusion_simple(fld)
     end
 
     value = π
-    field.data .= value
+    data(field) .= value
 
     Δt = 0.01 # time-step much less than diffusion time-scale
     Nt = 10
     time_step!(model, Nt, Δt)
 
-    !any(@. !isapprox(value, field.data))
+    field_data = data(field)
+    !any(@. !isapprox(value, field_data))
 end
 
 
@@ -94,13 +95,13 @@ function test_diffusion_budget(field_name)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    mean_init = mean(field.data)
+    mean_init = mean(data(field))
     τκ = Lz^2 / κ # diffusion time-scale
     Δt = 0.0001 * τκ # time-step much less than diffusion time-scale
     Nt = 100
 
     time_step!(model, Nt, Δt)
-    isapprox(mean_init, mean(field.data))
+    isapprox(mean_init, mean(data(field)))
 end
 
 function test_diffusion_cosine(fld)
@@ -204,4 +205,39 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
 
     # Error tolerance is a bit arbitrary
     return T_relative_error(model, T) < 1e-4
+end
+
+@testset "Dynamics" begin
+    println("Testing dynamics...")
+
+    @testset "Simple diffusion" begin
+        println("  Testing simple diffusion...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_simple(fld)
+        end
+    end
+
+    @testset "Diffusion budget" begin
+        println("  Testing diffusion budget...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_budget(fld)
+        end
+    end
+
+    @testset "Diffusion cosine" begin
+        println("  Testing diffusion cosine...")
+        for fld in (:u, :v, :T, :S)
+            @test test_diffusion_cosine(fld)
+        end
+    end
+
+    @testset "Passive tracer advection" begin
+        println("  Testing passive tracer advection...")
+        @test passive_tracer_advection_test()
+    end
+
+    @testset "Internal wave" begin
+        println("  Testing internal wave...")
+        @test internal_wave_test()
+    end
 end

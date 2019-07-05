@@ -34,3 +34,17 @@ function run_thermal_bubble_netcdf_tests()
     @test all(T .≈ data(model.tracers.T))
     @test all(S .≈ data(model.tracers.S))
 end
+
+@testset "Output writers" begin
+    println("Testing output writers...")
+
+    @testset "Checkpointing" begin
+        println("  Testing checkpointing...")
+        run_thermal_bubble_checkpointer_tests()
+    end
+
+    @testset "NetCDF" begin
+        println("  Testing NetCDF output writer...")
+        run_thermal_bubble_netcdf_tests()
+    end
+end

@@ -289,3 +289,23 @@ function run_rayleigh_benard_regression_test(arch)
     @test all(Array(data(model.tracers.S))    .≈ S₁)
     return nothing
 end
+
+@testset "Regression" begin
+
+    for arch in archs
+        @testset "Thermal bubble [$(typeof(arch))]" begin
+            println("  Testing thermal bubble regression [$(typeof(arch))]")
+            run_thermal_bubble_regression_tests(arch)
+        end
+
+        @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
+            println("  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]")
+            run_rayleigh_benard_regression_test(arch)
+        end
+    end
+
+    @testset "Deep convection" begin
+        println("  Testing deep convection regression [CPU]")
+        run_deep_convection_regression_tests()
+    end
+end
