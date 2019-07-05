@@ -27,7 +27,10 @@ export
   ▶xy_fca, ▶xz_fac, ▶yz_afc,
   ▶xy_ffa, ▶xz_faf, ▶yz_aff
 
-using Oceananigans, Oceananigans.Operators
+using
+  Oceananigans,
+  Oceananigans.Operators,
+  GPUifyLoops
 
 @hascuda using CUDAdrv, CUDAnative
 
@@ -74,6 +77,7 @@ include("closure_operators.jl")
 include("velocity_gradients.jl")
 include("constant_diffusivity_closures.jl")
 include("constant_smagorinsky.jl")
+include("anisotropic_minimum_dissipation.jl")
 
 # Packaged operators
 ν₁₁ = (ccc=ν₁₁_ccc, ffc=ν₁₁_ffc, fcf=ν₁₁_fcf, cff=ν₁₁_cff)
