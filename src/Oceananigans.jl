@@ -53,6 +53,7 @@ export
     # Equation of state
     LinearEquationOfState,
     δρ,
+    buoyancy,
 
     # Boundary conditions
     BoundaryCondition,
