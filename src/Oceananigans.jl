@@ -85,8 +85,6 @@ export
 
     # Model output writers
     OutputWriter,
-    Checkpointer,
-    restore_from_checkpoint,
     BinaryOutputWriter,
     NetCDFOutputWriter,
     write_output,
