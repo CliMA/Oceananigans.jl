@@ -6,6 +6,9 @@ export
   ConstantAnisotropicDiffusivity,
   ConstantSmagorinsky,
 
+  TurbulentDiffusivities,
+  calc_diffusivities!,
+
   ∇_κ_∇ϕ,
   ∂ⱼ_2ν_Σ₁ⱼ,
   ∂ⱼ_2ν_Σ₂ⱼ,
