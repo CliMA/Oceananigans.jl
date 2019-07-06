@@ -55,14 +55,16 @@ export
     δρ,
 
     # Boundary conditions
-    BoundaryCondition,
+    BoundaryCondition,    
     Periodic,
     Flux,
     Gradient,
     Value,
     CoordinateBoundaryConditions,
+    ZBoundaryConditions,
     FieldBoundaryConditions,
     ModelBoundaryConditions,
+    BoundaryConditions,
     DoublyPeriodicBCs,
     ChannelBCs,
     getbc,
@@ -95,8 +97,6 @@ export
 
     # Model output writers
     OutputWriter,
-    Checkpointer,
-    restore_from_checkpoint,
     BinaryOutputWriter,
     NetCDFOutputWriter,
     write_output,

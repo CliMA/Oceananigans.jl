@@ -1,21 +1,24 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, G, TC, T}
+mutable struct Model{A<:Architecture, Grid, TC, BCS<:ModelBoundaryConditions, T, F,
+                    PC<:PlanetaryConstants, PS, VC<:VelocityFields,
+                    EOS<:EquationOfState, TG, TGp,
+                    Tracers<:TracerFields, PF<:PressureFields}
               arch :: A                  # Computer `Architecture` on which `Model` is run.
-              grid :: G                  # Grid of physical points on which `Model` is solved.
+              grid :: Grid               # Grid of physical points on which `Model` is solved.
              clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`.
-               eos :: EquationOfState    # Defines relationship between temperature,  salinity, and
+               eos :: EOS                # Defines relationship between temperature, salinity, and
                                          # buoyancy in the Boussinesq vertical momentum equation.
-         constants :: PlanetaryConstants # Set of physical constants, inc. gravitational acceleration.
-        velocities :: VelocityFields     # Container for velocity fields `u`, `v`, and `w`.
-           tracers :: TracerFields       # Container for tracer fields.
-         pressures :: PressureFields     # Container for hydrostatic and nonhydrostatic pressure.
-           forcing                       # Container for forcing functions defined by the user
+         constants :: PC                 # Set of physical constants, inc. gravitational acceleration.
+        velocities :: VC                 # Container for velocity fields `u`, `v`, and `w`.
+           tracers :: Tracers            # Container for tracer fields.
+         pressures :: PF                 # Container for hydrostatic and nonhydrostatic pressure.
+           forcing :: F                  # Container for forcing functions defined by the user
            closure :: TC                 # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: ModelBoundaryConditions # Container for 3d bcs on all fields.
-                 G :: SourceTerms        # Container for right-hand-side of PDE that governs `Model`
-                Gp :: SourceTerms        # RHS at previous time-step (for Adams-Bashforth time integration)
-    poisson_solver                       # ::PoissonSolver or ::PoissonSolverGPU
+    boundary_conditions :: BCS           # Container for 3d bcs on all fields.
+                 G :: TG                 # Container for right-hand-side of PDE that governs `Model`
+                Gp :: TGp                # RHS at previous time-step (for Adams-Bashforth time integration)
+    poisson_solver :: PS                 # ::PoissonSolver or ::PoissonSolverGPU
     output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
        diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation.
 end
@@ -47,11 +50,12 @@ function Model(;
            eos = LinearEquationOfState(float_type),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-    boundary_conditions = ModelBoundaryConditions(),
+           bcs = ModelBoundaryConditions(),
+    boundary_conditions = bcs,
     # Output and diagonstics
     output_writers = OutputWriter[],
        diagnostics = Diagnostic[]
-)
+    )
 
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
@@ -81,23 +85,45 @@ end
 
     kwargs are passed to the regular `Model` constructor.
 """
-function ChannelModel(; kwargs...)
-    model = Model(; kwargs...)
+function ChannelModel(;
+             N,
+             L,
+          arch = CPU(),
+    float_type = Float64,
+          grid = RegularCartesianGrid(float_type, N, L),
+             ν = 1.05e-6, νh=ν, νv=ν,
+             κ = 1.43e-7, κh=κ, κv=κ,
+       closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
+    start_time = 0,
+     iteration = 0,
+         clock = Clock{float_type}(start_time, iteration),
+     constants = Earth(float_type),
+           eos = LinearEquationOfState(float_type),
+       forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
+           bcs = ChannelModelBoundaryConditions(),
+    boundary_conditions = bcs,
+    output_writers = OutputWriter[],
+       diagnostics = Diagnostic[]
+    )
 
-    model.boundary_conditions.u.y.left  = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.u.y.right = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.v.y.left  = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.v.y.right = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.w.y.left  = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.w.y.right = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.T.y.left  = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.T.y.right = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.S.y.left  = BoundaryCondition(Flux, 0)
-    model.boundary_conditions.S.y.right = BoundaryCondition(Flux, 0)
+    arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
-    model.poisson_solver = PoissonSolver(model.arch, PNN(), model.grid)
+    # Initialize fields.
+      velocities = VelocityFields(arch, grid)
+         tracers = TracerFields(arch, grid)
+       pressures = PressureFields(arch, grid)
+               G = SourceTerms(arch, grid)
+              Gp = SourceTerms(arch, grid)
 
-    return model
+    # Initialize Poisson solver.
+    poisson_solver = PoissonSolver(arch, PNN(), grid)
+
+    # Set the default initial condition
+    initialize_with_defaults!(eos, tracers, velocities, G, Gp)
+
+    Model(arch, grid, clock, eos, constants,
+          velocities, tracers, pressures, forcing, closure, boundary_conditions,
+          G, Gp, poisson_solver, output_writers, diagnostics)
 end
 
 arch(model::Model{A}) where A <: Architecture = A
