@@ -33,9 +33,9 @@ function LinearEquationOfState(T=Float64;
     LinearEquationOfState{T}(ρ₀, βT, βS, βp, T₀, S₀, p₀, cᵥ, αᵥ)
 end
 
-@inline δρ(eos::LinearEquationOfState, T, i, j, k) =
+@inline δρ(eos::LinearEquationOfState, T, S, i, j, k) =
     @inbounds -eos.ρ₀ * (eos.βT * (T[i, j, k] - eos.T₀)
-                            - eos.βS * (S[i, j, k] - eos.S₀) )
+                       - eos.βS * (S[i, j, k] - eos.S₀))
 
 @inline buoyancy(i, j, k, grid, eos::LinearEquationOfState, grav, T, S) =
     @inbounds eos.βT * (T[i, j, k] - eos.T₀) - eos.βS * (S[i, j, k] - eos.S₀)
