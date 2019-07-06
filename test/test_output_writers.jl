@@ -38,11 +38,6 @@ end
 @testset "Output writers" begin
     println("Testing output writers...")
 
-    @testset "Checkpointing" begin
-        println("  Testing checkpointing...")
-        run_thermal_bubble_checkpointer_tests()
-    end
-
     @testset "NetCDF" begin
         println("  Testing NetCDF output writer...")
         run_thermal_bubble_netcdf_tests()
