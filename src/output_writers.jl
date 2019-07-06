@@ -3,14 +3,6 @@ using Distributed
 
 using NetCDF
 
-"A type for writing checkpoints."
-struct Checkpointer <: OutputWriter
-    dir::AbstractString
-    filename_prefix::AbstractString
-    output_frequency::Int
-    padding::Int
-end
-
 "A type for writing NetCDF output."
 mutable struct NetCDFOutputWriter <: OutputWriter
     dir::AbstractString
@@ -30,10 +22,6 @@ mutable struct BinaryOutputWriter <: OutputWriter
     padding::Int
 end
 
-function Checkpointer(; dir=".", prefix="", frequency=1, padding=9)
-    Checkpointer(dir, prefix, frequency, padding)
-end
-
 function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9,
                               naming_scheme=:iteration, compression=3, async=false)
     NetCDFOutputWriter(dir, prefix, frequency, padding, naming_scheme, compression, async)
@@ -42,9 +30,6 @@ end
 "Return the filename extension for the `OutputWriter` filetype."
 ext(fw::OutputWriter) = throw("Not implemented.")
 ext(fw::NetCDFOutputWriter) = ".nc"
-ext(fw::Checkpointer) = ".jld"
-
-filename(fw::Checkpointer, iteration) = fw.filename_prefix * "model_checkpoint_" * lpad(iteration, fw.padding, "0") * ext(fw)
 
 function filename(fw, name, iteration)
     if fw.naming_scheme == :iteration
@@ -56,58 +41,6 @@ function filename(fw, name, iteration)
         throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
     end
 end
-
-#
-# Checkpointing functions
-#
-
-function write_output(model::Model{arch}, chk::Checkpointer) where arch <: Architecture
-    filepath = joinpath(chk.dir, filename(chk, model.clock.iteration))
-
-    forcing_functions = model.forcing
-    poisson_bcs = model.poisson_solver.bcs
-
-    # Do not include forcing functions and FFT plans. We want to avoid serializing
-    # FFTW and CuFFT plans as serializing functions is not supported by JLD, and
-    # seems like a tricky business in general.
-    model.forcing = nothing
-    model.poisson_solver = nothing
-
-    println("WARNING: Forcing functions will not be serialized!")
-
-    println("[Checkpointer] Serializing model to disk: $filepath")
-    f = JLD.jldopen(filepath, "w", compress=true)
-    JLD.@write f model
-    close(f)
-
-    println("[Checkpointer] Reconstructing FFT plans...")
-    model.poisson_solver = PoissonSolver(arch(), poisson_bcs, model.grid)
-
-    # Putting back in the forcing functions.
-    model.forcing = forcing_functions
-
-    return nothing
-end
-
-function restore_from_checkpoint(filepath)
-    println("Deserializing model from disk: $filepath")
-    f = JLD.jldopen(filepath, "r")
-    model = read(f, "model");
-    close(f)
-
-    println("Reconstructing FFT plans...")
-    model.poisson_solver = PoissonSolver(arch(model)(), PPN(), model.grid)
-
-    model.forcing = Forcing(nothing, nothing, nothing, nothing, nothing)
-    println("WARNING: Forcing functions have been set to nothing!")
-
-    return model
-end
-
-
-#
-# Binary output function
-#
 
 function write_output(model::Model, fw::BinaryOutputWriter)
     for (field, field_name) in zip(fw.fields, fw.field_names)

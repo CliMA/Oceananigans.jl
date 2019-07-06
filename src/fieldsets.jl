@@ -1,25 +1,25 @@
-struct VelocityFields <: FieldSet
-    u::FaceFieldX
-    v::FaceFieldY
-    w::FaceFieldZ
+struct VelocityFields{U<:FaceFieldX, V<:FaceFieldY, W<:FaceFieldZ} <: FieldSet
+    u::U
+    v::V
+    w::W
 end
 
-struct TracerFields <: FieldSet
-    T::CellField
-    S::CellField
+struct TracerFields{CFT<:CellField, CFS<:CellField} <: FieldSet
+    T::CFT
+    S::CFS
 end
 
-struct PressureFields <: FieldSet
-    pHY′::CellField
-    pNHS::CellField
+struct PressureFields{CF1<:CellField, CF2<:CellField} <: FieldSet
+    pHY′::CF1
+    pNHS::CF2
 end
 
-struct SourceTerms <: FieldSet
-    Gu::FaceFieldX
-    Gv::FaceFieldY
-    Gw::FaceFieldZ
-    GT::CellField
-    GS::CellField
+struct SourceTerms{U<:FaceFieldX, V<:FaceFieldY, W<:FaceFieldZ, T<:CellField, S<:CellField} <: FieldSet
+    Gu::U
+    Gv::V
+    Gw::W
+    GT::T
+    GS::S
 end
 
 function VelocityFields(arch::Architecture, grid::Grid)
