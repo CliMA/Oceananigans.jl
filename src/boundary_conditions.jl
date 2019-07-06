@@ -46,22 +46,23 @@ mutable struct CoordinateBoundaryConditions{L, R}
     right :: R
 end
 
-function CoordinateBoundaryConditions(; 
-     left = DefaultBC(), 
-    right = DefaultBC()
+function CoordinateBoundaryConditions(;
+     left = BoundaryCondition(Periodic, nothing),
+    right = BoundaryCondition(Periodic, nothing)
    )
     return CoordinateBoundaryConditions(left, right)
 end
 
 """
-    ZBoundaryConditions(top=DefaultBC(), bottom=DefaultBC())
+    ZBoundaryConditions(top=BoundaryCondition(Periodic, nothing),
+                        bottom=BoundaryCondition(Periodic, nothing))
 
 Returns `CoordinateBoundaryConditions` with specified `top`
 and `bottom` boundary conditions.
 """
-function ZBoundaryConditions(; 
-       top = DefaultBC(), 
-    bottom = DefaultBC()
+function ZBoundaryConditions(;
+       top = BoundaryCondition(Flux, 0),
+    bottom = BoundaryCondition(Flux, 0)
    )
     return CoordinateBoundaryConditions(top, bottom)
 end
@@ -94,12 +95,12 @@ A FieldBoundaryCondition has `CoordinateBoundaryConditions` in
 `x`, `y`, and `z`.
 """
 struct FieldBoundaryConditions{X, Y, Z}
-    x :: X 
-    y :: Y 
-    z :: Z 
+    x :: X
+    y :: Y
+    z :: Z
 end
 
-function FieldBoundaryConditions(; 
+function FieldBoundaryConditions(;
     x = CoordinateBoundaryConditions(),
     y = CoordinateBoundaryConditions(),
     z = CoordinateBoundaryConditions()
@@ -189,6 +190,11 @@ with no-flux boundary conditions at the top and bottom.
 """
 function ModelBoundaryConditions()
     bcs = (DoublyPeriodicBCs() for i = 1:length(solution_fields))
+    return ModelBoundaryConditions(bcs...)
+end
+
+function ChannelModelBoundaryConditions()
+    bcs = (ChannelBCs() for i = 1:length(solution_fields))
     return ModelBoundaryConditions(bcs...)
 end
 
