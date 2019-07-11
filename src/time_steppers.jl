@@ -7,6 +7,9 @@ using Oceananigans.Operators
 const Tx = 16 # CUDA threads per x-block
 const Ty = 16 # CUDA threads per y-block
 
+@inline datatuple(obj, flds=propertynames(obj)) = Tuple(getproperty(obj, fld).data for fld in flds)
+@inline datatuples(objs...) = (datatuple(obj) for obj in objs)
+
 """
     time_step!(model, Nt, Δt)
 
@@ -34,46 +37,32 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
 
     # Unpack model fields
-         grid = model.grid
-        clock = model.clock
-          eos = model.eos
-    constants = model.constants
-            U = model.velocities
-           tr = model.tracers
-           pr = model.pressures
-      forcing = model.forcing
-      closure = model.closure
+              grid = model.grid
+             clock = model.clock
+               eos = model.eos
+         constants = model.constants
+                pr = model.pressures
+           forcing = model.forcing
+           closure = model.closure
     poisson_solver = model.poisson_solver
-
-    bcs = model.boundary_conditions
-    G = model.G
-    Gp = model.Gp
+     diffusivities = model.diffusivities 
+               bcs = model.boundary_conditions
 
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
-    RHS, ϕ = poisson_solver.storage, poisson_solver.storage
-
-    gΔz = model.constants.g * model.grid.Δz
-    fCor = model.constants.f
-
-    uvw = U.u.data, U.v.data, U.w.data
-    TS = tr.T.data, tr.S.data
-    Guvw = G.Gu.data, G.Gv.data, G.Gw.data
-
-    # Source terms at current (Gⁿ) and previous (G⁻) time steps.
-    Gⁿ = G.Gu.data, G.Gv.data, G.Gw.data, G.GT.data, G.GS.data
-    G⁻ = Gp.Gu.data, Gp.Gv.data, Gp.Gw.data, Gp.GT.data, Gp.GS.data
-
+    RHS = poisson_solver.storage
+    U, ϕ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.G, model.Gp)
+    Guvw = Gⁿ[1:3]
     FT = eltype(grid)
 
     # Field tuples for fill_halo_regions.
-    u_ft = (:u, bcs.u, U.u.data)
-    v_ft = (:v, bcs.v, U.v.data)
-    w_ft = (:w, bcs.w, U.w.data)
-    T_ft = (:T, bcs.T, tr.T.data)
-    S_ft = (:S, bcs.S, tr.S.data)
-    Gu_ft = (:u, bcs.u, G.Gu.data)
-    Gv_ft = (:v, bcs.v, G.Gv.data)
-    Gw_ft = (:w, bcs.w, G.Gw.data)
+    u_ft = (:u, bcs.u, U[1])
+    v_ft = (:v, bcs.v, U[2])
+    w_ft = (:w, bcs.w, U[3])
+    T_ft = (:T, bcs.T, ϕ[1])
+    S_ft = (:S, bcs.S, ϕ[2])
+    Gu_ft = (:u, bcs.u, Gⁿ[1])
+    Gv_ft = (:v, bcs.v, Gⁿ[2])
+    Gw_ft = (:w, bcs.w, Gⁿ[3])
     pHY′_ft = (:w, bcs.w, pr.pHY′.data)
     pNHS_ft = (:w, bcs.w, pr.pNHS.data)
 
@@ -85,18 +74,22 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
-        @launch device(arch) config=launch_config(grid, 2) update_buoyancy!(grid, constants, eos, TS..., pr.pHY′.data)
+        @launch device(arch) config=launch_config(grid, 2) update_buoyancy!(grid, constants, eos, ϕ..., pr.pHY′.data)
+
+        @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos,
+                                                                               constants.g, U..., ϕ...)
+
                                                            fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
-                                                           calculate_interior_source_terms!(arch, grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
+                                                           calculate_interior_source_terms!(arch, grid, constants, eos, closure, U..., ϕ..., pr.pHY′.data, Gⁿ..., forcing)
                                                            calculate_boundary_source_terms!(model)
         @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
                                                            fill_halo_regions!(grid, Guvw_ft...)
-        @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, uvw..., Guvw..., RHS)
+        @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, U..., Guvw..., RHS)
                                                            solve_for_pressure!(arch, model)
                                                            fill_halo_regions!(grid, pNHS_ft)
-        @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, uvw..., TS..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
+        @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U..., ϕ..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
                                                            fill_halo_regions!(grid, uvw_ft...)
-        @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, uvw...)
+        @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
 
         clock.time += Δt
         clock.iteration += 1
