@@ -85,7 +85,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ..., G⁻...)
-        @launch device(arch) config=launch_config(grid, 2) update_buoyancy!(grid, constants, eos, tr.T.data, pr.pHY′.data)
+        @launch device(arch) config=launch_config(grid, 2) update_buoyancy!(grid, constants, eos, TS..., pr.pHY′.data)
                                                            fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
                                                            calculate_interior_source_terms!(arch, grid, constants, eos, closure, uvw..., TS..., pr.pHY′.data, Gⁿ..., forcing)
                                                            calculate_boundary_source_terms!(model)
@@ -168,13 +168,13 @@ function store_previous_source_terms!(grid::Grid, Gu, Gv, Gw, GT, GS, Gpu, Gpv, 
 end
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(grid::Grid, constants, eos, T, pHY′)
+function update_buoyancy!(grid::Grid, constants, eos, T, S, pHY′)
     gΔz = constants.g * grid.Δz
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, i, j, 1)
+            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, S, i, j, 1)
             @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, T, i, j, k-1) + δρ(eos, T, i, j, k))
+                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, T, S, i, j, k-1) + δρ(eos, T, S, i, j, k))
             end
         end
     end
