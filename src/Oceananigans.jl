@@ -198,7 +198,6 @@ include("halo_regions.jl")
 include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
-include("time_step_utils.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
