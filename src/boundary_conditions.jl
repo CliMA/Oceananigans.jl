@@ -26,6 +26,8 @@ struct BoundaryCondition{C<:BCType, T}
     condition :: T
 end
 
+bctype(bc::BoundaryCondition{C}) where C = C
+
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 
@@ -122,40 +124,6 @@ struct ModelBoundaryConditions{UBC, VBC, WBC, TBC, SBC}
     S :: SBC
 end
 
-function ModelBoundaryConditions(;
-    u = FieldBoundaryConditions(),
-    v = FieldBoundaryConditions(),
-    w = FieldBoundaryConditions(),
-    T = FieldBoundaryConditions(),
-    S = FieldBoundaryConditions()
-   )
-    return ModelBoundaryConditions(u, v, w, T, S)
-end
-
-ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
-    ModelBoundaryConditions(fld, coord, Val(s), bc)
-
-ModelBoundaryConditions(fld, coord, ::Val{:bottom}, bc) =
-    ModelBoundaryConditions(fld, coord, Val(:right), bc)
-
-ModelBoundaryConditions(fld, coord, ::Val{:top}, bc) =
-    ModelBoundaryConditions(fld, coord, Val(:left), bc)
-
-"""
-    BoundaryConditions(u=FieldBoundaryConditions(), ...)
-
-    BoundaryConditions(fld, coord, side, bc)
-
-Return an instance of `ModelBoundaryConditions` with one non-default
-boundary condition `bc` on `fld` along coordinate `coord` at `side`.
-"""
-function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
-    coordbcs = CoordinateBoundaryConditions(; Dict((S => bc))...)
-      fldbcs = FieldBoundaryConditions(; Dict((coord => coordbcs))...)
-    modelbcs = ModelBoundaryConditions(; Dict((fld => fldbcs))...)
-    return modelbcs
-end
-
 # sensible alias
 const BoundaryConditions = ModelBoundaryConditions
 
@@ -188,15 +156,55 @@ Return a default set of model boundary conditions. For now, this corresponds to 
 doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
 with no-flux boundary conditions at the top and bottom.
 """
-function ModelBoundaryConditions()
-    bcs = (DoublyPeriodicBCs() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
+function ModelBoundaryConditions(;
+    u = DoublyPeriodicBCs(),
+    v = DoublyPeriodicBCs(),
+    w = DoublyPeriodicBCs(),
+    T = DoublyPeriodicBCs(),
+    S = DoublyPeriodicBCs()
+   )
+    return ModelBoundaryConditions(u, v, w, T, S)
 end
 
-function ChannelModelBoundaryConditions()
-    bcs = (ChannelBCs() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
+function ChannelModelBoundaryConditions(;
+    u = ChannelBCs(),
+    v = ChannelBCs(),
+    w = ChannelBCs(),
+    T = ChannelBCs(),
+    S = ChannelBCs()
+   )
+    return ModelBoundaryConditions(u, v, w, T, S)
 end
+
+#
+# Some helper functions for constructing boundary conditions
+#
+
+"""
+    BoundaryConditions(u=FieldBoundaryConditions(), ...)
+
+    BoundaryConditions(fld, coord, side, bc)
+
+Return an instance of `ModelBoundaryConditions` with one non-default
+boundary condition `bc` on `fld` along coordinate `coord` at `side`.
+"""
+function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
+    coordbcs = CoordinateBoundaryConditions(; Dict((S => bc))...)
+      fldbcs = FieldBoundaryConditions(; Dict((coord => coordbcs))...)
+    modelbcs = ModelBoundaryConditions(; Dict((fld => fldbcs))...)
+    return modelbcs
+end
+
+# Alias 'right' and 'left' to 'bottom' and 'top' to clarify setting 
+# z boundary conditions.
+ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
+    ModelBoundaryConditions(fld, coord, Val(s), bc)
+
+ModelBoundaryConditions(fld, coord, ::Val{:bottom}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:right), bc)
+
+ModelBoundaryConditions(fld, coord, ::Val{:top}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:left), bc)
 
 #=
 Notes:
