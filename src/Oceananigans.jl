@@ -56,7 +56,7 @@ export
     buoyancy,
 
     # Boundary conditions
-    BoundaryCondition,    
+    BoundaryCondition,
     Periodic,
     Flux,
     Gradient,
@@ -191,7 +191,7 @@ include("fieldsets.jl")
 include("forcing.jl")
 
 include("operators/operators.jl")
-include("closures/turbulence_closures.jl")
+include("turbulence_closures/TurbulenceClosures.jl")
 
 include("boundary_conditions.jl")
 include("halo_regions.jl")
