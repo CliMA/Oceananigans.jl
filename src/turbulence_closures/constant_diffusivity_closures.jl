@@ -32,23 +32,27 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
 @inline ν_fcf(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
 @inline ν_cff(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.ν * ∂x²_faa(i, j, k, grid, u)
     + closure.ν * ∂y²_aca(i, j, k, grid, u)
     + closure.ν * ∂z²_aac(i, j, k, grid, u)
     )
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.ν * ∂x²_caa(i, j, k, grid, v)
     + closure.ν * ∂y²_afa(i, j, k, grid, v)
     + closure.ν * ∂z²_aac(i, j, k, grid, v)
     )
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.ν * ∂x²_caa(i, j, k, grid, w)
     + closure.ν * ∂y²_aca(i, j, k, grid, w)
     + closure.ν * ∂z²_aaf(i, j, k, grid, w)
     )
+
 
 #
 # Constant anisotropic diffusivity (tensor diffusivity with heterogeneous
@@ -65,29 +69,32 @@ diffusivity `νh` and `κh`, and vertical viscosity and diffusivity
 Base.@kwdef struct ConstantAnisotropicDiffusivity{T} <: TensorDiffusivity{T}
     νh :: T = 1e-6
     νv :: T = 1e-6
-    κh :: T = 1e-6
-    κv :: T = 1e-6
+    κh :: T = 1e-7
+    κv :: T = 1e-7
 end
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,
-                     args...) = nothing
+                    args...) = nothing
 
 ConstantAnisotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantAnisotropicDiffusivity; kwargs...)
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.νh * ∂x²_faa(i, j, k, grid, u)
     + closure.νh * ∂y²_aca(i, j, k, grid, u)
     + closure.νv * ∂z²_aac(i, j, k, grid, u)
     )
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.νh * ∂x²_caa(i, j, k, grid, v)
     + closure.νh * ∂y²_afa(i, j, k, grid, v)
     + closure.νv * ∂z²_aac(i, j, k, grid, v)
     )
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, eos, g, u, v, w, T, S) = (
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity,
+                  eos, grav, u, v, w, T, S) = (
       closure.νh * ∂x²_caa(i, j, k, grid, w)
     + closure.νh * ∂y²_aca(i, j, k, grid, w)
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
@@ -118,3 +125,24 @@ ConstantAnisotropicDiffusivity(T; kwargs...) =
 @inline ν₃₃_ffc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
 @inline ν₃₃_fcf(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
 @inline ν₃₃_cff(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
+
+@inline function ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid,
+                           closure::Union{ConstantIsotropicDiffusivity,
+                                          ConstantAnisotropicDiffusivity},
+                           u, v, w, diffusivities)
+  return ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, nothing, nothing, u, v, w, nothing, nothing)
+end
+
+@inline function ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid,
+                           closure::Union{ConstantIsotropicDiffusivity,
+                                          ConstantAnisotropicDiffusivity},
+                           u, v, w, diffusivities)
+  return ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, nothing, nothing, u, v, w, nothing, nothing)
+end
+
+@inline function ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid,
+                           closure::Union{ConstantIsotropicDiffusivity,
+                                          ConstantAnisotropicDiffusivity},
+                           u, v, w, diffusivities)
+  return ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, nothing, nothing, u, v, w, nothing, nothing)
+end
