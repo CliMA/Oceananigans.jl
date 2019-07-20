@@ -34,27 +34,27 @@ const Δz_ccc = Δz
 function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AnisotropicMinimumDissipation)
      νₑ = zeros(arch, grid)
     κTₑ = zeros(arch, grid)
-    return (νₑ=νₑ, κₑ=(T=κTₑ,))
+    κSₑ = zeros(arch, grid)
+    return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
-@inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, ϕ,
-                       eos, grav, u, v, w, T, S) where FT
+@inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, c,
+                       eos, grav, U, Φ) where FT
 
-    r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
-    ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
-    q = tr_∇u_ccc(i, j, k, grid, u, v, w)
+    r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, U...)
+    ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, U.w, Φ...)
+    q = tr_∇u_ccc(i, j, k, grid, U...)
 
     νdagger = -closure.C * (r - ζ) / q
-    #νdagger = -closure.C * r / q #(r - ζ) / q
 
     return max(zero(FT), νdagger) + closure.ν
 end
 
 @inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation,
-               ϕ, eos, grav, u, v, w, T, S) where FT
+               c, eos, grav, U, Φ) where FT
 
-    n =  Δ²ⱼ_uᵢⱼ_ϕⱼ_ϕᵢ_ccc(i, j, k, grid, closure, u, v, w, ϕ)
-    d =  θᵢ²_ccc(i, j, k, grid, ϕ)
+    n =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, U..., c)
+    d =  θᵢ²_ccc(i, j, k, grid, c)
 
     κdagger = - closure.C * n / d
 
@@ -186,80 +186,83 @@ end
     return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
 end
 
-@inline ∂x_ϕ²(ijk...) = ∂x_faa(ijk...)^2
-@inline ∂y_ϕ²(ijk...) = ∂y_afa(ijk...)^2
-@inline ∂z_ϕ²(ijk...) = ∂z_aaf(ijk...)^2
+@inline ∂x_c²(ijk...) = ∂x_faa(ijk...)^2
+@inline ∂y_c²(ijk...) = ∂y_afa(ijk...)^2
+@inline ∂z_c²(ijk...) = ∂z_aaf(ijk...)^2
 
-@inline function Δ²ⱼ_uᵢⱼ_ϕⱼ_ϕᵢ_ccc(i, j, k, grid, closure, ϕ, u, v, w)
+@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, c, u, v, w)
     ijk = (i, j, k, grid)
 
     Δx = Δx_ccc(ijk..., closure)
     Δy = Δy_ccc(ijk..., closure)
     Δz = Δz_ccc(ijk..., closure)
 
-    Δx²_ϕx_ux = Δx^2 * (
-                 ∂x_caa(ijk..., u) * ▶x_caa(ijk..., ∂x_ϕ², ϕ)
-        + ▶xy_cca(ijk..., ∂x_v, v) * ▶x_caa(ijk..., ∂x_faa, ϕ) * ▶y_aca(ijk..., ∂y_afa, ϕ)
-        + ▶xz_cac(ijk..., ∂x_w, w) * ▶x_caa(ijk..., ∂x_faa, ϕ) * ▶z_aac(ijk..., ∂z_aaf, ϕ)
+    Δx²_cx_ux = Δx^2 * (
+                 ∂x_caa(ijk..., u) * ▶x_caa(ijk..., ∂x_c², c)
+        + ▶xy_cca(ijk..., ∂x_v, v) * ▶x_caa(ijk..., ∂x_faa, c) * ▶y_aca(ijk..., ∂y_afa, c)
+        + ▶xz_cac(ijk..., ∂x_w, w) * ▶x_caa(ijk..., ∂x_faa, c) * ▶z_aac(ijk..., ∂z_aaf, c)
     )
 
-    Δy²_ϕy_uy = Δy^2 * (
-          ▶xy_cca(ijk..., ∂y_u, u) * ▶y_aca(ijk..., ∂y_afa, ϕ) * ▶x_caa(ijk..., ∂x_faa, ϕ)
-        +        ∂y_aca(ijk..., v) * ▶y_aca(ijk..., ∂y_ϕ², ϕ)
-        + ▶xz_cac(ijk..., ∂y_w, w) * ▶y_aca(ijk..., ∂y_afa, ϕ) * ▶z_aac(ijk..., ∂z_aaf, ϕ)
+    Δy²_cy_uy = Δy^2 * (
+          ▶xy_cca(ijk..., ∂y_u, u) * ▶y_aca(ijk..., ∂y_afa, c) * ▶x_caa(ijk..., ∂x_faa, c)
+        +        ∂y_aca(ijk..., v) * ▶y_aca(ijk..., ∂y_c², c)
+        + ▶xz_cac(ijk..., ∂y_w, w) * ▶y_aca(ijk..., ∂y_afa, c) * ▶z_aac(ijk..., ∂z_aaf, c)
     )
 
-    Δz²_ϕz_uz = Δz^2 * (
-          ▶xz_cac(ijk..., ∂z_u, u) * ▶z_aac(ijk..., ∂z_aaf, ϕ) * ▶x_caa(ijk..., ∂x_faa, ϕ)
-        + ▶yz_acc(ijk..., ∂z_v, v) * ▶z_aac(ijk..., ∂z_aaf, ϕ) * ▶y_aca(ijk..., ∂y_afa, ϕ)
-        +        ∂z_aac(ijk..., w) * ▶z_aac(ijk..., ∂z_ϕ², ϕ)
+    Δz²_cz_uz = Δz^2 * (
+          ▶xz_cac(ijk..., ∂z_u, u) * ▶z_aac(ijk..., ∂z_aaf, c) * ▶x_caa(ijk..., ∂x_faa, c)
+        + ▶yz_acc(ijk..., ∂z_v, v) * ▶z_aac(ijk..., ∂z_aaf, c) * ▶y_aca(ijk..., ∂y_afa, c)
+        +        ∂z_aac(ijk..., w) * ▶z_aac(ijk..., ∂z_c², c)
     )
 
-    return Δx²_ϕx_ux + Δy²_ϕy_uy + Δz²_ϕz_uz
+    return Δx²_cx_ux + Δy²_cy_uy + Δz²_cz_uz
 end
 
 
-@inline θᵢ²_ccc(i, j, k, grid, ϕ) = (
-      ▶x_caa(i, j, k, grid, ∂x_ϕ², ϕ)
-    + ▶y_aca(i, j, k, grid, ∂y_ϕ², ϕ)
-    + ▶z_aac(i, j, k, grid, ∂z_ϕ², ϕ)
+@inline θᵢ²_ccc(i, j, k, grid, c) = (
+      ▶x_caa(i, j, k, grid, ∂x_c², c)
+    + ▶y_aca(i, j, k, grid, ∂y_c², c)
+    + ▶z_aac(i, j, k, grid, ∂z_c², c)
 )
 
 """
     ∇_κ_∇T(i, j, k, grid, T, closure, diffusivities)
 
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
-`closure`, where `ϕ` is an array of scalar data located at cell centers.
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
 """
 @inline ∇_κ_∇T(i, j, k, grid, T, closure::AnisotropicMinimumDissipation, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, T, diffusivities.κₑ.T, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, T, diffusivities.κₑ.T, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, T, diffusivities.κₑ.T, closure)
+      ∂x_caa(i, j, k, grid, κ_∂x_c, T, diffusivities.κₑ.T, closure)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, T, diffusivities.κₑ.T, closure)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, T, diffusivities.κₑ.T, closure)
 )
 
 """
     ∇_κ_∇S(i, j, k, grid, S, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
-`closure`, where `ϕ` is an array of scalar data located at cell centers.
+`closure`, where `c` is an array of scalar data located at cell centers.
 """
 @inline ∇_κ_∇S(i, j, k, grid, S, closure::AnisotropicMinimumDissipation, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, S, diffusivities.κₑ.S, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, S, diffusivities.κₑ.S, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, S, diffusivities.κₑ.S, closure)
+      ∂x_caa(i, j, k, grid, κ_∂x_c, S, diffusivities.κₑ.S, closure)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, S, diffusivities.κₑ.S, closure)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
 )
 
 function calc_diffusivities!(diffusivities, grid, closure::AnisotropicMinimumDissipation,
-                                  eos, grav, u, v, w, T, S)
+                             eos, grav, U, Φ)
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds diffusivities.νₑ[i, j, k]  = ν_ccc(i, j, k, grid, closure, nothing,
-                                                                eos, grav, u, v, w, T, S)
+                @inbounds diffusivities.νₑ[i, j, k] =
+                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U, Φ)
 
-                @inbounds diffusivities.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, T,
-                                                                eos, grav, u, v, w, T, S)
+                @inbounds diffusivities.κₑ.T[i, j, k] =
+                    κ_ccc(i, j, k, grid, closure, Φ.T, eos, grav, U, Φ)
+
+                @inbounds diffusivities.κₑ.S[i, j, k] =
+                    κ_ccc(i, j, k, grid, closure, Φ.S, eos, grav, U, Φ)
 
             end
         end
