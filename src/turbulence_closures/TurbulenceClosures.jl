@@ -9,7 +9,9 @@ export
   TurbulentDiffusivities,
   calc_diffusivities!,
 
-  ∇_κ_∇ϕ,
+  ∇_κ_∇c,
+  ∇_κ_∇T,
+  ∇_κ_∇S,
   ∂ⱼ_2ν_Σ₁ⱼ,
   ∂ⱼ_2ν_Σ₂ⱼ,
   ∂ⱼ_2ν_Σ₃ⱼ,
@@ -62,8 +64,8 @@ abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 ν₂₂_cff(i, j, k, grid, closure::IsotropicDiffusivity, args...) = ν_cff(i, j, k, grid, closure, args...)
 ν₃₃_cff(i, j, k, grid, closure::IsotropicDiffusivity, args...) = ν_cff(i, j, k, grid, closure, args...)
 
-@inline ∇_κ_∇T(args...) = ∇_κ_∇ϕ(args...)
-@inline ∇_κ_∇S(args...) = ∇_κ_∇ϕ(args...)
+@inline ∇_κ_∇T(args...) = ∇_κ_∇c(args...)
+@inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
 
 @inline geo_mean_Δ(grid::RegularCartesianGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
