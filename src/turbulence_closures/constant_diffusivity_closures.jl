@@ -93,10 +93,10 @@ ConstantAnisotropicDiffusivity(T; kwargs...) =
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
     )
 
-@inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ConstantAnisotropicDiffusivity, args...) = (
-      closure.κh * ∂x²_caa(i, j, k, grid, ϕ)
-    + closure.κh * ∂y²_aca(i, j, k, grid, ϕ)
-    + closure.κv * ∂z²_aac(i, j, k, grid, ϕ)
+@inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantAnisotropicDiffusivity, args...) = (
+      closure.κh * ∂x²_caa(i, j, k, grid, c)
+    + closure.κh * ∂y²_aca(i, j, k, grid, c)
+    + closure.κv * ∂z²_aac(i, j, k, grid, c)
     )
 
 # These functions are used to specify Gradient and Value boundary conditions.
