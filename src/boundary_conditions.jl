@@ -195,7 +195,7 @@ function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
     return modelbcs
 end
 
-# Alias 'right' and 'left' to 'bottom' and 'top' to clarify setting 
+# Alias 'right' and 'left' to 'bottom' and 'top' to clarify setting
 # z boundary conditions.
 ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
     ModelBoundaryConditions(fld, coord, Val(s), bc)
@@ -314,15 +314,15 @@ Apply a top and/or bottom boundary condition to variable ϕ. Note that this kern
 must be launched on the GPU with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz),
 the boundary condition will be applied Bz times!
 """
-function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, u, v, w, T, S)
+function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, U, Φ)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
 
-               κ_top = κ(i, j, 1,       grid, closure, eos, g, u, v, w, T, S)
-            κ_bottom = κ(i, j, grid.Nz, grid, closure, eos, g, u, v, w, T, S)
+               κ_top = κ(i, j, 1,       grid, closure, eos, g, U, Φ)
+            κ_bottom = κ(i, j, grid.Nz, grid, closure, eos, g, U, Φ)
 
-               apply_z_top_bc!(top_bc,    i, j, grid, ϕ, Gϕ, κ_top,    t, iteration, u, v, w, T, S)
-            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ_bottom, t, iteration, u, v, w, T, S)
+               apply_z_top_bc!(top_bc,    i, j, grid, ϕ, Gϕ, κ_top,    t, iteration, U..., Φ...)
+            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ_bottom, t, iteration, U..., Φ...)
 
         end
     end
