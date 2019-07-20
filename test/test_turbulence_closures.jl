@@ -90,19 +90,19 @@ function test_tensor_diffusivity_tuples(T=Float64; ν=T(0.3), κ=T(0.7))
     )
 end
 
-function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=TF(0.7))
-    closure = ConstantIsotropicDiffusivity(TF, κ=κ, ν=ν)
-    grid = RegularCartesianGrid(TF, (3, 1, 1), (3, 1, 1))
+function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+    closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
+    grid = RegularCartesianGrid(FT, (3, 1, 1), (3, 1, 1))
     fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
     arch = CPU()
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -127,18 +127,18 @@ end
 
 datatuple(args, names) = NamedTuple{names}(data(a) for a in args)
 
-function test_calc_diffusivities(arch, closurename, TF=Float64)
+function test_calc_diffusivities(arch, closurename, FT=Float64)
 
-    closure = getproperty(TurbulenceClosures, closurename)(TF)
-    grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+    closure = getproperty(TurbulenceClosures, closurename)(FT)
+    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState(TF)
+    eos = LinearEquationOfState(FT)
     grav = 1.0
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T = CellField(TF, arch, grid)
-    S = CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T = CellField(FT, arch, grid)
+    S = CellField(FT, arch, grid)
 
     U = datatuple((u, v, w), (:u, :v, :w))
     Φ = datatuple((T, S), (:T, :S))
@@ -147,19 +147,19 @@ function test_calc_diffusivities(arch, closurename, TF=Float64)
     return true
 end
 
-function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.7), νv=TF(0.1), κv=TF(0.5))
-    closure = ConstantAnisotropicDiffusivity(TF, κh=κh, νh=νh, κv=κv, νv=νv)
-    grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
+    closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
+    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
     fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
     arch = CPU()
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -193,20 +193,20 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
             )
 end
 
-function test_smag_divflux_finiteness(TF=Float64)
+function test_smag_divflux_finiteness(FT=Float64)
     arch = CPU()
-    closure = ConstantSmagorinsky(TF)
-    grid = RegularCartesianGrid(TF, (4, 4, 4), (4, 4, 4))
+    closure = ConstantSmagorinsky(FT)
+    grid = RegularCartesianGrid(FT, (4, 4, 4), (4, 4, 4))
     fbcs = DoublyPeriodicBCs()
-    eos = LinearEquationOfState(TF)
+    eos = LinearEquationOfState(FT)
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    grav = TF(1.0)
+    grav = FT(1.0)
 
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
 
     underlying_data(u) .= 0
     underlying_data(v) .= 0
