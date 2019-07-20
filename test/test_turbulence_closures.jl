@@ -118,14 +118,14 @@ function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=
 
     fill_halo_regions!(grid, uvwTS_ft...)
 
-    return (∇_κ_∇ϕ(2, 1, 1, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2κ &&
+    return (∇_κ_∇c(2, 1, 1, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2κ &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2ν &&
             ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4ν &&
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6ν
             )
 end
 
-datatuple(args...) = Tuple(data(a) for a in args)
+datatuple(args, names) = NamedTuple{names}(data(a) for a in args)
 
 function test_calc_diffusivities(arch, closurename, TF=Float64)
 
@@ -139,9 +139,10 @@ function test_calc_diffusivities(arch, closurename, TF=Float64)
     w = FaceFieldZ(TF, arch, grid)
     T = CellField(TF, arch, grid)
     S = CellField(TF, arch, grid)
-    ϕ = datatuple(u, v, w, T, S)
 
-    calc_diffusivities!(diffusivities, grid, closure, eos, grav, ϕ...)
+    U = datatuple((u, v, w), (:u, :v, :w))
+    Φ = datatuple((T, S), (:T, :S))
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
     return true
 end
@@ -185,7 +186,7 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
 
     fill_halo_regions!(grid, uvwTS_ft...)
 
-    return (∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
+    return (∇_κ_∇c(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2νh + 4νv &&
             ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4νh + 6νv &&
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6νh + 8νv
@@ -193,18 +194,29 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
 end
 
 function test_smag_divflux_finiteness(TF=Float64)
-    closure = ConstantSmagorinsky(TF)
-    grid = RegularCartesianGrid(TF, (3, 3, 3), (3, 3, 3))
-    fbcs = DoublyPeriodicBCs()
-    eos = LinearEquationOfState()
-    g = 1.0
-
     arch = CPU()
+    closure = ConstantSmagorinsky(TF)
+    grid = RegularCartesianGrid(TF, (4, 4, 4), (4, 4, 4))
+    fbcs = DoublyPeriodicBCs()
+    eos = LinearEquationOfState(TF)
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
+    grav = TF(1.0)
+
     u = FaceFieldX(TF, arch, grid)
     v = FaceFieldY(TF, arch, grid)
     w = FaceFieldZ(TF, arch, grid)
     T =  CellField(TF, arch, grid)
     S =  CellField(TF, arch, grid)
+
+    underlying_data(u) .= 0
+    underlying_data(v) .= 0
+    underlying_data(w) .= 0
+    underlying_data(T) .= eos.T₀
+    underlying_data(S) .= eos.S₀
+
+    U = datatuple((u, v, w), (:u, :v, :w))
+    Φ = datatuple((T, S), (:T, :S))
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -215,11 +227,10 @@ function test_smag_divflux_finiteness(TF=Float64)
 
     fill_halo_regions!(grid, uvwTS_ft...)
 
-    return (
-        isfinite(∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data))
+    return (isfinite(∇_κ_∇c(2, 1, 2, grid, T.data, closure, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities))
         )
 end
 

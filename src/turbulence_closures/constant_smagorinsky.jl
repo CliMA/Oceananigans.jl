@@ -70,82 +70,82 @@ filter with `Δ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ(ς, Cs, Δ, Σ²) = ς * (Cs*Δ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, ϕ, eos, grav, u, v, w, T, S)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
+@inline function ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, U, Φ)
+    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U...)
+    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, Φ...)
      Δ = Δ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
     return νₑ(ς, clo.Cs, Δ, Σ²) + clo.ν
 end
 
-@inline function κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, ϕ, eos, grav, u, v, w, T, S)
-    νₑ = ν_ccc(i, j, k, grid, clo, ϕ, eos, grav, u, v, w, T, S)
+@inline function κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, U, Φ)
+    νₑ = ν_ccc(i, j, k, grid, clo, c, eos, grav, U, Φ)
     return (νₑ - clo.ν) / clo.Pr + clo.κ
 end
 
 """
-    κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
+    κ_∂x_c(i, j, k, grid, c, κ, closure, eos, g, u, v, w, T, S)
 
-Return `κ ∂x ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂x c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_ϕ(i, j, k, grid, ϕ, νₑ, closure::ConstantSmagorinsky)
+@inline function κ_∂x_c(i, j, k, grid, c, νₑ, closure::ConstantSmagorinsky)
     νₑ = ▶x_faa(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / closure.Pr + closure.κ
-    ∂x_ϕ = ∂x_faa(i, j, k, grid, ϕ)
-    return κₑ * ∂x_ϕ
+    ∂x_c = ∂x_faa(i, j, k, grid, c)
+    return κₑ * ∂x_c
 end
 
 """
-    κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure::ConstantSmagorinsky, eos, g, u, v, w, T, S)
+    κ_∂y_c(i, j, k, grid, c, κ, closure::ConstantSmagorinsky, eos, g, u, v, w, T, S)
 
-Return `κ ∂y ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂y c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_ϕ(i, j, k, grid, ϕ, νₑ, closure::ConstantSmagorinsky)
+@inline function κ_∂y_c(i, j, k, grid, c, νₑ, closure::ConstantSmagorinsky)
     νₑ = ▶y_afa(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / closure.Pr + closure.κ
-    ∂y_ϕ = ∂y_afa(i, j, k, grid, ϕ)
-    return κₑ * ∂y_ϕ
+    ∂y_c = ∂y_afa(i, j, k, grid, c)
+    return κₑ * ∂y_c
 end
 
 """
-    κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure::ConstantSmagorinsky, eos, g, u, v, w, T, S)
+    κ_∂z_c(i, j, k, grid, c, κ, closure::ConstantSmagorinsky, eos, g, u, v, w, T, S)
 
-Return `κ ∂z ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂z c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_ϕ(i, j, k, grid, ϕ, νₑ, closure::ConstantSmagorinsky)
+@inline function κ_∂z_c(i, j, k, grid, c, νₑ, closure::ConstantSmagorinsky)
     νₑ = ▶z_aaf(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / closure.Pr + closure.κ
-    ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
-    return κₑ * ∂z_ϕ
+    ∂z_c = ∂z_aaf(i, j, k, grid, c)
+    return κₑ * ∂z_c
 end
 
 """
-    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, c, closure, diffusivities)
 
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
-`closure`, where `ϕ` is an array of scalar data located at cell centers.
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::ConstantSmagorinsky, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕ, diffusivities.νₑ, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕ, diffusivities.νₑ, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕ, diffusivities.νₑ, closure)
+@inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantSmagorinsky, diffusivities) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_c, c, diffusivities.νₑ, closure)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, diffusivities.νₑ, closure)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, diffusivities.νₑ, closure)
 )
 
 function calc_diffusivities!(diffusivities, grid, closure::ConstantSmagorinsky,
-                                  eos, grav, u, v, w, T, S)
+                                  eos, grav, U, Φ)
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds diffusivities.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, nothing,
-                                                            eos, grav, u, v, w, T, S)
+                @inbounds diffusivities.νₑ[i, j, k] =
+                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U, Φ)
             end
         end
     end
