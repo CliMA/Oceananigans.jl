@@ -83,12 +83,12 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
                                                            calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
                                                                                             pr.pHY′.data, Gⁿ, diffusivities, forcing)
                                                            calculate_boundary_source_terms!(model)
-        @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ..., G⁻..., χ)
+        @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
                                                            fill_halo_regions!(grid, Guvw_ft...)
         @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, U..., Guvw..., RHS)
                                                            solve_for_pressure!(arch, model)
                                                            fill_halo_regions!(grid, pNHS_ft)
-        @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U..., Φ..., pr.pNHS.data, Gⁿ..., G⁻..., Δt)
+        @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pr.pNHS.data, Gⁿ, Δt)
                                                            fill_halo_regions!(grid, uvw_ft...)
         @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
 
@@ -251,15 +251,15 @@ function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U
     @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS(grid, constants, eos, closure, U, Φ, pHY′, G.GS, K, F)
 end
 
-function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, χ) where FT
+function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gⁿ, G⁻, χ) where FT
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gu[i, j, k] = (FT(1.5) + χ)*Gu[i, j, k] - (FT(0.5) + χ)*Gpu[i, j, k]
-                @inbounds Gv[i, j, k] = (FT(1.5) + χ)*Gv[i, j, k] - (FT(0.5) + χ)*Gpv[i, j, k]
-                @inbounds Gw[i, j, k] = (FT(1.5) + χ)*Gw[i, j, k] - (FT(0.5) + χ)*Gpw[i, j, k]
-                @inbounds GT[i, j, k] = (FT(1.5) + χ)*GT[i, j, k] - (FT(0.5) + χ)*GpT[i, j, k]
-                @inbounds GS[i, j, k] = (FT(1.5) + χ)*GS[i, j, k] - (FT(0.5) + χ)*GpS[i, j, k]
+                @inbounds Gⁿ.Gu[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gu[i, j, k] - (FT(0.5) + χ) * G⁻.Gu[i, j, k]
+                @inbounds Gⁿ.Gv[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gv[i, j, k] - (FT(0.5) + χ) * G⁻.Gv[i, j, k]
+                @inbounds Gⁿ.Gw[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gw[i, j, k] - (FT(0.5) + χ) * G⁻.Gw[i, j, k]
+                @inbounds Gⁿ.GT[i, j, k] = (FT(1.5) + χ) * Gⁿ.GT[i, j, k] - (FT(0.5) + χ) * G⁻.GT[i, j, k]
+                @inbounds Gⁿ.GS[i, j, k] = (FT(1.5) + χ) * Gⁿ.GS[i, j, k] - (FT(0.5) + χ) * G⁻.GS[i, j, k]
             end
         end
     end
@@ -361,14 +361,14 @@ function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
 end
 
 
-function update_velocities_and_tracers!(grid::Grid, u, v, w, T, S, pNHS, Gu, Gv, Gw, GT, GS, Gpu, Gpv, Gpw, GpT, GpS, Δt)
+function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds u[i, j, k] = u[i, j, k] + (Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
-                @inbounds v[i, j, k] = v[i, j, k] + (Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
-                @inbounds T[i, j, k] = T[i, j, k] + (GT[i, j, k] * Δt)
-                @inbounds S[i, j, k] = S[i, j, k] + (GS[i, j, k] * Δt)
+                @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
+                @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
+                @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
+                @inbounds Φ.S[i, j, k] = Φ.S[i, j, k] + (Gⁿ.GS[i, j, k] * Δt)
             end
         end
     end
