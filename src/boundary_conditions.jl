@@ -110,12 +110,33 @@ function FieldBoundaryConditions(;
     return FieldBoundaryConditions(x, y, z)
 end
 
-"""
-    ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions}
 
-Construct a boundary condition type full of default
-`FieldBoundaryConditions` for u, v, w, T, S.
-"""
+function DoublyPeriodicBCs(;  x = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                              y = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                              z = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Flux, 0),
+                                    BoundaryCondition(Flux, 0))
+                            )
+    return FieldBoundaryConditions(x, y, z)
+end
+
+function ChannelBCs(; x = CoordinateBoundaryConditions(
+                            BoundaryCondition(Periodic, nothing),
+                            BoundaryCondition(Periodic, nothing)),
+                      y = CoordinateBoundaryConditions(
+                            BoundaryCondition(Flux, 0),
+                            BoundaryCondition(Flux, 0)),
+                      z = CoordinateBoundaryConditions(
+                            BoundaryCondition(Flux, 0),
+                            BoundaryCondition(Flux, 0))
+                    )
+    return FieldBoundaryConditions(x, y, z)
+end
+
 struct ModelBoundaryConditions{UBC, VBC, WBC, TBC, SBC}
     u :: UBC
     v :: VBC
@@ -127,34 +148,10 @@ end
 # sensible alias
 const BoundaryConditions = ModelBoundaryConditions
 
-DoublyPeriodicBCs() = FieldBoundaryConditions(
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Periodic, nothing),
-                              BoundaryCondition(Periodic, nothing)),
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Periodic, nothing),
-                              BoundaryCondition(Periodic, nothing)),
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Flux, 0),
-                              BoundaryCondition(Flux, 0)))
-
-ChannelBCs() = FieldBoundaryConditions(
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Periodic, nothing),
-                       BoundaryCondition(Periodic, nothing)),
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Flux, 0),
-                       BoundaryCondition(Flux, 0)),
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Flux, 0),
-                       BoundaryCondition(Flux, 0)))
-
 """
-    ModelBoundaryConditions()
+    ModelBoundaryConditions(u=u_boundary_conditions, ...)
 
-Return a default set of model boundary conditions. For now, this corresponds to a
-doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
-with no-flux boundary conditions at the top and bottom.
+Returns model boundary conditions for `u`, `v`, `w`, `T`, and `S`.
 """
 function ModelBoundaryConditions(;
     u = DoublyPeriodicBCs(),
@@ -185,7 +182,7 @@ end
 
     BoundaryConditions(fld, coord, side, bc)
 
-Return an instance of `ModelBoundaryConditions` with one non-default
+Return an instance of `ModelBoundaryConditions` with one non-doubly-periodic
 boundary condition `bc` on `fld` along coordinate `coord` at `side`.
 """
 function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
@@ -230,7 +227,8 @@ Notes:
 const BC = BoundaryCondition
 const FBCs = FieldBoundaryConditions
 
-# Do nothing in default case. These functions are called in cases where one of the
+# Do nothing in cases not explicitly defined.
+# These functions are called in cases where one of the
 # z-boundaries is set, but not the other.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
