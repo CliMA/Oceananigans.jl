@@ -16,27 +16,15 @@ const Ty = 16 # CUDA threads per y-block
 Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
-function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
-    clock = model.clock
-    model_start_time = clock.time
-    model_end_time = model_start_time + Nt*Δt
+function time_step!(model, Nt, Δt)
 
-    if clock.iteration == 0
-        for output_writer in model.output_writers
-            write_output(model, output_writer)
-        end
-        for diagnostic in model.diagnostics
-            run_diagnostic(model, diagnostic)
-        end
+    if model.clock.iteration == 0
+        [ write_output(model, output_writer) for output_writer in model.output_writers ]
+        [ run_diagnostic(model, diagnostic) for diagnostic in model.diagnostics ]
     end
 
-    arch = A()
-
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    Lx, Ly, Lz = model.grid.Lx, model.grid.Ly, model.grid.Lz
-    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
-
     # Unpack model fields
+              arch = model.arch
               grid = model.grid
              clock = model.clock
                eos = model.eos
@@ -51,18 +39,18 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
     RHS = poisson_solver.storage
     U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.G, model.Gp)
-    Guvw = (Gu=Gⁿ[1], Gv=Gⁿ[2], Gw=Gⁿ[3])
+    Guvw = (Gu=Gⁿ.Gu, Gv=Gⁿ.Gv, Gw=Gⁿ.Gw)
     FT = eltype(grid)
 
     # Field tuples for fill_halo_regions.
-    u_ft = (:u, bcs.u, U[1])
-    v_ft = (:v, bcs.v, U[2])
-    w_ft = (:w, bcs.w, U[3])
-    T_ft = (:T, bcs.T, Φ[1])
-    S_ft = (:S, bcs.S, Φ[2])
-    Gu_ft = (:u, bcs.u, Gⁿ[1])
-    Gv_ft = (:v, bcs.v, Gⁿ[2])
-    Gw_ft = (:w, bcs.w, Gⁿ[3])
+    u_ft = (:u, bcs.u, U.u)
+    v_ft = (:v, bcs.v, U.v)
+    w_ft = (:w, bcs.w, U.w)
+    T_ft = (:T, bcs.T, Φ.T)
+    S_ft = (:S, bcs.S, Φ.S)
+    Gu_ft = (:u, bcs.u, Gⁿ.Gu)
+    Gv_ft = (:v, bcs.v, Gⁿ.Gv)
+    Gw_ft = (:w, bcs.w, Gⁿ.Gw)
     pHY′_ft = (:w, bcs.w, pr.pHY′.data)
     pNHS_ft = (:w, bcs.w, pr.pNHS.data)
 
@@ -74,7 +62,7 @@ function time_step!(model::Model{A}, Nt, Δt) where A <: Architecture
         χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
 
         @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-        @launch device(arch) config=launch_config(grid, 2) update_buoyancy!(grid, constants, eos, Φ..., pr.pHY′.data)
+        @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(grid, constants, eos, Φ..., pr.pHY′.data)
 
         @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos,
                                                                                constants.g, U..., Φ...)
@@ -162,7 +150,7 @@ function store_previous_source_terms!(grid::Grid, Gⁿ, G⁻)
 end
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_buoyancy!(grid::Grid, constants, eos, T, S, pHY′)
+function update_hydrostatic_pressure!(grid::Grid, constants, eos, T, S, pHY′)
     gΔz = constants.g * grid.Δz
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -387,8 +375,8 @@ function compute_w_from_continuity!(grid::Grid, u, v, w)
 end
 
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(model::Model{A}) where A <: Architecture
-    arch = A()
+function calculate_boundary_source_terms!(model)
+    arch = model.arch
     grid = model.grid
     clock = model.clock
     eos =  model.eos

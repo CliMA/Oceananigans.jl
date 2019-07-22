@@ -23,7 +23,7 @@ ConstantIsotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantIsotropicDiffusivity; kwargs...)
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
-                     args...) = nothing
+                    args...) = nothing
 
 # These functions are used to specify Gradient and Value boundary conditions.
 @inline κ_ccc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.κ
