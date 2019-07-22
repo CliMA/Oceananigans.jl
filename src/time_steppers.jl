@@ -65,7 +65,7 @@ function time_step!(model, Nt, Δt)
         @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(grid, constants, eos, Φ..., pr.pHY′.data)
 
         @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos,
-                                                                               constants.g, U..., Φ...)
+                                                                               constants.g, U, Φ)
 
                                                            fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
                                                            calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
