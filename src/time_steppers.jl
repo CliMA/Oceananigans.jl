@@ -64,9 +64,7 @@ function time_step!(model, Nt, Δt)
         @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
         @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(grid, constants, eos, Φ..., pr.pHY′.data)
 
-        @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos,
-                                                                               constants.g, U, Φ)
-
+        @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos, constants.g, U, Φ)
                                                            fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
                                                            calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
                                                                                             pr.pHY′.data, Gⁿ, diffusivities, forcing)
@@ -104,12 +102,12 @@ function launch_config(grid, dims)
         # adapt the suggested config from 1D to the requested grid dimensions
         if dims == 3
             threads = floor(Int, cbrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx,grid.Ny,grid.Nz] ./ threads)
-            threads = [threads,threads,threads]
+            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
+            threads = [threads, threads, threads]
         elseif dims == 2
             threads = floor(Int, sqrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx,grid.Ny] ./ threads)
-            threads = [threads,threads]
+            blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
+            threads = [threads, threads]
         else
             error("unsupported launch configuration")
         end
@@ -163,33 +161,31 @@ function update_hydrostatic_pressure!(grid::Grid, constants, eos, T, S, pHY′)
 end
 
 "Store previous value of the source term and calculate current source term."
-#function calculate_interior_source_terms!(arch, grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
 function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, pHY′, G, K, F)
 
     function calculate_Gu(grid, constants, eos, closure, U, Φ, pHY′, Gu, K, F)
         @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                    @inbounds Gu[i, j, k] = (-u∇u(grid, U..., i, j, k)
+                    @inbounds Gu[i, j, k] = (-u∇u(grid, U.u, U.v, U.w, i, j, k)
                                                 + fv(grid, U.v, constants.f, i, j, k)
                                                 - δx_c2f(grid, pHY′, i, j, k) / (grid.Δx * eos.ρ₀)
-                                                + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U..., K)
-                                                + F.u(grid, U..., Φ..., i, j, k))
+                                                + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                                + F.u(grid, U, Φ, i, j, k))
                 end
             end
         end
     end
 
     function calculate_Gv(grid, constants, eos, closure, U, Φ, pHY′, Gv, K, F)
-    #function calculate_Gv(grid, constants, eos, closure, u, v, w, T, S, pHY′, Gu, Gv, Gw, GT, GS, F)
         @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                    @inbounds Gv[i, j, k] = (-u∇v(grid, U..., i, j, k)
+                    @inbounds Gv[i, j, k] = (-u∇v(grid, U.u, U.v, U.w, i, j, k)
                                                 - fu(grid, U.u, constants.f, i, j, k)
                                                 - δy_c2f(grid, pHY′, i, j, k) / (grid.Δy * eos.ρ₀)
-                                                + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U..., K)
-                                                + F.v(grid, U..., Φ..., i, j, k))
+                                                + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                                + F.v(grid, U, Φ, i, j, k))
                 end
             end
         end
@@ -199,9 +195,9 @@ function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U
         @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                    @inbounds Gw[i, j, k] = (-u∇w(grid, U..., i, j, k)
-                                                + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U..., K)
-                                                + F.w(grid, U..., Φ..., i, j, k))
+                    @inbounds Gw[i, j, k] = (-u∇w(grid, U.u, U.v, U.w, i, j, k)
+                                                + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                                + F.w(grid, U, Φ, i, j, k))
                 end
             end
         end
@@ -211,9 +207,9 @@ function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U
         @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                    @inbounds GT[i, j, k] = (-div_flux(grid, U..., Φ.T, i, j, k)
+                    @inbounds GT[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, Φ.T, i, j, k)
                                                 + ∇_κ_∇T(i, j, k, grid, Φ.T, closure, K)
-                                                + F.T(grid, U..., Φ..., i, j, k))
+                                                + F.T(grid, U, Φ, i, j, k))
                 end
             end
         end
@@ -223,9 +219,9 @@ function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U
         @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
             @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
                 @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                    @inbounds GS[i, j, k] = (-div_flux(grid, U..., Φ.S, i, j, k)
+                    @inbounds GS[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, Φ.S, i, j, k)
                                                 + ∇_κ_∇S(i, j, k, grid, Φ.S, closure, K)
-                                                + F.S(grid, U..., Φ..., i, j, k))
+                                                + F.S(grid, U, Φ, i, j, k))
                 end
             end
         end
@@ -374,6 +370,15 @@ function compute_w_from_continuity!(grid::Grid, u, v, w)
     end
 end
 
+get_ν(closure::ConstantIsotropicDiffusivity, K) = closure.ν
+get_κ(closure::ConstantIsotropicDiffusivity, K) = (T=closure.κ, S=closure.κ)
+
+get_ν(closure::ConstantAnisotropicDiffusivity, K) = closure.νv
+get_κ(closure::ConstantAnisotropicDiffusivity, K) = (T=closure.κv, S=closure.κv)
+
+get_ν(closure, diffusivities) = diffusivities.νₑ
+get_κ(closure, diffusivities) = diffusivities.κₑ
+
 "Apply boundary conditions by modifying the source term G."
 function calculate_boundary_source_terms!(model)
     arch = model.arch
@@ -397,20 +402,19 @@ function calculate_boundary_source_terms!(model)
     S_x_bcs = getproperty(bcs.S, coord)
 
     # Apply boundary conditions in the vertical direction.
+    ν = get_ν(closure, model.diffusivities)
+    κ = get_κ(closure, model.diffusivities)
 
-    # *Note*: for vertical boundaries in xz or yz, the transport coefficients should be evaluated at
-    # different locations than the ones speciifc below, which are specific to boundaries in the xy-plane.
-
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, U.u, G.Gu, ν₃₃.ffc,
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, U.u, G.Gu, ν,
         closure, eos, grav, t, iteration, U, Φ)
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, U.v, G.Gv, ν₃₃.fcf,
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, U.v, G.Gv, ν,
         closure, eos, grav, t, iteration, U, Φ)
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, Φ.T, G.GT, κ₃₃.ccc,
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, Φ.T, G.GT, κ.T,
         closure, eos, grav, t, iteration, U, Φ)
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, Φ.S, G.GS, κ₃₃.ccc,
+    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, Φ.S, G.GS, κ.S,
         closure, eos, grav, t, iteration, U, Φ)
 
     return nothing
