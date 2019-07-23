@@ -4,6 +4,7 @@ export
   MolecularDiffusivity,
   ConstantIsotropicDiffusivity,
   ConstantAnisotropicDiffusivity,
+  AnisotropicMinimumDissipation,
   ConstantSmagorinsky,
 
   TurbulentDiffusivities,
