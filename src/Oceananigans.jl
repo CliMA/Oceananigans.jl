@@ -39,6 +39,11 @@ export
     ardata_view,
     underlying_data,
     set!,
+    xnodes,
+    ynodes,
+    znodes,
+    nodes,
+    set_ic!,
 
     # FieldSets (collections of related fields)
     FieldSet,
