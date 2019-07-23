@@ -39,21 +39,21 @@ function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AnisotropicMin
 end
 
 @inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, c,
-                       eos, grav, U, Φ) where FT
+                       eos, grav, u, v, w, T, S) where FT
 
-    r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, U...)
-    ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, U.w, Φ...)
-    q = tr_∇u_ccc(i, j, k, grid, U...)
+    r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
+    ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
+    q = tr_∇u_ccc(i, j, k, grid, u, v, w)
 
     νdagger = -closure.C * (r - ζ) / q
 
     return max(zero(FT), νdagger) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation,
-               c, eos, grav, U, Φ) where FT
+@inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, c,
+                       eos, grav, u, v, w, T, S) where FT
 
-    n =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, U..., c)
+    n =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
     d =  θᵢ²_ccc(i, j, k, grid, c)
 
     κdagger = - closure.C * n / d
@@ -249,21 +249,14 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
 )
 
-function calc_diffusivities!(diffusivities, grid, closure::AnisotropicMinimumDissipation,
-                             eos, grav, U, Φ)
+function calc_diffusivities!(K, grid, closure::AnisotropicMinimumDissipation, eos, grav, U, Φ)
 
     @loop for k in (1:grid.Nz; blockIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds diffusivities.νₑ[i, j, k] =
-                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U, Φ)
-
-                @inbounds diffusivities.κₑ.T[i, j, k] =
-                    κ_ccc(i, j, k, grid, closure, Φ.T, eos, grav, U, Φ)
-
-                @inbounds diffusivities.κₑ.S[i, j, k] =
-                    κ_ccc(i, j, k, grid, closure, Φ.S, eos, grav, U, Φ)
-
+                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
             end
         end
     end
