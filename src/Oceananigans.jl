@@ -119,7 +119,11 @@ export
     prettytime,
 
     # Turbulence closures
-    TurbulenceClosures
+    TurbulenceClosures,
+    ConstantIsotropicDiffusivity,
+    ConstantAnisotropicDiffusivity,
+    ConstantSmagorinsky,
+    AnisotropicMinimumDissipation
 
 # Standard library modules
 using
