@@ -70,17 +70,17 @@ filter with `Δ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ(ς, Cs, Δ, Σ²) = ς * (Cs*Δ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, U, Φ)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U...)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, Φ...)
+@inline function ν_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, u, v, w, T, S)
+    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
+    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
      Δ = Δ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
     return νₑ(ς, clo.Cs, Δ, Σ²) + clo.ν
 end
 
-@inline function κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, U, Φ)
-    νₑ = ν_ccc(i, j, k, grid, clo, c, eos, grav, U, Φ)
+@inline function κ_ccc(i, j, k, grid, clo::ConstantSmagorinsky, c, eos, grav, u, v, w, T, S)
+    νₑ = ν_ccc(i, j, k, grid, clo, c, eos, grav, u, v, w, T, S)
     return (νₑ - clo.ν) / clo.Pr + clo.κ
 end
 
@@ -145,7 +145,7 @@ function calc_diffusivities!(diffusivities, grid, closure::ConstantSmagorinsky,
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds diffusivities.νₑ[i, j, k] =
-                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U, Φ)
+                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
             end
         end
     end
