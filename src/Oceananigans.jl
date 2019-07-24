@@ -105,6 +105,7 @@ export
     OutputWriter,
     BinaryOutputWriter,
     NetCDFOutputWriter,
+    JLD2OutputWriter,
     write_output,
     read_output,
 
