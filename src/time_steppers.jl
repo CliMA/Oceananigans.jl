@@ -370,14 +370,11 @@ function compute_w_from_continuity!(grid::Grid, u, v, w)
     end
 end
 
-get_ν(closure::ConstantIsotropicDiffusivity, K) = closure.ν
-get_κ(closure::ConstantIsotropicDiffusivity, K) = (T=closure.κ, S=closure.κ)
+get_ν(closure::IsotropicDiffusivity, K) = closure.ν
+get_κ(closure::IsotropicDiffusivity, K) = (T=closure.κ, S=closure.κ)
 
 get_ν(closure::ConstantAnisotropicDiffusivity, K) = closure.νv
 get_κ(closure::ConstantAnisotropicDiffusivity, K) = (T=closure.κv, S=closure.κv)
-
-get_ν(closure, diffusivities) = diffusivities.νₑ
-get_κ(closure, diffusivities) = diffusivities.κₑ
 
 "Apply boundary conditions by modifying the source term G."
 function calculate_boundary_source_terms!(model)
