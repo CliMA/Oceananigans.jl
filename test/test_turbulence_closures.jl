@@ -90,9 +90,10 @@ function test_tensor_diffusivity_tuples(T=Float64; ν=T(0.3), κ=T(0.7))
     )
 end
 
-datatuple(args, names) = NamedTuple{names}(data(a) for a in args)
+datatuple(args, names) = NamedTuple{names}(a.data for a in args)
 
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+    arch = CPU()
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 1), (3, 1, 1))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
@@ -100,7 +101,6 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
     eos = LinearEquationOfState()
     grav = 1.0
 
-    arch = CPU()
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
     w = FaceFieldZ(FT, arch, grid)
@@ -124,10 +124,10 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
     fill_halo_regions!(grid, uvwTS_ft...)
     calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
-    return (∇_κ_∇c(2, 1, 1, grid, T.data, closure, eos, grav, U.u, U.v, U.w, diffusivities) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, grav, U.u, U.v, U.w, diffusivities) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, eos, grav, U.u, U.v, U.w, diffusivities) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, eos, grav, U.u, U.v, U.w, diffusivities) == 6ν
+    return (   ∇_κ_∇c(2, 1, 1, grid, T.data, closure) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, U...) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, U...) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, U...) == 6ν
             )
 end
 
