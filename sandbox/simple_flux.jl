@@ -11,22 +11,17 @@ function terse_message(model, walltime, Δt)
 end
 
 # Simulation parameters
-   N = 64           # Resolution    
+   N = 32           # Resolution    
    Δ = 1.0          # Grid spacing
   Fb = 1e-8         # Buoyancy flux
-   τ = 0.0          # Momentum flux
+  Fu = 0.0          # Momentum flux
   N² = 1e-4         # Initial buoyancy frequency
   tf = day/2        # Final simulation time
 
 # Physical constants
   βT = 2e-4         # Thermal expansion coefficient
-  βS = 8e-4         # Saline contraction coefficient
- T₀₀ = 298.15       # Reference temperature
- S₀₀ = 35.0         # Reference salinity
-  ρ₀ = 1035.0       # Reference density
    g = 9.81         # Gravitational acceleration
   Fθ = Fb / (g*βT)  # Temperature flux
-  Fu = τ / ρ₀       # Velocity flux
 dTdz = N² / (g*βT)  # Initial temperature gradient
 
 # Create boundary conditions
@@ -41,24 +36,24 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
                        N = (N, 4, N),
                        L = (N*Δ, N*Δ, N*Δ),
-                     eos = LinearEquationOfState(ρ₀=ρ₀, βT=βT, βS=βS, T₀=T₀₀, S₀=S₀₀),
+                     eos = LinearEquationOfState(βT=βT, βS=0.0),
                constants = PlanetaryConstants(f=1e-4, g=g),
-                 closure = AnisotropicMinimumDissipation(),
-                #closure = ConstantSmagorinsky(),
+                 #closure = AnisotropicMinimumDissipation(),
+                 closure = ConstantSmagorinsky(),
                      bcs = BoundaryConditions(u=ubcs, T=Tbcs))
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = rand(Normal(0, 1)) * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
-T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-3 * Ξ(z)
-S₀(x, y, z) = 1e-6 * Ξ(z)
-u₀(x, y, z) = 1e-6 * Ξ(z)
+T₀(x, y, z) = 20 + dTdz * z #+ dTdz * model.grid.Lz * 1e-3 * Ξ(z)
+S₀(x, y, z) = 1e-9 * Ξ(z)
+u₀(x, y, z) = 1e-9 * Ξ(z)
 
 set_ic!(model, u=u₀, T=T₀, S=S₀)
 
 close("all")
 fig, axs = subplots()
 
-wizard = TimeStepWizard(cfl=0.1, Δt=1.0, max_change=1.1, max_Δt=90.0)
+wizard = TimeStepWizard(cfl=0.01, Δt=1.0, max_change=1.1, max_Δt=90.0)
 
 # Spin up
 for i = 1:100
@@ -74,7 +69,7 @@ wizard.max_change = 1.5
 # Run the model
 while model.clock.time < tf
     update_Δt!(wizard, model)
-    walltime = @elapsed time_step!(model, 10, wizard.Δt)
+    walltime = @elapsed time_step!(model, 100, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
     
     sca(axs); cla()
