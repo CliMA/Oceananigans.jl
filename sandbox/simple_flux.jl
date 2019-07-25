@@ -13,9 +13,9 @@ end
 # Simulation parameters
    N = 32           # Resolution    
    Δ = 1.0          # Grid spacing
-  Fb = 1e-8         # Buoyancy flux
+  Fb = 1e-7         # Buoyancy flux
   Fu = 0.0          # Momentum flux
-  N² = 1e-4         # Initial buoyancy frequency
+  N² = 1e-4         # Initial buoyancy gradient
   tf = day/2        # Final simulation time
 
 # Physical constants
@@ -38,13 +38,13 @@ model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
                        L = (N*Δ, N*Δ, N*Δ),
                      eos = LinearEquationOfState(βT=βT, βS=0.0),
                constants = PlanetaryConstants(f=1e-4, g=g),
-                 #closure = AnisotropicMinimumDissipation(),
-                 closure = ConstantSmagorinsky(),
+                 closure = AnisotropicMinimumDissipation(),
+                 #closure = ConstantSmagorinsky(),
                      bcs = BoundaryConditions(u=ubcs, T=Tbcs))
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = rand(Normal(0, 1)) * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
-T₀(x, y, z) = 20 + dTdz * z #+ dTdz * model.grid.Lz * 1e-3 * Ξ(z)
+T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-3 * Ξ(z)
 S₀(x, y, z) = 1e-9 * Ξ(z)
 u₀(x, y, z) = 1e-9 * Ξ(z)
 
@@ -69,7 +69,7 @@ wizard.max_change = 1.5
 # Run the model
 while model.clock.time < tf
     update_Δt!(wizard, model)
-    walltime = @elapsed time_step!(model, 100, wizard.Δt)
+    walltime = @elapsed time_step!(model, 1, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
     
     sca(axs); cla()
