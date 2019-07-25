@@ -97,7 +97,7 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 1), (3, 1, 1))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
     eos = LinearEquationOfState()
     grav = 1.0
 
@@ -154,7 +154,7 @@ end
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
@@ -201,7 +201,7 @@ function test_smag_divflux_finiteness(FT=Float64)
     arch = CPU()
     closure = ConstantSmagorinsky(FT)
     grid = RegularCartesianGrid(FT, (4, 4, 4), (4, 4, 4))
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
     eos = LinearEquationOfState(FT)
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
     grav = FT(1.0)

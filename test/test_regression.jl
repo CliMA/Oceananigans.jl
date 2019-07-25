@@ -188,10 +188,10 @@ function run_rayleigh_benard_regression_test(arch)
             κ = κ,
           eos = LinearEquationOfState(βT=1., βS=0.),
     constants = PlanetaryConstants(g=1., f=0.),
-          bcs = BoundaryConditions(T=FieldBoundaryConditions(z=ZBoundaryConditions(
+          bcs = BoundaryConditions(T=HorizontallyPeriodicBCs(
                        top = BoundaryCondition(Value, 0.0),
                     bottom = BoundaryCondition(Value, Δb)
-                ))),
+                )),
       forcing = Forcing(FS=FS)
     )
 
