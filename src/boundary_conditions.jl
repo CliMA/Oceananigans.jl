@@ -18,13 +18,15 @@ Construct a boundary condition of `BCType` with `condition`,
 where `BCType` is `Flux` or `Gradient`. `condition` may be a
 number, array, or a function with signature:
 
-    `condition(i, j, grid, t, iteration, u, v, w, T, S) = # function definition`
+    `condition(i, j, grid, t, iteration, U, Φ) = # function definition`
 
 where `i` and `j` are indices along the boundary.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition :: T
 end
+
+bctype(bc::BoundaryCondition{C}) where C = C
 
 # Constructors
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
@@ -108,12 +110,33 @@ function FieldBoundaryConditions(;
     return FieldBoundaryConditions(x, y, z)
 end
 
-"""
-    ModelBoundaryConditions <: FieldVector{nsolution, FieldBoundaryConditions}
 
-Construct a boundary condition type full of default
-`FieldBoundaryConditions` for u, v, w, T, S.
-"""
+function DoublyPeriodicBCs(;  x = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                              y = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Periodic, nothing),
+                                    BoundaryCondition(Periodic, nothing)),
+                              z = CoordinateBoundaryConditions(
+                                    BoundaryCondition(Flux, 0),
+                                    BoundaryCondition(Flux, 0))
+                            )
+    return FieldBoundaryConditions(x, y, z)
+end
+
+function ChannelBCs(; x = CoordinateBoundaryConditions(
+                            BoundaryCondition(Periodic, nothing),
+                            BoundaryCondition(Periodic, nothing)),
+                      y = CoordinateBoundaryConditions(
+                            BoundaryCondition(Flux, 0),
+                            BoundaryCondition(Flux, 0)),
+                      z = CoordinateBoundaryConditions(
+                            BoundaryCondition(Flux, 0),
+                            BoundaryCondition(Flux, 0))
+                    )
+    return FieldBoundaryConditions(x, y, z)
+end
+
 struct ModelBoundaryConditions{UBC, VBC, WBC, TBC, SBC}
     u :: UBC
     v :: VBC
@@ -122,31 +145,44 @@ struct ModelBoundaryConditions{UBC, VBC, WBC, TBC, SBC}
     S :: SBC
 end
 
+# sensible alias
+const BoundaryConditions = ModelBoundaryConditions
+
+"""
+    ModelBoundaryConditions(u=u_boundary_conditions, ...)
+
+Returns model boundary conditions for `u`, `v`, `w`, `T`, and `S`.
+"""
 function ModelBoundaryConditions(;
-    u = FieldBoundaryConditions(),
-    v = FieldBoundaryConditions(),
-    w = FieldBoundaryConditions(),
-    T = FieldBoundaryConditions(),
-    S = FieldBoundaryConditions()
+    u = DoublyPeriodicBCs(),
+    v = DoublyPeriodicBCs(),
+    w = DoublyPeriodicBCs(),
+    T = DoublyPeriodicBCs(),
+    S = DoublyPeriodicBCs()
    )
     return ModelBoundaryConditions(u, v, w, T, S)
 end
 
-ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
-    ModelBoundaryConditions(fld, coord, Val(s), bc)
+function ChannelModelBoundaryConditions(;
+    u = ChannelBCs(),
+    v = ChannelBCs(),
+    w = ChannelBCs(),
+    T = ChannelBCs(),
+    S = ChannelBCs()
+   )
+    return ModelBoundaryConditions(u, v, w, T, S)
+end
 
-ModelBoundaryConditions(fld, coord, ::Val{:bottom}, bc) =
-    ModelBoundaryConditions(fld, coord, Val(:right), bc)
-
-ModelBoundaryConditions(fld, coord, ::Val{:top}, bc) =
-    ModelBoundaryConditions(fld, coord, Val(:left), bc)
+#
+# Some helper functions for constructing boundary conditions
+#
 
 """
     BoundaryConditions(u=FieldBoundaryConditions(), ...)
 
     BoundaryConditions(fld, coord, side, bc)
 
-Return an instance of `ModelBoundaryConditions` with one non-default
+Return an instance of `ModelBoundaryConditions` with one non-doubly-periodic
 boundary condition `bc` on `fld` along coordinate `coord` at `side`.
 """
 function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
@@ -156,47 +192,16 @@ function ModelBoundaryConditions(fld, coord, ::Val{S}, bc) where S
     return modelbcs
 end
 
-# sensible alias
-const BoundaryConditions = ModelBoundaryConditions
+# Alias 'right' and 'left' to 'bottom' and 'top' to clarify setting
+# z boundary conditions.
+ModelBoundaryConditions(fld, coord, s::Symbol, bc) =
+    ModelBoundaryConditions(fld, coord, Val(s), bc)
 
-DoublyPeriodicBCs() = FieldBoundaryConditions(
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Periodic, nothing),
-                              BoundaryCondition(Periodic, nothing)),
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Periodic, nothing),
-                              BoundaryCondition(Periodic, nothing)),
-                          CoordinateBoundaryConditions(
-                              BoundaryCondition(Flux, 0),
-                              BoundaryCondition(Flux, 0)))
+ModelBoundaryConditions(fld, coord, ::Val{:bottom}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:right), bc)
 
-ChannelBCs() = FieldBoundaryConditions(
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Periodic, nothing),
-                       BoundaryCondition(Periodic, nothing)),
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Flux, 0),
-                       BoundaryCondition(Flux, 0)),
-                   CoordinateBoundaryConditions(
-                       BoundaryCondition(Flux, 0),
-                       BoundaryCondition(Flux, 0)))
-
-"""
-    ModelBoundaryConditions()
-
-Return a default set of model boundary conditions. For now, this corresponds to a
-doubly periodic domain, so `Periodic` boundary conditions along the x- and y-dimensions,
-with no-flux boundary conditions at the top and bottom.
-"""
-function ModelBoundaryConditions()
-    bcs = (DoublyPeriodicBCs() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
-end
-
-function ChannelModelBoundaryConditions()
-    bcs = (ChannelBCs() for i = 1:length(solution_fields))
-    return ModelBoundaryConditions(bcs...)
-end
+ModelBoundaryConditions(fld, coord, ::Val{:top}, bc) =
+    ModelBoundaryConditions(fld, coord, Val(:left), bc)
 
 #=
 Notes:
@@ -216,20 +221,21 @@ Notes:
 
     and that
 
-        tendency = ∂ϕ/∂t = Gϕ = - ∇ ⋅ flux
+        tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
 =#
 
 const BC = BoundaryCondition
 const FBCs = FieldBoundaryConditions
 
-# Do nothing in default case. These functions are called in cases where one of the
+# Do nothing in cases not explicitly defined.
+# These functions are called in cases where one of the
 # z-boundaries is set, but not the other.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
 
 # These functions compute vertical fluxes for (A, A, C) quantities. They are not currently used.
-@inline ∇κ∇ϕ_t(κ, ϕt, ϕt₋₁, flux, ΔzC, ΔzF) = (      -flux        - κ*(ϕt - ϕt₋₁)/ΔzC ) / ΔzF
-@inline ∇κ∇ϕ_b(κ, ϕb, ϕb₊₁, flux, ΔzC, ΔzF) = ( κ*(ϕb₊₁ - ϕb)/ΔzC +       flux        ) / ΔzF
+@inline ∇κ∇c_t(κ, ct, ct₋₁, flux, ΔzC, ΔzF) = (      -flux        - κ*(ct - ct₋₁)/ΔzC ) / ΔzF
+@inline ∇κ∇c_b(κ, cb, cb₊₁, flux, ΔzC, ΔzF) = ( κ*(cb₊₁ - cb)/ΔzC +       flux        ) / ΔzF
 
 # Multiple dispatch on the type of boundary condition
 getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
@@ -239,42 +245,42 @@ getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
 Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
 
 """
-    apply_z_top_bc!(top_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
+    apply_z_top_bc!(top_bc, i, j, grid, c, Gc, κ, t, iteration, U, Φ)
 
-Add the part of flux divergence associated with a top boundary condition on ϕ.
-to Gϕ, where the conservation equation for ϕ is ∂ϕ/∂t = Gϕ.
+Add the part of flux divergence associated with a top boundary condition on c.
+to Gc, where the conservation equation for c is ∂c/∂t = Gc.
 If `top_bc.condition` is a function, the function must have the signature
 
-    `top_bc.condition(i, j, grid, t, iteration, u, v, w, T, S)`
+    `top_bc.condition(i, j, grid, t, iteration, U, Φ)`
 
 """
-@inline apply_z_top_bc!(top_flux::BC{<:Flux}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, 1] -= getbc(top_flux, i, j, grid, t, iteration, u, v, w, T, S) / grid.Δz
+@inline apply_z_top_bc!(top_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, 1] -= getbc(top_flux, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
-@inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, 1] += κ * getbc(top_gradient, i, j, grid, t, iteration, u, v, w, T, S) / grid.Δz
+@inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, 1] += κ * getbc(top_gradient, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
-@inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, 1] += 2κ / grid.Δz * (getbc(top_value, i, j, grid, t, iteration, u, v, w, T, S) - ϕ[i, j, 1])
+@inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, 1] += 2κ / grid.Δz * (getbc(top_value, i, j, grid, t, iteration, U, Φ) - c[i, j, 1])
 
 """
-    apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S)
+    apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ, t, iteration, U, Φ)
 
-Add the part of flux divergence associated with a bottom boundary condition on ϕ.
-to Gϕ, where the conservation equation for ϕ is ∂ϕ/∂t = Gϕ.
+Add the part of flux divergence associated with a bottom boundary condition on c.
+to Gc, where the conservation equation for c is ∂c/∂t = Gc.
 If `bottom_bc.condition` is a function, the function must have the signature
 
-    `bottom_bc.condition(i, j, grid, t, iteration, u, v, w, T, S)`
+    `bottom_bc.condition(i, j, grid, t, iteration, U, Φ)`
 
 """
-@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, t, iteration, u, v, w, T, S) / grid.Δz
+@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, t, iteration, u, v, w, T, S) / grid.Δz
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
-@inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, ϕ, Gϕ, κ, t, iteration, u, v, w, T, S) =
-    Gϕ[i, j, grid.Nz] -= 2κ / grid.Δz * (ϕ[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, t, iteration, u, v, w, T, S))
+@inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
+    Gc[i, j, grid.Nz] -= 2κ / grid.Δz * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, t, iteration, U, Φ))
 
 # Do nothing if both left and right boundary conditions are periodic.
 apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
@@ -299,22 +305,28 @@ apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
 apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
     @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By) apply_z_bcs!(args...)
 
-"""
-    apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, u, v, w, T, S)
+get_top_κ(κ::Number, args...) = κ
+get_bottom_κ(κ::Number, args...) = κ
 
-Apply a top and/or bottom boundary condition to variable ϕ. Note that this kernel
+get_top_κ(κ::AbstractArray, i, j, args...) = κ[i, j, 1]
+get_bottom_κ(κ::AbstractArray, i, j, grid, args...) = κ[i, j, grid.Nz]
+
+"""
+    apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, eos, g, t, iteration, U, Φ)
+
+Apply a top and/or bottom boundary condition to variable c. Note that this kernel
 must be launched on the GPU with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz),
 the boundary condition will be applied Bz times!
 """
-function apply_z_bcs!(top_bc, bottom_bc, grid, ϕ, Gϕ, κ, closure, eos, g, t, iteration, u, v, w, T, S)
+function apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, eos, g, t, iteration, U, Φ)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
 
-               κ_top = κ(i, j, 1,       grid, closure, eos, g, u, v, w, T, S)
-            κ_bottom = κ(i, j, grid.Nz, grid, closure, eos, g, u, v, w, T, S)
+            κ_top = get_top_κ(κ, i, j, grid, closure, eos, g, U, Φ)
+            κ_bottom = get_bottom_κ(κ, i, j, grid, closure, eos, g, U, Φ)
 
-               apply_z_top_bc!(top_bc,    i, j, grid, ϕ, Gϕ, κ_top,    t, iteration, u, v, w, T, S)
-            apply_z_bottom_bc!(bottom_bc, i, j, grid, ϕ, Gϕ, κ_bottom, t, iteration, u, v, w, T, S)
+               apply_z_top_bc!(top_bc,    i, j, grid, c, Gc, κ_top, t, iteration, U, Φ)
+            apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ_bottom, t, iteration, U, Φ)
 
         end
     end

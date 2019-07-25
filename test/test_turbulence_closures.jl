@@ -90,19 +90,22 @@ function test_tensor_diffusivity_tuples(T=Float64; ν=T(0.3), κ=T(0.7))
     )
 end
 
-function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=TF(0.7))
-    closure = ConstantIsotropicDiffusivity(TF, κ=κ, ν=ν)
-    grid = RegularCartesianGrid(TF, (3, 1, 1), (3, 1, 1))
+datatuple(args, names) = NamedTuple{names}(a.data for a in args)
+
+function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+    arch = CPU()
+    closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
+    grid = RegularCartesianGrid(FT, (3, 1, 1), (3, 1, 1))
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
     fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
-    g = 1.0
+    grav = 1.0
 
-    arch = CPU()
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -116,49 +119,51 @@ function test_constant_isotropic_diffusivity_fluxdiv(TF=Float64; ν=TF(0.3), κ=
     data(w)[:, 1, 1] .= [0, -3, 0]
     data(T)[:, 1, 1] .= [0, -1, 0]
 
+    U = datatuple((u, v, w), (:u, :v, :w))
+    Φ = datatuple((T, S), (:T, :S))
     fill_halo_regions!(grid, uvwTS_ft...)
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
-    return (∇_κ_∇ϕ(2, 1, 1, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6ν
+    return (   ∇_κ_∇c(2, 1, 1, grid, T.data, closure) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, U...) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, U...) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, U...) == 6ν
             )
 end
 
-datatuple(args...) = Tuple(data(a) for a in args)
+function test_calc_diffusivities(arch, closurename, FT=Float64)
 
-function test_calc_diffusivities(arch, closurename, TF=Float64)
-
-    closure = getproperty(TurbulenceClosures, closurename)(TF)
-    grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+    closure = getproperty(TurbulenceClosures, closurename)(FT)
+    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState(TF)
+    eos = LinearEquationOfState(FT)
     grav = 1.0
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T = CellField(TF, arch, grid)
-    S = CellField(TF, arch, grid)
-    ϕ = datatuple(u, v, w, T, S)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T = CellField(FT, arch, grid)
+    S = CellField(FT, arch, grid)
 
-    calc_diffusivities!(diffusivities, grid, closure, eos, grav, ϕ...)
+    U = datatuple((u, v, w), (:u, :v, :w))
+    Φ = datatuple((T, S), (:T, :S))
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
     return true
 end
 
-function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.7), νv=TF(0.1), κv=TF(0.5))
-    closure = ConstantAnisotropicDiffusivity(TF, κh=κh, νh=νh, κv=κv, νv=νv)
-    grid = RegularCartesianGrid(TF, (3, 1, 3), (3, 1, 3))
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
+    closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
+    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
     fbcs = DoublyPeriodicBCs()
     eos = LinearEquationOfState()
     g = 1.0
 
     arch = CPU()
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -185,26 +190,37 @@ function test_anisotropic_diffusivity_fluxdiv(TF=Float64; νh=TF(0.3), κh=TF(0.
 
     fill_halo_regions!(grid, uvwTS_ft...)
 
-    return (∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
+    return (∇_κ_∇c(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2νh + 4νv &&
             ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4νh + 6νv &&
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6νh + 8νv
             )
 end
 
-function test_smag_divflux_finiteness(TF=Float64)
-    closure = ConstantSmagorinsky(TF)
-    grid = RegularCartesianGrid(TF, (3, 3, 3), (3, 3, 3))
-    fbcs = DoublyPeriodicBCs()
-    eos = LinearEquationOfState()
-    g = 1.0
-
+function test_smag_divflux_finiteness(FT=Float64)
     arch = CPU()
-    u = FaceFieldX(TF, arch, grid)
-    v = FaceFieldY(TF, arch, grid)
-    w = FaceFieldZ(TF, arch, grid)
-    T =  CellField(TF, arch, grid)
-    S =  CellField(TF, arch, grid)
+    closure = ConstantSmagorinsky(FT)
+    grid = RegularCartesianGrid(FT, (4, 4, 4), (4, 4, 4))
+    fbcs = DoublyPeriodicBCs()
+    eos = LinearEquationOfState(FT)
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
+    grav = FT(1.0)
+
+    u = FaceFieldX(FT, arch, grid)
+    v = FaceFieldY(FT, arch, grid)
+    w = FaceFieldZ(FT, arch, grid)
+    T =  CellField(FT, arch, grid)
+    S =  CellField(FT, arch, grid)
+
+    underlying_data(u) .= 0
+    underlying_data(v) .= 0
+    underlying_data(w) .= 0
+    underlying_data(T) .= eos.T₀
+    underlying_data(S) .= eos.S₀
+
+    U = datatuple((u, v, w), (:u, :v, :w))
+    Φ = datatuple((T, S), (:T, :S))
+    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
     u_ft = (:u, fbcs, u.data)
     v_ft = (:v, fbcs, v.data)
@@ -215,11 +231,10 @@ function test_smag_divflux_finiteness(TF=Float64)
 
     fill_halo_regions!(grid, uvwTS_ft...)
 
-    return (
-        isfinite(∇_κ_∇ϕ(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data)) &&
-        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data))
+    return (isfinite(∇_κ_∇c(2, 1, 2, grid, T.data, closure, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
+        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities))
         )
 end
 

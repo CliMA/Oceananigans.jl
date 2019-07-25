@@ -148,3 +148,27 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ, :EdgeField)
         end
     end
 end
+
+xnodes(ϕ::Field) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::Field) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
+znodes(ϕ::Field) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
+
+xnodes(ϕ::FaceFieldX) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::FaceFieldY) = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
+znodes(ϕ::FaceFieldZ) = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
+
+nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
+
+zerofunk(args...) = 0
+
+function set_ic!(model; ics...)
+    for (fld, ic) in ics
+        if fld ∈ (:u, :v, :w)
+            ϕ = getproperty(model.velocities, fld)
+        else
+            ϕ = getproperty(model.tracers, fld)
+        end
+        data(ϕ) .= ic.(nodes(ϕ)...)
+    end
+    return nothing
+end

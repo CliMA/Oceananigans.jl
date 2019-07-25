@@ -12,7 +12,7 @@ function test_z_boundary_condition_simple(arch, T, field_name, bctype, bc, Nx, N
     typeof(model) <: Model
 end
 
-function test_z_boundary_condition_top_bottom_alias(arch, TF, field_name)
+function test_z_boundary_condition_top_bottom_alias(arch, FT, field_name)
     N = 16
     bcval = 1.0
     top_bc = BoundaryCondition(Value, bcval)
@@ -23,7 +23,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, TF, field_name)
 
     modelbcs = BoundaryConditions(; Dict((field_name => fieldbcs))...)
 
-    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=TF, bcs=modelbcs)
+    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT, bcs=modelbcs)
 
     bcs = getfield(model.boundary_conditions, field_name)
 
@@ -53,15 +53,15 @@ function test_z_boundary_condition_array(arch, T, field_name)
     bcs.z.top[1, 2] == bcarray[1, 2]
 end
 
-function test_flux_budget(arch, TF, field_name)
+function test_flux_budget(arch, FT, field_name)
     N, κ, Lz = 16, 1, 0.7
 
-    bottom_flux = TF(0.3)
+    bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
     modelbcs = BoundaryConditions(field_name, :z, :bottom, flux_bc)
 
     model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ,
-                  arch=arch, float_type=TF, eos=LinearEquationOfState(βS=0, βT=0),
+                  arch=arch, float_type=FT, eos=LinearEquationOfState(βS=0, βT=0),
                   bcs=modelbcs)
 
     if field_name ∈ (:u, :v, :w)
@@ -93,22 +93,22 @@ end
 
     Nx = Ny = 16
     for arch in archs
-        for TF in float_types
+        for FT in float_types
             for fld in (:u, :v, :T, :S)
                 for bctype in (Gradient, Flux, Value)
 
-                    arraybc = rand(TF, Nx, Ny)
+                    arraybc = rand(FT, Nx, Ny)
                     if arch == GPU()
                         arraybc = CuArray(arraybc)
                     end
 
-                    for bc in (TF(0.6), arraybc, funbc)
-                        @test test_z_boundary_condition_simple(arch, TF, fld, bctype, bc, Nx, Ny)
+                    for bc in (FT(0.6), arraybc, funbc)
+                        @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
                     end
                 end
-                @test test_z_boundary_condition_top_bottom_alias(arch, TF, fld)
-                @test test_z_boundary_condition_array(arch, TF, fld)
-                @test test_flux_budget(arch, TF, fld)
+                @test test_z_boundary_condition_top_bottom_alias(arch, FT, fld)
+                @test test_z_boundary_condition_array(arch, FT, fld)
+                @test test_flux_budget(arch, FT, fld)
             end
         end
     end

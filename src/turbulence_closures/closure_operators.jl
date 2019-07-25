@@ -10,9 +10,9 @@
     return @inbounds (u[i⁺, j, k] - u[i, j, k]) / grid.Δx
 end
 
-@inline function ∂x_faa(i, j, k, grid, ϕ::AbstractArray)
+@inline function ∂x_faa(i, j, k, grid, c::AbstractArray)
     i⁻ = decmod1(i, grid.Nx)
-    return @inbounds (ϕ[i, j, k] - ϕ[i⁻, j, k]) / grid.Δx
+    return @inbounds (c[i, j, k] - c[i⁻, j, k]) / grid.Δx
 end
 
 @inline function ∂y_aca(i, j, k, grid, v::AbstractArray)
@@ -20,9 +20,9 @@ end
     return @inbounds (v[i, j⁺, k] - v[i, j, k]) / grid.Δy
 end
 
-@inline function ∂y_afa(i, j, k, grid, ϕ::AbstractArray)
+@inline function ∂y_afa(i, j, k, grid, c::AbstractArray)
     j⁻ = decmod1(j, grid.Ny)
-    return @inbounds (ϕ[i, j, k] - ϕ[i, j⁻, k]) / grid.Δy
+    return @inbounds (c[i, j, k] - c[i, j⁻, k]) / grid.Δy
 end
 
 @inline function ∂z_aac(i, j, k, grid, w::AbstractArray)
@@ -33,11 +33,11 @@ end
     end
 end
 
-@inline function ∂z_aaf(i, j, k, grid::Grid{T}, ϕ::AbstractArray) where T
+@inline function ∂z_aaf(i, j, k, grid::Grid{T}, c::AbstractArray) where T
     if k == 1
         return -zero(T) # no-gradient condition
     else
-        return @inbounds (ϕ[i, j, k-1] - ϕ[i, j, k]) / grid.Δz
+        return @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
     end
 end
 
@@ -54,10 +54,10 @@ end
 #   ↑             ↑             ↑
 #  i-1            i            i+1
 #
-# As a result the interpolation of a quantity ϕᵢ from a cell i to face i
+# As a result the interpolation of a quantity cᵢ from a cell i to face i
 # (this operation is denoted "▶x_faa" in the code below) is
 #
-# (▶ϕ)ᵢ = (ϕᵢ + ϕᵢ₋₁) / 2 .
+# (▶c)ᵢ = (cᵢ + cᵢ₋₁) / 2 .
 #
 # Conversely, the interpolation of a quantity uᵢ from face i to cell i is given by
 #
@@ -66,7 +66,7 @@ end
 # Derivative operators are defined similarly. Using the symbol "∂" to denote
 # differentiation, we have
 #
-# (∂ϕ)ᵢ = (ϕᵢ - ϕᵢ₋₁) / Δ
+# (∂c)ᵢ = (cᵢ - cᵢ₋₁) / Δ
 #
 # for the differentation of a CellField ending on face i, and
 #
@@ -174,13 +174,13 @@ end
 # Double differentiation
 #
 
-@inline ∂x²_caa(i, j, k, grid, ϕ) = ∂x_caa(i, j, k, grid, ∂x_faa, ϕ)
+@inline ∂x²_caa(i, j, k, grid, c) = ∂x_caa(i, j, k, grid, ∂x_faa, c)
 @inline ∂x²_faa(i, j, k, grid, u) = ∂x_faa(i, j, k, grid, ∂x_caa, u)
 
-@inline ∂y²_aca(i, j, k, grid, ϕ) = ∂y_aca(i, j, k, grid, ∂y_afa, ϕ)
+@inline ∂y²_aca(i, j, k, grid, c) = ∂y_aca(i, j, k, grid, ∂y_afa, c)
 @inline ∂y²_afa(i, j, k, grid, v) = ∂y_afa(i, j, k, grid, ∂y_aca, v)
 
-@inline ∂z²_aac(i, j, k, grid, ϕ) = ∂z_aac(i, j, k, grid, ∂z_aaf, ϕ)
+@inline ∂z²_aac(i, j, k, grid, c) = ∂z_aac(i, j, k, grid, ∂z_aaf, c)
 @inline ∂z²_aaf(i, j, k, grid, w) = ∂z_aaf(i, j, k, grid, ∂z_aac, w)
 
 #
@@ -564,66 +564,66 @@ at index `i, j, k`.
     2 * ∂z_aaf(i, j, k, grid, ν_Σᵢⱼ, ν_ccc, Σ₃₃, closure, eos, grav, u, v, w, T, S)
 
 """
-    κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
+    κ_∂x_c(i, j, k, grid, c, κ, closure, eos, g, u, v, w, T, S)
 
-Return `κ ∂x ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂x c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+@inline function κ_∂x_c(i, j, k, grid, c, κ, closure, args...)
     κ = ▶x_faa(i, j, k, grid, κ, closure, args...)
-    ∂x_ϕ = ∂x_faa(i, j, k, grid, ϕ)
-    return κ * ∂x_ϕ
+    ∂x_c = ∂x_faa(i, j, k, grid, c)
+    return κ * ∂x_c
 end
 
 """
-    κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
+    κ_∂y_c(i, j, k, grid, c, κ, closure, eos, g, u, v, w, T, S)
 
-Return `κ ∂y ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂y c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+@inline function κ_∂y_c(i, j, k, grid, c, κ, closure, args...)
     κ = ▶y_afa(i, j, k, grid, κ, closure, args...)
-    ∂y_ϕ = ∂y_afa(i, j, k, grid, ϕ)
-    return κ * ∂y_ϕ
+    ∂y_c = ∂y_afa(i, j, k, grid, c)
+    return κ * ∂y_c
 end
 
 """
-    κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, eos, g, u, v, w, T, S)
+    κ_∂z_c(i, j, k, grid, c, κ, closure, eos, g, u, v, w, T, S)
 
-Return `κ ∂z ϕ`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `ϕ` is an array of scalar
+Return `κ ∂z c`, where `κ` is a function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_ϕ(i, j, k, grid, ϕ, κ, closure, args...)
+@inline function κ_∂z_c(i, j, k, grid, c, κ, closure, args...)
     κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
-    ∂z_ϕ = ∂z_aaf(i, j, k, grid, ϕ)
-    return κ * ∂z_ϕ
+    ∂z_c = ∂z_aaf(i, j, k, grid, c)
+    return κ * ∂z_c
 end
 
 """
-    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, eos, g, u, v, w, T, S)
+    ∇_κ_∇_c(i, j, k, grid, c, closure, eos, g, u, v, w, T, S)
 
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
-`closure`, where `ϕ` is an array of scalar data located at cell centers.
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, eos, g, u, v, w, T, S) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕ, κ_ccc, closure, eos, g, u, v, w, T, S)
-    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕ, κ_ccc, closure, eos, g, u, v, w, T, S)
-    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕ, κ_ccc, closure, eos, g, u, v, w, T, S)
+@inline ∇_κ_∇c(i, j, k, grid, c, closure::IsotropicDiffusivity, eos, g, u, v, w, T, S) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_c, c, κ_ccc, closure, eos, g, u, v, w, T, S)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κ_ccc, closure, eos, g, u, v, w, T, S)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κ_ccc, closure, eos, g, u, v, w, T, S)
     )
 
 """
-    ∇_κ_∇_ϕ(i, j, k, grid, ϕ, closure, diffusivities)
+    ∇_κ_∇_c(i, j, k, grid, c, closure, diffusivities)
 
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ ϕ)` for the turbulence
-`closure`, where `ϕ` is an array of scalar data located at cell centers.
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇ϕ(i, j, k, grid, ϕ, closure::IsotropicDiffusivity, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_ϕ, ϕ, diffusivities.κₑ, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_ϕ, ϕ, diffusivities.κₑ, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_ϕ, ϕ, diffusivities.κₑ, closure)
+@inline ∇_κ_∇c(i, j, k, grid, c, closure::IsotropicDiffusivity, diffusivities) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_c, c, diffusivities.κₑ, closure)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, diffusivities.κₑ, closure)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, diffusivities.κₑ, closure)
 )
 
 """

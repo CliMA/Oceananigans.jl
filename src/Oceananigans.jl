@@ -39,6 +39,11 @@ export
     ardata_view,
     underlying_data,
     set!,
+    xnodes,
+    ynodes,
+    znodes,
+    nodes,
+    set_ic!,
 
     # FieldSets (collections of related fields)
     FieldSet,
@@ -56,7 +61,7 @@ export
     buoyancy,
 
     # Boundary conditions
-    BoundaryCondition,    
+    BoundaryCondition,
     Periodic,
     Flux,
     Gradient,
@@ -114,7 +119,11 @@ export
     prettytime,
 
     # Turbulence closures
-    TurbulenceClosures
+    TurbulenceClosures,
+    ConstantIsotropicDiffusivity,
+    ConstantAnisotropicDiffusivity,
+    ConstantSmagorinsky,
+    AnisotropicMinimumDissipation
 
 # Standard library modules
 using
@@ -191,14 +200,13 @@ include("fieldsets.jl")
 include("forcing.jl")
 
 include("operators/operators.jl")
-include("closures/turbulence_closures.jl")
+include("turbulence_closures/TurbulenceClosures.jl")
 
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
-include("time_step_utils.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
