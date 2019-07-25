@@ -71,7 +71,7 @@ export
     FieldBoundaryConditions,
     ModelBoundaryConditions,
     BoundaryConditions,
-    DoublyPeriodicBCs,
+    HorizontallyPeriodicBCs,
     ChannelBCs,
     getbc,
     setbc!,

@@ -63,7 +63,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)

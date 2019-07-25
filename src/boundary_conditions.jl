@@ -110,30 +110,33 @@ function FieldBoundaryConditions(;
     return FieldBoundaryConditions(x, y, z)
 end
 
+function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
+                                   bottom = BoundaryCondition(Flux, 0)
+                                )
 
-function DoublyPeriodicBCs(;  x = CoordinateBoundaryConditions(
-                                    BoundaryCondition(Periodic, nothing),
-                                    BoundaryCondition(Periodic, nothing)),
-                              y = CoordinateBoundaryConditions(
-                                    BoundaryCondition(Periodic, nothing),
-                                    BoundaryCondition(Periodic, nothing)),
-                              z = CoordinateBoundaryConditions(
-                                    BoundaryCondition(Flux, 0),
-                                    BoundaryCondition(Flux, 0))
-                            )
+    x = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
+                                     BoundaryCondition(Periodic, nothing))
+
+    y = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
+                                     BoundaryCondition(Periodic, nothing))
+
+    z = CoordinateBoundaryConditions(top, bottom)
+
     return FieldBoundaryConditions(x, y, z)
 end
 
-function ChannelBCs(; x = CoordinateBoundaryConditions(
-                            BoundaryCondition(Periodic, nothing),
-                            BoundaryCondition(Periodic, nothing)),
-                      y = CoordinateBoundaryConditions(
-                            BoundaryCondition(Flux, 0),
-                            BoundaryCondition(Flux, 0)),
-                      z = CoordinateBoundaryConditions(
-                            BoundaryCondition(Flux, 0),
-                            BoundaryCondition(Flux, 0))
+function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
+                       south = BoundaryCondition(Flux, 0),
+                         top = BoundaryCondition(Flux, 0),
+                      bottom = BoundaryCondition(Flux, 0)
                     )
+
+    x = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
+                                     BoundaryCondition(Periodic, nothing))
+
+    y = CoordinateBoundaryConditions(south, north)
+    z = CoordinateBoundaryConditions(top, bottom)
+
     return FieldBoundaryConditions(x, y, z)
 end
 
@@ -154,11 +157,11 @@ const BoundaryConditions = ModelBoundaryConditions
 Returns model boundary conditions for `u`, `v`, `w`, `T`, and `S`.
 """
 function ModelBoundaryConditions(;
-    u = DoublyPeriodicBCs(),
-    v = DoublyPeriodicBCs(),
-    w = DoublyPeriodicBCs(),
-    T = DoublyPeriodicBCs(),
-    S = DoublyPeriodicBCs()
+    u = HorizontallyPeriodicBCs(),
+    v = HorizontallyPeriodicBCs(),
+    w = HorizontallyPeriodicBCs(),
+    T = HorizontallyPeriodicBCs(),
+    S = HorizontallyPeriodicBCs()
    )
     return ModelBoundaryConditions(u, v, w, T, S)
 end
