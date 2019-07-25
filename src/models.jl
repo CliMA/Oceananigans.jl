@@ -2,25 +2,27 @@ using .TurbulenceClosures
 
 mutable struct Model{A<:Architecture, Grid, TC, BCS<:ModelBoundaryConditions, T, F,
                     PC<:PlanetaryConstants, PS, VC<:VelocityFields,
-                    EOS<:EquationOfState, TG, TGp,
+                    EOS<:EquationOfState, TG, D,
                     Tracers<:TracerFields, PF<:PressureFields}
-              arch :: A                  # Computer `Architecture` on which `Model` is run.
-              grid :: Grid               # Grid of physical points on which `Model` is solved.
-             clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`.
-               eos :: EOS                # Defines relationship between temperature, salinity, and
-                                         # buoyancy in the Boussinesq vertical momentum equation.
-         constants :: PC                 # Set of physical constants, inc. gravitational acceleration.
-        velocities :: VC                 # Container for velocity fields `u`, `v`, and `w`.
-           tracers :: Tracers            # Container for tracer fields.
-         pressures :: PF                 # Container for hydrostatic and nonhydrostatic pressure.
-           forcing :: F                  # Container for forcing functions defined by the user
-           closure :: TC                 # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: BCS           # Container for 3d bcs on all fields.
-                 G :: TG                 # Container for right-hand-side of PDE that governs `Model`
-                Gp :: TGp                # RHS at previous time-step (for Adams-Bashforth time integration)
-    poisson_solver :: PS                 # ::PoissonSolver or ::PoissonSolverGPU
+
+              arch :: A                      # Computer `Architecture` on which `Model` is run.
+              grid :: Grid                   # Grid of physical points on which `Model` is solved.
+             clock :: Clock{T}               # Tracks iteration number and simulation time of `Model`.
+               eos :: EOS                    # Relationship between temperature, salinity, and buoyancy
+         constants :: PC                     # Set of physical constants, inc. gravitational acceleration.
+        velocities :: VC                     # Container for velocity fields `u`, `v`, and `w`.
+           tracers :: Tracers                # Container for tracer fields.
+         pressures :: PF                     # Container for hydrostatic and nonhydrostatic pressure.
+           forcing :: F                      # Container for forcing functions defined by the user
+           closure :: TC                     # Diffusive 'turbulence closure' for all model fields
+    boundary_conditions :: BCS               # Container for 3d bcs on all fields.
+                 G :: TG                     # Container for right-hand-side of PDE that governs `Model`
+                Gp :: TG                     # RHS at previous time-step (for Adams-Bashforth time integration)
+    poisson_solver :: PS                     # Poisson Solver
+     diffusivities :: D                      # Container for turbulent diffusivities
     output_writers :: Array{OutputWriter, 1} # Objects that write data to disk.
        diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation.
+
 end
 
 
@@ -60,21 +62,22 @@ function Model(;
     arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
     # Initialize fields.
-      velocities = VelocityFields(arch, grid)
-         tracers = TracerFields(arch, grid)
-       pressures = PressureFields(arch, grid)
-               G = SourceTerms(arch, grid)
-              Gp = SourceTerms(arch, grid)
+       velocities = VelocityFields(arch, grid)
+          tracers = TracerFields(arch, grid)
+        pressures = PressureFields(arch, grid)
+                G = SourceTerms(arch, grid)
+               Gp = SourceTerms(arch, grid)
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
 
     # Initialize Poisson solver.
-    poisson_solver = PoissonSolver(arch, PPN(), grid)
+    poisson_solver = PoissonSolver(arch, PoissonBCs(bcs), grid)
 
     # Set the default initial condition
     initialize_with_defaults!(eos, tracers, velocities, G, Gp)
 
     Model(arch, grid, clock, eos, constants,
           velocities, tracers, pressures, forcing, closure, boundary_conditions,
-          G, Gp, poisson_solver, output_writers, diagnostics)
+          G, Gp, poisson_solver, diffusivities, output_writers, diagnostics)
 end
 
 """
@@ -85,47 +88,9 @@ end
 
     kwargs are passed to the regular `Model` constructor.
 """
-function ChannelModel(;
-             N,
-             L,
-          arch = CPU(),
-    float_type = Float64,
-          grid = RegularCartesianGrid(float_type, N, L),
-             ν = 1.05e-6, νh=ν, νv=ν,
-             κ = 1.43e-7, κh=κ, κv=κ,
-       closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
-    start_time = 0,
-     iteration = 0,
-         clock = Clock{float_type}(start_time, iteration),
-     constants = Earth(float_type),
-           eos = LinearEquationOfState(float_type),
-       forcing = Forcing(nothing, nothing, nothing, nothing, nothing),
-           bcs = ChannelModelBoundaryConditions(),
-    boundary_conditions = bcs,
-    output_writers = OutputWriter[],
-       diagnostics = Diagnostic[]
-    )
-
-    arch == GPU() && !HAVE_CUDA && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-
-    # Initialize fields.
-      velocities = VelocityFields(arch, grid)
-         tracers = TracerFields(arch, grid)
-       pressures = PressureFields(arch, grid)
-               G = SourceTerms(arch, grid)
-              Gp = SourceTerms(arch, grid)
-
-    # Initialize Poisson solver.
-    poisson_solver = PoissonSolver(arch, PNN(), grid)
-
-    # Set the default initial condition
-    initialize_with_defaults!(eos, tracers, velocities, G, Gp)
-
-    Model(arch, grid, clock, eos, constants,
-          velocities, tracers, pressures, forcing, closure, boundary_conditions,
-          G, Gp, poisson_solver, output_writers, diagnostics)
-end
-
+ChannelModel(; bcs=ChannelModelBoundaryConditions(), kwargs...) = 
+    Model(; bcs=bcs, kwargs...)
+          
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)

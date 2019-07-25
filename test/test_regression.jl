@@ -95,7 +95,7 @@ function run_deep_convection_regression_tests()
     Lx, Ly, Lz = 2000, 2000, 1000
     Δt = 20
 
-    function cooling_disk(grid, u, v, w, T, S, i, j, k)
+    function cooling_disk(grid, U, Φ, i, j, k)
         if k == 1
             x = i*grid.Δx
             y = j*grid.Δy
@@ -178,7 +178,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     # Force salinity as a passive tracer (βS=0)
     S★(x, z) = exp(4z) * sin(2π/Lx * x)
-    FS(grid, u, v, w, T, S, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - S[i, j, k])
+    FS(grid, U, Φ, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
 
     model = Model(
          arch = arch,
