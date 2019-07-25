@@ -10,37 +10,44 @@ function terse_message(model, walltime, Δt)
        )
 end
 
-   N = 64
-   Δ = 1.0
-  Fb = 1e-8
-  Fu = 0.0
-  N² = 1e-4
-  tf = 4 * 3600
+# Simulation parameters
+   N = 64           # Resolution    
+   Δ = 1.0          # Grid spacing
+  Fb = 1e-8         # Buoyancy flux
+   τ = 0.0          # Momentum flux
+  N² = 1e-4         # Initial buoyancy frequency
+  tf = day/2        # Final simulation time
 
-  βT = 2e-4
-   g = 9.81
-  Fθ = Fb / (g*βT)
-dTdz = N² / (g*βT)
+# Physical constants
+  βT = 2e-4         # Thermal expansion coefficient
+  βS = 8e-4         # Saline contraction coefficient
+ T₀₀ = 298.15       # Reference temperature
+ S₀₀ = 35.0         # Reference salinity
+  ρ₀ = 1035.0       # Reference density
+   g = 9.81         # Gravitational acceleration
+  Fθ = Fb / (g*βT)  # Temperature flux
+  Fu = τ / ρ₀       # Velocity flux
+dTdz = N² / (g*βT)  # Initial temperature gradient
 
-# Instantiate a model
-Tbcs = FieldBoundaryConditions(z=ZBoundaryConditions(
+# Create boundary conditions
+Tbcs = HorizontallyPeriodicBCs(
     top    = BoundaryCondition(Flux, Fθ),
-    bottom = BoundaryCondition(Gradient, dTdz) ))
+    bottom = BoundaryCondition(Gradient, dTdz) 
+                              )
 
-ubcs = FieldBoundaryConditions(z=ZBoundaryConditions(
-    top    = BoundaryCondition(Flux, Fu)
-   ))
+ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 
-model = Model(      arch = CPU(), # GPU(),
+# Instantiate the model
+model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
                        N = (N, 4, N),
                        L = (N*Δ, N*Δ, N*Δ),
-                     eos = LinearEquationOfState(βT=βT, βS=0.0),
+                     eos = LinearEquationOfState(ρ₀=ρ₀, βT=βT, βS=βS, T₀=T₀₀, S₀=S₀₀),
                constants = PlanetaryConstants(f=1e-4, g=g),
                  closure = AnisotropicMinimumDissipation(),
                 #closure = ConstantSmagorinsky(),
                      bcs = BoundaryConditions(u=ubcs, T=Tbcs))
 
-# Set initial condition
+# Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = rand(Normal(0, 1)) * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-3 * Ξ(z)
 S₀(x, y, z) = 1e-6 * Ξ(z)
@@ -64,7 +71,7 @@ end
 wizard.cfl = 0.2
 wizard.max_change = 1.5
 
-# Run the model (1000 steps with Δt = 1.0)
+# Run the model
 while model.clock.time < tf
     update_Δt!(wizard, model)
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
