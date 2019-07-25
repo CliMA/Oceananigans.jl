@@ -25,7 +25,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
 
     data(field) .= rand(FT, Nx, Ny, Nz)
     fill_halo_regions!(grid, (:u, fbcs, field.data))
@@ -44,7 +44,7 @@ function multiple_halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
     field1 = CellField(FT, arch, grid)
     field2 = FaceFieldX(FT, arch, grid)
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
 
     data(field1) .= rand(FT, Nx, Ny, Nz)
     data(field2) .= rand(FT, Nx, Ny, Nz)

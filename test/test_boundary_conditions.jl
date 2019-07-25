@@ -18,9 +18,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, field_name)
     top_bc = BoundaryCondition(Value, bcval)
     bottom_bc = BoundaryCondition(Value, -bcval)
 
-    fieldbcs = FieldBoundaryConditions(z=ZBoundaryConditions(
-                    top=top_bc, bottom=bottom_bc))
-
+    fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
     modelbcs = BoundaryConditions(; Dict((field_name => fieldbcs))...)
 
     model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT, bcs=modelbcs)

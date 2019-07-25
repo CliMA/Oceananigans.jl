@@ -27,7 +27,7 @@ end
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(CPU(), PPN(), grid)
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
 
     RHS = CellField(FT, CPU(), grid)
     data(RHS) .= rand(Nx, Ny, Nz)
@@ -83,7 +83,7 @@ end
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
     solver = PoissonSolver(GPU(), PPN(), grid)
-    fbcs = DoublyPeriodicBCs()
+    fbcs = HorizontallyPeriodicBCs()
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
