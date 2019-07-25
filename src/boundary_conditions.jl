@@ -55,6 +55,10 @@ function CoordinateBoundaryConditions(;
     return CoordinateBoundaryConditions(left, right)
 end
 
+PeriodicBoundaryConditions() =
+    CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
+                                 BoundaryCondition(Periodic, nothing))
+
 """
     ZBoundaryConditions(top=BoundaryCondition(Periodic, nothing),
                         bottom=BoundaryCondition(Periodic, nothing))
@@ -114,12 +118,8 @@ function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
                                    bottom = BoundaryCondition(Flux, 0)
                                 )
 
-    x = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
-                                     BoundaryCondition(Periodic, nothing))
-
-    y = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
-                                     BoundaryCondition(Periodic, nothing))
-
+    x = PeriodicBoundaryConditions()
+    y = PeriodicBoundaryConditions()
     z = CoordinateBoundaryConditions(top, bottom)
 
     return FieldBoundaryConditions(x, y, z)
@@ -131,9 +131,7 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
                       bottom = BoundaryCondition(Flux, 0)
                     )
 
-    x = CoordinateBoundaryConditions(BoundaryCondition(Periodic, nothing),
-                                     BoundaryCondition(Periodic, nothing))
-
+    x = PeriodicBoundaryConditions()
     y = CoordinateBoundaryConditions(south, north)
     z = CoordinateBoundaryConditions(top, bottom)
 
