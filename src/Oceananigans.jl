@@ -14,10 +14,6 @@ export
     GPU,
     device,
 
-    minute,
-    hour,
-    day,
-
     # Planetary Constants
     ConstantsCollection,
     PlanetaryConstants,
@@ -25,6 +21,9 @@ export
     EarthStationary,
     Europa,
     Enceladus,
+    minute,
+    hour,
+    day,
 
     # Grids
     Grid,
@@ -194,11 +193,6 @@ abstract type FieldSet end
 abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type PoissonSolver end
-
-# Some useful constants
-const minute = 60.0
-const hour = 60minute
-const day = 24hour
 
 include("utils.jl")
 
