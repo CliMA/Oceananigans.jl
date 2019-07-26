@@ -10,43 +10,48 @@ function terse_message(model, walltime, Δt)
        )
 end
 
+# Parameters from Van Roekel et al (JAMES, 2018)
+parameters = Dict(
+    :free_convection => Dict(:Fb=>3.39e-8, :Fu=>0.0,     :f=>1e-4, :N²=>1.96e-5),
+    :wind_stress     => Dict(:Fb=>0.0,     :Fu=>9.66e-5, :f=>0.0,  :N²=>9.81e-5)
+   )
+
 # Simulation parameters
-   N = 32           # Resolution    
-   Δ = 1.0          # Grid spacing
-  Fb = 1e-7         # Buoyancy flux
-  Fu = 0.0          # Momentum flux
-  N² = 1e-4         # Initial buoyancy gradient
-  tf = day/2        # Final simulation time
+case = :wind_stress
+   N = 128                      # Resolution    
+   Δ = 0.5                      # Grid spacing
+  tf = day/2                    # Final simulation time
+  N² = parameters[case][:N²]
+  Fb = parameters[case][:Fb]
+  Fu = parameters[case][:Fu]
+   f = parameters[case][:f]
 
 # Physical constants
-  βT = 2e-4         # Thermal expansion coefficient
-   g = 9.81         # Gravitational acceleration
-  Fθ = Fb / (g*βT)  # Temperature flux
-dTdz = N² / (g*βT)  # Initial temperature gradient
+  βT = 2e-4                     # Thermal expansion coefficient
+   g = 9.81                     # Gravitational acceleration
+  Fθ = Fb / (g*βT)              # Temperature flux
+dTdz = N² / (g*βT)              # Initial temperature gradient
 
 # Create boundary conditions
-Tbcs = HorizontallyPeriodicBCs(
-    top    = BoundaryCondition(Flux, Fθ),
-    bottom = BoundaryCondition(Gradient, dTdz) 
-                              )
-
-ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
+ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Fu))
+Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Fθ),
+                                bottom = BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
 model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
                        N = (N, 4, N),
                        L = (N*Δ, N*Δ, N*Δ),
                      eos = LinearEquationOfState(βT=βT, βS=0.0),
-               constants = PlanetaryConstants(f=1e-4, g=g),
+               constants = PlanetaryConstants(f=f, g=g),
                  closure = AnisotropicMinimumDissipation(),
                  #closure = ConstantSmagorinsky(),
                      bcs = BoundaryConditions(u=ubcs, T=Tbcs))
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = rand(Normal(0, 1)) * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
+u₀(x, y, z) = 1e-9 * Ξ(z)
 T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-3 * Ξ(z)
 S₀(x, y, z) = 1e-9 * Ξ(z)
-u₀(x, y, z) = 1e-9 * Ξ(z)
 
 set_ic!(model, u=u₀, T=T₀, S=S₀)
 
@@ -69,7 +74,7 @@ wizard.max_change = 1.5
 # Run the model
 while model.clock.time < tf
     update_Δt!(wizard, model)
-    walltime = @elapsed time_step!(model, 1, wizard.Δt)
+    walltime = @elapsed time_step!(model, 100, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
     
     sca(axs); cla()
