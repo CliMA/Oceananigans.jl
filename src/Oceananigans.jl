@@ -133,7 +133,8 @@ export
 using
     Statistics,
     LinearAlgebra,
-    Printf
+    Printf,
+    FileIO
 
 # Third-party modules
 using
@@ -141,7 +142,7 @@ using
     FFTW,
     StaticArrays,
     OffsetArrays,
-    JLD,
+    JLD2,
     NetCDF
 
 import
