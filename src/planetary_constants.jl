@@ -1,3 +1,8 @@
+# Some useful constants
+const minute = 60.0
+const hour = 60minute
+const day = 24hour
+
 struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
     Ω::T  # Rotation rate of the planet [rad/s].
     f::T  # Nominal value for the Coriolis frequency [rad/s].
