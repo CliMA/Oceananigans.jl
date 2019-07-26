@@ -18,7 +18,7 @@ parameters = Dict(
 
 # Simulation parameters
 case = :wind_stress
-   N = 128                      # Resolution    
+   N = 32                       # Resolution    
    Δ = 0.5                      # Grid spacing
   tf = day/2                    # Final simulation time
   N² = parameters[case][:N²]
@@ -39,7 +39,7 @@ Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Fθ),
 
 # Instantiate the model
 model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
-                       N = (N, 4, N),
+                       N = (N, N, 2N),
                        L = (N*Δ, N*Δ, N*Δ),
                      eos = LinearEquationOfState(βT=βT, βS=0.0),
                constants = PlanetaryConstants(f=f, g=g),

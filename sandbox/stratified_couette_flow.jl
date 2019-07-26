@@ -16,7 +16,7 @@ end
 
  N = 16
 Pr = 0.7
-Re = 10^4
+Re = 4250
 Ri = 0.01
  L = 1.0
 ΔU = 1.0
@@ -31,28 +31,22 @@ Ri*Re² = Ra = Δb * L³ / νκ = [m⁴/s²] / [m⁴/s²]
  ν = ΔU * L / Re
  κ = ν / Pr
 
-Tbcs = FieldBoundaryConditions(z=ZBoundaryConditions(
-    top    = BoundaryCondition(Value,  Δb),
-    bottom = BoundaryCondition(Value, -Δb)
-   ))
+Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Δb),
+                                bottom = BoundaryCondition(Value, -Δb))
 
-ubcs = FieldBoundaryConditions(z=ZBoundaryConditions(
-    top    = BoundaryCondition(Value,  ΔU),
-    bottom = BoundaryCondition(Value, -ΔU),
-   ))
+ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  ΔU),
+                                bottom = BoundaryCondition(Value, -ΔU))
 
 #
 # Model setup
 #
 
-arch = CPU()
-#@hascuda arch = GPU() # use GPU if it's available
-
 model = Model(
-         arch = arch,
+         arch = HAVE_CUDA ? GPU() : CPU(),
             N = (4N, 16, 4N),
             L = (4L,  L,  L),
       closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
+      #closure = ConstantSmagorinsky(ν=ν, κ=κ),
           eos = LinearEquationOfState(βT=1.0, βS=0.),
     constants = PlanetaryConstants(f=0.0, g=1.0),
           bcs = BoundaryConditions(u=ubcs, T=Tbcs)
