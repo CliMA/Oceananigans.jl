@@ -138,10 +138,8 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, c, diffusivities.νₑ, closure)
 )
 
-function calc_diffusivities!(diffusivities, grid, closure::ConstantSmagorinsky,
-                                  eos, grav, U, Φ)
-
-    @loop for k in (1:grid.Nz; blockIdx().z)
+function calc_diffusivities!(diffusivities, grid, closure::ConstantSmagorinsky, eos, grav, U, Φ)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds diffusivities.νₑ[i, j, k] =
@@ -149,8 +147,6 @@ function calc_diffusivities!(diffusivities, grid, closure::ConstantSmagorinsky,
             end
         end
     end
-
-    @synchronize
 end
 
 #
