@@ -312,6 +312,10 @@ get_bottom_κ(κ::Number, args...) = κ
 get_top_κ(κ::AbstractArray, i, j, args...) = κ[i, j, 1]
 get_bottom_κ(κ::AbstractArray, i, j, grid, args...) = κ[i, j, grid.Nz]
 
+# ConstantSmagorinsky does not compute or store κ so we will compute κ = ν / Pr.
+get_top_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) = ν[i, j, 1] / closure.Pr
+get_bottom_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) = ν[i, j, grid.Nz] / closure.Pr
+
 """
     apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, eos, g, t, iteration, U, Φ)
 
