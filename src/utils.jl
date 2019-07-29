@@ -55,27 +55,45 @@ function cell_advection_timescale(u, v, w, grid)
     return min(Δx/umax, Δy/vmax, Δz/wmax)
 end
 
+function cell_diffusion_timescale(ν, κ, grid)
+    νmax = maximum(abs, ν)
+    κmax = maximum(abs, κ)
+
+    Δx = min(grid.Δx)
+    Δy = min(grid.Δy)
+    Δz = min(grid.Δz)
+
+    Δ = min(Δx, Δy, Δz)  # assuming diffusion is isotropic for now
+
+    return min(Δ^2/νmax, Δ^2/κmax)
+end
+
 cell_advection_timescale(model) =
     cell_advection_timescale(model.velocities.u.data.parent,
                              model.velocities.v.data.parent,
                              model.velocities.w.data.parent,
                              model.grid)
 
+cell_diffusion_timescale(model) =
+    cell_diffusion_timescale(model.diffusivities.κₑ.T.parent,
+                             model.diffusivities.νₑ.parent,
+                             model.grid)
+
 """
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
 
 Instantiate a `TimeStepWizard`. On calling `update_Δt!(wizard, model)`,
-the `TimeStepWizard` computes a time-step such that 
-`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the 
-maximum ratio between model velocity and along-velocity grid spacing 
-anywhere on the model grid. The new `Δt` is constrained to change by a 
-multiplicative factor no more than `max_change` or no less than 
-`min_change` from the previous `Δt`, and to be no greater in absolute 
-magnitude than `max_Δt`. 
+the `TimeStepWizard` computes a time-step such that
+`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the
+maximum ratio between model velocity and along-velocity grid spacing
+anywhere on the model grid. The new `Δt` is constrained to change by a
+multiplicative factor no more than `max_change` or no less than
+`min_change` from the previous `Δt`, and to be no greater in absolute
+magnitude than `max_Δt`.
 """
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1
-    cfl_diffusion :: T = 2e-2
+    cfl_diffusion :: T = Inf  # Do not account for diffusion by default.
        max_change :: T = 2.0
        min_change :: T = 0.5
            max_Δt :: T = Inf
@@ -89,7 +107,11 @@ Compute `wizard.Δt` given the velocities and diffusivities
 of `model`, and the parameters of `wizard`.
 """
 function update_Δt!(wizard, model)
-    Δt = wizard.cfl * cell_advection_timescale(model)
+    Δt_advection = wizard.cfl           * cell_advection_timescale(model)
+    Δt_diffusion = wizard.cfl_diffusion * cell_diffusion_timescale(model)
+
+    # Desired Δt
+    Δt = min(Δt_advection, Δt_diffusion)
 
     # Put the kibosh on if needed
     Δt = min(wizard.max_change * wizard.Δt, Δt)
