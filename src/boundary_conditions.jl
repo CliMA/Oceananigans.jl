@@ -1,5 +1,7 @@
 import GPUifyLoops: @launch, @loop, @unroll
 
+using Oceananigans.TurbulenceClosures
+
 const coordinates = (:x, :y, :z)
 const dims = length(coordinates)
 const solution_fields = (:u, :v, :w, :T, :S)
