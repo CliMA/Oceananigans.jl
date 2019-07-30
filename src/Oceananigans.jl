@@ -85,7 +85,6 @@ export
     # Time stepping
     TimeStepWizard,
     cell_advection_timescale,
-    cell_diffusion_timescale,
     update_Δt!,
     time_step!,
 
