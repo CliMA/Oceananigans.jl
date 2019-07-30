@@ -1,4 +1,5 @@
-using Oceananigans, Random, Distributions, PyPlot, Printf
+using Oceananigans, Random, Distributions, Printf
+using PyPlot
 
 function terse_message(model, walltime, Δt)
     wmax = maximum(abs, model.velocities.w.data.parent)
@@ -18,7 +19,7 @@ parameters = Dict(
 
 # Simulation parameters
 case = :wind_stress
-   N = 32                       # Resolution    
+   N = 128                      # Resolution    
    Δ = 0.5                      # Grid spacing
   tf = day/2                    # Final simulation time
   N² = parameters[case][:N²]
@@ -54,6 +55,61 @@ T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-3 * Ξ(z)
 S₀(x, y, z) = 1e-9 * Ξ(z)
 
 set_ic!(model, u=u₀, T=T₀, S=S₀)
+
+function savebcs(file, model)
+    file["boundary_conditions/top/FT"] = Fθ
+    file["boundary_conditions/top/Fb"] = Fb
+    file["boundary_conditions/top/Fu"] = Fu
+    file["boundary_conditions/bottom/dTdz"] = dTdz
+    file["boundary_conditions/bottom/dbdz"] = dTdz * g * βT
+    return nothing
+end
+
+u(model) = Array{Float32}(model.velocities.u.data.parent)
+v(model) = Array{Float32}(model.velocities.v.data.parent)
+w(model) = Array{Float32}(model.velocities.w.data.parent)
+θ(model) = Array{Float32}(model.tracers.T.data.parent)
+ν(model) = Array{Float32}(model.diffusivities.νₑ.parent)
+
+const avgs = Oceananigans.HorizontalAverages(model)
+
+function hmean!(ϕavg, ϕ::Field)
+    ϕavg .= mean(ϕ.data.parent, dims=(1, 2))
+    return nothing
+end
+
+function U(model)
+    hmean!(avgs.U, model.velocities.u)
+    return Array{Float32}(avgs.U)
+end
+
+function V(model)
+    hmean!(avgs.V, model.velocities.v)
+    return Array{Float32}(avgs.V)
+end
+
+function T(model)
+    hmean!(avgs.T, model.tracers.T)
+    return Array{Float32}(avgs.T)
+end
+
+profiles = Dict(:U=>U, :V=>V, :T=>T)
+  fields = Dict(:u=>u, :v=>v, :w=>w, :θ=>θ)
+
+filename(model) = @sprintf(
+                       "simple_flux_Fb%.0e_Fu%.0e_Nsq%.0e_Lz%d_Nz%d",
+                       Fb, Fu, N², model.grid.Lz, model.grid.Nz
+                      )
+
+profile_writer = JLD2OutputWriter(model, profiles; dir="data",
+                                  prefix=filename(model)*"_profiles",
+                                  init=savebcs, interval=0.5*hour, force=true)
+
+field_writer = JLD2OutputWriter(model, fields; dir="data",
+                                prefix=filename(model)*"_fields",
+                                init=savebcs, interval=2hour, force=true)
+
+#push!(model.output_writers, profile_writer, field_writer)
 
 close("all")
 fig, axs = subplots()
