@@ -145,7 +145,7 @@ set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
     """, model.grid.Nx, model.grid.Ny, model.grid.Nz, model.grid.Lx, model.grid.Ly, model.grid.Lz, Re, Ri, Pr, Uw, Θw)
 
-wizard = TimeStepWizard(cfl=0.05, Δt=0.001, max_change=1.1, max_Δt=1.0)
+wizard = TimeStepWizard(cfl=0.15, Δt=0.001, max_change=1.1, max_Δt=1.0)
 
 # Take Ni "intermediate" time steps at a time before printing a progress
 # statement and updating the time step.
@@ -157,6 +157,11 @@ No = 1000
 close("all")
 fig, axs = subplots(nrows=1, ncols=3)
 
+Reτ⁺_ts = Float64[]
+Reτ⁻_ts = Float64[]
+Nu⁺_ts = Float64[]
+Nu⁻_ts = Float64[]
+
 end_time = 1000
 while model.clock.time < end_time
     walltime = @elapsed time_step!(model; Nt=Ni, Δt=wizard.Δt)
@@ -167,15 +172,11 @@ while model.clock.time < end_time
     wmax = maximum(abs, model.velocities.w.data.parent)
     CFL = wizard.Δt / cell_advection_timescale(model)
 
-    νmax = maximum(abs, model.diffusivities.νₑ.parent)
-    κmax = maximum(abs, model.diffusivities.κₑ.T.parent)
-    CFL_diffusive = wizard.Δt / cell_diffusion_timescale(model)
-
     update_Δt!(wizard, model)
 
-    @printf("[%06.2f%%] i: %d, t: %8.5g, umax: (%6.3g, %6.3g, %6.3g), νκmax: (%6.3g, %6.3g), CFL: %6.4g, CFLd: %6.4g, next Δt: %8.5g, ⟨wall time⟩: %s\n",
+    @printf("[%06.2f%%] i: %d, t: %8.5g, umax: (%6.3g, %6.3g, %6.3g), CFL: %6.4g, next Δt: %8.5g, ⟨wall time⟩: %s\n",
             progress, model.clock.iteration, model.clock.time,
-            umax, vmax, wmax, νmax, κmax, CFL, CFL_diffusive, wizard.Δt, prettytime(1e9*walltime / Ni))
+            umax, vmax, wmax, CFL, wizard.Δt, prettytime(1e9*walltime / Ni))
 
     uτ²⁺, uτ²⁻ = uτ²(model)
     qw⁺, qw⁻ = qw(model)
@@ -184,6 +185,11 @@ while model.clock.time < end_time
     L⁺⁺, L⁺⁻ = L⁺(model)
     Reτ⁺, Reτ⁻ = Reτ(model)
     Nu⁺, Nu⁻ = Nu(model)
+
+    append!(Reτ⁺_ts, Reτ⁺)
+    append!(Reτ⁻_ts, Reτ⁻)
+    append!(Nu⁺_ts, Nu⁺)
+    append!(Nu⁻_ts, Nu⁻)
 
     @printf("[%06.2f%%] uτ²: (%6.3g, %6.3g),  qw: (%6.3g, %6.3g), θτ: (%6.3g, %6.3g), δᵥ: (%6.3g, %6.3g), L⁺: (%6.3g, %6.3g), Reτ: (%6.3g, %6.3g), Nu: (%6.3g, %6.3g)",
             progress, uτ²⁺, uτ²⁻, qw⁺, qw⁻, θτ⁺, θτ⁻, δᵥ⁺, δᵥ⁻, L⁺⁺, L⁺⁻, Reτ⁺, Reτ⁻, Nu⁺, Nu⁻)
@@ -222,7 +228,11 @@ while model.clock.time < end_time
                  "w"  => Array(model.velocities.w.data.parent),
                  "T"  => Array(model.tracers.T.data.parent),
                  "nu" => Array(model.diffusivities.νₑ.parent),
-              "kappa" => Array(model.diffusivities.κₑ.T.parent)))
+              "kappa" => Array(model.diffusivities.κₑ.T.parent),
+             "Rep_ts" => Reτ⁺_ts,
+             "Rem_ts" => Reτ⁻_ts,
+             "Nup_ts" => Reτ⁺_ts,
+             "Num_ts" => Reτ⁺_ts))
         @printf(", IO time: %s", prettytime(1e9*io_time))
      end
      @printf("\n")
