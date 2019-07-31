@@ -10,17 +10,22 @@ const Ty = 16 # CUDA threads per y-block
 @inline datatuple(obj, flds=propertynames(obj)) = NamedTuple{flds}(getproperty(obj, fld).data for fld in flds)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
+"""Returns the Adams-Bashforth parameter such that the initial step with `n=1` uses
+a Forward Euler method."""
+@inline adams_bashforth_with_euler(n) = ifelse(n==1, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
+
 """
     time_step!(model, Nt, Δt)
 
 Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
-function time_step!(model, Nt, Δt)
+function time_step!(model, Nt, Δt; 
+                    adams_bashforth_parameter=adams_bashforth_with_euler)
 
     if model.clock.iteration == 0
-        [ write_output(model, output_writer) for output_writer in model.output_writers ]
-        [ run_diagnostic(model, diagnostic) for diagnostic in model.diagnostics ]
+        [ write_output(model, out)    for out  in model.output_writers ]
+        [ run_diagnostic(model, diag) for diag in model.diagnostics ]
     end
 
     # Unpack model fields
@@ -29,7 +34,6 @@ function time_step!(model, Nt, Δt)
              clock = model.clock
                eos = model.eos
          constants = model.constants
-                pr = model.pressures
            forcing = model.forcing
            closure = model.closure
     poisson_solver = model.poisson_solver
@@ -39,7 +43,8 @@ function time_step!(model, Nt, Δt)
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
     RHS = poisson_solver.storage
     U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.G, model.Gp)
-    Guvw = (Gu=Gⁿ.Gu, Gv=Gⁿ.Gv, Gw=Gⁿ.Gw)
+    pH, pN = datatuple(model.pressures)
+    GU = (Gu=Gⁿ.Gu, Gv=Gⁿ.Gv, Gw=Gⁿ.Gw)
     FT = eltype(grid)
 
     # Field tuples for fill_halo_regions.
@@ -51,49 +56,61 @@ function time_step!(model, Nt, Δt)
     Gu_ft = (:u, bcs.u, Gⁿ.Gu)
     Gv_ft = (:v, bcs.v, Gⁿ.Gv)
     Gw_ft = (:w, bcs.w, Gⁿ.Gw)
-    pHY′_ft = (:w, bcs.w, pr.pHY′.data)
-    pNHS_ft = (:w, bcs.w, pr.pNHS.data)
+    pH_ft = (:w, bcs.w, pH)
+    pN_ft = (:w, bcs.w, pN)
 
-    uvw_ft = (u_ft, v_ft, w_ft)
-    TS_ft = (T_ft, S_ft)
-    Guvw_ft = (Gu_ft, Gv_ft, Gw_ft)
+    U_ft = (u_ft, v_ft, w_ft)
+    Φ_ft = (T_ft, S_ft)
+    GU_ft = (Gu_ft, Gv_ft, Gw_ft)
 
     for n in 1:Nt
-        χ = ifelse(model.clock.iteration == 0, FT(-0.5), FT(0.125)) # Adams-Bashforth (AB2) parameter.
+        χ = FT(adams_bashforth_parameter(n))
 
-        @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-        @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(grid, constants, eos, Φ..., pr.pHY′.data)
+        time_step!(model, arch, grid, constants, eos, closure, 
+                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, 
+                   G⁻, GU, pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
 
-        @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(diffusivities, grid, closure, eos, constants.g, U, Φ)
-                                                           fill_halo_regions!(grid, uvw_ft..., TS_ft..., pHY′_ft)
-                                                           calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
-                                                                                            pr.pHY′.data, Gⁿ, diffusivities, forcing)
-                                                           calculate_boundary_source_terms!(model)
-        @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
-                                                           fill_halo_regions!(grid, Guvw_ft...)
-        @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, poisson_solver.bcs, Δt, U..., Guvw..., RHS)
-                                                           solve_for_pressure!(arch, model)
-                                                           fill_halo_regions!(grid, pNHS_ft)
-        @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pr.pNHS.data, Gⁿ, Δt)
-                                                           fill_halo_regions!(grid, uvw_ft...)
-        @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
-
-        clock.time += Δt
-        clock.iteration += 1
-
-        for diagnostic in model.diagnostics
-            (clock.iteration % diagnostic.diagnostic_frequency) == 0 && run_diagnostic(model, diagnostic)
-        end
-
-        for output_writer in model.output_writers
-            (clock.iteration % output_writer.output_frequency) == 0 && write_output(model, output_writer)
-        end
+        [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
     end
 
     return nothing
 end
 
-# dynamic launch configuration
+"""
+    time_step!(args...)
+
+Step forward one time step.
+"""
+function time_step!(model, arch, grid, constants, eos, closure, 
+                    forcing, pH, pN, U, Φ, K, RHS, Gⁿ, G⁻, GU, 
+                    pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
+                   
+    @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(pH, grid, constants, eos, Φ)
+
+    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
+                                                       fill_halo_regions!(grid, U_ft..., Φ_ft..., pH_ft)
+                                                       calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
+                                                                                        pH, Gⁿ, K, forcing)
+                                                       calculate_boundary_source_terms!(model)
+    @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
+                                                       fill_halo_regions!(grid, GU_ft...)
+    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
+                                                                                          Δt, U..., GU..., RHS)
+                                                       solve_for_pressure!(arch, model)
+                                                       fill_halo_regions!(grid, pN_ft)
+    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pN, Gⁿ, Δt)
+                                                       fill_halo_regions!(grid, U_ft...)
+    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
+
+    model.clock.time += Δt
+    model.clock.iteration += 1
+
+    return nothing
+end
+
+# Dynamic launch configuration
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun
@@ -116,17 +133,17 @@ function launch_config(grid, dims)
     end
 end
 
-time_step!(model; Nt, Δt) = time_step!(model, Nt, Δt)
+time_step!(model; Nt, Δt, kwargs...) = time_step!(model, Nt, Δt; kwargs...)
 
 function solve_for_pressure!(::CPU, model::Model)
-    RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
+    ϕ = model.poisson_solver.storage
 
     solve_poisson_3d!(model.poisson_solver, model.grid)
     data(model.pressures.pNHS) .= real.(ϕ)
 end
 
 function solve_for_pressure!(::GPU, model::Model)
-    RHS, ϕ = model.poisson_solver.storage, model.poisson_solver.storage
+    ϕ = model.poisson_solver.storage
 
     solve_poisson_3d!(model.poisson_solver, model.grid)
     @launch device(GPU()) config=launch_config(model.grid, 3) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, model.pressures.pNHS.data)
@@ -148,13 +165,13 @@ function store_previous_source_terms!(grid::Grid, Gⁿ, G⁻)
 end
 
 "Update the hydrostatic pressure perturbation pHY′ and buoyancy δρ."
-function update_hydrostatic_pressure!(grid::Grid, constants, eos, T, S, pHY′)
+function update_hydrostatic_pressure!(pHY′, grid, constants, eos, Φ)
     gΔz = constants.g * grid.Δz
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, T, S, i, j, 1)
+            @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, Φ.T, Φ.S, i, j, 1)
             @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, T, S, i, j, k-1) + δρ(eos, T, S, i, j, k))
+                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, Φ.T, Φ.S, i, j, k-1) + δρ(eos, Φ.T, Φ.S, i, j, k))
             end
         end
     end
