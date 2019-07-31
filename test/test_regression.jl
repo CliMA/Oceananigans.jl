@@ -260,7 +260,8 @@ function run_rayleigh_benard_regression_test(arch)
     model.clock.time = spinup_steps * Δt
 
     # Step the model forward and perform the regression test
-    time_step!(model, test_steps, Δt)
+    constant_ab_parameter(n) = 0.125
+    time_step!(model, test_steps, Δt; adams_bashforth_parameter=constant_ab_parameter)
 
     u₁ = read_output("u", spinup_steps + test_steps, outputwriter)
     v₁ = read_output("v", spinup_steps + test_steps, outputwriter)
