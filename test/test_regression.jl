@@ -188,10 +188,10 @@ function run_rayleigh_benard_regression_test(arch)
             κ = κ,
           eos = LinearEquationOfState(βT=1., βS=0.),
     constants = PlanetaryConstants(g=1., f=0.),
-          bcs = BoundaryConditions(T=FieldBoundaryConditions(z=ZBoundaryConditions(
+          bcs = BoundaryConditions(T=HorizontallyPeriodicBCs(
                        top = BoundaryCondition(Value, 0.0),
                     bottom = BoundaryCondition(Value, Δb)
-                ))),
+                )),
       forcing = Forcing(FS=FS)
     )
 
@@ -260,7 +260,8 @@ function run_rayleigh_benard_regression_test(arch)
     model.clock.time = spinup_steps * Δt
 
     # Step the model forward and perform the regression test
-    time_step!(model, test_steps, Δt)
+    constant_ab_parameter(n) = 0.125
+    time_step!(model, test_steps, Δt; adams_bashforth_parameter=constant_ab_parameter)
 
     u₁ = read_output("u", spinup_steps + test_steps, outputwriter)
     v₁ = read_output("v", spinup_steps + test_steps, outputwriter)
