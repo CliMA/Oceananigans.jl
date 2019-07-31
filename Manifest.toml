@@ -167,9 +167,7 @@ version = "0.7.2"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "1b3608e6db0ec1e64058d70f570094115a88b3da"
-repo-rev = "ar/config-kwarg"
-repo-url = "https://github.com/vchuravy/GPUifyLoops.jl.git"
+git-tree-sha1 = "1053133cc136ee6b543c2d349cdc96ab75dfb448"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
 version = "0.2.5"
 
