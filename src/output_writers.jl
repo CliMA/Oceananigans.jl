@@ -313,3 +313,14 @@ function VerticalPlanes(arch::GPU, grid::Grid{FT}) where FT
 end
 
 VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
+
+time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequency) == 0
+
+function time_to_write(clock, out::JLD2OutputWriter)
+    if clock.time > out.previous + out.interval
+        out.previous = clock.time - rem(clock.time, out.interval)
+        return true
+    else
+        return false
+    end
+end
