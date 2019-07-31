@@ -4,9 +4,9 @@
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://mit-license.org/)
 [![Ask us anything](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/climate-machine/Oceananigans.jl/issues/new)
 
-| **Documentation**             | **Build Status** (CPU, GPU, Windows)                                                                                 | **Code coverage**                                                                   |
-|:------------------------------|:---------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------|
-| [![docs][docs-img]][docs-url] | [![travis][travis-img]][travis-url] [![gitlab][gitlab-img]][gitlab-url] [![appveyor][appveyor-img]][appveyor-url]    | [![coveralls][coveralls-img]][coveralls-url] [![codecov][codecov-img]][codecov-url] |
+| **Documentation**             | **Build Status** (CPU, GPU, Windows, Docker)                                                                                 | **Code coverage**                                                                   |
+|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------|
+| [![docs][docs-img]][docs-url] | [![travis][travis-img]][travis-url] [![gitlab][gitlab-img]][gitlab-url] [![appveyor][appveyor-img]][appveyor-url] [![docker][docker-img]][docker-url]   | [![coveralls][coveralls-img]][coveralls-url] [![codecov][codecov-img]][codecov-url] |
 
 [docs-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [docs-url]: https://climate-machine.github.io/Oceananigans.jl/latest/
@@ -19,6 +19,9 @@
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/sc488kyni1wp93he?svg=true
 [appveyor-url]: https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl
+
+[docker-img]: https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans.svg
+[docker-url]: https://cloud.docker.com/repository/registry-1.docker.io/aliramadhan/oceananigans
 
 [coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master
