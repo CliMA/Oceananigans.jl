@@ -37,8 +37,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
 
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
     RHS = poisson_solver.storage
-    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
-                              model.timestepper.G⁻)
+    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, 
+                              model.timestepper.Gⁿ, model.timestepper.G⁻)
     pH, pN = datatuple(model.pressures)
     FT = eltype(grid)
 
@@ -62,8 +62,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
         time_step!(model, arch, grid, constants, eos, closure, 
-                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, 
-                   G⁻, pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
+                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, G⁻, 
+                   pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
 
         [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
         [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
