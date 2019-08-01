@@ -167,9 +167,11 @@ version = "0.7.2"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "1053133cc136ee6b543c2d349cdc96ab75dfb448"
+git-tree-sha1 = "0a8d8d3d21c67f50804dc18d5c26a974e315358e"
+repo-rev = "master"
+repo-url = "https://github.com/vchuravy/GPUifyLoops.jl.git"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.5"
+version = "0.2.6"
 
 [[HDF5]]
 deps = ["BinaryProvider", "Blosc", "Libdl", "Mmap"]
