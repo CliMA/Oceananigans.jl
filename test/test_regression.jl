@@ -110,8 +110,10 @@ function run_deep_convection_regression_tests()
         end
     end
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2,
-                  forcing=Forcing(nothing, nothing, nothing, cooling_disk, nothing))
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), 
+                  ν=4e-2, κ=4e-2, forcing=Forcing(FT=cooling_disk)
+                 )
+                  
 
     rng = MersenneTwister(seed)
     model.tracers.T.data[1:Nx, 1:Ny, 1] .+= 0.01*rand(rng, Nx, Ny)
@@ -250,18 +252,17 @@ function run_rayleigh_benard_regression_test(arch)
     data(model.tracers.T)    .= ArrayType(T₀)
     data(model.tracers.S)    .= ArrayType(S₀)
 
-    data(model.G.Gu) .= ArrayType(Gu)
-    data(model.G.Gv) .= ArrayType(Gv)
-    data(model.G.Gw) .= ArrayType(Gw)
-    data(model.G.GT) .= ArrayType(GT)
-    data(model.G.GS) .= ArrayType(GS)
+    data(model.timestepper.Gⁿ.Gu) .= ArrayType(Gu)
+    data(model.timestepper.Gⁿ.Gv) .= ArrayType(Gv)
+    data(model.timestepper.Gⁿ.Gw) .= ArrayType(Gw)
+    data(model.timestepper.Gⁿ.GT) .= ArrayType(GT)
+    data(model.timestepper.Gⁿ.GS) .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
 
     # Step the model forward and perform the regression test
-    constant_ab_parameter(n) = 0.125
-    time_step!(model, test_steps, Δt; adams_bashforth_parameter=constant_ab_parameter)
+    time_step!(model, test_steps, Δt; init_with_euler=false)
 
     u₁ = read_output("u", spinup_steps + test_steps, outputwriter)
     v₁ = read_output("v", spinup_steps + test_steps, outputwriter)
