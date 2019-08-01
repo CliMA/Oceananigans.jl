@@ -94,17 +94,26 @@ add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...
 
 function initialize_with_defaults!(eos, tracers, sets...)
     # Default tracer initial condition is deteremined by eos.
-    underlying_data(tracers.S) .= eos.S₀
-    underlying_data(tracers.T) .= eos.T₀
+    tracers.S.data.parent .= eos.S₀
+    tracers.T.data.parent .= eos.T₀
 
     # Set all further fields to 0
     for set in sets
         for fldname in propertynames(set)
             fld = getproperty(set, fldname)
-            underlying_data(fld) .= 0 # promotes to eltype of fld.data
+            fld.data.parent .= 0 # promotes to eltype of fld.data
         end
     end
 end
+
+"""
+    Forcing(; kwargs...)
+
+Return a named tuple of forcing functions 
+for each solution field.
+"""
+Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) = 
+    (u=Fu, v=Fv, w=Fw, T=FT, S=FS)
 
 """
     VelocityFields(arch, grid)
@@ -159,17 +168,6 @@ function Tendencies(arch, grid)
     return (Gu=Gu, Gv=Gv, Gw=Gw, GT=GT, GS=GS)
 end
 
-@inline zerofunk(args...) = 0
-
-"""
-    Forcing(; kwargs...)
-
-Return a named tuple of forcing functions 
-for each solution field.
-"""
-Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) = 
-    (u=Fu, v=Fv, w=Fw, T=FT, S=FS)
-
 """
     AdamsBashforthTimestepper(float_type, arch, grid, χ)
 
@@ -187,4 +185,3 @@ function AdamsBashforthTimestepper(float_type, arch, grid, χ)
    G⁻ = Tendencies(arch, grid)
    return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end
-
