@@ -324,3 +324,72 @@ function time_to_write(clock, out::JLD2OutputWriter)
         return false
     end
 end
+
+mutable struct Checkpointer <: OutputWriter
+                 dir :: String
+              prefix :: String
+    output_frequency :: Int
+end
+
+function Checkpointer(; output_frequency, dir=".", prefix="checkpoint", force=false)
+    mkpath(dir)
+    return Checkpointer(dir, prefix, output_frequency)
+end
+
+function savesubfields!(file, model, name, flds=propertynames(getproperty(model, name)))
+    for f in flds
+        file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
+    end
+    return nothing
+end
+
+checkpointed_structs   = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure]
+checkpointed_fieldsets = [:velocities, :tracers, :G, :Gp]
+
+function write_output(model, c::Checkpointer)
+    @warn "Checkpointer will not save forcing functions, output writers, or diagnostics. They will need to be " *
+          "restored manually."
+
+    filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
+
+    jldopen(filepath, "w") do file
+        # Checkpointing model properties that we can just serialize.
+        [file["$p"] = getproperty(model, p) for p in checkpointed_structs]
+
+        # Checkpointing structs containing fields.
+        [savesubfields!(file, model, p) for p in checkpointed_fieldsets]
+    end
+end
+
+_arr(::CPU, a) = a
+_arr(::GPU, a) = CuArray(a)
+
+function restore_from_checkpoint(filepath)
+    @warn "Checkpointer cannot restore forcing functions, output writers, or diagnostics. They will need to be " *
+          "restored manually."
+
+    kwargs = Dict{Symbol, Any}()  # We'll store all the kwargs we need to initialize a Model.
+
+    file = jldopen(filepath, "r")
+
+    # Restore model properties that were just serialized.
+    for p in checkpointed_structs
+        kwargs[Symbol(p)] = file["$p"]
+    end
+
+    # The Model constructor needs N and L.
+    kwargs[:N] = (kwargs[:grid].Nx, kwargs[:grid].Ny, kwargs[:grid].Nz)
+    kwargs[:L] = (kwargs[:grid].Lx, kwargs[:grid].Ly, kwargs[:grid].Lz)
+
+    model =  Model(; kwargs...)
+
+    for p in checkpointed_fieldsets
+        for subp in propertynames(getproperty(model, p))
+            getproperty(getproperty(model, p), subp).data.parent .= _arr(model.arch, file["$p/$subp"])
+        end
+    end
+
+    close(file)
+
+    return model
+end
