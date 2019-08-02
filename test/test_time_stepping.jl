@@ -40,16 +40,16 @@ function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
 
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT,
-                  forcing=Forcing(nothing, nothing, nothing, add_ones, nothing))
+                  forcing=Forcing(FT=add_ones))
 
     time_step!(model, 1, Δt)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
-    @test all(data(model.G.Gu) .≈ 0)
-    @test all(data(model.G.Gv) .≈ 0)
-    @test all(data(model.G.Gw) .≈ 0)
-    @test all(data(model.G.GT) .≈ 1.0)
-    @test all(data(model.G.GS) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.Gu) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.Gv) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.Gw) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.GT) .≈ 1.0)
+    @test all(data(model.timestepper.Gⁿ.GS) .≈ 0)
 
     return nothing
 end
