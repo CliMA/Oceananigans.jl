@@ -1,7 +1,6 @@
 using Oceananigans:
     RegularCartesianGrid,
-    Field, CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField,
-    VelocityFields, TracerFields, PressureFields, SourceTerms
+    Field, CellField, FaceField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField
 
 @inline δx_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i,   j, k] - f[i-1, j, k]
 @inline δx_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i+1, j, k] - f[i,   j, k]
