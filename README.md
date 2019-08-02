@@ -21,7 +21,7 @@
 [appveyor-url]: https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl
 
 [docker-img]: https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans.svg
-[docker-url]: https://cloud.docker.com/repository/registry-1.docker.io/aliramadhan/oceananigans
+[docker-url]: https://hub.docker.com/r/aliramadhan/oceananigans
 
 [coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master

@@ -10,18 +10,13 @@ const Ty = 16 # CUDA threads per y-block
 @inline datatuple(obj, flds=propertynames(obj)) = NamedTuple{flds}(getproperty(obj, fld).data for fld in flds)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-"""Returns the Adams-Bashforth parameter such that the initial step with `n=1` uses
-a Forward Euler method."""
-@inline adams_bashforth_with_euler(n) = ifelse(n==1, -0.5, 0.125) # Adams-Bashforth (AB2) parameter.
-
 """
     time_step!(model, Nt, Δt)
 
 Step forward `model` `Nt` time steps using a second-order Adams-Bashforth
 method with step size `Δt`.
 """
-function time_step!(model, Nt, Δt; 
-                    adams_bashforth_parameter=adams_bashforth_with_euler)
+function time_step!(model, Nt, Δt; init_with_euler=true)
 
     if model.clock.iteration == 0
         [ write_output(model, out)    for out  in model.output_writers ]
@@ -42,9 +37,9 @@ function time_step!(model, Nt, Δt;
 
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
     RHS = poisson_solver.storage
-    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.G, model.Gp)
+    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, 
+                              model.timestepper.Gⁿ, model.timestepper.G⁻)
     pH, pN = datatuple(model.pressures)
-    GU = (Gu=Gⁿ.Gu, Gv=Gⁿ.Gv, Gw=Gⁿ.Gw)
     FT = eltype(grid)
 
     # Field tuples for fill_halo_regions.
@@ -64,11 +59,11 @@ function time_step!(model, Nt, Δt;
     GU_ft = (Gu_ft, Gv_ft, Gw_ft)
 
     for n in 1:Nt
-        χ = FT(adams_bashforth_parameter(n))
+        χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
         time_step!(model, arch, grid, constants, eos, closure, 
-                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, 
-                   G⁻, GU, pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
+                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, G⁻, 
+                   pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
 
         [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
         [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
@@ -83,7 +78,7 @@ end
 Step forward one time step.
 """
 function time_step!(model, arch, grid, constants, eos, closure, 
-                    forcing, pH, pN, U, Φ, K, RHS, Gⁿ, G⁻, GU, 
+                    forcing, pH, pN, U, Φ, K, RHS, Gⁿ, G⁻,
                     pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
                    
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
@@ -97,7 +92,7 @@ function time_step!(model, arch, grid, constants, eos, closure,
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
                                                        fill_halo_regions!(grid, GU_ft...)
     @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
-                                                                                          Δt, U..., GU..., RHS)
+                                                                                          Δt, U, Gⁿ, RHS)
                                                        solve_for_pressure!(arch, model)
                                                        fill_halo_regions!(grid, pN_ft)
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pN, Gⁿ, Δt)
@@ -267,12 +262,12 @@ function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gⁿ, G⁻, χ) wh
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt, U, G, RHS)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-                @inbounds RHS[i, j, k] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
             end
         end
     end
@@ -284,7 +279,7 @@ end
 Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
 which is the first step in the DCT.
 """
-function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, U, G, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -294,13 +289,13 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v,
                 else
                     k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
                 end
-                @inbounds RHS[i, j, k′] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
             end
         end
     end
 end
 
-function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v, w, Gu, Gv, Gw, RHS)
+function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, U, G, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -317,7 +312,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, u, v,
                     j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
                 end
 
-                @inbounds RHS[i, j′, k′] = div_f2c(grid, u, v, w, i, j, k) / Δt + div_f2c(grid, Gu, Gv, Gw, i, j, k)
+                @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
             end
         end
     end
@@ -411,7 +406,7 @@ function calculate_boundary_source_terms!(model)
     bcs = model.boundary_conditions
     grav = model.constants.g
     t, iteration = clock.time, clock.iteration
-    U, Φ, G = datatuples(model.velocities, model.tracers, model.G)
+    U, Φ, G = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ)
 
     Bx, By, Bz = floor(Int, model.grid.Nx/Tx), floor(Int, model.grid.Ny/Ty), model.grid.Nz  # Blocks in grid
 
