@@ -201,8 +201,6 @@ include("clock.jl")
 include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
-include("fieldsets.jl")
-include("forcing.jl")
 
 include("operators/operators.jl")
 include("turbulence_closures/TurbulenceClosures.jl")
