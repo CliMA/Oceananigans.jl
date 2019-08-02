@@ -183,12 +183,35 @@ the output and `fcn` is a function of the form `fcn(model)` that returns
 the data to be saved. The keyword `init` is a function of the form `init(file, model)`
 that runs when the JLD2 output file is initialized.
 """
-mutable struct JLD2OutputWriter{O, I} <: OutputWriter
+mutable struct JLD2OutputWriter{F, I, O} <: OutputWriter
         filepath :: String
          outputs :: O
         interval :: I
+       frequency :: F
         previous :: Float64
     asynchronous :: Bool
+end
+
+noinit(args...) = nothing
+
+function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="", 
+                          init=noinit, including=[:grid, :eos, :constants, :closure],
+                          force=false, asynchronous=false
+                         )
+                          
+    interval === nothing && frequency === nothing && (
+        error("Either interval or frequency must be passed to the JLD2OutputWriter!"))
+
+    mkpath(dir)
+    filepath = joinpath(dir, prefix*".jld2")
+    force && isfile(filepath) && rm(filepath, force=true)
+
+    jldopen(filepath, "a+") do file
+        init(file, model)
+        savesubstructs!(file, model, including)
+    end
+
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, 0.0, asynchronous)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -198,25 +221,7 @@ function savesubstruct!(file, model, name, flds=propertynames(getproperty(model,
     return nothing
 end
 
-noinit(args...) = nothing
-
-function JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit, force=false,
-                          asynchronous=false)
-
-    mkpath(dir)
-    filepath = joinpath(dir, prefix*".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
-
-    jldopen(filepath, "a+") do file
-        init(file, model)
-        savesubstruct!(file, model, :grid)
-        savesubstruct!(file, model, :eos)
-        savesubstruct!(file, model, :constants)
-        savesubstruct!(file, model, :closure)
-    end
-
-    return JLD2OutputWriter(filepath, outputs, interval, 0.0, asynchronous)
-end
+savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
 
 function write_output(model, fw::JLD2OutputWriter)
     @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
@@ -247,6 +252,22 @@ function jld2output!(path, iter, time, data)
     end
     return nothing
 end
+
+time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequency) == 0
+time_to_write(clock, out::JLD2OutputWriter) = (clock.iteration % out.frequency) == 0
+
+function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
+    if clock.time > out.previous + out.interval
+        out.previous = clock.time - rem(clock.time, out.interval)
+        return true
+    else
+        return false
+    end
+end
+
+#
+# Output utils
+#
 
 """
     HorizontalAverages(arch, grid)
@@ -314,13 +335,3 @@ end
 
 VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
 
-time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequency) == 0
-
-function time_to_write(clock, out::JLD2OutputWriter)
-    if clock.time > out.previous + out.interval
-        out.previous = clock.time - rem(clock.time, out.interval)
-        return true
-    else
-        return false
-    end
-end
