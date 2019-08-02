@@ -65,8 +65,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
                    forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, G⁻, 
                    pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
 
-        [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
-        [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
+        [ time_to_run(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ time_to_write(clock, out) && write_output(model, out) for out in model.output_writers ]
     end
 
     return nothing
