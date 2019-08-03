@@ -1,12 +1,10 @@
-#=
+"""
+    LinearEquationOfState(; kwargs...)
+
 Linear equation of state for seawater. Constants taken from Table 1.2 (page 33)
 and functional form taken from Eq. (1.57) of Vallis, "Atmospheric and Oceanic
-Fluid Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017). Note
-that a linear equation of state is not accurate enough for serious quantitative
-oceanography as the expansion and contraction β coefficients vary with
-temperature, pressure, and salinity.
-=#
-
+Fluid Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
+"""
 struct LinearEquationOfState{T<:AbstractFloat} <: EquationOfState
     ρ₀::T  # Reference density [kg/m³]
     βT::T  # First thermal expansion coefficient [1/K]
@@ -39,3 +37,5 @@ end
 
 @inline buoyancy(i, j, k, grid, eos::LinearEquationOfState, grav, T, S) =
     @inbounds eos.βT * (T[i, j, k] - eos.T₀) - eos.βS * (S[i, j, k] - eos.S₀)
+
+NoEquationOfState() = LinearEquationOfState(βT=0, βS=0)
