@@ -16,18 +16,6 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         [ run_diagnostic(model, diag) for diag in model.diagnostics ]
     end
 
-    # Unpack model fields
-              arch = model.arch
-              grid = model.grid
-             clock = model.clock
-               eos = model.eos
-         constants = model.constants
-           forcing = model.forcing
-           closure = model.closure
-    poisson_solver = model.poisson_solver
-               bcs = model.boundary_conditions
-
-    # We can use the same array for the right-hand-side RHS and the solution ϕ.
     FT = eltype(grid)
     RHS = model.poisson_solver.storage
     U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
@@ -36,8 +24,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
-        time_step!(model, arch, grid, constants, eos, closure, 
-                   forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
+        time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
+                   model.forcing, model.boundary_conditions, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
         [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
         [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
