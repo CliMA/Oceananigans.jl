@@ -1,8 +1,3 @@
-import Base:
-    size, length,
-    getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
-
 """
     CellField{A<:AbstractArray, G<:Grid} <: Field
 
