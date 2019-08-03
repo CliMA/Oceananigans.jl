@@ -1,29 +1,7 @@
-@hascuda using CUDAnative, CuArrays
-
-import GPUifyLoops: @launch, @loop, @unroll
-
 using Oceananigans.Operators
 
 const Tx = 16 # CUDA threads per x-block
 const Ty = 16 # CUDA threads per y-block
-
-@inline datatuple(obj, flds=propertynames(obj)) = NamedTuple{flds}(getproperty(obj, fld).data for fld in flds)
-@inline datatuples(objs...) = (datatuple(obj) for obj in objs)
-
-function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
-    n = length(r)
-    n == 0 && return ()
-    elems = Vector{eltype(t)}(undef, n)
-    names = Vector{Symbol}(undef, n)
-    o = first(r) - 1
-    for i = 1:n
-        elem = t[o + i]
-        name = propertynames(t)[o + i]
-        @inbounds elems[i] = elem
-        @inbounds names[i] = name
-    end
-    NamedTuple{Tuple(names)}(Tuple(elems))
-end
 
 """
     time_step!(model, Nt, Δt)
@@ -47,20 +25,19 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
            forcing = model.forcing
            closure = model.closure
     poisson_solver = model.poisson_solver
-     diffusivities = model.diffusivities
                bcs = model.boundary_conditions
 
     # We can use the same array for the right-hand-side RHS and the solution ϕ.
-    RHS = model.poisson_solver.storage
-    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, model.timestepper.G⁻)
-    pH, pN = datatuple(model.pressures)
     FT = eltype(grid)
+    RHS = model.poisson_solver.storage
+    U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
+                                    model.timestepper.G⁻, model.diffusivities, model.pressures)
 
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
         time_step!(model, arch, grid, constants, eos, closure, 
-                   forcing, bcs, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, G⁻, Δt, χ)
+                   forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
         [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
         [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
@@ -74,17 +51,15 @@ end
 
 Step forward one time step.
 """
-function time_step!(model, arch, grid, constants, eos, closure, 
-                    forcing, bcs, pH, pN, U, Φ, K, RHS, Gⁿ, G⁻, Δt, χ)
+function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
                    
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(pH, grid, constants, eos, Φ)
-
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
 
     fill_halo_regions!(merge(U, Φ), bcs, grid)
-    fill_halo_regions!(pH, bcs[3], grid)
-    calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, pH, Gⁿ, K, forcing)
+    fill_halo_regions!(p.pHY′, bcs[3], grid)
+    calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
     calculate_boundary_source_terms!(model)
 
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
@@ -94,13 +69,13 @@ function time_step!(model, arch, grid, constants, eos, closure,
     @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
-    fill_halo_regions!(pN, bcs[3], grid)
+    fill_halo_regions!(p.pNHS, bcs[3], grid)
 
-    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pN, Gⁿ, Δt)
+    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
 
     fill_halo_regions!(U, bcs[1:3], grid)
 
-    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
+    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
 
     model.clock.time += Δt
     model.clock.iteration += 1
@@ -374,12 +349,12 @@ function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
 end
 
 "Compute the vertical velocity w from the continuity equation."
-function compute_w_from_continuity!(grid::Grid, u, v, w)
+function compute_w_from_continuity!(grid::Grid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds w[i, j, 1] = 0
+            @inbounds U.w[i, j, 1] = 0
             @unroll for k in 2:grid.Nz
-                @inbounds w[i, j, k] = w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, u, v)
+                @inbounds U.w[i, j, k] = U.w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
             end
         end
     end
@@ -409,7 +384,7 @@ function calculate_boundary_source_terms!(model)
     bcs = model.boundary_conditions
     grav = model.constants.g
     t, iteration = clock.time, clock.iteration
-    U, Φ, G = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ)
+    U, Φ, G, K = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, model.diffusivities)
 
     Bx, By, Bz = floor(Int, model.grid.Nx/Tx), floor(Int, model.grid.Ny/Ty), model.grid.Nz  # Blocks in grid
 
@@ -422,8 +397,8 @@ function calculate_boundary_source_terms!(model)
     S_x_bcs = getproperty(bcs.S, coord)
 
     # Apply boundary conditions in the vertical direction.
-    ν = get_ν(closure, model.diffusivities)
-    κ = get_κ(closure, model.diffusivities)
+    ν = get_ν(closure, K)
+    κ = get_κ(closure, K)
 
     apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, U.u, G.Gu, ν,
         closure, eos, grav, t, iteration, U, Φ)

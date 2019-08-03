@@ -32,9 +32,9 @@ const Δy_ccc = Δy
 const Δz_ccc = Δz
 
 function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AnisotropicMinimumDissipation)
-     νₑ = zeros(arch, grid)
-    κTₑ = zeros(arch, grid)
-    κSₑ = zeros(arch, grid)
+     νₑ = CellField(arch, grid)
+    κTₑ = CellField(arch, grid)
+    κSₑ = CellField(arch, grid)
     return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
