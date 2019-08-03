@@ -59,6 +59,7 @@ export
     Forcing,
 
     # Equation of state
+    NoEquationOfState,
     LinearEquationOfState,
     δρ,
     buoyancy,
@@ -76,6 +77,8 @@ export
     BoundaryConditions,
     HorizontallyPeriodicBCs,
     ChannelBCs,
+    HorizontallyPeriodicModelBCs,
+    ChannelModelBCs,
     getbc,
     setbc!,
 
