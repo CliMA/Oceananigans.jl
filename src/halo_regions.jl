@@ -10,7 +10,7 @@ function fill_halo_regions!(grid, field_tuples...)
     end
 end
 
-function fill_halo_region!(grid::Grid, ::Val{:u}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:u}, bcs, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -26,7 +26,7 @@ function fill_halo_region!(grid::Grid, ::Val{:u}, bcs::FieldBoundaryConditions, 
     end
 end
 
-function fill_halo_region!(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:v}, bcs, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -44,7 +44,7 @@ function fill_halo_region!(grid::Grid, ::Val{:v}, bcs::FieldBoundaryConditions, 
     end
 end
 
-function fill_halo_region!(grid::Grid, ::Val{:w}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:w}, bcs, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -60,7 +60,7 @@ function fill_halo_region!(grid::Grid, ::Val{:w}, bcs::FieldBoundaryConditions, 
     end
 end
 
-function fill_halo_region!(grid::Grid, ::Val{:T}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:T}, bcs, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -76,7 +76,7 @@ function fill_halo_region!(grid::Grid, ::Val{:T}, bcs::FieldBoundaryConditions, 
     end
 end
 
-function fill_halo_region!(grid::Grid, ::Val{:S}, bcs::FieldBoundaryConditions, f)
+function fill_halo_region!(grid::Grid, ::Val{:S}, bcs, f)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
