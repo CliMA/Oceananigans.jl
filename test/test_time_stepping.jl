@@ -1,48 +1,16 @@
 using Oceananigans: velocity_div!, compute_w_from_continuity!
 
-xnodes(ϕ) = repeat(reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
-ynodes(ϕ) = repeat(reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
-znodes(ϕ) = repeat(reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
-
-xnodes(ϕ::FaceFieldX) = repeat(reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
-ynodes(ϕ::FaceFieldY) = repeat(reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
-znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
-
-zerofunk(args...) = 0
-
-function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    data(model.velocities.u) .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
-    data(model.velocities.v) .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
-    data(model.velocities.w) .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
-    data(model.tracers.T)    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
-    data(model.tracers.S)    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
-    return nothing
-end
-
 function time_stepping_works(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 1, 2, 3
-    Δt = 1
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT)
-    time_step!(model, 1, Δt)
-
-    # Just testing that no errors/crashes happen when time stepping.
-    return true
+    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT)
+    time_step!(model, 1, 1)
+    return true # test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 1, 2, 3
-    Δt = 1
-
     add_ones(args...) = 1.0
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT,
+    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
                   forcing=Forcing(FT=add_ones))
-
-    time_step!(model, 1, Δt)
+    time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
     @test all(data(model.timestepper.Gⁿ.Gu) .≈ 0)
@@ -63,7 +31,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    fbcs = HorizontallyPeriodicBCs()
+    bcs = HorizontallyPeriodicModelBCs()
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
@@ -73,10 +41,11 @@ function compute_w_from_continuity(arch, FT)
     data(u) .= rand(FT, Nx, Ny, Nz)
     data(v) .= rand(FT, Nx, Ny, Nz)
 
-    fill_halo_regions!(grid, (:u, fbcs, u.data), (:v, fbcs, v.data))
+    fill_halo_regions!(u.data, bcs.u, grid)
+    fill_halo_regions!(v.data, bcs.v, grid)
     compute_w_from_continuity!(grid, u.data, v.data, w.data)
 
-    fill_halo_regions!(grid, (:w, fbcs, w.data))
+    fill_halo_regions!(w.data, bcs.w, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
@@ -154,7 +123,6 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     # Initial temperature field [°C].
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
-
     set_ic!(model, T=T₀)
 
     Tavg0 = mean(data(model.tracers.T))
