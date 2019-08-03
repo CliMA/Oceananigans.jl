@@ -1,5 +1,13 @@
 using Printf
 
+# Adapt an offset CuArray to work nicely with CUDA kernels.
+Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
+
+# Need to adapt SubArray indices as well.
+# See: https://github.com/JuliaGPU/Adapt.jl/issues/16
+Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
+    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
+
 # Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
     if t < 1e3
@@ -100,3 +108,25 @@ function update_Δt!(wizard, model)
 
     return nothing
 end
+
+@inline datatuple(obj::Nothing) = nothing
+@inline datatuple(obj::AbstractArray) = obj
+@inline datatuple(obj::Field) = obj.data
+@inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
+@inline datatuples(objs...) = (datatuple(obj) for obj in objs)
+
+function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
+    n = length(r)
+    n == 0 && return ()
+    elems = Vector{eltype(t)}(undef, n)
+    names = Vector{Symbol}(undef, n)
+    o = first(r) - 1
+    for i = 1:n
+        elem = t[o + i]
+        name = propertynames(t)[o + i]
+        @inbounds elems[i] = elem
+        @inbounds names[i] = name
+    end
+    NamedTuple{Tuple(names)}(Tuple(elems))
+end
+
