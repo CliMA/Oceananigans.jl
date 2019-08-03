@@ -1,7 +1,8 @@
 using Oceananigans: velocity_div!, compute_w_from_continuity!
 
-function time_stepping_works(arch, FT)
-    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT)
+function time_stepping_works(arch, FT, Closure)
+    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
+                  closure=Closure(FT))
     time_step!(model, 1, 1)
     return true # test that no errors/crashes happen when time stepping.
 end
@@ -142,11 +143,14 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     end
 end
 
+Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+            ConstantSmagorinsky, AnisotropicMinimumDissipation)
+
 @testset "Time stepping" begin
     println("Testing time stepping...")
 
-    for arch in archs, FT in float_types
-        @test time_stepping_works(arch, FT)
+    for arch in archs, FT in float_types, Closure in Closures
+        @test time_stepping_works(arch, FT, Closure)
     end
 
     @testset "2nd-order Adams-Bashforth" begin
