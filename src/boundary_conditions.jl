@@ -7,6 +7,7 @@ struct Periodic <: BCType end
 struct Flux <: BCType end
 struct Gradient <: BCType end
 struct Value <: BCType end
+struct NoPenetration <: BCType end
 
 """
     BoundaryCondition(BCType, condition)
@@ -31,6 +32,9 @@ bctype(bc::BoundaryCondition{C}) where C = C
 Adapt.adapt_structure(to, b::BC{C, A}) where {C<:BCType, A<:AbstractArray} =
     BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
 
+PeriodicBC() = BoundaryCondition(Periodic, nothing)
+NoPenetrationBC() = BoundaryCondition(NoPenetration, nothing)
+
 """
     CoordinateBoundaryConditions(left, right)
 
@@ -45,9 +49,7 @@ mutable struct CoordinateBoundaryConditions{L, R}
 end
 
 const CBC = CoordinateBoundaryConditions
-
-PeriodicBoundaryConditions() = CBC(BoundaryCondition(Periodic, nothing),
-                                   BoundaryCondition(Periodic, nothing))
+PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
 
 #=
 Here we overload setproperty! and getproperty to permit users to call
@@ -88,16 +90,15 @@ end
     HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, 0), 
                             bottom = BoundaryCondition(Flux, 0))
 
-Construct horizontally-periodic boundary conditions for a 
-model field with top boundary condition (positive-z) `top` 
+Construct horizontally-periodic boundary conditions for ``u``, ``v``, or a 
+tracer field with top boundary condition (positive-z) `top` 
 and bottom boundary condition (negative-z) `bottom`.
-
 """
 function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
                                    bottom = BoundaryCondition(Flux, 0))
 
-    x = PeriodicBoundaryConditions()
-    y = PeriodicBoundaryConditions()
+    x = PeriodicBCs()
+    y = PeriodicBCs()
     z = CoordinateBoundaryConditions(top, bottom)
 
     return FieldBoundaryConditions(x, y, z)
@@ -110,9 +111,9 @@ end
                  bottom = BoundaryCondition(Flux, 0))
 
 Construct 'channel' boundary conditions (periodic in ``x``, non-periodic in 
-``y`` and ``z``). The keywords `north`, `south`, `top` and `bottom`
-correspond to boundary conditions in the positive ``y``, negative ``y``,
-positive ``z`, and negative ``z`` directions respectively.
+``y`` and ``z``) for ``u`` or a tracer field. The keywords `north`, `south`, 
+`top` and `bottom` correspond to boundary conditions in the positive ``y``, 
+negative ``y``, positive ``z`, and negative ``z`` directions respectively.
 """
 function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
                        south = BoundaryCondition(Flux, 0),
@@ -120,7 +121,7 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
                       bottom = BoundaryCondition(Flux, 0)
                     )
 
-    x = PeriodicBoundaryConditions()
+    x = PeriodicBCs()
     y = CoordinateBoundaryConditions(south, north)
     z = CoordinateBoundaryConditions(top, bottom)
 
@@ -145,7 +146,7 @@ boundary conditions for any field must be horizontally-periodic.
 function HorizontallyPeriodicModelBCs(;
     u = HorizontallyPeriodicBCs(),
     v = HorizontallyPeriodicBCs(),
-    w = HorizontallyPeriodicBCs(),
+    w = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
     T = HorizontallyPeriodicBCs(),
     S = HorizontallyPeriodicBCs()
    )
@@ -154,8 +155,8 @@ end
 
 function ChannelModelBCs(;
     u = ChannelBCs(),
-    v = ChannelBCs(),
-    w = ChannelBCs(),
+    v = ChannelBCs(north=NoPenetrationBC(), south=NoPenetrationBC()),
+    w = ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
     T = ChannelBCs(),
     S = ChannelBCs()
    )
@@ -258,18 +259,18 @@ If `bottom_bc.condition` is a function, the function must have the signature
 
 # Do nothing if both left and right boundary conditions are periodic.
 apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 apply_bcs!(::CPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 apply_bcs!(::CPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 
 apply_bcs!(::GPU, ::Val{:x}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 apply_bcs!(::GPU, ::Val{:y}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 apply_bcs!(::GPU, ::Val{:z}, Bx, By, Bz,
-    left_bc::BC{<:Periodic, T}, right_bc::BC{<:Periodic, T}, args...) where {T} = nothing
+    left_bc::BC{<:Periodic}, right_bc::BC{<:Periodic}, args...) = nothing
 
 # First, dispatch on coordinate.
 apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
