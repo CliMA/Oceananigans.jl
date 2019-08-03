@@ -1,7 +1,8 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, PC<:PlanetaryConstants, 
-                     VC, TR, PF, F, TC, BCS<:ModelBoundaryConditions, TS, PS, D}
+mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, 
+                     PC<:PlanetaryConstants, 
+                     VC, TR, PF, F, TC, BCS, TS, PS, D}
 
               arch :: A                      # Computer `Architecture` on which `Model` is run
               grid :: GR                     # Grid of physical points on which `Model` is solved
@@ -49,7 +50,7 @@ function Model(;
            eos = LinearEquationOfState(float_type),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(),
-           bcs = ModelBoundaryConditions(),
+           bcs = HorizontallyPeriodicModelBCs(),
     boundary_conditions = bcs,
     # Output and diagonstics
     output_writers = OutputWriter[],
@@ -85,7 +86,7 @@ end
 
     kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; bcs=ChannelModelBoundaryConditions(), kwargs...) = 
+ChannelModel(; bcs=ChannelModelBCs(), kwargs...) = 
     Model(; bcs=bcs, kwargs...)
           
 arch(model::Model{A}) where A <: Architecture = A
