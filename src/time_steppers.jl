@@ -16,7 +16,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         [ run_diagnostic(model, diag) for diag in model.diagnostics ]
     end
 
-    FT = eltype(grid)
+    FT = eltype(model.grid)
     RHS = model.poisson_solver.storage
     U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
                                     model.timestepper.G⁻, model.diffusivities, model.pressures)
@@ -27,8 +27,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
                    model.forcing, model.boundary_conditions, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
-        [ time_to_write(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
-        [ time_to_write(clock, out)  && write_output(model, out)    for out  in model.output_writers ]
+        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ time_to_write(model.clock, out)  && write_output(model, out) for out in model.output_writers ]
     end
 
     return nothing
@@ -48,7 +48,7 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
     fill_halo_regions!(merge(U, Φ), bcs, grid)
     fill_halo_regions!(p.pHY′, bcs[3], grid)
     calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
-    calculate_boundary_source_terms!(model)
+    calculate_boundary_source_terms!(arch, grid, bcs, model.clock, closure, U, Φ, Gⁿ, K)
 
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
 
@@ -363,42 +363,26 @@ get_ν(closure::AnisotropicMinimumDissipation, K) = K.νₑ
 get_κ(closure::AnisotropicMinimumDissipation, K) = (T=K.κₑ.T, S=K.κₑ.S)
 
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(model)
-    arch = model.arch
-    grid = model.grid
-    clock = model.clock
-    eos =  model.eos
-    closure = model.closure
-    bcs = model.boundary_conditions
-    grav = model.constants.g
-    t, iteration = clock.time, clock.iteration
-    U, Φ, G, K = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, model.diffusivities)
-
-    Bx, By, Bz = floor(Int, model.grid.Nx/Tx), floor(Int, model.grid.Ny/Ty), model.grid.Nz  # Blocks in grid
-
-    coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-
-    u_x_bcs = getproperty(bcs.u, coord)
-    v_x_bcs = getproperty(bcs.v, coord)
-    w_x_bcs = getproperty(bcs.w, coord)
-    T_x_bcs = getproperty(bcs.T, coord)
-    S_x_bcs = getproperty(bcs.S, coord)
+function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ, Gⁿ, K)
+    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
     # Apply boundary conditions in the vertical direction.
     ν = get_ν(closure, K)
     κ = get_κ(closure, K)
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, U.u, G.Gu, ν,
-        closure, eos, grav, t, iteration, U, Φ)
+    # Velocity fields
+    for (i, ubcs) in enumerate(bcs[1:3])
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right, 
+                   grid, U[i], Gⁿ[i], ν, closure, clock.time, clock.iteration, U, Φ)
+                   
+    end
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, U.v, G.Gv, ν,
-        closure, eos, grav, t, iteration, U, Φ)
-
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, Φ.T, G.GT, κ.T,
-        closure, eos, grav, t, iteration, U, Φ)
-
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, Φ.S, G.GS, κ.S,
-        closure, eos, grav, t, iteration, U, Φ)
+    # Tracer fields
+    for (i, ϕbcs) in enumerate(bcs[4:end])
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right, 
+                   grid, Φ[i], Gⁿ[i+3], κ[i], closure, clock.time, clock.iteration, U, Φ)
+                   
+    end
 
     return nothing
 end
