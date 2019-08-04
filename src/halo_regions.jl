@@ -1,6 +1,7 @@
 # Halo filling algorithm for arbitrary flux, gradient, and value boundary conditions.
-# For these we fill halos *as if* so the no-fluxes are added to the domain. ϕ
-# Fluxes associated with the boϕndary condition are added in a separate step in the time-stepping
+# For these we fill halos so that no-fluxes are added to source terms when the PDE / 
+# associated differential operators are applied on boundary elements.
+# Fluxes associated with the boundary condition are added in a separate step in the time-stepping
 # algorithm.
  fill_west_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[1:H, :, :] = ϕ.parent[1+H:1+H,  :, :]
 fill_south_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:, 1+H:1+H,  :]
@@ -10,7 +11,7 @@ fill_south_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:,
  fill_north_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = ϕ.parent[:, N+H:N+H, :]
 fill_bottom_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = ϕ.parent[:, :, N+H:N+H]
 
-# Halo filling for periodic boϕndary conditions
+# Halo filling for periodic boundary conditions
 const PBC = BoundaryCondition{<:Periodic}
  fill_west_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[1:H, :, :] = ϕ.parent[N+1:N+H, :, :]
 fill_south_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:, N+1:N+H, :]
@@ -20,9 +21,9 @@ fill_south_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:
  fill_north_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = ϕ.parent[:, 1+H:2H, :]
 fill_bottom_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = ϕ.parent[:, :, 1+H:2H]
 
-# Halo filling for no-penetration boϕndary conditions. Recall that, by convention,
-# the first grid point in an array with no penetration boϕndary condition
-# lies on the boϕndary, where as the final grid point lies in the domain.
+# Halo filling for no-penetration boundary conditions. Recall that, by convention,
+# the first grid point in an array with no penetration boundary condition
+# lies on the boundary, where as the final grid point lies in the domain.
 const NPBC = BoundaryCondition{<:NoPenetration}
  fill_west_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[1:H+1, :, :] = 0
 fill_south_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, 1:H+1, :] = 0
@@ -39,7 +40,7 @@ function fill_x_halo_regions!(ϕ, bcs, grid)
     return nothing
 end
 
-"Fill north and soϕth halo regions."
+"Fill north and south halo regions."
 function fill_y_halo_regions!(ϕ, bcs, grid)
     fill_south_halo!(ϕ, bcs.left, grid.Hy, grid.Ny)
     fill_north_halo!(ϕ, bcs.right, grid.Hy, grid.Ny)
@@ -61,7 +62,12 @@ function fill_halo_regions!(field::AbstractArray, fieldbcs, grid)
     return nothing
 end
 
-"Fill halo regions for all `fields` with corresponding `bcs`."
+"""
+    fill_halo_regions!(fields, bcs, grid)
+
+Fill halo regions for all fields in the tuple `fields` according 
+to the corresponding tuple of `bcs`.
+"""
 function fill_halo_regions!(fields::NamedTuple, bcs, grid)
     for i = 1:length(fields)
         fill_halo_regions!(fields[i], bcs[i], grid)
