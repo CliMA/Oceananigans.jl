@@ -2,7 +2,8 @@
 # For these we fill halos so that no-fluxes are added to source terms when the PDE / 
 # associated differential operators are applied on boundary elements.
 # Fluxes associated with the boundary condition are added in a separate step in the time-stepping
-# algorithm.
+# algorithm. Note that ranges are used to reference the data copied into halos, as this
+# produces views of the correct dimension (eg size = (1, Ny, Nz) for the west halos).
  fill_west_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[1:H, :, :] = ϕ.parent[1+H:1+H,  :, :]
 fill_south_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:, 1+H:1+H,  :]
   fill_top_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, 1:H] = ϕ.parent[:, :,  1+H:1+H]
@@ -69,8 +70,8 @@ Fill halo regions for all fields in the tuple `fields` according
 to the corresponding tuple of `bcs`.
 """
 function fill_halo_regions!(fields::NamedTuple, bcs, grid)
-    for i = 1:length(fields)
-        fill_halo_regions!(fields[i], bcs[i], grid)
+    for (field, fieldbcs) in zip(fields, bcs)
+        fill_halo_regions!(field, fieldbcs, grid)
     end
     return nothing
 end
