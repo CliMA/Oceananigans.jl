@@ -94,8 +94,8 @@ Construct horizontally-periodic boundary conditions for ``u``, ``v``, or a
 tracer field with top boundary condition (positive-z) `top` 
 and bottom boundary condition (negative-z) `bottom`.
 """
-function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
-                                   bottom = BoundaryCondition(Flux, 0))
+function HorizontallyPeriodicBCs(;    top = NoPenetrationBC(),
+                                   bottom = NoPenetrationBC())
 
     x = PeriodicBCs()
     y = PeriodicBCs()
@@ -115,12 +115,10 @@ Construct 'channel' boundary conditions (periodic in ``x``, non-periodic in
 `top` and `bottom` correspond to boundary conditions in the positive ``y``, 
 negative ``y``, positive ``z`, and negative ``z`` directions respectively.
 """
-function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
-                       south = BoundaryCondition(Flux, 0),
-                         top = BoundaryCondition(Flux, 0),
-                      bottom = BoundaryCondition(Flux, 0)
-                    )
-
+function ChannelBCs(;  north = NoPenetrationBC(),
+                       south = NoPenetrationBC(),
+                         top = NoPenetrationBC(),
+                      bottom = NoPenetrationBC())
     x = PeriodicBCs()
     y = CoordinateBoundaryConditions(south, north)
     z = CoordinateBoundaryConditions(top, bottom)
