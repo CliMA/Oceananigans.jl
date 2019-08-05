@@ -27,8 +27,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
                    model.forcing, model.boundary_conditions, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
-        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
-        [ time_to_write(model.clock, out)  && write_output(model, out) for out in model.output_writers ]
+        [ time_to_run(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ time_to_write(clock, out) && write_output(model, out) for out in model.output_writers ]
     end
 
     return nothing
