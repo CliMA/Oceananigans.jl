@@ -76,4 +76,4 @@ function run_diagnostic(model::Model, diag::VelocityDivergenceChecker)
     end
 end
 
-time_to_write(clock, diag::Diagnostic) = (clock.iteration % diag.diagnostic_frequency) == 0
+time_to_run(clock, diag) = (clock.iteration % diag.diagnostic_frequency) == 0

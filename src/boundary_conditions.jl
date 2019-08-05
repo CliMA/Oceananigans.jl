@@ -264,7 +264,7 @@ If `top_bc.condition` is a function, the function must have the signature
     Gc[i, j, 1] += κ * getbc(top_gradient, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
 @inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
-    Gc[i, j, 1] += 2κ / grid.Δz * (getbc(top_value, i, j, grid, t, iteration, U, Φ) - c[i, j, 1])
+    Gc[i, j, 1] += 2κ / grid.Δz^2 * (getbc(top_value, i, j, grid, t, iteration, U, Φ) - c[i, j, 1])
 
 """
     apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ, t, iteration, U, Φ)
@@ -283,7 +283,7 @@ If `bottom_bc.condition` is a function, the function must have the signature
     Gc[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, t, iteration, U, Φ) / grid.Δz
 
 @inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, t, iteration, U, Φ) =
-    Gc[i, j, grid.Nz] -= 2κ / grid.Δz * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, t, iteration, U, Φ))
+    Gc[i, j, grid.Nz] -= 2κ / grid.Δz^2 * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, t, iteration, U, Φ))
 
 # Do nothing if both left and right boundary conditions are periodic.
 apply_bcs!(::CPU, ::Val{:x}, Bx, By, Bz,
