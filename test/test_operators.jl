@@ -17,13 +17,21 @@
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
-        A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
         grid_yz = RegularCartesianGrid((1, Ny, Nz), (Lx, Ly, Lz))
+
+        # Manually fill in halos for the slice.
+        A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
+        A2yz[:, :, 0] .= A2yz[:, :, 1]
+        A2yz[:, :, Nz+1] .= A2yz[:, :, Nz]
 
         # An xz-slice with Ny==1.
         A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
-        A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]
         grid_xz = RegularCartesianGrid((Nx, 1, Nz), (Lx, Ly, Lz))
+
+        # Manually fill in halos for the slice.
+        A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]
+        A2xz[:, :, 0] .= A2xz[:, :, 1]
+        A2xz[:, :, Nz+1] .= A2xz[:, :, Nz]
 
         test_indices_3d = [(4, 5, 5), (21, 11, 4), (16, 8, 4),  (30, 12, 3), (11, 3, 6), # Interior
                            (2, 10, 4), (31, 5, 6), (10, 2, 4), (17, 15, 5), (17, 10, 2), (23, 5, 7),  # Borderlands
