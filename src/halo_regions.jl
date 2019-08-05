@@ -59,7 +59,7 @@ end
 function fill_halo_regions!(field::AbstractArray, fieldbcs, grid)
     fill_x_halo_regions!(field, fieldbcs.x, grid)
     fill_y_halo_regions!(field, fieldbcs.y, grid)
-    #fill_z_halo_regions!(field, fieldbcs.z, grid)
+    fill_z_halo_regions!(field, fieldbcs.z, grid)
     return nothing
 end
 
