@@ -17,6 +17,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
     end
 
     FT = eltype(model.grid)
+    clock = model.clock
     RHS = model.poisson_solver.storage
     U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
                                     model.timestepper.G⁻, model.diffusivities, model.pressures)
