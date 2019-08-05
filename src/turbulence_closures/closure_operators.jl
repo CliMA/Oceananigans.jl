@@ -8,21 +8,8 @@
 @inline ∂y_aca(i, j, k, grid, v::AbstractArray) = @inbounds (v[i, j+1, k] - v[i, j, k]) / grid.Δy
 @inline ∂y_afa(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i, j-1, k]) / grid.Δy
 
-@inline function ∂z_aac(i, j, k, grid, w::AbstractArray)
-    if k == grid.Nz
-        return @inbounds w[i, j, k] / grid.Δz # no penetration
-    else
-        return @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
-    end
-end
-
-@inline function ∂z_aaf(i, j, k, grid::Grid{T}, c::AbstractArray) where T
-    if k == 1
-        return -zero(T) # no-gradient condition
-    else
-        return @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
-    end
-end
+@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
+@inline ∂z_aaf(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
 
 #
 # Differentiation and interpolation operators for functions
@@ -72,7 +59,7 @@ Differentiate the function or callable object
 
 located at `caa` in `x`, across `faa`.
 """
-@inline ∂x_faa(i, j, k, grid, F::TF, args...) where TF<:Function = 
+@inline ∂x_faa(i, j, k, grid, F::TF, args...) where TF<:Function =
     (F(i, j, k, grid, args...) - F(i-1, j, k, grid, args...)) / grid.Δx
 
 """
@@ -108,7 +95,7 @@ Differentiate the function or callable object
 
 located at `afa` in `y`, across `aca`.
 """
-@inline ∂y_aca(i, j, k, grid, F::TF, args...) where TF<:Function = 
+@inline ∂y_aca(i, j, k, grid, F::TF, args...) where TF<:Function =
     (F(i, j+1, k, grid, args...) - F(i, j, k, grid, args...)) / grid.Δy
 
 """
@@ -120,13 +107,8 @@ Differentiate the function or callable object
 
 located at `aac` in `z`, across `aaf`.
 """
-@inline function ∂z_aaf(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function}
-    if k == 1
-        return -zero(T)
-    else
-        return (F(i, j, k-1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
-    end
-end
+@inline ∂z_aaf(i, j, k, grid::Grid, F::TF, args...) where TF<:Function =
+    (F(i, j, k-1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
 
 """
     ∂z_aac(i, j, k, grid, F, args...)
@@ -137,13 +119,8 @@ Differentiate the function or callable object
 
 located at `aaf` in `z`, across `aac`.
 """
-@inline function ∂z_aac(i, j, k, grid, F::TF, args...) where TF<:Function
-    if k == grid.Nz
-        return F(i, j, k, grid, args...) / grid.Δz
-    else
-        return (F(i, j, k, grid, args...) - F(i, j, k+1, grid, args...)) / grid.Δz
-    end
-end
+@inline ∂z_aac(i, j, k, grid, F::TF, args...) where TF<:Function =
+    (F(i, j, k, grid, args...) - F(i, j, k+1, grid, args...)) / grid.Δz
 
 #
 # Double differentiation
@@ -219,13 +196,8 @@ Interpolate the function or callable object
 
 from `aac` to `aaf`.
 """
-@inline function ▶z_aaf(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function}
-    if k == 1
-        return F(i, j, k, grid, args...)
-    else
-        return T(0.5) * (F(i, j, k, grid, args...) + F(i, j, k-1, grid, args...))
-    end
-end
+@inline ▶z_aaf(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+    T(0.5) * (F(i, j, k, grid, args...) + F(i, j, k-1, grid, args...))
 
 """
     ▶z_aac(i, j, k, grid::Grid{T}, F, args...) where T
@@ -236,13 +208,8 @@ Interpolate the function or callable object
 
 from `aaf` to `aac`.
 """
-@inline function ▶z_aac(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function}
-    if k == grid.Nz
-        return T(0.5) * F(i, j, k, grid, args...)
-    else
-        return T(0.5) * (F(i, j, k+1, grid, args...) + F(i, j, k, grid, args...))
-    end
-end
+@inline ▶z_aac(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+    T(0.5) * (F(i, j, k+1, grid, args...) + F(i, j, k, grid, args...))
 
 # Convenience operators for "interpolating constants"
 @inline ▶x_faa(i, j, k, grid, F::Number, args...) = F
@@ -264,21 +231,11 @@ end
 @inline ▶y_aca(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i, j+1, k])
 
-@inline function ▶z_aaf(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T
-    if k == 1
-        return @inbounds F[i, j, k]
-    else
-        return @inbounds T(0.5) * (F[i, j, k] + F[i, j, k-1])
-    end
-end
+@inline ▶z_aaf(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+    @inbounds T(0.5) * (F[i, j, k] + F[i, j, k-1])
 
-@inline function ▶z_aac(i, j, k, grid::Grid{T}, w::AbstractArray, args...) where T
-    if k == grid.Nz
-        return @inbounds T(0.5) * w[i, j, k]
-    else
-        return @inbounds T(0.5) * (w[i, j, k] + w[i, j, k+1])
-    end
-end
+@inline ▶z_aac(i, j, k, grid::Grid{T}, w::AbstractArray, args...) where T =
+    @inbounds T(0.5) * (w[i, j, k] + w[i, j, k+1])
 
 #
 # Double interpolation: 12 operators
