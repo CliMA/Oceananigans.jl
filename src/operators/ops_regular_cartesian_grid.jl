@@ -79,21 +79,6 @@ end
     end
 end
 
-@inline avgx_4(g::RegularCartesianGrid{T}, f, i, j, k) where T =
-    @inbounds T(0.5) * (f[i, j, k] + f[i-1, j, k] - (f[i+1, j, k] - f[i, j, k] - f[i-1, j, k] + f[i-2, j, k]) / 6)
-
-@inline avgy_4(g::RegularCartesianGrid{T}, f, i, j, k) where T =
-    @inbounds T(0.5) * (f[i, j, k] + f[i, j-1, k] - (f[i, j+1, k] - f[i, j, k] - f[i, j-1, k] + f[i, j-2, k]) / 6)
-
-@inline function avgz_4(g::RegularCartesianGrid{T}, f, i, j, k) where T
-	if k == 1
-		@inbounds return f[i, j, 1]
-	else
-		@inbounds return T(0.5) * (f[i, j, k] + f[i, j, max(1, k-1)] -
-		                              (f[i, j, min(g.Nz, k+1)] - f[i, j, k] -
-							           f[i, j, max(1, k-1)] + f[i, j, max(1, k-2)]) / 6)
-    end
-end
 
 @inline function div_f2c(g::RegularCartesianGrid, fx, fy, fz, i, j, k)
     (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)
