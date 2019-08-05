@@ -32,11 +32,10 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    (all(field.data[1-Hx:0,   1:Ny,   1:Nz] .== field[Nx-Hx+1:Nx, 1:Ny,           1:Nz]) &&
-     all(field.data[1:Nx,   1-Hy:0,   1:Nz] .== field[1:Nx,      Ny-Hy+1:Ny,      1:Nz]) &&
-     all(field.data[1:Nx,     1:Ny, 1-Hz:0] .== field[1:Nx,      1:Ny,      Nz-Hz+1:Nz]))
-end
-
+    (all(field.data[1-Hx:0,   1:Ny,   1:Nz] .== field.data[Nx-Hx+1:Nx, 1:Ny,           1:Nz]) &&
+     all(field.data[1:Nx,   1-Hy:0,   1:Nz] .== field.data[1:Nx,      Ny-Hy+1:Ny,      1:Nz]) &&
+     all(field.data[1:Nx,     1:Ny,     1-Hz:0] .== 0) &&
+     all(field.data[1:Nx,     1:Ny, Nz+1:Nz+Hz] .== 0))
 end
 
 @testset "Halo regions" begin
