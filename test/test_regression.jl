@@ -1,43 +1,14 @@
-using Random, Printf, JLD
+using Random, Printf, JLD2
 const seed = 420  # Random seed to use for all pseudorandom number generators.
 
-mutable struct JLDOutputWriter{N} <: OutputWriter
-                 dir :: String
-              prefix :: String
-           fieldsets :: NTuple{N, Symbol}
-    output_frequency :: Int
-             padding :: Int
-end
+datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
-ext(::JLDOutputWriter) = ".jld"
-
-function JLDOutputWriter(; dir=".", prefix="", fieldsets=(:velocities, :tracers, :G), frequency=1, padding=9)
-    return JLDOutputWriter(dir, prefix, fieldsets, frequency, padding)
-end
-
-filename(iter, fw::JLDOutputWriter) = joinpath(fw.dir, fw.prefix * lpad(iter, fw.padding, "0") * ext(fw))
-
-function Oceananigans.write_output(model, fw::JLDOutputWriter)
-    filepath = filename(model.clock.iteration, fw)
-    write_jld_output(Tuple(getproperty(model, s) for s in fw.fieldsets), filepath)
-end
-
-function Oceananigans.read_output(name, iter, fw::JLDOutputWriter)
-    filepath = filename(iter, fw)
-    data = load(filepath, name)
-    return data
-end
-
-function write_jld_output(sets, filepath)
-    allvars = Dict{String, Any}()
-    for s in sets
-        svars = Dict((String(fld), Array(getproperty(s, fld).data)) for fld in propertynames(s))
-        merge!(allvars, svars)
-    end
-
-    save(filepath, allvars)
-
-    return nothing
+function get_output_tuple(output, iter, tuplename)
+    file = jldopen(output.filepath, "r")
+    output_tuple = file["timeseries/$tuplename/$iter"]
+    close(file)
+    println(typeof(output_tuple))
+    return output_tuple
 end
 
 function run_thermal_bubble_regression_tests(arch)
@@ -203,29 +174,30 @@ function run_rayleigh_benard_regression_test(arch)
     spinup_steps = 1000
       test_steps = 100
 
-    prefix = "data_rayleigh_benard_regression_"
-    outputwriter = JLDOutputWriter(dir=".", prefix=prefix, frequency=test_steps)
+    output_U(model) = datatuple(model.velocities)
+    output_Φ(model) = datatuple(model.tracers)
+    output_G(model) = datatuple(model.timestepper.Gⁿ)
+    outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
+
+    prefix = "data_rayleigh_benard_regression"
+    outputwriter = JLD2OutputWriter(model, outputfields, dir=".", 
+                                    prefix=prefix, frequency=test_steps, including=[])
 
     #
     # Initial condition and spinup steps for creating regression test data
     #
 
     #=
+    @warn ("Generating new data for the Rayleigh-Benard regression test. 
+           New regression test data generation will fail unless the JLD2 
+           file $prefix.jld2 is manually deleted.")
+
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
     b₀(x, y, z) = (ξ(z) - z) / Lz
+    set_ic!(model, T=b₀)
 
-    x, y, z = model.grid.xC, model.grid.yC, model.grid.zC
-    x, y, z = reshape(x, Nx, 1, 1), reshape(y, 1, Ny, 1), reshape(z, 1, 1, Nz)
-
-    model.tracers.T.data .= ArrayType(b₀.(x, y, z))
-
-    println("Spinning up... ")
-
-    @time begin
-        time_step!(model, spinup_steps-test_steps, Δt)
-        push!(model.output_writers, outputwriter)
-    end
-
+    time_step!(model, spinup_steps-test_steps, Δt)
+    push!(model.output_writers, outputwriter)
     time_step!(model, 2test_steps, Δt)
     =#
 
@@ -234,17 +206,9 @@ function run_rayleigh_benard_regression_test(arch)
     #
 
     # Load initial state
-    u₀ = read_output("u",  spinup_steps, outputwriter)
-    v₀ = read_output("v",  spinup_steps, outputwriter)
-    w₀ = read_output("w",  spinup_steps, outputwriter)
-    T₀ = read_output("T",  spinup_steps, outputwriter)
-    S₀ = read_output("S",  spinup_steps, outputwriter)
-
-    Gu = read_output("Gu", spinup_steps, outputwriter)
-    Gv = read_output("Gv", spinup_steps, outputwriter)
-    Gw = read_output("Gw", spinup_steps, outputwriter)
-    GT = read_output("GT", spinup_steps, outputwriter)
-    GS = read_output("GS", spinup_steps, outputwriter)
+    u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)
+    T₀, S₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
+    Gu, Gv, Gw, GT, GS = get_output_tuple(outputwriter, spinup_steps, :G)
 
     data(model.velocities.u) .= ArrayType(u₀)
     data(model.velocities.v) .= ArrayType(v₀)
@@ -260,15 +224,14 @@ function run_rayleigh_benard_regression_test(arch)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
+    length(model.output_writers) > 0 && pop!(model.output_writers)
+    println(model.output_writers)
 
     # Step the model forward and perform the regression test
     time_step!(model, test_steps, Δt; init_with_euler=false)
 
-    u₁ = read_output("u", spinup_steps + test_steps, outputwriter)
-    v₁ = read_output("v", spinup_steps + test_steps, outputwriter)
-    w₁ = read_output("w", spinup_steps + test_steps, outputwriter)
-    T₁ = read_output("T", spinup_steps + test_steps, outputwriter)
-    S₁ = read_output("S", spinup_steps + test_steps, outputwriter)
+    u₁, v₁, w₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :U)
+    T₁, S₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
 
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
