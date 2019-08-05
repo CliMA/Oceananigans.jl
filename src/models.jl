@@ -102,11 +102,11 @@ function initialize_with_defaults!(eos::EquationOfState, tracers, sets...)
     # Default tracer initial condition is deteremined by eos.
     tracers.S.data.parent .= eos.S₀
     tracers.T.data.parent .= eos.T₀
-    initialize_with_defaults!(sets...)
+    initialize_with_zeros!(sets...)
     return nothing
 end
 
-function initialize_with_defaults!(sets...)
+function initialize_with_zeros!(sets...)
     # Set all fields to 0
     for set in sets
         for fldname in propertynames(set)
