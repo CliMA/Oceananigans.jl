@@ -46,7 +46,7 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
 
     fill_halo_regions!(merge(U, Φ), bcs, grid)
-    fill_halo_regions!(p.pHY′, bcs[3], grid)
+    fill_halo_regions!(p.pHY′, bcs[4], grid)
     calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
     calculate_boundary_source_terms!(arch, grid, bcs, model.clock, closure, U, Φ, Gⁿ, K)
 
@@ -57,7 +57,7 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
     @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
-    fill_halo_regions!(p.pNHS, bcs[3], grid)
+    fill_halo_regions!(p.pNHS, bcs[4], grid)
 
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
 
