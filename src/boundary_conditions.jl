@@ -242,8 +242,9 @@ If `top_bc.condition` is a function, the function must have the signature
 @inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, 1] += κ * getbc(top_gradient, i, j, grid, args...) / grid.Δz
 
-@inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) = 
-    Gc[i, j, 1] += 2κ / grid.Δz * (getbc(top_value, i, j, grid, args...) - c[i, j, 1])
+@inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
+    Gc[i, j, 1] += 2κ / grid.Δz^2 * (getbc(top_value, i, j, grid, args...) - c[i, j, 1])
+
 
 """
     apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ, t, iter, U, Φ)
@@ -261,8 +262,8 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) = 
     Gc[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, args...) / grid.Δz
 
-@inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) = 
-    Gc[i, j, grid.Nz] -= 2κ / grid.Δz * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, args...))
+@inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
+    Gc[i, j, grid.Nz] -= 2κ / grid.Δz^2 * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, args...))
 
 
 @inline get_top_κ(κ::Number, args...) = κ
