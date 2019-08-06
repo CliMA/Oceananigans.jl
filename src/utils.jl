@@ -100,3 +100,26 @@ function update_Δt!(wizard, model)
 
     return nothing
 end
+
+# Dynamic launch configuration
+function launch_config(grid, dims)
+    return function (kernel)
+        fun = kernel.fun
+        config = launch_configuration(fun)
+
+        # adapt the suggested config from 1D to the requested grid dimensions
+        if dims == 3
+            threads = floor(Int, cbrt(config.threads))
+            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
+            threads = [threads, threads, threads]
+        elseif dims == 2
+            threads = floor(Int, sqrt(config.threads))
+            blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
+            threads = [threads, threads]
+        else
+            error("unsupported launch configuration")
+        end
+
+        return (threads=Tuple(threads), blocks=Tuple(blocks))
+    end
+end
