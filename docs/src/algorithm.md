@@ -51,69 +51,7 @@ The reason for this is that for the case of periodic boundary conditions, the va
 and for walled boundaries, faces $N+1$ and $1$ both represent walls so again there is no need to store an extra face. This will change for the case of open boundary conditions
 which are not considered here.
 
-## Governing prognostic equations and boundary conditions
 
-The governing equations are the rotating Boussinesq equations of motion.
-The Boussinesq approximation, which is appropriate for Earth's ocean
-assumes that density variations from a reference state
-are small, which means that the fluid can be treated as effective incompressible
-and that density variations affect only accelerations along the axis of gravity.
-The Boussinesq equations are
-
-```math
-\begin{gather}
-        \p{\bvh}{t} = \b{G}_{\bv h} - \frac{1}{\rho_0} \bnabla_h p ,     \label{eqn:horizontalMomentum} \\
-           \p{w}{t} = G_w - \frac{1}{\rho_0} \p{p}{z} ,                  \label{eqn:verticalMomentum} \\
-  \bnabla \cdotp \bv = 0 ,                               \label{eqn:continuity} \\
-           \p{T}{t} = G_T ,                             \label{eqn:TTendency} \\
-           \p{S}{t} = G_S ,                             \label{eqn:STendency} \\
-               \rho = \rho(T,S,p) ,                     \label{eqn:EOS}
-\end{gather}
-```
-
-where $\bv = (u, \v, w)$ is the velocity, $\bvh = (u, \v)$ is the horizontal velocity, $\rho_0$ is a reference density corresponding to an ocean at rest, $\bnabla = (\partial_x, \partial_y, \partial_z)$ is the del operator, and $\bnablah = (\partial_x, \partial_y)$
-is the horizontal del operator.
-Equations \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum} are the horizontal
-and vertical momentum equations respectively.
-Equation \eqref{eqn:continuity} is the continuity equation expressing conservation of mass.
-Equations \eqref{eqn:TTendency} and \eqref{eqn:STendency} prognostic equations describing the time evolution of temperature $T$ and salinity $S$.
-Equation \eqref{eqn:EOS} is an equation of state for seawater giving the density $\rho$ in terms of $T$, $S$, and $p$.
-The source terms $\b{G}_{\bv} = (\b{G}_{\bv h}, G_w) = (G_u, G_v, G_w)$ in \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum}
-represent inertial, Coriolis, gravitational, forcing, and dissipation terms:
-
-```math
-\begin{align}
-    G_u &= -\bv \cdotp \bnabla u + f\v - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
-    G_\v &= -\bv \cdotp \bnabla \v - f u - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla \v} + F_\v  ,\\
-    G_w &= -\bv \cdotp \bnabla w                                        + \div{\nu \bnabla w} + F_w ,
-\end{align}
-```
-
-where $f = 2 \Omega \sin \phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, $p'_{HY}$ is the hydrostatic pressure anomaly, and $\nu$ is the viscosity. $F_u$, $F_\v$, and $F_w$ represent other forcing terms that may be imposed.
-Note that the buoyancy term $-g \delta \rho / \rho_0$ (with $g$ the acceleration due to gravity) that is usually present in the vertical momentum equation has been expressed in terms
-of the hydrostatic pressure anomaly $p'_{HY}$ which ends up in the horizontal momentum equations. (This step will be shown in an appendix.)
-
-Similarly, the source terms for the tracer quantities can be written as
-
-```math
-\beq
-  G_T = -\div{\bv T} + \kappa \nabla^2 T + F_T ,
-  \label{eqn:G_T}
-\eeq
-```
-
-```math
-\beq
-  G_S = -\div{\bv S} + \kappa \nabla^2 S + F_S ,
-  \label{eqn:G_S}
-\eeq
-```
-
-where $\kappa$ is the diffusivity while $F_T$ and $F_S$ represent forcing terms.
-
-The associated boundary conditions for the embedded non-hydrostatic models is periodic in the horizontal direction and a
-rigid boundary or "lid" at the top and bottom. The rigid lid approximation sets $w = 0$ at the vertical boundaries so
-that it does not move but still allows a pressure to be exerted on the fluid by the lid.
 
 ## Numerical strategy
 
