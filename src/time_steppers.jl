@@ -97,7 +97,7 @@ function time_step!(model, arch, grid, constants, eos, closure,
                                                        fill_halo_regions!(grid, pN_ft)
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pN, Gⁿ, Δt)
                                                        fill_halo_regions!(grid, U_ft...)
-    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
+    # @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
 
     model.clock.time += Δt
     model.clock.iteration += 1
@@ -363,6 +363,7 @@ function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
                 @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
+                @inbounds U.w[i, j, k] = U.w[i, j, k] + (Gⁿ.Gw[i, j, k] - (δz_c2f(grid, pNHS, i, j, k) / grid.Δz)) * Δt
                 @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
                 @inbounds Φ.S[i, j, k] = Φ.S[i, j, k] + (Gⁿ.GS[i, j, k] * Δt)
             end
