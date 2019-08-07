@@ -164,7 +164,9 @@ nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
 zerofunk(args...) = 0
 
-function set_ic!(model; ics...)
+set_ic!(model; vals..) = set!(mode; vals...)  # legacy wrapper
+
+function set!(model; ics...)
     for (fld, ic) in ics
         if fld ∈ (:u, :v, :w)
             ϕ = getproperty(model.velocities, fld)
@@ -175,7 +177,7 @@ function set_ic!(model; ics...)
     end
 end
 
-function set_initial_condition!(grid, ϕ, ic::AbstractArray, args...)
+function set!(grid, ϕ, ic::AbstractArray, args...)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -185,7 +187,7 @@ function set_initial_condition!(grid, ϕ, ic::AbstractArray, args...)
     end
 end
 
-function set_initial_condition!(grid, ϕ, ic::Function, xN, yN, zN)
+function set!(grid, ϕ, ic::Function, xN, yN, zN)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
