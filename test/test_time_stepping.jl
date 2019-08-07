@@ -1,28 +1,17 @@
 using Oceananigans: velocity_div!, compute_w_from_continuity!
 
-function time_stepping_works(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 1, 2, 3
-    Δt = 1
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT)
-    time_step!(model, 1, Δt)
-
-    # Just testing that no errors/crashes happen when time stepping.
-    return true
+function time_stepping_works(arch, FT, Closure)
+    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
+                  closure=Closure(FT))
+    time_step!(model, 1, 1)
+    return true # test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 1, 2, 3
-    Δt = 1
-
     add_ones(args...) = 1.0
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT,
+    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
                   forcing=Forcing(FT=add_ones))
-
-    time_step!(model, 1, Δt)
+    time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
     @test all(data(model.timestepper.Gⁿ.Gu) .≈ 0)
@@ -43,7 +32,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    fbcs = HorizontallyPeriodicBCs()
+    bcs = HorizontallyPeriodicModelBCs()
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
@@ -53,10 +42,11 @@ function compute_w_from_continuity(arch, FT)
     data(u) .= rand(FT, Nx, Ny, Nz)
     data(v) .= rand(FT, Nx, Ny, Nz)
 
-    fill_halo_regions!(grid, (:u, fbcs, u.data), (:v, fbcs, v.data))
-    compute_w_from_continuity!(grid, u.data, v.data, w.data)
+    fill_halo_regions!(u.data, bcs.u, grid)
+    fill_halo_regions!(v.data, bcs.v, grid)
+    compute_w_from_continuity!(grid, (u=u.data, v=v.data, w=w.data))
 
-    fill_halo_regions!(grid, (:w, fbcs, w.data))
+    fill_halo_regions!(w.data, bcs.w, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
@@ -134,7 +124,6 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     # Initial temperature field [°C].
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
-
     set_ic!(model, T=T₀)
 
     Tavg0 = mean(data(model.tracers.T))
@@ -154,11 +143,14 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     end
 end
 
+Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+            ConstantSmagorinsky, AnisotropicMinimumDissipation)
+
 @testset "Time stepping" begin
     println("Testing time stepping...")
 
-    for arch in archs, FT in float_types
-        @test time_stepping_works(arch, FT)
+    for arch in archs, FT in float_types, Closure in Closures
+        @test time_stepping_works(arch, FT, Closure)
     end
 
     @testset "2nd-order Adams-Bashforth" begin

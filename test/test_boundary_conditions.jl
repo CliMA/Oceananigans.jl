@@ -1,8 +1,8 @@
-function test_z_boundary_condition_simple(arch, T, field_name, bctype, bc, Nx, Ny)
+function test_z_boundary_condition_simple(arch, T, fldname, bctype, bc, Nx, Ny)
     Nz = 16
-
     bc = BoundaryCondition(bctype, bc)
-    modelbcs = BoundaryConditions(field_name, :z, :top, bc)
+    fieldbcs = HorizontallyPeriodicBCs(top=bc)
+    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
     model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T,
                   bcs=modelbcs)
@@ -12,25 +12,24 @@ function test_z_boundary_condition_simple(arch, T, field_name, bctype, bc, Nx, N
     typeof(model) <: Model
 end
 
-function test_z_boundary_condition_top_bottom_alias(arch, FT, field_name)
-    N = 16
-    bcval = 1.0
-    top_bc = BoundaryCondition(Value, bcval)
-    bottom_bc = BoundaryCondition(Value, -bcval)
-
+function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
+    N, val = 16, 1.0
+    top_bc = BoundaryCondition(Value, val)
+    bottom_bc = BoundaryCondition(Value, -val)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
-    modelbcs = BoundaryConditions(; Dict((field_name => fieldbcs))...)
+    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT, bcs=modelbcs)
+    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT, 
+                  bcs=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, field_name)
+    bcs = getfield(model.boundary_conditions, fldname)
 
     time_step!(model, 1, 1e-16)
 
-    getbc(bcs.z.top) == bcval && getbc(bcs.z.bottom) == -bcval
+    getbc(bcs.z.top) == val && getbc(bcs.z.bottom) == -val
 end
 
-function test_z_boundary_condition_array(arch, T, field_name)
+function test_z_boundary_condition_array(arch, T, fldname)
     Nx = Ny = Nz = 16
 
     bcarray = rand(T, Nx, Ny)
@@ -40,37 +39,39 @@ function test_z_boundary_condition_array(arch, T, field_name)
     end
 
     value_bc = BoundaryCondition(Value, bcarray)
-    modelbcs = BoundaryConditions(field_name, :z, :top, value_bc)
+    fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
+    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T, bcs=modelbcs)
+    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T, 
+                  bcs=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, field_name)
+    bcs = getfield(model.boundary_conditions, fldname)
 
     time_step!(model, 1, 1e-16)
 
     bcs.z.top[1, 2] == bcarray[1, 2]
 end
 
-function test_flux_budget(arch, FT, field_name)
+function test_flux_budget(arch, FT, fldname)
     N, κ, Lz = 16, 1, 0.7
 
     bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
-    modelbcs = BoundaryConditions(field_name, :z, :bottom, flux_bc)
+    fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
+    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ,
-                  arch=arch, float_type=FT, eos=LinearEquationOfState(βS=0, βT=0),
-                  bcs=modelbcs)
+    model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, arch=arch, float_type=FT, 
+                  eos=LinearEquationOfState(βS=0, βT=0), bcs=modelbcs)
 
-    if field_name ∈ (:u, :v, :w)
-        field = getfield(model.velocities, field_name)
+    if fldname ∈ (:u, :v, :w)
+        field = getfield(model.velocities, fldname)
     else
-        field = getfield(model.tracers, field_name)
+        field = getfield(model.tracers, fldname)
     end
 
     @. field.data = 0
 
-    bcs = getfield(model.boundary_conditions, field_name)
+    bcs = getfield(model.boundary_conditions, fldname)
     mean_init = mean(data(field))
 
     τκ = Lz^2 / κ   # Diffusion time-scale
@@ -79,7 +80,7 @@ function test_flux_budget(arch, FT, field_name)
 
     time_step!(model, Nt, Δt)
 
-    # budget is Lz * ∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right);
+    # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz
     isapprox(mean(data(field)) - mean_init, bottom_flux * model.clock.time / Lz)
 end

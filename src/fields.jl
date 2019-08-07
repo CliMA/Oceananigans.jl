@@ -1,8 +1,3 @@
-import Base:
-    size, length,
-    getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
-
 import GPUifyLoops: @launch, @loop
 
 """
