@@ -20,7 +20,7 @@ cₚ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
 Rc = 600   # Radius of cooling disk [m].
 Ts = 20    # Surface temperature [°C].
 Q₀ = -800  # Cooling disk heat flux [W/m²].
-Q₁ = 0     # Noise added to cooling disk heat flux [W/m²].
+Q₁ = 1     # Noise added to cooling disk heat flux [W/m²].
 Ns = 5 * (c.f * Rc/g.Lz)  # Stratification or Brunt–Väisälä frequency [s⁻¹].
 ∂T∂z = Ns^2 / (c.g * αᵥ)  # Vertical temperature gradient [K/m].
 
