@@ -6,7 +6,7 @@ FT = Float64
 Nx, Ny, Nz = 256, 256, 256
 Lx, Ly, Lz = 2000, 2000, 1000
 end_time = 4day
-Δt = 20  # Time step in seconds.
+Δt = 4  # Time step in seconds.
 
 grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
 
@@ -49,3 +49,28 @@ model = Model(float_type = FT,
 
 ε(μ) = μ * randn()  # noise
 T₀(x, y, z) = Ts + ∂T∂z * z + ε(1e-4)
+
+set_ic!(model; T=T₀)
+
+# Only save the temperature field (excluding halo regions).
+θ(model) = Array(model.tracers.T.data.parent)[1:Nx, 1:Ny, 1:Nz]
+fields = Dict(:θ=>θ)
+
+# Save output every 100 seconds.
+field_writer = JLD2OutputWriter(model, fields; dir="data", prefix="deep_convection_temperatre", interval=100, force=true)
+
+push!(model.output_writers, field_writer)
+
+Ni = 100  # Number of "intermediate" time steps to take before printing a progress message.
+while model.clock.time < end_time
+    walltime = @elapsed time_step!(model; Nt=Ni, Δt=Δt)
+
+    umax = maximum(abs, model.velocities.u.data.parent)
+    vmax = maximum(abs, model.velocities.v.data.parent)
+    wmax = maximum(abs, model.velocities.w.data.parent)
+    CFL = Δt / cell_advection_timescale(model)
+
+    progress = 100 * (model.clock.time / end_time)
+    @printf("[%06.2f%%] i: %d, t: %8.5g, umax: (%6.3g, %6.3g, %6.3g), CFL: %6.4g, ⟨wall time⟩: %s\n",
+            progress, model.clock.iteration, model.clock.time, umax, vmax, wmax, CFL, prettytime(1e9*walltime / Ni))
+end
