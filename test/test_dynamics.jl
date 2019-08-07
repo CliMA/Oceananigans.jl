@@ -225,17 +225,11 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    # We end up with time-dependent Dirchlet boundary conditions at the top and bottom for u and v.
-    @inline u_top(i, j, grid, t, args...) = u(grid.xF[i], grid.yC[j], 0, t)
-    @inline v_top(i, j, grid, t, args...) = v(grid.xC[i], grid.yF[j], 0, t)
-    @inline u_bot(i, j, grid, t, args...) = u(grid.xF[i], grid.yC[j], model.grid.Lz, t)
-    @inline v_bot(i, j, grid, t, args...) = v(grid.xC[i], grid.yF[j], model.grid.Lz, t)
+    ubcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
+                                   bottom = BoundaryCondition(Gradient, 0))
 
-    ubcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, u_top),
-                                   bottom = BoundaryCondition(Value, u_bot))
-
-    vbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, v_top),
-                                   bottom = BoundaryCondition(Value, v_bot))
+    vbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
+                                   bottom = BoundaryCondition(Gradient, 0))
 
     model = Model(N = (Nx, Ny, Nz), L = (Lx, Ly, Lz), arch = arch,
                   constants = PlanetaryConstants(f=0, g=0),  # Turn off rotation and gravity.
