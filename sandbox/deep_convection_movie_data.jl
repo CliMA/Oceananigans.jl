@@ -12,6 +12,7 @@ grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
 
 # Physical constants
 φ  = 58       # Latitude to run simulation at. Corresponds to Labrador Sea.
+ρ₀ = 1027    # Density of seawater [kg/m³]
 αᵥ = 2.07e-4  # Volumetric coefficient of thermal expansion for water [K⁻¹].
 cₚ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
 
@@ -32,7 +33,12 @@ x₀ = grid.xC .- mean(grid.xC)
 y₀ = grid.yC .- mean(grid.yC)
 
 # Generate surface heat flux field.
-Q = Q₀ .+ Q₁ .* (0.5 .+ randn(Nx, Ny))
+Q = (Q₀ .+ Q₁ .* (0.5 .+ randn(Nx, Ny))) / (ρ₀ * cₚ)
+
+if HAVE_CUDA
+    using CuArrays
+    Q = CuArray(Q)
+end
 
 # Set surface heat flux to zero outside of cooling disk of radius Rc.
 r₀² = @. x₀*x₀ + y₀'*y₀'
@@ -64,7 +70,7 @@ field_writer = JLD2OutputWriter(model, fields; dir="data", prefix="deep_convecti
 
 push!(model.output_writers, field_writer)
 
-Ni = 100  # Number of "intermediate" time steps to take before printing a progress message.
+Ni = 1  # Number of "intermediate" time steps to take before printing a progress message.
 while model.clock.time < end_time
     walltime = @elapsed time_step!(model; Nt=Ni, Δt=Δt)
 
