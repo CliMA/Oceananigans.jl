@@ -19,7 +19,7 @@ cₚ = 4181.3   # Isobaric mass heat capacity [J / kg·K].
 planetary_constants = Earth(lat=φ)
 f, g = planetary_constants.f, planetary_constants.g  # Coriolis parameter and standard gravity.
 
-# Parameters for generating initial surface heat flux.
+# Parameters for generating surface cooling disk.
 Rc = 600   # Radius of cooling disk [m].
 Ts = 20    # Surface temperature [°C].
 Q₀ = -800  # Cooling disk heat flux [W/m²].
@@ -55,10 +55,14 @@ model = Model(float_type = FT,
                constants = planetary_constants,
                      bcs = BoundaryConditions(T=Tbcs))
 
-ε(μ) = μ * randn()  # noise
-T₀(x, y, z) = Ts + ∂T∂z * z + ε(1e-4)
+ε(μ) = μ * randn()  # noise but won't work on GPU as CUDAnative doesn't have randn.
 
-set_ic!(model; T=T₀)
+# Having some GPU issues here :(
+# T₀(x, y, z) = Ts + ∂T∂z * z
+# set_ic!(model; T=T₀)
+
+T₀ = Ts .+ ∂T∂z .* reshape(model.grid.zC, (1, 1, Nz))
+model.tracers.T.data.parent .= CuArray(T₀)
 
 # Only save the temperature field (excluding halo regions).
 Hx, Hy, Hz = model.grid.Hx, model.grid.Hy, model.grid.Hz
@@ -70,7 +74,7 @@ field_writer = JLD2OutputWriter(model, fields; dir="data", prefix="deep_convecti
 
 push!(model.output_writers, field_writer)
 
-Ni = 1  # Number of "intermediate" time steps to take before printing a progress message.
+Ni = 25  # Number of "intermediate" time steps to take before printing a progress message.
 while model.clock.time < end_time
     walltime = @elapsed time_step!(model; Nt=Ni, Δt=Δt)
 
@@ -83,3 +87,4 @@ while model.clock.time < end_time
     @printf("[%06.2f%%] i: %d, t: %8.5g, umax: (%6.3g, %6.3g, %6.3g), CFL: %6.4g, ⟨wall time⟩: %s\n",
             progress, model.clock.iteration, model.clock.time, umax, vmax, wmax, CFL, prettytime(1e9*walltime / Ni))
 end
+
