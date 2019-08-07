@@ -177,6 +177,11 @@ function set_ic!(model; ics...)
     end
 end
 
+"""
+Looks like a ridiculously simple kernel lol but it means you just supply an Nx*Ny*Nz sized array
+and not have to worry about halos, or broadcasting over views of non-contiguous views (which
+results in slow CuArray scalar operations).
+"""
 function set_initial_condition!(grid, ϕ, ic::AbstractArray, args...)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
