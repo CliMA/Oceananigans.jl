@@ -173,9 +173,9 @@ function set!(model; ics...)
         else
             ϕ = getproperty(model.tracers, fld)
         end
-        
+
         arch, grid = model.arch, model.grid
-        @launch device(arch) config=launch_config(grid, 3) set_initial_condition!(grid, ϕ.data, ic, nodes(ϕ)...)
+        @launch device(arch) config=launch_config(grid, 3) set!(grid, ϕ.data, ic, nodes(ϕ)...)
     end
 end
 
