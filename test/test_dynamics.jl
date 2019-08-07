@@ -1,142 +1,84 @@
-xnodes(ϕ) = repeat(reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
-ynodes(ϕ) = repeat(reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
-znodes(ϕ) = repeat(reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
+using Printf
 
-xnodes(ϕ::FaceFieldX) = repeat(reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1), 1, ϕ.grid.Ny, ϕ.grid.Nz)
-ynodes(ϕ::FaceFieldY) = repeat(reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1), ϕ.grid.Nx, 1, ϕ.grid.Nz)
-znodes(ϕ::FaceFieldZ) = repeat(reshape(ϕ.grid.zF[2:end],   1, 1, ϕ.grid.Nz), ϕ.grid.Nx, ϕ.grid.Ny, 1)
-
-zerofunk(args...) = 0
-
-function set_ic!(model; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    data(model.velocities.u) .= u.(xnodes(model.velocities.u), ynodes(model.velocities.u), znodes(model.velocities.u))
-    data(model.velocities.v) .= v.(xnodes(model.velocities.v), ynodes(model.velocities.v), znodes(model.velocities.v))
-    data(model.velocities.w) .= w.(xnodes(model.velocities.w), ynodes(model.velocities.w), znodes(model.velocities.w))
-    data(model.tracers.T)    .= T.(xnodes(model.tracers.T),    ynodes(model.tracers.T),    znodes(model.tracers.T))
-    data(model.tracers.S)    .= S.(xnodes(model.tracers.S),    ynodes(model.tracers.S),    znodes(model.tracers.S))
-    return nothing
+function getmodelfield(fieldname, model)
+    if fieldname ∈ (:u, :v, :w)
+        field = getfield(model.velocities, fieldname)
+    else
+        field = getfield(model.tracers, fieldname)
+    end
+    return field
 end
 
 function u_relative_error(model, u)
     u_num = model.velocities.u
-
-    u_ans = FaceFieldX(u.(
-        xnodes(u_num), ynodes(u_num), znodes(u_num), model.clock.time),
-        model.grid)
-
-    return mean(
-        (data(u_num) .- u_ans.data).^2 ) / mean(u_ans.data.^2)
+    u_ans = FaceFieldX(u.(nodes(u_num)..., model.clock.time), model.grid)
+    return mean((data(u_num) .- u_ans.data).^2 ) / mean(u_ans.data.^2)
 end
 
 function w_relative_error(model, w)
     w_num = model.velocities.w
-
-    w_ans = FaceFieldZ(
-        w.(xnodes(w_num), ynodes(w_num), znodes(w_num), model.clock.time),
-        model.grid)
-
-    return mean(
-        (data(w_num) .- w_ans.data).^2 ) / mean(w_ans.data.^2)
+    w_ans = FaceFieldZ(w.(nodes(w_num)..., model.clock.time), model.grid)
+    return mean((data(w_num) .- w_ans.data).^2 ) / mean(w_ans.data.^2)
 end
 
 function T_relative_error(model, T)
     T_num = model.tracers.T
-
-    T_ans = FaceFieldZ(
-        T.(xnodes(T_num), ynodes(T_num), znodes(T_num), model.clock.time),
-        model.grid)
-
-    return mean(
-        (data(T_num) .- T_ans.data).^2 ) / mean(T_ans.data.^2)
+    T_ans = CellField(T.(nodes(T_num)..., model.clock.time), model.grid)
+    return mean((data(T_num) .- T_ans.data).^2 ) / mean(T_ans.data.^2)
 end
 
-function test_diffusion_simple(fld)
-    Nx, Ny, Nz = 1, 1, 16
-    Lx, Ly, Lz = 1, 1, 1
-    κ = 1
-    eos = LinearEquationOfState(βS=0, βT=0)
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos)
-
-    if fld ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fld)
-    else
-        field = getfield(model.tracers, fld)
-    end
-
+function test_diffusion_simple(fieldname)
+    model = Model(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    field = getmodelfield(fieldname, model)
     value = π
     data(field) .= value
-
-    Δt = 0.01 # time-step much less than diffusion time-scale
-    Nt = 10
-    time_step!(model, Nt, Δt)
-
+    time_step!(model, 10, 0.01)
     field_data = data(field)
-    !any(@. !isapprox(value, field_data))
+
+    return !any(@. !isapprox(value, field_data))
 end
 
-
-function test_diffusion_budget(field_name)
-    Nx, Ny, Nz = 1, 1, 16
-    Lx, Ly, Lz = 1, 1, 1
-    κ = 1
-    eos = LinearEquationOfState(βS=0, βT=0)
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos)
-
-    if field_name ∈ (:u, :v, :w)
-        field = getfield(model.velocities, field_name)
-    else
-        field = getfield(model.tracers, field_name)
-    end
-
-    half_Nz = floor(Int, Nz/2)
+function test_diffusion_budget_default(fieldname)
+    model = Model(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    field = getmodelfield(fieldname, model)
+    half_Nz = round(Int, model.grid.Nz/2)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    mean_init = mean(data(field))
-    τκ = Lz^2 / κ # diffusion time-scale
-    Δt = 0.0001 * τκ # time-step much less than diffusion time-scale
-    Nt = 100
-
-    time_step!(model, Nt, Δt)
-    isapprox(mean_init, mean(data(field)))
+    return test_diffusion_budget(field, model, model.closure.κh, model.grid.Lz)
 end
 
-function test_diffusion_cosine(fld)
-    Nx, Ny, Nz = 1, 1, 128
-    Lx, Ly, Lz = 1, 1, π/2
-    κ = 1
-    eos = LinearEquationOfState(βS=0, βT=0)
+function test_diffusion_budget_channel(fieldname)
+    model = ChannelModel(N=(1, 16, 4), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    field = getmodelfield(fieldname, model)
+    half_Ny = round(Int, model.grid.Ny/2)
+    data(field)[:, 1:half_Ny,   :] .= -1
+    data(field)[:, half_Ny:end, :] .=  1
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=κ, κ=κ, eos=eos)
+    return test_diffusion_budget(field, model, model.closure.κh, model.grid.Ly)
+end
 
-    if fld == :w
-        throw("There are no boundary condition tests for w yet.")
-    elseif fld ∈ (:u, :v)
-        field = getfield(model.velocities, fld)
-    else
-        field = getfield(model.tracers, fld)
-    end
+function test_diffusion_budget(field, model, κ, L)
+    mean_init = mean(data(field))
+    time_step!(model, 100, 1e-4 * L^2 / κ)
+    return isapprox(mean_init, mean(data(field)))
+end
+
+function test_diffusion_cosine(fieldname)
+    Nz, Lz, κ, m = 128, π/2, 1, 2
+    model = Model(N=(1, 1, Nz), L=(1, 1, Lz), ν=κ, κ=κ, eos=NoEquationOfState())
+    field = getmodelfield(fieldname, model)
 
     zC = model.grid.zC
-    m = 2
     data(field)[1, 1, :] .= cos.(m*zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
-    τκ = Lz^2 / κ # diffusion time-scale
-    Δt = 1e-6 * τκ # time-step much less than diffusion time-scale
-    Nt = 100
-
-    time_step!(model, Nt, Δt)
-
+    time_step!(model, 100, 1e-6 * Lz^2 / κ) # Use small time-step relative to diff. time-scale
     field_numerical = dropdims(data(field), dims=(1, 2))
 
-    !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
+    return !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
 end
-
 
 function internal_wave_test(; N=128, Nt=10)
 
@@ -212,22 +154,26 @@ end
 
     @testset "Simple diffusion" begin
         println("  Testing simple diffusion...")
-        for fld in (:u, :v, :T, :S)
-            @test test_diffusion_simple(fld)
+        for fieldname in (:u, :v, :T, :S)
+            @test test_diffusion_simple(fieldname)
         end
     end
 
-    @testset "Diffusion budget" begin
-        println("  Testing diffusion budget...")
-        for fld in (:u, :v, :T, :S)
-            @test test_diffusion_budget(fld)
+    @testset "Budgets in isotropic diffusion" begin
+        println("  Testing default model budgets with isotropic diffusion...")
+        for fieldname in (:u, :v, :T, :S)
+            @test test_diffusion_budget_default(fieldname)
+        end
+
+        for fieldname in (:u, :T, :S)
+            @test test_diffusion_budget_channel(fieldname)
         end
     end
 
     @testset "Diffusion cosine" begin
         println("  Testing diffusion cosine...")
-        for fld in (:u, :v, :T, :S)
-            @test test_diffusion_cosine(fld)
+        for fieldname in (:u, :v, :T, :S)
+            @test test_diffusion_cosine(fieldname)
         end
     end
 
