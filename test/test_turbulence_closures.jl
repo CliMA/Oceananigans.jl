@@ -95,32 +95,31 @@ datatuple(args, names) = NamedTuple{names}(a.data for a in args)
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
     arch = CPU()
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
-    grid = RegularCartesianGrid(FT, (3, 1, 1), (3, 1, 1))
+    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
     bcs = HorizontallyPeriodicModelBCs()
     eos = LinearEquationOfState()
     grav = 1.0
 
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
-    T =  CellField(FT, arch, grid)
-    S =  CellField(FT, arch, grid)
+    u, v, w = Oceananigans.VelocityFields(arch, grid)
+    T, S = Oceananigans.TracerFields(arch, grid)
 
-    data(u)[:, 1, 1] .= [0, -1, 0]
-    data(v)[:, 1, 1] .= [0, -2, 0]
-    data(w)[:, 1, 1] .= [0, -3, 0]
-    data(T)[:, 1, 1] .= [0, -1, 0]
+    for k = 1:4
+        data(u)[:, 1, k] .= [0, -1, 0]
+        data(v)[:, 1, k] .= [0, -2, 0]
+        data(w)[:, 1, k] .= [0, -3, 0]
+        data(T)[:, 1, k] .= [0, -1, 0]
+    end
 
     U = datatuple((u, v, w), (:u, :v, :w))
     Φ = datatuple((T, S), (:T, :S))
     fill_halo_regions!(merge(U, Φ), bcs, grid)
     calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
 
-    return (   ∇_κ_∇c(2, 1, 1, grid, T.data, closure) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 1, grid, closure, U...) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 1, grid, closure, U...) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 1, grid, closure, U...) == 6ν
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U...) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U...) == 6ν
             )
 end
 
@@ -131,11 +130,8 @@ function test_calc_diffusivities(arch, closurename, FT=Float64)
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
     eos = LinearEquationOfState(FT)
     grav = 1.0
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
-    T = CellField(FT, arch, grid)
-    S = CellField(FT, arch, grid)
+    u, v, w = Oceananigans.VelocityFields(arch, grid)
+    T, S = Oceananigans.TracerFields(arch, grid)
 
     U = datatuple((u, v, w), (:u, :v, :w))
     Φ = datatuple((T, S), (:T, :S))
@@ -146,42 +142,39 @@ end
 
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
-    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
+    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
     bcs = HorizontallyPeriodicModelBCs()
     eos = LinearEquationOfState()
-    g = 1.0
+    grav = 1.0
 
     arch = CPU()
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
-    T =  CellField(FT, arch, grid)
-    S =  CellField(FT, arch, grid)
+    u, v, w = Oceananigans.VelocityFields(arch, grid)
+    T, S = Oceananigans.TracerFields(arch, grid)
 
-    data(u)[:, 1, 1] .= [0,  1, 0]
-    data(u)[:, 1, 2] .= [0, -1, 0]
-    data(u)[:, 1, 3] .= [0,  1, 0]
+    data(u)[:, 1, 2] .= [0,  1, 0]
+    data(u)[:, 1, 3] .= [0, -1, 0]
+    data(u)[:, 1, 4] .= [0,  1, 0]
 
-    data(v)[:, 1, 1] .= [0,  1, 0]
-    data(v)[:, 1, 2] .= [0, -2, 0]
-    data(v)[:, 1, 3] .= [0,  1, 0]
+    data(v)[:, 1, 2] .= [0,  1, 0]
+    data(v)[:, 1, 3] .= [0, -2, 0]
+    data(v)[:, 1, 4] .= [0,  1, 0]
 
-    data(w)[:, 1, 1] .= [0,  1, 0]
-    data(w)[:, 1, 2] .= [0, -3, 0]
-    data(w)[:, 1, 3] .= [0,  1, 0]
+    data(w)[:, 1, 2] .= [0,  1, 0]
+    data(w)[:, 1, 3] .= [0, -3, 0]
+    data(w)[:, 1, 4] .= [0,  1, 0]
 
-    data(T)[:, 1, 1] .= [0,  1, 0]
-    data(T)[:, 1, 2] .= [0, -4, 0]
-    data(T)[:, 1, 3] .= [0,  1, 0]
+    data(T)[:, 1, 2] .= [0,  1, 0]
+    data(T)[:, 1, 3] .= [0, -4, 0]
+    data(T)[:, 1, 4] .= [0,  1, 0]
 
     U = datatuple((u, v, w), (:u, :v, :w))
     Φ = datatuple((T, S), (:T, :S))
     fill_halo_regions!(merge(U, Φ), bcs, grid)
 
-    return (∇_κ_∇c(2, 1, 2, grid, T.data, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, eos, g, u.data, v.data, w.data, T.data, S.data) == 6νh + 8νv
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 6νh + 8νv
             )
 end
 
@@ -191,30 +184,21 @@ function test_smag_divflux_finiteness(FT=Float64)
     grid = RegularCartesianGrid(FT, (4, 4, 4), (4, 4, 4))
     bcs = HorizontallyPeriodicModelBCs()
     eos = LinearEquationOfState(FT)
-    diffusivities = TurbulentDiffusivities(arch, grid, closure)
     grav = FT(1.0)
 
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
-    T =  CellField(FT, arch, grid)
-    S =  CellField(FT, arch, grid)
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
+    velocities = Oceananigans.VelocityFields(arch, grid)
+    tracers = Oceananigans.TracerFields(arch, grid)
 
-    underlying_data(u) .= 0
-    underlying_data(v) .= 0
-    underlying_data(w) .= 0
-    underlying_data(T) .= eos.T₀
-    underlying_data(S) .= eos.S₀
+    U, Φ, K = Oceananigans.datatuples(velocities, tracers, diffusivities)
 
-    U = datatuple((u, v, w), (:u, :v, :w))
-    Φ = datatuple((T, S), (:T, :S))
-    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
+    calc_diffusivities!(K, grid, closure, eos, grav, U, Φ)
     fill_halo_regions!(merge(U, Φ), bcs, grid)
 
-    return (isfinite(∇_κ_∇c(2, 1, 2, grid, T.data, closure, diffusivities)) &&
-        isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
-        isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities)) &&
-        isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, u.data, v.data, w.data, diffusivities))
+    return (isfinite(∇_κ_∇c(2, 2, 3, grid, Φ.T, closure, K)) &&
+         isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 2, 3, grid, closure, U..., K)) &&
+         isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 2, 3, grid, closure, U..., K)) &&
+         isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 2, 3, grid, closure, U..., K))
         )
 end
 
