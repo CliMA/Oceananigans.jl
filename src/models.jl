@@ -1,7 +1,8 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, PC<:PlanetaryConstants, 
-                     VC, TR, PF, F, TC, BCS<:ModelBoundaryConditions, TS, PS, D}
+mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, 
+                     PC<:PlanetaryConstants, 
+                     VC, TR, PF, F, TC, BCS, TS, PS, D}
 
               arch :: A                      # Computer `Architecture` on which `Model` is run
               grid :: GR                     # Grid of physical points on which `Model` is solved
@@ -49,7 +50,7 @@ function Model(;
            eos = LinearEquationOfState(float_type),
     # Forcing and boundary conditions for (u, v, w, T, S)
        forcing = Forcing(),
-           bcs = ModelBoundaryConditions(),
+           bcs = HorizontallyPeriodicModelBCs(),
     boundary_conditions = bcs,
     # Output and diagonstics
     output_writers = OutputWriter[],
@@ -85,25 +86,35 @@ end
 
     kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; bcs=ChannelModelBoundaryConditions(), kwargs...) = 
+ChannelModel(; bcs=ChannelModelBCs(), kwargs...) = 
     Model(; bcs=bcs, kwargs...)
           
+#
+# Model initialization utilities
+#
+
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
 
-function initialize_with_defaults!(eos, tracers, sets...)
+
+function initialize_with_defaults!(eos::EquationOfState, tracers, sets...)
     # Default tracer initial condition is deteremined by eos.
     tracers.S.data.parent .= eos.S₀
     tracers.T.data.parent .= eos.T₀
+    initialize_with_zeros!(sets...)
+    return nothing
+end
 
-    # Set all further fields to 0
+function initialize_with_zeros!(sets...)
+    # Set all fields to 0
     for set in sets
         for fldname in propertynames(set)
             fld = getproperty(set, fldname)
             fld.data.parent .= 0 # promotes to eltype of fld.data
         end
     end
+    return nothing
 end
 
 """
