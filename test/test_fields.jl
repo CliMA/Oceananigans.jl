@@ -4,9 +4,9 @@
 Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
-function correct_field_size(arch::Architecture, g::Grid, field_type)
-    f = field_type(arch, g)
-    size(f) == size(g)
+function correct_field_size(arch::Architecture, g::Grid, fieldtype)
+    f = fieldtype(arch, g)
+    return size(f) == size(g)
 end
 
 """
@@ -16,15 +16,15 @@ Test that the field initialized by the field type function `ftf` on the grid g
 can be correctly filled with the value `val` using the `set!(f::Field, v)`
 function.
 """
-function correct_field_value_was_set(arch::Architecture, g::Grid, field_type, val::Number)
-    f = field_type(arch, g)
+function correct_field_value_was_set(arch::Architecture, g::Grid, fieldtype, val::Number)
+    f = fieldtype(arch, g)
     set!(f, val)
-    data(f) ≈ val * ones(size(f))
+    return data(f) ≈ val * ones(size(f))
 end
 
-function correct_field_addition(arch::Architecture, g::Grid, field_type, val1::Number, val2::Number)
-    f1 = field_type(arch, g)
-    f2 = field_type(arch, g)
+function correct_field_addition(arch::Architecture, g::Grid, fieldtype, val1::Number, val2::Number)
+    f1 = fieldtype(arch, g)
+    f2 = fieldtype(arch, g)
 
     set!(f1, val1)
     set!(f2, val2)
@@ -32,24 +32,41 @@ function correct_field_addition(arch::Architecture, g::Grid, field_type, val1::N
 
     val3 = convert(mm.float_type, val1) + convert(mm.float_type, val2)
     f_ans = val3 * ones(size(f1))
-    f3.data ≈ f_ans
+    return f3.data ≈ f_ans
 end
 
+function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
+
+    model = Model(arch=arch, float_type=eltype(grid), 
+                  N=size(grid), L=(grid.Lx, grid.Ly, grid.Lz))
+
+    kwarg = Dict(fieldname=>value)
+    set!(model; kwarg...)
+
+    if fieldname ∈ propertynames(model.velocities)
+        ϕ = getproperty(model.velocities, fieldname)
+    else
+        ϕ = getproperty(model.tracers, fieldname)
+    end
+
+    return data(ϕ) ≈ answer
+end
+ 
 @testset "Fields" begin
     println("Testing fields...")
 
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
 
-    field_types = [CellField, FaceFieldX, FaceFieldY, FaceFieldZ, EdgeField]
+    fieldtypes = (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
 
     @testset "Field initialization" begin
         println("  Testing field initialization...")
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT, N, L)
 
-            for field_type in field_types
-                @test correct_field_size(arch, grid, field_type)
+            for fieldtype in fieldtypes
+                @test correct_field_size(arch, grid, fieldtype)
             end
         end
     end
@@ -67,19 +84,27 @@ end
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT, N, L)
 
-            for field_type in field_types, val in vals
-                @test correct_field_value_was_set(arch, grid, field_type, val)
+            for fieldtype in fieldtypes, val in vals
+                @test correct_field_value_was_set(arch, grid, fieldtype, val)
+            end
+        end
+
+        for FT in float_types
+            grid = RegularCartesianGrid(FT, N, L)
+            xF = reshape(grid.xF[1:end-1], N[1], 1, 1)
+            yC = reshape(grid.yC, 1, N[2], 1)
+            zC = reshape(grid.zC, 1, 1, N[3])
+
+            u₀(x, y, z) = x * y^2 * z^3
+            u_answer = @. xF * yC^2 * zC^3
+
+            T₀ = rand(size(grid)...)
+            T_answer = deepcopy(T₀)
+
+            for arch in archs
+                @test set_velocity_tracer_fields(arch, grid, :u, u₀, u_answer)
+                @test set_velocity_tracer_fields(arch, grid, :T, T₀, T_answer)
             end
         end
     end
-
-    # @testset "Field operations" begin
-    #     for arch in archs, FT in float_types
-    #         grid = RegularCartesianGrid(FT, N, L)
-    #
-    #         for field_type in field_types, val1 in vals, val2 in vals
-    #             @test correct_field_addition(arch, grid, field_type, val1, val2)
-    #         end
-    #     end
-    # end
 end
