@@ -175,7 +175,17 @@ function set_ic!(model; ics...)
     end
 end
 
-function set_initial_condition!(grid, ϕ, ic, xN, yN, zN)
+function set_initial_condition!(grid, ϕ, ic::AbstractArray, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                ϕ[i, j, k] = ic[i, j, k]
+            end
+        end
+    end
+end
+
+function set_initial_condition!(grid, ϕ, ic::Function, xN, yN, zN)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
