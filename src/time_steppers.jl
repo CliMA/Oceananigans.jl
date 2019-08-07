@@ -1,14 +1,7 @@
-@hascuda using CUDAnative, CuArrays
-
-import GPUifyLoops: @launch, @loop, @unroll
-
 using Oceananigans.Operators
 
 const Tx = 16 # CUDA threads per x-block
 const Ty = 16 # CUDA threads per y-block
-
-@inline datatuple(obj, flds=propertynames(obj)) = NamedTuple{flds}(getproperty(obj, fld).data for fld in flds)
-@inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
 """
     time_step!(model, Nt, Δt)
@@ -23,50 +16,19 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
         [ run_diagnostic(model, diag) for diag in model.diagnostics ]
     end
 
-    # Unpack model fields
-              arch = model.arch
-              grid = model.grid
-             clock = model.clock
-               eos = model.eos
-         constants = model.constants
-           forcing = model.forcing
-           closure = model.closure
-    poisson_solver = model.poisson_solver
-     diffusivities = model.diffusivities
-               bcs = model.boundary_conditions
-
-    # We can use the same array for the right-hand-side RHS and the solution ϕ.
-    RHS = poisson_solver.storage
-    U, Φ, Gⁿ, G⁻ = datatuples(model.velocities, model.tracers, 
-                              model.timestepper.Gⁿ, model.timestepper.G⁻)
-    pH, pN = datatuple(model.pressures)
-    FT = eltype(grid)
-
-    # Field tuples for fill_halo_regions.
-    u_ft = (:u, bcs.u, U.u)
-    v_ft = (:v, bcs.v, U.v)
-    w_ft = (:w, bcs.w, U.w)
-    T_ft = (:T, bcs.T, Φ.T)
-    S_ft = (:S, bcs.S, Φ.S)
-    Gu_ft = (:u, bcs.u, Gⁿ.Gu)
-    Gv_ft = (:v, bcs.v, Gⁿ.Gv)
-    Gw_ft = (:w, bcs.w, Gⁿ.Gw)
-    pH_ft = (:w, bcs.w, pH)
-    pN_ft = (:w, bcs.w, pN)
-
-    U_ft = (u_ft, v_ft, w_ft)
-    Φ_ft = (T_ft, S_ft)
-    GU_ft = (Gu_ft, Gv_ft, Gw_ft)
+    FT = eltype(model.grid)
+    RHS = model.poisson_solver.storage
+    U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
+                                    model.timestepper.G⁻, model.diffusivities, model.pressures)
 
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
-        time_step!(model, arch, grid, constants, eos, closure, 
-                   forcing, pH, pN, U, Φ, diffusivities, RHS, Gⁿ, G⁻, 
-                   pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
+        time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
+                   model.forcing, model.boundary_conditions, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
-        [ time_to_run(clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
-        [ time_to_write(clock, out) && write_output(model, out) for out in model.output_writers ]
+        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ time_to_write(model.clock, out) && write_output(model, out) for out in model.output_writers ]
     end
 
     return nothing
@@ -77,27 +39,31 @@ end
 
 Step forward one time step.
 """
-function time_step!(model, arch, grid, constants, eos, closure, 
-                    forcing, pH, pN, U, Φ, K, RHS, Gⁿ, G⁻,
-                    pH_ft, pN_ft, U_ft, Φ_ft, GU_ft, Δt, χ)
+function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
                    
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(pH, grid, constants, eos, Φ)
-
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
-                                                       fill_halo_regions!(grid, U_ft..., Φ_ft..., pH_ft)
-                                                       calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ,
-                                                                                        pH, Gⁿ, K, forcing)
-                                                       calculate_boundary_source_terms!(model)
+
+    fill_halo_regions!(merge(U, Φ), bcs, grid)
+    fill_halo_regions!(p.pHY′, bcs[4], grid)
+    calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
+    calculate_boundary_source_terms!(arch, grid, bcs, model.clock, closure, U, Φ, Gⁿ, K)
+
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
-                                                       fill_halo_regions!(grid, GU_ft...)
+
+    fill_halo_regions!(Gⁿ[1:3], bcs[1:3], grid)
+
     @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
                                                                                           Δt, U, Gⁿ, RHS)
-                                                       solve_for_pressure!(arch, model)
-                                                       fill_halo_regions!(grid, pN_ft)
-    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, pN, Gⁿ, Δt)
-                                                       fill_halo_regions!(grid, U_ft...)
-    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U...)
+    solve_for_pressure!(arch, model)
+    fill_halo_regions!(p.pNHS, bcs[4], grid)
+
+    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
+
+    fill_halo_regions!(U, bcs[1:3], grid)
+
+    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
 
     model.clock.time += Δt
     model.clock.iteration += 1
@@ -371,12 +337,12 @@ function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
 end
 
 "Compute the vertical velocity w from the continuity equation."
-function compute_w_from_continuity!(grid::Grid, u, v, w)
+function compute_w_from_continuity!(grid::Grid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds w[i, j, 1] = 0
+            @inbounds U.w[i, j, 1] = 0
             @unroll for k in 2:grid.Nz
-                @inbounds w[i, j, k] = w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, u, v)
+                @inbounds U.w[i, j, k] = U.w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
             end
         end
     end
@@ -397,42 +363,26 @@ get_ν(closure::AnisotropicMinimumDissipation, K) = K.νₑ
 get_κ(closure::AnisotropicMinimumDissipation, K) = (T=K.κₑ.T, S=K.κₑ.S)
 
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(model)
-    arch = model.arch
-    grid = model.grid
-    clock = model.clock
-    eos =  model.eos
-    closure = model.closure
-    bcs = model.boundary_conditions
-    grav = model.constants.g
-    t, iteration = clock.time, clock.iteration
-    U, Φ, G = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ)
-
-    Bx, By, Bz = floor(Int, model.grid.Nx/Tx), floor(Int, model.grid.Ny/Ty), model.grid.Nz  # Blocks in grid
-
-    coord = :z #for coord in (:x, :y, :z) when we are ready to support more coordinates.
-
-    u_x_bcs = getproperty(bcs.u, coord)
-    v_x_bcs = getproperty(bcs.v, coord)
-    w_x_bcs = getproperty(bcs.w, coord)
-    T_x_bcs = getproperty(bcs.T, coord)
-    S_x_bcs = getproperty(bcs.S, coord)
+function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ, Gⁿ, K)
+    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
     # Apply boundary conditions in the vertical direction.
-    ν = get_ν(closure, model.diffusivities)
-    κ = get_κ(closure, model.diffusivities)
+    ν = get_ν(closure, K)
+    κ = get_κ(closure, K)
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, u_x_bcs.left, u_x_bcs.right, grid, U.u, G.Gu, ν,
-        closure, eos, grav, t, iteration, U, Φ)
+    # Velocity fields
+    for (i, ubcs) in enumerate(bcs[1:3])
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right, 
+                   grid, U[i], Gⁿ[i], ν, closure, clock.time, clock.iteration, U, Φ)
+                   
+    end
 
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, v_x_bcs.left, v_x_bcs.right, grid, U.v, G.Gv, ν,
-        closure, eos, grav, t, iteration, U, Φ)
-
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, T_x_bcs.left, T_x_bcs.right, grid, Φ.T, G.GT, κ.T,
-        closure, eos, grav, t, iteration, U, Φ)
-
-    apply_bcs!(arch, Val(coord), Bx, By, Bz, S_x_bcs.left, S_x_bcs.right, grid, Φ.S, G.GS, κ.S,
-        closure, eos, grav, t, iteration, U, Φ)
+    # Tracer fields
+    for (i, ϕbcs) in enumerate(bcs[4:end])
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right, 
+                   grid, Φ[i], Gⁿ[i+3], κ[i], closure, clock.time, clock.iteration, U, Φ)
+                   
+    end
 
     return nothing
 end
