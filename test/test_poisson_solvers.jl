@@ -44,10 +44,10 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    fill_halo_regions!(ϕ.data, fbcs, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
@@ -72,10 +72,10 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    fill_halo_regions!(ϕ.data, fbcs, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
@@ -109,10 +109,10 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    fill_halo_regions!(ϕ.data, fbcs, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
     data(∇²ϕ) ≈ RHS_orig
 end
 
@@ -141,10 +141,10 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     @. ϕ_p = real(solver.storage)
 
-    fill_halo_regions!(grid, (:T, fbcs, ϕ.data))
+    fill_halo_regions!(ϕ.data, fbcs, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(grid, (:T, fbcs, ∇²ϕ.data))
+    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
     data(∇²ϕ) ≈ RHS_orig
 end
 

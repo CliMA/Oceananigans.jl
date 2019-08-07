@@ -21,7 +21,7 @@ ConstantSmagorinsky(T; kwargs...) =
       typed_keyword_constructor(T, ConstantSmagorinsky; kwargs...)
 
 function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::ConstantSmagorinsky)
-    νₑ = zeros(arch, grid)
+    νₑ = CellField(arch, grid)
     return (νₑ=νₑ,)
 end
 
