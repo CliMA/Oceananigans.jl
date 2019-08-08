@@ -249,11 +249,9 @@ function set!(model::AbstractModel; kwargs...)
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
         else
-            error("Name $fldname not found in model.velocities or model.tracers.")
+            throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
-        @show data(ϕ) value
         set!(ϕ, value)
-        @show data(ϕ)
     end
     return nothing
 end
