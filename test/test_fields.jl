@@ -35,23 +35,6 @@ function correct_field_addition(arch::Architecture, g::Grid, fieldtype, val1::Nu
     return f3.data ≈ f_ans
 end
 
-function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
-
-    model = Model(arch=arch, float_type=eltype(grid), 
-                  N=size(grid), L=(grid.Lx, grid.Ly, grid.Lz))
-
-    kwarg = Dict(fieldname=>value)
-    set!(model; kwarg...)
-
-    if fieldname ∈ propertynames(model.velocities)
-        ϕ = getproperty(model.velocities, fieldname)
-    else
-        ϕ = getproperty(model.tracers, fieldname)
-    end
-
-    return data(ϕ) ≈ answer
-end
- 
 @testset "Fields" begin
     println("Testing fields...")
 
@@ -86,24 +69,6 @@ end
 
             for fieldtype in fieldtypes, val in vals
                 @test correct_field_value_was_set(arch, grid, fieldtype, val)
-            end
-        end
-
-        for FT in float_types
-            grid = RegularCartesianGrid(FT, N, L)
-            xF = reshape(grid.xF[1:end-1], N[1], 1, 1)
-            yC = reshape(grid.yC, 1, N[2], 1)
-            zC = reshape(grid.zC, 1, 1, N[3])
-
-            u₀(x, y, z) = x * y^2 * z^3
-            u_answer = @. xF * yC^2 * zC^3
-
-            T₀ = rand(size(grid)...)
-            T_answer = deepcopy(T₀)
-
-            for arch in archs
-                @test set_velocity_tracer_fields(arch, grid, :u, u₀, u_answer)
-                @test set_velocity_tracer_fields(arch, grid, :T, T₀, T_answer)
             end
         end
     end
