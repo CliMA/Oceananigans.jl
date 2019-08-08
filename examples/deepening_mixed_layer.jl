@@ -22,10 +22,9 @@ parameters = Dict(:free_convection => Dict(:Fb=>3.39e-8, :Fu=>0.0,     :f=>1e-4,
 
 # Simulation parameters
 case = :free_convection
-verbose = false
- N = 32                   # Resolution    
+ N = 16                   # Resolution    
  Δ = 0.5                  # Grid spacing
-tf = hour/4               # Final simulation time
+tf = hour/2               # Final simulation time
 
 N², Fb, Fu, f = (parameters[case][p] for p in (:N², :Fb, :Fu, :f))
 βT, g = 2e-4, 9.81
@@ -36,7 +35,7 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 Tbcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fθ), bottom=BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
-model = Model(      arch = HAVE_CUDA ? GPU() : CPU(),
+model = Model(      arch = CPU(), #HAVE_CUDA ? GPU() : CPU(), # this example will run on the GPU if cuda is available.
                        N = (N, N, N),
                        L = (N*Δ, N*Δ, N*Δ),
                      eos = LinearEquationOfState(βT=βT, βS=0.0),
@@ -86,8 +85,8 @@ wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=90.0)
 # Run the model
 while model.clock.time < tf
     update_Δt!(wizard, model)
-    walltime = @elapsed time_step!(model, 100, wizard.Δt)
-    verbose && @printf("%s", terse_message(model, walltime, wizard.Δt))
+    walltime = @elapsed time_step!(model, 10, wizard.Δt)
+    @printf "%s" terse_message(model, walltime, wizard.Δt)
     
     @haspyplot begin
         sca(axs); cla()
