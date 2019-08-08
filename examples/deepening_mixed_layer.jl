@@ -25,7 +25,7 @@ case = :free_convection
 verbose = false
  N = 32                   # Resolution    
  Δ = 0.5                  # Grid spacing
-tf = hour/2               # Final simulation time
+tf = hour/4               # Final simulation time
 
 N², Fb, Fu, f = (parameters[case][p] for p in (:N², :Fb, :Fu, :f))
 βT, g = 2e-4, 9.81
