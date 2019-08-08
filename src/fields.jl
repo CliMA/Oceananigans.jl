@@ -207,6 +207,7 @@ set!(u::Field, f::Function) = data(u) .= f.(nodes(u)...)
 
     FieldType = fieldtype(u)
     u_cpu = field_type(CPU(), u.grid)
+    u_cpu = FieldType(CPU(), u.grid)
 
     set!(u_cpu, f)
     set!(u, u_cpu)
