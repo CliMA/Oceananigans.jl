@@ -77,10 +77,7 @@ FaceFieldX(arch, grid) = FaceFieldX(zeros(arch, grid), grid)
 FaceFieldY(arch, grid) = FaceFieldY(zeros(arch, grid), grid)
 FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
 
-fieldtype(::CellField) = CellField
-fieldtype(::FaceFieldX) = FaceFieldX
-fieldtype(::FaceFieldY) = FaceFieldY
-fieldtype(::FaceFieldZ) = FaceFieldZ
+fieldtype(f::Field) = typeof(f).name.wrapper
 
 @inline size(f::Field) = size(f.grid)
 @inline length(f::Field) = length(f.data)
@@ -208,8 +205,7 @@ set!(u::Field, f::Function) = data(u) .= f.(nodes(u)...)
 @hascuda function set!(u::Field{A1}, f::Function) where {
     A1 <: OffsetArray{T, D, <:CuArray} where {T, D}}
 
-    # Get type of u, e.g. CellField or FaceFieldX.
-    field_type = typeof(u).name.wrapper
+    FieldType = fieldtype(u)
     u_cpu = field_type(CPU(), u.grid)
 
     set!(u_cpu, f)
