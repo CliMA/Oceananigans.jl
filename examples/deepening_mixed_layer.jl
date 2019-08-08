@@ -1,16 +1,13 @@
 using Oceananigans, Random, Printf
 
-# Set `makeplot=false` to disable plotting even when PyPlot is available.
-makeplot = try
-    using PyPlot
-    true
-catch
-    false
-end
+# Set `makeplot=true` to enable plotting.
+makeplot = false
 
-macro haspyplot(ex)
+macro withplots(ex)
     makeplot ? :($(esc(ex))) : :(nothing)
 end
+
+@withplots using PyPlot
 
 # 
 # Model set-up
@@ -22,7 +19,7 @@ parameters = Dict(:free_convection => Dict(:Fb=>3.39e-8, :Fu=>0.0,     :f=>1e-4,
 
 # Simulation parameters
 case = :free_convection
- N = 16                   # Resolution    
+ N = 32                   # Resolution    
  Δ = 0.5                  # Grid spacing
 tf = hour/2               # Final simulation time
 
@@ -62,15 +59,13 @@ T(model) = Array{Float32}(model.tracers.T.data.parent)
 fields = Dict(:u=>u, :v=>v, :w=>w, :T=>T)
 filename = @sprintf("%s_n%d", case, N)
 field_writer = JLD2OutputWriter(model, fields; dir="data", prefix=filename, interval=hour/4, force=true)
-
-# Uncomment to save output.
-#push!(model.output_writers, field_writer)
+push!(model.output_writers, field_writer)
 
 # 
 # Run the simulation
 #
 
-@haspyplot fig, axs = subplots()
+@withplots fig, axs = subplots()
 
 function terse_message(model, walltime, Δt)
     wmax = maximum(abs, model.velocities.w.data.parent)
@@ -88,7 +83,7 @@ while model.clock.time < tf
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
     
-    @haspyplot begin
+    @withplots begin
         sca(axs); cla()
         imshow(rotr90(view(data(model.velocities.w), :, 2, :)))
         gcf(); pause(0.01)
