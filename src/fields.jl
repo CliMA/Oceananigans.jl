@@ -187,8 +187,7 @@ end
 
 "Set the GPU field `u` data to the CPU field data of `v`."
 @hascuda function set!(u::Field{Au}, v::Field{Av}) where {
-    Au<:OffsetArray{T1, D, <:CuArray}, Av<:OffsetArray{T2, D, <:Array} where {
-    T1, T2, D}}
+    Au<:OffsetArray{T1, D, <:CuArray}, Av<:OffsetArray{T2, D, <:Array}} where {T1, T2, D}
 
     copyto!(u.data.parent, v.data.parent)
     return nothing
@@ -196,8 +195,7 @@ end
 
 "Set the CPU field `u` data to the GPU field data of `v`."
 @hascuda function set!(u::Field{Au}, v::Field{Av}) where {
-    Au<:OffsetArray{T1, D, <:Array}, Av<:OffsetArray{T2, D, <:CuArray} where {
-    T1, T2, D}}
+    Au<:OffsetArray{T1, D, <:Array}, Av<:OffsetArray{T2, D, <:CuArray}} where {T1, T2, D}
 
     u.data.parent .= Array(v.data.parent)
     return nothing
