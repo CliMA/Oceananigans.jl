@@ -207,8 +207,11 @@ set!(u::Field, f::Function) = data(u) .= f.(nodes(u)...)
 "Set the GPU field `u` data to the function `f(x, y, z)`."
 @hascuda function set!(u::Field{A1}, f::Function) where {
     A1 <: OffsetArray{T, D, <:CuArray} where {T, D}}
-                                                                 
-    u_cpu = CellField(CPU(), u.grid)
+
+    # Get type of u, e.g. CellField or FaceFieldX.
+    field_type = typeof(u).name.wrapper
+    u_cpu = field_type(CPU(), u.grid)
+
     set!(u_cpu, f)
     set!(u, u_cpu)
     return nothing
