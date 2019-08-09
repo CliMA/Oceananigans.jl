@@ -186,13 +186,12 @@ struct GPU <: Architecture end
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
-abstract type Metadata end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
 abstract type Grid{T} end
-abstract type Field end
-abstract type FaceField <: Field end
-abstract type FieldSet end
+abstract type AbstractModel end
+abstract type Field{A, G} end
+abstract type FaceField{A, G} <: Field{A, G} end
 abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type PoissonSolver end
