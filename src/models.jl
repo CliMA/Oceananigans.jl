@@ -2,7 +2,7 @@ using .TurbulenceClosures
 
 mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, 
                      PC<:PlanetaryConstants, 
-                     VC, TR, PF, F, TC, BCS, TS, PS, D}
+                     VC, TR, PF, F, TC, BCS, TS, PS, D} <: AbstractModel
 
               arch :: A                      # Computer `Architecture` on which `Model` is run
               grid :: GR                     # Grid of physical points on which `Model` is solved
