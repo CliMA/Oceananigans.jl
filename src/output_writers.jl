@@ -2,6 +2,7 @@ using Distributed
 using NetCDF, JLD2
 
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
+time_to_write(clock, out::OutputWriter) = (clock.iteration % out.frequency) == 0
 
 ####
 #### Binary output writer
@@ -9,10 +10,10 @@ ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 "A type for writing Binary output."
 Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
-                 dir :: AbstractString = "."
-              prefix :: AbstractString = ""
-    output_frequency :: Int = 1
-    padding          :: Int = 9
+          dir :: AbstractString = "."
+       prefix :: AbstractString = ""
+    frequency :: Int = 1
+      padding :: Int = 9
 end
 
 function write_output(model::Model, fw::BinaryOutputWriter)
@@ -45,13 +46,13 @@ end
 
 "A type for writing NetCDF output."
 Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
-                dir  :: AbstractString = "."
-             prefix  :: AbstractString = ""
-    output_frequency :: Int    = 1
-             padding :: Int    = 9
-       naming_scheme :: Symbol = :iteration
-         compression :: Int    = 3
-               async :: Bool   = false
+             dir  :: AbstractString = "."
+          prefix  :: AbstractString = ""
+        frequency :: Int    = 1
+          padding :: Int    = 9
+    naming_scheme :: Symbol = :iteration
+      compression :: Int    = 3
+            async :: Bool   = false
 end
 
 ext(fw::NetCDFOutputWriter) = ".nc"
@@ -60,7 +61,7 @@ function filename(fw, name, iteration)
     if fw.naming_scheme == :iteration
         fw.prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
     elseif fw.naming_scheme == :file_number
-        file_num = Int(iteration / fw.output_frequency)
+        file_num = Int(iteration / fw.frequency)
         fw.prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
     else
         throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
@@ -218,7 +219,7 @@ function of the form `func(model)` that returns the data to be saved.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
-                          part=1, max_filesize=Inf, force=false, =false, verbose=false)
+                          part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
     interval === nothing && frequency === nothing &&
         error("Either interval or frequency must be passed to the JLD2OutputWriter!")
@@ -233,7 +234,7 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
     end
 
     return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
-                            0.0, part, max_filesize, , force, verbose)
+                            0.0, part, max_filesize, async, force, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -300,9 +301,6 @@ function jld2output!(path, iter, time, data)
     end
     return nothing
 end
-
-time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequency) == 0
-time_to_write(clock, out::JLD2OutputWriter) = (clock.iteration % out.frequency) == 0
 
 function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
     if clock.time > out.previous + out.interval
