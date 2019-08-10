@@ -73,11 +73,11 @@ end
 #### Vertical profile calculation
 ####
 
-struct HorizontallyAveragedVerticalProfile{P, I, T, F} <: Diagnostic
+mutable struct HorizontallyAveragedVerticalProfile{P, I, T, F} <: Diagnostic
       profile :: P
         field :: F
     frequency :: I
-     Interval :: T
+     interval :: T
      previous :: Float64
 end
 
@@ -103,7 +103,7 @@ end
 function time_to_run(clock, P::HorizontallyAveragedVerticalProfile)
     if P.interval != nothing
         if clock.time >= P.previous + P.interval
-            P.previous = clock.time - rem(clock.time, out.interval)
+            P.previous = clock.time - rem(clock.time, P.interval)
             return true
         else
             return false
