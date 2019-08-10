@@ -89,12 +89,12 @@ fieldtype(f::Field) = typeof(f).name.wrapper
 
 @inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
-@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx, 
-                                                    1+f.grid.Hy:f.grid.Ny+f.grid.Hy, 
+@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
+                                                    1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
                                                     1+f.grid.Hz:f.grid.Nz+f.grid.Hz)
 
-@inline ardata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx, 
-                                         1+f.grid.Hy:f.grid.Ny+f.grid.Hy, 
+@inline ardata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
+                                         1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
                                          1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 
 @inline underlying_data(f::Field) = f.data.parent
@@ -216,10 +216,10 @@ end
 """
     set!(model; kwargs...)
 
-Set velocity and tracer fields of `model`. The keyword arguments 
+Set velocity and tracer fields of `model`. The keyword arguments
 `kwargs...` take the form `name=data`, where `name` refers to one of the
-fields of `model.velocities` or `model.tracers`, and the `data` may be an array, 
-a function with arguments `(x, y, z)`, or any data type for which a 
+fields of `model.velocities` or `model.tracers`, and the `data` may be an array,
+a function with arguments `(x, y, z)`, or any data type for which a
 `set!(ϕ::Field, data)` function exists.
 
 Example
@@ -228,7 +228,7 @@ Example
 model = Model(grid=RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
-# at top and bottom, and T to some silly array of half zeros, 
+# at top and bottom, and T to some silly array of half zeros,
 # half random numbers.
 
 u₀(x, y, z) = z/model.grid.Lz * (1 + z/model.grid.Lz)

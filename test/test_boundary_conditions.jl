@@ -19,7 +19,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT, 
+    model = Model(N=(N, N, N), L=(0.1, 0.2, 0.3), arch=arch, float_type=FT,
                   bcs=modelbcs)
 
     bcs = getfield(model.boundary_conditions, fldname)
@@ -42,7 +42,7 @@ function test_z_boundary_condition_array(arch, T, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T, 
+    model = Model(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), arch=arch, float_type=T,
                   bcs=modelbcs)
 
     bcs = getfield(model.boundary_conditions, fldname)
@@ -60,7 +60,7 @@ function test_flux_budget(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, arch=arch, float_type=FT, 
+    model = Model(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, arch=arch, float_type=FT,
                   eos=LinearEquationOfState(βS=0, βT=0), bcs=modelbcs)
 
     if fldname ∈ (:u, :v, :w)

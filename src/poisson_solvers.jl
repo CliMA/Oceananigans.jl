@@ -9,7 +9,7 @@ struct PPN <: PoissonBCs end
 struct PNN <: PoissonBCs end
 
 # Not yet supported:
-#struct PPP <: PoissonBCs end 
+#struct PPP <: PoissonBCs end
 #struct NNN <: PoissonBCs end
 #struct NPP <: PoissonBCs end
 #struct PNP <: PoissonBCs end
@@ -26,7 +26,7 @@ Returns the boundary conditions for the Poisson solver corresponding
 to the model boundary conditions `bcs`.
 """
 function PoissonBCs(bcs)
-    # We assume that bounary conditions on all fields are 
+    # We assume that bounary conditions on all fields are
     # consistent with the boundary conditions on one side of ``u``.
     x = poisson_bc_symbol(bcs.u.x.left)
     y = poisson_bc_symbol(bcs.u.y.left)
