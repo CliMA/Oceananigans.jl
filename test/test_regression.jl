@@ -81,10 +81,10 @@ function run_deep_convection_regression_tests()
         end
     end
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), 
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz),
                   ν=4e-2, κ=4e-2, forcing=Forcing(FT=cooling_disk)
                  )
-                  
+
 
     rng = MersenneTwister(seed)
     model.tracers.T.data[1:Nx, 1:Ny, 1] .+= 0.01*rand(rng, Nx, Ny)
@@ -180,7 +180,7 @@ function run_rayleigh_benard_regression_test(arch)
     outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
 
     prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields, dir=".", 
+    outputwriter = JLD2OutputWriter(model, outputfields, dir=".",
                                     prefix=prefix, frequency=test_steps, including=[])
 
     #
@@ -188,8 +188,8 @@ function run_rayleigh_benard_regression_test(arch)
     #
 
     #=
-    @warn ("Generating new data for the Rayleigh-Benard regression test. 
-           New regression test data generation will fail unless the JLD2 
+    @warn ("Generating new data for the Rayleigh-Benard regression test.
+           New regression test data generation will fail unless the JLD2
            file $prefix.jld2 is manually deleted.")
 
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls

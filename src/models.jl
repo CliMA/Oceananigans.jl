@@ -1,7 +1,7 @@
 using .TurbulenceClosures
 
-mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState, 
-                     PC<:PlanetaryConstants, 
+mutable struct Model{A<:Architecture, GR, T, EOS<:EquationOfState,
+                     PC<:PlanetaryConstants,
                      VC, TR, PF, F, TC, BCS, TS, PS, D} <: AbstractModel
 
               arch :: A                      # Computer `Architecture` on which `Model` is run
@@ -73,8 +73,8 @@ function Model(;
     # Set the default initial condition
     initialize_with_defaults!(eos, tracers)
 
-    Model(arch, grid, clock, eos, constants, velocities, tracers, 
-          pressures, forcing, closure, boundary_conditions, timestepper, 
+    Model(arch, grid, clock, eos, constants, velocities, tracers,
+          pressures, forcing, closure, boundary_conditions, timestepper,
           poisson_solver, diffusivities, output_writers, diagnostics)
 end
 
@@ -86,9 +86,9 @@ end
 
     kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; bcs=ChannelModelBCs(), kwargs...) = 
+ChannelModel(; bcs=ChannelModelBCs(), kwargs...) =
     Model(; bcs=bcs, kwargs...)
-          
+
 #
 # Model initialization utilities
 #
@@ -120,10 +120,10 @@ end
 """
     Forcing(; kwargs...)
 
-Return a named tuple of forcing functions 
+Return a named tuple of forcing functions
 for each solution field.
 """
-Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) = 
+Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) =
     (u=Fu, v=Fv, w=Fw, T=FT, S=FS)
 
 """
@@ -167,7 +167,7 @@ end
     Tendencies(arch, grid)
 
 Return a NamedTuple with tendencies for all solution fields
-(velocity fields and tracer fields), initialized on 
+(velocity fields and tracer fields), initialized on
 the architecture `arch` and `grid`.
 """
 function Tendencies(arch, grid)

@@ -71,13 +71,13 @@ cell_advection_timescale(model) =
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
 
 Instantiate a `TimeStepWizard`. On calling `update_Δt!(wizard, model)`,
-the `TimeStepWizard` computes a time-step such that 
-`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the 
-maximum ratio between model velocity and along-velocity grid spacing 
-anywhere on the model grid. The new `Δt` is constrained to change by a 
-multiplicative factor no more than `max_change` or no less than 
-`min_change` from the previous `Δt`, and to be no greater in absolute 
-magnitude than `max_Δt`. 
+the `TimeStepWizard` computes a time-step such that
+`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the
+maximum ratio between model velocity and along-velocity grid spacing
+anywhere on the model grid. The new `Δt` is constrained to change by a
+multiplicative factor no more than `max_change` or no less than
+`min_change` from the previous `Δt`, and to be no greater in absolute
+magnitude than `max_Δt`.
 """
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1

@@ -19,12 +19,12 @@ def fout(i):
 def plot_frame(i):
     from mpl_toolkits.mplot3d import Axes3D
     plt.style.use("dark_background")
-    
+
     vmin, vmax = 7.95, 12.6
     n_contours = 50
     contour_spacing = (vmax - vmin) / n_contours
     cmap = "inferno"
-    
+
     Lx, Ly, Lz = 250e3, 500e3, 1000  # 160×512×1 km
     Nx, Ny, Nz = 256, 512, 128
     Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
@@ -32,15 +32,15 @@ def plot_frame(i):
     xC = linspace(0, Lx, num=Nx)
     yC = linspace(0, Ly, num=Ny)
     zC = linspace(0, -Lz, num=Nz)
-    
+
     print("[{:d}] Reading data...".format(i))
-    
+
     f = h5py.File(fn(i), "r")
     t = f["t"].value
     data = f["T"].value[0:Nz+1, 1:Ny+1, 1:Nx+1]
-    
+
     print("[{:d}] Plotting...".format(i))
-    
+
     fig = plt.figure(figsize=(16, 9))
 
     ax = plt.subplot2grid((3, 4), (0, 0), rowspan=3, colspan=3, projection="3d")
@@ -67,7 +67,7 @@ def plot_frame(i):
     Y_offset = y_offset*ones((Nz, Nx))
 
 
-    clbax = fig.add_axes([0.64, 0.48, 0.015, 0.35]) 
+    clbax = fig.add_axes([0.64, 0.48, 0.015, 0.35])
     clb = fig.colorbar(cf3, ticks=[8, 9, 10, 11, 12], cax=clbax)  #, shrink=0.9)
     clb.ax.set_title(r"T (°C)")
 
@@ -82,9 +82,9 @@ def plot_frame(i):
 
     ax.view_init(elev=30, azim=-50)
     ax.set_axis_off()
-    
+
     print("[{:d}] Saving plot...".format(i))
-    
+
     fig.savefig(fout(i//40), transparent=False, format="png", dpi=500)
 
     plt.close("all")
