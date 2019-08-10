@@ -69,6 +69,29 @@ end
 end
 
 ####
+#### Vertical profile calculation
+####
+
+struct HorizontallyAveragedVerticalProfile{P, I, T, F} <: Diagnostic
+      profile :: P
+        field :: F
+    frequency :: I
+     Interval :: T
+end
+
+function HorizontallyAveragedVerticalProfile(model, field; frequency=nothing, interval=nothing)
+    interval === nothing && frequency === nothing &&
+        error("Either an interval or frequency must be chosen!")
+
+    profile = zeros(model.arch, 1, 1, model.grid.Nz)
+    HorizontallyAveragedVerticalProfile(profile, field, frequency, interval)
+end
+
+function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:Array})
+    P.profile .= mean(data(P.field), dims=[1, 2])
+end
+
+####
 #### NaN checker
 ####
 
