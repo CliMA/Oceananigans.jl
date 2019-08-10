@@ -21,18 +21,20 @@ end
 #### NaN checker
 ####
 
-struct NaNChecker <: Diagnostic
-    frequency  :: Int
-       fields  :: Array{Field,1}
-    field_names:: Array{AbstractString,1}
+struct NaNChecker{D} <: Diagnostic
+    frequency :: Int
+       fields :: D
+end
+
+function NaNChecker(model; frequency=1000, fields=Dict(:w => model.velocities.w.data.parent))
+    NaNChecker(frequency, fields)
 end
 
 function run_diagnostic(model::Model, nc::NaNChecker)
-    for (field, field_name) in zip(nc.fields, nc.field_names)
-        if any(isnan, field.data.parent)  # This is also fast on CuArrays.
+    for (name, field) in nc.fields
+        if any(isnan, field)
             t, i = model.clock.time, model.clock.iteration
-            error("time = $t, iteration = $i: NaN found in $field_name. Aborting simulation.")
+            error("time = $t, iteration = $i: NaN found in $name. Aborting simulation.")
         end
     end
 end
-
