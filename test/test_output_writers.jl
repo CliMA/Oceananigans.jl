@@ -61,13 +61,17 @@ function run_jld2_file_splitting_tests(arch)
     @test filesize("test_part3.jld2") < 200KiB
 
     for n in string.(1:3)
-        jldopen("test_part" * n * ".jld2", "r") do file    
+        filename = "test_part" * n * ".jld2"
+        jldopen(filename, "r") do file    
             # Test to make sure all files contain structs from `including`.
             @test file["grid/Nx"] == 16
     
             # Test to make sure all files contain info from `init` function.
             @test file["boundary_conditions/fake"] == π
         end
+
+        # Leave test directory clean.
+        rm(filename)
     end
 end
 
