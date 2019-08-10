@@ -118,9 +118,7 @@ export
     # Model diagnostics
     Diagnostic,
     run_diagnostic,
-    FieldSummary,
     NaNChecker,
-    VelocityDivergenceChecker,
 
     # Package utilities
     prettytime,
