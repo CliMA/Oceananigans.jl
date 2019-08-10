@@ -19,10 +19,10 @@ function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
     end
 end
 
-# Work-inefficient prefix sum that reduces along the xy dimensions.
+# Work-inefficient inclusive scan that reduces along the xy dimensions.
 # Useful for computing mean(; dim=[1, 2]) lol.
 # Modified from: https://github.com/JuliaGPU/CUDAnative.jl/blob/master/examples/scan.jl
-@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx::CuDeviceArray{T}, data::CuDeviceArray{T}, op::Function) where {T}
+@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx::CuDeviceArray{T}, data1::CuDeviceArray{T}, op::Function) where {T}
     lvl, lvls = blockIdx().y,  gridDim().y
     col, cols = blockIdx().x,  gridDim().x
     row, rows = threadIdx().x, blockDim().x
@@ -69,9 +69,6 @@ end
     return
 end
 
-function compute_mean_xy!(profile, field)
-end
-
 ####
 #### Vertical profile calculation
 ####
@@ -98,7 +95,7 @@ end
 @hascuda function run_diagnostic(model::Model, P:HorizontallyAveragedVerticalProfile{<:CuArray})
     Nx, Ny, Nz = field.grid.Nx, field.grid.Ny, field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
-    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, Rx, field.data, +)
+    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, field.data, +)
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
