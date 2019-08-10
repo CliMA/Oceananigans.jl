@@ -254,6 +254,7 @@ function run_rayleigh_benard_regression_test(arch)
 end
 
 @testset "Regression" begin
+    println("Running regression tests...")
 
     for arch in archs
         @testset "Thermal bubble [$(typeof(arch))]" begin
