@@ -17,10 +17,13 @@ function prettytime(t)
     elseif t < 60
         value, units = t, "s"
     else
-        value, units = t/ 60, "min"
+        value, units = t / 60, "min"
     end
-    return string(@sprintf("%.3f", value), " ", units)
+    return @sprintf("%.3f", value) * " " * units
 end
+
+KB,  MB,  GB,  TB  = 1000 .^ (1:4)
+KiB, MiB, GiB, TiB = 1024 .^ (1:4)
 
 # Code credit: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")

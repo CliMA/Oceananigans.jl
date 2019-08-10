@@ -124,6 +124,9 @@ export
 
     # Package utilities
     prettytime,
+    pretty_filesize,
+    KB, MB, GB, TB,
+    KiB, MiB, GiB, TiB,
 
     # Turbulence closures
     TurbulenceClosures,
