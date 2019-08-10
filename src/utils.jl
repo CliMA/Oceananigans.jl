@@ -22,8 +22,8 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-KB,  MB,  GB,  TB  = 1000 .^ (1:4)
-KiB, MiB, GiB, TiB = 1024 .^ (1:4)
+KB,  MB,  GB,  TB  = 1000.0 .^ (1:4)
+KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
 
 # Code credit: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
