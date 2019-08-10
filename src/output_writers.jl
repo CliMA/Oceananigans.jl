@@ -249,7 +249,7 @@ savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for nam
 function write_output(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    tc = @elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
     verbose && @info "Calculation time: $(prettytime(tc))"
 
     sz = filesize(fw.filepath)
