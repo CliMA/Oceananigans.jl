@@ -169,6 +169,20 @@ end
 ####  JLD2 output writer
 ####
 
+mutable struct JLD2OutputWriter{F, I, O, IF} <: OutputWriter
+        filepath :: String
+         outputs :: O
+        interval :: I
+       frequency :: F
+            init :: IF
+        previous :: Float64
+    max_filesize :: Int64
+    asynchronous :: Bool
+    verbose      :: Bool
+end
+
+noinit(args...) = nothing
+
 """
     JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit,
                      force=false, asynchronous=false)
@@ -179,21 +193,9 @@ the output and `fcn` is a function of the form `fcn(model)` that returns
 the data to be saved. The keyword `init` is a function of the form `init(file, model)`
 that runs when the JLD2 output file is initialized.
 """
-mutable struct JLD2OutputWriter{F, I, O} <: OutputWriter
-        filepath :: String
-         outputs :: O
-        interval :: I
-       frequency :: F
-        previous :: Float64
-    asynchronous :: Bool
-    verbose      :: Bool
-end
-
-noinit(args...) = nothing
-
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
-                          force=false, asynchronous=false, verbose=false)
+                          max_filesize=Inf, force=false, asynchronous=false, verbose=false)
 
     interval === nothing && frequency === nothing &&
         error("Either interval or frequency must be passed to the JLD2OutputWriter!")
@@ -207,7 +209,8 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
         savesubstructs!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, interval, frequency, 0.0, asynchronous, verbose)
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, 0.0,
+                            max_filesize, asynchronous, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
