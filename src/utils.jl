@@ -49,6 +49,9 @@ end
 # Default to type of Grid
 Base.zeros(arch, g::Grid{T}) where T = zeros(T, arch, g)
 
+Base.zeros(T, ::CPU, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+Base.zeros(T, ::GPU, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
