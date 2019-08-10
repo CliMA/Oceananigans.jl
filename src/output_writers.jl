@@ -179,7 +179,7 @@ mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
        including :: IN
         previous :: Float64
             part :: Int
-    max_filesize :: Int
+    max_filesize :: Float64
            async :: Bool
            force :: Bool
          verbose :: Bool
