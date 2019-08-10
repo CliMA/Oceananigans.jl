@@ -1,5 +1,5 @@
 # Halo filling algorithm for arbitrary flux, gradient, and value boundary conditions.
-# For these we fill halos so that no-fluxes are added to source terms when the PDE / 
+# For these we fill halos so that no-fluxes are added to source terms when the PDE /
 # associated differential operators are applied on boundary elements.
 # Fluxes associated with the boundary condition are added in a separate step in the time-stepping
 # algorithm. Note that ranges are used to reference the data copied into halos, as this
@@ -66,7 +66,7 @@ end
 """
     fill_halo_regions!(fields, bcs, grid)
 
-Fill halo regions for all fields in the tuple `fields` according 
+Fill halo regions for all fields in the tuple `fields` according
 to the corresponding tuple of `bcs`.
 """
 function fill_halo_regions!(fields::NamedTuple, bcs, grid)

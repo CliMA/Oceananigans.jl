@@ -174,7 +174,7 @@ function read_output(fw::NetCDFOutputWriter, field_name, iter)
 end
 
 """
-    JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit, 
+    JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit,
                      force=false, asynchronous=false)
 
 Construct an `OutputWriter` that writes `label, fcn` pairs in the
@@ -194,11 +194,11 @@ end
 
 noinit(args...) = nothing
 
-function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="", 
+function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
                           force=false, asynchronous=false
                          )
-                          
+
     interval === nothing && frequency === nothing && (
         error("Either interval or frequency must be passed to the JLD2OutputWriter!"))
 
@@ -334,4 +334,3 @@ function VerticalPlanes(arch::GPU, grid::Grid{FT}) where FT
 end
 
 VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
-

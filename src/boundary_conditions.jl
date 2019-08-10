@@ -87,11 +87,11 @@ function FieldBoundaryConditions(;
 end
 
 """
-    HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, 0), 
+    HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, 0),
                             bottom = BoundaryCondition(Flux, 0))
 
-Construct horizontally-periodic boundary conditions for ``u``, ``v``, or a 
-tracer field with top boundary condition (positive-z) `top` 
+Construct horizontally-periodic boundary conditions for ``u``, ``v``, or a
+tracer field with top boundary condition (positive-z) `top`
 and bottom boundary condition (negative-z) `bottom`.
 """
 function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
@@ -110,9 +110,9 @@ end
                     top = BoundaryCondition(Flux, 0),
                  bottom = BoundaryCondition(Flux, 0))
 
-Construct 'channel' boundary conditions (periodic in ``x``, non-periodic in 
-``y`` and ``z``) for ``u`` or a tracer field. The keywords `north`, `south`, 
-`top` and `bottom` correspond to boundary conditions in the positive ``y``, 
+Construct 'channel' boundary conditions (periodic in ``x``, non-periodic in
+``y`` and ``z``) for ``u`` or a tracer field. The keywords `north`, `south`,
+`top` and `bottom` correspond to boundary conditions in the positive ``y``,
 negative ``y``, positive ``z`, and negative ``z`` directions respectively.
 """
 function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
@@ -131,7 +131,7 @@ end
 """
     ModelBoundaryConditions(u, v, w, T, S)
 
-Construct a NamedTuple of boundary conditions for a model 
+Construct a NamedTuple of boundary conditions for a model
 with solution fields `u`, `v`, `w`, `T`, and `S`.
 """
 ModelBoundaryConditions(u, v, w, T, S) = (u=u, v=v, w=w, T=T, S=S)
@@ -211,7 +211,7 @@ Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.conditi
 
 # Do nothing if boundary conditions are periodic.
 apply_bcs!(arch, coord, Bx, By, Bz, ::BC{<:Periodic}, args...) = nothing
-    
+
 # First, dispatch on coordinate.
 apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
     @launch device(arch) threads=(Tx, Ty) blocks=(By, Bz) apply_x_bcs!(args...)
@@ -236,7 +236,7 @@ If `top_bc.condition` is a function, the function must have the signature
     `top_bc.condition(i, j, grid, t, iter, U, Φ)`
 
 """
-@inline apply_z_top_bc!(top_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, args...) = 
+@inline apply_z_top_bc!(top_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 @inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) =
@@ -259,7 +259,7 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) = 
+@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, args...) / grid.Δz
 
 @inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
@@ -273,9 +273,9 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline get_bottom_κ(κ::AbstractArray, i, j, grid, args...) = κ[i, j, grid.Nz]
 
 # ConstantSmagorinsky does not compute or store κ so we will compute κ = ν / Pr.
-@inline get_top_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) = 
+@inline get_top_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) =
     ν[i, j, 1] / closure.Pr
-@inline get_bottom_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) = 
+@inline get_bottom_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) =
     ν[i, j, grid.Nz] / closure.Pr
 
 """
