@@ -187,14 +187,35 @@ end
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit,
-                     force=false, asynchronous=false)
+    JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
+                     prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
+                     part=1, max_filesize=Inf, force=false, asynchronous=false, verbose=false)
 
-Construct an `OutputWriter` that writes `label, fcn` pairs in the
-dictionary `outputs` to a single `JLD2` file, where `label` is a symbol that labels
-the output and `fcn` is a function of the form `fcn(model)` that returns
-the data to be saved. The keyword `init` is a function of the form `init(file, model)`
-that runs when the JLD2 output file is initialized.
+Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs`
+to a single JLD2 file, where `label` is a symbol that labels the output and `func` is
+a function of the form `func(model)` that returns the data to be saved.
+
+# Keyword arguments
+- `frequency::Int`:    Save output every `n` model iterations.
+- `interval::Int`:     Save output every `t` units of model clock time.
+- `dir::String`:       Directory to save output to. Defaults to the current working
+                       directory ".".
+- `prefix::String`:    Descriptive filename prefixed to all output files. Defaults to "".
+- `init::Function`:    A function of the form `init(file, model)` that runs when a
+                       JLD2 output file is initialized. Defaults to `nothing`.
+- `including::Array`:  List of model properties to save with every file. By default,
+                       the grid, equation of state, planetary constants, and the
+                       turbulence closure parameters are saved.
+- `part::Int`:         The starting part number used if `max_filesize` is finite. Defaults
+                       to 1.
+- `max_filesize::Int`: The writer will stop writing to the output file once the file
+                       size exceeds `max_filesize`, and write to a new one with a
+                       consistent naming scheme ending in `part1`, `part2`, etc.
+                       Defaults to `Inf`.
+- `force::Bool`:       Remove existing files if their filenames conflict. Defaults to `false`.
+- `async::Bool`:       Write output asynchronously. Defaults to `false`.
+- `verbose::Bool`:     Log what the output writer is doing with statistics on compute/write
+                       times and file sizes. Defaults to `false`.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
