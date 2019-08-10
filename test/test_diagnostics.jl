@@ -1,3 +1,5 @@
+
+
 function horizontally_averaged_vertical_profile_is_correct(arch, FT)
     model = Model(N = (16, 16, 16), L = (100, 100, 100), arch=arch, float_type=FT)
     
@@ -5,7 +7,7 @@ function horizontally_averaged_vertical_profile_is_correct(arch, FT)
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
     
-    T̅ = HorizontallyAveragedVerticalProfile(model, model.tracers.T; frequency=1)
+    T̅ = HorizontallyAveragedVerticalProfile(model, model.tracers.T; interval=0.5second)
     push!(model.diagnostics, T̅)
 
     time_step!(model, 1, 1)
