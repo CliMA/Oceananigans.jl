@@ -19,7 +19,8 @@ function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
     end
 end
 
-# Work-inefficient inclusive 3D scan that reduces along the xy dimensions.
+# Work-inefficient prefix sum that reduces along the xy dimensions.
+# Useful for computing mean(; dim=[1, 2]) lol.
 # Modified from: https://github.com/JuliaGPU/CUDAnative.jl/blob/master/examples/scan.jl
 @hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx::CuDeviceArray{T}, data::CuDeviceArray{T}, op::Function) where {T}
     lvl, lvls = blockIdx().y,  gridDim().y
@@ -68,6 +69,9 @@ end
     return
 end
 
+function compute_mean_xy!(profile, field)
+end
+
 ####
 #### Vertical profile calculation
 ####
@@ -89,6 +93,13 @@ end
 
 function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:Array})
     P.profile .= mean(data(P.field), dims=[1, 2])
+end
+
+@hascuda function run_diagnostic(model::Model, P:HorizontallyAveragedVerticalProfile{<:CuArray})
+    Nx, Ny, Nz = field.grid.Nx, field.grid.Ny, field.grid.Nz
+    sz = 2Nx * sizeof(eltype(P.profile))
+    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, Rx, field.data, +)
+    P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
 ####
