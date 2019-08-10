@@ -21,6 +21,7 @@ export
     EarthStationary,
     Europa,
     Enceladus,
+    second,
     minute,
     hour,
     day,
