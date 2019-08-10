@@ -254,10 +254,10 @@ function write_output(model, fw::JLD2OutputWriter)
 
     iter = model.clock.iteration
     time = model.clock.time
+
+    filesize(fw.filepath) >= fw.max_filesize && start_next_file(model, fw)
+
     path = fw.filepath
-
-    filesize(path) >= fw.max_filesize && start_next_file(model, fw)
-
     verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
     t0, sz = time_ns(), filesize(path)
 
@@ -287,6 +287,7 @@ function start_next_file(model::Model, fw::JLD2OutputWriter)
 
     fw.part += 1
     fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
+    fw.force && isfile(fw.filepath) && rm(fw.filepath, force=true)
     verbose && @info "Now writing to: $(fw.filepath)"
 
     jldopen(fw.filepath, "a+") do file
