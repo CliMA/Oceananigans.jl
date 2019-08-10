@@ -25,6 +25,15 @@ function prettytime(t)
     return string(@sprintf("%.3f", value), " ", units)
 end
 
+# Code credit: https://stackoverflow.com/a/1094933
+function pretty_filesize(s, suffix="B")
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
+        abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
+        s /= 1024
+    end
+    return @sprintf("%.1f %s%s", s, "Yi", suffix)
+end
+
 function Base.zeros(T, ::CPU, grid)
     # Starting and ending indices for the offset array.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
