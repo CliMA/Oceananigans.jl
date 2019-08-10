@@ -78,14 +78,15 @@ struct HorizontallyAveragedVerticalProfile{P, I, T, F} <: Diagnostic
         field :: F
     frequency :: I
      Interval :: T
+     previous :: Float64
 end
 
 function HorizontallyAveragedVerticalProfile(model, field; frequency=nothing, interval=nothing)
     interval === nothing && frequency === nothing &&
         error("Either an interval or frequency must be chosen!")
 
-    profile = zeros(model.arch, 1, 1, model.grid.Nz)
-    HorizontallyAveragedVerticalProfile(profile, field, frequency, interval)
+    profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
+    HorizontallyAveragedVerticalProfile(profile, field, frequency, interval, 0.0)
 end
 
 function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:Array})
@@ -97,6 +98,19 @@ end
     sz = 2Nx * sizeof(eltype(P.profile))
     @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, field.data, +)
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
+end
+
+function time_to_run(clock, P::HorizontallyAveragedVerticalProfile)
+    if P.interval != nothing
+        if clock.time >= P.previous + P.interval
+            P.previous = clock.time - rem(clock.time, out.interval)
+            return true
+        else
+            return false
+        end
+    else
+        return clock.iteration % P.frequency == 0
+    end
 end
 
 ####

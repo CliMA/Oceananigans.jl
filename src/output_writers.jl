@@ -257,7 +257,7 @@ time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequenc
 time_to_write(clock, out::JLD2OutputWriter) = (clock.iteration % out.frequency) == 0
 
 function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
-    if clock.time > out.previous + out.interval
+    if clock.time >= out.previous + out.interval
         out.previous = clock.time - rem(clock.time, out.interval)
         return true
     else
