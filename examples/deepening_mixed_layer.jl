@@ -9,7 +9,7 @@ end
 
 @withplots using PyPlot
 
-# 
+#
 # Model set-up
 #
 
@@ -19,7 +19,7 @@ parameters = Dict(:free_convection => Dict(:Fb=>3.39e-8, :Fu=>0.0,     :f=>1e-4,
 
 # Simulation parameters
 case = :free_convection
- N = 32                   # Resolution    
+ N = 32                   # Resolution
  Δ = 0.5                  # Grid spacing
 tf = hour/2               # Final simulation time
 
@@ -61,7 +61,7 @@ filename = @sprintf("%s_n%d", case, N)
 field_writer = JLD2OutputWriter(model, fields; dir="data", prefix=filename, interval=hour/4, force=true)
 push!(model.output_writers, field_writer)
 
-# 
+#
 # Run the simulation
 #
 
@@ -82,7 +82,7 @@ while model.clock.time < tf
     update_Δt!(wizard, model)
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
-    
+
     @withplots begin
         sca(axs); cla()
         imshow(rotr90(view(data(model.velocities.w), :, 2, :)))

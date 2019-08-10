@@ -19,7 +19,7 @@ parameters = Dict(
 
 # Simulation parameters
 case = :wind_stress
-   N = 128                      # Resolution    
+   N = 128                      # Resolution
    Δ = 0.5                      # Grid spacing
   tf = day/2                    # Final simulation time
   N² = parameters[case][:N²]
@@ -132,7 +132,7 @@ while model.clock.time < tf
     update_Δt!(wizard, model)
     walltime = @elapsed time_step!(model, 100, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
-    
+
     sca(axs); cla()
     imshow(rotr90(view(data(model.velocities.w), :, 2, :)))
     show()

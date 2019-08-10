@@ -18,7 +18,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
 
     FT = eltype(model.grid)
     RHS = model.poisson_solver.storage
-    U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ, 
+    U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ,
                                     model.timestepper.G⁻, model.diffusivities, model.pressures)
 
     for n in 1:Nt
@@ -40,7 +40,7 @@ end
 Step forward one time step.
 """
 function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
-                   
+
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
     @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
@@ -54,7 +54,7 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
 
     fill_halo_regions!(Gⁿ[1:3], bcs[1:3], grid)
 
-    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs, 
+    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs,
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
     fill_halo_regions!(p.pNHS, bcs[4], grid)
@@ -349,16 +349,16 @@ function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ
 
     # Velocity fields
     for (i, ubcs) in enumerate(bcs[1:3])
-        apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right, 
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right,
                    grid, U[i], Gⁿ[i], ν, closure, clock.time, clock.iteration, U, Φ)
-                   
+
     end
 
     # Tracer fields
     for (i, ϕbcs) in enumerate(bcs[4:end])
-        apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right, 
+        apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right,
                    grid, Φ[i], Gⁿ[i+3], κ[i], closure, clock.time, clock.iteration, U, Φ)
-                   
+
     end
 
     return nothing

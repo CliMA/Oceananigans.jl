@@ -2,7 +2,7 @@
     println("Testing forcings...")
 
     add_one(args...) = 1.0
-    
+
     function test_forcing(fld)
         kwarg = Dict(Symbol(:F, fld)=>add_one)
         forcing = Forcing(; kwarg...)
