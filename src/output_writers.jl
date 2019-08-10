@@ -169,16 +169,19 @@ end
 ####  JLD2 output writer
 ####
 
-mutable struct JLD2OutputWriter{F, I, O, IF} <: OutputWriter
+mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
         filepath :: String
          outputs :: O
         interval :: I
        frequency :: F
             init :: IF
+       including :: IN
         previous :: Float64
-    max_filesize :: Int64
+            part :: Int
+    max_filesize :: Int
     asynchronous :: Bool
-    verbose      :: Bool
+           force :: Bool
+         verbose :: Bool
 end
 
 noinit(args...) = nothing
@@ -195,7 +198,7 @@ that runs when the JLD2 output file is initialized.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
-                          max_filesize=Inf, force=false, asynchronous=false, verbose=false)
+                          part=1, max_filesize=Inf, force=false, asynchronous=false, verbose=false)
 
     interval === nothing && frequency === nothing &&
         error("Either interval or frequency must be passed to the JLD2OutputWriter!")
@@ -209,8 +212,8 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
         savesubstructs!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, 0.0,
-                            max_filesize, asynchronous, verbose)
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
+                            0.0, part, max_filesize, asynchronous, force, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -223,22 +226,47 @@ end
 savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
 
 function write_output(model, fw::JLD2OutputWriter)
-    fw.verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    t0 = @elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
-    fw.verbose && @info "Calculation time: $(prettytime(time_ns() - t0))"
+    verbose = fw.verbose
+    verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
+    tc = @elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    verbose && @info "Calculation time: $(prettytime(tc))"
+
+    sz = filesize(fw.filepath)
+    if sz > fw.max_filesize
+        verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
+
+        if fw.part == 1
+            part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
+            verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
+            mv(fw.filepath, part1_path, force=fw.force)
+            fw.filepath = part1_path
+        end
+
+        fw.part += 1
+        fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
+        verbose && @info "Now writing to: $(fw.filepath)"
+
+        jldopen(fw.filepath, "a+") do file
+            fw.init(file, model)
+            savesubstructs!(file, model, fw.including)
+        end
+    end
 
     iter = model.clock.iteration
     time = model.clock.time
     path = fw.filepath
 
-    fw.verbose && @info @sprintf("Writing JLD2 output %s...", keys(fw.outputs))
-    t0 = time_ns()
+    verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
+    t0, sz = time_ns(), filesize(path)
+    
     if fw.asynchronous
         @async remotecall(jld2output!, 2, path, iter, time, data)
     else
         jld2output!(path, iter, time, data)
     end
-    fw.verbose && @info "Writing time: $(prettytime(time_ns()-t0)))"
+
+    t1, newsz = time_ns(), filesize(path)
+    verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
 
     return nothing
 end
