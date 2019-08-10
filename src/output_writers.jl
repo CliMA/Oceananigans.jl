@@ -1,44 +1,18 @@
 using Distributed
+using NetCDF, JLD2
 
-using NetCDF
+ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
-"A type for writing NetCDF output."
-mutable struct NetCDFOutputWriter <: OutputWriter
-    dir::AbstractString
-    filename_prefix::AbstractString
-    output_frequency::Int
-    padding::Int
-    naming_scheme::Symbol
-    compression::Int
-    async::Bool
-end
+####
+#### Binary output writer
+####
 
 "A type for writing Binary output."
-mutable struct BinaryOutputWriter <: OutputWriter
-    dir::AbstractString
-    filename_prefix::AbstractString
-    output_frequency::Int
-    padding::Int
-end
-
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9,
-                              naming_scheme=:iteration, compression=3, async=false)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, naming_scheme, compression, async)
-end
-
-"Return the filename extension for the `OutputWriter` filetype."
-ext(fw::OutputWriter) = throw("Not implemented.")
-ext(fw::NetCDFOutputWriter) = ".nc"
-
-function filename(fw, name, iteration)
-    if fw.naming_scheme == :iteration
-        fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
-    elseif fw.naming_scheme == :file_number
-        file_num = Int(iteration / fw.output_frequency)
-        fw.filename_prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
-    else
-        throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
-    end
+Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
+    dir              :: AbstractString = "."
+    filename_prefix  :: AbstractString = ""
+    output_frequency :: Int = 1
+    padding          :: Int = 9
 end
 
 function write_output(model::Model, fw::BinaryOutputWriter)
@@ -65,12 +39,33 @@ function read_output(model::Model, fw::BinaryOutputWriter, field_name, time)
     return arr
 end
 
-#
-# NetCDF output functions
-#
-# Eventually, we want to permit the user to flexibly define what is outputted.
-# The user-defined function that produces output may involve computations, launching kernels,
-# etc; so this API needs to be designed. For now, we simply save u, v, w, and T.
+####
+#### NetCDF output writer
+####
+
+"A type for writing NetCDF output."
+Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
+                dir  :: AbstractString = "."
+    filename_prefix  :: AbstractString = ""
+    output_frequency :: Int    = 1
+             padding :: Int    = 9
+       naming_scheme :: Symbol = :iteration
+         compression :: Int    = 3
+               async :: Bool   = false
+end
+
+ext(fw::NetCDFOutputWriter) = ".nc"
+
+function filename(fw, name, iteration)
+    if fw.naming_scheme == :iteration
+        fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+    elseif fw.naming_scheme == :file_number
+        file_num = Int(iteration / fw.output_frequency)
+        fw.filename_prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
+    else
+        throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
+    end
+end
 
 function write_output(model::Model, fw::NetCDFOutputWriter)
     fields = Dict(
@@ -123,8 +118,6 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
 
     if fw.async
         println("[Worker $(Distributed.myid()): NetCDFOutputWriter] Writing fields to disk: $filepath")
-    else
-        println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
     end
 
     isfile(filepath) && rm(filepath)
@@ -167,11 +160,14 @@ end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
     filepath = joinpath(fw.dir, filename(fw, "", iter))
-    println("[NetCDFOutputWriter] Reading fields from disk: $filepath")
     field_data = ncread(filepath, field_name)
     ncclose(filepath)
     return field_data
 end
+
+####
+####  JLD2 output writer
+####
 
 """
     JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit,
@@ -266,9 +262,9 @@ function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
     end
 end
 
-#
-# Output utils
-#
+####
+#### Output utils
+####
 
 """
     HorizontalAverages(arch, grid)
