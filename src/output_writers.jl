@@ -252,30 +252,11 @@ function write_output(model, fw::JLD2OutputWriter)
     tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
     verbose && @info "Calculation time: $(prettytime(tc))"
 
-    sz = filesize(fw.filepath)
-    if sz > fw.max_filesize
-        verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
-
-        if fw.part == 1
-            part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
-            verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
-            mv(fw.filepath, part1_path, force=fw.force)
-            fw.filepath = part1_path
-        end
-
-        fw.part += 1
-        fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
-        verbose && @info "Now writing to: $(fw.filepath)"
-
-        jldopen(fw.filepath, "a+") do file
-            fw.init(file, model)
-            savesubstructs!(file, model, fw.including)
-        end
-    end
-
     iter = model.clock.iteration
     time = model.clock.time
     path = fw.filepath
+
+    filesize(path) >= fw.max_filesize && start_next_file(model, fw)
 
     verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
     t0, sz = time_ns(), filesize(path)
@@ -290,6 +271,28 @@ function write_output(model, fw::JLD2OutputWriter)
     verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
 
     return nothing
+end
+
+function start_next_file(model::Model, fw::JLD2OutputWriter)
+    verbose = fw.verbose
+    sz = filesize(fw.filepath)
+    verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
+
+    if fw.part == 1
+        part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
+        verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
+        mv(fw.filepath, part1_path, force=fw.force)
+        fw.filepath = part1_path
+    end
+
+    fw.part += 1
+    fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
+    verbose && @info "Now writing to: $(fw.filepath)"
+
+    jldopen(fw.filepath, "a+") do file
+        fw.init(file, model)
+        savesubstructs!(file, model, fw.including)
+    end
 end
 
 function jld2output!(path, iter, time, data)
