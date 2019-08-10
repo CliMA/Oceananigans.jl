@@ -7,7 +7,6 @@ function get_output_tuple(output, iter, tuplename)
     file = jldopen(output.filepath, "r")
     output_tuple = file["timeseries/$tuplename/$iter"]
     close(file)
-    println(typeof(output_tuple))
     return output_tuple
 end
 
@@ -180,8 +179,8 @@ function run_rayleigh_benard_regression_test(arch)
     outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
 
     prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields, dir=".",
-                                    prefix=prefix, frequency=test_steps, including=[])
+    outputwriter = JLD2OutputWriter(model, outputfields; dir=".", prefix=prefix,
+                                    frequency=test_steps, including=[])
 
     #
     # Initial condition and spinup steps for creating regression test data
@@ -225,7 +224,6 @@ function run_rayleigh_benard_regression_test(arch)
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
     length(model.output_writers) > 0 && pop!(model.output_writers)
-    println(model.output_writers)
 
     # Step the model forward and perform the regression test
     time_step!(model, test_steps, Δt; init_with_euler=false)
