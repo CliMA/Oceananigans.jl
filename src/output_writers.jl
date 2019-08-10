@@ -9,8 +9,8 @@ ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 "A type for writing Binary output."
 Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
-    dir              :: AbstractString = "."
-    filename_prefix  :: AbstractString = ""
+                 dir :: AbstractString = "."
+              prefix :: AbstractString = ""
     output_frequency :: Int = 1
     padding          :: Int = 9
 end
@@ -46,7 +46,7 @@ end
 "A type for writing NetCDF output."
 Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
                 dir  :: AbstractString = "."
-    filename_prefix  :: AbstractString = ""
+             prefix  :: AbstractString = ""
     output_frequency :: Int    = 1
              padding :: Int    = 9
        naming_scheme :: Symbol = :iteration
@@ -58,10 +58,10 @@ ext(fw::NetCDFOutputWriter) = ".nc"
 
 function filename(fw, name, iteration)
     if fw.naming_scheme == :iteration
-        fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+        fw.prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
     elseif fw.naming_scheme == :file_number
         file_num = Int(iteration / fw.output_frequency)
-        fw.filename_prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
+        fw.prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
     else
         throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
     end
@@ -179,7 +179,7 @@ mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
         previous :: Float64
             part :: Int
     max_filesize :: Int
-    asynchronous :: Bool
+           async :: Bool
            force :: Bool
          verbose :: Bool
 end
@@ -189,8 +189,7 @@ noinit(args...) = nothing
 """
     JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
                      prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
-                     part=1, max_filesize=Inf, force=false, asynchronous=false,
-                     verbose=false)
+                     part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
 Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
 a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
@@ -219,7 +218,7 @@ function of the form `func(model)` that returns the data to be saved.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
-                          part=1, max_filesize=Inf, force=false, asynchronous=false, verbose=false)
+                          part=1, max_filesize=Inf, force=false, =false, verbose=false)
 
     interval === nothing && frequency === nothing &&
         error("Either interval or frequency must be passed to the JLD2OutputWriter!")
@@ -234,7 +233,7 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
     end
 
     return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
-                            0.0, part, max_filesize, asynchronous, force, verbose)
+                            0.0, part, max_filesize, , force, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -279,8 +278,8 @@ function write_output(model, fw::JLD2OutputWriter)
 
     verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
     t0, sz = time_ns(), filesize(path)
-    
-    if fw.asynchronous
+
+    if fw.async
         @async remotecall(jld2output!, 2, path, iter, time, data)
     else
         jld2output!(path, iter, time, data)
