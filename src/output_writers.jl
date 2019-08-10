@@ -190,20 +190,20 @@ mutable struct JLD2OutputWriter{F, I, O} <: OutputWriter
        frequency :: F
         previous :: Float64
     asynchronous :: Bool
+    verbose      :: Bool
 end
 
 noinit(args...) = nothing
 
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
-                          force=false, asynchronous=false
-                         )
+                          force=false, asynchronous=false, verbose=false)
 
-    interval === nothing && frequency === nothing && (
-        error("Either interval or frequency must be passed to the JLD2OutputWriter!"))
+    interval === nothing && frequency === nothing &&
+        error("Either interval or frequency must be passed to the JLD2OutputWriter!")
 
     mkpath(dir)
-    filepath = joinpath(dir, prefix*".jld2")
+    filepath = joinpath(dir, prefix * ".jld2")
     force && isfile(filepath) && rm(filepath, force=true)
 
     jldopen(filepath, "a+") do file
@@ -211,7 +211,7 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
         savesubstructs!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, interval, frequency, 0.0, asynchronous)
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, 0.0, asynchronous, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -224,21 +224,22 @@ end
 savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
 
 function write_output(model, fw::JLD2OutputWriter)
-    @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    @time data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    fw.verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
+    t0 = @elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    fw.verbose && @info "Calculation time: $(prettytime(time_ns() - t0))"
 
     iter = model.clock.iteration
     time = model.clock.time
     path = fw.filepath
 
-    @info @sprintf("Writing JLD2 output %s...", keys(fw.outputs))
+    fw.verbose && @info @sprintf("Writing JLD2 output %s...", keys(fw.outputs))
     t0 = time_ns()
     if fw.asynchronous
         @async remotecall(jld2output!, 2, path, iter, time, data)
     else
         jld2output!(path, iter, time, data)
     end
-    @info "Done writing (t: $(prettytime(time_ns()-t0)))"
+    fw.verbose && @info "Writing time: $(prettytime(time_ns()-t0)))"
 
     return nothing
 end
