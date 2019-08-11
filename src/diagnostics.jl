@@ -97,36 +97,57 @@ mutable struct HorizontallyAveragedVerticalProfile{P, F, I, T} <: Diagnostic
      previous :: Float64
 end
 
-function HorizontallyAveragedVerticalProfile(model, field; frequency=nothing, interval=nothing)
+function VerticalProfile(model, field; frequency=nothing, interval=nothing)
     interval === nothing && frequency === nothing &&
         error("Either an interval or frequency must be chosen!")
 
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
-    HorizontallyAveragedVerticalProfile(profile, field, frequency, interval, 0.0)
+    VerticalProfile(profile, field, frequency, interval, 0.0)
 end
 
-function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:Array})
+function run_diagnostic(model::Model, P::VerticalProfile{<:Array})
     P.profile .= mean(data(P.field), dims=[1, 2])
 end
 
-@hascuda function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:CuArray})
+@hascuda function run_diagnostic(model::Model, P::VerticalProfile{<:CuArray})
     Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
     @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, +)
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
-function time_to_run(clock, P::HorizontallyAveragedVerticalProfile)
-    if P.interval != nothing
-        if clock.time >= P.previous + P.interval
-            P.previous = clock.time - rem(clock.time, P.interval)
-            return true
-        else
-            return false
-        end
-    else
-        return clock.iteration % P.frequency == 0
-    end
+####
+#### Horizontally averaged vertical profiles of products (e.g. covariances)
+####
+
+mutable struct ProductProfile{P, F1, F2, I, T} <: Diagnostic
+      profile :: P
+       field1 :: F1
+       field2 :: F2
+    frequency :: I
+     interval :: T
+     previous :: Float64
+end
+
+function ProductProfile(model, field1, field2; frequency=nothing, interval=nothing)
+    interval === nothing && frequency === nothing &&
+        error("Either an interval or frequency must be chosen!")
+
+    profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
+    ProductProfile(profile, field1, field2, frequency, interval, 0.0)
+end
+
+function run_diagnostic(model::Model, P::ProductProfile{<:Array})
+    # This will allocate lots of memory but we mostly care about GPU performance for now...
+    P.profile .= mean(data(P.field1) .* data(P.field2), dims=[1, 2])
+end
+
+@hascuda function run_diagnostic(model::Model, P::ProductProfile{<:CuArray})
+    Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
+    sz = 2Nx * sizeof(eltype(P.profile))
+    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field1.data, P.field2.data, +)
+    P.profile ./= (Nx*Ny)  # Normalize to get the mean from the sum.
+    return
 end
 
 ####
