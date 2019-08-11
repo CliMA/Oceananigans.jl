@@ -32,17 +32,20 @@ function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
     end
 end
 
+@inline _prod(data, ::Nothing, i, j, k) = @inbounds data[i, j, k]
+@inline _prod(data1,    data2, i, j, k) = @inbounds data1[i, j, k] * data2[i, j, k]
+
 # Work-inefficient inclusive scan that reduces along the xy dimensions.
 # Useful for computing mean(; dim=[1, 2]) lol.
 # Modified from: https://github.com/JuliaGPU/CUDAnative.jl/blob/master/examples/scan.jl
-@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx, data, op::Function) where T
+@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx, data1, data2, op::Function) where T
     lvl, lvls = blockIdx().y,  gridDim().y
     col, cols = blockIdx().x,  gridDim().x
     row, rows = threadIdx().x, blockDim().x
 
     if lvl <= lvls && col <= cols && row <= rows
         shmem = @cuDynamicSharedMem(T, 2*rows)
-        shmem[row] = data[row, col, lvl]
+        shmem[row] = _prod(data1, data2, row, col, lvl)
         sync_threads()
 
         # parallel reduction
