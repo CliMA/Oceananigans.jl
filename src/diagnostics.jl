@@ -3,7 +3,20 @@ using Printf
 
 @hascuda using CUDAdrv, CUDAnative
 
-time_to_run(clock, diag) = (clock.iteration % diag.frequency) == 0
+function time_to_run(clock::Clock, diag::Diagnostic)
+    if :interval in propertynames(diag) && diag.interval != nothing
+        if clock.time >= diag.previous + diag.interval
+            diag.previous = clock.time - rem(clock.time, diag.interval)
+            return true
+        else
+            return false
+        end
+    elseif :frequency in propertynames(diag) && diag.frequency != nothing
+        return clock.iteration % diag.frequency == 0
+    else
+        error("Diagnostic $(typeof(diag)) must have a frequency or interval specified!")
+    end
+end
 
 ####
 #### Useful kernels
@@ -70,10 +83,10 @@ end
 end
 
 ####
-#### Vertical profile calculation
+#### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontallyAveragedVerticalProfile{P, I, T, F} <: Diagnostic
+mutable struct HorizontallyAveragedVerticalProfile{P, F, I, T} <: Diagnostic
       profile :: P
         field :: F
     frequency :: I
