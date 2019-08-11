@@ -89,7 +89,7 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontallyAveragedVerticalProfile{P, F, I, T} <: Diagnostic
+mutable struct VerticalProfile{P, F, I, T} <: Diagnostic
       profile :: P
         field :: F
     frequency :: I
