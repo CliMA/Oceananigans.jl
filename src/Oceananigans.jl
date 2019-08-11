@@ -119,7 +119,8 @@ export
     # Model diagnostics
     Diagnostic,
     run_diagnostic,
-    HorizontallyAveragedVerticalProfile,
+    VerticalProfile,
+    ProductProfile,
     NaNChecker,
 
     # Package utilities

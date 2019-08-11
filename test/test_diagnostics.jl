@@ -42,13 +42,20 @@ end
 @testset "Diagnostics" begin
     println("Testing diagnostics...")
 
-    @testset "Horizontally averaged vertical profiles" begin
+    @testset "Vertical profiles" begin
         println("  Testing horizontally averaged vertical profiles...")
         for arch in archs, FT in float_types
-            @test horizontally_averaged_vertical_profile_is_correct(arch, FT)
+            @test vertical_profile_is_correct(arch, FT)
         end
     end
 
+    @testset "Product profiles" begin
+        println("  Testing product profiles...")
+        for arch in archs, FT in float_types
+            @test product_profile_is_correct(arch, FT)
+        end
+    end
+    
     @testset "NaN Checker" begin
         println("  Testing NaN Checker...")
         for arch in archs, FT in float_types
