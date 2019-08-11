@@ -44,22 +44,22 @@ end
 
     @testset "Vertical profiles" begin
         println("  Testing horizontally averaged vertical profiles...")
-        for arch in archs, FT in float_types
-            @test vertical_profile_is_correct(arch, FT)
+        for arch in archs
+            @test vertical_profile_is_correct(arch, Float64)
         end
     end
 
     @testset "Product profiles" begin
         println("  Testing product profiles...")
-        for arch in archs, FT in float_types
-            @test product_profile_is_correct(arch, FT)
+        for arch in archs
+            @test product_profile_is_correct(arch, Float64)
         end
     end
     
     @testset "NaN Checker" begin
         println("  Testing NaN Checker...")
-        for arch in archs, FT in float_types
-            @test_throws ErrorException nan_checker_aborts_simulation(arch, FT)
+        for arch in archs
+            @test_throws ErrorException nan_checker_aborts_simulation(arch, Float64)
         end
     end
 end
