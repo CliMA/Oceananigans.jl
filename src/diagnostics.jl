@@ -22,7 +22,7 @@ end
 # Work-inefficient inclusive scan that reduces along the xy dimensions.
 # Useful for computing mean(; dim=[1, 2]) lol.
 # Modified from: https://github.com/JuliaGPU/CUDAnative.jl/blob/master/examples/scan.jl
-@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx::CuDeviceArray{T}, data1::CuDeviceArray{T}, op::Function) where {T}
+@hascuda function gpu_accumulate_xy!(Rxy::CuDeviceArray{T}, Rx, data, op::Function) where T
     lvl, lvls = blockIdx().y,  gridDim().y
     col, cols = blockIdx().x,  gridDim().x
     row, rows = threadIdx().x, blockDim().x
@@ -62,7 +62,7 @@ end
             for j in 1:cols
                 sum += Rx[1, j, lvl]
             end
-            Rxy[1, 1, lvl] = sum
+            Rxy[1, 1, lvl] = real(sum)
         end
     end
 
@@ -93,10 +93,10 @@ function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:A
     P.profile .= mean(data(P.field), dims=[1, 2])
 end
 
-@hascuda function run_diagnostic(model::Model, P:HorizontallyAveragedVerticalProfile{<:CuArray})
-    Nx, Ny, Nz = field.grid.Nx, field.grid.Ny, field.grid.Nz
+@hascuda function run_diagnostic(model::Model, P::HorizontallyAveragedVerticalProfile{<:CuArray})
+    Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
-    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, field.data, +)
+    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, +)
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
