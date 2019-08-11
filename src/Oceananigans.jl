@@ -121,6 +121,7 @@ export
     run_diagnostic,
     VerticalProfile,
     ProductProfile,
+    VelocityCovarianceProfiles,
     NaNChecker,
 
     # Package utilities
