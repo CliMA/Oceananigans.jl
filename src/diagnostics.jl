@@ -130,7 +130,7 @@ end
 @hascuda function run_diagnostic(model::Model, P::VerticalProfile{<:CuArray})
     Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
-    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, +)
+    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, nothing, +)
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
@@ -159,7 +159,7 @@ function run_diagnostic(model::Model, P::ProductProfile{<:Array})
 end
 
 @hascuda function run_diagnostic(model::Model, P::ProductProfile{<:CuArray})
-    Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
+    Nx, Ny, Nz = P.field1.grid.Nx, P.field1.grid.Ny, P.field1.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
     @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field1.data, P.field2.data, +)
     P.profile ./= (Nx*Ny)  # Normalize to get the mean from the sum.
