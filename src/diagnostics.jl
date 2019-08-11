@@ -18,6 +18,26 @@ function time_to_run(clock::Clock, diag::Diagnostic)
     end
 end
 
+function validate_interval(frequency, interval)
+    if isnothing(frequency) && isnothing(interval)
+        error("Must choose either a frequency (number of iterations) or a time interval!")
+    elseif isnothing(interval)
+        if isinteger(frequency)
+            return Int(frequency), interval
+        else
+            error("Frequency $frequency must be an integer!")
+        end
+    elseif isnothing(frequency)
+        if isa(interval, Number)
+            return frequency, Float64(interval)
+        else
+            error("Interval must be convertable to a float!")
+        end
+    else
+        error("Cannot choose both frequency and interval!")
+    end
+end
+
 ####
 #### Useful kernels
 ####
@@ -98,11 +118,9 @@ mutable struct VerticalProfile{P, F, I, T} <: Diagnostic
 end
 
 function VerticalProfile(model, field; frequency=nothing, interval=nothing)
-    interval === nothing && frequency === nothing &&
-        error("Either an interval or frequency must be chosen!")
-
+    freq, int = validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
-    VerticalProfile(profile, field, frequency, interval, 0.0)
+    VerticalProfile(profile, field, freq, int, 0.0)
 end
 
 function run_diagnostic(model::Model, P::VerticalProfile{<:Array})
@@ -130,11 +148,9 @@ mutable struct ProductProfile{P, F1, F2, I, T} <: Diagnostic
 end
 
 function ProductProfile(model, field1, field2; frequency=nothing, interval=nothing)
-    interval === nothing && frequency === nothing &&
-        error("Either an interval or frequency must be chosen!")
-
+    freq, int = validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
-    ProductProfile(profile, field1, field2, frequency, interval, 0.0)
+    ProductProfile(profile, field1, field2, freq, int, 0.0)
 end
 
 function run_diagnostic(model::Model, P::ProductProfile{<:Array})
