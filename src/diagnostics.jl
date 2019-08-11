@@ -170,13 +170,13 @@ end
 #### Velocity covariances
 ####
 
-mutable struct VelocityCovarianceProfiles{P, I, T} <: Diagnostic
-    uu :: P
-    uv :: P
-    uw :: P
-    vv :: P
-    vw :: P
-    ww :: P
+mutable struct VelocityCovarianceProfiles{UU, UV, UW, VV, VW, WW, I, T} <: Diagnostic
+    uu :: UU
+    uv :: UV
+    uw :: UW
+    vv :: VV
+    vw :: VW
+    ww :: WW
     frequency :: I
     interval  :: T
     previous  :: Float64
