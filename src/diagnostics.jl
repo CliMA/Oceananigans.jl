@@ -167,6 +167,42 @@ end
 end
 
 ####
+#### Velocity covariances
+####
+
+mutable struct VelocityCovarianceProfiles{P, I, T} <: Diagnostic
+    uu :: P
+    uv :: P
+    uw :: P
+    vv :: P
+    vw :: P
+    ww :: P
+    frequency :: I
+    interval  :: T
+    previous  :: Float64
+end
+
+function VelocityCovarianceProfiles(model; frequency=nothing, interval=nothing)
+    freq, int = validate_interval(frequency, interval)
+    
+    u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
+    uu = ProductProfile(model, u, u; frequency=freq, interval=int)
+    uv = ProductProfile(model, u, v; frequency=freq, interval=int)
+    uw = ProductProfile(model, u, w; frequency=freq, interval=int)
+    vv = ProductProfile(model, v, v; frequency=freq, interval=int)
+    vw = ProductProfile(model, v, w; frequency=freq, interval=int)
+    ww = ProductProfile(model, w, w; frequency=freq, interval=int)
+
+    VelocityCovarianceProfiles(uu, uv, uw, vv, vw, ww, freq, int, 0.0)
+end
+
+function run_diagnostic(model::Model, vcp::VelocityCovarianceProfiles)
+    for vc in (:uu, :uv, :uw, :vv, :vw, :ww)
+        run_diagnostic(model, getproperty(vcp, vc))
+    end
+end
+
+####
 #### NaN checker
 ####
 
