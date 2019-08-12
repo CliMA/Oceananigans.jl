@@ -12,8 +12,8 @@ method with step size `Δt`.
 function time_step!(model, Nt, Δt; init_with_euler=true)
 
     if model.clock.iteration == 0
-        [ write_output(model, out)    for out  in model.output_writers ]
         [ run_diagnostic(model, diag) for diag in model.diagnostics ]
+        [ write_output(model, out)    for out  in model.output_writers ]
     end
 
     FT = eltype(model.grid)
