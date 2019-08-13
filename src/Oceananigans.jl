@@ -70,6 +70,8 @@ export
     Flux,
     Gradient,
     Value,
+    Dirchlet,
+    Neumann,
     CoordinateBoundaryConditions,
     ZBoundaryConditions,
     FieldBoundaryConditions,
