@@ -1,7 +1,8 @@
 struct AnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
-    C :: T
-    ν :: T
-    κ :: T
+     C :: T
+    Cb :: T
+     ν :: T
+     κ :: T
 end
 
 """
@@ -14,9 +15,10 @@ Returns a `AnisotropicMinimumDissipation` closure object of type `T` with
     * `κ` : 'molecular' background diffusivity
 """
 function AnisotropicMinimumDissipation(FT=Float64;
-        C = 0.33,
-        ν = 1e-6,
-        κ = 1e-7
+         C = 0.33,
+        Cb = 1.0,
+         ν = 0.0,
+         κ = 0.0
     )
     return AnisotropicMinimumDissipation{FT}(C, ν, κ)
 end
@@ -45,7 +47,7 @@ end
     ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
     q = tr_∇u_ccc(i, j, k, grid, u, v, w)
 
-    νdagger = -closure.C * (r - ζ) / q
+    νdagger = -closure.C * (r - closure.Cb * ζ) / q
 
     return max(zero(FT), νdagger) + closure.ν
 end
