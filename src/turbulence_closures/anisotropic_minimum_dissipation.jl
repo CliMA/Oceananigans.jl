@@ -20,7 +20,7 @@ function AnisotropicMinimumDissipation(FT=Float64;
          ν = 1e-6,
          κ = 1e-7
     )
-    return AnisotropicMinimumDissipation{FT}(C, ν, κ)
+    return AnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
 end
 
 "Return the filter width for Anisotropic Minimum Dissipation on a Regular Cartesian grid."
