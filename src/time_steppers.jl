@@ -331,14 +331,6 @@ get_κ(closure::IsotropicDiffusivity, K) = (T=closure.κ, S=closure.κ)
 get_ν(closure::ConstantAnisotropicDiffusivity, K) = closure.νv
 get_κ(closure::ConstantAnisotropicDiffusivity, K) = (T=closure.κv, S=closure.κv)
 
-# get_κ looks wrong here because κ = ν / Pr but ConstantSmagorinsky does not compute or store κ, so we pass κ = ν to
-# apply_bcs! which will compute κ correctly as it knows both ν and Pr.
-get_ν(closure::ConstantSmagorinsky, K) = K.νₑ
-get_κ(closure::ConstantSmagorinsky, K) = (T=K.νₑ, S=K.νₑ)
-
-get_ν(closure::AnisotropicMinimumDissipation, K) = K.νₑ
-get_κ(closure::AnisotropicMinimumDissipation, K) = (T=K.κₑ.T, S=K.κₑ.S)
-
 "Apply boundary conditions by modifying the source term G."
 function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ, Gⁿ, K)
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
