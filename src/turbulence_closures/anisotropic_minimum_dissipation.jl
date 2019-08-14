@@ -43,24 +43,30 @@ end
 @inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, c,
                        eos, grav, u, v, w, T, S) where FT
 
-    r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
-    ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
     q = tr_∇u_ccc(i, j, k, grid, u, v, w)
 
-    νdagger = -closure.C * (r - closure.Cb * ζ) / q
-
-    return max(zero(FT), νdagger) + closure.ν
+    if q == 0
+        return closure.ν
+    else
+        r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
+        ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
+        νdagger = -closure.C * (r - closure.Cb * ζ) / q
+        return max(zero(FT), νdagger) + closure.ν
+    end
 end
 
 @inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::AnisotropicMinimumDissipation, c,
                        eos, grav, u, v, w, T, S) where FT
 
-    n =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
     d =  θᵢ²_ccc(i, j, k, grid, c)
 
-    κdagger = - closure.C * n / d
-
-    return max(zero(FT), κdagger) + closure.κ
+    if d == 0
+        return closure.κ
+    else
+        n =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
+        κdagger = - closure.C * n / d
+        return max(zero(FT), κdagger) + closure.κ
+    end
 end
 
 #
