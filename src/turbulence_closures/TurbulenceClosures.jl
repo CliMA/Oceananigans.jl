@@ -83,7 +83,7 @@ Base.eltype(::TurbulenceClosure{T}) where T = T
 include("closure_operators.jl")
 include("velocity_gradients.jl")
 include("constant_diffusivity_closures.jl")
-include("constant_smagorinsky.jl")
+include("smagorinsky.jl")
 include("anisotropic_minimum_dissipation.jl")
 
 # Packaged operators
