@@ -1,6 +1,6 @@
-#
-# Velocity gradients
-#
+#####
+##### Velocity gradients
+#####
 
 # Diagonal
 @inline ∂x_u(i, j, k, grid, u) = ∂x_caa(i, j, k, grid, u)
@@ -17,9 +17,9 @@
 @inline ∂z_u(i, j, k, grid, u) = ∂z_aaf(i, j, k, grid, u)
 @inline ∂z_v(i, j, k, grid, v) = ∂z_aaf(i, j, k, grid, v)
 
-#
-# Strain components
-#
+#####
+##### Strain components
+#####
 
 # ccc strain components
 @inline Σ₁₁(i, j, k, grid, u) = ∂x_caa(i, j, k, grid, u)
@@ -45,9 +45,9 @@
 @inline Σ₁₃²(i, j, k, grid, u, w) = Σ₁₃(i, j, k, grid, u, w)^2
 @inline Σ₂₃²(i, j, k, grid, v, w) = Σ₂₃(i, j, k, grid, v, w)^2
 
-#
-# Renamed functions for consistent function signatures
-#
+#####
+##### Renamed functions for consistent function signatures
+#####
 
 @inline ∂x_u(i, j, k, grid, u, v, w) = ∂x_u(i, j, k, grid, u)
 @inline ∂x_v(i, j, k, grid, u, v, w) = ∂x_v(i, j, k, grid, v)
@@ -80,3 +80,33 @@ const Σ₃₂ = Σ₂₃
 @inline Σ₁₂²(i, j, k, grid, u, v, w) = Σ₁₂²(i, j, k, grid, u, v)
 @inline Σ₁₃²(i, j, k, grid, u, v, w) = Σ₁₃²(i, j, k, grid, u, w)
 @inline Σ₂₃²(i, j, k, grid, u, v, w) = Σ₂₃²(i, j, k, grid, v, w)
+
+#####
+##### Same-location velocity products
+#####
+
+# ccc
+@inline ∂x_u²(ijk...) = ∂x_u(ijk...)^2
+@inline ∂y_v²(ijk...) = ∂y_v(ijk...)^2
+@inline ∂z_w²(ijk...) = ∂z_w(ijk...)^2
+
+# ffc
+@inline ∂x_v²(ijk...) = ∂x_v(ijk...)^2
+@inline ∂y_u²(ijk...) = ∂y_u(ijk...)^2
+
+@inline ∂x_v_Σ₁₂(ijk...) = ∂x_v(ijk...) * Σ₁₂(ijk...)
+@inline ∂y_u_Σ₁₂(ijk...) = ∂y_u(ijk...) * Σ₁₂(ijk...)
+
+# fcf
+@inline ∂z_u²(ijk...) = ∂z_u(ijk...)^2
+@inline ∂x_w²(ijk...) = ∂x_w(ijk...)^2
+
+@inline ∂x_w_Σ₁₃(ijk...) = ∂x_w(ijk...) * Σ₁₃(ijk...)
+@inline ∂z_u_Σ₁₃(ijk...) = ∂z_u(ijk...) * Σ₁₃(ijk...)
+
+# cff
+@inline ∂z_v²(ijk...) = ∂z_v(ijk...)^2
+@inline ∂y_w²(ijk...) = ∂y_w(ijk...)^2
+@inline ∂z_v_Σ₂₃(ijk...) = ∂z_v(ijk...) * Σ₂₃(ijk...)
+@inline ∂y_w_Σ₂₃(ijk...) = ∂y_w(ijk...) * Σ₂₃(ijk...)
+
