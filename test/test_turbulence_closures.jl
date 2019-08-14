@@ -247,7 +247,7 @@ end
     @testset "Constant Smagorinsky" begin
         println("  Testing constant Smagorinsky...")
         for T in float_types
-            @test_skip test_smag_divflux_finiteness(T)
+            @test test_smag_divflux_finiteness(T)
         end
     end
 end
