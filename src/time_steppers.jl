@@ -41,29 +41,30 @@ Step forward one time step.
 """
 function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
+    # Pre-computations:
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
-    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
-
     fill_halo_regions!(merge(U, Φ), bcs, grid)
+
+    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
     fill_halo_regions!(p.pHY′, bcs[4], grid)
+
+    # Calc RHS:
     calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
     calculate_boundary_source_terms!(arch, grid, bcs, model.clock, closure, U, Φ, Gⁿ, K)
 
+    # Complete explicit substep:
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
 
+    # Start pressure correction substep with a pressure solve:
     fill_halo_regions!(Gⁿ[1:3], bcs[1:3], grid)
-
     @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs,
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
     fill_halo_regions!(p.pNHS, bcs[4], grid)
 
+    # Complete pressure correction step:
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
-
-    fill_halo_regions!(U, bcs[1:3], grid)
-
-    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
 
     model.clock.time += Δt
     model.clock.iteration += 1
@@ -306,6 +307,7 @@ function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - (δx_c2f(grid, pNHS, i, j, k) / grid.Δx)) * Δt
                 @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - (δy_c2f(grid, pNHS, i, j, k) / grid.Δy)) * Δt
+                @inbounds U.w[i, j, k] = U.w[i, j, k] + (Gⁿ.Gw[i, j, k] - (δz_c2f(grid, pNHS, i, j, k) / grid.Δz)) * Δt
                 @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
                 @inbounds Φ.S[i, j, k] = Φ.S[i, j, k] + (Gⁿ.GS[i, j, k] * Δt)
             end
@@ -343,14 +345,12 @@ function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ
     for (i, ubcs) in enumerate(bcs[1:3])
         apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right,
                    grid, U[i], Gⁿ[i], ν, closure, clock.time, clock.iteration, U, Φ)
-
     end
 
     # Tracer fields
     for (i, ϕbcs) in enumerate(bcs[4:end])
         apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right,
                    grid, Φ[i], Gⁿ[i+3], κ[i], closure, clock.time, clock.iteration, U, Φ)
-
     end
 
     return nothing
