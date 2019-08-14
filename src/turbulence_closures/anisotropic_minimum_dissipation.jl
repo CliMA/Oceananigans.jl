@@ -17,8 +17,8 @@ Returns a `AnisotropicMinimumDissipation` closure object of type `T` with
 function AnisotropicMinimumDissipation(FT=Float64;
          C = 0.33,
         Cb = 1.0,
-         ν = 0.0,
-         κ = 0.0
+         ν = 1e-6,
+         κ = 1e-7
     )
     return AnisotropicMinimumDissipation{FT}(C, ν, κ)
 end
