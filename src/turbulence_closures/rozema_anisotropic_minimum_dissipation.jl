@@ -16,7 +16,7 @@ Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `T` with
 """
 function RozemaAnisotropicMinimumDissipation(FT=Float64;
          C = 0.33,
-        Cb = 1.0,
+        Cb = 0.0,
          ν = 1e-6,
          κ = 1e-7
     )
