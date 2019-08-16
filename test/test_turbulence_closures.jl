@@ -1,6 +1,112 @@
+using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
+                                       ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
+                                       ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
+                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, 
+                                       ▶z_aac, ▶z_aaf
+
+using GPUifyLoops: @launch
+using Oceananigans: launch_config, datatuples, device
+import Oceananigans: data_tuple
+
+datatuple(args, names) = NamedTuple{names}(a.data for a in args)
+
 function test_closure_instantiation(T, closurename)
     closure = getproperty(TurbulenceClosures, closurename)(T)
     return eltype(closure) == T
+end
+
+function test_calc_diffusivities(arch, closurename, FT=Float64)
+    closure = getproperty(TurbulenceClosures, closurename)(FT)
+    grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+    diffusivities = TurbulentDiffusivities(arch, grid, closure)
+    eos = LinearEquationOfState(FT)
+    grav = one(FT)
+    velocities = Oceananigans.VelocityFields(arch, grid)
+    tracers = Oceananigans.TracerFields(arch, grid)
+
+    U, Φ, K = datatuples(velocities, tracers, diffusivities)
+
+    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(
+        K, grid, closure, eos, grav, U, Φ)
+
+    return true
+end
+
+function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
+    closure = ConstantIsotropicDiffusivity(T, κ=κ, ν=ν)
+    return closure.ν == ν && closure.κ == κ
+end
+
+function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; 
+                                                     ν=FT(0.3), κ=FT(0.7))
+
+    arch = CPU()
+    closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
+    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
+    bcs = HorizontallyPeriodicModelBCs()
+    eos = LinearEquationOfState()
+    grav = one(FT)
+
+    velocities = Oceananigans.VelocityFields(arch, grid)
+    tracers = Oceananigans.TracerFields(arch, grid)
+    u, v, w = velocities
+    T, S = tracers
+
+    for k = 1:4
+        data(u)[:, 1, k] .= [0, -1, 0]
+        data(v)[:, 1, k] .= [0, -2, 0]
+        data(w)[:, 1, k] .= [0, -3, 0]
+        data(T)[:, 1, k] .= [0, -1, 0]
+    end
+
+    U, Φ = datatuples(velocities, tracers)
+    fill_halo_regions!(merge(U, Φ), bcs, grid)
+
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U...) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U...) == 6ν
+            )
+end
+
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), 
+                                              νv=FT(0.1), κv=FT(0.5))
+
+    arch = CPU()
+    closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
+    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
+    bcs = HorizontallyPeriodicModelBCs()
+    eos = LinearEquationOfState()
+    grav = one(FT)
+    velocities = Oceananigans.VelocityFields(arch, grid)
+    tracers = Oceananigans.TracerFields(arch, grid)
+    u, v, w = velocities
+    T, S = tracers
+
+    data(u)[:, 1, 2] .= [0,  1, 0]
+    data(u)[:, 1, 3] .= [0, -1, 0]
+    data(u)[:, 1, 4] .= [0,  1, 0]
+
+    data(v)[:, 1, 2] .= [0,  1, 0]
+    data(v)[:, 1, 3] .= [0, -2, 0]
+    data(v)[:, 1, 4] .= [0,  1, 0]
+
+    data(w)[:, 1, 2] .= [0,  1, 0]
+    data(w)[:, 1, 3] .= [0, -3, 0]
+    data(w)[:, 1, 4] .= [0,  1, 0]
+
+    data(T)[:, 1, 2] .= [0,  1, 0]
+    data(T)[:, 1, 3] .= [0, -4, 0]
+    data(T)[:, 1, 4] .= [0,  1, 0]
+
+    U, Φ = datatuples(velocities, tracers)
+    fill_halo_regions!(merge(U, Φ), bcs, grid)
+
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 6νh + 8νv
+            )
 end
 
 function test_function_interpolation(T=Float64)
@@ -60,147 +166,14 @@ function test_function_differentiation(T=Float64)
         )
 end
 
-function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
-    closure = ConstantIsotropicDiffusivity(T, κ=κ, ν=ν)
-    return closure.ν == ν && closure.κ == κ
-end
-
-function test_tensor_diffusivity_tuples(T=Float64; ν=T(0.3), κ=T(0.7))
-    closure = ConstantIsotropicDiffusivity(T, κ=κ, ν=ν)
-    return (
-            κ₁₁.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
-            κ₂₂.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
-            κ₃₃.ccc(nothing, nothing, nothing, nothing, closure) == κ &&
-
-            ν₁₁.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₂₂.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₃₃.ccc(nothing, nothing, nothing, nothing, closure) == ν &&
-
-            ν₁₁.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₂₂.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₃₃.ffc(nothing, nothing, nothing, nothing, closure) == ν &&
-
-            ν₁₁.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₂₂.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₃₃.fcf(nothing, nothing, nothing, nothing, closure) == ν &&
-
-            ν₁₁.cff(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₂₂.cff(nothing, nothing, nothing, nothing, closure) == ν &&
-            ν₃₃.cff(nothing, nothing, nothing, nothing, closure) == ν
-    )
-end
-
-datatuple(args, names) = NamedTuple{names}(a.data for a in args)
-
-function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
-    arch = CPU()
-    closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
-    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    bcs = HorizontallyPeriodicModelBCs()
-    eos = LinearEquationOfState()
-    grav = 1.0
-
-    u, v, w = Oceananigans.VelocityFields(arch, grid)
-    T, S = Oceananigans.TracerFields(arch, grid)
-
-    for k = 1:4
-        data(u)[:, 1, k] .= [0, -1, 0]
-        data(v)[:, 1, k] .= [0, -2, 0]
-        data(w)[:, 1, k] .= [0, -3, 0]
-        data(T)[:, 1, k] .= [0, -1, 0]
-    end
-
-    U = datatuple((u, v, w), (:u, :v, :w))
-    Φ = datatuple((T, S), (:T, :S))
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
-    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
-
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U...) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U...) == 6ν
-            )
-end
-
-function test_calc_diffusivities(arch, closurename, FT=Float64)
-
-    closure = getproperty(TurbulenceClosures, closurename)(FT)
-    grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
-    diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState(FT)
-    grav = 1.0
-    u, v, w = Oceananigans.VelocityFields(arch, grid)
-    T, S = Oceananigans.TracerFields(arch, grid)
-
-    U = datatuple((u, v, w), (:u, :v, :w))
-    Φ = datatuple((T, S), (:T, :S))
-    calc_diffusivities!(diffusivities, grid, closure, eos, grav, U, Φ)
-
-    return true
-end
-
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
-    closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
-    grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
-    eos = LinearEquationOfState()
-    grav = 1.0
-
-    arch = CPU()
-    u, v, w = Oceananigans.VelocityFields(arch, grid)
-    T, S = Oceananigans.TracerFields(arch, grid)
-
-    data(u)[:, 1, 2] .= [0,  1, 0]
-    data(u)[:, 1, 3] .= [0, -1, 0]
-    data(u)[:, 1, 4] .= [0,  1, 0]
-
-    data(v)[:, 1, 2] .= [0,  1, 0]
-    data(v)[:, 1, 3] .= [0, -2, 0]
-    data(v)[:, 1, 4] .= [0,  1, 0]
-
-    data(w)[:, 1, 2] .= [0,  1, 0]
-    data(w)[:, 1, 3] .= [0, -3, 0]
-    data(w)[:, 1, 4] .= [0,  1, 0]
-
-    data(T)[:, 1, 2] .= [0,  1, 0]
-    data(T)[:, 1, 3] .= [0, -4, 0]
-    data(T)[:, 1, 4] .= [0,  1, 0]
-
-    U = datatuple((u, v, w), (:u, :v, :w))
-    Φ = datatuple((T, S), (:T, :S))
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
-
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 6νh + 8νv
-            )
-end
-
-function test_smag_divflux_finiteness(FT=Float64)
-    arch = CPU()
-    closure = ConstantSmagorinsky(FT)
-    grid = RegularCartesianGrid(FT, (4, 4, 4), (4, 4, 4))
-    bcs = HorizontallyPeriodicModelBCs()
-    eos = LinearEquationOfState(FT)
-    grav = FT(1.0)
-
-    diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    velocities = Oceananigans.VelocityFields(arch, grid)
-    tracers = Oceananigans.TracerFields(arch, grid)
-
-    U, Φ, K = Oceananigans.datatuples(velocities, tracers, diffusivities)
-
-    calc_diffusivities!(K, grid, closure, eos, grav, U, Φ)
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
-
-    return (isfinite(∇_κ_∇c(2, 2, 3, grid, Φ.T, closure, K)) &&
-         isfinite(∂ⱼ_2ν_Σ₁ⱼ(2, 2, 3, grid, closure, U..., K)) &&
-         isfinite(∂ⱼ_2ν_Σ₂ⱼ(2, 2, 3, grid, closure, U..., K)) &&
-         isfinite(∂ⱼ_2ν_Σ₃ⱼ(2, 2, 3, grid, closure, U..., K))
-        )
-end
+closures = (
+            :ConstantIsotropicDiffusivity,
+            :ConstantAnisotropicDiffusivity,
+            :DeardorffSmagorinsky,
+            :BlasiusSmagorinsky,
+            :RozemaAnisotropicMinimumDissipation,
+            :VerstappenAnisotropicMinimumDissipation
+           )
 
 @testset "Turbulence closures" begin
     println("Testing turbulence closures...")
@@ -211,16 +184,21 @@ end
         @test test_function_differentiation()
     end
 
-    @testset "Closure instantiation and basic operation" begin
+    @testset "Closure instantiation" begin
         println("  Testing closure instantiation...")
         for T in float_types
-            for closure in (:ConstantIsotropicDiffusivity,
-                            :ConstantAnisotropicDiffusivity,
-                            :ConstantSmagorinsky,
-                            :AnisotropicMinimumDissipation)
-
+            for closure in closures
                 @test test_closure_instantiation(T, closure)
-                for arch in archs
+            end
+        end
+    end
+
+    @testset "Calculation of nonlinear diffusivities" begin
+        println("  Testing calculation of nonlinear diffusivities...")
+        for T in float_types
+            for arch in archs
+                for closure in closures
+                    println("    Calculating diffusivities for $closure ($T, $arch)")
                     @test test_calc_diffusivities(arch, closure, T)
                 end
             end
@@ -231,7 +209,6 @@ end
         println("  Testing constant isotropic diffusivity...")
         for T in float_types
             @test test_constant_isotropic_diffusivity_basic(T)
-            @test test_tensor_diffusivity_tuples(T)
             @test test_constant_isotropic_diffusivity_fluxdiv(T)
         end
     end
@@ -241,13 +218,6 @@ end
         for T in float_types
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
-        end
-    end
-
-    @testset "Constant Smagorinsky" begin
-        println("  Testing constant Smagorinsky...")
-        for T in float_types
-            @test test_smag_divflux_finiteness(T)
         end
     end
 end
