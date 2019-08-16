@@ -360,9 +360,9 @@ function calc_diffusivities!(K, grid, closure::VAMD{true}, eos, grav, U, Φ)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 if k == 1
-                    @inbounds K.νₑ[i, j, k]   = ν_ccf(i, j, 2, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                    @inbounds K.κₑ.T[i, j, k] = κ_ccf(i, j, 2, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                    @inbounds K.κₑ.S[i, j, k] = κ_ccf(i, j, 2, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                    @inbounds K.νₑ[i, j, k]   = ν_ccf(i, j, k+1, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                    @inbounds K.κₑ.T[i, j, k] = κ_ccf(i, j, k+1, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                    @inbounds K.κₑ.S[i, j, k] = κ_ccf(i, j, k+1, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
                 elseif k == grid.Nz
                     @inbounds K.νₑ[i, j, k]   = ν_ccf(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
                     @inbounds K.κₑ.T[i, j, k] = κ_ccf(i, j, k, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)

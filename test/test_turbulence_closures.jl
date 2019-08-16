@@ -15,8 +15,8 @@ function test_closure_instantiation(T, closurename)
     return eltype(closure) == T
 end
 
-function test_calc_diffusivities(arch, closurename, FT=Float64)
-    closure = getproperty(TurbulenceClosures, closurename)(FT)
+function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
+    closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
     eos = LinearEquationOfState(FT)
@@ -201,6 +201,7 @@ closures = (
                     println("    Calculating diffusivities for $closure ($T, $arch)")
                     @test test_calc_diffusivities(arch, closure, T)
                 end
+                @test test_calc_diffusivities(arch, :VerstappenAnisotropicMinimumDissipation, T; wall_adj=true)
             end
         end
     end
