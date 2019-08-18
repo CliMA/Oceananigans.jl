@@ -58,12 +58,12 @@ Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain
 ```julia
 using Oceananigans
 model = Model(N=(100, 100, 50), L=(2000, 2000, 1000))
-time_step!(model; Nt=10, Δt=60)
+time_step!(model; Δt=60, Nt=10)
 ```
 You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
 
-### Interesting CPU example
-Let's add something to make the ocean dynamics a bit more interesting. We can add a hot bubble in the middle of the ocean and watch it rise to the surface. This example also shows how to set an initial condition and write regular output to NetCDF.
+### More interesting example
+Let's add something to make the dynamics a bit more interesting. We can add a hot bubble in the middle of the domain and watch it rise to the surface. This example shows how to set an initial condition.
 ```julia
 using Oceananigans
 
@@ -79,7 +79,7 @@ x₀, z₀ = Lx/2, Lz/2
 T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (Lx^2 + Lz^2))
 set!(model; T=T₀)
 
-time_step!(model, Nt, Δt)
+time_step!(model; Δt=10, Nt=5000)
 ```
 By changing `arch=CPU()` to `arch=GPU()`, the example will run on an Nvidia GPU!
 
