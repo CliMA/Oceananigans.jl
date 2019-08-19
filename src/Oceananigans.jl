@@ -141,8 +141,7 @@ export
 using
     Statistics,
     LinearAlgebra,
-    Printf,
-    FileIO
+    Printf
 
 # Third-party modules
 using
