@@ -403,9 +403,7 @@ end
 _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
-function restore_from_checkpoint(filepath)
-    kwargs = Dict{Symbol, Any}()  # We'll store all the kwargs we need to initialize a Model.
-
+function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
     file = jldopen(filepath, "r")
 
     # Restore model properties that were just serialized.
