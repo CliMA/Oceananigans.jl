@@ -78,7 +78,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, u, v, w, c)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, c, u, v, w)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         κˢᶠˢ = - closure.C * δ² * ϑ / σ
     end
@@ -95,7 +95,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccf(ijk..., closure, u, v, w, c)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccf(ijk..., closure, c, u, v, w)
         δ² = 3 / (1 / Δᶠx_ccf(ijk...)^2 + 1 / Δᶠy_ccf(ijk...)^2 + 1 / Δᶠz_ccf(ijk...)^2)
         κˢᶠˢ = - closure.C * δ² * ϑ / σ
     end
