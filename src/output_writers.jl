@@ -389,9 +389,6 @@ checkpointed_structs   = [:arch, :boundary_conditions, :grid, :clock, :eos, :con
 checkpointed_fieldsets = [:velocities, :tracers, :G, :Gp]
 
 function write_output(model, c::Checkpointer)
-    @warn "Checkpointer will not save forcing functions, output writers, or diagnostics. They will need to be " *
-          "restored manually."
-
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
 
     jldopen(filepath, "w") do file
@@ -407,9 +404,6 @@ _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
 function restore_from_checkpoint(filepath)
-    @warn "Checkpointer cannot restore forcing functions, output writers, or diagnostics. They will need to be " *
-          "restored manually."
-
     kwargs = Dict{Symbol, Any}()  # We'll store all the kwargs we need to initialize a Model.
 
     file = jldopen(filepath, "r")
