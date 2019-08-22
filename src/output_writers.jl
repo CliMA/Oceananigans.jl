@@ -1,44 +1,19 @@
 using Distributed
+using NetCDF, JLD2
 
-using NetCDF
+ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
+time_to_write(clock, out::OutputWriter) = (clock.iteration % out.frequency) == 0
 
-"A type for writing NetCDF output."
-mutable struct NetCDFOutputWriter <: OutputWriter
-    dir::AbstractString
-    filename_prefix::AbstractString
-    output_frequency::Int
-    padding::Int
-    naming_scheme::Symbol
-    compression::Int
-    async::Bool
-end
+####
+#### Binary output writer
+####
 
 "A type for writing Binary output."
-mutable struct BinaryOutputWriter <: OutputWriter
-    dir::AbstractString
-    filename_prefix::AbstractString
-    output_frequency::Int
-    padding::Int
-end
-
-function NetCDFOutputWriter(; dir=".", prefix="", frequency=1, padding=9,
-                              naming_scheme=:iteration, compression=3, async=false)
-    NetCDFOutputWriter(dir, prefix, frequency, padding, naming_scheme, compression, async)
-end
-
-"Return the filename extension for the `OutputWriter` filetype."
-ext(fw::OutputWriter) = throw("Not implemented.")
-ext(fw::NetCDFOutputWriter) = ".nc"
-
-function filename(fw, name, iteration)
-    if fw.naming_scheme == :iteration
-        fw.filename_prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
-    elseif fw.naming_scheme == :file_number
-        file_num = Int(iteration / fw.output_frequency)
-        fw.filename_prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
-    else
-        throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
-    end
+Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
+          dir :: AbstractString = "."
+       prefix :: AbstractString = ""
+    frequency :: Int = 1
+      padding :: Int = 9
 end
 
 function write_output(model::Model, fw::BinaryOutputWriter)
@@ -65,12 +40,33 @@ function read_output(model::Model, fw::BinaryOutputWriter, field_name, time)
     return arr
 end
 
-#
-# NetCDF output functions
-#
-# Eventually, we want to permit the user to flexibly define what is outputted.
-# The user-defined function that produces output may involve computations, launching kernels,
-# etc; so this API needs to be designed. For now, we simply save u, v, w, and T.
+####
+#### NetCDF output writer
+####
+
+"A type for writing NetCDF output."
+Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
+             dir  :: AbstractString = "."
+          prefix  :: AbstractString = ""
+        frequency :: Int    = 1
+          padding :: Int    = 9
+    naming_scheme :: Symbol = :iteration
+      compression :: Int    = 3
+            async :: Bool   = false
+end
+
+ext(fw::NetCDFOutputWriter) = ".nc"
+
+function filename(fw, name, iteration)
+    if fw.naming_scheme == :iteration
+        fw.prefix * name * lpad(iteration, fw.padding, "0") * ext(fw)
+    elseif fw.naming_scheme == :file_number
+        file_num = Int(iteration / fw.frequency)
+        fw.prefix * name * lpad(file_num, fw.padding, "0") * ext(fw)
+    else
+        throw(ArgumentError("Invalid naming scheme: $(fw.naming_scheme)"))
+    end
+end
 
 function write_output(model::Model, fw::NetCDFOutputWriter)
     fields = Dict(
@@ -123,8 +119,6 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
 
     if fw.async
         println("[Worker $(Distributed.myid()): NetCDFOutputWriter] Writing fields to disk: $filepath")
-    else
-        println("[NetCDFOutputWriter] Writing fields to disk: $filepath")
     end
 
     isfile(filepath) && rm(filepath)
@@ -167,28 +161,80 @@ end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
     filepath = joinpath(fw.dir, filename(fw, "", iter))
-    println("[NetCDFOutputWriter] Reading fields from disk: $filepath")
     field_data = ncread(filepath, field_name)
     ncclose(filepath)
     return field_data
 end
 
-"""
-    JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit, 
-                     force=false, asynchronous=false)
+####
+####  JLD2 output writer
+####
 
-Construct an `OutputWriter` that writes `label, fcn` pairs in the
-dictionary `outputs` to a single `JLD2` file, where `label` is a symbol that labels
-the output and `fcn` is a function of the form `fcn(model)` that returns
-the data to be saved. The keyword `init` is a function of the form `init(file, model)`
-that runs when the JLD2 output file is initialized.
-"""
-mutable struct JLD2OutputWriter{O, I} <: OutputWriter
+mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
         filepath :: String
          outputs :: O
         interval :: I
+       frequency :: F
+            init :: IF
+       including :: IN
         previous :: Float64
-    asynchronous :: Bool
+            part :: Int
+    max_filesize :: Float64
+           async :: Bool
+           force :: Bool
+         verbose :: Bool
+end
+
+noinit(args...) = nothing
+
+"""
+    JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
+                     prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
+                     part=1, max_filesize=Inf, force=false, async=false, verbose=false)
+
+Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
+a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
+function of the form `func(model)` that returns the data to be saved.
+
+# Keyword arguments
+- `frequency::Int`:    Save output every `n` model iterations.
+- `interval::Int`:     Save output every `t` units of model clock time.
+- `dir::String`:       Directory to save output to. Default: "." (current working
+                       directory).
+- `prefix::String`:    Descriptive filename prefixed to all output files. Default: "".
+- `init::Function`:    A function of the form `init(file, model)` that runs when a JLD2
+                       output file is initialized. Default: `noinit(args...) = nothing`.
+- `including::Array`:  List of model properties to save with every file. By default, the
+                       grid, equation of state, planetary constants, and the turbulence
+                       closure parameters are saved.
+- `part::Int`:         The starting part number used if `max_filesize` is finite.
+                       Default: 1.
+- `max_filesize::Int`: The writer will stop writing to the output file once the file size
+                       exceeds `max_filesize`, and write to a new one with a consistent
+                       naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
+- `force::Bool`:       Remove existing files if their filenames conflict. Default: `false`.
+- `async::Bool`:       Write output asynchronously. Default: `false`.
+- `verbose::Bool`:     Log what the output writer is doing with statistics on compute/write
+                       times and file sizes. Default: `false`.
+"""
+function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
+                          init=noinit, including=[:grid, :eos, :constants, :closure],
+                          part=1, max_filesize=Inf, force=false, async=false, verbose=false)
+
+    interval === nothing && frequency === nothing &&
+        error("Either interval or frequency must be passed to the JLD2OutputWriter!")
+
+    mkpath(dir)
+    filepath = joinpath(dir, prefix * ".jld2")
+    force && isfile(filepath) && rm(filepath, force=true)
+
+    jldopen(filepath, "a+") do file
+        init(file, model)
+        savesubstructs!(file, model, including)
+    end
+
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
+                            0.0, part, max_filesize, async, force, verbose)
 end
 
 function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
@@ -198,44 +244,56 @@ function savesubstruct!(file, model, name, flds=propertynames(getproperty(model,
     return nothing
 end
 
-noinit(args...) = nothing
-
-function JLD2OutputWriter(model, outputs; dir=".", prefix="", interval=1, init=noinit, force=false,
-                          asynchronous=false)
-
-    mkpath(dir)
-    filepath = joinpath(dir, prefix*".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
-
-    jldopen(filepath, "a+") do file
-        init(file, model)
-        savesubstruct!(file, model, :grid)
-        savesubstruct!(file, model, :eos)
-        savesubstruct!(file, model, :constants)
-        savesubstruct!(file, model, :closure)
-    end
-
-    return JLD2OutputWriter(filepath, outputs, interval, 0.0, asynchronous)
-end
+savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
 
 function write_output(model, fw::JLD2OutputWriter)
-    @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    @time data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    verbose = fw.verbose
+    verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
+    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    verbose && @info "Calculation time: $(prettytime(tc))"
 
     iter = model.clock.iteration
     time = model.clock.time
-    path = fw.filepath
 
-    @info @sprintf("Writing JLD2 output %s...", keys(fw.outputs))
-    t0 = time_ns()
-    if fw.asynchronous
+    filesize(fw.filepath) >= fw.max_filesize && start_next_file(model, fw)
+
+    path = fw.filepath
+    verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
+    t0, sz = time_ns(), filesize(path)
+
+    if fw.async
         @async remotecall(jld2output!, 2, path, iter, time, data)
     else
         jld2output!(path, iter, time, data)
     end
-    @info "Done writing (t: $(prettytime(time_ns()-t0)))"
+
+    t1, newsz = time_ns(), filesize(path)
+    verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
 
     return nothing
+end
+
+function start_next_file(model::Model, fw::JLD2OutputWriter)
+    verbose = fw.verbose
+    sz = filesize(fw.filepath)
+    verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
+
+    if fw.part == 1
+        part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
+        verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
+        mv(fw.filepath, part1_path, force=fw.force)
+        fw.filepath = part1_path
+    end
+
+    fw.part += 1
+    fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
+    fw.force && isfile(fw.filepath) && rm(fw.filepath, force=true)
+    verbose && @info "Now writing to: $(fw.filepath)"
+
+    jldopen(fw.filepath, "a+") do file
+        fw.init(file, model)
+        savesubstructs!(file, model, fw.including)
+    end
 end
 
 function jld2output!(path, iter, time, data)
@@ -247,6 +305,19 @@ function jld2output!(path, iter, time, data)
     end
     return nothing
 end
+
+function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
+    if clock.time > out.previous + out.interval
+        out.previous = clock.time - rem(clock.time, out.interval)
+        return true
+    else
+        return false
+    end
+end
+
+####
+#### Output utils
+####
 
 """
     HorizontalAverages(arch, grid)
@@ -314,16 +385,9 @@ end
 
 VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
 
-time_to_write(clock, out::OutputWriter) = (clock.iteration % out.output_frequency) == 0
-
-function time_to_write(clock, out::JLD2OutputWriter)
-    if clock.time > out.previous + out.interval
-        out.previous = clock.time - rem(clock.time, out.interval)
-        return true
-    else
-        return false
-    end
-end
+####
+#### Checkpointer
+####
 
 mutable struct Checkpointer <: OutputWriter
                  dir :: String

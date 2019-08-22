@@ -39,18 +39,18 @@ Lx = Ly = 1.0 * α           # horizontal extent
 ν = sqrt(Δb * Pr * Lz^3 / Ra)
 κ = ν / Pr
 
-# 
+#
 # Model setup
-# 
+#
 
 arch = CPU()
 @hascuda arch = GPU() # use GPU if it's available
 
 model = Model(
-     arch = arch, 
-        N = (Nx, Ny, Nz), 
-        L = (Lx, Ly, Lz), 
-        ν = ν, 
+     arch = arch,
+        N = (Nx, Ny, Nz),
+        L = (Lx, Ly, Lz),
+        ν = ν,
         κ = κ,
       eos = LinearEquationOfState(βT=1., βS=0.),
 constants = PlanetaryConstants(g=1., f=0.)
@@ -72,14 +72,14 @@ ArrayType = typeof(model.velocities.u.data)
 #nc_writer = NetCDFOutputWriter(dir=".", prefix=prefix, frequency=100)
 #push!(model.output_writers, nc_writer)
 
-# 
+#
 # Initial condition setup for creating regression test data
 #
 
 ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
 b₀(x, y, z) = (ξ(z) - z) / Lz
 
-x, y, z = model.grid.xC, model.grid.yC, model.grid.zC 
+x, y, z = model.grid.xC, model.grid.yC, model.grid.zC
 x, y, z = reshape(x, Nx, 1, 1), reshape(y, 1, Ny, 1), reshape(z, 1, 1, Nz)
 
 model.tracers.T.data .= ArrayType(b₀.(x, y, z))
@@ -104,6 +104,6 @@ for i = 1:100
 
     wb = buoyancy_flux(model)
     @printf("i: %d, t: %.2e, CFL: %.4f, Nuʷᵇ: %.3f, wall: %s\n", model.clock.iteration,
-                model.clock.time, cfl(Δt, model), 1 + mean(wb.data) * Lz^2 / (κ*Δb), 
+                model.clock.time, cfl(Δt, model), 1 + mean(wb.data) * Lz^2 / (κ*Δb),
                 prettytime(1e9*walltime))
 end

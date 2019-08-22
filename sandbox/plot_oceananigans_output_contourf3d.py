@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 def plot_contourf3d_from_netcdf(nc_filepath, png_filepath, var, dt, vmin, vmax, n_contours, cmap="inferno", var_offset=0, time=0):
     # For some reason I need to do the import here so it shows up on all joblib workers.
     from mpl_toolkits.mplot3d import Axes3D
-    
+
     # Enforcing style in here so that it's applied to all workers launched by joblib.
     plt.style.use("dark_background")
 

@@ -2,8 +2,22 @@ import FFTW
 import GPUifyLoops: @launch, @loop
 
 abstract type PoissonBCs end
-struct PPN <: PoissonBCs end  # Periodic BCs in x,y. Neumann BC in z.
-struct PNN <: PoissonBCs end  # Periodic BCs in x. Neumann BC in y,z.
+
+# PoissonBCs are named XYZ, where each of X, Y, and Z is either
+# 'P' (for Periodic) or 'N' (for Neumann).
+struct PPN <: PoissonBCs end
+struct PNN <: PoissonBCs end
+
+# Not yet supported:
+#struct PPP <: PoissonBCs end
+#struct NNN <: PoissonBCs end
+#struct NPP <: PoissonBCs end
+#struct PNP <: PoissonBCs end
+#struct NPN <: PoissonBCs end
+#struct NNP <: PoissonBCs end
+
+poisson_bc_symbol(::BC) = :N
+poisson_bc_symbol(::BC{<:Periodic}) = :P
 
 """
     PoissonBCs(bcs)
@@ -12,13 +26,13 @@ Returns the boundary conditions for the Poisson solver corresponding
 to the model boundary conditions `bcs`.
 """
 function PoissonBCs(bcs)
-    # Using an if-statement rather than dispatch due to the 
-    # extreme depth of the bcs object.
-   if bctype(bcs.u.y.left) == Periodic
-       return PPN()
-   else
-       return PNN()
-   end
+    # We assume that bounary conditions on all fields are
+    # consistent with the boundary conditions on one side of ``u``.
+    x = poisson_bc_symbol(bcs.u.x.left)
+    y = poisson_bc_symbol(bcs.u.y.left)
+    z = poisson_bc_symbol(bcs.u.z.left)
+
+    return eval(Expr(:call, Symbol(x, y, z)))
 end
 
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
