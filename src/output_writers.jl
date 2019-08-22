@@ -392,19 +392,29 @@ VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
 mutable struct Checkpointer <: OutputWriter
                  dir :: String
               prefix :: String
-    output_frequency :: Int
+           frequency :: Int
+            interval :: FT
+             structs :: S
+           fieldsets :: F
 end
 
-function Checkpointer(; output_frequency, dir=".", prefix="checkpoint", force=false)
+function Checkpointer(; output_frequency, dir=".", prefix="checkpoint",
+                      checkpointed_structs = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure),
+                      checkpointed_fieldsets = (:velocities, :tracers, :G, :Gp),
+                      force=false)
     mkpath(dir)
     return Checkpointer(dir, prefix, output_frequency)
 end
 
 function savesubfields!(file, model, name, flds=propertynames(getproperty(model, name)))
-    for f in flds
-        file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
+    if name ∉ (:forcing)
+        for f in flds
+            file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
+        end
+    else
+        @warn "Cannot save subfields of $name"
     end
-    return nothing
+    return
 end
 
 checkpointed_structs   = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure]
