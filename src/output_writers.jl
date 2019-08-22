@@ -3,7 +3,7 @@ using NetCDF, JLD2
 
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
-function time_to_run(clock::Clock, diag::OutputWriter)
+function time_to_write(clock::Clock, diag::OutputWriter)
     if :interval in propertynames(diag) && diag.interval != nothing
         if clock.time >= diag.previous + diag.interval
             diag.previous = clock.time - rem(clock.time, diag.interval)
@@ -37,6 +37,15 @@ function validate_interval(frequency, interval)
         error("Cannot choose both frequency and interval!")
     end
 end
+
+function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
+    for fld in flds
+        file["$name/$fld"] = getproperty(getproperty(model, name), fld)
+    end
+    return
+end
+
+savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
 
 ####
 #### Binary output writer
@@ -125,7 +134,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         write_output_netcdf(fw, fields, model.clock.iteration)
     end
 
-    return nothing
+    return
 end
 
 function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
@@ -190,7 +199,7 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
 
     ncclose(filepath)
 
-    return nothing
+    return
 end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
@@ -271,15 +280,6 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
                             0.0, part, max_filesize, async, force, verbose)
 end
 
-function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
-    for fld in flds
-        file["$name/$fld"] = getproperty(getproperty(model, name), fld)
-    end
-    return nothing
-end
-
-savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
-
 function write_output(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
@@ -304,7 +304,7 @@ function write_output(model, fw::JLD2OutputWriter)
     t1, newsz = time_ns(), filesize(path)
     verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
 
-    return nothing
+    return
 end
 
 function start_next_file(model::Model, fw::JLD2OutputWriter)
@@ -337,7 +337,7 @@ function jld2output!(path, iter, time, data)
             file["timeseries/$name/$iter"] = datum
         end
     end
-    return nothing
+    return
 end
 
 function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
@@ -353,9 +353,9 @@ end
 #### Checkpointer
 ####
 
-mutable struct Checkpointer <: OutputWriter
-   frequency :: Int
-    interval :: FT
+mutable struct Checkpointer{I, T, S, F} <: OutputWriter
+   frequency :: I
+    interval :: T
          dir :: String
       prefix :: String
      structs :: S
@@ -363,9 +363,9 @@ mutable struct Checkpointer <: OutputWriter
        force :: Bool
 end
 
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
+function Checkpointer(; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
                       structs = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure),
-                      fieldsets = (:velocities, :tracers, :G, :Gp),
+                      fieldsets = (:velocities, :tracers, :timestepper),
                       force=false)
 
     frequency, interval = validate_interval(frequency, interval)
@@ -379,35 +379,54 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
 end
 
 function savesubfields!(file, model, name, flds=propertynames(getproperty(model, name)))
-    for f in flds
-        file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
+    if name == :timestepper
+        savesubfields!(file, model.timestepper, :Gⁿ)
+        savesubfields!(file, model.timestepper, :G⁻)
+    else
+        for f in flds
+            file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
+        end
     end
     return
 end
-
-checkpointed_structs   = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure]
-checkpointed_fieldsets = [:velocities, :tracers, :G, :Gp]
 
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
 
     jldopen(filepath, "w") do file
+        file["checkpointed_structs"] = c.structs
+        file["checkpointed_fieldsets"] = c.fieldsets
+
         # Checkpointing model properties that we can just serialize.
-        [file["$p"] = getproperty(model, p) for p in checkpointed_structs]
+        [file["$p"] = getproperty(model, p) for p in c.structs]
 
         # Checkpointing structs containing fields.
-        [savesubfields!(file, model, p) for p in checkpointed_fieldsets]
+        [savesubfields!(file, model, p) for p in c.fieldsets]
     end
 end
 
 _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
+function restore_fields!(model, file, arch, fieldset)
+    if fieldset == :timestepper
+        restore_fields!(model.timestepper, file, arch, :Gⁿ)
+        restore_fields!(model.timestepper, file, arch, :G⁻)
+    else
+        for p in propertynames(getproperty(model, fieldset))
+            getproperty(getproperty(model, fieldset), p).data.parent .= _arr(arch, file["$fieldset/$p"])
+        end
+    end
+end
+
 function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
     file = jldopen(filepath, "r")
 
+    structs = file["checkpointed_structs"]
+    fieldsets = file["checkpointed_fieldsets"]
+
     # Restore model properties that were just serialized.
-    for p in checkpointed_structs
+    for p in structs
         kwargs[Symbol(p)] = file["$p"]
     end
 
@@ -417,10 +436,8 @@ function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
 
     model =  Model(; kwargs...)
 
-    for p in checkpointed_fieldsets
-        for subp in propertynames(getproperty(model, p))
-            getproperty(getproperty(model, p), subp).data.parent .= _arr(model.arch, file["$p/$subp"])
-        end
+    for fs in fieldsets
+        restore_fields!(model, file, model.arch, fs)
     end
 
     close(file)
