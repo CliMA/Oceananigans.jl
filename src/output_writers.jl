@@ -316,76 +316,6 @@ function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
 end
 
 ####
-#### Output utils
-####
-
-"""
-    HorizontalAverages(arch, grid)
-
-Instantiate a struct of 1D arrays on `arch` and `grid`
-for storing the results of horizontal averages of 3D fields.
-"""
-struct HorizontalAverages{A}
-    U :: A
-    V :: A
-    T :: A
-    S :: A
-end
-
-function HorizontalAverages(arch::CPU, grid::Grid{FT}) where FT
-    U = zeros(FT, 1, 1, grid.Tz)
-    V = zeros(FT, 1, 1, grid.Tz)
-    T = zeros(FT, 1, 1, grid.Tz)
-    S = zeros(FT, 1, 1, grid.Tz)
-
-    HorizontalAverages(U, V, T, S)
-end
-
-function HorizontalAverages(arch::GPU, grid::Grid{FT}) where FT
-    U = CuArray{FT}(undef, 1, 1, grid.Tz)
-    V = CuArray{FT}(undef, 1, 1, grid.Tz)
-    T = CuArray{FT}(undef, 1, 1, grid.Tz)
-    S = CuArray{FT}(undef, 1, 1, grid.Tz)
-
-    HorizontalAverages(U, V, T, S)
-end
-
-HorizontalAverages(model) = HorizontalAverages(model.arch, model.grid)
-
-"""
-    VerticalPlanes(arch, grid)
-
-Instantiate a struct of 2D arrays on `arch` and `grid`
-for storing the results of y-averages of 3D fields.
-"""
-struct VerticalPlanes{A}
-    U :: A
-    V :: A
-    T :: A
-    S :: A
-end
-
-function VerticalPlanes(arch::CPU, grid::Grid{FT}) where FT
-    U = zeros(FT, grid.Tx, 1, grid.Tz)
-    V = zeros(FT, grid.Tx, 1, grid.Tz)
-    T = zeros(FT, grid.Tx, 1, grid.Tz)
-    S = zeros(FT, grid.Tx, 1, grid.Tz)
-
-    VerticalPlanes(U, V, T, S)
-end
-
-function VerticalPlanes(arch::GPU, grid::Grid{FT}) where FT
-    U = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
-    V = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
-    T = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
-    S = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
-
-    VerticalPlanes(U, V, T, S)
-end
-
-VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
-
-####
 #### Checkpointer
 ####
 
@@ -467,3 +397,73 @@ function restore_from_checkpoint(filepath)
 
     return model
 end
+
+####
+#### Output utils
+####
+
+"""
+    HorizontalAverages(arch, grid)
+
+Instantiate a struct of 1D arrays on `arch` and `grid`
+for storing the results of horizontal averages of 3D fields.
+"""
+struct HorizontalAverages{A}
+    U :: A
+    V :: A
+    T :: A
+    S :: A
+end
+
+function HorizontalAverages(arch::CPU, grid::Grid{FT}) where FT
+    U = zeros(FT, 1, 1, grid.Tz)
+    V = zeros(FT, 1, 1, grid.Tz)
+    T = zeros(FT, 1, 1, grid.Tz)
+    S = zeros(FT, 1, 1, grid.Tz)
+
+    HorizontalAverages(U, V, T, S)
+end
+
+function HorizontalAverages(arch::GPU, grid::Grid{FT}) where FT
+    U = CuArray{FT}(undef, 1, 1, grid.Tz)
+    V = CuArray{FT}(undef, 1, 1, grid.Tz)
+    T = CuArray{FT}(undef, 1, 1, grid.Tz)
+    S = CuArray{FT}(undef, 1, 1, grid.Tz)
+
+    HorizontalAverages(U, V, T, S)
+end
+
+HorizontalAverages(model) = HorizontalAverages(model.arch, model.grid)
+
+"""
+    VerticalPlanes(arch, grid)
+
+Instantiate a struct of 2D arrays on `arch` and `grid`
+for storing the results of y-averages of 3D fields.
+"""
+struct VerticalPlanes{A}
+    U :: A
+    V :: A
+    T :: A
+    S :: A
+end
+
+function VerticalPlanes(arch::CPU, grid::Grid{FT}) where FT
+    U = zeros(FT, grid.Tx, 1, grid.Tz)
+    V = zeros(FT, grid.Tx, 1, grid.Tz)
+    T = zeros(FT, grid.Tx, 1, grid.Tz)
+    S = zeros(FT, grid.Tx, 1, grid.Tz)
+
+    VerticalPlanes(U, V, T, S)
+end
+
+function VerticalPlanes(arch::GPU, grid::Grid{FT}) where FT
+    U = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
+    V = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
+    T = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
+    S = CuArray{FT}(undef, grid.Tx, 1, grid.Tz)
+
+    VerticalPlanes(U, V, T, S)
+end
+
+VerticalPlanes(model) = VerticalPlanes(model.arch, model.grid)
