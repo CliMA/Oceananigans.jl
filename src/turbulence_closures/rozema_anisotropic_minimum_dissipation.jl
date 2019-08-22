@@ -87,7 +87,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
+        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, c, u, v, w)
         κˢᶠˢ = - closure.C * ϑ / σ
     end
 
@@ -102,7 +102,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ = Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
+        ϑ = Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, c, u, v, w)
         κˢᶠˢ = - closure.C * ϑ / σ
     end
 
