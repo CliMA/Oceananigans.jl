@@ -87,7 +87,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, c, u, v, w)
+        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
         κˢᶠˢ = - closure.C * ϑ / σ
     end
 
@@ -102,7 +102,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ = Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, c, u, v, w)
+        ϑ = Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
         κˢᶠˢ = - closure.C * ϑ / σ
     end
 
@@ -290,7 +290,7 @@ end
     return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
 end
 
-@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, c, u, v, w)
+@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
     ijk = (i, j, k, grid)
 
     Δx = Δx_ccc(ijk..., closure)
@@ -318,7 +318,7 @@ end
     return Δx²_cx_ux + Δy²_cy_uy + Δz²_cz_uz
 end
 
-@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, c, u, v, w)
+@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
     ijk = (i, j, k, grid)
 
     Δx = Δx_ccf(ijk..., closure)

@@ -78,7 +78,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, c, u, v, w)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, u, v, w, c)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         κˢᶠˢ = - closure.C * δ² * ϑ / σ
     end
@@ -95,7 +95,7 @@ end
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccf(ijk..., closure, c, u, v, w)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccf(ijk..., closure, u, v, w, c)
         δ² = 3 / (1 / Δᶠx_ccf(ijk...)^2 + 1 / Δᶠy_ccf(ijk...)^2 + 1 / Δᶠz_ccf(ijk...)^2)
         κˢᶠˢ = - closure.C * δ² * ϑ / σ
     end
@@ -270,7 +270,7 @@ end
     return wx_bx + wy_by + wz_bz
 end
 
-@inline function norm_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, c, u, v, w)
+@inline function norm_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
     ijk = (i, j, k, grid)
 
     cx_ux = (
@@ -294,7 +294,7 @@ end
     return cx_ux + cy_uy + cz_uz
 end
 
-@inline function norm_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, c, u, v, w)
+@inline function norm_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
     ijk = (i, j, k, grid)
 
     cx_ux = (
