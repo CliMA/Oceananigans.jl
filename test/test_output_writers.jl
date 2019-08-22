@@ -137,10 +137,10 @@ end
             println("  Testing JLD2 output writer [$(typeof(arch))]...")
             run_jld2_file_splitting_tests(arch)
         end
-    end
 
-    @testset "Checkpointer" begin
-        println("  Testing Checkpointer...")
-        run_thermal_bubble_checkpointer_tests(CPU())
+        @testset "Checkpointer [$(typeof(arch))]" begin
+            println("  Testing Checkpointer [$(typeof(arch))]...")
+            run_thermal_bubble_checkpointer_tests(arch)
+        end
     end
 end
