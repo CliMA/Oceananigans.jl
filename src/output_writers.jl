@@ -2,7 +2,41 @@ using Distributed
 using NetCDF, JLD2
 
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
-time_to_write(clock, out::OutputWriter) = (clock.iteration % out.frequency) == 0
+
+function time_to_run(clock::Clock, diag::OutputWriter)
+    if :interval in propertynames(diag) && diag.interval != nothing
+        if clock.time >= diag.previous + diag.interval
+            diag.previous = clock.time - rem(clock.time, diag.interval)
+            return true
+        else
+            return false
+        end
+    elseif :frequency in propertynames(diag) && diag.frequency != nothing
+        return clock.iteration % diag.frequency == 0
+    else
+        error("$(typeof(diag)) must have a frequency or interval specified!")
+    end
+end
+
+function validate_interval(frequency, interval)
+    if isnothing(frequency) && isnothing(interval)
+        error("Must choose either a frequency (number of iterations) or a time interval!")
+    elseif isnothing(interval)
+        if isinteger(frequency)
+            return Int(frequency), interval
+        else
+            error("Frequency $frequency must be an integer!")
+        end
+    elseif isnothing(frequency)
+        if isa(interval, Number)
+            return frequency, Float64(interval)
+        else
+            error("Interval must be convertable to a float!")
+        end
+    else
+        error("Cannot choose both frequency and interval!")
+    end
+end
 
 ####
 #### Binary output writer
@@ -320,29 +354,33 @@ end
 ####
 
 mutable struct Checkpointer <: OutputWriter
-                 dir :: String
-              prefix :: String
-           frequency :: Int
-            interval :: FT
-             structs :: S
-           fieldsets :: F
+   frequency :: Int
+    interval :: FT
+         dir :: String
+      prefix :: String
+     structs :: S
+   fieldsets :: F
+       force :: Bool
 end
 
-function Checkpointer(; output_frequency, dir=".", prefix="checkpoint",
-                      checkpointed_structs = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure),
-                      checkpointed_fieldsets = (:velocities, :tracers, :G, :Gp),
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
+                      structs = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure),
+                      fieldsets = (:velocities, :tracers, :G, :Gp),
                       force=false)
+
+    frequency, interval = validate_interval(frequency, interval)
+
+    if :forcing ∈ structs
+        @error "Cannot checkpoint forcing functions :("
+    end
+
     mkpath(dir)
-    return Checkpointer(dir, prefix, output_frequency)
+    return Checkpointer(frequency, interval, dir, prefix, structs, fieldsets, force)
 end
 
 function savesubfields!(file, model, name, flds=propertynames(getproperty(model, name)))
-    if name ∉ (:forcing)
-        for f in flds
-            file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
-        end
-    else
-        @warn "Cannot save subfields of $name"
+    for f in flds
+        file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
     end
     return
 end
