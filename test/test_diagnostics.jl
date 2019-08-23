@@ -45,15 +45,19 @@ end
     for arch in archs
         @testset "Horizontal average [$(typeof(arch))]" begin
             println("  Testing horizontal average [$(typeof(arch))]")
-            @test horizontal_average_is_correct(arch, Float64)
-            @test product_profile_is_correct(arch, Float64)
+            for FT in float_types
+                @test horizontal_average_is_correct(arch, FT)
+                @test product_profile_is_correct(arch, FT)
+            end
         end
     end
     
     for arch in archs
         @testset "NaN Checker [$(typeof(arch))]" begin
             println("  Testing NaN Checker [$(typeof(arch))]")
-            @test_throws ErrorException nan_checker_aborts_simulation(arch, Float64)
+            for FT in float_types
+                @test_throws ErrorException nan_checker_aborts_simulation(arch, FT)
+            end
         end
     end
 end
