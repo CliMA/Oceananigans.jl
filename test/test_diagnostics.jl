@@ -9,7 +9,10 @@ function horizontal_average_is_correct(arch, FT)
     push!(model.diagnostics, T̅)
 
     time_step!(model, 1, 1)
-    all(@. T̅.profile[:] ≈ 20 + 0.01 * model.grid.zC)
+    correct_profile = @. 20 + 0.01 * collect(model.grid.zC)
+    println("T.profile: ", Array(T̅.profile[:]))
+    println("Truth: ", correct_profile)
+    all(Array(T̅.profile[:]) ≈ correct_profile)
 end
 
 function product_profile_is_correct(arch, FT)
