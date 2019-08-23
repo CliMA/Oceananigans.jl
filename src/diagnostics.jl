@@ -149,6 +149,11 @@ end
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
+function (p::HorizontalAverage)(model)
+    run_diagnostic(model, p)
+    return p.profile
+end
+
 ####
 #### NaN checker
 ####
