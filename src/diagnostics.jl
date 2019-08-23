@@ -111,26 +111,41 @@ end
 
 mutable struct HorizontalAverage{P, F, I, T} <: Diagnostic
       profile :: P
-        field :: F
+       fields :: F
     frequency :: I
      interval :: T
      previous :: Float64
 end
 
-function HorizontalAverage(model, field; frequency=nothing, interval=nothing)
-    freq, int = validate_interval(frequency, interval)
+function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
+    if typeof(fields) <: Field
+        fields = [fields]
+    end
+    
+    length(fields) > 2 && @error "Cannot take horizontal average of more than 2 fields."
+    frequency, interval = validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
-    HorizontalAverage(profile, field, freq, int, 0.0)
+    HorizontalAverage(profile, fields, frequency, interval, 0.0)
 end
 
 function run_diagnostic(model::Model, P::HorizontalAverage{<:Array})
-    P.profile .= mean(data(P.field), dims=[1, 2])
+    if length(P.fields) == 1
+        P.profile .= mean(data(P.fields[1]), dims=[1, 2])
+    else
+        P.profile .= mean(data(P.fields[1]) .* data(P.fields[2]), dims=[1, 2])
+    end
 end
 
 @hascuda function run_diagnostic(model::Model, P::HorizontalAverage{<:CuArray})
     Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
-    @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, nothing, +)
+    
+    if length(P.fields) == 1
+        @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.fields[1].data, nothing, +)
+    else
+        @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.fields[1].data, P.fields[2].data, +)
+    end  
+    
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
