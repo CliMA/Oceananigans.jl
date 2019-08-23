@@ -1,11 +1,11 @@
-function vertical_profile_is_correct(arch, FT)
+function horizontal_average_is_correct(arch, FT)
     model = Model(N = (16, 16, 16), L = (100, 100, 100), arch=arch, float_type=FT)
     
     # Set a linear stably stratified temperature profile.
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
     
-    T̅ = VerticalProfile(model, model.tracers.T; interval=0.5second)
+    T̅ = HorizontalAverage(model, model.tracers.T; interval=0.5second)
     push!(model.diagnostics, T̅)
 
     time_step!(model, 1, 1)
@@ -28,9 +28,9 @@ end
     println("Testing diagnostics...")
 
     for arch in archs
-        @testset "Vertical profiles [$(typeof(arch))]" begin
-            println("  Testing vertical profiles [$(typeof(arch))]")
-            @test vertical_profile_is_correct(arch, Float64)
+        @testset "Horizontal average [$(typeof(arch))]" begin
+            println("  Testing horizontal average [$(typeof(arch))]")
+            @test horizontal_average_is_correct(arch, Float64)
         end
     end
     

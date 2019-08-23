@@ -109,7 +109,7 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct VerticalProfile{P, F, I, T} <: Diagnostic
+mutable struct HorizontalAverage{P, F, I, T} <: Diagnostic
       profile :: P
         field :: F
     frequency :: I
@@ -117,17 +117,17 @@ mutable struct VerticalProfile{P, F, I, T} <: Diagnostic
      previous :: Float64
 end
 
-function VerticalProfile(model, field; frequency=nothing, interval=nothing)
+function HorizontalAverage(model, field; frequency=nothing, interval=nothing)
     freq, int = validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
-    VerticalProfile(profile, field, freq, int, 0.0)
+    HorizontalAverage(profile, field, freq, int, 0.0)
 end
 
-function run_diagnostic(model::Model, P::VerticalProfile{<:Array})
+function run_diagnostic(model::Model, P::HorizontalAverage{<:Array})
     P.profile .= mean(data(P.field), dims=[1, 2])
 end
 
-@hascuda function run_diagnostic(model::Model, P::VerticalProfile{<:CuArray})
+@hascuda function run_diagnostic(model::Model, P::HorizontalAverage{<:CuArray})
     Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
     @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.field.data, nothing, +)

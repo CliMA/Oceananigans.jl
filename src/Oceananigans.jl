@@ -119,7 +119,7 @@ export
     # Model diagnostics
     Diagnostic,
     run_diagnostic,
-    VerticalProfile,
+    HorizontalAverage,
     ProductProfile,
     VelocityCovarianceProfiles,
     NaNChecker,
