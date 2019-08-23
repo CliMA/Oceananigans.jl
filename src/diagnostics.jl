@@ -137,7 +137,8 @@ function run_diagnostic(model::Model, P::HorizontalAverage{<:Array})
 end
 
 @hascuda function run_diagnostic(model::Model, P::HorizontalAverage{<:CuArray})
-    Nx, Ny, Nz = P.field.grid.Nx, P.field.grid.Ny, P.field.grid.Nz
+    grid = P.fields[1].grid
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
     
     if length(P.fields) == 1
