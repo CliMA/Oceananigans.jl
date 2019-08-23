@@ -30,5 +30,4 @@ float_types = (Float32, Float64)
     include("test_dynamics.jl")
     include("test_output_writers.jl")
     include("test_regression.jl")
-    include("test_examples.jl")
 end
