@@ -433,26 +433,52 @@ end
 _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
-function restore_fields!(model, file, arch, fieldset)
+function restore_fields!(model, file, arch, fieldset; location="$fieldset")
     if fieldset == :timestepper
-        restore_fields!(model.timestepper, file, arch, :Gⁿ)
-        restore_fields!(model.timestepper, file, arch, :G⁻)
+        restore_fields!(model.timestepper, file, arch, :Gⁿ; location="timestepper/Gⁿ")
+        restore_fields!(model.timestepper, file, arch, :G⁻; location="timestepper/G⁻")
     else
         for p in propertynames(getproperty(model, fieldset))
-            getproperty(getproperty(model, fieldset), p).data.parent .= _arr(arch, file["$fieldset/$p"])
+            getproperty(getproperty(model, fieldset), p).data.parent .= _arr(arch, file[location * "/$p"])
         end
     end
+end
+
+const field_containing_structs = (:velocities, :tracers, :timestepper)
+
+function restore_bcs(file)
+    model_bcs = Dict()
+    for field in keys(file["boundary_conditions"])
+        field_bcs = Dict()
+        for coord in keys(file["boundary_conditions/$field"])
+            left_bc  = file["boundary_conditions/$field/$coord/left"]
+            right_bc = file["boundary_conditions/$field/$coord/right"]
+
+            ismissing(left_bc)  && @warn "$field.$coord.left boundary condition was a Function and must be manually restored."
+            ismissing(right_bc) && @warn "$field.$coord.right boundary condition was a Function and must be manually restored."
+
+            cbcs = CoordinateBoundaryConditions(left_bc, right_bc)
+            field_bcs[Symbol(coord)] = cbcs
+        end
+        model_bcs[Symbol(field)] = NamedTuple{Tuple(keys(field_bcs))}(values(field_bcs))
+    end
+    return NamedTuple{Tuple(keys(model_bcs))}(values(model_bcs))
 end
 
 function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
     file = jldopen(filepath, "r")
 
-    structs = file["checkpointed_structs"]
-    fieldsets = file["checkpointed_fieldsets"]
+    cps = file["checkpointed_properties"]
 
     # Restore model properties that were just serialized.
-    for p in structs
-        kwargs[Symbol(p)] = file["$p"]
+    # We skip fields that contain structs and restore them after model creation.
+    # Restoring boundary conditions is also a special case.
+    for p in cps
+        if p == :boundary_conditions
+            kwargs[p] = restore_bcs(file)
+        elseif p ∉ field_containing_structs
+            kwargs[p] = file["$p"]
+        end
     end
 
     # The Model constructor needs N and L.
@@ -461,8 +487,11 @@ function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
 
     model =  Model(; kwargs...)
 
-    for fs in fieldsets
-        restore_fields!(model, file, model.arch, fs)
+    # Now restore fields.
+    for p in cps
+        if p in field_containing_structs && p != :boundary_conditions
+            restore_fields!(model, file, model.arch, p)
+        end
     end
 
     close(file)
