@@ -47,6 +47,22 @@ saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
+_bc_type(::BoundaryCondition{T}) where T = T
+
+function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
+    for endpoint in propertynames(cbcs)
+        endpoint_bc = getproperty(cbcs, endpoint)
+        if isa(endpoint_bc.condition, Function)
+            @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
+            file["boundary/conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
+            file["boundary_conditions/$field/$coord/$endpoint/condition"] = missing
+        else
+            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
+            file["boundary_conditions/$field/$coord/$endpoint/condition"] = endpoint_bc.condition
+        end
+    end
+end
+
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 # When checkpointing, `serializeproperty!` is used, which serializes objects
@@ -56,6 +72,20 @@ serializeproperty!(file, location, p::Field) = file[location] = Array(p.data.par
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 serializeproperty!(file, location, p::Union{NamedTuple,AdamsBashforthTimestepper}) =
     [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
+
+function serializeproperty!(file, location, cbcs::CoordinateBoundaryConditions)
+    for endpoint in propertynames(cbcs)
+        endpoint_bc = getproperty(cbcs, endpoint)
+        if isa(endpoint_bc.condition, Function)
+            @warn "$endpoint boundary condition in $location is of type Function and cannot be checkpointed! " *
+                  "It will be replaced with a Missing value and must be manually restored."
+            file[location * "/$endpoint"] = missing
+        else
+            file[location * "/$endpoint"] = endpoint_bc
+        end
+    end
+end
+
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 ####
