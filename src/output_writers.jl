@@ -38,14 +38,16 @@ function validate_interval(frequency, interval)
     end
 end
 
-function savesubstruct!(file, model, name, flds=propertynames(getproperty(model, name)))
-    for fld in flds
-        file["$name/$fld"] = getproperty(getproperty(model, name), fld)
-    end
-    return
-end
+# When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
+# converts Julia objects to language-agnostic objects.
+saveproperty!(file, location, p::Number)        = file[location] = p
+saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
+saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
+saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.parent)
+saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
+saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-savesubstructs!(file, model, names) = [savesubstruct!(file, model, name) for name in names]
+saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 ####
 #### Binary output writer
@@ -273,7 +275,7 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
 
     jldopen(filepath, "a+") do file
         init(file, model)
-        savesubstructs!(file, model, including)
+        saveproperties!(file, model, including)
     end
 
     return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
@@ -326,7 +328,7 @@ function start_next_file(model::Model, fw::JLD2OutputWriter)
 
     jldopen(fw.filepath, "a+") do file
         fw.init(file, model)
-        savesubstructs!(file, model, fw.including)
+        saveproperties!(file, model, fw.including)
     end
 end
 
