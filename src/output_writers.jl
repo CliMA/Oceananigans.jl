@@ -49,6 +49,15 @@ saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", get
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
+# When checkpointing, `serializeproperty!` is used, which serializes objects
+# unless they need to be converted (basically fields only).
+serializeproperty!(file, location, p)        = file[location] = p
+serializeproperty!(file, location, p::Field) = file[location] = Array(p.data.parent)
+serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
+serializeproperty!(file, location, p::Union{NamedTuple,AdamsBashforthTimestepper}) =
+    [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
+serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+
 ####
 #### Binary output writer
 ####
