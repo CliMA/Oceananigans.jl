@@ -394,55 +394,39 @@ end
 #### Checkpointer
 ####
 
-mutable struct Checkpointer{I, T, S, F} <: OutputWriter
+mutable struct Checkpointer{I, T, P} <: OutputWriter
    frequency :: I
     interval :: T
          dir :: String
       prefix :: String
-     structs :: S
-   fieldsets :: F
+  properties :: P
        force :: Bool
 end
 
-function Checkpointer(; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
-                      structs = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure),
-                      fieldsets = (:velocities, :tracers, :timestepper),
-                      force=false)
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
+                      properties = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
+                                    :velocities, :tracers, :timestepper))
 
     frequency, interval = validate_interval(frequency, interval)
 
-    if :forcing ∈ structs
-        @error "Cannot checkpoint forcing functions :("
+    if :grid ∉ properties
+        @error ":grid not found in properties. The grid must be serialized for restore_from_checkpoint to work."
+    end
+
+    for p in properties
+        isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
+        p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, dir, prefix, structs, fieldsets, force)
-end
-
-function savesubfields!(file, model, name, flds=propertynames(getproperty(model, name)))
-    if name == :timestepper
-        savesubfields!(file, model.timestepper, :Gⁿ)
-        savesubfields!(file, model.timestepper, :G⁻)
-    else
-        for f in flds
-            file["$name/$f"] = Array(getproperty(getproperty(model, name), f).data.parent)
-        end
-    end
-    return
+    return Checkpointer(frequency, interval, dir, prefix, properties, force)
 end
 
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
-
     jldopen(filepath, "w") do file
-        file["checkpointed_structs"] = c.structs
-        file["checkpointed_fieldsets"] = c.fieldsets
-
-        # Checkpointing model properties that we can just serialize.
-        [file["$p"] = getproperty(model, p) for p in c.structs]
-
-        # Checkpointing structs containing fields.
-        [savesubfields!(file, model, p) for p in c.fieldsets]
+        file["checkpointed_properties"] = c.properties
+        serializeproperties!(file, model, c.properties)
     end
 end
 
