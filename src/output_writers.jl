@@ -54,7 +54,7 @@ function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
         endpoint_bc = getproperty(cbcs, endpoint)
         if isa(endpoint_bc.condition, Function)
             @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
-            file["boundary/conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
+            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
             file["boundary_conditions/$field/$coord/$endpoint/condition"] = missing
         else
             file["boundary_conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
