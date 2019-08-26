@@ -73,19 +73,6 @@ serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Functi
 serializeproperty!(file, location, p::Union{NamedTuple,AdamsBashforthTimestepper}) =
     [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-function serializeproperty!(file, location, cbcs::CoordinateBoundaryConditions)
-    for endpoint in propertynames(cbcs)
-        endpoint_bc = getproperty(cbcs, endpoint)
-        if isa(endpoint_bc.condition, Function)
-            @warn "$endpoint boundary condition in $location is of type Function and cannot be checkpointed! " *
-                  "It will be replaced with a Missing value and must be manually restored."
-            file[location * "/$endpoint"] = missing
-        else
-            file[location * "/$endpoint"] = endpoint_bc
-        end
-    end
-end
-
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 hasfunction(::AbstractArray{<:Number}) = false
@@ -457,25 +444,6 @@ function restore_fields!(model, file, arch, fieldset; location="$fieldset")
 end
 
 const field_containing_structs = (:velocities, :tracers, :timestepper)
-
-function restore_bcs(file)
-    model_bcs = Dict()
-    for field in keys(file["boundary_conditions"])
-        field_bcs = Dict()
-        for coord in keys(file["boundary_conditions/$field"])
-            left_bc  = file["boundary_conditions/$field/$coord/left"]
-            right_bc = file["boundary_conditions/$field/$coord/right"]
-
-            ismissing(left_bc)  && @warn "$field.$coord.left boundary condition was a Function and must be manually restored."
-            ismissing(right_bc) && @warn "$field.$coord.right boundary condition was a Function and must be manually restored."
-
-            cbcs = CoordinateBoundaryConditions(left_bc, right_bc)
-            field_bcs[Symbol(coord)] = cbcs
-        end
-        model_bcs[Symbol(field)] = NamedTuple{Tuple(keys(field_bcs))}(values(field_bcs))
-    end
-    return NamedTuple{Tuple(keys(model_bcs))}(values(model_bcs))
-end
 
 function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
     file = jldopen(filepath, "r")
