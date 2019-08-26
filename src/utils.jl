@@ -121,19 +121,9 @@ end
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
-    n = length(r)
-    n == 0 && return ()
-    elems = Vector{eltype(t)}(undef, n)
-    names = Vector{Symbol}(undef, n)
-    o = first(r) - 1
-    for i = 1:n
-        elem = t[o + i]
-        name = propertynames(t)[o + i]
-        @inbounds elems[i] = elem
-        @inbounds names[i] = name
-    end
-    NamedTuple{Tuple(names)}(Tuple(elems))
+function getindex(nt::NamedTuple, inds::Tuple)
+    elems = (nt[i] for i in inds)
+    NamedTuple{Tuple(inds)}(Tuple(elems))
 end
 
 # Dynamic launch configuration
