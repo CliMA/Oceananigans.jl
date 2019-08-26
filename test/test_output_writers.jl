@@ -98,10 +98,10 @@ function run_thermal_bubble_checkpointer_tests(arch)
 
     time_step!(true_model, 9, Δt)
 
-    checkpointer = Checkpointer(frequency=5, force=true)
+    checkpointer = Checkpointer(checkpointed_model; frequency=5, force=true)
     push!(checkpointed_model.output_writers, checkpointer)
 
-    # Checkpoint should be saved as "test_model_checkpoint_5.jld" after the 5th iteration.
+    # Checkpoint should be saved as "checkpoint5.jld" after the 5th iteration.
     time_step!(checkpointed_model, 5, Δt)
 
     # Remove all knowledge of the checkpointed model.
@@ -128,10 +128,10 @@ end
     println("Testing output writers...")
 
     for arch in archs
-        @testset "NetCDF [$(typeof(arch))]" begin
-            println("  Testing NetCDF output writer [$(typeof(arch))]...")
-            run_thermal_bubble_netcdf_tests(arch)
-        end
+         @testset "NetCDF [$(typeof(arch))]" begin
+             println("  Testing NetCDF output writer [$(typeof(arch))]...")
+             run_thermal_bubble_netcdf_tests(arch)
+         end
 
         @testset "JLD2 [$(typeof(arch))]" begin
             println("  Testing JLD2 output writer [$(typeof(arch))]...")
