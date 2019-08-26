@@ -66,7 +66,7 @@ end
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 # When checkpointing, `serializeproperty!` is used, which serializes objects
-# unless they need to be converted (basically fields only).
+# unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p)        = file[location] = p
 serializeproperty!(file, location, p::Field) = file[location] = Array(p.data.parent)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
@@ -403,8 +403,8 @@ mutable struct Checkpointer{I, T, P} <: OutputWriter
 end
 
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
-                      properties = (:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
-                                    :velocities, :tracers, :timestepper))
+                      properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
+                                    :velocities, :tracers, :timestepper])
 
     frequency, interval = validate_interval(frequency, interval)
 
@@ -417,6 +417,11 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
     end
 
+    if :boundary_conditions ∈ properties && hasfunction(model.boundary_conditions)
+        @warn "One or more boundary conditions contain functions and will not be checkpointed."
+        filter!(e -> e != :boundary_conditions, properties)
+    end
+
     mkpath(dir)
     return Checkpointer(frequency, interval, dir, prefix, properties, force)
 end
@@ -425,7 +430,14 @@ function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
-        serializeproperties!(file, model, c.properties)
+
+        # Serialize boundary conditions whole as serializeproperty! will attempt to
+        # recurse through them as it's a named tuple.
+        if :boundary_conditions ∈ c.properties
+            file["boundary_conditions"] = model.boundary_conditions
+        end
+
+        serializeproperties!(file, model, filter(e -> e != :boundary_conditions, c.properties))
     end
 end
 
@@ -452,11 +464,8 @@ function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
 
     # Restore model properties that were just serialized.
     # We skip fields that contain structs and restore them after model creation.
-    # Restoring boundary conditions is also a special case.
     for p in cps
-        if p == :boundary_conditions
-            kwargs[p] = restore_bcs(file)
-        elseif p ∉ field_containing_structs
+        if p ∉ field_containing_structs
             kwargs[p] = file["$p"]
         end
     end
@@ -469,7 +478,7 @@ function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
 
     # Now restore fields.
     for p in cps
-        if p in field_containing_structs && p != :boundary_conditions
+        if p in field_containing_structs
             restore_fields!(model, file, model.arch, p)
         end
     end
