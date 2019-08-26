@@ -88,6 +88,18 @@ end
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
+hasfunction(::AbstractArray{<:Number}) = false
+
+function hasfunction(obj)
+    if applicable(propertynames, obj) && length(propertynames(obj)) > 0
+        return all([hasfunction(getproperty(obj, p)) for p in propertynames(obj)])
+    elseif applicable(iterate, obj) && length(obj) > 1
+        return all([hasfunction(elem) for elem in obj])
+    else
+        return isa(obj, Function)
+    end
+end
+
 ####
 #### Binary output writer
 ####
