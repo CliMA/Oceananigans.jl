@@ -19,23 +19,9 @@ function time_to_write(clock::Clock, diag::OutputWriter)
 end
 
 function validate_interval(frequency, interval)
-    if isnothing(frequency) && isnothing(interval)
-        error("Must choose either a frequency (number of iterations) or a time interval!")
-    elseif isnothing(interval)
-        if isinteger(frequency)
-            return Int(frequency), interval
-        else
-            error("Frequency $frequency must be an integer!")
-        end
-    elseif isnothing(frequency)
-        if isa(interval, Number)
-            return frequency, Float64(interval)
-        else
-            error("Interval must be convertable to a float!")
-        end
-    else
-        error("Cannot choose both frequency and interval!")
-    end
+    frequency == nothing && interval == nothing &&
+        @error "Must specify a frequency or interval!"
+    return
 end
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
