@@ -57,17 +57,22 @@ serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getp
 # Don't check arrays because we don't need that noise.
 has_reference(T, ::AbstractArray{<:Number}) = false
 
+# These two conditions are true, but should not necessary.
+has_reference(::Type{Function}, ::Field) = false
+has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
+
 function has_reference(has_type, obj)
     if typeof(obj) <: has_type
         return true
     elseif applicable(iterate, obj) && length(obj) > 1
-        return all([has_reference(has_type, elem) for elem in obj])
+        return any([has_reference(has_type, elem) for elem in obj])
     elseif applicable(propertynames, obj) && length(propertynames(obj)) > 0
-        return all([has_reference(has_type, getproperty(obj, p)) for p in propertynames(obj)])
+        return any([has_reference(has_type, getproperty(obj, p)) for p in propertynames(obj)])
     else
         return typeof(obj) <: has_type
     end
 end
+
 
 ####
 ####  JLD2 output writer
