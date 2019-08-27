@@ -85,6 +85,7 @@ export
 
     # Halo regions
     fill_halo_regions!,
+    zero_halo_regions!,
 
     # Time stepping
     TimeStepWizard,
