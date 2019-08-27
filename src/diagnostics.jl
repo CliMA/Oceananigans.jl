@@ -19,23 +19,8 @@ function time_to_run(clock::Clock, diag::Diagnostic)
 end
 
 function validate_interval(frequency, interval)
-    if isnothing(frequency) && isnothing(interval)
-        error("Must choose either a frequency (number of iterations) or a time interval!")
-    elseif isnothing(interval)
-        if isinteger(frequency)
-            return Int(frequency), interval
-        else
-            error("Frequency $frequency must be an integer!")
-        end
-    elseif isnothing(frequency)
-        if isa(interval, Number)
-            return frequency, Float64(interval)
-        else
-            error("Interval must be convertable to a float!")
-        end
-    else
-        error("Cannot choose both frequency and interval!")
-    end
+    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
+    return
 end
 
 ####
@@ -99,7 +84,7 @@ end
             for j in 1:cols
                 sum += Rx[1, j, lvl]
             end
-            
+
             Rxy[1, 1, lvl] = real(sum)
         end
     end
@@ -123,9 +108,9 @@ function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
     if typeof(fields) <: Field
         fields = [fields]
     end
-    
+
     length(fields) > 2 && @error "Cannot take horizontal average of more than 2 fields."
-    frequency, interval = validate_interval(frequency, interval)
+    validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
     HorizontalAverage(profile, fields, frequency, interval, 0.0)
 end
@@ -142,13 +127,11 @@ end
     grid = P.fields[1].grid
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     sz = 2Nx * sizeof(eltype(P.profile))
-    
     if length(P.fields) == 1
         @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.fields[1].data, nothing, +)
     else
         @cuda threads=Nx blocks=(Ny, Nz) shmem=sz gpu_accumulate_xy!(P.profile, model.poisson_solver.storage, P.fields[1].data, P.fields[2].data, +)
-    end  
-    
+    end
     P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
 end
 
