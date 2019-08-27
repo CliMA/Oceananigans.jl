@@ -1,6 +1,3 @@
-using Distributed
-using NetCDF, JLD2
-
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 function time_to_write(clock::Clock, diag::OutputWriter)
@@ -32,17 +29,16 @@ saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-_bc_type(::BoundaryCondition{T}) where T = T
-
+# Special saveproperty! so boundary conditions are easily readable outside julia.    
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     for endpoint in propertynames(cbcs)
         endpoint_bc = getproperty(cbcs, endpoint)
         if isa(endpoint_bc.condition, Function)
             @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
-            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
+            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(bctype(endpoint_bc))
             file["boundary_conditions/$field/$coord/$endpoint/condition"] = missing
         else
-            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(_bc_type(endpoint_bc))
+            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(bctype(endpoint_bc))
             file["boundary_conditions/$field/$coord/$endpoint/condition"] = endpoint_bc.condition
         end
     end
@@ -52,25 +48,166 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
-serializeproperty!(file, location, p)        = file[location] = p
-serializeproperty!(file, location, p::Field) = file[location] = Array(p.data.parent)
+serializeproperty!(file, location, p) = file[location] = p
+serializeproperty!(file, location, p::Union{AbstractArray, Field}) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
-serializeproperty!(file, location, p::Union{NamedTuple,AdamsBashforthTimestepper}) =
-    [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
-hasfunction(::AbstractArray{<:Number}) = false
+# Don't check arrays because we don't need that noise.
+has_reference(T, ::AbstractArray{<:Number}) = false
 
-function hasfunction(obj)
-    if applicable(propertynames, obj) && length(propertynames(obj)) > 0
-        return all([hasfunction(getproperty(obj, p)) for p in propertynames(obj)])
+function has_reference(has_type, obj)
+    if typeof(obj) <: has_type
+        return true
     elseif applicable(iterate, obj) && length(obj) > 1
-        return all([hasfunction(elem) for elem in obj])
+        return all([has_reference(has_type, elem) for elem in obj])
+    elseif applicable(propertynames, obj) && length(propertynames(obj)) > 0
+        return all([has_reference(has_type, getproperty(obj, p)) for p in propertynames(obj)])
     else
-        return isa(obj, Function)
+        return typeof(obj) <: has_type
     end
 end
+
+####
+####  JLD2 output writer
+####
+
+mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
+        filepath :: String
+         outputs :: O
+        interval :: I
+       frequency :: F
+            init :: IF
+       including :: IN
+        previous :: Float64
+            part :: Int
+    max_filesize :: Float64
+           async :: Bool
+           force :: Bool
+         verbose :: Bool
+end
+
+noinit(args...) = nothing
+
+"""
+    JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
+                     prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
+                     part=1, max_filesize=Inf, force=false, async=false, verbose=false)
+
+Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
+a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
+function of the form `func(model)` that returns the data to be saved.
+
+# Keyword arguments
+- `frequency::Int`:    Save output every `n` model iterations.
+- `interval::Int`:     Save output every `t` units of model clock time.
+- `dir::String`:       Directory to save output to. Default: "." (current working
+                       directory).
+- `prefix::String`:    Descriptive filename prefixed to all output files. Default: "".
+- `init::Function`:    A function of the form `init(file, model)` that runs when a JLD2
+                       output file is initialized. Default: `noinit(args...) = nothing`.
+- `including::Array`:  List of model properties to save with every file. By default, the
+                       grid, equation of state, planetary constants, and the turbulence
+                       closure parameters are saved.
+- `part::Int`:         The starting part number used if `max_filesize` is finite.
+                       Default: 1.
+- `max_filesize::Int`: The writer will stop writing to the output file once the file size
+                       exceeds `max_filesize`, and write to a new one with a consistent
+                       naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
+- `force::Bool`:       Remove existing files if their filenames conflict. Default: `false`.
+- `async::Bool`:       Write output asynchronously. Default: `false`.
+- `verbose::Bool`:     Log what the output writer is doing with statistics on compute/write
+                       times and file sizes. Default: `false`.
+"""
+function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
+                          init=noinit, including=[:grid, :eos, :constants, :closure],
+                          part=1, max_filesize=Inf, force=false, async=false, verbose=false)
+
+    validate_interval(interval, frequency)
+
+    mkpath(dir)
+    filepath = joinpath(dir, prefix * ".jld2")
+    force && isfile(filepath) && rm(filepath, force=true)
+
+    jldopen(filepath, "a+") do file
+        init(file, model)
+        saveproperties!(file, model, including)
+    end
+
+    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
+                            0.0, part, max_filesize, async, force, verbose)
+end
+
+function write_output(model, fw::JLD2OutputWriter)
+    verbose = fw.verbose
+    verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
+    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
+    verbose && @info "Calculation time: $(prettytime(tc))"
+
+    iter = model.clock.iteration
+    time = model.clock.time
+
+    filesize(fw.filepath) >= fw.max_filesize && start_next_file(model, fw)
+
+    path = fw.filepath
+    verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
+    t0, sz = time_ns(), filesize(path)
+
+    if fw.async
+        @async remotecall(jld2output!, 2, path, iter, time, data)
+    else
+        jld2output!(path, iter, time, data)
+    end
+
+    t1, newsz = time_ns(), filesize(path)
+    verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
+
+    return
+end
+
+function start_next_file(model::Model, fw::JLD2OutputWriter)
+    verbose = fw.verbose
+    sz = filesize(fw.filepath)
+    verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
+
+    if fw.part == 1
+        part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
+        verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
+        mv(fw.filepath, part1_path, force=fw.force)
+        fw.filepath = part1_path
+    end
+
+    fw.part += 1
+    fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
+    fw.force && isfile(fw.filepath) && rm(fw.filepath, force=true)
+    verbose && @info "Now writing to: $(fw.filepath)"
+
+    jldopen(fw.filepath, "a+") do file
+        fw.init(file, model)
+        saveproperties!(file, model, fw.including)
+    end
+end
+
+function jld2output!(path, iter, time, data)
+    jldopen(path, "r+") do file
+        file["timeseries/t/$iter"] = time
+        for (name, datum) in data
+            file["timeseries/$name/$iter"] = datum
+        end
+    end
+    return
+end
+
+function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
+    if clock.time > out.previous + out.interval
+        out.previous = clock.time - rem(clock.time, out.interval)
+        return true
+    else
+        return false
+    end
+end
+
 
 ####
 #### Binary output writer
@@ -235,155 +372,17 @@ function read_output(fw::NetCDFOutputWriter, field_name, iter)
 end
 
 ####
-####  JLD2 output writer
-####
-
-mutable struct JLD2OutputWriter{F, I, O, IF, IN} <: OutputWriter
-        filepath :: String
-         outputs :: O
-        interval :: I
-       frequency :: F
-            init :: IF
-       including :: IN
-        previous :: Float64
-            part :: Int
-    max_filesize :: Float64
-           async :: Bool
-           force :: Bool
-         verbose :: Bool
-end
-
-noinit(args...) = nothing
-
-"""
-    JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
-                     prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
-                     part=1, max_filesize=Inf, force=false, async=false, verbose=false)
-
-Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
-a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
-function of the form `func(model)` that returns the data to be saved.
-
-# Keyword arguments
-- `frequency::Int`:    Save output every `n` model iterations.
-- `interval::Int`:     Save output every `t` units of model clock time.
-- `dir::String`:       Directory to save output to. Default: "." (current working
-                       directory).
-- `prefix::String`:    Descriptive filename prefixed to all output files. Default: "".
-- `init::Function`:    A function of the form `init(file, model)` that runs when a JLD2
-                       output file is initialized. Default: `noinit(args...) = nothing`.
-- `including::Array`:  List of model properties to save with every file. By default, the
-                       grid, equation of state, planetary constants, and the turbulence
-                       closure parameters are saved.
-- `part::Int`:         The starting part number used if `max_filesize` is finite.
-                       Default: 1.
-- `max_filesize::Int`: The writer will stop writing to the output file once the file size
-                       exceeds `max_filesize`, and write to a new one with a consistent
-                       naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
-- `force::Bool`:       Remove existing files if their filenames conflict. Default: `false`.
-- `async::Bool`:       Write output asynchronously. Default: `false`.
-- `verbose::Bool`:     Log what the output writer is doing with statistics on compute/write
-                       times and file sizes. Default: `false`.
-"""
-function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
-                          init=noinit, including=[:grid, :eos, :constants, :closure],
-                          part=1, max_filesize=Inf, force=false, async=false, verbose=false)
-
-    validate_interval(interval, frequency)
-
-    mkpath(dir)
-    filepath = joinpath(dir, prefix * ".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
-
-    jldopen(filepath, "a+") do file
-        init(file, model)
-        saveproperties!(file, model, including)
-    end
-
-    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
-                            0.0, part, max_filesize, async, force, verbose)
-end
-
-function write_output(model, fw::JLD2OutputWriter)
-    verbose = fw.verbose
-    verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) in fw.outputs)
-    verbose && @info "Calculation time: $(prettytime(tc))"
-
-    iter = model.clock.iteration
-    time = model.clock.time
-
-    filesize(fw.filepath) >= fw.max_filesize && start_next_file(model, fw)
-
-    path = fw.filepath
-    verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
-    t0, sz = time_ns(), filesize(path)
-
-    if fw.async
-        @async remotecall(jld2output!, 2, path, iter, time, data)
-    else
-        jld2output!(path, iter, time, data)
-    end
-
-    t1, newsz = time_ns(), filesize(path)
-    verbose && @info "Writing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(newsz)), Δsize=$(pretty_filesize(newsz-sz))"
-
-    return
-end
-
-function start_next_file(model::Model, fw::JLD2OutputWriter)
-    verbose = fw.verbose
-    sz = filesize(fw.filepath)
-    verbose && @info "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(fw.max_filesize))."
-
-    if fw.part == 1
-        part1_path = replace(fw.filepath, r".jld2$" => "_part1.jld2")
-        verbose && @info "Renaming first part: $(fw.filepath) -> $part1_path"
-        mv(fw.filepath, part1_path, force=fw.force)
-        fw.filepath = part1_path
-    end
-
-    fw.part += 1
-    fw.filepath = replace(fw.filepath, r"part\d+.jld2$" => "part" * string(fw.part) * ".jld2")
-    fw.force && isfile(fw.filepath) && rm(fw.filepath, force=true)
-    verbose && @info "Now writing to: $(fw.filepath)"
-
-    jldopen(fw.filepath, "a+") do file
-        fw.init(file, model)
-        saveproperties!(file, model, fw.including)
-    end
-end
-
-function jld2output!(path, iter, time, data)
-    jldopen(path, "r+") do file
-        file["timeseries/t/$iter"] = time
-        for (name, datum) in data
-            file["timeseries/$name/$iter"] = datum
-        end
-    end
-    return
-end
-
-function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
-    if clock.time > out.previous + out.interval
-        out.previous = clock.time - rem(clock.time, out.interval)
-        return true
-    else
-        return false
-    end
-end
-
-####
 #### Checkpointer
 ####
 
-mutable struct Checkpointer{I, T, P} <: OutputWriter
-   frequency :: I
-    interval :: T
-         dir :: String
-      prefix :: String
-  properties :: P
-       force :: Bool
+mutable struct Checkpointer{I, T, P, A} <: OutputWriter
+         frequency :: I
+          interval :: T
+               dir :: String
+            prefix :: String
+        properties :: P
+             force :: Bool
+    has_array_refs :: A
 end
 
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
@@ -395,31 +394,32 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
     # Grid needs to be checkpointed for restoring to work.
     :grid ∉ properties && push!(properties, :grid)
 
+    has_array_refs = Symbol[]
+
     for p in properties
         isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
-        if hasfunction(getproperty(model, p))
+        
+        if has_reference(Function, getproperty(model, p))
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
         end
+
+        has_reference(Field, getproperty(model, p)) && push!(has_array_refs, p)
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, dir, prefix, properties, force)
+    return Checkpointer(frequency, interval, dir, prefix, properties, force, has_array_refs)
 end
 
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
+        file["has_array_refs"] = c.has_array_refs
 
-        # Serialize boundary conditions whole as serializeproperty! will attempt to
-        # recurse through them as it's a named tuple.
-        if :boundary_conditions ∈ c.properties
-            file["boundary_conditions"] = model.boundary_conditions
-        end
-
-        serializeproperties!(file, model, filter(e -> e != :boundary_conditions, c.properties))
+        serializeproperties!(file, model, filter(e -> !(e ∈ c.has_array_refs), c.properties))
+        saveproperties!(file, model, filter(e -> e ∈ c.has_array_refs, c.properties))
     end
 end
 
@@ -437,17 +437,18 @@ function restore_fields!(model, file, arch, fieldset; location="$fieldset")
     end
 end
 
-const field_containing_structs = (:velocities, :tracers, :timestepper)
+#const array_containing_structs = (:velocities, :tracers, :timestepper)
 
-function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
+function restore_from_checkpoint(filepath; kwargs=Dict())
     file = jldopen(filepath, "r")
 
     cps = file["checkpointed_properties"]
+    has_array_refs = file["has_array_refs"]
 
     # Restore model properties that were just serialized.
     # We skip fields that contain structs and restore them after model creation.
     for p in cps
-        if p ∉ field_containing_structs
+        if p ∉ has_array_refs
             kwargs[p] = file["$p"]
         end
     end
@@ -456,11 +457,11 @@ function restore_from_checkpoint(filepath; kwargs = Dict{Symbol, Any}())
     kwargs[:N] = (kwargs[:grid].Nx, kwargs[:grid].Ny, kwargs[:grid].Nz)
     kwargs[:L] = (kwargs[:grid].Lx, kwargs[:grid].Ly, kwargs[:grid].Lz)
 
-    model =  Model(; kwargs...)
+    model = Model(; kwargs...)
 
     # Now restore fields.
     for p in cps
-        if p in field_containing_structs
+        if p in has_array_refs
             restore_fields!(model, file, model.arch, p)
         end
     end
