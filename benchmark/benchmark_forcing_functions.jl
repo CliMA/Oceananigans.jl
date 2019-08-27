@@ -34,15 +34,15 @@ benchmark_name(N, id) = benchmark_name(N, id, "", "", "")
 
 @inline function Fu(grid, U, Φ, i, j, k)
     if k == 1
-        return -2*0.1/grid.Δz^2 * (U.u[i, j, 1] - 0)
+        return @inbounds -2*0.1/grid.Δz^2 * (U.u[i, j, 1] - 0)
     elseif k == grid.Nz
-        return -2*0.1/grid.Δz^2 * (U.u[i, j, grid.Nz] - 0)
+        return @inbounds -2*0.1/grid.Δz^2 * (U.u[i, j, grid.Nz] - 0)
     else
         return 0
     end
 end
 
-@inline FT(grid, U, Φ, i, j, k) = ifelse(k == 1, -1e-4 * (Φ.T[i, j, 1] - 0), 0)
+@inline FT(grid, U, Φ, i, j, k) = @inbounds ifelse(k == 1, -1e-4 * (Φ.T[i, j, 1] - 0), 0)
 forcing = Forcing(Fu=Fu, FT=FT)
 
 for arch in archs, float_type in float_types, N in Ns
