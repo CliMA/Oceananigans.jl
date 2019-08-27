@@ -19,8 +19,7 @@ function time_to_write(clock::Clock, diag::OutputWriter)
 end
 
 function validate_interval(frequency, interval)
-    frequency == nothing && interval == nothing &&
-        @error "Must specify a frequency or interval!"
+    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
     return
 end
 
@@ -290,8 +289,7 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
                           init=noinit, including=[:grid, :eos, :constants, :closure],
                           part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
-    interval === nothing && frequency === nothing &&
-        error("Either interval or frequency must be passed to the JLD2OutputWriter!")
+    validate_interval(interval, frequency)
 
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
@@ -392,20 +390,18 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
                       properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
                                     :velocities, :tracers, :timestepper])
 
-    frequency, interval = validate_interval(frequency, interval)
+    validate_interval(frequency, interval)
 
-    if :grid ∉ properties
-        @error ":grid not found in properties. The grid must be serialized for restore_from_checkpoint to work."
-    end
+    # Grid needs to be checkpointed for restoring to work.
+    :grid ∉ properties && push!(properties, :grid)
 
     for p in properties
         isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
-    end
-
-    if :boundary_conditions ∈ properties && hasfunction(model.boundary_conditions)
-        @warn "One or more boundary conditions contain functions and will not be checkpointed."
-        filter!(e -> e != :boundary_conditions, properties)
+        if hasfunction(getproperty(model, p))
+            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
+            filter!(e -> e != p, properties)
+        end
     end
 
     mkpath(dir)
