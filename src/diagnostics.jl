@@ -89,15 +89,17 @@ end
 
         # write results
         if row == rows
-            Rx[1, col, lvl] = shmem[row]
+            Rx[1, col, lvl] = shmem[rows]
         end
         sync_threads()
 
-        if col == cols
+        if col == cols && row == rows
             sum = 0
+            @cuprintf(" ")  # Have absolutely no idea why this is "needed" but horizontal average is wrong without it...
             for j in 1:cols
                 sum += Rx[1, j, lvl]
             end
+            
             Rxy[1, 1, lvl] = real(sum)
         end
     end
