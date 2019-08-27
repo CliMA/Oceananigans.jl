@@ -104,11 +104,11 @@ mutable struct HorizontalAverage{P, F, I, T} <: Diagnostic
      previous :: Float64
 end
 
-function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
-    if typeof(fields) <: Field
-        fields = [fields]
-    end
+tupleit(t::Tuple) = t
+tupleit(nt) = Tuple(nt)
 
+function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
+    fields = tupleit(fields)
     length(fields) > 2 && @error "Cannot take horizontal average of more than 2 fields."
     validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Nz)
