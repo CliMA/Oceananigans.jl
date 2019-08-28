@@ -183,8 +183,6 @@ end
     end
 end
 
-@hascuda CuArrays.allowscalar(false)
-
 abstract type Architecture end
 struct CPU <: Architecture end
 struct GPU <: Architecture end
