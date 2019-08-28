@@ -80,27 +80,27 @@ end
 #### Zeroing out halo regions
 ####
 
- zero_west_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[1:H, :, :] = 0
-zero_south_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, 1:H, :] = 0
-  zero_top_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, 1:H] = 0
+ zero_west_halo!(ϕ, H, N) = @views @. ϕ[1:H, :, :] = 0
+zero_south_halo!(ϕ, H, N) = @views @. ϕ[:, 1:H, :] = 0
+  zero_top_halo!(ϕ, H, N) = @views @. ϕ[:, :, 1:H] = 0
 
-  zero_east_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[N+H+1:N+2H, :, :] = 0
- zero_north_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = 0
-zero_bottom_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = 0
+  zero_east_halo!(ϕ, H, N) = @views @. ϕ[N+H+1:N+2H, :, :] = 0
+ zero_north_halo!(ϕ, H, N) = @views @. ϕ[:, N+H+1:N+2H, :] = 0
+zero_bottom_halo!(ϕ, H, N) = @views @. ϕ[:, :, N+H+1:N+2H] = 0
 
-function zero_halo_regions!(field::AbstractArray, grid)
-    zero_west_halo!(ϕ, grid.Hx, grid.Nx)
-    zero_east_halo!(ϕ, grid.Hx, grid.Nx)
-    zero_south_halo!(ϕ, grid.Hy, grid.Ny)
-    zero_north_halo!(ϕ, grid.Hy, grid.Ny)
-    zero_top_halo!(ϕ, grid.Hz, grid.Nz)
+function zero_halo_regions!(ϕ::AbstractArray, grid)
+      zero_west_halo!(ϕ, grid.Hx, grid.Nx)
+      zero_east_halo!(ϕ, grid.Hx, grid.Nx)
+     zero_south_halo!(ϕ, grid.Hy, grid.Ny)
+     zero_north_halo!(ϕ, grid.Hy, grid.Ny)
+       zero_top_halo!(ϕ, grid.Hz, grid.Nz)
     zero_bottom_halo!(ϕ, grid.Hz, grid.Nz)
     return
 end
 
-function zero_halo_regions!(fields::Tuple)
+function zero_halo_regions!(fields::Tuple, grid)
     for field in fields
-        zero_halo_regions!(field, field.grid)
+        zero_halo_regions!(field, grid)
     end
     return
 end
