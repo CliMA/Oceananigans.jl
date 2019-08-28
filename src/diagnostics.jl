@@ -50,6 +50,7 @@ mutable struct HorizontalAverage{P, F, I, T} <: Diagnostic
 end
 
 tupleit(t::Tuple) = t
+tupleit(a::AbstractArray) = Tuple(a)
 tupleit(nt) = tuple(nt)
 
 function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
