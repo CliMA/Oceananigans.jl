@@ -161,7 +161,7 @@ import
     CUDAapi,
     GPUifyLoops
 
-import CUDAapi: has_cuda()
+import CUDAapi: has_cuda
 import GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
