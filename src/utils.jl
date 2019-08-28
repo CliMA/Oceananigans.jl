@@ -8,21 +8,29 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 
 # Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
-    if t < 1e3
-        value, units = t, "ns"
-    elseif t < 1e6
-        value, units = t / 1e3, "μs"
-    elseif t < 1e9
-        value, units = t / 1e6, "ms"
+    if t < 1e-6
+        value, units = t * 1e9, "ns"
+    elseif t < 1e-3
+        value, units = t * 1e6, "μs"
+    elseif t < 1
+        value, units = t * 1e3, "ms"
+    elseif t < 60
+        value, units = t, "s"
     else
-        s = t / 1e9
-        if s < 60
-            value, units = s, "s"
-        else
-            value, units = (s / 60), "min"
-        end
+        value, units = t / 60, "min"
     end
-    return string(@sprintf("%.3f", value), " ", units)
+    return @sprintf("%.3f", value) * " " * units
+end
+
+KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+
+# Code credit: https://stackoverflow.com/a/1094933
+function pretty_filesize(s, suffix="B")
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
+        abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
+        s /= 1024
+    end
+    return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
 
 function Base.zeros(T, ::CPU, grid)
