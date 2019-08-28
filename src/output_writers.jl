@@ -204,16 +204,6 @@ function jld2output!(path, iter, time, data)
     return
 end
 
-function time_to_write(clock, out::JLD2OutputWriter{<:Nothing})
-    if clock.time > out.previous + out.interval
-        out.previous = clock.time - rem(clock.time, out.interval)
-        return true
-    else
-        return false
-    end
-end
-
-
 ####
 #### Binary output writer
 ####
