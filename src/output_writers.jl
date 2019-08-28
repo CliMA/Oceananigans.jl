@@ -377,11 +377,12 @@ mutable struct Checkpointer{I, T, P, A} <: OutputWriter
                dir :: String
             prefix :: String
         properties :: P
-             force :: Bool
     has_array_refs :: A
+             force :: Bool
+           verbose :: Bool
 end
 
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, verbose=false
                       properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
                                     :velocities, :tracers, :timestepper])
 
@@ -405,11 +406,12 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, force, has_array_refs)
+    return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, has_array_refs, force, verbose)
 end
 
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
+    c.verbose && @info "Checkpointing to file $filepath..."
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
         file["has_array_refs"] = c.has_array_refs
