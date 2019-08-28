@@ -27,8 +27,6 @@ Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
      κ :: T = 1e-7
 end
 
-const ConstantSmagorinsky = DeardorffSmagorinsky
-
 DeardorffSmagorinsky(T; kwargs...) = 
     typed_keyword_constructor(T, DeardorffSmagorinsky; kwargs...)
 

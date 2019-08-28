@@ -55,6 +55,10 @@ include("smagorinsky.jl")
 include("rozema_anisotropic_minimum_dissipation.jl")
 include("verstappen_anisotropic_minimum_dissipation.jl")
 
+# Some value judgements here:
+const AnisotropicMinimumDissipation = VerstappenAnisotropicMinimumDissipation
+const ConstantSmagorinsky = DeardorffSmagorinsky
+
 basetype(::ConstantSmagorinsky) = ConstantSmagorinsky
 basetype(::ConstantIsotropicDiffusivity) = ConstantIsotropicDiffusivity
 basetype(::AnisotropicMinimumDissipation) = AnisotropicMinimumDissipation
