@@ -114,8 +114,10 @@ export
     BinaryOutputWriter,
     NetCDFOutputWriter,
     JLD2OutputWriter,
+    Checkpointer,
     write_output,
     read_output,
+    restore_from_checkpoint,
 
     # Model diagnostics
     Diagnostic,
@@ -147,6 +149,7 @@ using
 using
     Adapt,
     FFTW,
+    Distributed,
     StaticArrays,
     OffsetArrays,
     JLD2,
