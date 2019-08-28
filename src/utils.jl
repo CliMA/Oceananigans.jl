@@ -197,7 +197,7 @@ function launch_config(grid, dims)
 end
 
 ####
-#### Utilities shared between 
+#### Utilities shared between diagnostics and output writers
 ####
 
 function validate_interval(frequency, interval)
