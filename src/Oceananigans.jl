@@ -135,9 +135,7 @@ export
     ConstantIsotropicDiffusivity,
     ConstantAnisotropicDiffusivity,
     ConstantSmagorinsky,
-    BlasiusSmagorinsky,
-    AnisotropicMinimumDissipation,
-    VerstappenAnisotropicMinimumDissipation
+    AnisotropicMinimumDissipation
 
 # Standard library modules
 using
