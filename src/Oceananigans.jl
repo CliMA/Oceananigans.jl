@@ -159,28 +159,24 @@ using
     NetCDF
 
 import
+    CUDAapi,
     GPUifyLoops
+
+import GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     size, length,
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
-# Import CUDA utilities if cuda is detected.
-const HAVE_CUDA = try
-    using CUDAdrv, CUDAnative, CuArrays
-    true
-catch
-    false
-end
-
-import GPUifyLoops: @launch, @loop, @unroll
-
 macro hascuda(ex)
-    return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
+    return CUDAapi.has_cuda()
 end
 
 @hascuda begin
+    # Import CUDA utilities if it's detected.
+    using CUDAdrv, CUDAnative, CuArrays
+
     println("CUDA-enabled GPU(s) detected:")
     for (gpu, dev) in enumerate(CUDAnative.devices())
         println(dev)
