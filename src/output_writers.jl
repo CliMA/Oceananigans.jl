@@ -156,7 +156,7 @@ function write_output(model, fw::JLD2OutputWriter)
     filesize(fw.filepath) >= fw.max_filesize && start_next_file(model, fw)
 
     path = fw.filepath
-    verbose && @info "Writing JLD2 output $(keys(fw.outputs))..."
+    verbose && @info "Writing JLD2 output $(keys(fw.outputs)) to $path..."
     t0, sz = time_ns(), filesize(path)
 
     if fw.async
