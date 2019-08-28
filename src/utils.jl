@@ -6,6 +6,21 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
+####
+#### Convinient definitions
+####
+
+const second = 1.0
+const minute = 60.0
+const hour   = 60minute
+const day    = 24hour
+
+KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+
+####
+#### Pretty printing
+####
+
 # Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
     if t < 1e-6
@@ -22,9 +37,8 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
 
-# Code credit: https://stackoverflow.com/a/1094933
+# Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
         abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
@@ -32,6 +46,10 @@ function pretty_filesize(s, suffix="B")
     end
     return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
+
+####
+#### Creating fields by dispatching on architecture
+####
 
 function Base.zeros(T, ::CPU, grid)
     # Starting and ending indices for the offset array.
@@ -61,6 +79,10 @@ Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid::Grid{T}) where T = zeros(T, arch, grid)
 Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
+####
+#### Courant–Friedrichs–Lewy (CFL) condition number calculation
+####
+
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
@@ -78,6 +100,10 @@ cell_advection_timescale(model) =
                              model.velocities.v.data.parent,
                              model.velocities.w.data.parent,
                              model.grid)
+
+####
+#### Adaptive time stepping
+####
 
 """
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
@@ -129,6 +155,10 @@ tupleit(nt) = tuple(nt)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
+####
+#### Data tuples
+####
+
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
 @inline datatuple(obj::Field) = obj.data
@@ -150,7 +180,10 @@ function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
     NamedTuple{Tuple(names)}(Tuple(elems))
 end
 
-# Dynamic launch configuration
+####
+#### Dynamic launch configuration
+####
+
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun
