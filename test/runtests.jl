@@ -28,6 +28,7 @@ float_types = (Float32, Float64)
     include("test_forcings.jl")
     include("test_turbulence_closures.jl")
     include("test_dynamics.jl")
+    include("test_diagnostics.jl")
     include("test_output_writers.jl")
     include("test_regression.jl")
 end
