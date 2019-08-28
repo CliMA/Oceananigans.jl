@@ -38,6 +38,12 @@ abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 @inline ∇_κ_∇T(args...) = ∇_κ_∇c(args...)
 @inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
 
+# Approximate viscosities and thermal diffusivities for seawater
+# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical 
+# properties of seawater: A review of existing correlations and data" (2010).
+const ν₀ = 1.05e-6
+const κ₀ = 1.46e-7
+
 function typed_keyword_constructor(T, Closure; kwargs...)
     closure = Closure(; kwargs...)
     names = fieldnames(Closure)
