@@ -422,7 +422,7 @@ function write_output(model, c::Checkpointer)
         saveproperties!(file, model, filter(e -> e ∈ c.has_array_refs, c.properties))
     end
 
-    t1, sz = time_ns(), filesize(path)
+    t1, sz = time_ns(), filesize(filepath)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(sz))"
 end
 
