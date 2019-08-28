@@ -170,7 +170,7 @@ import Base:
     iterate, similar, *, +, -
 
 macro hascuda(ex)
-    return CUDAapi.has_cuda()
+    return CUDAapi.has_cuda() ? :($(esc(ex))) : :(nothing)
 end
 
 @hascuda begin
