@@ -1,5 +1,7 @@
 using Statistics, Printf
+
 using Oceananigans
+using Oceananigans.TurbulenceClosures
 
 """ Friction velocity squared. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ²(model)
@@ -183,12 +185,12 @@ push!(model.diagnostics, NaNChecker(model))
 
 Δtₚ = 1 # Time interval for computing and saving profiles.
 
-Up = VerticalProfile(model, model.velocities.u; interval=Δtₚ)
-Vp = VerticalProfile(model, model.velocities.v; interval=Δtₚ)
-Wp = VerticalProfile(model, model.velocities.w; interval=Δtₚ)
-Tp = VerticalProfile(model, model.tracers.T;    interval=Δtₚ)
-νp = VerticalProfile(model, model.diffusivities.νₑ; interval=Δtₚ)
-κp = VerticalProfile(model, model.diffusivities.κₑ.T; interval=Δtₚ)
+Up = HorizontalAverage(model, model.velocities.u; interval=Δtₚ)
+Vp = HorizontalAverage(model, model.velocities.v; interval=Δtₚ)
+Wp = HorizontalAverage(model, model.velocities.w; interval=Δtₚ)
+Tp = HorizontalAverage(model, model.tracers.T;    interval=Δtₚ)
+νp = HorizontalAverage(model, model.diffusivities.νₑ; interval=Δtₚ)
+κp = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ)
 
 append!(model.diagnostics, [Up, Vp, Wp, Tp, νp, κp])
 
