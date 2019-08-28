@@ -8,6 +8,21 @@ using GPUifyLoops: @launch
 using Oceananigans: launch_config, datatuples, device
 import Oceananigans: data_tuple
 
+closures = (
+            :ConstantIsotropicDiffusivity,
+            :ConstantAnisotropicDiffusivity,
+            :DeardorffSmagorinsky,
+            :BlasiusSmagorinsky,
+            :RozemaAnisotropicMinimumDissipation,
+            :VerstappenAnisotropicMinimumDissipation
+           )
+
+for closure in closures
+    @eval begin
+        using Oceananigans.TurbulenceClosures: $closure
+    end
+end
+
 datatuple(args, names) = NamedTuple{names}(a.data for a in args)
 
 function test_closure_instantiation(T, closurename)
@@ -166,14 +181,6 @@ function test_function_differentiation(T=Float64)
         )
 end
 
-closures = (
-            :ConstantIsotropicDiffusivity,
-            :ConstantAnisotropicDiffusivity,
-            :DeardorffSmagorinsky,
-            :BlasiusSmagorinsky,
-            :RozemaAnisotropicMinimumDissipation,
-            :VerstappenAnisotropicMinimumDissipation
-           )
 
 @testset "Turbulence closures" begin
     println("Testing turbulence closures...")
@@ -201,7 +208,6 @@ closures = (
                     println("    Calculating diffusivities for $closure ($T, $arch)")
                     @test test_calc_diffusivities(arch, closure, T)
                 end
-                @test test_calc_diffusivities(arch, :VerstappenAnisotropicMinimumDissipation, T; wall_adj=true)
             end
         end
     end

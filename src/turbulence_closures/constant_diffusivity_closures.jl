@@ -13,8 +13,8 @@ Return a `ConstantIsotropicDiffusivity` closure object of type `T` with
 viscosity `ν` and scalar diffusivity `κ`.
 """
 Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: IsotropicDiffusivity{T}
-    ν :: T = 1e-6
-    κ :: T = 1e-7
+    ν :: T = ν₀
+    κ :: T = κ₀
 end
 
 ConstantIsotropicDiffusivity(T; kwargs...) =
@@ -60,10 +60,10 @@ diffusivity `νh` and `κh`, and vertical viscosity and diffusivity
 `νv` and `κv`.
 """
 Base.@kwdef struct ConstantAnisotropicDiffusivity{T} <: TensorDiffusivity{T}
-    νh :: T = 1e-6
-    νv :: T = 1e-6
-    κh :: T = 1e-7
-    κv :: T = 1e-7
+    νh :: T = ν₀
+    νv :: T = ν₀
+    κh :: T = κ₀
+    κv :: T = κ₀
 end
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,

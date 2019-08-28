@@ -6,19 +6,21 @@ struct RozemaAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
 end
 
 """
-    RozemaAnisotropicMinimumDissipation(T=Float64; C=0.33, ν=1e-6, κ=1e-7)
+    RozemaAnisotropicMinimumDissipation(T=Float64; C=0.33, ν=1.05e-6, κ=1.46e-7)
 
 Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `T` with
 
     * `C` : Poincaré constant
     * `ν` : 'molecular' background viscosity
     * `κ` : 'molecular' background diffusivity
+
+See Rozema et al., " (2015)
 """
 function RozemaAnisotropicMinimumDissipation(FT=Float64;
          C = 0.33,
         Cb = 0.0,
-         ν = 1e-6,
-         κ = 1e-7
+         ν = ν₀,
+         κ = κ₀
     )
     return RozemaAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
 end

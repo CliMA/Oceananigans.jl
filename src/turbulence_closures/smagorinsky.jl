@@ -9,22 +9,21 @@ abstract type AbstractSmagorinsky{T} <: IsotropicDiffusivity{T} end
 #####
 
 """
-    DeardorffSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν_background=1e-6,
-                            κ_background=1e-7)
+    DeardorffSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν=1.05e-6, κ=1.46e-7)
 
 Returns a `DeardorffSmagorinsky` closure object of type `T` with
 
-*  `C` : Smagorinsky constant
-* `Pr` : Prandtl number
-*  `ν` : background viscosity
-*  `κ` : background diffusivity
+    *  `C` : Smagorinsky model constant
+    * `Pr` : Prandtl number
+    *  `ν` : background viscosity
+    *  `κ` : background diffusivity
 """
 Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
-     C :: T = 0.2
+     C :: T = 0.23
     Cb :: T = 1.0
     Pr :: T = 1.0
-     ν :: T = 1e-6
-     κ :: T = 1e-7
+     ν :: T = ν₀
+     κ :: T = κ₀
 end
 
 DeardorffSmagorinsky(T; kwargs...) = 
@@ -46,13 +45,13 @@ when ``N^2 > 0``, and 1 otherwise.
     min(one(T), max(zero(T), Cb * N² / (Pr*Σ²)))
 
 """
-    νₑ(ς, Cs, Δᶠ, Σ²)
+    νₑ(ς, C, Δᶠ, Σ²)
 
 Return the eddy viscosity for constant Smagorinsky
-given the stability `ς`, model constant `Cs`,
+given the stability `ς`, model constant `C`,
 filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
-@inline νₑ_deardorff(ς, Cs, Δᶠ, Σ²) = ς * (Cs*Δᶠ)^2 * sqrt(2Σ²)
+@inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
 @inline function ν_ccc(i, j, k, grid, clo::DeardorffSmagorinsky, c, eos, grav, u, v, w, T, S)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
@@ -60,18 +59,8 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
      Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
-    return νₑ_deardorff(ς, clo.Cs, Δᶠ, Σ²) + clo.ν
+    return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
-
-@inline function ν_ccf(i, j, k, grid, clo::DeardorffSmagorinsky, c, eos, grav, u, v, w, T, S)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccf(i, j, k, grid, u, v, w)
-    N² = ∂z_aaf(i, j, k, grid, buoyancy, eos, grav, T, S)
-     Δᶠ = Δᶠ_ccf(i, j, k, grid, clo)
-     ς = stability(N², Σ², clo.Pr, clo.Cb)
-
-    return νₑ_deardorff(ς, clo.Cs, Δᶠ, Σ²) + clo.ν
-end
-
 
 #####
 ##### Blasius Smagorinsky: the version of the Smagorinsky turbulence closure
@@ -79,13 +68,14 @@ end
 ####
 
 """
-    BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=1e-6, κ=1e-7)
+    BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=1.05e-6, κ=1.46e-7)
 
 Returns a `BlasiusSmagorinsky` closure object of type `T` with
 
     * `Pr` : Prandtl number
     *  `ν` : background viscosity
     *  `κ` : background diffusivity
+
 """
 struct BlasiusSmagorinsky{ML, T} <: AbstractSmagorinsky{T}
               Pr :: T
@@ -94,7 +84,7 @@ struct BlasiusSmagorinsky{ML, T} <: AbstractSmagorinsky{T}
    mixing_length :: ML
 end
 
-BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=1e-6, κ=1e-7, mixing_length=1.0) = 
+BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) = 
     BlasiusSmagorinsky{typeof(mixing_length), T}(Pr, ν, κ, mixing_length)
 
 const BS = BlasiusSmagorinsky
@@ -109,11 +99,24 @@ const BS = BlasiusSmagorinsky
 ##### Mixing length via Monin-Obukhov theory
 #####
 
+"""
+    MoninObukhovMixingLength(T=Float64; kwargs...)
+
+Returns a `MoninObukhovMixingLength closure object of type `T` with
+
+    * Cκ : Von Karman constant
+    * z₀ : roughness length
+    * L₀ : 'base' mixing length
+    * Qu : surface velocity flux (Qu = τ/ρ₀)
+    * Qb : surface buoyancy flux
+
+The surface velocity flux and buoyancy flux are restricted to constants for now.
+"""
 struct MoninObukhovMixingLength{L, T, U, B}
     Cκ :: T
     z₀ :: T
     L₀ :: L
-    Qu :: U
+    Qu :: U 
     Qb :: U
 end
 
@@ -124,6 +127,13 @@ const MO = MoninObukhovMixingLength
 
 @inline ϕm(z, Lm) = ϕm(z, Lm.Qu, Lm.Qb, Lm.Cκ)
 
+"""
+    ϕm(z, Qu, Qb, Cκ)
+
+Return the stability function for monentum at height
+`z` in terms of the velocity flux `Qu`, buoyancy flux 
+`Qb`, and von Karman constant `Cκ`.
+"""
 @inline function ϕm(z::T, Qu, Qb, Cκ) where T
     if Qu == 0
         return zero(T)
@@ -170,22 +180,12 @@ frequency `N²`.
     return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
 end
 
-@inline function ν_ccf(i, j, k, grid, clo::BlasiusSmagorinsky, c, eos, grav, u, v, w, T, S)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccf(i, j, k, grid, u, v, w)
-    N² = ∂z_aaf(i, j, k, grid, buoyancy, eos, grav, T, S)
-    Lm_sq = Lm²(i, j, k, grid, clo, Σ², N²)
-
-    return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
-end
-
 #####
 ##### Abstract Smagorinsky functionality
 #####
 
-function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AbstractSmagorinsky)
-    νₑ = CellField(arch, grid)
-    return (νₑ=νₑ,)
-end
+TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AbstractSmagorinsky) =
+    (νₑ=CellField(arch, grid),)
 
 "Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
 @inline Δᶠ(i, j, k, grid::RegularCartesianGrid, ::AbstractSmagorinsky) = geo_mean_Δᶠ(i, j, k, grid)
@@ -212,22 +212,9 @@ const Δᶠ_cff = Δᶠ
             )
 end
 
-@inline function ΣᵢⱼΣᵢⱼ_ccf(i, j, k, grid, u, v, w)
-    return (
-                    ▶z_aaf(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶xyz_ccf(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 *   ▶x_caa(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 *   ▶y_aca(i, j, k, grid, Σ₂₃², u, v, w)
-            )
-end
 
 @inline function κ_ccc(i, j, k, grid, clo::AbstractSmagorinsky, c, eos, grav, u, v, w, T, S)
     νₑ = ν_ccc(i, j, k, grid, clo, c, eos, grav, u, v, w, T, S)
-    return (νₑ - clo.ν) / clo.Pr + clo.κ
-end
-
-@inline function κ_ccf(i, j, k, grid, clo::AbstractSmagorinsky, c, eos, grav, u, v, w, T, S)
-    νₑ = ν_ccf(i, j, k, grid, clo, c, eos, grav, u, v, w, T, S)
     return (νₑ - clo.ν) / clo.Pr + clo.κ
 end
 
@@ -290,16 +277,8 @@ function calc_diffusivities!(diffusivities, grid, closure::AbstractSmagorinsky, 
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k == 1
-                    @inbounds diffusivities.νₑ[i, j, k] =
-                        ν_ccf(i, j, 2, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                elseif k == grid.Nz
-                    @inbounds diffusivities.νₑ[i, j, k] =
-                        ν_ccf(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                else
-                    @inbounds diffusivities.νₑ[i, j, k] =
-                        ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                end
+                @inbounds diffusivities.νₑ[i, j, k] =
+                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
             end
         end
     end
@@ -338,3 +317,13 @@ end
             + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
+
+@inline function ΣᵢⱼΣᵢⱼ_ccf(i, j, k, grid, u, v, w)
+    return (
+                    ▶z_aaf(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ▶xyz_ccf(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 *   ▶x_caa(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 *   ▶y_aca(i, j, k, grid, Σ₂₃², u, v, w)
+            )
+end
+

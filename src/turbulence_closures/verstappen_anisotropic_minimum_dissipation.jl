@@ -6,7 +6,7 @@ struct VerstappenAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
 end
 
 """
-    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, ν=1e-6, κ=1e-7)
+    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, ν=1.05e-6, κ=1.46e-7)
 
 Returns a `VerstappenAnisotropicMinimumDissipation` closure object of type `T` with
 
@@ -14,12 +14,23 @@ Returns a `VerstappenAnisotropicMinimumDissipation` closure object of type `T` w
     * `Cb` : Buoyancy modification constant
     * `ν`  : 'molecular' background viscosity for momentum
     * `κ`  : 'molecular' background diffusivity for tracers
+
+Based on the version of the anisotropic minimum dissipation closure proposed by:
+
+ - Verstappen, R., "How much eddy dissipation is needed to counterbalance the 
+    "nonlinear production of small, unresolved scales in a large-eddy simulation 
+    of turbulence?", 2018
+
+and described by
+
+ - Vreugdenhil C., and Taylor J., "Large-eddy simulations of stratified plane Couette 
+ flow using the anisotropic minimum-dissipation model", (2018).
 """
 function VerstappenAnisotropicMinimumDissipation(FT=Float64;
      C = 1/12,
     Cb = 0.0,
-     ν = 1e-6,
-     κ = 1e-7,
+     ν = ν₀,
+     κ = κ₀,
     )
     return VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
 end
