@@ -205,8 +205,8 @@ function validate_interval(frequency, interval)
     return
 end
 
-hasinterval(obj) = :interval in propertynames(d) && d.interval != nothing
-hasfrequency(obj) = :frequency in propertynames(d) && d.frequency != nothing
+hasinterval(obj) = :interval in propertynames(obj) && obj.interval != nothing
+hasfrequency(obj) = :frequency in propertynames(obj) && obj.frequency != nothing
 
 frequencyover(clock, obj) = clock.iteration % obj.frequency == 0
 
@@ -219,13 +219,13 @@ function intervalover(clock, obj)
     end
 end
 
-function time_to_write(clock, d::Union{Diagnostic,OutputWriter})
+function time_to_run(clock, d::Union{Diagnostic,OutputWriter})
     if hasinterval(d) && hasfrequency(d)
-        return intervalover(clock, d) || frequencyover(d)
+        return intervalover(clock, d) || frequencyover(clock, d)
     elseif hasinterval(d)
-        return intervalover(d)
+        return intervalover(clock, d)
     elseif hasfrequency(d)
-        return frequencyover(d)
+        return frequencyover(clock, d)
     end
 end
 
