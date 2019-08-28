@@ -1,7 +1,6 @@
 module TurbulenceClosures
 
 export
-  MolecularDiffusivity,
   IsotropicDiffusivity,
   ConstantIsotropicDiffusivity,
 
