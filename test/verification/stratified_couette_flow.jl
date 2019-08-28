@@ -1,7 +1,7 @@
 using Statistics, Printf
 using Oceananigans
 
-""" Friction velocity """
+""" Friction velocity squared. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ²(model)
     Δz = model.grid.Δz
     ν = model.closure.ν
@@ -13,7 +13,7 @@ function uτ²(model)
     uτ²⁺, uτ²⁻
 end
 
-""" Heat flux at the wall """
+""" Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function qw(model)
     Δz = model.grid.Δz
     κ = model.closure.κ
@@ -25,7 +25,7 @@ function qw(model)
     qw⁺, qw⁻
 end
 
-""" Friction temperature """
+""" Friction temperature. See equation (16) of Vreugdenhil & Taylor (2018). """
 function θτ(model)
     Δz = model.grid.Δz
     uτ²⁺, uτ²⁻ = uτ²(model)
@@ -35,7 +35,7 @@ function θτ(model)
     qw⁺ / uτ⁺, qw⁻ / uτ⁻
 end
 
-""" Obukov length scale (assuming a linear equation of state) """
+""" Obukov length scale (assuming a linear equation of state). See equation (17) of Vreugdenhil & Taylor (2018). """
 function L_Obukov(model)
     kₘ = 0.4  # Von Kármán constant
     uτ²⁺, uτ²⁻ = uτ²(model)
@@ -45,21 +45,24 @@ function L_Obukov(model)
     uτ⁺^3 / (kₘ * qw⁺), uτ⁻^3 / (kₘ * qw⁻)
 end
 
-""" Near wall viscous length scale """
+""" Near wall viscous length scale. See line following equation (18) of Vreugdenhil & Taylor (2018). """
 function δᵥ(model)
     ν = model.closure.ν
     uτ²⁺, uτ²⁻ = uτ²(model)
     ν / √uτ²⁺, ν / √uτ²⁻
 end
 
-""" Ratio of length scales that define when the stratified plane Couette flow is turbulent """
+"""
+    Ratio of length scales that define when the stratified plane Couette flow is turbulent.
+    See equation (18) of Vreugdenhil & Taylor (2018).
+"""
 function L⁺(model)
     δᵥ⁺, δᵥ⁻ = δᵥ(model)
     L_O⁺, L_O⁻ = L_Obukov(model)
     L_O⁺ / δᵥ⁺, L_O⁻ / δᵥ⁻
 end
 
-""" Friction Reynolds number """
+""" Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function Reτ(model)
     ν = model.closure.ν
     h = model.grid.Lz
@@ -67,7 +70,7 @@ function Reτ(model)
     h * √uτ²⁺ / ν, h * √uτ²⁻ / ν
 end
 
-""" Friction Nusselt number """
+""" Friction Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function Nu(model)
     κ = model.closure.κ
     h = model.grid.Lz
@@ -77,7 +80,7 @@ function Nu(model)
     (qw⁺ * h)/(κ * Θw), (qw⁻ * h)/(κ * Θw)
 end
 
-# Initial condition, boundary condition, and tracer forcing
+# Non-dimensional parameters chosen to reproduce run 5 from Table 1 of Vreugdenhil & Taylor (2018).
 Pr = 0.7   # Prandtl number
 Re = 4250  # Reynolds number
 Ri = 0.04  # Richardson number
