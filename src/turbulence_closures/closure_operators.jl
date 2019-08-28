@@ -1,6 +1,6 @@
-#
-# Differential operators for regular grids
-#
+#####
+##### Differential operators for regular grids
+#####
 
 @inline ∂x_caa(i, j, k, grid, u::AbstractArray) = @inbounds (u[i+1, j, k] - u[i, j, k]) / grid.Δx
 @inline ∂x_faa(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i-1, j, k]) / grid.Δx
@@ -46,9 +46,9 @@
 # between cell points or face points, appropriately.
 #
 
-#
-# Differential operators
-#
+#####
+##### Differential operators
+#####
 
 """
     ∂x_faa(i, j, k, grid, F, args...)
@@ -122,9 +122,9 @@ located at `aaf` in `z`, across `aac`.
 @inline ∂z_aac(i, j, k, grid, F::TF, args...) where TF<:Function =
     (F(i, j, k, grid, args...) - F(i, j, k+1, grid, args...)) / grid.Δz
 
-#
-# Double differentiation
-#
+#####
+##### Double differentiation
+#####
 
 @inline ∂x²_caa(i, j, k, grid, c) = ∂x_caa(i, j, k, grid, ∂x_faa, c)
 @inline ∂x²_faa(i, j, k, grid, u) = ∂x_faa(i, j, k, grid, ∂x_caa, u)
@@ -135,9 +135,9 @@ located at `aaf` in `z`, across `aac`.
 @inline ∂z²_aac(i, j, k, grid, c) = ∂z_aac(i, j, k, grid, ∂z_aaf, c)
 @inline ∂z²_aaf(i, j, k, grid, w) = ∂z_aaf(i, j, k, grid, ∂z_aac, w)
 
-#
-# Interpolation operations for functions
-#
+#####
+##### Interpolation operations for functions
+#####
 
 """
     ▶x_faa(i, j, k, grid, F, args...)
@@ -237,9 +237,9 @@ from `aaf` to `aac`.
 @inline ▶z_aac(i, j, k, grid::Grid{T}, w::AbstractArray, args...) where T =
     @inbounds T(0.5) * (w[i, j, k] + w[i, j, k+1])
 
-#
-# Double interpolation: 12 operators
-#
+#####
+##### Double interpolation: 12 operators
+#####
 
 """
     ▶xy_cca(i, j, k, grid, F, args...)
@@ -413,9 +413,9 @@ at index `i, j, k`.
 @inline ν_Σᵢⱼ_cff(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
     @inbounds ▶yz_aff(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
 
-#
-# Stress divergences
-#
+#####
+##### Stress divergences
+#####
 
 # At fcc
 @inline ∂x_2ν_Σ₁₁(i, j, k, grid, closure, u, v, w, diffusivities) =

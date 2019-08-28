@@ -6,13 +6,14 @@ struct VerstappenAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
 end
 
 """
-    VerstappenAnisotropicMinimumDissipation(T=Float64; C=0.33, ν=1e-6, κ=1e-7)
+    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, ν=1e-6, κ=1e-7)
 
-Returns a `AnisotropicMinimumDissipation` closure object of type `T` with
+Returns a `VerstappenAnisotropicMinimumDissipation` closure object of type `T` with
 
-    * `C` : Poincaré constant
-    * `ν` : 'molecular' background viscosity
-    * `κ` : 'molecular' background diffusivity
+    * `C`  : Poincaré constant
+    * `Cb` : Buoyancy modification constant
+    * `ν`  : 'molecular' background viscosity for momentum
+    * `κ`  : 'molecular' background diffusivity for tracers
 """
 function VerstappenAnisotropicMinimumDissipation(FT=Float64;
      C = 1/12,
@@ -39,15 +40,15 @@ end
     q = norm_tr_∇u_ccc(ijk..., u, v, w)
 
     if q == 0 # SGS viscosity is zero when strain is 0
-        νˢᶠˢ = zero(FT)
+        νˢᵍˢ = zero(FT)
     else
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(ijk..., closure, u, v, w)
         ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, eos, grav, w, T, S) / Δᶠz_ccc(ijk...)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
-        νˢᶠˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
+        νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
     end
 
-    return max(zero(FT), νˢᶠˢ) + closure.ν
+    return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
 @inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::VAMD, c,
@@ -57,14 +58,14 @@ end
     σ =  norm_θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
     if σ == 0
-        κˢᶠˢ = zero(FT)
+        κˢᵍˢ = zero(FT)
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, u, v, w, c)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
-        κˢᶠˢ = - closure.C * δ² * ϑ / σ
+        κˢᵍˢ = - closure.C * δ² * ϑ / σ
     end
 
-    return max(zero(FT), κˢᶠˢ) + closure.κ
+    return max(zero(FT), κˢᵍˢ) + closure.κ
 end
 
 #####
@@ -302,134 +303,3 @@ for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
         const $Δ_loc = $Δ_ccc
     end
 end
-
-#####
-##### Normalized gradients
-#####
-
-# ccc
-const norm_∂x_u = ∂x_u
-const norm_∂y_v = ∂y_v
-const norm_∂z_w = ∂z_w
-
-# ffc
-@inline norm_∂x_v(i, j, k, grid, v) = 
-    Δᶠx_ffc(i, j, k, grid) / Δᶠy_ffc(i, j, k, grid) * ∂x_faa(i, j, k, grid, v)
-
-@inline norm_∂y_u(i, j, k, grid, u) = 
-    Δᶠy_ffc(i, j, k, grid) / Δᶠx_ffc(i, j, k, grid) * ∂y_afa(i, j, k, grid, u)
-
-# fcf
-@inline norm_∂x_w(i, j, k, grid, w) = 
-    Δᶠx_fcf(i, j, k, grid) / Δᶠz_fcf(i, j, k, grid) * ∂x_faa(i, j, k, grid, w)
-
-@inline norm_∂z_u(i, j, k, grid, u) = 
-    Δᶠz_fcf(i, j, k, grid) / Δᶠx_fcf(i, j, k, grid) * ∂z_aaf(i, j, k, grid, u)
-
-# cff
-@inline norm_∂y_w(i, j, k, grid, w) = 
-    Δᶠy_cff(i, j, k, grid) / Δᶠz_cff(i, j, k, grid) * ∂y_afa(i, j, k, grid, w)
-
-@inline norm_∂z_v(i, j, k, grid, v) = 
-    Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂z_aaf(i, j, k, grid, v)
-
-# tracers
-@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂x_faa(i, j, k, grid, c)
-@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂y_afa(i, j, k, grid, c)
-@inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂z_aaf(i, j, k, grid, c)
-
-#####
-##### Strain operators
-#####
-
-# ccc
-@inline norm_Σ₁₁(i, j, k, grid, u) = norm_∂x_u(i, j, k, grid, u)
-@inline norm_Σ₂₂(i, j, k, grid, v) = norm_∂y_v(i, j, k, grid, v)
-@inline norm_Σ₃₃(i, j, k, grid, w) = norm_∂z_w(i, j, k, grid, w)
-
-@inline norm_tr_Σ(i, j, k, grid, u, v, w) =
-    norm_Σ₁₁(i, j, k, grid, u) + norm_Σ₂₂(i, j, k, grid, v) + norm_Σ₃₃(i, j, k, grid, w)
-
-# ffc
-@inline norm_Σ₁₂(i, j, k, grid::Grid{T}, u, v) where T =
-    T(0.5) * (norm_∂y_u(i, j, k, grid, u) + norm_∂x_v(i, j, k, grid, v))
-
-# fcf
-@inline norm_Σ₁₃(i, j, k, grid::Grid{T}, u, w) where T =
-    T(0.5) * (norm_∂z_u(i, j, k, grid, u) + norm_∂x_w(i, j, k, grid, w))
-
-# cff
-@inline norm_Σ₂₃(i, j, k, grid::Grid{T}, v, w) where T =
-    T(0.5) * (norm_∂z_v(i, j, k, grid, v) + norm_∂y_w(i, j, k, grid, w))
-
-@inline norm_Σ₁₂²(i, j, k, grid, u, v) = norm_Σ₁₂(i, j, k, grid, u, v)^2
-@inline norm_Σ₁₃²(i, j, k, grid, u, w) = norm_Σ₁₃(i, j, k, grid, u, w)^2
-@inline norm_Σ₂₃²(i, j, k, grid, v, w) = norm_Σ₂₃(i, j, k, grid, v, w)^2
-
-# Consistent function signatures for convenience:
-@inline norm_∂x_v(i, j, k, grid, u, v, w) = norm_∂x_v(i, j, k, grid, v)
-@inline norm_∂x_w(i, j, k, grid, u, v, w) = norm_∂x_w(i, j, k, grid, w)
-
-@inline norm_∂y_u(i, j, k, grid, u, v, w) = norm_∂y_u(i, j, k, grid, u)
-@inline norm_∂y_w(i, j, k, grid, u, v, w) = norm_∂y_w(i, j, k, grid, w)
-
-@inline norm_∂z_u(i, j, k, grid, u, v, w) = norm_∂z_u(i, j, k, grid, u)
-@inline norm_∂z_v(i, j, k, grid, u, v, w) = norm_∂z_v(i, j, k, grid, v)
-
-@inline norm_Σ₁₁(i, j, k, grid, u, v, w) = norm_Σ₁₁(i, j, k, grid, u)
-@inline norm_Σ₂₂(i, j, k, grid, u, v, w) = norm_Σ₂₂(i, j, k, grid, v)
-@inline norm_Σ₃₃(i, j, k, grid, u, v, w) = norm_Σ₃₃(i, j, k, grid, w)
-
-@inline norm_Σ₁₂(i, j, k, grid, u, v, w) = norm_Σ₁₂(i, j, k, grid, u, v)
-@inline norm_Σ₁₃(i, j, k, grid, u, v, w) = norm_Σ₁₃(i, j, k, grid, u, w)
-@inline norm_Σ₂₃(i, j, k, grid, u, v, w) = norm_Σ₂₃(i, j, k, grid, v, w)
-
-# Symmetry relations
-const norm_Σ₂₁ = norm_Σ₁₂
-const norm_Σ₃₁ = norm_Σ₁₃
-const norm_Σ₃₂ = norm_Σ₂₃
-
-# Trace and squared strains
-@inline norm_tr_Σ²(ijk...) = norm_Σ₁₁(ijk...)^2 +  norm_Σ₂₂(ijk...)^2 +  norm_Σ₃₃(ijk...)^2
-
-@inline norm_Σ₁₂²(i, j, k, grid, u, v, w) = norm_Σ₁₂²(i, j, k, grid, u, v)
-@inline norm_Σ₁₃²(i, j, k, grid, u, v, w) = norm_Σ₁₃²(i, j, k, grid, u, w)
-@inline norm_Σ₂₃²(i, j, k, grid, u, v, w) = norm_Σ₂₃²(i, j, k, grid, v, w)
-
-#####
-##### Same-location velocity products
-#####
-
-# ccc
-@inline norm_∂x_u²(ijk...) = norm_∂x_u(ijk...)^2
-@inline norm_∂y_v²(ijk...) = norm_∂y_v(ijk...)^2
-@inline norm_∂z_w²(ijk...) = norm_∂z_w(ijk...)^2
-
-# ffc
-@inline norm_∂x_v²(ijk...) = norm_∂x_v(ijk...)^2
-@inline norm_∂y_u²(ijk...) = norm_∂y_u(ijk...)^2
-
-@inline norm_∂x_v_Σ₁₂(ijk...) = norm_∂x_v(ijk...) * norm_Σ₁₂(ijk...)
-@inline norm_∂y_u_Σ₁₂(ijk...) = norm_∂y_u(ijk...) * norm_Σ₁₂(ijk...)
-
-# fcf
-@inline norm_∂z_u²(ijk...) = norm_∂z_u(ijk...)^2
-@inline norm_∂x_w²(ijk...) = norm_∂x_w(ijk...)^2
-
-@inline norm_∂x_w_Σ₁₃(ijk...) = norm_∂x_w(ijk...) * norm_Σ₁₃(ijk...)
-@inline norm_∂z_u_Σ₁₃(ijk...) = norm_∂z_u(ijk...) * norm_Σ₁₃(ijk...)
-
-# cff
-@inline norm_∂z_v²(ijk...) = norm_∂z_v(ijk...)^2
-@inline norm_∂y_w²(ijk...) = norm_∂y_w(ijk...)^2
-
-@inline norm_∂z_v_Σ₂₃(ijk...) = norm_∂z_v(ijk...) * norm_Σ₂₃(ijk...)
-@inline norm_∂y_w_Σ₂₃(ijk...) = norm_∂y_w(ijk...) * norm_Σ₂₃(ijk...)
-
-#####
-##### Tracer gradients squared
-#####
-
-@inline norm_∂x_c²(ijk...) = norm_∂x_c(ijk...)^2
-@inline norm_∂y_c²(ijk...) = norm_∂y_c(ijk...)^2
-@inline norm_∂z_c²(ijk...) = norm_∂z_c(ijk...)^2

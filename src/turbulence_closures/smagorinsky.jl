@@ -20,7 +20,7 @@ Returns a `DeardorffSmagorinsky` closure object of type `T` with
 *  `κ` : background diffusivity
 """
 Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
-    Cs :: T = 0.2
+     C :: T = 0.2
     Cb :: T = 1.0
     Pr :: T = 1.0
      ν :: T = 1e-6

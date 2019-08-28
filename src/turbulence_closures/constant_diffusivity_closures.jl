@@ -1,6 +1,6 @@
-#
-# Constant diffusivity
-#
+#####
+##### Constant diffusivity
+#####
 
 """
     ConstantIsotropicDiffusivity(T=Float64; ν=1e-6, κ=1e-7)
@@ -17,20 +17,11 @@ Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: IsotropicDiffusivity{T}
     κ :: T = 1e-7
 end
 
-const MolecularDiffusivity = ConstantIsotropicDiffusivity
-
 ConstantIsotropicDiffusivity(T; kwargs...) =
     typed_keyword_constructor(T, ConstantIsotropicDiffusivity; kwargs...)
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
                     args...) = nothing
-
-# These functions are used to specify Gradient and Value boundary conditions.
-@inline κ_ccc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.κ
-@inline ν_ccc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
-@inline ν_ffc(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
-@inline ν_fcf(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
-@inline ν_cff(i, j, k, grid, closure::ConstantIsotropicDiffusivity, args...) = closure.ν
 
 @inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantIsotropicDiffusivity, args...) = (
       closure.κ / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
@@ -56,10 +47,10 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
     + closure.ν / grid.Δz^2 * δz²_f2c2f(grid, w, i, j, k)
 )
 
-#
-# Constant anisotropic diffusivity (tensor diffusivity with heterogeneous
-#                                       diagonal components)
-#
+#####
+##### Constant anisotropic diffusivity (tensor diffusivity with heterogeneous
+#####                                       diagonal components)
+#####
 
 """
     ConstantAnisotropicDiffusivity(T=Float64; νh=1e-6, νv=1e-6, κh=1e-6, κv=1e-6)
@@ -107,26 +98,6 @@ ConstantAnisotropicDiffusivity(T; kwargs...) =
     + closure.κh * ∂y²_aca(i, j, k, grid, c)
     + closure.κv * ∂z²_aac(i, j, k, grid, c)
     )
-
-# These functions are used to specify Gradient and Value boundary conditions.
-@inline κ₁₁_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.κh
-@inline κ₂₂_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.κh
-@inline κ₃₃_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.κv
-
-@inline ν₁₁_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₁₁_ffc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₁₁_fcf(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₁₁_cff(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-
-@inline ν₂₂_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₂₂_ffc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₂₂_fcf(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-@inline ν₂₂_cff(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νh
-
-@inline ν₃₃_ccc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
-@inline ν₃₃_ffc(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
-@inline ν₃₃_fcf(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
-@inline ν₃₃_cff(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, args...) = closure.νv
 
 @inline function ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid,
                            closure::ConstantAnisotropicDiffusivity,
