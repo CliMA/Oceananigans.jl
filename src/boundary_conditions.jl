@@ -9,6 +9,9 @@ struct Gradient <: BCType end
 struct Value <: BCType end
 struct NoPenetration <: BCType end
 
+const Dirchlet = Value
+const Neumann = Gradient
+
 """
     BoundaryCondition(BCType, condition)
 

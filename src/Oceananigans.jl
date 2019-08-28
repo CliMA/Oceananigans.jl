@@ -71,6 +71,8 @@ export
     Flux,
     Gradient,
     Value,
+    Dirchlet,
+    Neumann,
     CoordinateBoundaryConditions,
     ZBoundaryConditions,
     FieldBoundaryConditions,
@@ -114,8 +116,10 @@ export
     BinaryOutputWriter,
     NetCDFOutputWriter,
     JLD2OutputWriter,
+    Checkpointer,
     write_output,
     read_output,
+    restore_from_checkpoint,
 
     # Model diagnostics
     Diagnostic,
@@ -127,6 +131,9 @@ export
 
     # Package utilities
     prettytime,
+    pretty_filesize,
+    KB, MB, GB, TB,
+    KiB, MiB, GiB, TiB,
 
     # Turbulence closures
     TurbulenceClosures,
@@ -139,13 +146,13 @@ export
 using
     Statistics,
     LinearAlgebra,
-    Printf,
-    FileIO
+    Printf
 
 # Third-party modules
 using
     Adapt,
     FFTW,
+    Distributed,
     StaticArrays,
     OffsetArrays,
     JLD2,

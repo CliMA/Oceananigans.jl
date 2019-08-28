@@ -7,7 +7,6 @@ function get_output_tuple(output, iter, tuplename)
     file = jldopen(output.filepath, "r")
     output_tuple = file["timeseries/$tuplename/$iter"]
     close(file)
-    println(typeof(output_tuple))
     return output_tuple
 end
 
@@ -59,70 +58,6 @@ function run_thermal_bubble_regression_tests(arch)
     @test all(Array(data(model.velocities.w)) .≈ w)
     @test all(Array(data(model.tracers.T))    .≈ T)
     @test all(Array(data(model.tracers.S))    .≈ S)
-end
-
-function run_deep_convection_regression_tests()
-    Nx, Ny, Nz = 32, 32, 16
-    Lx, Ly, Lz = 2000, 2000, 1000
-    Δt = 20
-
-    function cooling_disk(grid, U, Φ, i, j, k)
-        if k == 1
-            x = i*grid.Δx
-            y = j*grid.Δy
-            r² = (x - grid.Lx/2)^2 + (y - grid.Ly/2)^2
-            if r² < 600^2
-                return -4.5e-6
-            else
-                return 0
-            end
-        else
-            return 0
-        end
-    end
-
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz),
-                  ν=4e-2, κ=4e-2, forcing=Forcing(FT=cooling_disk)
-                 )
-
-
-    rng = MersenneTwister(seed)
-    model.tracers.T.data[1:Nx, 1:Ny, 1] .+= 0.01*rand(rng, Nx, Ny)
-
-    nc_writer = NetCDFOutputWriter(dir=".",
-                                   prefix="deep_convection_regression_",
-                                   frequency=10, padding=2)
-
-    # Uncomment to include a NetCDF output writer that produces the regression.
-    # push!(model.output_writers, nc_writer)
-
-    time_step!(model, 10, Δt)
-
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
-
-    field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
-    fields_gm = [u, v, w, T, S]
-    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ)) - φ_gm)
-        φ_max = maximum(Array(data(φ)) - φ_gm)
-        φ_mean = mean(Array(data(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
-        φ_std = std(Array(data(φ)) - φ_gm)
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
-    end
-
-    # Now test that the model state matches the regression output.
-    @test_skip all(Array(data(model.velocities.u)) .≈ u)
-    @test_skip all(Array(data(model.velocities.v)) .≈ v)
-    @test_skip all(Array(data(model.velocities.w)) .≈ w)
-    @test_skip all(Array(data(model.tracers.T))    .≈ T)
-    @test_skip all(Array(data(model.tracers.S))    .≈ S)
 end
 
 function run_rayleigh_benard_regression_test(arch)
@@ -180,8 +115,8 @@ function run_rayleigh_benard_regression_test(arch)
     outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
 
     prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields, dir=".",
-                                    prefix=prefix, frequency=test_steps, including=[])
+    outputwriter = JLD2OutputWriter(model, outputfields; dir=".", prefix=prefix,
+                                    frequency=test_steps, including=[])
 
     #
     # Initial condition and spinup steps for creating regression test data
@@ -225,7 +160,6 @@ function run_rayleigh_benard_regression_test(arch)
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
     length(model.output_writers) > 0 && pop!(model.output_writers)
-    println(model.output_writers)
 
     # Step the model forward and perform the regression test
     time_step!(model, test_steps, Δt; init_with_euler=false)
@@ -256,6 +190,7 @@ function run_rayleigh_benard_regression_test(arch)
 end
 
 @testset "Regression" begin
+    println("Running regression tests...")
 
     for arch in archs
         @testset "Thermal bubble [$(typeof(arch))]" begin
@@ -267,10 +202,5 @@ end
             println("  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]")
             run_rayleigh_benard_regression_test(arch)
         end
-    end
-
-    @testset "Deep convection" begin
-        println("  Testing deep convection regression [CPU]")
-        run_deep_convection_regression_tests()
     end
 end
