@@ -38,21 +38,21 @@ fill_bottom_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = 0
 function fill_x_halo_regions!(ϕ, bcs, grid)
     fill_west_halo!(ϕ, bcs.left, grid.Hx, grid.Nx)
     fill_east_halo!(ϕ, bcs.right, grid.Hx, grid.Nx)
-    return nothing
+    return
 end
 
 "Fill north and south halo regions."
 function fill_y_halo_regions!(ϕ, bcs, grid)
     fill_south_halo!(ϕ, bcs.left, grid.Hy, grid.Ny)
     fill_north_halo!(ϕ, bcs.right, grid.Hy, grid.Ny)
-    return nothing
+    return
 end
 
 "Fill top and bottom halo regions."
 function fill_z_halo_regions!(ϕ, bcs, grid)
     fill_top_halo!(ϕ, bcs.left, grid.Hz, grid.Nz)
     fill_bottom_halo!(ϕ, bcs.right, grid.Hz, grid.Nz)
-    return nothing
+    return
 end
 
 "Fill halo regions in x, y, and z for a given field."
@@ -60,7 +60,7 @@ function fill_halo_regions!(field::AbstractArray, fieldbcs, grid)
     fill_x_halo_regions!(field, fieldbcs.x, grid)
     fill_y_halo_regions!(field, fieldbcs.y, grid)
     fill_z_halo_regions!(field, fieldbcs.z, grid)
-    return nothing
+    return
 end
 
 """
@@ -73,5 +73,34 @@ function fill_halo_regions!(fields::NamedTuple, bcs, grid)
     for (field, fieldbcs) in zip(fields, bcs)
         fill_halo_regions!(field, fieldbcs, grid)
     end
-    return nothing
+    return
+end
+
+####
+#### Zeroing out halo regions
+####
+
+ zero_west_halo!(ϕ, H, N) = @views @. ϕ[1:H, :, :] = 0
+zero_south_halo!(ϕ, H, N) = @views @. ϕ[:, 1:H, :] = 0
+  zero_top_halo!(ϕ, H, N) = @views @. ϕ[:, :, 1:H] = 0
+
+  zero_east_halo!(ϕ, H, N) = @views @. ϕ[N+H+1:N+2H, :, :] = 0
+ zero_north_halo!(ϕ, H, N) = @views @. ϕ[:, N+H+1:N+2H, :] = 0
+zero_bottom_halo!(ϕ, H, N) = @views @. ϕ[:, :, N+H+1:N+2H] = 0
+
+function zero_halo_regions!(ϕ::AbstractArray, grid)
+      zero_west_halo!(ϕ, grid.Hx, grid.Nx)
+      zero_east_halo!(ϕ, grid.Hx, grid.Nx)
+     zero_south_halo!(ϕ, grid.Hy, grid.Ny)
+     zero_north_halo!(ϕ, grid.Hy, grid.Ny)
+       zero_top_halo!(ϕ, grid.Hz, grid.Nz)
+    zero_bottom_halo!(ϕ, grid.Hz, grid.Nz)
+    return
+end
+
+function zero_halo_regions!(fields::Tuple, grid)
+    for field in fields
+        zero_halo_regions!(field, grid)
+    end
+    return
 end

@@ -21,6 +21,7 @@ export
     EarthStationary,
     Europa,
     Enceladus,
+    second,
     minute,
     hour,
     day,
@@ -86,6 +87,7 @@ export
 
     # Halo regions
     fill_halo_regions!,
+    zero_halo_regions!,
 
     # Time stepping
     TimeStepWizard,
@@ -122,9 +124,10 @@ export
     # Model diagnostics
     Diagnostic,
     run_diagnostic,
-    FieldSummary,
+    HorizontalAverage,
+    ProductProfile,
+    VelocityCovarianceProfiles,
     NaNChecker,
-    VelocityDivergenceChecker,
 
     # Package utilities
     prettytime,

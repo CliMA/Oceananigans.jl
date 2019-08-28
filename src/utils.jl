@@ -54,8 +54,12 @@ function Base.zeros(T, ::GPU, grid)
     OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
+Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+
 # Default to type of Grid
-Base.zeros(arch, g::Grid{T}) where T = zeros(T, arch, g)
+Base.zeros(arch, grid::Grid{T}) where T = zeros(T, arch, grid)
+Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)

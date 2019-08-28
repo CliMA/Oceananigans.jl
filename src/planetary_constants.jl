@@ -1,4 +1,5 @@
 # Some useful constants
+const second = 1.0
 const minute = 60.0
 const hour = 60minute
 const day = 24hour
