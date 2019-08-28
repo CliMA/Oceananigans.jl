@@ -382,7 +382,7 @@ mutable struct Checkpointer{I, T, P, A} <: OutputWriter
            verbose :: Bool
 end
 
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, verbose=false
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, verbose=false,
                       properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, :closure,
                                     :velocities, :tracers, :timestepper])
 
