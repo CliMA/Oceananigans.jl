@@ -8,24 +8,20 @@ const timer = TimerOutput()
 Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
-# Model resolutions to benchmarks. Focusing on 3D models for GPU.
-Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
+# Model resolutions to benchmarks. Focusing on 3D models for GPU benchmarking.
+            Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
+   float_types = [Float32, Float64]  # Float types to benchmark.
+         archs = [CPU()]             # Architectures to benchmark on.
+@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
-float_types = [Float32, Float64]  # Float types to benchmark.
-archs = [CPU()]  # Architectures to benchmark on.
-
-# Benchmark GPU on systems with CUDA-enabled GPUs.
-@hascuda archs = [CPU(), GPU()]
-
-for arch in archs, float_type in float_types, N in Ns
+for arch in archs, FT in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 100, 100, 100
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-4, κ=1e-4,
-                  arch=arch, float_type=float_type)
+    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-4, κ=1e-4, arch=arch, float_type=FT)
 
     # Free convection model setup.
-    cₚ = 4181.3  # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
+    cₚ = 4000    # Specific heat capacity of seawater at constant pressure [J/(kg·K)]
     dTdz = 0.01  # [K/m]
     top_flux = -25 / (model.eos.ρ₀ * cₚ)  # 25 W/m² cooling flux.
 
