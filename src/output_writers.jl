@@ -373,6 +373,7 @@ end
 mutable struct Checkpointer{I, T, P, A} <: OutputWriter
          frequency :: I
           interval :: T
+          previous :: Float64
                dir :: String
             prefix :: String
         properties :: P
@@ -404,7 +405,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, dir, prefix, properties, force, has_array_refs)
+    return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, force, has_array_refs)
 end
 
 function write_output(model, c::Checkpointer)
