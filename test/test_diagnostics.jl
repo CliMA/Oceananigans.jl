@@ -1,5 +1,5 @@
 function horizontal_average_is_correct(arch, FT)
-    model = Model(N = (128, 128, 128), L = (100, 100, 100), arch=arch, float_type=FT)
+    model = Model(N = (16, 16, 16), L = (100, 100, 100), arch=arch, float_type=FT)
 
     # Set a linear stably stratified temperature profile.
     T₀(x, y, z) = 20 + 0.01*z
@@ -14,7 +14,7 @@ function horizontal_average_is_correct(arch, FT)
 end
 
 function product_profile_is_correct(arch, FT)
-    model = Model(N = (128, 128, 128), L = (100, 100, 100), arch=arch, float_type=FT)
+    model = Model(N = (16, 16, 16), L = (100, 100, 100), arch=arch, float_type=FT)
 
     # Set a linear stably stratified temperature profile and a sinusoidal u(z) profile.
     u₀(x, y, z) = sin(z)
