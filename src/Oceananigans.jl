@@ -5,8 +5,7 @@ if VERSION < v"1.1"
 end
 
 export
-    # Helper variables and macros for determining if machine is CUDA-enabled.
-    HAVE_CUDA,
+    # Helper macro for determining if a CUDA-enabled GPU is available.
     @hascuda,
 
     Architecture,
@@ -162,6 +161,7 @@ import
     CUDAapi,
     GPUifyLoops
 
+import CUDAapi: has_cuda()
 import GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
@@ -170,7 +170,7 @@ import Base:
     iterate, similar, *, +, -
 
 macro hascuda(ex)
-    return CUDAapi.has_cuda() ? :($(esc(ex))) : :(nothing)
+    return has_cuda() ? :($(esc(ex))) : :(nothing)
 end
 
 @hascuda begin
