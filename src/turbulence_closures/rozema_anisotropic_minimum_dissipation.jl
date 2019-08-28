@@ -25,7 +25,6 @@ end
 
 # Bindings
 const RAMD = RozemaAnisotropicMinimumDissipation
-const AnisotropicMinimumDissipation = RozemaAnisotropicMinimumDissipation
 
 "Return the filter width for Anisotropic Minimum Dissipation on a Regular Cartesian grid."
 @inline Δx(i, j, k, grid::RegularCartesianGrid, ::RAMD) = grid.Δx
