@@ -6,8 +6,10 @@ function uτ²(model)
     Δz = model.grid.Δz
     ν = model.closure.ν
 
-    U = mean(Array(model.velocities.u.data.parent); dims=[1, 2])
-    uτ²⁺ = ν * abs(U[2] - Uw) / Δz
+    Up = HorizontalAverage(model, model.velocities.u; frequency=Inf)
+    U = Up(model)[2:end-1]
+
+    uτ²⁺ = ν * abs(U[1] - Uw) / Δz
     uτ²⁻ = ν * abs(-Uw - U[end]) / Δz
 
     uτ²⁺, uτ²⁻
@@ -18,7 +20,9 @@ function qw(model)
     Δz = model.grid.Δz
     κ = model.closure.κ
 
-    Θ = mean(Array(model.tracers.T.data.parent); dims=[1, 2])
+    Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
+    Θ = Tp(model)[2:end-1]
+
     qw⁺ = κ * abs(Θ[1] - Θw) / Δz
     qw⁻ = κ * abs(-Θw - Θ[end]) / Δz
 
@@ -185,10 +189,8 @@ Wp = VerticalProfile(model, model.velocities.w; interval=Δtₚ)
 Tp = VerticalProfile(model, model.tracers.T;    interval=Δtₚ)
 νp = VerticalProfile(model, model.diffusivities.νₑ; interval=Δtₚ)
 κp = VerticalProfile(model, model.diffusivities.κₑ.T; interval=Δtₚ)
-wT = ProductProfile(model, model.velocities.w, model.tracers.T; interval=Δtₚ)
-vc = VelocityCovarianceProfiles(model; interval=Δtₚ)
 
-append!(model.diagnostics, [Up, Vp, Wp, Tp, wT, νp, κp, vc])
+append!(model.diagnostics, [Up, Vp, Wp, Tp, νp, κp])
 
 profiles = Dict(
      :u => model -> Array(Up.profile),
@@ -196,14 +198,7 @@ profiles = Dict(
      :w => model -> Array(Wp.profile),
      :T => model -> Array(Tp.profile),
     :nu => model -> Array(νp.profile),
-:kappaT => model -> Array(κp.profile),
-    :wT => model -> Array(wT.profile),
-    :uu => model -> Array(vc.uu.profile),
-    :uv => model -> Array(vc.uv.profile),
-    :uw => model -> Array(vc.uw.profile),
-    :vv => model -> Array(vc.vv.profile),
-    :vw => model -> Array(vc.vw.profile),
-    :ww => model -> Array(vc.ww.profile))
+:kappaT => model -> Array(κp.profile))
 
 profile_writer = JLD2OutputWriter(model, profiles; dir=base_dir, prefix=prefix * "_profiles",
                                   init=init_save_parameters_and_bcs, interval=Δtₚ, force=true, verbose=true)
@@ -220,7 +215,7 @@ scalars = Dict(
     :Nu_tau => model -> Nu(model))
 
 scalar_writer = JLD2OutputWriter(model, scalars; dir=base_dir, prefix=prefix * "_scalars",
-                                  init=init_save_parameters_and_bcs, interval=Δtₚ/2, force=true, verbose=true)
+                                 init=init_save_parameters_and_bcs, interval=Δtₚ/2, force=true, verbose=true)
 push!(model.output_writers, scalar_writer)
 
 wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
