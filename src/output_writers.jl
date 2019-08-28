@@ -412,6 +412,8 @@ end
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."
+    
+    t0 = time_ns()
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
         file["has_array_refs"] = c.has_array_refs
@@ -419,6 +421,9 @@ function write_output(model, c::Checkpointer)
         serializeproperties!(file, model, filter(e -> !(e ∈ c.has_array_refs), c.properties))
         saveproperties!(file, model, filter(e -> e ∈ c.has_array_refs, c.properties))
     end
+
+    t1, sz = time_ns(), filesize(path)
+    c.verbose && @info "Checkpointing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(sz))"
 end
 
 _arr(::CPU, a) = a
@@ -434,8 +439,6 @@ function restore_fields!(model, file, arch, fieldset; location="$fieldset")
         end
     end
 end
-
-#const array_containing_structs = (:velocities, :tracers, :timestepper)
 
 function restore_from_checkpoint(filepath; kwargs=Dict())
     file = jldopen(filepath, "r")
