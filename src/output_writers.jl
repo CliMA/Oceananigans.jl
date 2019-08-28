@@ -1,25 +1,5 @@
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
-function time_to_write(clock::Clock, diag::OutputWriter)
-    if :interval in propertynames(diag) && diag.interval != nothing
-        if clock.time >= diag.previous + diag.interval
-            diag.previous = clock.time - rem(clock.time, diag.interval)
-            return true
-        else
-            return false
-        end
-    elseif :frequency in propertynames(diag) && diag.frequency != nothing
-        return clock.iteration % diag.frequency == 0
-    else
-        error("$(typeof(diag)) must have a frequency or interval specified!")
-    end
-end
-
-function validate_interval(frequency, interval)
-    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
-    return
-end
-
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Number)        = file[location] = p

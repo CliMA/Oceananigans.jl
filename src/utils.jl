@@ -195,3 +195,25 @@ function launch_config(grid, dims)
         return (threads=Tuple(threads), blocks=Tuple(blocks))
     end
 end
+
+####
+#### Utilities shared between 
+####
+
+function validate_interval(frequency, interval)
+    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
+    return
+end
+
+function time_to_write(clock, d::Union{Diagnostic,OutputWriter})
+    if :interval in propertynames(d) && d.interval != nothing
+        if clock.time >= d.previous + d.interval
+            d.previous = clock.time - rem(clock.time, d.interval)
+            return true
+        else
+            return false
+        end
+    elseif :frequency in propertynames(d) && d.frequency != nothing
+        return clock.iteration % d.frequency == 0
+    end
+end
