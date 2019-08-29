@@ -66,7 +66,7 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
     # Complete pressure correction step:
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
 
-    # Start pressure correction substep with a pressure solve:
+    # Recompute vertical velocity w from continuity equation to ensure incompressibility
     fill_halo_regions!(U, bcs[1:3], grid)
     @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
 
