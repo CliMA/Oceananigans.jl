@@ -33,8 +33,8 @@ print_timer(timer, title="Static ocean benchmarks")
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
-    bn32 = benchmark_name(N, CPU(), Float32)
-    bn64 = benchmark_name(N, CPU(), Float64)
+    bn32 = benchmark_name(N, "", CPU(), Float32)
+    bn64 = benchmark_name(N, "", CPU(), Float64)
     t32  = TimerOutputs.time(timer[bn32])
     t64  = TimerOutputs.time(timer[bn64])
     @printf("%s: %.3f\n", benchmark_name(N), t64/t32)
@@ -43,8 +43,8 @@ end
 @hascuda begin
     println("\nGPU Float64 -> Float32 speedup:")
     for N in Ns
-        bn32 = benchmark_name(N, GPU(), Float32)
-        bn64 = benchmark_name(N, GPU(), Float64)
+        bn32 = benchmark_name(N, "", GPU(), Float32)
+        bn64 = benchmark_name(N, "", GPU(), Float64)
         t32  = TimerOutputs.time(timer[bn32])
         t64  = TimerOutputs.time(timer[bn64])
         @printf("%s: %.3f\n", benchmark_name(N), t64/t32)
@@ -52,8 +52,8 @@ end
 
     println("\nCPU -> GPU speedup:")
     for N in Ns, ft in float_types
-        bn_cpu = benchmark_name(N, CPU(), ft)
-        bn_gpu = benchmark_name(N, GPU(), ft)
+        bn_cpu = benchmark_name(N, "", CPU(), ft)
+        bn_gpu = benchmark_name(N, "", GPU(), ft)
         t_cpu  = TimerOutputs.time(timer[bn_cpu])
         t_gpu  = TimerOutputs.time(timer[bn_gpu])
         @printf("%s: %.3f\n", benchmark_name(N, ft), t_cpu/t_gpu)
