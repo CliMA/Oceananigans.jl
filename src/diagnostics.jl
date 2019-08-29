@@ -3,25 +3,8 @@ using Printf
 
 @hascuda using CUDAdrv, CUDAnative
 
-function time_to_run(clock::Clock, diag::Diagnostic)
-    if :interval in propertynames(diag) && diag.interval != nothing
-        if clock.time >= diag.previous + diag.interval
-            diag.previous = clock.time - rem(clock.time, diag.interval)
-            return true
-        else
-            return false
-        end
-    elseif :frequency in propertynames(diag) && diag.frequency != nothing
-        return clock.iteration % diag.frequency == 0
-    else
-        error("Diagnostic $(typeof(diag)) must have a frequency or interval specified!")
-    end
-end
-
-function validate_interval(frequency, interval)
-    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
-    return
-end
+# Use time_to_write from output_writers.jl
+time_to_run(clock, diag) = time_to_write(clock, diag)
 
 ####
 #### Useful kernels
@@ -41,44 +24,67 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontalAverage{P, F, I, T} <: Diagnostic
-      profile :: P
-       fields :: F
-    frequency :: I
-     interval :: T
-     previous :: Float64
+mutable struct HorizontalAverage{F, RT, P, I, T} <: Diagnostic
+        profile :: P
+         fields :: F
+      frequency :: I
+       interval :: T
+       previous :: Float64
+    return_type :: RT
 end
 
-tupleit(t::Tuple) = t
-tupleit(a::AbstractArray) = Tuple(a)
-tupleit(nt) = tuple(nt)
 
-function HorizontalAverage(model, fields; frequency=nothing, interval=nothing)
-    fields = tupleit(fields)
-    fields = Tuple([field.data.parent for field in fields])
+function HorizontalAverage(model, fields; frequency=nothing, interval=nothing,
+                           return_type=nothing)
+    fields = parenttuple(tupleit(fields))
     validate_interval(frequency, interval)
     profile = zeros(model.arch, model.grid, 1, 1, model.grid.Tz)
-    HorizontalAverage(profile, fields, frequency, interval, 0.0)
+    return HorizontalAverage(profile, fields, frequency, interval, 0.0, return_type)
 end
 
-function run_diagnostic(model::Model, P::HorizontalAverage)
-    zero_halo_regions!(P.fields, model.grid)
-    if length(P.fields) == 1
-        sum!(P.profile, P.fields[1])
-    else
-        tmp = model.pressures.pNHS.data.parent
-        @. tmp = *(P.fields...)
-        sum!(P.profile, tmp)
-    end
+"Normalize a horizontal sum to get the horizontal average."
+normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)  
 
-    Nx, Ny = model.grid.Nx, model.grid.Ny
-    P.profile /= (Nx*Ny)  # Normalize to get the mean from the sum.
+"""
+    run_diagnostic(model, havg)
+
+Compute the horizontal average of `havg.fields` and store the
+result in `havg.profile`. If length(fields) > 1, compute the 
+product of the elements of fields (without taking into account
+the possibility that they may have different locations in the
+staggered grid) before computing the horizontal average.
+"""
+function run_diagnostic(model::Model, havg::HorizontalAverage{NTuple{1}})
+    zero_halo_regions!(havg.fields[1], model.grid)
+    sum!(havg.profile, havg.fields[1])
+    normalize_horizontal_sum!(havg.profile, model.grid)
+    return
 end
 
-function (p::HorizontalAverage)(model)
-    run_diagnostic(model, p)
+function run_diagnostic(model::Model, havg::HorizontalAverage)
+    zero_halo_regions!(havg.fields, model.grid)
+
+    # Use pressure as scratch space for the product of fields.
+    tmp = model.pressures.pNHS.data.parent
+    zero_halo_regions!(tmp, model.grid)
+
+    @. tmp = *(havg.fields...)
+    sum!(havg.profile, tmp)
+    normalize_horizontal_sum!(havg.profile, model.grid)
+
+    return
+end
+
+function (havg::HorizontalAverage{F, Nothing})(model) where F
+    run_diagnostic(model, havg)
     return p.profile
 end
+
+function (havg::HorizontalAverage)(model) 
+    run_diagnostic(model, havg)
+    return return_type(havg.profile)
+end
+
 
 ####
 #### NaN checker
