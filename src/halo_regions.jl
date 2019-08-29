@@ -77,7 +77,7 @@ function fill_halo_regions!(fields::NamedTuple, bcs, grid)
 end
 
 ####
-#### Zeroing out halo regions
+#### Halo region zeroing
 ####
 
  zero_west_halo!(ϕ, H, N) = @views @. ϕ[1:H, :, :] = 0
