@@ -44,6 +44,14 @@ abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 const ν₀ = 1.05e-6
 const κ₀ = 1.46e-7
 
+"""
+    typed_keyword_constructor(T, Closure; kwargs...)
+
+Return an object `Closure` with fields provided by `kwargs`
+converted to type `T`. Mainly provided for converting between
+different float types when working with constructors associated
+with types defined via `Base.@kwdef`.
+"""
 function typed_keyword_constructor(T, Closure; kwargs...)
     closure = Closure(; kwargs...)
     names = fieldnames(Closure)
@@ -64,15 +72,19 @@ include("verstappen_anisotropic_minimum_dissipation.jl")
 const AnisotropicMinimumDissipation = VerstappenAnisotropicMinimumDissipation
 const ConstantSmagorinsky = DeardorffSmagorinsky
 
+# For easy conversion of the float type associated with a turbulence closure struct:
 basetype(::ConstantSmagorinsky) = ConstantSmagorinsky
+basetype(::BlasiusSmagorinsky) = BlasiusSmagorinsky
 basetype(::ConstantIsotropicDiffusivity) = ConstantIsotropicDiffusivity
 basetype(::AnisotropicMinimumDissipation) = AnisotropicMinimumDissipation
+basetype(::RozemaAnisotropicMinimumDissipation) = RozemaAnisotropicMinimumDissipation
 
 function Base.convert(::TurbulenceClosure{T2}, closure::TurbulenceClosure{T1}) where {T1, T2}
     paramdict = Dict((p, convert(T2, getproperty(closure, p))) for p in propertynames(closure))
     return basetype(closure)(T2; paramdict...)
 end
 
+# Fallback constructor for diffusivity types withotu precomputed diffusivities:
 TurbulentDiffusivities(arch::Architecture, grid::Grid, args...) = nothing
 
 end # module
