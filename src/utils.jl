@@ -234,8 +234,8 @@ end
 
 frequency_is_ripe(clock, obj) = has_frequency(obj) && clock.iteration % obj.frequency == 0
 
-function time_to_write(clock, output_writer)
-
+function time_to_run(clock, output_writer)
+    
     interval_is_ripe(clock, output_writer) && return true
     frequency_is_ripe(clock, output_writer) && return true
 
