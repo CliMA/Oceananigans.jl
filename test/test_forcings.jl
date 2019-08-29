@@ -8,9 +8,9 @@ function test_forcing(fld)
 end
 
 function time_step_with_forcing_function(arch)
-    @inline Fu(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -u[i, j, k] / 60, 0)
-    @inline Fv(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -v[i, j, k] / 60, 0)
-    @inline Fw(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -w[i, j, k] / 60, 0)
+    @inline Fu(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.u[i, j, k] / 60, 0)
+    @inline Fv(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.v[i, j, k] / 60, 0)
+    @inline Fw(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.w[i, j, k] / 60, 0)
 
     forcing = Forcing(Fu=Fu, Fv=Fv, Fw=Fw)
 
@@ -21,9 +21,9 @@ end
 
 const τ = 60
 function time_step_with_forcing_function_const(arch)
-    @inline Fu(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -u[i, j, k] / τ, 0)
-    @inline Fv(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -v[i, j, k] / τ, 0)
-    @inline Fw(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -w[i, j, k] / τ, 0)
+    @inline Fu(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.u[i, j, k] / τ, 0)
+    @inline Fv(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.v[i, j, k] / τ, 0)
+    @inline Fw(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -U.w[i, j, k] / τ, 0)
 
     forcing = Forcing(Fu=Fu, Fv=Fv, Fw=Fw)
 
