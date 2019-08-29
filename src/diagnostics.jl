@@ -1,11 +1,6 @@
 using Statistics: mean
 using Printf
 
-@hascuda using CUDAdrv, CUDAnative
-
-# Use time_to_write from output_writers.jl
-time_to_run(clock, diag) = time_to_write(clock, diag)
-
 ####
 #### Useful kernels
 ####
@@ -43,13 +38,13 @@ function HorizontalAverage(model, fields; frequency=nothing, interval=nothing,
 end
 
 "Normalize a horizontal sum to get the horizontal average."
-normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)  
+normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)
 
 """
     run_diagnostic(model, havg)
 
 Compute the horizontal average of `havg.fields` and store the
-result in `havg.profile`. If length(fields) > 1, compute the 
+result in `havg.profile`. If length(fields) > 1, compute the
 product of the elements of fields (without taking into account
 the possibility that they may have different locations in the
 staggered grid) before computing the horizontal average.
@@ -80,7 +75,7 @@ function (havg::HorizontalAverage{F, Nothing})(model) where F
     return p.profile
 end
 
-function (havg::HorizontalAverage)(model) 
+function (havg::HorizontalAverage)(model)
     run_diagnostic(model, havg)
     return return_type(havg.profile)
 end

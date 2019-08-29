@@ -1,42 +1,5 @@
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
-"""
-    validate_interval(frequency, interval)
-
-Ensure that frequency and interval are not both `nothing`.
-"""
-function validate_interval(frequency, interval)
-    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
-    return
-end
-
-has_interval(obj) = :interval in propertynames(obj) && obj.interval != nothing
-has_frequency(obj) = :frequency in propertynames(obj) && obj.frequency != nothing
-
-function interval_is_ripe(clock, obj)
-    if has_interval(obj) && clock.time >= obj.previous + obj.interval
-        obj.previous = clock.time - rem(clock.time, obj.interval)
-        return true
-    else
-        return false
-    end
-end
-
-frequency_is_ripe(clock, obj) = has_frequency(obj) && clock.iteration % obj.frequency == 0
-
-function time_to_write(clock, output_writer)
-
-    interval_is_ripe(clock, output_writer) && return true
-    frequency_is_ripe(clock, output_writer) && return true
-
-    # If the output writer does not specify an interval or frequency, 
-    # it is unable to write output and we throw an error as a convenience.
-    has_interval(output_writer) || has_frequency(output_writer) ||
-        error("$(typeof(output_writer)) must have a frequency or interval specified!")
-
-    return false
-end
-
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Number)        = file[location] = p
@@ -46,7 +9,7 @@ saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-# Special saveproperty! so boundary conditions are easily readable outside julia.    
+# Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     for endpoint in propertynames(cbcs)
         endpoint_bc = getproperty(cbcs, endpoint)
@@ -412,7 +375,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
     for p in properties
         isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
-        
+
         if has_reference(Function, getproperty(model, p))
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
