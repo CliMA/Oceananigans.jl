@@ -69,7 +69,7 @@ end
 Fill halo regions for all fields in the tuple `fields` according
 to the corresponding tuple of `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple, grid)
+function fill_halo_regions!(fields::NamedTuple, bcs, grid)
     for (field, fieldbcs) in zip(fields, bcs)
         fill_halo_regions!(field, fieldbcs, grid)
     end
