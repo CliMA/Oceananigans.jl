@@ -69,12 +69,26 @@ end
 Fill halo regions for all fields in the tuple `fields` according
 to the corresponding tuple of `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs, grid)
+function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple, grid)
     for (field, fieldbcs) in zip(fields, bcs)
         fill_halo_regions!(field, fieldbcs, grid)
     end
     return
 end
+
+"""
+    fill_halo_regions!(fields, bcs, grid)
+
+Fill halo regions for each field in the tuple `fields` according
+to the single instances of `FieldBoundaryConditions` in `bcs`.
+"""
+function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple{(:x, :y, :z)}, grid)
+    for field in fields
+        fill_halo_regions!(field, bcs, grid)
+    end
+end
+
+fill_halo_regions!(::Nothing, args...) = nothing
 
 ####
 #### Zeroing out halo regions
