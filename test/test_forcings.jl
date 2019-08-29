@@ -19,8 +19,8 @@ function time_step_with_forcing_function(arch)
     return true
 end
 
+const τ = 60
 function time_step_with_forcing_function_const(arch)
-    const τ = 60
     @inline Fu(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -u[i, j, k] / τ, 0)
     @inline Fv(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -v[i, j, k] / τ, 0)
     @inline Fw(grid, U, Φ, i, j, k) = @inbounds ifelse(k == grid.Nz, -w[i, j, k] / τ, 0)
