@@ -248,7 +248,6 @@ If `top_bc.condition` is a function, the function must have the signature
 @inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, 1] += 2κ / grid.Δz^2 * (getbc(top_value, i, j, grid, args...) - c[i, j, 1])
 
-
 """
     apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ, t, iter, U, Φ)
 
@@ -268,18 +267,11 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
     Gc[i, j, grid.Nz] -= 2κ / grid.Δz^2 * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, args...))
 
-
 @inline get_top_κ(κ::Number, args...) = κ
 @inline get_bottom_κ(κ::Number, args...) = κ
 
 @inline get_top_κ(κ::AbstractArray, i, j, args...) = κ[i, j, 1]
 @inline get_bottom_κ(κ::AbstractArray, i, j, grid, args...) = κ[i, j, grid.Nz]
-
-# ConstantSmagorinsky does not compute or store κ so we will compute κ = ν / Pr.
-@inline get_top_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) =
-    ν[i, j, 1] / closure.Pr
-@inline get_bottom_κ(ν::AbstractArray, i, j, grid, closure::ConstantSmagorinsky, args...) =
-    ν[i, j, grid.Nz] / closure.Pr
 
 """
     apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, t, iter, U, Φ)
