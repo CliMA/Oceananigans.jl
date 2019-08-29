@@ -258,7 +258,7 @@ while model.clock.time < end_time
 
 
     @printf("[%06.2f%%] i: %d, t: %5.2f days, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, νκmax: (%6.3g, %6.3g), νκCFL: (%6.4g, %6.4g), next Δt: %8.5g, ⟨wall time⟩: %s\n",
-            progress, model.clock.iteration, model.clock.time / day,
+            progress, model.clock.iteration, model.clock.time,
             umax, vmax, wmax, CFL, νmax, κmax, νCFL, κCFL,
             wizard.Δt, prettytime(walltime / Ni))
 end
