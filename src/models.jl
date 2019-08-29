@@ -57,7 +57,7 @@ function Model(;
        diagnostics = Diagnostic[]
     )
 
-    arch == GPU() && !has_cuda() && throw(
+    arch == GPU() && !HAVE_CUDA && throw(
         ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
     # Initialize fields.
