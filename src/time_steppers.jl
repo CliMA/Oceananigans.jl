@@ -46,8 +46,9 @@ function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U,
     fill_halo_regions!(merge(U, Φ), bcs, grid)
 
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
+    fill_halo_regions!(K, bcs[4], grid) # fill diffusivity halo regions with same conditions as temperature
     @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
-    fill_halo_regions!(p.pHY′, bcs[4], grid)
+    fill_halo_regions!(p.pHY′, bcs[4], grid) # fill pressure halo regions with same conditions as temperature
 
     # Calc RHS:
     calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
