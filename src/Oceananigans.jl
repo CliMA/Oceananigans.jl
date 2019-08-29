@@ -5,7 +5,8 @@ if VERSION < v"1.1"
 end
 
 export
-    # Helper macro for determining if a CUDA-enabled GPU is available.
+    # Helper variables and macros for determining if machine is CUDA-enabled.
+    HAVE_CUDA,
     @hascuda,
 
     Architecture,
@@ -158,30 +159,35 @@ using
     NetCDF
 
 import
-    CUDAapi,
     GPUifyLoops
-
-import CUDAapi: has_cuda
-import GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     size, length,
     getindex, lastindex, setindex!,
     iterate, similar, *, +, -
 
+# Import CUDA utilities if cuda is detected.
+const HAVE_CUDA = try
+    using CUDAdrv, CUDAnative, CuArrays
+    true
+catch
+    false
+end
+
+import GPUifyLoops: @launch, @loop, @unroll
+
 macro hascuda(ex)
-    return has_cuda() ? :($(esc(ex))) : :(nothing)
+    return HAVE_CUDA ? :($(esc(ex))) : :(nothing)
 end
 
 @hascuda begin
-    # Import CUDA utilities if it's detected.
-    using CUDAdrv, CUDAnative, CuArrays
-
     println("CUDA-enabled GPU(s) detected:")
     for (gpu, dev) in enumerate(CUDAnative.devices())
         println(dev)
     end
 end
+
+@hascuda CuArrays.allowscalar(false)
 
 abstract type Architecture end
 struct CPU <: Architecture end
