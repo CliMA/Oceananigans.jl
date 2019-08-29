@@ -25,7 +25,7 @@ for arch in archs, float_type in float_types, N in Ns, Closure in closures
     model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type, closure=Closure(float_type))
     time_step!(model, Ni, 1)
 
-    bn =  benchmark_name(N, Symbol(Closure), arch, float_type; pad=2)
+    bn =  benchmark_name(N, string(Closure), arch, float_type; npad=2)
     @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
         @timeit timer bn time_step!(model, 1, 1)

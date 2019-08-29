@@ -1,9 +1,9 @@
 arch_name(::CPU) = "CPU"
 arch_name(::GPU) = "GPU"
 
-benchmark_name(N)               = benchmark_name(N, nothing, nothing)
-benchmark_name(N, arch::Symbol) = benchmark_name(N, arch, nothing)
-benchmark_name(N, ft::DataType) = benchmark_name(N, nothing, ft)
+benchmark_name(N)               = benchmark_name(N, "", nothing, nothing)
+benchmark_name(N, arch::Symbol) = benchmark_name(N, "", arch, nothing)
+benchmark_name(N, ft::DataType) = benchmark_name(N, "", nothing, ft)
 
 function benchmark_name(N, id, arch, ft; npad=3)
     Nx, Ny, Nz = N
