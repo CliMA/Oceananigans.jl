@@ -1,114 +1,168 @@
-# Halo filling algorithm for arbitrary flux, gradient, and value boundary conditions.
-# For these we fill halos so that no-fluxes are added to source terms when the PDE /
-# associated differential operators are applied on boundary elements.
-# Fluxes associated with the boundary condition are added in a separate step in the time-stepping
-# algorithm. Note that ranges are used to reference the data copied into halos, as this
-# produces views of the correct dimension (eg size = (1, Ny, Nz) for the west halos).
- fill_west_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[1:H, :, :] = ϕ.parent[1+H:1+H,  :, :]
-fill_south_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:, 1+H:1+H,  :]
-  fill_top_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, 1:H] = ϕ.parent[:, :,  1+H:1+H]
+#####
+##### Halo filling for flux, periodic, and no-penetration boundary conditions.
+#####
 
-  fill_east_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[N+H+1:N+2H, :, :] = ϕ.parent[N+H:N+H, :, :]
- fill_north_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = ϕ.parent[:, N+H:N+H, :]
-fill_bottom_halo!(ϕ, ::BC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = ϕ.parent[:, :, N+H:N+H]
+# For flux boundary conditions we fill halos as for a *no-flux* boundary condition, and add the 
+# flux divergence associated with the flux boundary condition in a separate step. Note that 
+# ranges are used to reference the data copied into halos, as this produces views of the correct 
+# dimension (eg size = (1, Ny, Nz) for the west halos).
 
-# Halo filling for periodic boundary conditions
-const PBC = BoundaryCondition{<:Periodic}
- fill_west_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[1:H, :, :] = ϕ.parent[N+1:N+H, :, :]
-fill_south_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, 1:H, :] = ϕ.parent[:, N+1:N+H, :]
-  fill_top_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, :, 1:H] = ϕ.parent[:, :, N+1:N+H]
+ _fill_west_halo!(c, ::FBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[1+H:1+H,  :, :]
+_fill_south_halo!(c, ::FBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, 1+H:1+H,  :]
+  _fill_top_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :,  1+H:1+H]
 
-  fill_east_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[N+H+1:N+2H, :, :] = ϕ.parent[1+H:2H, :, :]
- fill_north_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = ϕ.parent[:, 1+H:2H, :]
-fill_bottom_halo!(ϕ, ::PBC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = ϕ.parent[:, :, 1+H:2H]
+  _fill_east_halo!(c, ::FBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[N+H:N+H, :, :]
+ _fill_north_halo!(c, ::FBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, N+H:N+H, :]
+_fill_bottom_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, N+H:N+H]
 
-# Halo filling for no-penetration boundary conditions. Recall that, by convention,
-# the first grid point in an array with no penetration boundary condition
-# lies on the boundary, where as the final grid point lies in the domain.
-const NPBC = BoundaryCondition{<:NoPenetration}
- fill_west_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[1:H+1, :, :] = 0
-fill_south_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, 1:H+1, :] = 0
-  fill_top_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, :, 1:H+1] = 0
+# Periodic boundary conditions
+ _fill_west_halo!(c, ::PBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
+_fill_south_halo!(c, ::PBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
+  _fill_top_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
 
-  fill_east_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[N+H+1:N+2H, :, :] = 0
- fill_north_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, N+H+1:N+2H, :] = 0
-fill_bottom_halo!(ϕ, ::NPBC, H, N) = @views @. ϕ.parent[:, :, N+H+1:N+2H] = 0
+  _fill_east_halo!(c, ::PBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
+ _fill_north_halo!(c, ::PBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
+_fill_bottom_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
-"Fill east and west halo regions."
-function fill_x_halo_regions!(ϕ, bcs, grid)
-    fill_west_halo!(ϕ, bcs.left, grid.Hx, grid.Nx)
-    fill_east_halo!(ϕ, bcs.right, grid.Hx, grid.Nx)
+# Recall that, by convention, the first grid point in an array with no penetration boundary 
+# condition lies on the boundary, where as the final grid point lies in the domain.
+
+ _fill_west_halo!(c, ::NPBC, H, N) = @views @. c.parent[1:H+1, :, :] = 0
+_fill_south_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, 1:H+1, :] = 0
+  _fill_top_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, 1:H+1] = 0
+
+  _fill_east_halo!(c, ::NPBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = 0
+ _fill_north_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = 0
+_fill_bottom_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = 0
+
+# Generate functions that implement flux, periodic, and no-penetration boundary conditions
+sides = (:west, :east, :south, :north, :top, :bottom)
+coords = (:x, :x, :y, :y, :z, :z)
+
+for (x, side) in zip(coords, sides)
+    outername = Symbol(:fill_, side, :_halo!)
+    innername = Symbol(:_fill_, side, :_halo!)
+    H = Symbol(:H, x)
+    N = Symbol(:N, x)
+    @eval begin
+        $outername(c, bc::Union{FBC, PBC, NPBC}, arch::Architecture, grid::Grid, args...) = 
+            $innername(c, bc, grid.$(H), grid.$(N))
+    end
+end
+
+#####
+##### Halo filling for value and gradient boundary conditions
+#####
+
+@inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
+
+@inline top_gradient(bc::GBC, c¹, Δ, i, j, args...) = getbc(bc, i, j, args...)
+@inline bottom_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
+
+@inline top_gradient(bc::VBC, c¹, Δ, i, j, args...) =    ( getbc(bc, i, j, args...) - c¹ ) / (Δ/2)
+@inline bottom_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( cᴺ - getbc(bc, i, j, args...) ) / (Δ/2)
+
+function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = top_gradient(bc, c[i, j, 1], grid.Δz, i, j, grid, args...)
+            @unroll for k in (1-grid.Hz):0
+                Δ = (1-k) * grid.Δz
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, 1], ∇c, Δ)
+            end
+        end
+    end
+    return 
+end
+
+function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = bottom_gradient(bc, c[i, j, grid.Nz], grid.Δz, i, j, grid, args...)
+            @unroll for k in grid.Nz+1:grid.Nz+grid.Hz
+                Δ = (grid.Nz-k) * grid.Δz # separation between bottom grid cell and halo is negative
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, grid.Nz], ∇c, Δ)
+            end
+        end
+    end
+    return 
+end
+
+function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, 2) _fill_top_halo!(c, bc, grid, args...)
     return
 end
 
-"Fill north and south halo regions."
-function fill_y_halo_regions!(ϕ, bcs, grid)
-    fill_south_halo!(ϕ, bcs.left, grid.Hy, grid.Ny)
-    fill_north_halo!(ϕ, bcs.right, grid.Hy, grid.Ny)
+function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::Architecture, grid::Grid, args...)
+    @launch device(arch) config=launch_config(grid, 2) _fill_bottom_halo!(c, bc, grid, args...)
     return
 end
 
-"Fill top and bottom halo regions."
-function fill_z_halo_regions!(ϕ, bcs, grid)
-    fill_top_halo!(ϕ, bcs.left, grid.Hz, grid.Nz)
-    fill_bottom_halo!(ϕ, bcs.right, grid.Hz, grid.Nz)
-    return
-end
+#####
+##### General halo filling functions
+#####
 
 "Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(field::AbstractArray, fieldbcs, grid)
-    fill_x_halo_regions!(field, fieldbcs.x, grid)
-    fill_y_halo_regions!(field, fieldbcs.y, grid)
-    fill_z_halo_regions!(field, fieldbcs.z, grid)
+function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
+
+      fill_west_halo!(c, fieldbcs.x.left,  arch, grid, args...)
+      fill_east_halo!(c, fieldbcs.x.right, arch, grid, args...)
+
+     fill_south_halo!(c, fieldbcs.y.left,  arch, grid, args...)
+     fill_north_halo!(c, fieldbcs.y.right, arch, grid, args...)
+
+       fill_top_halo!(c, fieldbcs.z.left,  arch, grid, args...)
+    fill_bottom_halo!(c, fieldbcs.z.right, arch, grid, args...)
+
     return
 end
 
 """
-    fill_halo_regions!(fields, bcs, grid)
+    fill_halo_regions!(fields, bcs, arch, grid)
 
 Fill halo regions for all fields in the tuple `fields` according
 to the corresponding tuple of `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs, grid)
+function fill_halo_regions!(fields::NamedTuple, bcs, arch, grid, args...)
     for (field, fieldbcs) in zip(fields, bcs)
-        fill_halo_regions!(field, fieldbcs, grid)
+        fill_halo_regions!(field, fieldbcs, arch, grid, args...)
     end
     return
 end
 
 """
-    fill_halo_regions!(fields, bcs, grid)
+    fill_halo_regions!(fields, bcs, arch, grid)
 
 Fill halo regions for each field in the tuple `fields` according
 to the single instances of `FieldBoundaryConditions` in `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple{(:x, :y, :z)}, grid)
+function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple{(:x, :y, :z)}, arch, grid, args...)
     for field in fields
-        fill_halo_regions!(field, bcs, grid)
+        fill_halo_regions!(field, bcs, arch, grid, args...)
     end
 end
 
 fill_halo_regions!(::Nothing, args...) = nothing
 
 ####
-#### Zeroing out halo regions
+#### Halo zeroing functions
 ####
 
- zero_west_halo!(ϕ, H, N) = @views @. ϕ[1:H, :, :] = 0
-zero_south_halo!(ϕ, H, N) = @views @. ϕ[:, 1:H, :] = 0
-  zero_top_halo!(ϕ, H, N) = @views @. ϕ[:, :, 1:H] = 0
+ zero_west_halo!(c, H, N) = @views @. c[1:H, :, :] = 0
+zero_south_halo!(c, H, N) = @views @. c[:, 1:H, :] = 0
+  zero_top_halo!(c, H, N) = @views @. c[:, :, 1:H] = 0
 
-  zero_east_halo!(ϕ, H, N) = @views @. ϕ[N+H+1:N+2H, :, :] = 0
- zero_north_halo!(ϕ, H, N) = @views @. ϕ[:, N+H+1:N+2H, :] = 0
-zero_bottom_halo!(ϕ, H, N) = @views @. ϕ[:, :, N+H+1:N+2H] = 0
+  zero_east_halo!(c, H, N) = @views @. c[N+H+1:N+2H, :, :] = 0
+ zero_north_halo!(c, H, N) = @views @. c[:, N+H+1:N+2H, :] = 0
+zero_bottom_halo!(c, H, N) = @views @. c[:, :, N+H+1:N+2H] = 0
 
-function zero_halo_regions!(ϕ::AbstractArray, grid)
-      zero_west_halo!(ϕ, grid.Hx, grid.Nx)
-      zero_east_halo!(ϕ, grid.Hx, grid.Nx)
-     zero_south_halo!(ϕ, grid.Hy, grid.Ny)
-     zero_north_halo!(ϕ, grid.Hy, grid.Ny)
-       zero_top_halo!(ϕ, grid.Hz, grid.Nz)
-    zero_bottom_halo!(ϕ, grid.Hz, grid.Nz)
+function zero_halo_regions!(c::AbstractArray, grid)
+      zero_west_halo!(c, grid.Hx, grid.Nx)
+      zero_east_halo!(c, grid.Hx, grid.Nx)
+     zero_south_halo!(c, grid.Hy, grid.Ny)
+     zero_north_halo!(c, grid.Hy, grid.Ny)
+       zero_top_halo!(c, grid.Hz, grid.Nz)
+    zero_bottom_halo!(c, grid.Hz, grid.Nz)
     return
 end
 
