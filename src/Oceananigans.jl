@@ -9,70 +9,138 @@ export
     HAVE_CUDA,
     @hascuda,
 
-    Architecture, CPU, GPU, device,
+    Architecture,
+    CPU,
+    GPU,
+    device,
 
     # Planetary Constants
+    ConstantsCollection,
     PlanetaryConstants,
-    Earth, Europa, Enceladus,
-    second, minute, hour, day,
+    Earth,
+    EarthStationary,
+    Europa,
+    Enceladus,
+    second,
+    minute,
+    hour,
+    day,
 
     # Grids
-    Grid, RegularCartesianGrid,
+    Grid,
+    RegularCartesianGrid,
 
     # Fields
-    Field, FaceField, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    data, ardata, ardata_view, underlying_data,
-    set!, set_ic!,
-    nodes, xnodes, ynodes, znodes,
+    Field,
+    FaceField,
+    CellField,
+    FaceFieldX,
+    FaceFieldY,
+    FaceFieldZ,
+    EdgeField,
+    data,
+    ardata,
+    ardata_view,
+    underlying_data,
+    set!,
+    xnodes,
+    ynodes,
+    znodes,
+    nodes,
+    set_ic!,
 
-    # Constructors for NamedTuples of fields
-    VelocityFields, TracerFields, PressureFields,
+    # FieldSets (collections of related fields)
+    FieldSet,
+    VelocityFields,
+    TracerFields,
+    PressureFields,
+    SourceTerms,
 
-    # Constructor for a named tuple of forcing functions
+    # Forcing functions
     Forcing,
 
     # Equation of state
-    NoEquationOfState, LinearEquationOfState,
-    δρ, buoyancy,
+    NoEquationOfState,
+    LinearEquationOfState,
+    δρ,
+    buoyancy,
 
     # Boundary conditions
-    BoundaryCondition, Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
-    CoordinateBoundaryConditions, FieldBoundaryConditions, ModelBoundaryConditions,
-    HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
-    getbc, setbc!,
+    BoundaryCondition,
+    Periodic,
+    Flux,
+    Gradient,
+    Value,
+    Dirchlet,
+    Neumann,
+    CoordinateBoundaryConditions,
+    ZBoundaryConditions,
+    FieldBoundaryConditions,
+    ModelBoundaryConditions,
+    BoundaryConditions,
+    HorizontallyPeriodicBCs,
+    ChannelBCs,
+    HorizontallyPeriodicModelBCs,
+    ChannelModelBCs,
+    getbc,
+    setbc!,
 
     # Halo regions
-    fill_halo_regions!, zero_halo_regions!,
+    fill_halo_regions!,
+    zero_halo_regions!,
 
     # Time stepping
-    TimeStepWizard, cell_advection_timescale, update_Δt!, time_step!,
+    TimeStepWizard,
+    cell_advection_timescale,
+    update_Δt!,
+    time_step!,
 
     # Poisson solver
-    PoissonBCs, PPN, PNN,
-    PoissonSolver, PoissonSolverCPU, PoissonSolverGPU,
-    solve_poisson_3d!, solve_poisson_3d_ppn_gpu_planned!,
+    PoissonBCs,
+    PPN, PNN,
+    PoissonSolver,
+    PoissonSolverCPU,
+    PoissonSolverGPU,
+    solve_poisson_3d!,
+    solve_poisson_3d_ppn_gpu_planned!,
 
     # Clock
     Clock,
 
     # Models
-    Model, ChannelModel,
+    Model,
+    ChannelModel,
 
     # Model output writers
-    OutputWriter, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    write_output, read_output, restore_from_checkpoint,
+    OutputWriter,
+    BinaryOutputWriter,
+    NetCDFOutputWriter,
+    JLD2OutputWriter,
+    Checkpointer,
+    write_output,
+    read_output,
+    restore_from_checkpoint,
 
     # Model diagnostics
-    Diagnostic, run_diagnostic, HorizontalAverage, NaNChecker,
+    Diagnostic,
+    run_diagnostic,
+    HorizontalAverage,
+    ProductProfile,
+    VelocityCovarianceProfiles,
+    NaNChecker,
 
     # Package utilities
-    prettytime, pretty_filesize,
+    prettytime,
+    pretty_filesize,
+    KB, MB, GB, TB,
     KiB, MiB, GiB, TiB,
 
     # Turbulence closures
-    TurbulenceClosures, ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
-    ConstantSmagorinsky, AnisotropicMinimumDissipation
+    TurbulenceClosures,
+    ConstantIsotropicDiffusivity,
+    ConstantAnisotropicDiffusivity,
+    ConstantSmagorinsky,
+    AnisotropicMinimumDissipation
 
 # Standard library modules
 using
