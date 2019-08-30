@@ -1,6 +1,6 @@
-import GPUifyLoops: @launch, @loop, @unroll
-
-using Oceananigans.TurbulenceClosures
+#####
+##### The basic idea: boundary condition types and data.
+#####
 
 abstract type BCType end
 struct Periodic <: BCType end
@@ -9,6 +9,7 @@ struct Gradient <: BCType end
 struct Value <: BCType end
 struct NoPenetration <: BCType end
 
+# Famous people.
 const Dirchlet = Value
 const Neumann = Gradient
 
@@ -27,7 +28,15 @@ struct BoundaryCondition{C<:BCType, T}
     condition :: T
 end
 
+# Some abbreviations to make our life easier.
 const BC = BoundaryCondition
+const FBC = BoundaryCondition{<:Flux}
+const PBC = BoundaryCondition{<:Periodic}
+const NPBC = BoundaryCondition{<:NoPenetration}
+const VBC = BoundaryCondition{<:Value}
+const GBC = BoundaryCondition{<:Gradient}
+const NFBC = BoundaryCondition{Flux, Nothing}
+
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 bctype(bc::BoundaryCondition{C}) where C = C
 
@@ -37,6 +46,12 @@ Adapt.adapt_structure(to, b::BC{C, A}) where {C<:BCType, A<:AbstractArray} =
 
 PeriodicBC() = BoundaryCondition(Periodic, nothing)
 NoPenetrationBC() = BoundaryCondition(NoPenetration, nothing)
+NoFluxBC() = BoundaryCondition(Flux, nothing)
+
+
+#####
+##### Boundary conditions along particular coordinates
+#####
 
 """
     CoordinateBoundaryConditions(left, right)
@@ -71,6 +86,10 @@ Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
 getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
 getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
+
+#####
+##### Boundary conditions for Fields
+#####
 
 """
     FieldBoundaryConditions(x, y, z)
@@ -131,6 +150,10 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
     return FieldBoundaryConditions(x, y, z)
 end
 
+#####
+##### Boundary conditions for entire models
+#####
+
 """
     ModelBoundaryConditions(u, v, w, T, S)
 
@@ -169,41 +192,61 @@ end
 # Default
 const BoundaryConditions = HorizontallyPeriodicModelBCs
 
-# *** Let's deprecate this function ***
-"""
-    ZBoundaryConditions(top=BoundaryCondition(Periodic, nothing),
-                        bottom=BoundaryCondition(Periodic, nothing))
+#####
+##### Tendency and pressure boundary condition "translators":
+#####
+#####   * Boundary conditions on tendency terms
+#####     derived from the boundary conditions on their repsective fields.
+#####
+#####   * Boundary conditions on pressure are derived from boundary conditions
+#####     on the north-south horizontal velocity, v.
+#####
 
-Returns `CoordinateBoundaryConditions` with specified `top`
-and `bottom` boundary conditions.
-"""
-function ZBoundaryConditions(;
-       top = BoundaryCondition(Flux, 0),
-    bottom = BoundaryCondition(Flux, 0)
-   )
-    return CoordinateBoundaryConditions(top, bottom)
+TendencyBC(::BC) = BoundaryCondition(Flux, 0)
+TendencyBC(::PBC) = PeriodicBC()
+TendencyBC(::NPBC) = NoPenetrationBC()
+
+TendencyCoordinateBCs(bcs) = CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
+
+TendencyFieldBoundaryConditions(fieldbcs) = 
+    NamedTuple{(:x, :y, :z)}(Tuple(TendencyCoordinateBCs(bcs) for bcs in fieldbcs))
+
+TendenciesBoundaryConditions(modelbcs) =
+    NamedTuple{propertynames(modelbcs)}(Tuple(TendencyFieldBoundaryConditions(bcs) for bcs in modelbcs))
+
+# Pressure boundary conditions are either zero flux (Neumann) or Periodic.
+# Note that a zero flux boundary condition is simpler than a zero gradient boundary condition.
+PressureBC(::BC) = BoundaryCondition(Flux, 0)
+PressureBC(::PBC) = PeriodicBC()
+
+function PressureBoundaryConditions(vbcs)
+    x = CoordinateBoundaryConditions(PressureBC(vbcs.x.left), PressureBC(vbcs.x.right))
+    y = CoordinateBoundaryConditions(PressureBC(vbcs.y.left), PressureBC(vbcs.y.right))
+    z = CoordinateBoundaryConditions(PressureBC(vbcs.z.left), PressureBC(vbcs.z.right))
+    return (x=x, y=y, z=z)
 end
 
-#=
-Notes:
+#####
+##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.
+##### Inhomogeneous Value and Gradient boundary conditions are handled by filling halos.
+#####
 
-- We assume that the boundary tendency has been previously calculated for
-  a 'no-flux' boundary condition.
+# Avoid some computation / memory accesses for Value, Gradient, Periodic, NoPenetration,
+# and no-flux boundary conditions --- every boundary condition that does *not* prescribe
+# a non-trivial flux.
+const NotFluxBC = Union{VBC, GBC, PBC, NPBC, NFBC}
+apply_z_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 
-  This means that boudnary conditions take the form of an addition/subtraction
-  to the tendency associated with a flux at point `aaf` below the bottom cell.
-  This paradigm holds as long as consider boundary conditions on `aaf`
-  variables only, where a is "any" of c or f. See the src/operators/README for
-  more information on the naming convention for different grid point locations.
+"""
+    apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, t, iter, U, Φ)
 
- - We use the physics-based convention that
-
-        flux = -κ * gradient,
-
-    and that
-
-        tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
-=#
+Apply flux boundary conditions to `c` by adding the associated flux divergence to the 
+source term `Gc`.
+"""
+function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
+    @launch device(arch) config=launch_config(grid, 2) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+    return
+end
 
 # Multiple dispatch on the type of boundary condition
 getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
@@ -212,82 +255,58 @@ getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
 
 Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
 
-# Do nothing if boundary conditions are periodic.
-apply_bcs!(arch, coord, Bx, By, Bz, ::BC{<:Periodic}, args...) = nothing
-
-# First, dispatch on coordinate.
-apply_bcs!(arch, ::Val{:x}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(By, Bz) apply_x_bcs!(args...)
-apply_bcs!(arch, ::Val{:y}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, Bz) apply_y_bcs!(args...)
-apply_bcs!(arch, ::Val{:z}, Bx, By, Bz, args...) =
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By) apply_z_bcs!(args...)
-
-# Do nothing in cases not explicitly defined.
-# These functions are called in cases where one of the
-# z-boundaries is set, but not the other.
+# Fall back functions for non-Flux boundary conditions.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
 
+# Shortcuts for 'no-flux' boundary conditions.
+@inline apply_z_top_bc!(Gc, ::NFBC, args...) = nothing
+@inline apply_z_bottom_bc!(Gc, ::NFBC, args...) = nothing
+
 """
-    apply_z_top_bc!(top_bc, i, j, grid, c, Gc, κ, t, iter, U, Φ)
+    apply_z_top_bc!(Gc, top_bc, i, j, grid, t, iter, U, Φ)
 
 Add the part of flux divergence associated with a top boundary condition on c.
-to Gc, where the conservation equation for c is ∂c/∂t = Gc.
+Note that because
+
+        tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
+
+A positive top flux is associated with a *decrease* in `Gc` near the top boundary.
 If `top_bc.condition` is a function, the function must have the signature
 
     `top_bc.condition(i, j, grid, t, iter, U, Φ)`
 
 """
-@inline apply_z_top_bc!(top_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
-
-@inline apply_z_top_bc!(top_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, 1] += κ * getbc(top_gradient, i, j, grid, args...) / grid.Δz
-
-@inline apply_z_top_bc!(top_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, 1] += 2κ / grid.Δz^2 * (getbc(top_value, i, j, grid, args...) - c[i, j, 1])
+@inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
+    @inbounds Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
-    apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ, t, iter, U, Φ)
+    apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, t, iter, U, Φ)
 
-Add the part of flux divergence associated with a bottom boundary condition on c.
-to Gc, where the conservation equation for c is ∂c/∂t = Gc.
+Add the flux divergence associated with a bottom flux boundary condition on c.
+Note that because
+
+        tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
+
+A positive bottom flux is associated with an *increase* in `Gc` near the bottom boundary.
 If `bottom_bc.condition` is a function, the function must have the signature
 
     `bottom_bc.condition(i, j, grid, t, iter, U, Φ)`
 
 """
-@inline apply_z_bottom_bc!(bottom_flux::BC{<:Flux}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_gradient::BC{<:Gradient}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, grid.Nz] -= κ * getbc(bottom_gradient, i, j, grid, args...) / grid.Δz
-
-@inline apply_z_bottom_bc!(bottom_value::BC{<:Value}, i, j, grid, c, Gc, κ, args...) =
-    Gc[i, j, grid.Nz] -= 2κ / grid.Δz^2 * (c[i, j, grid.Nz] - getbc(bottom_value, i, j, grid, args...))
-
-@inline get_top_κ(κ::Number, args...) = κ
-@inline get_bottom_κ(κ::Number, args...) = κ
-
-@inline get_top_κ(κ::AbstractArray, i, j, args...) = κ[i, j, 1]
-@inline get_bottom_κ(κ::AbstractArray, i, j, grid, args...) = κ[i, j, grid.Nz]
+@inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
+    @inbounds Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
     apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, t, iter, U, Φ)
 
-Apply a top and/or bottom boundary condition to variable c. Note that this kernel
-must be launched on the GPU with blocks=(Bx, By). If launched with blocks=(Bx, By, Bz),
-the boundary condition will be applied Bz times!
+Apply a top and/or bottom boundary condition to variable c.
 """
-function apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, t, iter, U, Φ)
+function _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            κ_top = get_top_κ(κ, i, j, grid, closure)
-            κ_bottom = get_bottom_κ(κ, i, j, grid, closure)
-
-               apply_z_top_bc!(top_bc,    i, j, grid, c, Gc, κ_top, t, iter, U, Φ)
-            apply_z_bottom_bc!(bottom_bc, i, j, grid, c, Gc, κ_bottom, t, iter, U, Φ)
+               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...) 
+            apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...) 
         end
     end
 end

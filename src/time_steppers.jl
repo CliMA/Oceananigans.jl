@@ -20,12 +20,14 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
     RHS = model.poisson_solver.storage
     U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ,
                                     model.timestepper.G⁻, model.diffusivities, model.pressures)
+    pressure_bcs = PressureBoundaryConditions(model.boundary_conditions.v)
 
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
-        time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
-                   model.forcing, model.boundary_conditions, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
+        adams_bashforth_time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
+                                   model.forcing, model.boundary_conditions, pressure_bcs, U, Φ, p, K, RHS, Gⁿ, 
+                                   G⁻, Δt, χ)
 
         [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in model.diagnostics ]
         [ time_to_write(model.clock, out) && write_output(model, out) for out in model.output_writers ]
@@ -39,36 +41,41 @@ end
 
 Step forward one time step.
 """
-function time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
+function adams_bashforth_time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, pressure_bcs,
+                                    U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
+
+    # Arguments for user-defined boundary condition functions:
+    boundary_condition_args = (model.clock.time, model.clock.iteration, U, Φ) 
 
     # Pre-computations:
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
+    fill_halo_regions!(merge(U, Φ), bcs, arch, grid, boundary_condition_args...)
 
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, eos, constants.g, U, Φ)
-    fill_halo_regions!(K, bcs[4], grid) # fill diffusivity halo regions with same conditions as temperature
+    fill_halo_regions!(K, pressure_bcs, arch, grid) # diffusivities share bcs with pressure.
     @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, constants, eos, Φ)
-    fill_halo_regions!(p.pHY′, bcs[4], grid) # fill pressure halo regions with same conditions as temperature
+    fill_halo_regions!(p.pHY′, pressure_bcs, arch, grid)
 
-    # Calc RHS:
+    # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
     calculate_interior_source_terms!(arch, grid, constants, eos, closure, U, Φ, p.pHY′, Gⁿ, K, forcing)
-    calculate_boundary_source_terms!(arch, grid, bcs, model.clock, closure, U, Φ, Gⁿ, K)
+    calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs, boundary_condition_args...)
 
     # Complete explicit substep:
     @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
 
     # Start pressure correction substep with a pressure solve:
-    fill_halo_regions!(Gⁿ[1:3], bcs[1:3], grid)
-    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, model.poisson_solver.bcs,
+    fill_halo_regions!(Gⁿ[1:3], bcs[1:3], arch, grid)
+    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid, 
+                                                                                          model.poisson_solver.bcs,
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
-    fill_halo_regions!(p.pNHS, bcs[4], grid)
+    fill_halo_regions!(p.pNHS, pressure_bcs, arch, grid)
 
     # Complete pressure correction step:
     @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
 
     # Recompute vertical velocity w from continuity equation to ensure incompressibility
-    fill_halo_regions!(U, bcs[1:3], grid)
+    fill_halo_regions!(U, bcs[1:3], arch, grid, boundary_condition_args...)
     @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
 
     model.clock.time += Δt
@@ -90,7 +97,8 @@ function solve_for_pressure!(::GPU, model::Model)
     ϕ = model.poisson_solver.storage
 
     solve_poisson_3d!(model.poisson_solver, model.grid)
-    @launch device(GPU()) config=launch_config(model.grid, 3) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, model.pressures.pNHS.data)
+    @launch device(GPU()) config=launch_config(model.grid, 3) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ, 
+                                                                            model.pressures.pNHS.data)
 end
 
 """Store previous source terms before updating them."""
@@ -115,7 +123,8 @@ function update_hydrostatic_pressure!(pHY′, grid, constants, eos, Φ)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             @inbounds pHY′[i, j, 1] = 0.5 * gΔz * δρ(eos, Φ.T, Φ.S, i, j, 1)
             @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (δρ(eos, Φ.T, Φ.S, i, j, k-1) + δρ(eos, Φ.T, Φ.S, i, j, k))
+                @inbounds pHY′[i, j, k] = pHY′[i, j, k-1] + gΔz * 0.5 * (   δρ(eos, Φ.T, Φ.S, i, j, k-1) 
+                                                                          + δρ(eos, Φ.T, Φ.S, i, j, k)  )
             end
         end
     end
@@ -189,11 +198,20 @@ function calculate_interior_source_terms!(arch, grid, constants, eos, closure, U
     end
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu(grid, constants, eos, closure, U, Φ, pHY′, G.Gu, K, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv(grid, constants, eos, closure, U, Φ, pHY′, G.Gv, K, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw(grid, constants, eos, closure, U, Φ, pHY′, G.Gw, K, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT(grid, constants, eos, closure, U, Φ, pHY′, G.GT, K, F)
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS(grid, constants, eos, closure, U, Φ, pHY′, G.GS, K, F)
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu(grid, constants, eos, closure, U, Φ, pHY′, 
+                                                                           G.Gu, K, F)
+
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv(grid, constants, eos, closure, U, Φ, pHY′, 
+                                                                           G.Gv, K, F)
+
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw(grid, constants, eos, closure, U, Φ, pHY′, 
+                                                                           G.Gw, K, F)
+
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT(grid, constants, eos, closure, U, Φ, pHY′, 
+                                                                           G.GT, K, F)
+
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS(grid, constants, eos, closure, U, Φ, pHY′, 
+                                                                           G.GS, K, F)
 end
 
 function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gⁿ, G⁻, χ) where FT
@@ -216,7 +234,8 @@ function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-                @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, 
+                                                                                              i, j, k)
             end
         end
     end
@@ -238,7 +257,8 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, U, G,
                 else
                     k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
                 end
-                @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, 
+                                                                                               i, j, k)
             end
         end
     end
@@ -261,7 +281,8 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, U, G,
                     j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
                 end
 
-                @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt + div_f2c(grid, G.Gu, G.Gv, G.Gw, 
+                                                                                                i, j, k)
             end
         end
     end
@@ -331,30 +352,17 @@ function compute_w_from_continuity!(grid::Grid, U)
     end
 end
 
-get_ν(closure::IsotropicDiffusivity, K) = closure.ν
-get_κ(closure::IsotropicDiffusivity, K) = (T=closure.κ, S=closure.κ)
-
-get_ν(closure::ConstantAnisotropicDiffusivity, K) = closure.νv
-get_κ(closure::ConstantAnisotropicDiffusivity, K) = (T=closure.κv, S=closure.κv)
-
 "Apply boundary conditions by modifying the source term G."
-function calculate_boundary_source_terms!(arch, grid, bcs, clock, closure, U, Φ, Gⁿ, K)
-    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
-
-    # Apply boundary conditions in the vertical direction.
-    ν = get_ν(closure, K)
-    κ = get_κ(closure, K)
+function calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs, args...)
 
     # Velocity fields
     for (i, ubcs) in enumerate(bcs[1:3])
-        apply_bcs!(arch, Val(:z), Bx, By, Bz, ubcs.z.left, ubcs.z.right,
-                   grid, U[i], Gⁿ[i], ν, closure, clock.time, clock.iteration, U, Φ)
+        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.left, ubcs.z.right, args...)
     end
 
     # Tracer fields
-    for (i, ϕbcs) in enumerate(bcs[4:end])
-        apply_bcs!(arch, Val(:z), Bx, By, Bz, ϕbcs.z.left, ϕbcs.z.right,
-                   grid, Φ[i], Gⁿ[i+3], κ[i], closure, clock.time, clock.iteration, U, Φ)
+    for (i, cbcs) in enumerate(bcs[4:end])
+        apply_z_bcs!(Gⁿ[i+3], arch, grid, cbcs.z.left, cbcs.z.right, args...)
     end
 
     return nothing
