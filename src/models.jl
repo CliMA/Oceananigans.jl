@@ -1,4 +1,5 @@
 using .TurbulenceClosures
+using .TurbulenceClosures: ν₀, κ₀
 
 mutable struct Model{TS, TC, A<:Architecture, GR, T, EOS<:EquationOfState,
                      PC<:PlanetaryConstants,
@@ -38,8 +39,8 @@ function Model(;
     float_type = Float64,
           grid = RegularCartesianGrid(float_type, N, L),
     # Isotropic transport coefficients (exposed to `Model` constructor for convenience)
-             ν = 1.05e-6, νh=ν, νv=ν,
-             κ = 1.43e-7, κh=κ, κv=κ,
+             ν = ν₀, νh=ν, νv=ν,
+             κ = κ₀, κh=κ, κv=κ,
        closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
     # Time stepping
     start_time = 0,
@@ -64,7 +65,7 @@ function Model(;
        velocities = VelocityFields(arch, grid)
           tracers = TracerFields(arch, grid)
         pressures = PressureFields(arch, grid)
-      timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125)
+      timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125, bcs)
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
 
     # Initialize Poisson solver.
@@ -185,14 +186,16 @@ end
 Return an AdamsBashforthTimestepper object with tendency
 fields on `arch` and `grid` and AB2 parameter `χ`.
 """
-struct AdamsBashforthTimestepper{T, TG}
-    Gⁿ :: TG
-    G⁻ :: TG
-     χ :: T
+struct AdamsBashforthTimestepper{T, TG, BC}
+      Gⁿ :: TG
+      G⁻ :: TG
+       χ :: T
+    Gbcs :: BC
 end
 
-function AdamsBashforthTimestepper(float_type, arch, grid, χ)
+function AdamsBashforthTimestepper(float_type, arch, grid, χ, modelbcs)
    Gⁿ = Tendencies(arch, grid)
    G⁻ = Tendencies(arch, grid)
-   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
+   Gbcs = TendenciesBoundaryConditions(modelbcs)
+   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ), typeof(Gbcs)}(Gⁿ, G⁻, χ, Gbcs)
 end
