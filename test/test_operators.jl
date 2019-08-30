@@ -6,7 +6,6 @@
         Nx, Ny, Nz = 32, 16, 8
         Lx, Ly, Lz = 100, 100, 100
 
-        arch = CPU()
         grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -14,7 +13,7 @@
 
         A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
         @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
-        fill_halo_regions!(A3, HorizontallyPeriodicBCs(), arch, grid)
+        fill_halo_regions!(A3, HorizontallyPeriodicBCs(), grid)
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)

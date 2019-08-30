@@ -28,7 +28,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     fbcs = HorizontallyPeriodicBCs()
 
     data(field) .= rand(FT, Nx, Ny, Nz)
-    fill_halo_regions!(field.data, fbcs, arch, grid)
+    fill_halo_regions!(field.data, fbcs, grid)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
