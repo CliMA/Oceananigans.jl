@@ -42,11 +42,11 @@ function compute_w_from_continuity(arch, FT)
     data(u) .= rand(FT, Nx, Ny, Nz)
     data(v) .= rand(FT, Nx, Ny, Nz)
 
-    fill_halo_regions!(u.data, bcs.u, grid)
-    fill_halo_regions!(v.data, bcs.v, grid)
+    fill_halo_regions!(u.data, bcs.u, arch, grid)
+    fill_halo_regions!(v.data, bcs.v, arch, grid)
     compute_w_from_continuity!(grid, (u=u.data, v=v.data, w=w.data))
 
-    fill_halo_regions!(w.data, bcs.w, grid)
+    fill_halo_regions!(w.data, bcs.w, arch, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
     # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
