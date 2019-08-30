@@ -7,12 +7,13 @@ using Oceananigans.TurbulenceClosures
 function uτ²(model)
     Δz = model.grid.Δz
     ν = model.closure.ν
+    Hz = model.grid.Hz
 
     Up = HorizontalAverage(model, model.velocities.u; frequency=Inf)
-    U = Up(model)[2:end-1]
+    U = Up(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    uτ²⁺ = ν * abs(U[1] - Uw) / Δz
-    uτ²⁻ = ν * abs(-Uw - U[end]) / Δz
+    uτ²⁺ = ν * abs(U[1] - Uw) / (Δz/2)     # Top wall
+    uτ²⁻ = ν * abs(-Uw - U[end]) / (Δz/2)  # Bottom wall
 
     uτ²⁺, uτ²⁻
 end
@@ -21,12 +22,13 @@ end
 function qw(model)
     Δz = model.grid.Δz
     κ = model.closure.κ
+    Hz = model.grid.Hz
 
     Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
-    Θ = Tp(model)[2:end-1]
+    Θ = Tp(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    qw⁺ = κ * abs(Θ[1] - Θw) / Δz
-    qw⁻ = κ * abs(-Θw - Θ[end]) / Δz
+    qw⁺ = κ * abs(Θ[1] - Θw) / (Δz/2)     # Top wall
+    qw⁻ = κ * abs(-Θw - Θ[end]) / (Δz/2)  # Bottom wall
 
     qw⁺, qw⁻
 end
@@ -108,20 +110,14 @@ ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Uw),
 vbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
                                 bottom = BoundaryCondition(Value, 0))
 
-wbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
-                                bottom = BoundaryCondition(Value, 0))
-
 # Non-dimensional model setup
-model = Model(
-         arch = HAVE_CUDA ? GPU() : CPU(),
-            N = (128, 128, 1024),
-            L = (4π*h, 2π*h, 2h),
-      # closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
-      closure = VerstappenAnisotropicMinimumDissipation(ν=ν, κ=κ),
-          eos = LinearEquationOfState(βT=1.0, βS=0.0),
-    constants = PlanetaryConstants(f=0.0, g=1.0),
-          bcs = BoundaryConditions(u=ubcs, v=vbcs, w=wbcs, T=Tbcs)
-    )
+model = Model(N = (128, 128, 1024),
+              L = (4π*h, 2π*h, 2h),
+           arch = HAVE_CUDA ? GPU() : CPU(),
+        closure = VerstappenAnisotropicMinimumDissipation(ν=ν, κ=κ),
+            eos = LinearEquationOfState(βT=1.0, βS=0.0),
+      constants = PlanetaryConstants(f=0.0, g=1.0),
+            bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs))
 
 # Add a bit of surface-concentrated noise to the initial condition
 ε(z) = randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
@@ -257,7 +253,7 @@ while model.clock.time < end_time
     update_Δt!(wizard, model)
 
 
-    @printf("[%06.2f%%] i: %d, t: %5.2f days, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, νκmax: (%6.3g, %6.3g), νκCFL: (%6.4g, %6.4g), next Δt: %8.5g, ⟨wall time⟩: %s\n",
+    @printf("[%06.2f%%] i: %d, t: %4.2f, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, νκmax: (%6.3g, %6.3g), νκCFL: (%6.4g, %6.4g), next Δt: %8.5g, ⟨wall time⟩: %s\n",
             progress, model.clock.iteration, model.clock.time,
             umax, vmax, wmax, CFL, νmax, κmax, νCFL, κCFL,
             wizard.Δt, prettytime(walltime / Ni))
