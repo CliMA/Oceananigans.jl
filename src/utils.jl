@@ -6,6 +6,21 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
+####
+#### Convinient definitions
+####
+
+const second = 1.0
+const minute = 60.0
+const hour   = 60minute
+const day    = 24hour
+
+KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+
+####
+#### Pretty printing
+####
+
 # Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
     if t < 1e-6
@@ -22,9 +37,8 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
 
-# Code credit: https://stackoverflow.com/a/1094933
+# Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
         abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
@@ -32,6 +46,10 @@ function pretty_filesize(s, suffix="B")
     end
     return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
+
+####
+#### Creating fields by dispatching on architecture
+####
 
 function Base.zeros(T, ::CPU, grid)
     # Starting and ending indices for the offset array.
@@ -61,6 +79,10 @@ Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid::Grid{T}) where T = zeros(T, arch, grid)
 Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
+####
+#### Courant–Friedrichs–Lewy (CFL) condition number calculation
+####
+
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
@@ -78,6 +100,10 @@ cell_advection_timescale(model) =
                              model.velocities.v.data.parent,
                              model.velocities.w.data.parent,
                              model.grid)
+
+####
+#### Adaptive time stepping
+####
 
 """
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
@@ -119,6 +145,20 @@ function update_Δt!(wizard, model)
     return nothing
 end
 
+#####
+##### Some utilities for tupling
+#####
+
+tupleit(t::Tuple) = t
+tupleit(a::AbstractArray) = Tuple(a)
+tupleit(nt) = tuple(nt)
+
+parenttuple(obj) = Tuple(f.data.parent for f in obj)
+
+####
+#### Data tuples
+####
+
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
 @inline datatuple(obj::Field) = obj.data
@@ -140,7 +180,10 @@ function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
     NamedTuple{Tuple(names)}(Tuple(elems))
 end
 
-# Dynamic launch configuration
+####
+#### Dynamic launch configuration
+####
+
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun
@@ -161,4 +204,45 @@ function launch_config(grid, dims)
 
         return (threads=Tuple(threads), blocks=Tuple(blocks))
     end
+end
+
+####
+#### Utilities shared between diagnostics and output writers
+####
+
+"""
+    validate_interval(frequency, interval)
+
+Ensure that frequency and interval are not both `nothing`.
+"""
+function validate_interval(frequency, interval)
+    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
+    return
+end
+
+has_interval(obj) = :interval in propertynames(obj) && obj.interval != nothing
+has_frequency(obj) = :frequency in propertynames(obj) && obj.frequency != nothing
+
+function interval_is_ripe(clock, obj)
+    if has_interval(obj) && clock.time >= obj.previous + obj.interval
+        obj.previous = clock.time - rem(clock.time, obj.interval)
+        return true
+    else
+        return false
+    end
+end
+
+frequency_is_ripe(clock, obj) = has_frequency(obj) && clock.iteration % obj.frequency == 0
+
+function time_to_run(clock, output_writer)
+    
+    interval_is_ripe(clock, output_writer) && return true
+    frequency_is_ripe(clock, output_writer) && return true
+
+    # If the output writer does not specify an interval or frequency,
+    # it is unable to write output and we throw an error as a convenience.
+    has_interval(output_writer) || has_frequency(output_writer) ||
+        error("$(typeof(output_writer)) must have a frequency or interval specified!")
+
+    return false
 end
