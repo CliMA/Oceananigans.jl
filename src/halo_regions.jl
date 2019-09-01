@@ -91,7 +91,7 @@ end
 fill_halo_regions!(::Nothing, args...) = nothing
 
 ####
-#### Zeroing out halo regions
+#### Halo region zeroing
 ####
 
  zero_west_halo!(ϕ, H, N) = @views @. ϕ[1:H, :, :] = 0

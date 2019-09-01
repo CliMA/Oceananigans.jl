@@ -1,25 +1,5 @@
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
-function time_to_write(clock::Clock, diag::OutputWriter)
-    if :interval in propertynames(diag) && diag.interval != nothing
-        if clock.time >= diag.previous + diag.interval
-            diag.previous = clock.time - rem(clock.time, diag.interval)
-            return true
-        else
-            return false
-        end
-    elseif :frequency in propertynames(diag) && diag.frequency != nothing
-        return clock.iteration % diag.frequency == 0
-    else
-        error("$(typeof(diag)) must have a frequency or interval specified!")
-    end
-end
-
-function validate_interval(frequency, interval)
-    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
-    return
-end
-
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Number)        = file[location] = p
@@ -30,7 +10,7 @@ saveproperty!(file, location, p::Function) = @warn "Cannot save Function propert
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) 
                                         for subp in propertynames(p)]
 
-# Special saveproperty! so boundary conditions are easily readable outside julia.    
+# Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     for endpoint in propertynames(cbcs)
         endpoint_bc = getproperty(cbcs, endpoint)
@@ -414,7 +394,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
     for p in properties
         isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
-        
+
         if has_reference(Function, getproperty(model, p))
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
