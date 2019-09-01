@@ -14,7 +14,7 @@ function time_step_with_forcing_functions(arch)
 
     forcing = Forcing(Fu=Fu, Fv=Fv, Fw=Fw)
 
-    model = Model(N=(8, 8, 8), L=(1, 1, 1), arch=arch, forcing=forcing)
+    model = Model(N=(16, 16, 16), L=(1, 1, 1), arch=arch, forcing=forcing)
     time_step!(model, 1, 1)
     return true
 end
@@ -27,7 +27,7 @@ function time_step_with_forcing_functions_const(arch)
 
     forcing = Forcing(Fu=Fu, Fv=Fv, Fw=Fw)
 
-    model = Model(N=(8, 8, 8), L=(1, 1, 1), arch=arch, forcing=forcing)
+    model = Model(N=(16, 16, 16), L=(1, 1, 1), arch=arch, forcing=forcing)
     time_step!(model, 1, 1)
     return true
 end
@@ -41,7 +41,7 @@ function time_step_with_forcing_functions_sin_exp(arch)
 
     forcing = Forcing(Fu=Fu, FT=FT)
 
-    model = Model(N=(8, 8, 8), L=(1, 1, 1), arch=arch, forcing=forcing)
+    model = Model(N=(16, 16, 16), L=(1, 1, 1), arch=arch, forcing=forcing)
     time_step!(model, 1, 1)
     return true
 end
