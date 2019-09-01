@@ -52,7 +52,7 @@ staggered grid) before computing the horizontal average.
 function run_diagnostic(model::Model, havg::HorizontalAverage{NTuple{1}})
     zero_halo_regions!(havg.fields[1], model.grid)
     sum!(havg.profile, havg.fields[1])
-    normalize_horizontal_sum!(havg.profile, model.grid)
+    normalize_horizontal_sum!(havg, model.grid)
     return
 end
 
@@ -65,7 +65,7 @@ function run_diagnostic(model::Model, havg::HorizontalAverage)
 
     @. tmp = *(havg.fields...)
     sum!(havg.profile, tmp)
-    normalize_horizontal_sum!(havg.profile, model.grid)
+    normalize_horizontal_sum!(havg, model.grid)
 
     return
 end
