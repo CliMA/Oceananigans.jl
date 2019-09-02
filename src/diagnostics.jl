@@ -72,7 +72,7 @@ end
 
 function (havg::HorizontalAverage{F, Nothing})(model) where F
     run_diagnostic(model, havg)
-    return p.profile
+    return havg.profile
 end
 
 function (havg::HorizontalAverage)(model)
