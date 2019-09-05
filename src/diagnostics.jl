@@ -19,13 +19,13 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontalAverage{F, RT, P, I, T} <: Diagnostic
+mutable struct HorizontalAverage{F, R, P, I, T} <: Diagnostic
         profile :: P
          fields :: F
       frequency :: I
        interval :: T
        previous :: Float64
-    return_type :: RT
+    return_type :: R
 end
 
 
@@ -77,7 +77,7 @@ end
 
 function (havg::HorizontalAverage)(model)
     run_diagnostic(model, havg)
-    return return_type(havg.profile)
+    return havg.return_type(havg.profile)
 end
 
 
