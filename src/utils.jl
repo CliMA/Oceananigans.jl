@@ -167,7 +167,7 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
 function getindex(t::NamedTuple, r::AbstractUnitRange{<:Real})
     n = length(r)
-    n == 0 && return ()
+    n == 0 && return NamedTuple()
     elems = Vector{eltype(t)}(undef, n)
     names = Vector{Symbol}(undef, n)
     o = first(r) - 1
