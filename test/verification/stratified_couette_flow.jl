@@ -122,11 +122,11 @@ model = Model(N = (128, 128, 1024),
 # Add a bit of surface-concentrated noise to the initial condition
 ε(z) = randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
 
-T₀(x, y, z) = 2Θw * (1/2 + z/model.grid.Lz) * (1 + 1e-6 * ε(z))
-u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + 1e-6 * ε(z)) * (1 + 0.1*sin(4π/model.grid.Lx * x))
-v₀(x, y, z) = 1e-6 * ε(z)
-w₀(x, y, z) = 1e-6 * ε(z)
-S₀(x, y, z) = 1e-6 * ε(z)
+T₀(x, y, z) = 2Θw * (1/2 + z/model.grid.Lz) * (1 + 5e-1 * ε(z))
+u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + 5e-1 * ε(z)) * (1 + 0.1*sin(4π/model.grid.Lx * x))
+v₀(x, y, z) = 5e-1 * ε(z)
+w₀(x, y, z) = 5e-1 * ε(z)
+S₀(x, y, z) = 5e-1 * ε(z)
 
 set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
@@ -251,7 +251,6 @@ while model.clock.time < end_time
     κCFL = wizard.Δt / (Δ^2 / κmax)
 
     update_Δt!(wizard, model)
-
 
     @printf("[%06.2f%%] i: %d, t: %4.2f, umax: (%6.3g, %6.3g, %6.3g) m/s, CFL: %6.4g, νκmax: (%6.3g, %6.3g), νκCFL: (%6.4g, %6.4g), next Δt: %8.5g, ⟨wall time⟩: %s\n",
             progress, model.clock.iteration, model.clock.time,
