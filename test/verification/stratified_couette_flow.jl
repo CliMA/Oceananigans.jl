@@ -73,7 +73,7 @@ end
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function Reτ(model)
     ν = model.closure.ν
-    h = model.grid.Lz
+    h = model.grid.Lz / 2
     uτ²⁺, uτ²⁻ = uτ²(model)
     h * √uτ²⁺ / ν, h * √uτ²⁻ / ν
 end
@@ -81,7 +81,7 @@ end
 """ Friction Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function Nu(model)
     κ = model.closure.κ
-    h = model.grid.Lz
+    h = model.grid.Lz / 2
     uτ²⁺, uτ²⁻ = uτ²(model)
     qw⁺, qw⁻ = qw(model)
 
