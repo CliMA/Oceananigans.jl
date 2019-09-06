@@ -123,7 +123,7 @@ model = Model(N = (128, 128, 64),
 ε(z) = randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
 
 T₀(x, y, z) = 2Θw * (1/2 + z/model.grid.Lz) * (1 + 5e-1 * ε(z))
-u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + 5e-1 * ε(z)) * (1 + 0.1*sin(4π/model.grid.Lx * x))
+u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + 5e-1 * ε(z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
 v₀(x, y, z) = 5e-1 * ε(z)
 w₀(x, y, z) = 5e-1 * ε(z)
 S₀(x, y, z) = 5e-1 * ε(z)
