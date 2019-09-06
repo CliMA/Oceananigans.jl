@@ -111,10 +111,10 @@ vbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
                                 bottom = BoundaryCondition(Value, 0))
 
 # Non-dimensional model setup
-model = Model(N = (128, 128, 1024),
+model = Model(N = (128, 128, 64),
               L = (4π*h, 2π*h, 2h),
-           arch = HAVE_CUDA ? GPU() : CPU(),
-        closure = VerstappenAnisotropicMinimumDissipation(ν=ν, κ=κ),
+           arch = GPU(),
+        closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
             eos = LinearEquationOfState(βT=1.0, βS=0.0),
       constants = PlanetaryConstants(f=0.0, g=1.0),
             bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs))
