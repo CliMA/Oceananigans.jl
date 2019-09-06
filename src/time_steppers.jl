@@ -37,9 +37,9 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
 end
 
 """
-    time_step!(args...)
+    adams_bashforth_time_step!(args...)
 
-Step forward one time step.
+Step forward one time step with a 2nd-order Adams-Bashforth method and pressure-correction substep.
 """
 function adams_bashforth_time_step!(model, arch, grid, constants, eos, closure, forcing, bcs, pressure_bcs,
                                     U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
