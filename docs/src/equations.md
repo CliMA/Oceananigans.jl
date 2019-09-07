@@ -58,16 +58,16 @@ density $\rho$ and pressure $p$ by an appropriate equation of state
 
 which may take multiple forms.
 
-## Manipulation of the governing equations
-
 In order to discretize and discuss the equations, it will be helpful to expand out the material derivative and
-write out the individual components of the momentum equation \eqref{eq:momentum}.
+write out the individual components of the momentum equation \eqref{eq:momentum} and tracer equation
+\eqref{eq:tracer}.
 
-We can write equations for the time derivatives of $u$, $v$, and $w$\footnotemark[3]
+We can write equations for the time derivatives\footnotemark[3] of $u$, $v$, $w$, and $c$
 \begin{align}
-  \partial_t u &= -\bm{u}\cdotp\grad u + fv - \partial_x \phi + \div{\nu \grad u}     + F_u \label{eqn:xMomentum}  \\
-  \partial_t v &= -\bm{u}\cdotp\grad v - fu - \partial_y \phi + \div{\nu \grad v}     + F_v \label{eqn:yMomentum}  \\
-  \partial_t w &= -\bm{u}\cdotp\grad w      - \partial_z \phi + \div{\nu \grad w} + b + F_w \label{eqn:zMomentum}
+  \partial_t u &= -\bm{u}\cdotp\grad u + fv - \partial_x \phi + \div{\nu \grad u}      + F_u \label{eqn:xMomentum} \\
+  \partial_t v &= -\bm{u}\cdotp\grad v - fu - \partial_y \phi + \div{\nu \grad v}      + F_v \label{eqn:yMomentum} \\
+  \partial_t w &= -\bm{u}\cdotp\grad w      - \partial_z \phi + \div{\nu \grad w} + b  + F_w \label{eqn:zMomentum} \\
+  \partial_t c &= -\bm{u}\cdotp\grad c                        + \div{\kappa_c \grad c} + F_c \label{eqn:tracer2}
 \end{align}
 where we have rewritten the pressure gradient term as the gradient of the kinematic pressure $\phi = p/\rho_0$
 and $b = -g\rho\prime/\rho_0$ is the buoyancy. We have also rewritten
@@ -85,7 +85,8 @@ contribution in geophysical fluid dynamics on Earth. This is termed the \emph{tr
 taken with the \emph{shallow-fluid approximation}, which assumes the depth of the fluid is much shallower than the
 radius of the sphere on which it evolves, otherwise conservation of energy and angular momentum is not guaranteed.
 See \citet[\S2.2.4]{Vallis17} for an introductory discussion of these approximations, and
-\citet{Marshall97HY,White05} for a more detailed discussion.}
+
+# Hydrostatic and non-hydrostatic momentum equation
 
 As a practical matter to allow the choice between evolving a hydrostatic and non-hydrostatic set of equations, we
 split the kinematic pressure term into hydrostatic and non-hydrostatic parts,
