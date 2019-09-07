@@ -16,8 +16,16 @@
 # Governing equations
 
 The governing equations solved by \texttt{Oceananigans.jl} are the rotating Navier-Stokes equations describing
-viscous fluid flow with the Boussinesq approximation\footnotemark. The resulting mass conservation equation imposes
-that the fluid flow is incompressible.
+viscous fluid flow with the Boussinesq approximation.\footnotemark[1] The resulting mass conservation equation
+imposes that the fluid flow is incompressible.\footnotemark[2]
+
+\footnotetext[1]{Named after \citet{Boussinesq1903} although used earlier by \citet{Oberbeck1879}, the Boussinesq
+approximation neglects density differences in the momentum equation except when associated with the gravitational
+term. It is an accurate approximation for many flows, and especially so for oceanic flows where density differences
+are very small. See \citet[\S2.4]{Vallis17} for an oceanographic introduction to the Boussinesq equations and
+\citet[\S2.A]{Vallis17} for an asymptotic derivation. See \citet[\S4.9]{Kundu15} for an engineering introduction.}
+
+\footnotetext[2]{Incompressibility rules out density and pressure waves like sound or shock waves.}
 
 The rotating Boussinesq equations can be written as
 \begin{equation}
