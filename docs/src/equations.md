@@ -59,14 +59,15 @@ density $\rho$ and pressure $p$ by an appropriate equation of state
 which may take multiple forms.
 
 ## Manipulation of the governing equations
+
 In order to discretize and discuss the equations, it will be helpful to expand out the material derivative and
 write out the individual components of the momentum equation \eqref{eq:momentum}.
 
 We can write equations for the time derivatives of $u$, $v$, and $w$\footnotemark[3]
 \begin{align}
-  \p{u}{t} &= -\bm{u}\cdotp\grad u + fv - \p{\phi}{x} + \div{\nu \grad u}     + F_u \label{eqn:xMomentum}  \\
-  \p{v}{t} &= -\bm{u}\cdotp\grad v - fu - \p{\phi}{y} + \div{\nu \grad v}     + F_v \label{eqn:yMomentum}  \\
-  \p{w}{t} &= -\bm{u}\cdotp\grad w      - \p{\phi}{z} + \div{\nu \grad w} + b + F_w \label{eqn:zMomentum}
+  \partial_t u &= -\bm{u}\cdotp\grad u + fv - \partial_x \phi + \div{\nu \grad u}     + F_u \label{eqn:xMomentum}  \\
+  \partial_t v &= -\bm{u}\cdotp\grad v - fu - \partial_y \phi + \div{\nu \grad v}     + F_v \label{eqn:yMomentum}  \\
+  \partial_t w &= -\bm{u}\cdotp\grad w      - \partial_z \phi + \div{\nu \grad w} + b + F_w \label{eqn:zMomentum}
 \end{align}
 where we have rewritten the pressure gradient term as the gradient of the kinematic pressure $\phi = p/\rho_0$
 and $b = -g\rho\prime/\rho_0$ is the buoyancy. We have also rewritten
@@ -94,13 +95,13 @@ split the kinematic pressure term into hydrostatic and non-hydrostatic parts,
 We then note that in the hydrostatic approximation, the pressure and buoyancy terms in the vertical momentum
 equation are in balance
 \begin{equation}
-  \p{\phi_{HY}}{z} = -b
+  \partial_z \phi_{HY} = -b
 \end{equation}
 and so the $-\grad\phi + b\hat{\bm{k}}$ term in the momentum equation can be written as
 \begin{equation}
     -\grad\phi + b\hat{\bm{k}}
     = - \grad\phi_{NH} - \grad\phi_{HY} + b
-    = - \grad\phi_{NH} - \p{\phi_{HY}^\prime}{x} \hat{\bm{i}} - \p{\phi_{HY}^\prime}{y} \hat{\bm{j}}
+    = - \grad\phi_{NH} - \partial_x \phi_{HY}^\prime \hat{\bm{i}} - \partial_y \phi_{HY}^\prime \hat{\bm{j}}
 \end{equation}
 where $\partial_x \phi_{HY} = \partial_x \phi_{HY}^\prime$ and $\partial_y \phi_{HY} = \partial_y \phi_{HY}^\prime$
 as $\phi_{HY}^\prime$ denotes the \emph{hydrostatic pressure anomaly}, which is the component of the pressure
@@ -108,13 +109,13 @@ associated with buoyancy.
 
 Thus the components of the momentum equation \eqref{eqn:xMomentum}--\eqref{eqn:zMomentum} can be written as
 \begin{align}
-  \p{u}{t} &= -\bm{u}\cdotp\grad u + fv - \p{\phi_{NH}}{x} -\p{\phi_{HY}^\prime}{x} + \div{\nu \grad u} + F_u \\
-  \p{v}{t} &= -\bm{u}\cdotp\grad v - fu - \p{\phi_{NH}}{y} -\p{\phi_{HY}^\prime}{x} + \div{\nu \grad v} + F_v \\
-  \p{w}{t} &= -\bm{u}\cdotp\grad w      - \p{\phi_{NH}}{z}                          + \div{\nu \grad w} + F_w
+  \partial_t u &= -\bm{u}\cdotp\grad u + fv - \partial_x (\phi_{NH} + \phi_{HY}^\prime) + \div{\nu \grad u} + F_u \\
+  \partial_t v &= -\bm{u}\cdotp\grad v - fu - \partial_y (\phi_{NH} + \phi_{HY}^\prime) + \div{\nu \grad v} + F_v \\
+  \partial_t w &= -\bm{u}\cdotp\grad w      - \partial_z  \phi_{NH}                  + \div{\nu \grad w} + F_w
 \end{align}
 
-The non-hydrostatic pressure is associated with small-scale motions that are not in hydrostatic balance and is
-numerically responsible for enforcing incompressibility, and thus mass conservation.
+The non-hydrostatic pressure $\phi_{NH}$ is associated with small-scale motions that are not in hydrostatic balance
+and is numerically responsible for enforcing incompressibility, and thus mass conservation.
 
 Note that we have not invoked the hydrostatic approximation. We are still dealing with a non-hydrostatic set of
 equations. We just made use of the hydrostatic approximation to manipulate the equations such that if we want to
