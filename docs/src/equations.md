@@ -59,72 +59,64 @@ density $\rho$ and pressure $p$ by an appropriate equation of state
 which may take multiple forms.
 
 ## Manipulation of the governing equations
-By expanding out the material derivative and writing out the individual components of the momentum equation
-\eqref{eq:momentum}, we can write equations for the time derivatives of $u$, $\v$, and $w$, sometimes called their
-tendencies
+In order to discretize and discuss the equations, it will be helpful to expand out the material derivative and
+write out the individual components of the momentum equation \eqref{eq:momentum}.
 
-```math
+We can write equations for the time derivatives of $u$, $v$, and $w$\footnotemark[3]
 \begin{align}
-  \p{u}{t} &= -\bv\cdotp\grad u + f\v &- \p{\phi}{x} + \div{\nu \grad u}     &+ F_u  \label{eqn:xMomentum}  \\
-  \p{v}{t} &= -\bv\cdotp\grad\v - f u &- \p{\phi}{y} + \div{\nu \grad \v}    &+ F_\v \label{eqn:yMomentum}  \\
-  \p{w}{t} &= -\bv\cdotp\grad w       &- \p{\phi}{z} + \div{\nu \grad w} - g &+ F_w  \label{eqn:zMomentum}
+  \p{u}{t} &= -\bm{u}\cdotp\grad u + fv - \p{\phi}{x} + \div{\nu \grad u}     + F_u \label{eqn:xMomentum}  \\
+  \p{v}{t} &= -\bm{u}\cdotp\grad v - fu - \p{\phi}{y} + \div{\nu \grad v}     + F_v \label{eqn:yMomentum}  \\
+  \p{w}{t} &= -\bm{u}\cdotp\grad w      - \p{\phi}{z} + \div{\nu \grad w} + b + F_w \label{eqn:zMomentum}
 \end{align}
-```
+where we have rewritten the pressure gradient term as the gradient of the kinematic pressure $\phi = p/\rho_0$
+and $b = -g\rho\prime/\rho_0$ is the buoyancy. We have also rewritten
+$2\bm{\Omega}\times\bm{u} = -fv \bm{\hat{i}} + fu \bm{\hat{j}}$
+where $f$ is the Coriolis parameter which on a rotating sphere can be expressed as $f = 2 \Omega \sin \varphi$
+where $\Omega$ is the rotation rate of the sphere, and $\varphi$ is the latitude.\footnotemark[4]
 
-where we have rewritten $2\b{\Omega}\times\bv = f\v \b{\hat{i}} - fu \b{\hat{j}}$ where $f$ is the Coriolis parameter
-which on a rotating sphere can be expressed as $f = 2 \Omega \sin \varphi$ where $\Omega$ is the rotation rate of the
-sphere, and $\varphi$ is the latitude. We have also rewritten the pressure gradient force as the gradient of the
-kinematic pressure $\phi = p/\rho_0$.
+\footnotetext[3]{In the geophysical sciences, the time derivatives are sometimes called the tendencies.}
 
-###
+\footnotetext[3]{It is important to note here that the full expression for the Coriolis force is given by
+$$ 2\bm{\Omega}\times\bm{u} = (2\Omega w \cos\varphi - 2\Omega v \sin \varphi) \hat{\bm{i}}
+   + 2\Omega u \sin\varphi \hat{\bm{j}} - 2\Omega u \cos\varphi \hat{\bm{k}} $$
+however the Coriolis terms involving the vertical velocity and $\cos\varphi$ term are neglected due to their small
+contribution in geophysical fluid dynamics on Earth. This is termed the \emph{traditional approximation} and must be
+taken with the \emph{shallow-fluid approximation}, which assumes the depth of the fluid is much shallower than the
+radius of the sphere on which it evolves, otherwise conservation of energy and angular momentum is not guaranteed.
+See \citet[\S2.2.4]{Vallis17} for an introductory discussion of these approximations, and
+\citet{Marshall97HY,White05} for a more detailed discussion.}
 
-```math
-\begin{gather}
-        \p{\bvh}{t} = \b{G}_{\bv h} - \frac{1}{\rho_0} \bnabla_h p ,  \label{eqn:horizontalMomentum} \\
-           \p{w}{t} = G_w - \frac{1}{\rho_0} \p{p}{z} ,               \label{eqn:verticalMomentum} \\
- \bnabla \cdotp \bv = 0 ,                                             \label{eqn:continuity} \\
-           \p{T}{t} = G_T ,                                           \label{eqn:TTendency} \\
-           \p{S}{t} = G_S ,                                           \label{eqn:STendency} \\
-               \rho = \rho(T,S,p) ,                                   \label{eqn:EOS}
-\end{gather}
-```
+As a practical matter to allow the choice between evolving a hydrostatic and non-hydrostatic set of equations, we
+split the kinematic pressure term into hydrostatic and non-hydrostatic parts,
+\begin{equation}
+  \phi(x, y, z) = \phi_{HY}(x, y, z) + \phi_{NH}(x, y, z)
+\end{equation}
+We then note that in the hydrostatic approximation, the pressure and buoyancy terms in the vertical momentum
+equation are in balance
+\begin{equation}
+  \p{\phi_{HY}}{z} = -b
+\end{equation}
+and so the $-\grad\phi + b\hat{\bm{k}}$ term in the momentum equation can be written as
+\begin{equation}
+    -\grad\phi + b\hat{\bm{k}}
+    = - \grad\phi_{NH} - \grad\phi_{HY} + b
+    = - \grad\phi_{NH} - \p{\phi_{HY}^\prime}{x} \hat{\bm{i}} - \p{\phi_{HY}^\prime}{y} \hat{\bm{j}}
+\end{equation}
+where $\partial_x \phi_{HY} = \partial_x \phi_{HY}^\prime$ and $\partial_y \phi_{HY} = \partial_y \phi_{HY}^\prime$
+as $\phi_{HY}^\prime$ denotes the \emph{hydrostatic pressure anomaly}, which is the component of the pressure
+associated with buoyancy.
 
-
-Equations \eqref{eqn:TTendency} and \eqref{eqn:STendency} prognostic equations describing the time evolution of temperature $T$ and salinity $S$.
-Equation \eqref{eqn:EOS} is an equation of state for seawater giving the density $\rho$ in terms of $T$, $S$, and $p$.
-The source terms $\b{G}_{\bv} = (\b{G}_{\bv h}, G_w) = (G_u, G_v, G_w)$ in \eqref{eqn:horizontalMomentum} and \eqref{eqn:verticalMomentum}
-represent inertial, Coriolis, gravitational, forcing, and dissipation terms:
-
-```math
+Thus the components of the momentum equation \eqref{eqn:xMomentum}--\eqref{eqn:zMomentum} can be written as
 \begin{align}
-    G_u &= -\bv \cdotp \bnabla u + f\v - \frac{1}{\rho_0} \p{p'_{HY}}{x} + \div{\nu \bnabla u} + F_u  ,\\
-    G_\v &= -\bv \cdotp \bnabla \v - f u - \frac{1}{\rho_0} \p{p'_{HY}}{y} + \div{\nu \bnabla \v} + F_\v  ,\\
-    G_w &= -\bv \cdotp \bnabla w                                        + \div{\nu \bnabla w} + F_w ,
+  \p{u}{t} &= -\bm{u}\cdotp\grad u + fv - \p{\phi_{NH}}{x} -\p{\phi_{HY}^\prime}{x} + \div{\nu \grad u} + F_u \\
+  \p{v}{t} &= -\bm{u}\cdotp\grad v - fu - \p{\phi_{NH}}{y} -\p{\phi_{HY}^\prime}{x} + \div{\nu \grad v} + F_v \\
+  \p{w}{t} &= -\bm{u}\cdotp\grad w      - \p{\phi_{NH}}{z}                          + \div{\nu \grad w} + F_w
 \end{align}
-```
 
-where $f = 2 \Omega \sin \phi$ is the Coriolis frequency, $\Omega$ is the rotation rate of the Earth, $\phi$ is the latitude, $p_{HY}$ is the hydrostatic pressure anomaly, and $\nu$ is the viscosity. $F_u$, $F_\v$, and $F_w$ represent other forcing terms that may be imposed.
-Note that the buoyancy term $-g \delta \rho / \rho_0$ (with $g$ the acceleration due to gravity) that is usually present in the vertical momentum equation has been expressed in terms
-of the hydrostatic pressure anomaly $p_{HY}$ which ends up in the horizontal momentum equations. (This step will be shown in an appendix.)
+The non-hydrostatic pressure is associated with small-scale motions that are not in hydrostatic balance and is
+numerically responsible for enforcing incompressibility, and thus mass conservation.
 
-Similarly, the source terms for the tracer quantities can be written as
-
-```math
-\beq
-  G_T = -\div{\bv T} + \kappa \nabla^2 T + F_T ,
-  \label{eqn:G_T}
-\eeq
-```
-
-```math
-\beq
-  G_S = -\div{\bv S} + \kappa \nabla^2 S + F_S ,
-  \label{eqn:G_S}
-\eeq
-```
-
-where $\kappa$ is the diffusivity while $F_T$ and $F_S$ represent forcing terms.
-
-The associated boundary conditions for the embedded non-hydrostatic models is periodic in the horizontal direction and a
-rigid boundary or "lid" at the top and bottom. The rigid lid approximation sets $w = 0$ at the vertical boundaries so
-that it does not move but still allows a pressure to be exerted on the fluid by the lid.
+Note that we have not invoked the hydrostatic approximation. We are still dealing with a non-hydrostatic set of
+equations. We just made use of the hydrostatic approximation to manipulate the equations such that if we want to
+evolve a hydrostatic set of equations we can now just neglect the $\grad\phi_{NH}$ terms (or multiply them by zero).
+So it becomes simple to switch between hydrostatic and non-hydrostatic modes.
