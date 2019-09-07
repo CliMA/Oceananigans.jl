@@ -15,42 +15,38 @@
 
 # Governing equations
 
-The governing equations solved by Oceananigans.jl are the rotating Navier-Stokes equations describing viscous fluid
-flow with the Boussinesq approximation which neglects density differences in the momentum equation, except when
-associated with the gravitational term. The resulting mass conservation equation imposes that the fluid flow is
-incompressible.
+The governing equations solved by \texttt{Oceananigans.jl} are the rotating Navier-Stokes equations describing
+viscous fluid flow with the Boussinesq approximation\footnotemark. The resulting mass conservation equation imposes
+that the fluid flow is incompressible.
 
-The rotating Boussinesq equations along with the mass conservation equation can be written as
-
-```math
-\begin{gather}
-  \D{\bv}{t} + 2\b{\Omega}\times\bv + \frac{1}{\rho_0} \grad p - \div{\nu \grad \bv} + g\hat{\b{k}} + \b{F}_\bv = 0 \label{eq:momentum} \\
-  \bnabla \cdotp \bv = 0  \label{eq:continuity}
-\end{gather}
-```
-
-where $\D{\bv}{t} = \p{\bv}{t} + \bv\cdotp\grad\bv$ is the material derivative and $\bnabla = (\partial_x, \partial_y,
-\partial_z)$ is the del operator. $\bv = (u, \v, w)$ is the fluid flow velocity field, $\b{\Omega}$ is the rotation
-vector, $p$ is the pressure, $\nu$ is the kinematic viscosity, $g$ is the gravitational acceleration, and $\rho_0$ is a
-reference density describing the base state of the Boussinesq fluid. $F_u$, $F_v$, and $F_w$ are forcing terms.
-
-Tracer quantities $Q$ such as temperature and salinity satisfy an advection-diffusion equation
-
-```math
+The rotating Boussinesq equations can be written as
 \begin{equation}
-  \p{Q}{t} = -\div{\bv Q} + \div{\kappa_\phi \bnabla Q} + F_\phi  \label{eq:tracer}
+  \D{\bm{u}}{t} + 2\bm{\Omega}\times\bm{u} + \frac{1}{\rho_0} \grad p - \div{\nu \grad \bm{u}}
+    + g \frac{\rho\prime}{\rho_0} \hat{\bm{k}} + \bm{F} = 0 \label{eq:momentum}
 \end{equation}
-```
+along with the mass conservation equation
+\begin{equation}
+    \grad \cdotp \bm{u} = 0  \label{eq:continuity}
+\end{equation}
+where $\hat{\bm{i}}, \hat{\bm{j}}, \hat{\bm{k}}$ are the standard Cartesian basis vectors, $\bm{u} = (u, v, w)$ is
+the fluid flow velocity field, $\bm{\Omega}$ is the rotation vector, $p$ is the pressure, $\nu$ is the kinematic
+viscosity, $g$ is the gravitational acceleration, $\rho_0$ is a reference density describing the base state of the
+Boussinesq fluid whereas $\rho\prime = \rho - \rho_0$ denotes density variations, and $F = (F_u, F_v, F_w)$ includes
+forcing terms (or rather, the sources and sinks). $\D{\bm{q}}{t} = \p{\bm{q}}{t} + \bm{u}\cdotp\grad\bm{q}$ is the
+material derivative and $\grad = (\partial_x, \partial_y, \partial_z)$ is the del operator.
 
-where $Q$ is any tracer, $\kappa_Q$ is the tracer diffusivity (different for each tracer), and $F_Q$ is a
-forcing term.
+Tracer quantities $c$ such as temperature and salinity satisfy an advection-diffusion equation
+\begin{equation}
+  \D{c}{t} - \div{\kappa_c \grad c} + F_c = 0  \label{eq:tracer}
+\end{equation}
+where $c$ is any tracer, $\kappa_c$ is the tracer diffusivity, and $F_c$ is a forcing term.
 
-The tracer quantities, typically temperature $T$ and salinity $S$, are related to the density $\rho$ and pressure $p$
-by an appropriate equation of state
+Tracer quantities, for example temperature $T$ and salinity $S$ in oceanographic applications, are related to the
+density $\rho$ and pressure $p$ by an appropriate equation of state
 
-```math
+\begin{equation}
   \rho = \rho(T, S, p)
-```
+\end{equation}
 
 which may take multiple forms.
 
