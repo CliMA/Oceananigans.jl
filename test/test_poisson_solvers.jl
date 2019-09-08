@@ -25,39 +25,39 @@ function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
+    arch = CPU()
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
-    solver = PoissonSolver(CPU(), PPN(), grid)
+    solver = PoissonSolver(arch, PPN(), grid)
     fbcs = HorizontallyPeriodicBCs()
 
-    RHS = CellField(FT, CPU(), grid)
+    RHS = CellField(FT, arch, grid)
     data(RHS) .= rand(Nx, Ny, Nz)
     data(RHS) .= data(RHS) .- mean(data(RHS))
 
     RHS_orig = deepcopy(RHS)
-
     solver.storage .= data(RHS)
-
     solve_poisson_3d!(solver, grid)
 
-    ϕ   = CellField(FT, CPU(), grid)
-    ∇²ϕ = CellField(FT, CPU(), grid)
+    ϕ   = CellField(FT, arch, grid)
+    ∇²ϕ = CellField(FT, arch, grid)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, grid)
+    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
+    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
+    arch = CPU()
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
-    solver = PoissonSolver(CPU(), PNN(), grid)
+    solver = PoissonSolver(arch, PNN(), grid)
     fbcs = ChannelBCs()
 
-    RHS = CellField(FT, CPU(), grid)
+    RHS = CellField(FT, arch, grid)
     data(RHS) .= rand(Nx, Ny, Nz)
     data(RHS) .= data(RHS) .- mean(data(RHS))
 
@@ -67,22 +67,23 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solve_poisson_3d!(solver, grid)
 
-    ϕ   = CellField(FT, CPU(), grid)
-    ∇²ϕ = CellField(FT, CPU(), grid)
+    ϕ   = CellField(FT, arch, grid)
+    ∇²ϕ = CellField(FT, arch, grid)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, grid)
+    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
+    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
 
     data(∇²ϕ) ≈ data(RHS_orig)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
+    arch = GPU()
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
-    solver = PoissonSolver(GPU(), PPN(), grid)
+    solver = PoissonSolver(arch, PPN(), grid)
     fbcs = HorizontallyPeriodicBCs()
 
     RHS = rand(Nx, Ny, Nz)
@@ -104,21 +105,22 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
 
-    ϕ   = CellField(FT, GPU(), grid)
-    ∇²ϕ = CellField(FT, GPU(), grid)
+    ϕ   = CellField(FT, arch, grid)
+    ∇²ϕ = CellField(FT, arch, grid)
 
     data(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, grid)
+    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
+    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
     data(∇²ϕ) ≈ RHS_orig
 end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
+    arch = GPU()
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1.0, 2.5, 3.6))
-    solver = PoissonSolver(GPU(), PNN(), grid)
+    solver = PoissonSolver(arch, PNN(), grid)
     fbcs = ChannelBCs()
 
     RHS = rand(Nx, Ny, Nz)
@@ -134,17 +136,17 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     solve_poisson_3d!(solver, grid)
 
-    ϕ   = CellField(FT, GPU(), grid)
-    ∇²ϕ = CellField(FT, GPU(), grid)
+    ϕ   = CellField(FT, arch, grid)
+    ∇²ϕ = CellField(FT, arch, grid)
 
     ϕ_p = view(data(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
 
     @. ϕ_p = real(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, grid)
+    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, grid)
+    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
     data(∇²ϕ) ≈ RHS_orig
 end
 

@@ -6,7 +6,7 @@ using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_fa
 
 using GPUifyLoops: @launch
 using Oceananigans: launch_config, datatuples, device
-import Oceananigans: data_tuple
+import Oceananigans: datatuple
 
 closures = (
             :ConstantIsotropicDiffusivity,
@@ -75,7 +75,7 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
     end
 
     U, Φ = datatuples(velocities, tracers)
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
+    fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
 
     return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure) == 2κ &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
@@ -115,7 +115,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     data(T)[:, 1, 4] .= [0,  1, 0]
 
     U, Φ = datatuples(velocities, tracers)
-    fill_halo_regions!(merge(U, Φ), bcs, grid)
+    fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
 
     return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
