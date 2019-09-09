@@ -3,44 +3,45 @@ using Statistics, Printf
 using Oceananigans
 using Oceananigans.TurbulenceClosures
 
-""" Friction velocity squared. See equation (16) of Vreugdenhil & Taylor (2018). """
-function uτ²(model)
-    Δz = model.grid.Δz
+""" Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
+function uτ(model)
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     ν = model.closure.ν
-    Hz = model.grid.Hz
 
     Up = HorizontalAverage(model, model.velocities.u; frequency=Inf)
     U = Up(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    uτ²⁺ = ν * abs(U[1] - Uw) / (Δz/2)     # Top wall
-    uτ²⁻ = ν * abs(-Uw - U[end]) / (Δz/2)  # Bottom wall
+    # Use a finite difference to calculate dU/dz at the top and bottom walls.
+    # The distance between the center of the cell adjacent to the wall and the
+    # wall itself is Δz/2.
+    uτ²⁺ = ν * abs(U[1] - Uw)    / (Δz/2)  # Top wall    where u = +Uw
+    uτ²⁻ = ν * abs(-Uw  - U[Nz]) / (Δz/2)  # Bottom wall where u = -Uw
 
-    uτ²⁺, uτ²⁻
+    uτ⁺, uτ⁻ = √uτ²⁺, √uτ²⁻
+
+    return uτ⁺, uτ⁻
 end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
-function qw(model)
-    Δz = model.grid.Δz
+function q_wall(model)
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     κ = model.closure.κ
-    Hz = model.grid.Hz
 
     Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
     Θ = Tp(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    qw⁺ = κ * abs(Θ[1] - Θw) / (Δz/2)     # Top wall
-    qw⁻ = κ * abs(-Θw - Θ[end]) / (Δz/2)  # Bottom wall
+    q_wall⁺ = κ * abs(Θ[1] - Θw)   / (Δz/2)  # Top wall    where Θ = +Θw
+    q_wall⁻ = κ * abs(-Θw - Θ[Nz]) / (Δz/2)  # Bottom wall where Θ = -Θw
 
-    qw⁺, qw⁻
+    return q_wall⁺, q_wall⁻
 end
 
 """ Friction temperature. See equation (16) of Vreugdenhil & Taylor (2018). """
 function θτ(model)
-    Δz = model.grid.Δz
-    uτ²⁺, uτ²⁻ = uτ²(model)
-    qw⁺, qw⁻ = qw(model)
-    uτ⁺, uτ⁻ = √uτ²⁺, √uτ²⁻
+    uτ⁺, uτ⁻ = uτ(model)
+    q_wall⁺, q_wall⁻ = q_wall(model)
 
-    qw⁺ / uτ⁺, qw⁻ / uτ⁻
+    return qw⁺ / uτ⁺, qw⁻ / uτ⁻
 end
 
 """ Obukov length scale (assuming a linear equation of state). See equation (17) of Vreugdenhil & Taylor (2018). """
@@ -74,18 +75,18 @@ end
 function Reτ(model)
     ν = model.closure.ν
     h = model.grid.Lz / 2
-    uτ²⁺, uτ²⁻ = uτ²(model)
-    h * √uτ²⁺ / ν, h * √uτ²⁻ / ν
+    uτ⁺, uτ⁻ = uτ(model)
+    
+    return h * uτ⁺ / ν, h * uτ⁻ / ν
 end
 
 """ Friction Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function Nu(model)
     κ = model.closure.κ
     h = model.grid.Lz / 2
-    uτ²⁺, uτ²⁻ = uτ²(model)
-    qw⁺, qw⁻ = qw(model)
+    q_wall⁺, q_wall⁻ = q_wall(model)
 
-    (qw⁺ * h)/(κ * Θw), (qw⁻ * h)/(κ * Θw)
+    return (q_wall⁺ * h)/(κ * Θw), (q_wall⁻ * h)/(κ * Θw)
 end
 
 # Non-dimensional parameters chosen to reproduce run 5 from Table 1 of Vreugdenhil & Taylor (2018).
