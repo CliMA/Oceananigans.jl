@@ -30,45 +30,13 @@ function q_wall(model)
     Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
     Θ = Tp(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
+    # Use a finite difference to calculate dθ/dz at the top and bottom walls.
+    # The distance between the center of the cell adjacent to the wall and the
+    # wall itself is Δz/2.
     q_wall⁺ = κ * abs(Θ[1] - Θw)   / (Δz/2)  # Top wall    where Θ = +Θw
     q_wall⁻ = κ * abs(-Θw - Θ[Nz]) / (Δz/2)  # Bottom wall where Θ = -Θw
 
     return q_wall⁺, q_wall⁻
-end
-
-""" Friction temperature. See equation (16) of Vreugdenhil & Taylor (2018). """
-function θτ(model)
-    uτ⁺, uτ⁻ = uτ(model)
-    q_wall⁺, q_wall⁻ = q_wall(model)
-
-    return qw⁺ / uτ⁺, qw⁻ / uτ⁻
-end
-
-""" Obukov length scale (assuming a linear equation of state). See equation (17) of Vreugdenhil & Taylor (2018). """
-function L_Obukov(model)
-    kₘ = 0.4  # Von Kármán constant
-    uτ²⁺, uτ²⁻ = uτ²(model)
-    qw⁺, qw⁻ = qw(model)
-    uτ⁺, uτ⁻ = √uτ²⁺, √uτ²⁻
-
-    uτ⁺^3 / (kₘ * qw⁺), uτ⁻^3 / (kₘ * qw⁻)
-end
-
-""" Near wall viscous length scale. See line following equation (18) of Vreugdenhil & Taylor (2018). """
-function δᵥ(model)
-    ν = model.closure.ν
-    uτ²⁺, uτ²⁻ = uτ²(model)
-    ν / √uτ²⁺, ν / √uτ²⁻
-end
-
-"""
-    Ratio of length scales that define when the stratified plane Couette flow is turbulent.
-    See equation (18) of Vreugdenhil & Taylor (2018).
-"""
-function L⁺(model)
-    δᵥ⁺, δᵥ⁻ = δᵥ(model)
-    L_O⁺, L_O⁻ = L_Obukov(model)
-    L_O⁺ / δᵥ⁺, L_O⁻ / δᵥ⁻
 end
 
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
@@ -205,11 +173,6 @@ profile_writer = JLD2OutputWriter(model, profiles; dir=base_dir, prefix=prefix *
 push!(model.output_writers, profile_writer)
 
 scalars = Dict(
-    :u_tau2 => model -> uτ²(model),
-        :qw => model -> qw(model),
- :theta_tau => model -> θτ(model),
-   :delta_v => model -> δᵥ(model),
-    :L_plus => model -> L⁺(model),
     :Re_tau => model -> Reτ(model),
     :Nu_tau => model -> Nu(model))
 
