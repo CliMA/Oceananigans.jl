@@ -32,24 +32,24 @@ end
 
 benchmark_name(N, id) = benchmark_name(N, id, "", "", "")
 
-@inline function Fu(grid, U, Φ, i, j, k)
+@inline function Fu(grid, U, Φ, i, j, k, params)
     if k == 1
-        return @inbounds -2*0.1/grid.Δz^2 * (U.u[i, j, 1] - 0)
+        return @inbounds -2*params.K/grid.Δz^2 * (U.u[i, j, 1] - 0)
     elseif k == grid.Nz
-        return @inbounds -2*0.1/grid.Δz^2 * (U.u[i, j, grid.Nz] - 0)
+        return @inbounds -2*params.K/grid.Δz^2 * (U.u[i, j, grid.Nz] - 0)
     else
         return 0
     end
 end
 
-@inline FT(grid, U, Φ, i, j, k) = @inbounds ifelse(k == 1, -1e-4 * (Φ.T[i, j, 1] - 0), 0)
+@inline FT(grid, U, Φ, i, j, k, params) = @inbounds ifelse(k == 1, -params.λ * (Φ.T[i, j, 1] - 0), 0)
 forcing = Forcing(Fu=Fu, FT=FT)
 
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
     
-    forced_model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type, forcing=forcing)
+    forced_model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type, forcing=forcing, parameters=(K=0.1, λ=1e-4))
     time_step!(forced_model, Ni, 1)  # First 1-2 iterations usually slower.
 
     bn =  benchmark_name(N, "with forcing", arch, float_type)
