@@ -51,7 +51,7 @@ You can install the latest stable version of Oceananigans using the built-in pac
 julia>]
 (v1.1) pkg> add Oceananigans
 ```
-**Note**: Oceananigans requires the latest version of Julia (1.1) to run correctly.
+**Note**: Oceananigans requires at least Julia v1.1 to run correctly.
 
 ## Running your first model
 Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
