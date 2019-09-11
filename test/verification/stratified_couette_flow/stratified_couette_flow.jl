@@ -6,6 +6,7 @@ using Oceananigans.TurbulenceClosures
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Uw = model.parameters.Uw
     ν = model.closure.ν
 
     Up = HorizontalAverage(model, model.velocities.u; frequency=Inf)
@@ -25,6 +26,7 @@ end
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Θw = model.parameters.Θw
     κ = model.closure.κ
 
     Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
@@ -52,6 +54,8 @@ end
 function Nu(model)
     κ = model.closure.κ
     h = model.grid.Lz / 2
+    Θw = model.parameters.Θw
+
     q_wall⁺, q_wall⁻ = q_wall(model)
 
     return (q_wall⁺ * h)/(κ * Θw), (q_wall⁻ * h)/(κ * Θw)
@@ -73,6 +77,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
      ν = Uw * h / Re    # From Re = Uw h / ν
     Θw = Ri * Uw^2 / h  # From Ri = L Θw / Uw²
      κ = ν / Pr         # From Pr = ν / κ
+
+    parameters = (Uw=Uw, Θw=Θw, Re=Re, Pr=Pr, Ri=Ri)
 
     ####
     #### Impose boundary conditions
@@ -97,7 +103,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
                 eos = LinearEquationOfState(βT=1, βS=0),
           constants = PlanetaryConstants(f=0, g=1),
-                bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs))
+                bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs),
+         parameters = parameters)
 
     ####
     #### Set initial conditions
@@ -111,7 +118,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
-    S₀(x, y, z) = ε(5e-1. z)
+    S₀(x, y, z) = ε(5e-1, z)
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
@@ -141,7 +148,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     #### Set up field output writer
     ####
 
-    base_dir = @sprintf("stratified_couette_flow_data_Nxy%d_Nz%d_Ri%.2f$", Nxy, Nz, Ri)
+    base_dir = @sprintf("stratified_couette_flow_data_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
     prefix = @sprintf("stratified_couette_flow_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
 
     function init_save_parameters_and_bcs(file, model)
@@ -266,3 +273,4 @@ end
 simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0)
 simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0.01)
 simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0.04)
+
