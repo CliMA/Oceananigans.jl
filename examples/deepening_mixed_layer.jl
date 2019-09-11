@@ -32,7 +32,7 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 Tbcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fθ), bottom=BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
-model = Model(      arch = CPU(), #HAVE_CUDA ? GPU() : CPU(), # this example will run on the GPU if cuda is available.
+model = Model(      arch = CPU(), #has_cuda() ? GPU() : CPU(), # this example will run on the GPU if cuda is available.
                        N = (N, N, N),
                        L = (N*Δ, N*Δ, N*Δ),
                      eos = LinearEquationOfState(βT=βT, βS=0.0),

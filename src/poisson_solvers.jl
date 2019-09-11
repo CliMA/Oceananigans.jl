@@ -136,15 +136,15 @@ function plan_transforms(::PNN, A::Array, planner_flag=FFTW.PATIENT)
 end
 
 struct PoissonSolverCPU{BC, AAR, AAC, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
-    bcs::BC
-    kx²::AAR
-    ky²::AAR
-    kz²::AAR
-    storage::AAC
-    FFT!::FFTT
-    DCT!::DCTT
-    IFFT!::IFFTT
-    IDCT!::IDCTT
+        bcs :: BC
+        kx² :: AAR
+        ky² :: AAR
+        kz² :: AAR
+    storage :: AAC
+       FFT! :: FFTT
+       DCT! :: DCTT
+      IFFT! :: IFFTT
+      IDCT! :: IDCTT
 end
 
 function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
@@ -226,26 +226,26 @@ function plan_transforms(::PNN, A)
 end
 
 struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
-    bcs::BC
-    kx²::AAR
-    ky²::AAR
-    kz²::AAR
-    ω_4Ny⁺::AAC
-    ω_4Ny⁻::AAC
-    ω_4Nz⁺::AAC
-    ω_4Nz⁻::AAC
-    p_y_inds::AAI
-    p_z_inds::AAI
-    r_y_inds::AAI
-    r_z_inds::AAI
-    M_ky::AAR
-    M_kz::AAR
-    storage::AAC
-    storage2::AAC
-    FFT!::FFT
-    FFT_DCT!::FFTD
-    IFFT!::IFFT
-    IFFT_DCT!::IFFTD
+          bcs :: BC
+          kx² :: AAR
+          ky² :: AAR
+          kz² :: AAR
+       ω_4Ny⁺ :: AAC
+       ω_4Ny⁻ :: AAC
+       ω_4Nz⁺ :: AAC
+       ω_4Nz⁻ :: AAC
+     p_y_inds :: AAI
+     p_z_inds :: AAI
+     r_y_inds :: AAI
+     r_z_inds :: AAI
+         M_ky :: AAR
+         M_kz :: AAR
+      storage :: AAC
+     storage2 :: AAC
+         FFT! :: FFT
+     FFT_DCT! :: FFTD
+        IFFT! :: IFFT
+    IFFT_DCT! :: IFFTD
 end
 
 function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)

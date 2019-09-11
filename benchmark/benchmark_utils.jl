@@ -1,17 +1,18 @@
 arch_name(::CPU) = "CPU"
 arch_name(::GPU) = "GPU"
 
-benchmark_name(N)               = benchmark_name(N, nothing, nothing)
-benchmark_name(N, arch::Symbol) = benchmark_name(N, arch, nothing)
-benchmark_name(N, ft::DataType) = benchmark_name(N, nothing, ft)
+benchmark_name(N)               = benchmark_name(N, "", nothing, nothing)
+benchmark_name(N, arch::Symbol) = benchmark_name(N, "", arch, nothing)
+benchmark_name(N, ft::DataType) = benchmark_name(N, "", nothing, ft)
 
-function benchmark_name(N, arch, ft; npad=3)
+function benchmark_name(N, id, arch, ft; npad=3)
     Nx, Ny, Nz = N
     print_arch = typeof(arch) <: Architecture ? true : false
     print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
 
     bn = ""
     bn *= lpad(Nx, npad, " ") * "×" * lpad(Ny, npad, " ") * "×" * lpad(Nz, npad, " ")
+    bn *= " $id"
 
     if print_arch && print_ft
         arch = arch_name(arch)
