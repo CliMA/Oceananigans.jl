@@ -262,3 +262,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
                 wizard.Δt, prettytime(walltime / Ni))
     end
 end
+
+simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0)
+simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0.01)
+simulate_stratified_couette_flow(Nxy=128, Nz=64, Ri=0.04)
