@@ -46,11 +46,14 @@ Our goal is to develop a friendly and intuitive package allowing users to focus 
 * On the Julia side, big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)), Tim Besard ([@maleadt](https://github.com/maleadt)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
 
 ## Installation instructions
-You can install the latest stable version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt)
+You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
 ```julia
 julia>]
 (v1.1) pkg> add Oceananigans
+(v1.1) pkg> instantiate
 ```
+Installing Oceananigans through the built-in Julia package manager is a good idea because Julia will take care of all dependencies and let you update Oceananigans using a single command: `] update`.
+
 **Note**: Oceananigans requires at least Julia v1.1 to run correctly.
 
 ## Running your first model
