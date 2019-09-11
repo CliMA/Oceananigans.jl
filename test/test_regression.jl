@@ -86,7 +86,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     # Force salinity as a passive tracer (βS=0)
     S★(x, z) = exp(4z) * sin(2π/Lx * x)
-    FS(grid, U, Φ, i, j, k) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
+    FS(i, j, k, grid, time, U, Φ, params) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
 
     model = Model(
          arch = arch,
