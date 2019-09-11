@@ -33,18 +33,6 @@ Oceananigans.jl is a fast and friendly incompressible fluid flow solver written 
 
 Our goal is to develop a friendly and intuitive package allowing users to focus on the science. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, and the same code is shared between the CPU and GPU.
 
-## Development team
-* [Ali Ramadhan](http://aliramadhan.me/) ([@ali-ramadhan](https://github.com/ali-ramadhan))
-* Chris Hill ([@christophernhill](https://github.com/christophernhill))
-* Jean-Michel Campin ([@jm-c](https://github.com/jm-c))
-* [John Marshall](http://oceans.mit.edu/JohnMarshall/) ([@johncmarshall54](https://github.com/johncmarshall54))
-* [Greg Wagner](https://glwagner.github.io/) ([@glwagner](https://github.com/glwagner))
-* Andre Souza ([@sandreza](https://github.com/sandreza))
-* [James Schloss](http://leios.github.io/) ([@leios](https://github.com/leios))
-* [Mukund Gupta](https://mukund-gupta.github.io/) ([@mukund-gupta](https://github.com/mukund-gupta))
-* Zhen Wu ([@zhenwu0728](https://github.com/zhenwu0728))
-* On the Julia side, big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)), Tim Besard ([@maleadt](https://github.com/maleadt)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
-
 ## Installation instructions
 You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
 ```julia
@@ -52,7 +40,11 @@ julia>]
 (v1.1) pkg> add Oceananigans
 (v1.1) pkg> instantiate
 ```
-Installing Oceananigans through the built-in Julia package manager is a good idea because Julia will take care of all dependencies and let you update Oceananigans using a single command: `] update`.
+We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
+```julia
+(v1.1) pkg> update Oceananigans
+```
+At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
 
 **Note**: Oceananigans requires at least Julia v1.1 to run correctly.
 
@@ -117,3 +109,12 @@ If you are interested in using Oceananigans.jl or are trying to figure out how t
 ## Performance benchmarks
 We've performed some preliminary performance benchmarks (see the [`benchmarks.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/benchmark/benchmarks.jl) file) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step). The CPU used was a single core of an Intel Xeon CPU E5-2680 v4 @ 2.40GHz while the GPU used was an Nvidia Tesla V100-SXM2-16GB. This isn't really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
 ![Performance benchmark plots](https://raw.githubusercontent.com/climate-machine/Oceananigans.jl/master/benchmark/oceananigans_benchmarks.png)
+
+## Development team
+* [Ali Ramadhan](http://aliramadhan.me/) ([@ali-ramadhan](https://github.com/ali-ramadhan))
+* [Greg Wagner](https://glwagner.github.io/) ([@glwagner](https://github.com/glwagner))
+* Chris Hill ([@christophernhill](https://github.com/christophernhill))
+* Jean-Michel Campin ([@jm-c](https://github.com/jm-c))
+* [John Marshall](http://oceans.mit.edu/JohnMarshall/) ([@johncmarshall54](https://github.com/johncmarshall54))
+* Andre Souza ([@sandreza](https://github.com/sandreza))
+* On the Julia side, big thanks to Valentin Churavy ([@vchuravy](https://github.com/vchuravy)), Tim Besard ([@maleadt](https://github.com/maleadt)) and Peter Ahrens ([@peterahrens](https://github.com/peterahrens))!
