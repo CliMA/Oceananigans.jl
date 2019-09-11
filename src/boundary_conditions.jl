@@ -17,12 +17,11 @@ const Neumann = Gradient
     BoundaryCondition(BCType, condition)
 
 Construct a boundary condition of `BCType` with `condition`,
-where `BCType` is `Flux` or `Gradient`. `condition` may be a
-number, array, or a function with signature:
+where `condition` may be a number, array, or a function with signature:
 
-    `condition(i, j, grid, t, iter, U, Φ) = # function definition`
+    `condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition`
 
-where `i` and `j` are indices along the boundary.
+`i` and `j` are indices along the boundary.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition :: T
@@ -47,6 +46,14 @@ Adapt.adapt_structure(to, b::BC{C, A}) where {C<:BCType, A<:AbstractArray} =
 PeriodicBC() = BoundaryCondition(Periodic, nothing)
 NoPenetrationBC() = BoundaryCondition(NoPenetration, nothing)
 NoFluxBC() = BoundaryCondition(Flux, nothing)
+
+# Multiple dispatch on the type of boundary condition
+getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
+getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
+getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
+
+Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
+
 
 
 #####
@@ -86,6 +93,8 @@ Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
 getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
 getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
+
+
 
 #####
 ##### Boundary conditions for Fields
@@ -150,6 +159,8 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
     return FieldBoundaryConditions(x, y, z)
 end
 
+
+
 #####
 ##### Boundary conditions for entire models
 #####
@@ -191,6 +202,8 @@ end
 
 # Default
 const BoundaryConditions = HorizontallyPeriodicModelBCs
+
+
 
 #####
 ##### Tendency and pressure boundary condition "translators":
@@ -238,7 +251,7 @@ const NotFluxBC = Union{VBC, GBC, PBC, NPBC, NFBC}
 apply_z_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 
 """
-    apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, t, iter, U, Φ)
+    apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, boundary_condition_args...)
 
 Apply flux boundary conditions to `c` by adding the associated flux divergence to the 
 source term `Gc`.
@@ -248,14 +261,7 @@ function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
     return
 end
 
-# Multiple dispatch on the type of boundary condition
-getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
-getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
-getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
-
-Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
-
-# Fall back functions for non-Flux boundary conditions.
+# Fall back functions for boundary conditions that are not of type Flux.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
 
@@ -264,7 +270,7 @@ Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.conditi
 @inline apply_z_bottom_bc!(Gc, ::NFBC, args...) = nothing
 
 """
-    apply_z_top_bc!(Gc, top_bc, i, j, grid, t, iter, U, Φ)
+    apply_z_top_bc!(Gc, top_bc, i, j, grid, boundary_condition_args...)
 
 Add the part of flux divergence associated with a top boundary condition on c.
 Note that because
@@ -274,14 +280,14 @@ Note that because
 A positive top flux is associated with a *decrease* in `Gc` near the top boundary.
 If `top_bc.condition` is a function, the function must have the signature
 
-    `top_bc.condition(i, j, grid, t, iter, U, Φ)`
+    `top_bc.condition(i, j, grid, boundary_condition_args...)
 
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
-    apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, t, iter, U, Φ)
+    apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, boundary_condition_args...)
 
 Add the flux divergence associated with a bottom flux boundary condition on c.
 Note that because
@@ -291,14 +297,14 @@ Note that because
 A positive bottom flux is associated with an *increase* in `Gc` near the bottom boundary.
 If `bottom_bc.condition` is a function, the function must have the signature
 
-    `bottom_bc.condition(i, j, grid, t, iter, U, Φ)`
+    `bottom_bc.condition(i, j, grid, boundary_condition_args...)
 
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
-    apply_z_bcs!(top_bc, bottom_bc, grid, c, Gc, κ, closure, t, iter, U, Φ)
+    apply_z_bcs!(Gc, grid, top_bc, bottom_bc, boundary_condition_args...)
 
 Apply a top and/or bottom boundary condition to variable c.
 """
