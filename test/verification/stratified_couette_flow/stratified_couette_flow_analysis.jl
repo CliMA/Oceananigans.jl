@@ -110,13 +110,13 @@ Nu_ZTC17  = Dict(0 => 10.6, 0.01 => 9.26, 0.04 => 6.40)
 
 fig, (ax1, ax2) = subplots(nrows=1, ncols=2, figsize=(width, height))
 
-ax1.scatter(Ris, [Reτ_ZTC17[Ri] for Ri in Ris], color="tab:orange", marker="s", label="ZTC 2017")
-ax1.scatter(Ris, [Reτ_VT18[Ri]  for Ri in Ris], color="tab:green",  marker="x", label="V&T 2018")
-ax1.scatter(Ris, [Reτ[Ri]       for Ri in Ris], color="tab:blue",   marker="o", label="Oceananigans")
+ax1.scatter(Ris, [Reτ_ZTC17[Ri] for Ri in Ris], color="tab:orange", marker="s", label="DNS 256x129x256 (ZTC 2017)")
+ax1.scatter(Ris, [Reτ_VT18[Ri]  for Ri in Ris], color="tab:green",  marker="x", label="LES 64x49x64 (V&T 2018)")
+ax1.scatter(Ris, [Reτ[Ri]       for Ri in Ris], color="tab:blue",   marker="o", label=L"$128^3$ Oceananigans")
 
-ax2.scatter(Ris, [Nu_ZTC17[Ri] for Ri in Ris], color="tab:orange", marker="s", label="ZTC 2017")
-ax2.scatter(Ris, [Nu_VT18[Ri]  for Ri in Ris], color="tab:green",  marker="x", label="V&T 2018")
-ax2.scatter((0.01, 0.04), [Nu[Ri] for Ri in (0.01, 0.04)], color="tab:blue",   marker="o", label="Oceananigans")
+ax2.scatter(Ris, [Nu_ZTC17[Ri] for Ri in Ris], color="tab:orange", marker="s", label="DNS 256x129x256 (ZTC 2017)")
+ax2.scatter(Ris, [Nu_VT18[Ri]  for Ri in Ris], color="tab:green",  marker="x", label="LES 64x49x64 (V&T 2018)")
+ax2.scatter((0.01, 0.04), [Nu[Ri] for Ri in (0.01, 0.04)], color="tab:blue",   marker="o", label=L"$128^3$ Oceananigans")
 
 ax1.set_xlabel("Ri")
 ax1.set_ylabel(L"Re$_\tau$")
@@ -238,11 +238,11 @@ for (idx, Ri) in enumerate(Ris)
     u = field_files[Ri]["timeseries/u/" * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
     θ = field_files[Ri]["timeseries/T/" * i][1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1+Hz:Nz+Hz]
 
-    k = 1
+    k = 5
     z_k = zC[k]
 
-    im1 = axes[idx, 1].pcolormesh(xF / π, yC / π, u[:, :, k] / Uw, cmap="viridis")
-    im2 = axes[idx, 2].pcolormesh(xC / π, yC / π, θ[:, :, k] / Θw, cmap="inferno")
+    im1 = axes[idx, 1].pcolormesh(xF ./ π, yC ./ π, u[:, :, k]' ./ Uw, cmap="viridis")
+    im2 = axes[idx, 2].pcolormesh(xC ./ π, yC ./ π, θ[:, :, k]' ./ Θw, cmap="inferno")
 
     fig.colorbar(im1, ax=axes[idx, 1])
     fig.colorbar(im2, ax=axes[idx, 2])  
@@ -252,8 +252,8 @@ for (idx, Ri) in enumerate(Ris)
     axes[idx, 1].set_xlim([0, 4])
     axes[idx, 2].set_xlim([0, 4])
 
-    axes[1, 1].set_title(L"$u(x,y)/U_w$ @ z = " * @sprintf("%.2f", z_k))
-    axes[1, 2].set_title(L"$\theta(x,y)/\Theta_w$ @ z = " * @sprintf("%.2f", z_k))
+    axes[1, 1].set_title(L"$u(x,y)/U_w$ @ z = " * @sprintf("%.2f", z_k + 1))
+    axes[1, 2].set_title(L"$\theta(x,y)/\Theta_w$ @ z = " * @sprintf("%.2f", z_k + 1))
 end
 
 axes[1, 1].set_ylabel(L"$y/\pi$")
