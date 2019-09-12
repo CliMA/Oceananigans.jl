@@ -8,49 +8,38 @@ export
     # Helper macro for determining if a CUDA-enabled GPU is available.
     @hascuda,
 
-    Architecture, CPU, GPU, device,
+    # Architectures
+    CPU, GPU,
 
-    # Planetary Constants
-    PlanetaryConstants,
-    Earth, Europa, Enceladus,
+    # Constants
+    PlanetaryConstants, Earth, Europa, Enceladus,
     second, minute, hour, day,
 
     # Grids
-    Grid, RegularCartesianGrid,
+    RegularCartesianGrid,
 
     # Fields
-    Field, FaceField, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    data, ardata, ardata_view, underlying_data,
-    set!, set_ic!,
+    CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    data, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
-    # Constructors for NamedTuples of fields
-    VelocityFields, TracerFields, PressureFields,
-
-    # Constructor for a named tuple of forcing functions
+    # Forcing functions
     Forcing,
 
     # Equation of state
     NoEquationOfState, LinearEquationOfState,
-    δρ, buoyancy,
 
     # Boundary conditions
-    BoundaryCondition, Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
-    CoordinateBoundaryConditions, FieldBoundaryConditions, ModelBoundaryConditions,
-    HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
+    BoundaryCondition,
+    Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
+    BoundaryConditions, ModelBoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
     getbc, setbc!,
 
-    # Halo regions
-    fill_halo_regions!, zero_halo_regions!,
-
     # Time stepping
-    TimeStepWizard, cell_advection_timescale, update_Δt!, time_step!,
-
-    # Poisson solver
-    PoissonBCs, PPN, PNN,
-    PoissonSolver, PoissonSolverCPU, PoissonSolverGPU,
-    solve_poisson_3d!, solve_poisson_3d_ppn_gpu_planned!,
+    TimeStepWizard,
+    update_Δt!, time_step!,
 
     # Clock
     Clock,
@@ -59,18 +48,17 @@ export
     Model, ChannelModel,
 
     # Model output writers
-    OutputWriter, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    write_output, read_output, restore_from_checkpoint,
+    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    restore_from_checkpoint, read_output,
 
     # Model diagnostics
-    Diagnostic, run_diagnostic, HorizontalAverage, NaNChecker,
+    HorizontalAverage, NaNChecker,
 
     # Package utilities
-    prettytime, pretty_filesize,
-    KiB, MiB, GiB, TiB,
+    prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
 
     # Turbulence closures
-    TurbulenceClosures, ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+    ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
@@ -93,8 +81,8 @@ import
     CUDAapi,
     GPUifyLoops
 
-import CUDAapi: has_cuda
-import GPUifyLoops: @launch, @loop, @unroll
+using CUDAapi: has_cuda
+using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     size, length,
@@ -132,6 +120,8 @@ abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type PoissonSolver end
 
+function buoyancy_perturbation end
+
 include("utils.jl")
 
 include("clock.jl")
@@ -151,5 +141,6 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
+
 
 end # module

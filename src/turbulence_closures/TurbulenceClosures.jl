@@ -29,6 +29,8 @@ using
   Oceananigans.Operators,
   GPUifyLoops
 
+using Oceananigans: Architecture, Grid, buoyancy_perturbation
+
 @hascuda using CUDAdrv, CUDAnative
 
 abstract type TurbulenceClosure{T} end

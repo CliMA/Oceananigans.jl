@@ -4,9 +4,9 @@
 Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
-function correct_field_size(arch::Architecture, g::Grid, fieldtype)
-    f = fieldtype(arch, g)
-    return size(f) == size(g)
+function correct_field_size(arch, grid, fieldtype)
+    f = fieldtype(arch, grid)
+    return size(f) == size(grid)
 end
 
 """
@@ -16,15 +16,15 @@ Test that the field initialized by the field type function `ftf` on the grid g
 can be correctly filled with the value `val` using the `set!(f::Field, v)`
 function.
 """
-function correct_field_value_was_set(arch::Architecture, g::Grid, fieldtype, val::Number)
-    f = fieldtype(arch, g)
+function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
+    f = fieldtype(arch, grid)
     set!(f, val)
     return data(f) ≈ val * ones(size(f))
 end
 
-function correct_field_addition(arch::Architecture, g::Grid, fieldtype, val1::Number, val2::Number)
-    f1 = fieldtype(arch, g)
-    f2 = fieldtype(arch, g)
+function correct_field_addition(arch, grid, fieldtype, val1::Number, val2::Number)
+    f1 = fieldtype(arch, grid)
+    f2 = fieldtype(arch, grid)
 
     set!(f1, val1)
     set!(f2, val2)
