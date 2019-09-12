@@ -55,7 +55,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 
 @inline function ν_ccc(i, j, k, grid, clo::DeardorffSmagorinsky, c, eos, grav, u, v, w, T, S)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
+    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy_perturbation, eos, grav, T, S)
      Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
@@ -174,7 +174,7 @@ frequency `N²`.
 
 @inline function ν_ccc(i, j, k, grid, clo::BlasiusSmagorinsky, c, eos, grav, u, v, w, T, S)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
+    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy_perturbation, eos, grav, T, S)
     Lm_sq = Lm²(i, j, k, grid, clo, Σ², N²)
 
     return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
