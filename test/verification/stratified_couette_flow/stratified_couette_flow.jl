@@ -4,12 +4,11 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
-function uτ(model)
+function uτ(model, Uavg)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Uw = model.parameters[:Uw]
+    Uw = model.parameters.Uw
     ν = model.closure.ν
 
-    Uavg = model.parameters[:Uavg] 
     U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dU/dz at the top and bottom walls.
@@ -24,12 +23,11 @@ function uτ(model)
 end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
-function q_wall(model)
+function q_wall(model, Tavg)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Θw = model.parameters[:Θw]
+    Θw = model.parameters.Θw
     κ = model.closure.κ
 
-    Tavg = model.parameters[:Tavg] 
     Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dθ/dz at the top and bottom walls.
@@ -41,22 +39,30 @@ function q_wall(model)
     return q_wall⁺, q_wall⁻
 end
 
+struct FrictionReynoldsNumber{H}
+    Uavg :: H
+end
+
+struct FrictionNusseltNumber{H}
+    Tavg :: H
+end
+
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
-function Reτ(model)
+function (Reτ::FrictionReynoldsNumber)(model)
     ν = model.closure.ν
     h = model.grid.Lz / 2
-    uτ⁺, uτ⁻ = uτ(model)
+    uτ⁺, uτ⁻ = uτ(model, Reτ.Uavg)
 
     return h * uτ⁺ / ν, h * uτ⁻ / ν
 end
 
 """ Friction Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
-function Nu(model)
+function (Nu::FrictionNusseltNumber)(model)
     κ = model.closure.κ
     h = model.grid.Lz / 2
-    Θw = model.parameters[:Θw]
+    Θw = model.parameters.Θw
 
-    q_wall⁺, q_wall⁻ = q_wall(model)
+    q_wall⁺, q_wall⁻ = q_wall(model, Nu.Tavg)
 
     return (q_wall⁺ * h)/(κ * Θw), (q_wall⁻ * h)/(κ * Θw)
 end
@@ -78,7 +84,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     Θw = Ri * Uw^2 / h  # From Ri = L Θw / Uw²
      κ = ν / Pr         # From Pr = ν / κ
 
-    parameters = Dict{Symbol, Any}(:Uw=>Uw, :Θw=>Θw, :Re=>Re, :Pr=>Pr, :Ri=>Ri)
+    parameters = (Uw=Uw, Θw=Θw, Re=Re, Pr=Pr, Ri=Ri)
 
     ####
     #### Impose boundary conditions
@@ -194,9 +200,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     νavg = HorizontalAverage(model, model.diffusivities.νₑ; interval=Δtₚ, return_type=Array)
     κavg = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ, return_type=Array)
 
-    model.parameters[:Uavg] = Uavg
-    model.parameters[:Tavg] = Tavg
-
     profiles = Dict(
          :u => model -> Uavg(model),
          :v => model -> Vavg(model),
@@ -213,6 +216,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     ####
     #### Set up scalar output writer
     ####
+
+    Reτ = FrictionReynoldsNumber(Uavg)
+    Nu = FrictionNusseltNumber(Tavg)
 
     scalars = Dict(
         :Re_tau => model -> Reτ(model),
