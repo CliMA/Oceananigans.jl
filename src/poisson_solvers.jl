@@ -1,6 +1,3 @@
-import FFTW
-import GPUifyLoops: @launch, @loop
-
 abstract type PoissonBCs end
 
 # PoissonBCs are named XYZ, where each of X, Y, and Z is either
