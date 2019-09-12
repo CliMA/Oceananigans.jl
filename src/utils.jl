@@ -93,7 +93,7 @@ Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, N
 # Timescale for advection across one cell
 
 "Returns the time-scale for advection on a regular grid across a single grid cell."
-function cell_advection_timescale(u, v, w, grid::RegularCartesianGrid)
+function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
     wmax = maximum(abs, w)
@@ -113,9 +113,9 @@ cell_advection_timescale(model) =
 
 # Timescale for diffusion across one cell
 
-min_Δxyz(grid::RegularCartesianGrid) = min(grid.Δx, grid.Δy, grid.Δz)
-min_Δxy(grid::RegularCartesianGrid) = min(grid.Δx, grid.Δy)
-min_Δz(grid::RegularCartesianGrid) = grid.Δz
+min_Δxyz(grid) = min(grid.Δx, grid.Δy, grid.Δz)
+min_Δxy(grid) = min(grid.Δx, grid.Δy)
+min_Δz(grid) = grid.Δz
 
 "Returns the time-scale for diffusion on a regular grid across a single grid cell."
 function cell_diffusion_timescale(model::Model{TS, <:ConstantIsotropicDiffusivity}) where TS
