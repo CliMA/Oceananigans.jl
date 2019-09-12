@@ -87,15 +87,13 @@ fieldtype(f::Field) = typeof(f).name.wrapper
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 @inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
 
+"Returns a view over the interior points of the `field.data`."
 @inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
-@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                                    1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                                    1+f.grid.Hz:f.grid.Nz+f.grid.Hz)
-
-@inline ardata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                         1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                         1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
+"Returns a reference to the interior points of `field.data.parent.`"
+@inline parentdata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
+                                             1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
+                                             1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 
 @inline underlying_data(f::Field) = f.data.parent
 
