@@ -120,7 +120,7 @@ abstract type OutputWriter end
 abstract type Diagnostic end
 abstract type PoissonSolver end
 
-@inline buoyancy_perturbation() = nothing # placeholder
+function buoyancy_perturbation end
 
 include("utils.jl")
 
