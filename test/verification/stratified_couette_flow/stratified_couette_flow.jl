@@ -99,7 +99,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
 
     model = Model(N = (Nxy, Nxy, Nz),
                   L = (4π*h, 2π*h, 2h),
-               arch = CPU(), 
+               arch = GPU(), 
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
                 eos = LinearEquationOfState(βT=1, βS=0),
           constants = PlanetaryConstants(f=0, g=1),
@@ -270,8 +270,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     end
 end
 
-simulate_stratified_couette_flow(Nxy=32, Nz=32, Ri=0)
-#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0)
-#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.01)
-#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.04)
+simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0)
+simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.01)
+simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.04)
 
