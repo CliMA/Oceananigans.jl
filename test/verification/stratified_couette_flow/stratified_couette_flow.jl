@@ -172,7 +172,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
 
     field_writer = JLD2OutputWriter(model, fields; dir=base_dir, prefix=prefix * "_fields",
                                     init=init_save_parameters_and_bcs,
-                                    max_filesize=25GiB, interval=10, force=true, verbose=true)
+                                    interval=10, force=true, verbose=true)
 
     push!(model.output_writers, field_writer)
 
