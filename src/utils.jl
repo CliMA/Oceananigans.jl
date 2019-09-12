@@ -29,11 +29,16 @@ function prettytime(t)
         value, units = t * 1e6, "μs"
     elseif t < 1
         value, units = t * 1e3, "ms"
-    elseif t < 60
+    elseif t < minute
         value, units = t, "s"
+    elseif t < hour
+        value, units = t / minute, "min"
+    elseif t < day
+        value, units = t / hour, "hr"
     else
-        value, units = t / 60, "min"
+        value, units = t / day, "day"
     end
+
     return @sprintf("%.3f", value) * " " * units
 end
 
