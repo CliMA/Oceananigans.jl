@@ -6,44 +6,44 @@ using Oceananigans.TurbulenceClosures
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Uw = model.parameters.Uw
+    U_wall = model.parameters.U_wall
     ν = model.closure.ν
 
     U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    # Use a finite difference to calculate dU/dz at the top and bottom walls.
+    # Use a finite difference to calculate dU/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
     # wall itself is Δz/2.
-    uτ²⁺ = ν * abs(U[1] - Uw)    / (Δz/2)  # Top wall    where u = +Uw
-    uτ²⁻ = ν * abs(-Uw  - U[Nz]) / (Δz/2)  # Bottom wall where u = -Uw
+    uτ²_top    = ν * abs(U[1] - U_wall)    / (Δz/2)  # Top wall    where u = +U_wall
+    uτ²_bottom = ν * abs(-U_wall  - U[Nz]) / (Δz/2)  # Bottom wall where u = -U_wall
 
-    uτ⁺, uτ⁻ = √uτ²⁺, √uτ²⁻
+    uτ_top, uτ_bottom = √uτ²_top, √uτ²_bottom
 
-    return uτ⁺, uτ⁻
+    return uτ_top, uτ_bottom
 end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Θw = model.parameters.Θw
+    Θ_wall = model.parameters.Θ_wall
     κ = model.closure.κ
 
     Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
-    # Use a finite difference to calculate dθ/dz at the top and bottom walls.
+    # Use a finite difference to calculate dθ/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
     # wall itself is Δz/2.
-    q_wall⁺ = κ * abs(Θ[1] - Θw)   / (Δz/2)  # Top wall    where Θ = +Θw
-    q_wall⁻ = κ * abs(-Θw - Θ[Nz]) / (Δz/2)  # Bottom wall where Θ = -Θw
+    q_wall_top    = κ * abs(Θ[1] - Θ_wall)   / (Δz/2)  # Top wall    where Θ = +Θ_wall
+    q_wall_bottom = κ * abs(-Θ_wall - Θ[Nz]) / (Δz/2)  # Bottom wall where Θ = -Θ_wall
 
-    return q_wall⁺, q_wall⁻
+    return q_wall_top, q_wall_bottom
 end
 
 struct FrictionReynoldsNumber{H}
     Uavg :: H
 end
 
-struct FrictionNusseltNumber{H}
+struct NusseltNumber{H}
     Tavg :: H
 end
 
@@ -51,50 +51,50 @@ end
 function (Reτ::FrictionReynoldsNumber)(model)
     ν = model.closure.ν
     h = model.grid.Lz / 2
-    uτ⁺, uτ⁻ = uτ(model, Reτ.Uavg)
+    uτ_top, uτ_bottom = uτ(model, Reτ.Uavg)
 
-    return h * uτ⁺ / ν, h * uτ⁻ / ν
+    return h * uτ_top / ν, h * uτ_bottom / ν
 end
 
-""" Friction Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
-function (Nu::FrictionNusseltNumber)(model)
+""" Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
+function (Nu::NusseltNumber)(model)
     κ = model.closure.κ
     h = model.grid.Lz / 2
-    Θw = model.parameters.Θw
+    Θ_wall = model.parameters.Θ_wall
 
-    q_wall⁺, q_wall⁻ = q_wall(model, Nu.Tavg)
+    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg)
 
-    return (q_wall⁺ * h)/(κ * Θw), (q_wall⁻ * h)/(κ * Θw)
+    return (q_wall_top * h)/(κ * Θ_wall), (q_wall_bottom * h)/(κ * Θ_wall)
 end
 
 """
-    simulate_stratified_couette_flow(; Nxy, Nz, h, Uw, Re, Pr, Ri)
+    simulate_stratified_couette_flow(; Nxy, Nz, h, U_wall, Re, Pr, Ri)
 
     Simulate stratified plane Couette flow with `Nxy` grid cells in each horizontal
     direction, `Nz` grid cells in the vertical, in a domain of size (4πh, 2πh, 2h),
-    with wall velocities of `Uw` at the top and -`Uw` at the bottom, at a Reynolds
+    with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
     number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 """
-function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7, Ri)
+function simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=0.7, Ri)
     ####
     #### Computed parameters
     ####
 
-     ν = Uw * h / Re    # From Re = Uw h / ν
-    Θw = Ri * Uw^2 / h  # From Ri = L Θw / Uw²
-     κ = ν / Pr         # From Pr = ν / κ
+         ν = U_wall * h / Re    # From Re = U_wall h / ν
+    Θ_wall = Ri * U_wall^2 / h  # From Ri = L Θ_wall / U_wall²
+         κ = ν / Pr             # From Pr = ν / κ
 
-    parameters = (Uw=Uw, Θw=Θw, Re=Re, Pr=Pr, Ri=Ri)
+    parameters = (U_wall=U_wall, Θ_wall=Θ_wall, Re=Re, Pr=Pr, Ri=Ri)
 
     ####
     #### Impose boundary conditions
     ####
 
-    Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Θw),
-                                    bottom = BoundaryCondition(Value, -Θw))
+    Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Θ_wall),
+                                    bottom = BoundaryCondition(Value, -Θ_wall))
 
-    ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Uw),
-                                    bottom = BoundaryCondition(Value, -Uw))
+    ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  U_wall),
+                                    bottom = BoundaryCondition(Value, -U_wall))
 
     vbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
                                     bottom = BoundaryCondition(Value, 0))
@@ -120,8 +120,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     ε(σ, z) = σ * randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
 
     # We add a sinusoidal initial condition to u to encourage instability.
-    T₀(x, y, z) = 2Θw * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z))
-    u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
+    T₀(x, y, z) = 2Θ_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z))
+    u₀(x, y, z) = 2U_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
@@ -142,12 +142,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
                Pr : %.3f
                 ν : %.3g
                 κ : %.3g
-               Uw : %.3f
-               Θw : %.3f
+           U_wall : %.3f
+           Θ_wall : %.3f
 
         """, model.grid.Nx, model.grid.Ny, model.grid.Nz,
              model.grid.Lx, model.grid.Ly, model.grid.Lz,
-             Re, Ri, Pr, ν, κ, Uw, Θw)
+             Re, Ri, Pr, ν, κ, U_wall, Θ_wall)
 
     ####
     #### Set up field output writer
@@ -162,8 +162,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
         file["parameters/prandtl_number"] = Pr
         file["parameters/viscosity"] = ν
         file["parameters/diffusivity"] = κ
-        file["parameters/wall_velocity"] = Uw
-        file["parameters/wall_temperature"] = Θw
+        file["parameters/wall_velocity"] = U_wall
+        file["parameters/wall_temperature"] = Θ_wall
     end
 
     fields = Dict(
@@ -193,11 +193,11 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
 
     Δtₚ = 1 # Time interval for computing and saving profiles.
 
-    Uavg = HorizontalAverage(model, model.velocities.u; interval=Δtₚ, return_type=Array)
-    Vavg = HorizontalAverage(model, model.velocities.v; interval=Δtₚ, return_type=Array)
-    Wavg = HorizontalAverage(model, model.velocities.w; interval=Δtₚ, return_type=Array)
-    Tavg = HorizontalAverage(model, model.tracers.T;    interval=Δtₚ, return_type=Array)
-    νavg = HorizontalAverage(model, model.diffusivities.νₑ; interval=Δtₚ, return_type=Array)
+    Uavg = HorizontalAverage(model, model.velocities.u;       interval=Δtₚ, return_type=Array)
+    Vavg = HorizontalAverage(model, model.velocities.v;       interval=Δtₚ, return_type=Array)
+    Wavg = HorizontalAverage(model, model.velocities.w;       interval=Δtₚ, return_type=Array)
+    Tavg = HorizontalAverage(model, model.tracers.T;          interval=Δtₚ, return_type=Array)
+    νavg = HorizontalAverage(model, model.diffusivities.νₑ;   interval=Δtₚ, return_type=Array)
     κavg = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ, return_type=Array)
 
     profiles = Dict(
@@ -218,7 +218,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     ####
 
     Reτ = FrictionReynoldsNumber(Uavg)
-    Nu = FrictionNusseltNumber(Tavg)
+     Nu = NusseltNumber(Tavg)
 
     scalars = Dict(
         :Re_tau => model -> Reτ(model),
