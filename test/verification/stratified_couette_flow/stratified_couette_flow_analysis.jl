@@ -4,17 +4,28 @@ using JLD2, PyPlot
 Nxy, Nz = 128, 64
 Ris = (0, 0.01, 0.04)
 
+####
+#### Load data from JLD2
+####
+
 scalar_files = Dict()
 scalar_iters = Dict()
+
+profile_files = Dict()
+profile_iters = Dict()
 
 for Ri in Ris
     base_dir = @sprintf("stratified_couette_flow_data_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
     prefix = @sprintf("stratified_couette_flow_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
 
     scalar_filepath = joinpath(base_dir, prefix * "_scalars.jld2")
+    profile_filepath = joinpath(base_dir, prefix * "_profiles.jld2")
 
     scalar_files[Ri] = jldopen(scalar_filepath, "r")
     scalar_iters[Ri] = keys(scalar_files[Ri]["timeseries/t"])
+
+    profile_files[Ri] = jldopen(profile_filepath, "r")
+    profile_iters[Ri] = keys(profile_files[Ri]["timeseries/t"])
 end
 
 ####
@@ -110,4 +121,54 @@ png_filepath = "stratified_couette_flow_Re_Nu_scatter.png"
 @info "Saving $png_filepath..."
 savefig(png_filepath, dpi=200)
 close(fig)
+
+####
+#### Plot velocity and temperature profiles
+####
+
+fig, (ax1, ax2) = subplots(nrows=1, ncols=2, figsize=(12, 3.375))
+
+c = Dict(Ris[1]=> "tab:blue", Ris[2]=> "tab:orange", Ris[3]=> "tab:green")
+
+for Ri in Ris
+    i = profile_iters[Ri][end]
+
+    Uw = profile_files[Ri]["parameters/wall_velocity"]
+    Θw = profile_files[Ri]["parameters/wall_temperature"]
+
+    Nz = profile_files[Ri]["grid/Nz"]
+    Hz = profile_files[Ri]["grid/Hz"]
+    zC = profile_files[Ri]["grid/zC"]
+
+    U = profile_files[Ri]["timeseries/u/" * i][1+Hz:Nz+Hz]
+    Θ = profile_files[Ri]["timeseries/T/" * i][1+Hz:Nz+Hz]
+
+               ax1.plot(U/Uw, zC .+ 1, color=c[Ri], label="Ri = $Ri")
+    Ri != 0 && ax2.plot(Θ/Θw, zC .+ 1, color=c[Ri], label="Ri = $Ri")
+end
+
+ax1.set_xlabel(L"$U/U_w$")
+ax1.set_ylabel(L"z/h")
+ax1.set_xlim([-1, 1])
+ax1.set_ylim([-1, 1])
+ax1.legend(frameon=false)
+
+ax2.set_xlabel(L"$Θ/Θ_w$")
+ax2.set_ylabel(L"z/h")
+ax2.set_xlim([-1, 1])
+ax2.set_ylim([-1, 1])
+ax2.legend(frameon=false)
+
+png_filepath = "stratified_couette_flow_velocity_temperature_profile.png"
+@info "Saving $png_filepath..."
+savefig(png_filepath, dpi=200)
+close(fig)
+
+####
+#### Plot LES model viscosity and diffusivity profiles
+####
+
+####
+#### Plot horizontal slices of velocity and temperature.
+####
 
