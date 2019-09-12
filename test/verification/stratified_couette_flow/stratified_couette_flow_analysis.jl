@@ -12,8 +12,8 @@ c = Dict(0 => "tab:blue", 0.01 => "tab:orange", 0.04 => "tab:green")
 #### Load data from JLD2
 ####
 
-scalar_files = Dict()
-scalar_iters = Dict()
+statistic_files = Dict()
+statistic_iters = Dict()
 
 profile_files = Dict()
 profile_iters = Dict()
@@ -25,12 +25,12 @@ for Ri in Ris
     base_dir = @sprintf("stratified_couette_flow_data_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
     prefix = @sprintf("stratified_couette_flow_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
 
-    scalar_filepath = joinpath(base_dir, prefix * "_scalars.jld2")
+    statistic_filepath = joinpath(base_dir, prefix * "_statistics.jld2")
     profile_filepath = joinpath(base_dir, prefix * "_profiles.jld2")
     field_filepath = joinpath(base_dir, prefix * "_fields.jld2")
 
-    scalar_files[Ri] = jldopen(scalar_filepath, "r")
-    scalar_iters[Ri] = keys(scalar_files[Ri]["timeseries/t"])
+    statistic_files[Ri] = jldopen(statistic_filepath, "r")
+    statistic_iters[Ri] = keys(statistic_files[Ri]["timeseries/t"])
 
     profile_files[Ri] = jldopen(profile_filepath, "r")
     profile_iters[Ri] = keys(profile_files[Ri]["timeseries/t"])
@@ -49,13 +49,13 @@ Reτ = Dict()
 Nu  = Dict()
 
 for Ri in Ris
-    i = scalar_iters[Ri][end]
+    i = statistic_iters[Ri][end]
 
-    t   = [scalar_files[Ri]["timeseries/t/"      * i]    for i in scalar_iters[Ri]]
-    ReT = [scalar_files[Ri]["timeseries/Re_tau/" * i][1] for i in scalar_iters[Ri]]
-    ReB = [scalar_files[Ri]["timeseries/Re_tau/" * i][2] for i in scalar_iters[Ri]]
-    NuT = [scalar_files[Ri]["timeseries/Nu_tau/" * i][1] for i in scalar_iters[Ri]]
-    NuB = [scalar_files[Ri]["timeseries/Nu_tau/" * i][2] for i in scalar_iters[Ri]]
+    t   = [statistic_files[Ri]["timeseries/t/"      * i]    for i in statistic_iters[Ri]]
+    ReT = [statistic_files[Ri]["timeseries/Re_tau/" * i][1] for i in statistic_iters[Ri]]
+    ReB = [statistic_files[Ri]["timeseries/Re_tau/" * i][2] for i in statistic_iters[Ri]]
+    NuT = [statistic_files[Ri]["timeseries/Nu_tau/" * i][1] for i in statistic_iters[Ri]]
+    NuB = [statistic_files[Ri]["timeseries/Nu_tau/" * i][2] for i in statistic_iters[Ri]]
 
     ax1.plot(t, ReT, color=c[Ri], linestyle="-",  label="Ri = $Ri (top wall)")
     ax1.plot(t, ReB, color=c[Ri], linestyle="--", label="Ri = $Ri (bottom wall)")
