@@ -6,11 +6,11 @@ using Oceananigans.TurbulenceClosures
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Uw = model.parameters.Uw
+    Uw = model.parameters[:Uw]
     ν = model.closure.ν
 
-    Up = HorizontalAverage(model, model.velocities.u; frequency=Inf)
-    U = Up(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    Uavg = model.parameters[:Uavg] 
+    U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dU/dz at the top and bottom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -26,11 +26,11 @@ end
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Θw = model.parameters.Θw
+    Θw = model.parameters[:Θw]
     κ = model.closure.κ
 
-    Tp = HorizontalAverage(model, model.tracers.T; frequency=Inf)
-    Θ = Tp(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    Tavg = model.parameters[:Tavg] 
+    Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dθ/dz at the top and bottom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -54,7 +54,7 @@ end
 function Nu(model)
     κ = model.closure.κ
     h = model.grid.Lz / 2
-    Θw = model.parameters.Θw
+    Θw = model.parameters[:Θw]
 
     q_wall⁺, q_wall⁻ = q_wall(model)
 
@@ -78,7 +78,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     Θw = Ri * Uw^2 / h  # From Ri = L Θw / Uw²
      κ = ν / Pr         # From Pr = ν / κ
 
-    parameters = (Uw=Uw, Θw=Θw, Re=Re, Pr=Pr, Ri=Ri)
+    parameters = Dict{Symbol, Any}(:Uw=>Uw, :Θw=>Θw, :Re=>Re, :Pr=>Pr, :Ri=>Ri)
 
     ####
     #### Impose boundary conditions
@@ -99,7 +99,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
 
     model = Model(N = (Nxy, Nxy, Nz),
                   L = (4π*h, 2π*h, 2h),
-               arch = GPU(),
+               arch = CPU(), 
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
                 eos = LinearEquationOfState(βT=1, βS=0),
           constants = PlanetaryConstants(f=0, g=1),
@@ -118,9 +118,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     u₀(x, y, z) = 2Uw * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
-    S₀(x, y, z) = ε(5e-1, z)
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
+    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
     ####
     #### Print simulation banner
@@ -182,28 +181,29 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
 
     push!(model.diagnostics, NaNChecker(model))
 
-    Δtₚ = 1 # Time interval for computing and saving profiles.
-
-    Up = HorizontalAverage(model, model.velocities.u; interval=Δtₚ)
-    Vp = HorizontalAverage(model, model.velocities.v; interval=Δtₚ)
-    Wp = HorizontalAverage(model, model.velocities.w; interval=Δtₚ)
-    Tp = HorizontalAverage(model, model.tracers.T;    interval=Δtₚ)
-    νp = HorizontalAverage(model, model.diffusivities.νₑ; interval=Δtₚ)
-    κp = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ)
-
-    append!(model.diagnostics, [Up, Vp, Wp, Tp, νp, κp])
-
     ####
     #### Set up profile output writer
     ####
 
+    Δtₚ = 1 # Time interval for computing and saving profiles.
+
+    Uavg = HorizontalAverage(model, model.velocities.u; interval=Δtₚ, return_type=Array)
+    Vavg = HorizontalAverage(model, model.velocities.v; interval=Δtₚ, return_type=Array)
+    Wavg = HorizontalAverage(model, model.velocities.w; interval=Δtₚ, return_type=Array)
+    Tavg = HorizontalAverage(model, model.tracers.T;    interval=Δtₚ, return_type=Array)
+    νavg = HorizontalAverage(model, model.diffusivities.νₑ; interval=Δtₚ, return_type=Array)
+    κavg = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ, return_type=Array)
+
+    model.parameters[:Uavg] = Uavg
+    model.parameters[:Tavg] = Tavg
+
     profiles = Dict(
-         :u => model -> Array(Up.profile),
-         :v => model -> Array(Vp.profile),
-         :w => model -> Array(Wp.profile),
-         :T => model -> Array(Tp.profile),
-        :nu => model -> Array(νp.profile),
-    :kappaT => model -> Array(κp.profile))
+         :u => model -> Uavg(model),
+         :v => model -> Vavg(model),
+         :w => model -> Wavg(model),
+         :T => model -> Tavg(model),
+        :nu => model -> νavg(model),
+    :kappaT => model -> κavg(model))
 
     profile_writer = JLD2OutputWriter(model, profiles; dir=base_dir, prefix=prefix * "_profiles",
                                       init=init_save_parameters_and_bcs, interval=Δtₚ, force=true, verbose=true)
@@ -270,7 +270,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, Uw=1, Re=4250, Pr=0.7,
     end
 end
 
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0)
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.01)
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.04)
+simulate_stratified_couette_flow(Nxy=32, Nz=32, Ri=0)
+#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0)
+#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.01)
+#simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.04)
 
