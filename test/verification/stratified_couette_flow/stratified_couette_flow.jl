@@ -214,20 +214,20 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=
     push!(model.output_writers, profile_writer)
 
     ####
-    #### Set up scalar output writer
+    #### Set up statistic output writer
     ####
 
     Reτ = FrictionReynoldsNumber(Uavg)
      Nu = NusseltNumber(Tavg)
 
-    scalars = Dict(
+    statistics = Dict(
         :Re_tau => model -> Reτ(model),
         :Nu_tau => model -> Nu(model))
 
-    scalar_writer = JLD2OutputWriter(model, scalars; dir=base_dir, prefix=prefix * "_scalars",
+    statistic_writer = JLD2OutputWriter(model, statistics; dir=base_dir, prefix=prefix * "_statistics",
                                      init=init_save_parameters_and_bcs, interval=Δtₚ/2, force=true, verbose=true)
 
-    push!(model.output_writers, scalar_writer)
+    push!(model.output_writers, statistic_writer)
 
     ####
     #### Time stepping
