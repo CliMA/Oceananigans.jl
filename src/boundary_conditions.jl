@@ -118,15 +118,15 @@ function FieldBoundaryConditions(;
 end
 
 """
-    HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, 0),
-                            bottom = BoundaryCondition(Flux, 0))
+    HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, nothing),
+                            bottom = BoundaryCondition(Flux, nothing))
 
 Construct horizontally-periodic boundary conditions for ``u``, ``v``, or a
 tracer field with top boundary condition (positive-z) `top`
 and bottom boundary condition (negative-z) `bottom`.
 """
-function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
-                                   bottom = BoundaryCondition(Flux, 0))
+function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
+                                   bottom = BoundaryCondition(Flux, nothing))
 
     x = PeriodicBCs()
     y = PeriodicBCs()
@@ -136,20 +136,20 @@ function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, 0),
 end
 
 """
-    ChannelBCs(;  north = BoundaryCondition(Flux, 0),
-                  south = BoundaryCondition(Flux, 0),
-                    top = BoundaryCondition(Flux, 0),
-                 bottom = BoundaryCondition(Flux, 0))
+    ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
+                  south = BoundaryCondition(Flux, nothing),
+                    top = BoundaryCondition(Flux, nothing),
+                 bottom = BoundaryCondition(Flux, nothing))
 
 Construct 'channel' boundary conditions (periodic in ``x``, non-periodic in
 ``y`` and ``z``) for ``u`` or a tracer field. The keywords `north`, `south`,
 `top` and `bottom` correspond to boundary conditions in the positive ``y``,
 negative ``y``, positive ``z`, and negative ``z`` directions respectively.
 """
-function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
-                       south = BoundaryCondition(Flux, 0),
-                         top = BoundaryCondition(Flux, 0),
-                      bottom = BoundaryCondition(Flux, 0)
+function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
+                       south = BoundaryCondition(Flux, nothing),
+                         top = BoundaryCondition(Flux, nothing),
+                      bottom = BoundaryCondition(Flux, nothing)
                     )
 
     x = PeriodicBCs()
@@ -221,7 +221,7 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 #####     on the north-south horizontal velocity, v.
 #####
 
-TendencyBC(::BC) = BoundaryCondition(Flux, 0)
+TendencyBC(::BC) = BoundaryCondition(Flux, nothing)
 TendencyBC(::PBC) = PeriodicBC()
 TendencyBC(::NPBC) = NoPenetrationBC()
 
@@ -235,7 +235,7 @@ TendenciesBoundaryConditions(solution_bcs) =
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 # Note that a zero flux boundary condition is simpler than a zero gradient boundary condition.
-PressureBC(::BC) = BoundaryCondition(Flux, 0)
+PressureBC(::BC) = BoundaryCondition(Flux, nothing)
 PressureBC(::PBC) = PeriodicBC()
 
 function PressureBoundaryConditions(vbcs)
