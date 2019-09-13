@@ -126,7 +126,8 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
     constants = PlanetaryConstants(float_type, g=Ri, f=1/Ro)
           eos = LinearEquationOfState(float_type, βT=1, βS=0)
-    return Model(; float_type=float_type, grid=grid, closure=closure, kwargs...)
+    return Model(; float_type=float_type, grid=grid, closure=closure, 
+                 constants=constants, eos=eos, skwargs...)
 end
  
     
