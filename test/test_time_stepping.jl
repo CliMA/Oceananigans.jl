@@ -1,16 +1,16 @@
 using Oceananigans: velocity_div!, compute_w_from_continuity!
 
 function time_stepping_works(arch, FT, Closure)
-    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
-                  closure=Closure(FT))
+    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
+                       closure=Closure(FT))
     time_step!(model, 1, 1)
     return true # test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = Model(N=(16, 16, 16), L=(1, 2, 3), arch=arch, float_type=FT,
-                  forcing=Forcing(FT=add_ones))
+    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
+                       forcing=Forcing(FT=add_ones))
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
@@ -71,7 +71,7 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=FT)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, float_type=FT)
 
     grid = model.grid
     u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
@@ -115,9 +115,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νh, κh = 20.0, 20.0
     νv, κv = α*νh, α*κh
 
-    model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz),
-                         arch=arch, float_type=FT,
-                         νh=νh, νv=νv, κh=κh, κv=κv)
+    model = ChannelModel(grid=RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                         architecture=arch, float_type=FT,
+                         closure=ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
