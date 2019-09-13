@@ -171,7 +171,7 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
     vbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
                                    bottom = BoundaryCondition(Gradient, 0))
 
-    model = Model(                arch = arch, 
+    model = Model(        architecture = arch, 
                                   grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)), 
                              constants = PlanetaryConstants(f=0, g=0),  # Turn off rotation and gravity.
                                closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
