@@ -10,6 +10,10 @@ using
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
 
+using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
+                    parentdata,
+                    buoyancy_perturbation, fill_halo_regions!, run_diagnostic
+
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 @hascuda using CuArrays
