@@ -1,3 +1,7 @@
+####
+#### Output writer utilities
+####
+
 ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
@@ -50,6 +54,13 @@ has_reference(T, ::AbstractArray{<:Number}) = false
 has_reference(::Type{Function}, ::Field) = false
 has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 
+"""
+    has_reference(has_type, obj)
+
+Check (or attempt to check) if `obj` contains, somewhere among its 
+subfields and subfields of fields, a reference to an object of type 
+`has_type`. This function doesn't always work.
+"""
 function has_reference(has_type, obj)
     if typeof(obj) <: has_type
         return true
@@ -61,7 +72,6 @@ function has_reference(has_type, obj)
         return typeof(obj) <: has_type
     end
 end
-
 
 ####
 ####  JLD2 output writer
@@ -186,7 +196,6 @@ function jld2output!(path, iter, time, data, kwargs)
     return
 end
 
-
 function start_next_file(model::Model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     sz = filesize(fw.filepath)
@@ -251,7 +260,6 @@ function FieldOutputs(fields)
     nfields = length(fields)
     return Dict((names[i], FieldOutput(fields[i])) for i in 1:nfields)
 end
-
 
 ####
 #### Binary output writer
