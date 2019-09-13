@@ -128,6 +128,7 @@ end
 
 # Constructor aliases.
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
+RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 Base.eltype(g::RegularCartesianGrid{T}) where T = T

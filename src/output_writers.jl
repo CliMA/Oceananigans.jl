@@ -389,7 +389,7 @@ mutable struct Checkpointer{I, T, P, A} <: OutputWriter
 end
 
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, 
-                      verbose=false, properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, 
+                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :eos, :constants, 
                                                    :closure, :velocities, :tracers, :timestepper])
                       
     validate_interval(frequency, interval)
@@ -460,16 +460,12 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
         end
     end
 
-    # The Model constructor needs N and L.
-    kwargs[:N] = (kwargs[:grid].Nx, kwargs[:grid].Ny, kwargs[:grid].Nz)
-    kwargs[:L] = (kwargs[:grid].Lx, kwargs[:grid].Ly, kwargs[:grid].Lz)
-
     model = Model(; kwargs...)
 
     # Now restore fields.
     for p in cps
         if p in has_array_refs
-            restore_fields!(model, file, model.arch, p)
+            restore_fields!(model, file, model.architecture, p)
         end
     end
 

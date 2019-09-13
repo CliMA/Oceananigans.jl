@@ -45,7 +45,7 @@ export
     Clock,
 
     # Models
-    Model, ChannelModel,
+    Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
