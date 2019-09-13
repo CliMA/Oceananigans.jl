@@ -15,7 +15,10 @@ function run_thermal_bubble_regression_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
+
+    model.tracers.T.data.parent .= model.eos.T₀
+    model.tracers.S.data.parent .= model.eos.S₀
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -89,7 +92,7 @@ function run_rayleigh_benard_regression_test(arch)
     FS(i, j, k, grid, time, U, Φ, params) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
 
     model = Model(
-                       arch = arch,
+               architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                         eos = LinearEquationOfState(βT=1., βS=0.),
