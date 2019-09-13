@@ -15,7 +15,10 @@ function run_thermal_bubble_regression_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
+
+    model.tracers.T.data.parent .= model.eos.T₀
+    model.tracers.S.data.parent .= model.eos.S₀
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -62,9 +65,9 @@ end
 
 function run_rayleigh_benard_regression_test(arch)
 
-    #
-    # Parameters
-    #
+    #####
+    ##### Parameters
+    #####
           α = 2                 # aspect ratio
           n = 1                 # resolution multiple
          Ra = 1e6               # Rayleigh number
@@ -80,27 +83,23 @@ function run_rayleigh_benard_regression_test(arch)
     ν = sqrt(Δb * Pr * Lz^3 / Ra)
     κ = ν / Pr
 
-    #
-    # Model setup
-    #
+    #####
+    ##### Model setup
+    #####
 
     # Force salinity as a passive tracer (βS=0)
     S★(x, z) = exp(4z) * sin(2π/Lx * x)
     FS(i, j, k, grid, time, U, Φ, params) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
 
     model = Model(
-         arch = arch,
-            N = (Nx, Ny, Nz),
-            L = (Lx, Ly, Lz),
-            ν = ν,
-            κ = κ,
-          eos = LinearEquationOfState(βT=1., βS=0.),
-    constants = PlanetaryConstants(g=1., f=0.),
-          bcs = BoundaryConditions(T=HorizontallyPeriodicBCs(
-                       top = BoundaryCondition(Value, 0.0),
-                    bottom = BoundaryCondition(Value, Δb)
-                )),
-      forcing = Forcing(FS=FS)
+               architecture = arch,
+                       grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                    closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+                        eos = LinearEquationOfState(βT=1., βS=0.),
+                  constants = PlanetaryConstants(g=1., f=0.),
+        boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
+                                top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
+                    forcing = Forcing(FS=FS)
     )
 
     ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
@@ -118,9 +117,9 @@ function run_rayleigh_benard_regression_test(arch)
     outputwriter = JLD2OutputWriter(model, outputfields; dir=".", prefix=prefix,
                                     frequency=test_steps, including=[])
 
-    #
-    # Initial condition and spinup steps for creating regression test data
-    #
+    #####
+    ##### Initial condition and spinup steps for creating regression test data
+    #####
 
     #=
     @warn ("Generating new data for the Rayleigh-Benard regression test.
@@ -136,9 +135,9 @@ function run_rayleigh_benard_regression_test(arch)
     time_step!(model, 2test_steps, Δt)
     =#
 
-    #
-    # Regression test
-    #
+    #####
+    ##### Regression test
+    #####
 
     # Load initial state
     u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)

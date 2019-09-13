@@ -25,7 +25,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
-        adams_bashforth_time_step!(model, model.arch, model.grid, model.constants, model.eos, model.closure,
+        adams_bashforth_time_step!(model, model.architecture, model.grid, model.constants, model.eos, model.closure,
                                    model.forcing, model.boundary_conditions, pressure_bcs, U, Φ, p, K, RHS, Gⁿ, 
                                    G⁻, Δt, χ)
 

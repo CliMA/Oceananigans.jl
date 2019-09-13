@@ -4,7 +4,7 @@ using .TurbulenceClosures: ν₀, κ₀
 mutable struct Model{TS, E, A<:Architecture, G, T, EOS<:EquationOfState,
                      Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
 
-                   arch :: A                      # Computer `Architecture` on which `Model` is run
+           architecture :: A                      # Computer `Architecture` on which `Model` is run
                    grid :: G                      # Grid of physical points on which `Model` is solved
                   clock :: Clock{T}               # Tracks iteration number and simulation time of `Model`
                     eos :: EOS                    # Relationship between temperature, salinity, and buoyancy
@@ -31,94 +31,113 @@ end
 Construct an `Oceananigans.jl` model.
 """
 function Model(;
-    # Model resolution and domain size
-                      N,
-                      L,
-    # Model architecture and floating point precision
-                   arch = CPU(),
+                   grid, # model resolution and domain
+           architecture = CPU(), # model architecture
              float_type = Float64,
-                   grid = RegularCartesianGrid(float_type, N, L),
-    # Isotropic transport coefficients (exposed to `Model` constructor for convenience)
-                      ν = ν₀, νh=ν, νv=ν,
-                      κ = κ₀, κh=κ, κv=κ,
-                closure = ConstantAnisotropicDiffusivity(float_type, νh=νh, νv=νv, κh=κh, κv=κv),
-    # Time stepping
-             start_time = 0,
-              iteration = 0,
-                  clock = Clock{float_type}(start_time, iteration),
-    # Fluid and physical parameters
-              constants = Earth(float_type),
-                    eos = LinearEquationOfState(float_type),
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # Diffusivity / turbulence closure
+                  clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
+              constants = Earth(float_type), # rotation rate and gravitational acceleration
+                    eos = LinearEquationOfState(float_type), # relationship between tracers and density
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
-                    bcs = HorizontallyPeriodicModelBCs(),
-    boundary_conditions = bcs,
-    # Output and diagonstics
+    boundary_conditions = HorizontallyPeriodicModelBCs(),
          output_writers = OutputWriter[],
             diagnostics = Diagnostic[],
-    # User-defined parameters container
-             parameters = nothing
+             parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
+    # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
+             velocities = VelocityFields(architecture, grid),
+                tracers = TracerFields(architecture, grid),
+              pressures = PressureFields(architecture, grid),
+          diffusivities = TurbulentDiffusivities(architecture, grid, closure),
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125, 
+                                                    boundary_conditions),
+    # Solver for Poisson's equation
+         poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
 
-    arch == GPU() && !has_cuda() && throw(
-        ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if architecture == GPU()
+        !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+        if mod(grid.Nx, 16) != 0 || mod(grid.Ny, 16) != 0
+            throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
+        end
+    end
 
-    # Initialize fields.
-       velocities = VelocityFields(arch, grid)
-          tracers = TracerFields(arch, grid)
-        pressures = PressureFields(arch, grid)
-      timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125, bcs)
-    diffusivities = TurbulentDiffusivities(arch, grid, closure)
-
-    # Initialize Poisson solver.
-    poisson_solver = PoissonSolver(arch, PoissonBCs(bcs), grid)
-
-    # Set the default initial condition
-    initialize_with_defaults!(eos, tracers)
-
-    Model(arch, grid, clock, eos, constants, velocities, tracers,
-          pressures, forcing, closure, boundary_conditions, timestepper,
-          poisson_solver, diffusivities, output_writers, diagnostics, parameters)
+    return Model(architecture, grid, clock, eos, constants, velocities, tracers,
+                 pressures, forcing, closure, boundary_conditions, timestepper,
+                 poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
 
 """
     ChannelModel(; kwargs...)
 
-    Construct a `Model` with walls in the y-direction. This is done by imposing
-    `FreeSlip` boundary conditions in the y-direction instead of `Periodic`.
+Construct a `Model` with walls in the y-direction. This is done by imposing
+`FreeSlip` boundary conditions in the y-direction instead of `Periodic`.
 
-    kwargs are passed to the regular `Model` constructor.
+kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; bcs=ChannelModelBCs(), kwargs...) =
-    Model(; bcs=bcs, kwargs...)
+ChannelModel(; boundary_conditions=ChannelModelBCs(), kwargs...) = 
+    Model(; boundary_conditions=boundary_conditions, kwargs...)
 
-#
-# Model initialization utilities
-#
+function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, 
+                           boundary_conditions=ChannelModelBCs(), kwargs...)
+
+    grid = RegularCartesianGrid(float_type, N, L)
+    closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
+
+    return Model(; float_type=float_type, grid=grid, closure=closure, 
+                 boundary_conditions=boundary_conditions, kwargs...)
+end
+ 
+"""
+    BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
+
+Construct a "Basic" `Model` with resolution `N`, domain extent `L`,
+precision `float_type`, and constant isotropic viscosity and diffusivity `ν`, and `κ`.
+
+Additional `kwargs` are passed to the regular `Model` constructor.
+"""
+function BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
+    grid = RegularCartesianGrid(float_type, N, L)
+    closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
+    return Model(; float_type=float_type, grid=grid, closure=closure, kwargs...)
+end
+
+"""
+    NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+
+Construct a "Non-dimensional" `Model` with resolution `N`, domain extent `L`,
+precision `float_type`, and the four non-dimensional numbers:
+
+    * `Re = U λ / ν` (Reynolds number)
+    * `Pr = U λ / κ` (Prandtl number)
+    * `Ri = B λ U²`  (Richardson number)
+    * `Ro = U / f λ` (Rossby number) 
+
+for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`, 
+tracer diffusivity `κ`, buoyancy scale (or differential) `B`, and 
+Coriolis parameter `f`.
+
+Note that `N`, `L`, and `Re` are required.
+
+Additional `kwargs` are passed to the regular `Model` constructor.
+"""
+function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+         grid = RegularCartesianGrid(float_type, N, L)
+      closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
+    constants = PlanetaryConstants(float_type, g=Ri, f=1/Ro)
+          eos = LinearEquationOfState(float_type, βT=1, βS=0)
+    return Model(; float_type=float_type, grid=grid, closure=closure, 
+                 constants=constants, eos=eos, skwargs...)
+end
+ 
+    
+#####
+##### Model initialization utilities
+#####
 
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
-
-
-function initialize_with_defaults!(eos::EquationOfState, tracers, sets...)
-    # Default tracer initial condition is deteremined by eos.
-    tracers.S.data.parent .= eos.S₀
-    tracers.T.data.parent .= eos.T₀
-    initialize_with_zeros!(sets...)
-    return nothing
-end
-
-function initialize_with_zeros!(sets...)
-    # Set all fields to 0
-    for set in sets
-        for fldname in propertynames(set)
-            fld = getproperty(set, fldname)
-            fld.data.parent .= 0 # promotes to eltype of fld.data
-        end
-    end
-    return nothing
-end
 
 """
     Forcing(; kwargs...)
