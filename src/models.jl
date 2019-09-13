@@ -60,8 +60,12 @@ function Model(;
              parameters = nothing
     )
 
-    arch == GPU() && !has_cuda() && throw(
-        ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if arch == GPU()
+        !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+        if mod(grid.Nx, 16) != 0 || mod(grid.Ny, 16) != 0
+            throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
+        end
+    end
 
     # Initialize fields.
        velocities = VelocityFields(arch, grid)
