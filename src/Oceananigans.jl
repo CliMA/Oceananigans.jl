@@ -48,8 +48,9 @@ export
     Model, ChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    restore_from_checkpoint, read_output,
+    NetCDFOutputWriter, 
+    Checkpointer, restore_from_checkpoint, read_output,
+    JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker, CFLDiagnostic, AdvectiveCFLDiagnostic, DiffusiveCFLDiagnostic,
