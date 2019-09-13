@@ -52,7 +52,8 @@ export
     restore_from_checkpoint, read_output,
 
     # Model diagnostics
-    HorizontalAverage, NaNChecker,
+    HorizontalAverage, NaNChecker, CFLDiagnostic, AdvectiveCFLDiagnostic, DiffusiveCFLDiagnostic,
+    MaxAbsFieldDiagnostic
 
     # Package utilities
     prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
