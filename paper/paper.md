@@ -46,15 +46,16 @@ Furthermore Julia's native GPU compiler [@Besard2019] allowed us to develop a
 single code base that executes efficiently on CPUs and GPUs.
 
 Third paragraph on nice features and aspects:
-1. Makes ocean modeling more accessible: existing models generally not very
-   user-friendly as you have to fumble with compilers and MPI. Also written
-   in Fortran which is no longer being taught to students.
+1. Makes computational fluid dynamics and ocean modeling more accessible:
+   existing models generally not very user-friendly as you have to fumble
+   with compilers and MPI. Also written in Fortran which is no longer
+   being taught to students.
 2. Makes LES more accessible: existing LES code is not usually shared,
    tested, or easy to use.
 3. Simulations are set up by scripts: extensible and flexible, no longer
    limited by namelist or configuration file. Powerful features such as
    radiation and open boundary conditions can be implemented with several
-   lines of code.
+   lines of code. Scripts can be shared for easy reproducible science.
 4. Model is continuously tested: unit tests, integration tests, comparison
    with analytic solutions and published scientific results to ensure the
    model is always correct with every commit.
