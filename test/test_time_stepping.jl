@@ -135,11 +135,11 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     # Interestingly, it's very well conserved (almost to machine epsilon) for
     # Float64, but not as close for Float32... But it does seem constant in time
-    # for Float32 so at least it is conserved.
+    # for Float32 so at least it is bounded.
     if FT == Float64
-        return isapprox(Tavg, Tavg0; rtol=1e-14)
+        return isapprox(Tavg, Tavg0; rtol=2e-14)
     elseif FT == Float32
-        return isapprox(Tavg, Tavg0; rtol=1e-4)
+        return isapprox(Tavg, Tavg0; rtol=2e-4)
     end
 end
 
