@@ -34,13 +34,13 @@ function Model(;
                    grid, # model resolution and domain
                    arch = CPU(), # model architecture
              float_type = Float64,
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # Diffusivity / turbulence closure
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
               constants = Earth(float_type), # rotation rate and gravitational acceleration
                     eos = LinearEquationOfState(float_type), # relationship between tracers and density
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
-    boundary_conditions = HorizontallyPeriodicModelBCs(),
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OutputWriter[],
             diagnostics = Diagnostic[],
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
@@ -50,8 +50,7 @@ function Model(;
      initialize_tracers = true,
               pressures = PressureFields(arch, grid),
           diffusivities = TurbulentDiffusivities(arch, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125, 
-                                                    boundary_conditions),
+            timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(arch, PoissonBCs(boundary_conditions), grid)
     )
@@ -61,6 +60,8 @@ function Model(;
 
     # Set the default initial condition
     initialize_tracers && initialize_with_defaults!(eos, tracers)
+
+    boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
     return Model(arch, grid, clock, eos, constants, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
@@ -75,11 +76,11 @@ Construct a `Model` with walls in the y-direction. This is done by imposing
 
 kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; boundary_conditions=ChannelModelBCs(), kwargs...) = 
+ChannelModel(; boundary_conditions=ChannelSolutionBCs(), kwargs...) = 
     Model(; boundary_conditions=boundary_conditions, kwargs...)
 
 function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, 
-                           boundary_conditions=ChannelModelBCs(), kwargs...)
+                           boundary_conditions=ChannelSolutionBCs(), kwargs...)
 
     grid = RegularCartesianGrid(float_type, N, L)
     closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
@@ -225,16 +226,14 @@ end
 Return an AdamsBashforthTimestepper object with tendency
 fields on `arch` and `grid` and AB2 parameter `χ`.
 """
-struct AdamsBashforthTimestepper{T, TG, BC}
+struct AdamsBashforthTimestepper{T, TG}
       Gⁿ :: TG
       G⁻ :: TG
        χ :: T
-    Gbcs :: BC
 end
 
-function AdamsBashforthTimestepper(float_type, arch, grid, χ, modelbcs)
+function AdamsBashforthTimestepper(float_type, arch, grid, χ)
    Gⁿ = Tendencies(arch, grid)
    G⁻ = Tendencies(arch, grid)
-   Gbcs = TendenciesBoundaryConditions(modelbcs)
-   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ), typeof(Gbcs)}(Gⁿ, G⁻, χ, Gbcs)
+   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end

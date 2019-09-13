@@ -27,13 +27,13 @@ struct BoundaryCondition{C<:BCType, T}
     condition :: T
 end
 
-# Some abbreviations to make our life easier.
-const BC = BoundaryCondition
-const FBC = BoundaryCondition{<:Flux}
-const PBC = BoundaryCondition{<:Periodic}
+# Some abbreviations to make life easier.
+const BC   = BoundaryCondition
+const FBC  = BoundaryCondition{<:Flux}
+const PBC  = BoundaryCondition{<:Periodic}
 const NPBC = BoundaryCondition{<:NoPenetration}
-const VBC = BoundaryCondition{<:Value}
-const GBC = BoundaryCondition{<:Gradient}
+const VBC  = BoundaryCondition{<:Value}
+const GBC  = BoundaryCondition{<:Gradient}
 const NFBC = BoundaryCondition{Flux, Nothing}
 
 BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
@@ -95,7 +95,6 @@ getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
 
 
-
 #####
 ##### Boundary conditions for Fields
 #####
@@ -104,16 +103,17 @@ getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
     FieldBoundaryConditions(x, y, z)
 
 Construct `FieldBoundaryConditions` for a field.
-A FieldBoundaryCondition has `CoordinateBoundaryConditions` in
+Field boundary conditions have `CoordinateBoundaryCondition`s in
 `x`, `y`, and `z`.
 """
-FieldBoundaryConditions(x, y, z) = (x=x, y=y, z=z)
+const FieldBoundaryConditions = NamedTuple{(:x, :y, :z)}
+
+FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
 function FieldBoundaryConditions(;
     x = CoordinateBoundaryConditions(),
     y = CoordinateBoundaryConditions(),
-    z = CoordinateBoundaryConditions()
-    )
+    z = CoordinateBoundaryConditions())
     return FieldBoundaryConditions(x, y, z)
 end
 
@@ -160,49 +160,55 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, 0),
 end
 
 
-
 #####
-##### Boundary conditions for entire models
+##### Boundary conditions for systems of equations
 #####
 
 """
-    ModelBoundaryConditions(u, v, w, T, S)
+    SolutionBoundaryConditions(u, v, w, T, S)
 
-Construct a NamedTuple of boundary conditions for a model
-with solution fields `u`, `v`, `w`, `T`, and `S`.
+Construct a NamedTuple of boundary conditions for a system of
+equations with solution fields `u`, `v`, `w`, `T`, and `S`.
 """
-ModelBoundaryConditions(u, v, w, T, S) = (u=u, v=v, w=w, T=T, S=S)
+SolutionBoundaryConditions(u, v, w, T, S) = (u=u, v=v, w=w, T=T, S=S)
 
 """
-    HorizontallyPeriodicModelBCs(u=HorizontallyPeriodicBCs, ...)
+    HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs, ...)
 
 Construct a NamedTuple of boundary conditions for a horizontally-periodic
-model with solution fields `u`, `v`, `w`, `T`, and `S`. Non-default
+system of equations with solution fields `u`, `v`, `w`, `T`, and `S`. Non-default
 boundary conditions for any field must be horizontally-periodic.
 """
-function HorizontallyPeriodicModelBCs(;
+function HorizontallyPeriodicSolutionBCs(;
     u = HorizontallyPeriodicBCs(),
     v = HorizontallyPeriodicBCs(),
     w = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
     T = HorizontallyPeriodicBCs(),
     S = HorizontallyPeriodicBCs()
    )
-    return ModelBoundaryConditions(u, v, w, T, S)
+    return SolutionBoundaryConditions(u, v, w, T, S)
 end
 
-function ChannelModelBCs(;
+"""
+    ChannelSolutionBCs(u=ChannelBCs, ...)
+
+Construct a NamedTuple of boundary conditions for a system of equations
+with solution fields `u`, `v`, `w`, `T`, and `S` in a re-entrant 
+channel geometry with rigid top, bottom, north, and south boundaries (y, z),
+and periodic boundary conditions in east and west (x).
+"""
+function ChannelSolutionBCs(;
     u = ChannelBCs(),
     v = ChannelBCs(north=NoPenetrationBC(), south=NoPenetrationBC()),
     w = ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
     T = ChannelBCs(),
     S = ChannelBCs()
    )
-    return ModelBoundaryConditions(u, v, w, T, S)
+    return SolutionBoundaryConditions(u, v, w, T, S)
 end
 
-# Default
-const BoundaryConditions = HorizontallyPeriodicModelBCs
-
+# Default semantics
+const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 
 
 #####
@@ -221,11 +227,11 @@ TendencyBC(::NPBC) = NoPenetrationBC()
 
 TendencyCoordinateBCs(bcs) = CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
 
-TendencyFieldBoundaryConditions(fieldbcs) = 
-    NamedTuple{(:x, :y, :z)}(Tuple(TendencyCoordinateBCs(bcs) for bcs in fieldbcs))
+TendencyFieldBoundaryConditions(field_bcs) = 
+    FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
 
-TendenciesBoundaryConditions(modelbcs) =
-    NamedTuple{propertynames(modelbcs)}(Tuple(TendencyFieldBoundaryConditions(bcs) for bcs in modelbcs))
+TendenciesBoundaryConditions(solution_bcs) =
+    NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBoundaryConditions(bcs) for bcs in solution_bcs))
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 # Note that a zero flux boundary condition is simpler than a zero gradient boundary condition.
@@ -238,6 +244,22 @@ function PressureBoundaryConditions(vbcs)
     z = CoordinateBoundaryConditions(PressureBC(vbcs.z.left), PressureBC(vbcs.z.right))
     return (x=x, y=y, z=z)
 end
+
+#####
+##### Model boundary conditions for pressure, and solution, and tendency systems
+#####
+
+const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure)}
+
+function ModelBoundaryConditions(system_boundary_conditions::NamedTuple)
+    model_boundary_conditions = (solution = system_boundary_conditions, 
+                                 tendency = TendenciesBoundaryConditions(system_boundary_conditions),
+                                 pressure = PressureBoundaryConditions(system_boundary_conditions.v))
+    return model_boundary_conditions
+end
+
+ModelBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
+    model_boundary_conditions
 
 #####
 ##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.
