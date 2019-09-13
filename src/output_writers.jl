@@ -94,27 +94,29 @@ Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `o
 a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
 function of the form `func(model)` that returns the data to be saved.
 
-# Keyword arguments
-- `frequency::Int`   : Save output every `n` model iterations.
-- `interval::Int`    : Save output every `t` units of model clock time.
-- `dir::String`      : Directory to save output to. Default: "." (current working
-                       directory).
-- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
-- `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
-                       output file is initialized. Default: `noinit(args...) = nothing`.
-- `including::Array` : List of model properties to save with every file. By default, the
-                       grid, equation of state, planetary constants, and the turbulence
-                       closure parameters are saved.
-- `part::Int`        : The starting part number used if `max_filesize` is finite.
-                       Default: 1.
-- `max_filesize::Int`: The writer will stop writing to the output file once the file size
-                       exceeds `max_filesize`, and write to a new one with a consistent
-                       naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
-- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-- `async::Bool`      : Write output asynchronously. Default: `false`.
-- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write
-                       times and file sizes. Default: `false`.
-- `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
+Keyword arguments
+=================
+
+    - `frequency::Int`   : Save output every `n` model iterations.
+    - `interval::Int`    : Save output every `t` units of model clock time.
+    - `dir::String`      : Directory to save output to. Default: "." (current working
+                           directory).
+    - `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
+    - `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
+                           output file is initialized. Default: `noinit(args...) = nothing`.
+    - `including::Array` : List of model properties to save with every file. By default, the
+                           grid, equation of state, planetary constants, and the turbulence
+                           closure parameters are saved.
+    - `part::Int`        : The starting part number used if `max_filesize` is finite.
+                           Default: 1.
+    - `max_filesize::Int`: The writer will stop writing to the output file once the file size
+                           exceeds `max_filesize`, and write to a new one with a consistent
+                           naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
+    - `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
+    - `async::Bool`      : Write output asynchronously. Default: `false`.
+    - `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write
+                           times and file sizes. Default: `false`.
+    - `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :eos, :constants, :closure],
@@ -209,6 +211,47 @@ function start_next_file(model::Model, fw::JLD2OutputWriter)
         saveproperties!(file, model, fw.including)
     end
 end
+
+"""
+    FieldOutput([return_type=Array], field)
+
+Returns a `FieldOutput` type intended for use with the `JLD2OutputWriter`. 
+Calling `FieldOutput(model)` returns `return_type(field.data.parent)`.
+"""
+struct FieldOutput{O, F}
+    return_type :: O
+          field :: F
+end
+
+FieldOutput(field) = FieldOutput(Array, field) # default
+(fo::FieldOutput)(model) = fo.return_type(fo.field.data.parent)
+
+"""
+    FieldOutputs(fields)
+
+Returns a dictionary of `FieldOutput` objects with key, value
+pairs corresponding to each name and value in the `NamedTuple` `fields`.
+Intended for use with `JLD2OutputWriter`.
+
+Examples
+========
+
+```julia
+julia> output_writer = JLD2OutputWriter(model, FieldOutputs(model.velocities), frequency=1);
+
+julia> keys(output_writer.outputs)
+Base.KeySet for a Dict{Symbol,FieldOutput{UnionAll,F} where F} with 3 entries. Keys:
+  :w
+  :v
+  :u
+```
+"""
+function FieldOutputs(fields)
+    names = propertynames(fields)
+    nfields = length(fields)
+    return Dict((names[i], FieldOutput(fields[i])) for i in 1:nfields)
+end
+
 
 ####
 #### Binary output writer
