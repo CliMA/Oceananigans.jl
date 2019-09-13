@@ -10,7 +10,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -85,7 +85,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    true_model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, arch=arch)
+    true_model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, architecture=arch)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.

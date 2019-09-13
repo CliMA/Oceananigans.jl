@@ -4,7 +4,7 @@ using .TurbulenceClosures: ν₀, κ₀
 mutable struct Model{TS, E, A<:Architecture, G, T, EOS<:EquationOfState,
                      Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
 
-                   arch :: A                      # Computer `Architecture` on which `Model` is run
+           architecture :: A                      # Computer `Architecture` on which `Model` is run
                    grid :: G                      # Grid of physical points on which `Model` is solved
                   clock :: Clock{T}               # Tracks iteration number and simulation time of `Model`
                     eos :: EOS                    # Relationship between temperature, salinity, and buoyancy
@@ -32,7 +32,7 @@ Construct an `Oceananigans.jl` model.
 """
 function Model(;
                    grid, # model resolution and domain
-                   arch = CPU(), # model architecture
+           architecture = CPU(), # model architecture
              float_type = Float64,
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # Diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
@@ -45,24 +45,20 @@ function Model(;
             diagnostics = Diagnostic[],
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
-             velocities = VelocityFields(arch, grid),
-                tracers = TracerFields(arch, grid),
-     initialize_tracers = true,
-              pressures = PressureFields(arch, grid),
-          diffusivities = TurbulentDiffusivities(arch, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, arch, grid, 0.125, 
+             velocities = VelocityFields(architecture, grid),
+                tracers = TracerFields(architecture, grid),
+              pressures = PressureFields(architecture, grid),
+          diffusivities = TurbulentDiffusivities(architecture, grid, closure),
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125, 
                                                     boundary_conditions),
     # Solver for Poisson's equation
-         poisson_solver = PoissonSolver(arch, PoissonBCs(boundary_conditions), grid)
+         poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
 
-    arch == GPU() && !has_cuda() && throw(
+    architecture == GPU() && !has_cuda() && throw(
         ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
-    # Set the default initial condition
-    initialize_tracers && initialize_with_defaults!(eos, tracers)
-
-    return Model(arch, grid, clock, eos, constants, velocities, tracers,
+    return Model(architecture, grid, clock, eos, constants, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
@@ -138,25 +134,6 @@ end
 arch(model::Model{A}) where A <: Architecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
-
-function initialize_with_defaults!(eos::EquationOfState, tracers, sets...)
-    # Default tracer initial condition is deteremined by eos.
-    tracers.S.data.parent .= eos.S₀
-    tracers.T.data.parent .= eos.T₀
-    initialize_with_zeros!(sets...)
-    return nothing
-end
-
-function initialize_with_zeros!(sets...)
-    # Set all fields to 0
-    for set in sets
-        for fldname in propertynames(set)
-            fld = getproperty(set, fldname)
-            fld.data.parent .= 0 # promotes to eltype of fld.data
-        end
-    end
-    return nothing
-end
 
 """
     Forcing(; kwargs...)
