@@ -32,7 +32,8 @@ bibliography: paper.bib
 # Summary
 
 ``Oceananigans`` is a fast and friendly fluid flow solver written in Julia that
-can be run in 1-3 dimensions on CPUs and GPUs. It employs a similar algorithm to
+can be run in 1-3 dimensions on CPUs and GPUs. Designed with high-resolution
+simulation of idealized geometries in mind, it employs a similar algorithm to
 the the Massachusetts Institute of Technology general circulation model
 [@Marshall1997] and ships with large eddy simulation capabilities.
 
@@ -58,9 +59,10 @@ Third paragraph on nice features and aspects:
    with analytic solutions and published scientific results to ensure the
    model is always correct with every commit.
 5. GPU benchmarks show that running on a single Nvidia V100 GPU is ~150x
-   faster than an Intel Xeon E5-2680. This makes running on the cloud ~3x
-   more cost-effective with GPUs. It also reduces the lag between simulation
-   and analysis, leading to greater research productivity.
+   faster than an Intel Xeon E5-2680. This reduces the lag between
+   simulation and analysis, leading to greater research productivity.
+   It also enables long integration times of high-resolution simulations.
+   Moreover, running on the cloud with GPUs is ~3x more cost-effective.
 
 # Acknowledgements
 
