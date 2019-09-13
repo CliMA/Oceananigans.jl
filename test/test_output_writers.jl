@@ -10,7 +10,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -38,7 +38,7 @@ function run_thermal_bubble_netcdf_tests(arch)
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = Model(N=(16, 16, 16), L=(1, 1, 1))
+    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1))
 
     u(model) = Array(model.velocities.u.data.parent)
     fields = Dict(:u => u)
@@ -85,7 +85,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    true_model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, arch=arch)
+    true_model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, arch=arch)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
