@@ -42,7 +42,6 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-
 # Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
@@ -63,7 +62,7 @@ function Base.zeros(T, ::CPU, grid)
     k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
 
     underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
-    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
 function Base.zeros(T, ::GPU, grid)
@@ -74,7 +73,7 @@ function Base.zeros(T, ::GPU, grid)
 
     underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
-    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
 Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
@@ -89,8 +88,6 @@ Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, N
 ####
 
 # Note: these functions will have to be refactored to work on non-uniform grids.
-
-# Timescale for advection across one cell
 
 "Returns the time-scale for advection on a regular grid across a single grid cell."
 function cell_advection_timescale(u, v, w, grid)
@@ -112,7 +109,6 @@ cell_advection_timescale(model) =
                              model.grid)
 
 # Timescale for diffusion across one cell
-
 min_Δxyz(grid) = min(grid.Δx, grid.Δy, grid.Δz)
 min_Δxy(grid) = min(grid.Δx, grid.Δy)
 min_Δz(grid) = grid.Δz
@@ -197,10 +193,6 @@ tupleit(a::AbstractArray) = Tuple(a)
 tupleit(nt) = tuple(nt)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
-
-####
-#### Data tuples
-####
 
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
