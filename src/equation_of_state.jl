@@ -35,7 +35,7 @@ end
     @inbounds -eos.ρ₀ * (eos.βT * (T[i, j, k] - eos.T₀)
                        - eos.βS * (S[i, j, k] - eos.S₀))
 
-@inline buoyancy(i, j, k, grid, eos::LinearEquationOfState, grav, T, S) =
+@inline buoyancy_perturbation(i, j, k, grid, eos::LinearEquationOfState, grav, T, S) =
     @inbounds eos.βT * (T[i, j, k] - eos.T₀) - eos.βS * (S[i, j, k] - eos.S₀)
 
 NoEquationOfState() = LinearEquationOfState(βT=0, βS=0)
