@@ -51,7 +51,7 @@ end
     @testset "Doubly periodic model" begin
         println("  Testing doubly periodic model construction...")
         for arch in archs, FT in float_types
-            model = BasicModel(N=(4, 5, 6), L=(1, 2, 3), architecture=arch, float_type=FT)
+            model = BasicModel(N=(16, 16, 2), L=(1, 2, 3), architecture=arch, float_type=FT)
 
             # Just testing that a Model was constructed with no errors/crashes.
             @test true
@@ -61,7 +61,7 @@ end
     @testset "Reentrant channel model" begin
         println("  Testing reentrant channel model construction...")
         for arch in archs, FT in float_types
-            model = BasicChannelModel(N=(6, 5, 4), L=(3, 2, 1), architecture=arch, float_type=FT)
+            model = BasicChannelModel(N=(16, 16, 2), L=(3, 2, 1), architecture=arch, float_type=FT)
 
             # Just testing that a ChannelModel was constructed with no errors/crashes.
             @test true
@@ -71,7 +71,7 @@ end
     @testset "Setting model fields" begin
         println("  Testing setting model fields...")
         for arch in archs, FT in float_types
-            N = (4, 6, 8)
+            N = (16, 16, 8)
             L = (2π, 3π, 5π)
 
             grid = RegularCartesianGrid(FT, N, L)

@@ -55,8 +55,12 @@ function Model(;
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
 
-    architecture == GPU() && !has_cuda() && throw(
-        ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if architecture == GPU()
+        !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+        if mod(grid.Nx, 16) != 0 || mod(grid.Ny, 16) != 0
+            throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
+        end
+    end
 
     return Model(architecture, grid, clock, eos, constants, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
