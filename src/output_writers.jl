@@ -460,10 +460,6 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
         end
     end
 
-    # The Model constructor needs N and L.
-    kwargs[:N] = (kwargs[:grid].Nx, kwargs[:grid].Ny, kwargs[:grid].Nz)
-    kwargs[:L] = (kwargs[:grid].Lx, kwargs[:grid].Ly, kwargs[:grid].Lz)
-
     model = Model(; kwargs...)
 
     # Now restore fields.
