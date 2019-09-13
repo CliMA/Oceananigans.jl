@@ -28,7 +28,7 @@ end
 
 function HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=nothing)
     fields = parenttuple(tupleit(fields))
-    profile = zeros(model.arch, model.grid, 1, 1, model.grid.Tz)
+    profile = zeros(model.architecture, model.grid, 1, 1, model.grid.Tz)
     return HorizontalAverage(profile, fields, frequency, interval, 0.0, return_type)
 end
 
