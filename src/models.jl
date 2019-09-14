@@ -45,7 +45,7 @@ Important keyword arguments include
 
     `closure`             : The turbulence closure for `model`. See `TurbulenceClosures`.
 
-    `constants`           : `PlanetaryConstants(g=g, f=f)`, determines gravitational acclereation `g`
+    `constants`           : `PlanetaryConstants(g=g, f=f)`, determines gravitational acceleration `g`
                              and Coriolis parameter `f`.
 
     `eos`                 : The equation of state that relates tracers `T` and `S` to density perturbations.
