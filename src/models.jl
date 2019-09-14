@@ -1,26 +1,30 @@
 using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:Architecture, G, T, EOS<:EquationOfState,
+# Abbreviations to make Model struct definition more concise.
+const AOW = AbstractOutputWriter
+const AD  = AbstractDiagnostic
+
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquationOfState,
                      Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
 
-           architecture :: A                      # Computer `Architecture` on which `Model` is run
-                   grid :: G                      # Grid of physical points on which `Model` is solved
-                  clock :: Clock{T}               # Tracks iteration number and simulation time of `Model`
-                    eos :: EOS                    # Relationship between temperature, salinity, and buoyancy
-              constants :: Λ                      # Set of physical constants, inc. gravitational acceleration
-             velocities :: U                      # Container for velocity fields `u`, `v`, and `w`
-                tracers :: C                      # Container for tracer fields
-              pressures :: Φ                      # Container for hydrostatic and nonhydrostatic pressure
-                forcing :: F                      # Container for forcing functions defined by the user
-                closure :: E                      # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: BCS                    # Container for 3d bcs on all fields
-            timestepper :: TS                     # Object containing timestepper fields and parameters
-         poisson_solver :: S                      # Poisson Solver
-          diffusivities :: K                      # Container for turbulent diffusivities
-         output_writers :: Array{OutputWriter, 1} # Objects that write data to disk
-            diagnostics :: Array{Diagnostic, 1}   # Objects that calc diagnostics on-line during simulation
-             parameters :: Θ                      # Container for arbitrary user-defined parameters
+           architecture :: A              # Computer `Architecture` on which `Model` is run
+                   grid :: G              # Grid of physical points on which `Model` is solved
+                  clock :: Clock{T}       # Tracks iteration number and simulation time of `Model`
+                    eos :: EOS            # Relationship between temperature, salinity, and buoyancy
+              constants :: Λ              # Set of physical constants, inc. gravitational acceleration
+             velocities :: U              # Container for velocity fields `u`, `v`, and `w`
+                tracers :: C              # Container for tracer fields
+              pressures :: Φ              # Container for hydrostatic and nonhydrostatic pressure
+                forcing :: F              # Container for forcing functions defined by the user
+                closure :: E              # Diffusive 'turbulence closure' for all model fields
+    boundary_conditions :: BCS            # Container for 3d bcs on all fields
+            timestepper :: TS             # Object containing timestepper fields and parameters
+         poisson_solver :: S              # Poisson Solver
+          diffusivities :: K              # Container for turbulent diffusivities
+         output_writers :: Array{AOW, 1}  # Objects that write data to disk
+            diagnostics :: Array{AD, 1}   # Objects that calc diagnostics on-line during simulation
+             parameters :: Θ              # Container for arbitrary user-defined parameters
 
 end
 
@@ -37,19 +41,19 @@ function Model(;
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # Diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
               constants = Earth(float_type), # rotation rate and gravitational acceleration
-                    eos = LinearEquationOfState(float_type), # relationship between tracers and density
+                    eos = LinearEquationOfState{float_type}(), # relationship between tracers and density
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
     boundary_conditions = HorizontallyPeriodicModelBCs(),
-         output_writers = OutputWriter[],
-            diagnostics = Diagnostic[],
+         output_writers = AbstractOutputWriter[],
+            diagnostics = AbstractDiagnostic[],
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
              velocities = VelocityFields(architecture, grid),
                 tracers = TracerFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125, 
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125,
                                                     boundary_conditions),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
@@ -75,19 +79,19 @@ Construct a `Model` with walls in the y-direction. This is done by imposing
 
 kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; boundary_conditions=ChannelModelBCs(), kwargs...) = 
+ChannelModel(; boundary_conditions=ChannelModelBCs(), kwargs...) =
     Model(; boundary_conditions=boundary_conditions, kwargs...)
 
-function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, 
+function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64,
                            boundary_conditions=ChannelModelBCs(), kwargs...)
 
     grid = RegularCartesianGrid(float_type, N, L)
     closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
 
-    return Model(; float_type=float_type, grid=grid, closure=closure, 
+    return Model(; float_type=float_type, grid=grid, closure=closure,
                  boundary_conditions=boundary_conditions, kwargs...)
 end
- 
+
 """
     BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
 
@@ -111,10 +115,10 @@ precision `float_type`, and the four non-dimensional numbers:
     * `Re = U λ / ν` (Reynolds number)
     * `Pr = U λ / κ` (Prandtl number)
     * `Ri = B λ U²`  (Richardson number)
-    * `Ro = U / f λ` (Rossby number) 
+    * `Ro = U / f λ` (Rossby number)
 
-for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`, 
-tracer diffusivity `κ`, buoyancy scale (or differential) `B`, and 
+for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`,
+tracer diffusivity `κ`, buoyancy scale (or differential) `B`, and
 Coriolis parameter `f`.
 
 Note that `N`, `L`, and `Re` are required.
@@ -125,17 +129,17 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
     constants = PlanetaryConstants(float_type, g=Ri, f=1/Ro)
-          eos = LinearEquationOfState(float_type, βT=1, βS=0)
-    return Model(; float_type=float_type, grid=grid, closure=closure, 
+          eos = LinearEquationOfState{float_type}(βT=1.0, βS=0.0)
+    return Model(; float_type=float_type, grid=grid, closure=closure,
                  constants=constants, eos=eos, skwargs...)
 end
- 
-    
+
+
 #####
 ##### Model initialization utilities
 #####
 
-arch(model::Model{A}) where A <: Architecture = A
+arch(model::Model{A}) where A <: AbstractArchitecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
 
@@ -168,7 +172,7 @@ Return a NamedTuple with tracer fields initialized
 as `CellField`s on the architecture `arch` and `grid`.
 """
 function TracerFields(arch, grid)
-    T = CellField(arch, grid) 
+    T = CellField(arch, grid)
     S = CellField(arch, grid)
     return (T=T, S=S)
 end

@@ -29,7 +29,7 @@ using
   Oceananigans.Operators,
   GPUifyLoops
 
-using Oceananigans: Architecture, Grid, buoyancy_perturbation
+using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation
 
 @hascuda using CUDAdrv, CUDAnative
 
@@ -41,7 +41,7 @@ abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
 @inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
 
 # Approximate viscosities and thermal diffusivities for seawater
-# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical 
+# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical
 # properties of seawater: A review of existing correlations and data" (2010).
 const ν₀ = 1.05e-6
 const κ₀ = 1.46e-7
@@ -87,6 +87,6 @@ function Base.convert(::TurbulenceClosure{T2}, closure::TurbulenceClosure{T1}) w
 end
 
 # Fallback constructor for diffusivity types withotu precomputed diffusivities:
-TurbulentDiffusivities(arch::Architecture, grid::Grid, args...) = nothing
+TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
 
 end # module

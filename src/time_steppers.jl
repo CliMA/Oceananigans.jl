@@ -103,7 +103,7 @@ function solve_for_pressure!(::GPU, model::Model)
 end
 
 """Store previous source terms before updating them."""
-function store_previous_source_terms!(grid::Grid, Gⁿ, G⁻)
+function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -216,7 +216,7 @@ function calculate_interior_source_terms!(G, arch, grid, constants, eos, closure
                                                                             K, F, parameters, time)
 end
 
-function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gⁿ, G⁻, χ) where FT
+function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ) where FT
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -231,7 +231,7 @@ function adams_bashforth_update_source_terms!(grid::Grid{FT}, Gⁿ, G⁻, χ) wh
 end
 
 "Store previous value of the source term and calculate current source term."
-function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt, U, G, RHS)
+function calculate_poisson_right_hand_side!(::CPU, grid::AbstractGrid, ::PoissonBCs, Δt, U, G, RHS)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -244,12 +244,12 @@ function calculate_poisson_right_hand_side!(::CPU, grid::Grid, ::PoissonBCs, Δt
 end
 
 """
-    calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
+    calculate_poisson_right_hand_side!(::GPU, grid::AbstractGrid, ::PPN, Δt, u, v, w, Gu, Gv, Gw, RHS)
 
 Calculate divergence of the RHS source terms (Gu, Gv, Gw) and applying a permutation
 which is the first step in the DCT.
 """
-function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, U, G, RHS)
+function calculate_poisson_right_hand_side!(::GPU, grid::AbstractGrid, ::PPN, Δt, U, G, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -266,7 +266,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PPN, Δt, U, G,
     end
 end
 
-function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, U, G, RHS)
+function calculate_poisson_right_hand_side!(::GPU, grid::AbstractGrid, ::PNN, Δt, U, G, RHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -290,7 +290,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::Grid, ::PNN, Δt, U, G,
     end
 end
 
-function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
+function idct_permute!(grid::AbstractGrid, ::PPN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -305,7 +305,7 @@ function idct_permute!(grid::Grid, ::PPN, ϕ, pNHS)
     end
 end
 
-function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
+function idct_permute!(grid::AbstractGrid, ::PNN, ϕ, pNHS)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -329,7 +329,7 @@ function idct_permute!(grid::Grid, ::PNN, ϕ, pNHS)
 end
 
 
-function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
+function update_velocities_and_tracers!(grid::AbstractGrid, U, Φ, pNHS, Gⁿ, Δt)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -343,7 +343,7 @@ function update_velocities_and_tracers!(grid::Grid, U, Φ, pNHS, Gⁿ, Δt)
 end
 
 "Compute the vertical velocity w from the continuity equation."
-function compute_w_from_continuity!(grid::Grid, U)
+function compute_w_from_continuity!(grid::AbstractGrid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             @inbounds U.w[i, j, 1] = 0

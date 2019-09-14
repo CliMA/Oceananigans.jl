@@ -8,7 +8,7 @@ and \$Δz\$ are constants. Fields are stored using floating-point values of type
 `T`. The cell-centered and face-centered coordinate ranges are stored as ranges
 of type `A`.
 """
-struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid{T}
+struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
     dim::Int
     # Number of grid points in (x,y,z).
     Nx::Int
