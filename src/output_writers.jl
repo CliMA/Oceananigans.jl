@@ -211,42 +211,6 @@ function start_next_file(model::Model, fw::JLD2OutputWriter)
 end
 
 ####
-#### Binary output writer
-####
-
-"A type for writing Binary output."
-Base.@kwdef mutable struct BinaryOutputWriter <: AbstractOutputWriter
-          dir :: AbstractString = "."
-       prefix :: AbstractString = ""
-    frequency :: Int = 1
-      padding :: Int = 9
-end
-
-function write_output(model::Model, fw::BinaryOutputWriter)
-    for (field, field_name) in zip(fw.fields, fw.field_names)
-        filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
-
-        println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
-        if model.metadata == :CPU
-            write(filepath, field.data)
-        elseif model.metadata == :GPU
-            write(filepath, Array(field.data))
-        end
-    end
-end
-
-function read_output(model::Model, fw::BinaryOutputWriter, field_name, time)
-    filepath = joinpath(fw.dir, filename(fw, field_name, time_step))
-    arr = zeros(model.metadata.float_type, model.grid.Nx, model.grid.Ny, model.grid.Nz)
-
-    open(filepath, "r") do fio
-        read!(fio, arr)
-    end
-
-    return arr
-end
-
-####
 #### NetCDF output writer
 ####
 
