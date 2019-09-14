@@ -102,8 +102,8 @@ T₀(x, y, z) = T(x, y, z, 0)
 
 # Create a model where temperature = buoyancy.
 model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
-                    eos=LinearEquationOfState(βT=1.),
-                    constants=PlanetaryConstants(f=f, g=1.))
+                    eos=LinearEquationOfState(βT=1.0),
+                    constants=PlanetaryConstants(f=f, g=1.0))
 
 set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 println(informative_message(model, u, w, ℕ))
