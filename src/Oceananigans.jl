@@ -110,7 +110,6 @@ struct GPU <: Architecture end
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
-abstract type ConstantsCollection end
 abstract type EquationOfState end
 abstract type Grid{T} end
 abstract type AbstractModel end
@@ -141,6 +140,5 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
-
 
 end # module
