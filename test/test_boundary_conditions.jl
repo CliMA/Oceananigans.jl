@@ -22,7 +22,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     model = BasicModel(N=(N, N, N), L=(0.1, 0.2, 0.3), architecture=arch,
                        float_type=FT, boundary_conditions=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
 
     time_step!(model, 1, 1e-16)
 
@@ -45,7 +45,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
     model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch,
                        float_type=FT, boundary_conditions=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
 
     time_step!(model, 1, 1e-16)
 
@@ -72,7 +72,7 @@ function test_flux_budget(arch, FT, fldname)
 
     @. field.data = 0
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
     mean_init = mean(data(field))
 
     τκ = Lz^2 / κ   # Diffusion time-scale

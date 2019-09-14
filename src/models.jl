@@ -30,21 +30,47 @@ end
 
 
 """
-    Model(; kwargs...)
+    Model(; grid, kwargs...)
 
-Construct an `Oceananigans.jl` model.
+Construct an `Oceananigans.jl` model on `grid`.
+
+Important keyword arguments include
+
+    `grid`                : (required) The resolution and discrete geometry on which `model` is solved.
+                            Currently the only option is `RegularCartesianGrid`.
+
+    `architecture`        : `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+
+    `float_type`          : `Float32` or `Float64`. The floating point type used for `model` data.
+
+    `closure`             : The turbulence closure for `model`. See `TurbulenceClosures`.
+
+    `constants`           : `PlanetaryConstants(g=g, f=f)`, determines gravitational acclereation `g`
+                             and Coriolis parameter `f`.
+
+    `eos`                 : The equation of state that relates tracers `T` and `S` to density perturbations.
+                            See `EquationOfState`.
+
+    `forcing`             : User-defined forcing functions that contribute to solution tendencies.
+
+    `boundary_conditions` : User-defined boundary conditions for model fields. Can be either
+                            `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
+                            See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
+
+    `parameters`          : User-defined parameters for use in user-defined forcing functions and boundary
+                            condition functions.
 """
 function Model(;
                    grid, # model resolution and domain
            architecture = CPU(), # model architecture
              float_type = Float64,
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # Diffusivity / turbulence closure
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
               constants = Earth(float_type), # rotation rate and gravitational acceleration
                     eos = LinearEquationOfState{float_type}(), # relationship between tracers and density
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
-    boundary_conditions = HorizontallyPeriodicModelBCs(),
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = AbstractOutputWriter[],
             diagnostics = AbstractDiagnostic[],
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
@@ -53,7 +79,7 @@ function Model(;
                 tracers = TracerFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125, boundary_conditions),
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
@@ -64,6 +90,8 @@ function Model(;
             throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
         end
     end
+
+    boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
     return Model(architecture, grid, clock, eos, constants, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
@@ -78,11 +106,11 @@ Construct a `Model` with walls in the y-direction. This is done by imposing
 
 kwargs are passed to the regular `Model` constructor.
 """
-ChannelModel(; boundary_conditions=ChannelModelBCs(), kwargs...) =
+ChannelModel(; boundary_conditions=ChannelSolutionBCs(), kwargs...) =
     Model(; boundary_conditions=boundary_conditions, kwargs...)
 
 function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64,
-                           boundary_conditions=ChannelModelBCs(), kwargs...)
+                           boundary_conditions=ChannelSolutionBCs(), kwargs...)
 
     grid = RegularCartesianGrid(float_type, N, L)
     closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
@@ -210,16 +238,14 @@ end
 Return an AdamsBashforthTimestepper object with tendency
 fields on `arch` and `grid` and AB2 parameter `χ`.
 """
-struct AdamsBashforthTimestepper{T, TG, BC}
+struct AdamsBashforthTimestepper{T, TG}
       Gⁿ :: TG
       G⁻ :: TG
        χ :: T
-    Gbcs :: BC
 end
 
-function AdamsBashforthTimestepper(float_type, arch, grid, χ, modelbcs)
+function AdamsBashforthTimestepper(float_type, arch, grid, χ)
    Gⁿ = Tendencies(arch, grid)
    G⁻ = Tendencies(arch, grid)
-   Gbcs = TendenciesBoundaryConditions(modelbcs)
-   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ), typeof(Gbcs)}(Gⁿ, G⁻, χ, Gbcs)
+   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end

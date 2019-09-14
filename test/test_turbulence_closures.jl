@@ -58,7 +58,7 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
     arch = CPU()
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
+    bcs = HorizontallyPeriodicSolutionBCs()
     eos = LinearEquationOfState()
     grav = one(FT)
 
@@ -90,7 +90,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     arch = CPU()
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
+    bcs = HorizontallyPeriodicSolutionBCs()
     eos = LinearEquationOfState()
     grav = one(FT)
     velocities = Oceananigans.VelocityFields(arch, grid)
