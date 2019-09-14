@@ -26,9 +26,35 @@ end
 
 
 """
-    Model(; kwargs...)
+    Model(; grid, kwargs...)
 
-Construct an `Oceananigans.jl` model.
+Construct an `Oceananigans.jl` model on `grid`.
+
+Important keyword arguments include
+
+    `grid`                : (required) The resolution and discrete geometry on which `model` is solved.
+                            Currently the only option is `RegularCartesianGrid`.
+
+    `architecture`        : `CPU()` or `GPU()`. The computer architecture used to time-step `model`. 
+
+    `float_type`          : `Float32` or `Float64`. The floating point type used for `model` data.
+
+    `closure`             : The turbulence closure for `model`. See `TurbulenceClosures`.
+
+    `constants`           : `PlanetaryConstants(g=g, f=f)`, determines gravitational acclereation `g` 
+                             and Coriolis parameter `f`.
+
+    `eos`                 : The equation of state that relates tracers `T` and `S` to density perturbations.
+                            See `EquationOfState`.
+
+    `forcing`             : User-defined forcing functions that contribute to solution tendencies.
+
+    `boundary_conditions` : User-defined boundary conditions for model fields. Can be either 
+                            `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
+                            See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
+
+    `parameters`          : User-defined parameters for use in user-defined forcing functions and boundary
+                            condition functions.
 """
 function Model(;
                    grid, # model resolution and domain
