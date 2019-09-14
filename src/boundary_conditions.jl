@@ -161,7 +161,7 @@ end
 
 
 #####
-##### Boundary conditions for systems of equations
+##### Boundary conditions for solutions to systems of equations
 #####
 
 """
@@ -246,15 +246,15 @@ function PressureBoundaryConditions(vbcs)
 end
 
 #####
-##### Model boundary conditions for pressure, and solution, and tendency systems
+##### Model boundary conditions for pressure, and solution, and tendency solutions
 #####
 
 const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure)}
 
-function ModelBoundaryConditions(system_boundary_conditions::NamedTuple)
-    model_boundary_conditions = (solution = system_boundary_conditions, 
-                                 tendency = TendenciesBoundaryConditions(system_boundary_conditions),
-                                 pressure = PressureBoundaryConditions(system_boundary_conditions.v))
+function ModelBoundaryConditions(solution_boundary_conditions::NamedTuple)
+    model_boundary_conditions = (solution = solution_boundary_conditions, 
+                                 tendency = TendenciesBoundaryConditions(solution_boundary_conditions),
+                                 pressure = PressureBoundaryConditions(solution_boundary_conditions.v))
     return model_boundary_conditions
 end
 
