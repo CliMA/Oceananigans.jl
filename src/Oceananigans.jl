@@ -34,7 +34,7 @@ export
     Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, ModelBoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
+    BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     getbc, setbc!,
 
     # Time stepping

@@ -136,7 +136,7 @@ end
 Fill halo regions for each field in the tuple `fields` according
 to the single instances of `FieldBoundaryConditions` in `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple{(:x, :y, :z)}, arch, grid, args...)
+function fill_halo_regions!(fields::NamedTuple, bcs::FieldBoundaryConditions, arch, grid, args...)
     for field in fields
         fill_halo_regions!(field, bcs, arch, grid, args...)
     end
