@@ -25,8 +25,7 @@ mutable struct HorizontalAverage{F, R, P, I, Ω} <: Diagnostic
     return_type :: R
 end
 
-
-function HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=nothing)
+function HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=Array)
     fields = parenttuple(tupleit(fields))
     profile = zeros(model.architecture, model.grid, 1, 1, model.grid.Tz)
     return HorizontalAverage(profile, fields, frequency, interval, 0.0, return_type)
@@ -108,95 +107,94 @@ function run_diagnostic(model, diag::AbstractTimeseriesDiagnostic)
 end
 
 """
-    TimeseriesDiagnostic(calculate, model; frequency=nothing, interval=nothing)
+    Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
 
-A generic AbstractTimeseriesDiagnostic that records a timeseries of `calculate(model)`.
+A generic `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
+
+Example
+=======
+
+cfl = Timeseries(CFL(Δt), model; frequency=1)
 """
-struct TimeseriesDiagnostic{Ω, I, C, TD, TT}
-    calculate :: C
-    frequency :: Ω
-     interval :: I
-         data :: Vector{TD}
-         time :: Vector{TT}
+struct Timeseries{Ω, I, D, TD, TT} <: AbstractTimeseriesDiagnostic
+    diagnostic :: D
+     frequency :: Ω
+      interval :: I
+          data :: Vector{TD}
+          time :: Vector{TT}
 end
 
-function TimeseriesDiagnostic(calculate, model; frequency=nothing, interval=nothing)
+function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
+    TD = typeof(diagnostic(model))
     TT = typeof(model.clock.time)
-    TD = typeof(calculate(model))
-    return TimeseriesDiagnostic(calculate, frequency, interval, TD[], TT[])
+    return Timeseries(diagnostic, frequency, interval, TD[], TT[])
 end
 
-@inline (timeseries::TimeseriesDiagnostic)(model) = timeseries.calculate(model)
+@inline (timeseries::Timeseries)(model) = timeseries.diagnostic(model)
 
 """
-    MaxAbsFieldDiagnostic(field, frequency=nothing, interval=nothing) <: AbstractTimeseriesDiagnostic
+    FieldMaximum(mapping, field)
 
-A diagnostic for recording timeseries of the maximum absolute value of a field.
+An object for calculating the maximum of a `mapping` function applied 
+element-wise to `field`.
+
+Example
+=======
+
+julia> max_abs_u = FieldMaximum(abs, model.velocities.u)
+
+julia> max_w² = FieldMaximum(x->x^2, model.velocities.w)
+
+julia> max_abs_u_timeseries = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+
+julia> max_abs_U_timeseries = Timeseries(FieldMaximum(abs, model.velocities), model; frequency=1)
 """
-struct MaxAbsFieldDiagnostic{Ω, I, T, F} <: AbstractTimeseriesDiagnostic
-        field :: F
-    frequency :: Ω
-     interval :: I
-         data :: Vector{T}
-         time :: Vector{T}
+struct FieldMaximum{F, M}
+    mapping :: M
+      field :: F
 end
 
-function MaxAbsFieldDiagnostic(field; frequency=nothing, interval=nothing) 
-    T = typeof(maximum(abs, field.data.parent))
-    return MaxAbsFieldDiagnostic(field, frequency, interval, T[], T[]) 
-end
+(m::FieldMaximum)(args...) = maximum(m.mapping, m.field.data.parent)
 
-(m::MaxAbsFieldDiagnostic)(model) = maximum(abs, m.field.data.parent)
+(m::FieldMaximum{<:NamedTuple})(args...) = 
+    NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
 
 """
-    CFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing, 
-                  timescale=Oceananigans.cell_advection_timescale)
+    CFL(Δt, timescale=Oceananigans.cell_advection_timescale)
 
-A diagnostic for computing timeseries of type `T` of the 
-Courant-Freidrichs-Lewis (CFL) number, associated with time-step `Δt` 
-and a characteristic `timescale`. If `Δt` is `TimeStepWizard` object, 
-the current `Δt` associated with the wizard is used.
+A diagnostic for computing the Courant-Freidrichs-Lewis (CFL) 
+number, associated with time-step `Δt` and a characteristic `timescale`. 
+If `Δt` is `TimeStepWizard` object, the current `Δt` associated with the 
+wizard is used.
 
-See also `AdvectiveCFLDiagnostic` and `DiffusiveCFLDiagnostic`.
+See also `AdvectiveCFL` and `DiffusiveCFL`.
+
+Example
+=======
+
+cfl = CFL(0.5)
+cfl(model)
 """
-struct CFLDiagnostic{D, Ω, I, T, S} <: AbstractTimeseriesDiagnostic
+struct CFL{D, S}
            Δt :: D
-    frequency :: Ω
-     interval :: I
-         data :: Vector{T}
-         time :: Vector{T}
     timescale :: S
 end
 
-function CFLDiagnostic(T, Δt; frequency=nothing, interval=nothing, 
-                       timescale=cell_advection_timescale)
+CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
-    return CFLDiagnostic(Δt, frequency, interval, T[], T[], timescale)
-end
-
-CFLDiagnostic(Δt; kwargs...) = CFLDiagnostic(Float64, Δt; kwargs...)
-
-(c::CFLDiagnostic{<:Number})(model) = c.Δt / c.timescale(model)
-(c::CFLDiagnostic{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
+(c::CFL{<:Number})(model) = c.Δt / c.timescale(model)
+(c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
 
 """
     AdvectiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
 
-A diagnostic for computing timeseries of the advective CFL number.
+A diagnostic for computing time series of the advective CFL number.
 """
-AdvectiveCFLDiagnostic(T, Δt; kwargs...) = 
-    CFLDiagnostic(T, Δt; timescale=cell_advection_timescale, kwargs...)
-
-AdvectiveCFLDiagnostic(Δt; kwargs...) = 
-    CFLDiagnostic(Float64, Δt; timescale=cell_advection_timescale, kwargs...)
+AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 """
     DiffusiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
 
-A diagnostic for computing timeseries of the diffusive CFL number.
+A diagnostic for computing time series of the diffusive CFL number.
 """
-DiffusiveCFLDiagnostic(T, Δt; kwargs...) = 
-    CFLDiagnostic(T, Δt; timescale=cell_diffusion_timescale, kwargs...)
-
-DiffusiveCFLDiagnostic(Δt; kwargs...) = 
-    CFLDiagnostic(Float64, Δt; timescale=cell_diffusion_timescale, kwargs...)
+DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
