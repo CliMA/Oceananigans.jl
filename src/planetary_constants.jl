@@ -1,5 +1,5 @@
 
-struct PlanetaryConstants{T<:AbstractFloat} <: ConstantsCollection
+struct PlanetaryConstants{T<:AbstractFloat}
     Ω::T  # Rotation rate of the planet [rad/s].
     f::T  # Nominal value for the Coriolis frequency [rad/s].
     g::T  # Standard acceleration due to gravity [m/s²].
