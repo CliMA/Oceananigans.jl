@@ -85,9 +85,10 @@ using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
-    size, length,
+    +, -, *,
+    size, length, eltype,
+    iterate, similar, show,
     getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
 
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)

@@ -1,5 +1,3 @@
-import Base: size, show
-
 """
     RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
 
