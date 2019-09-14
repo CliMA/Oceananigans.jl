@@ -76,8 +76,8 @@ Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
 Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 
 # Default to type of Grid
-Base.zeros(arch, grid::Grid{T}) where T = zeros(T, arch, grid)
-Base.zeros(arch, grid::Grid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
+Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
 ####
 #### Courant–Friedrichs–Lewy (CFL) condition number calculation
@@ -161,7 +161,7 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
-@inline datatuple(obj::Field) = obj.data
+@inline datatuple(obj::AbstractField) = obj.data
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
@@ -235,7 +235,7 @@ end
 frequency_is_ripe(clock, obj) = has_frequency(obj) && clock.iteration % obj.frequency == 0
 
 function time_to_run(clock, output_writer)
-    
+
     interval_is_ripe(clock, output_writer) && return true
     frequency_is_ripe(clock, output_writer) && return true
 

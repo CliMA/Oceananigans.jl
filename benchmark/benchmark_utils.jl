@@ -7,7 +7,7 @@ benchmark_name(N, ft::DataType) = benchmark_name(N, "", nothing, ft)
 
 function benchmark_name(N, id, arch, ft; npad=3)
     Nx, Ny, Nz = N
-    print_arch = typeof(arch) <: Architecture ? true : false
+    print_arch = typeof(arch) <: AbstractArchitecture ? true : false
     print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
 
     bn = ""
