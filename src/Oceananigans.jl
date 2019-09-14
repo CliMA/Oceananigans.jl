@@ -88,7 +88,7 @@ import Base:
     +, -, *,
     size, length, eltype,
     iterate, similar, show,
-    getindex, lastindex, setindex!,
+    getindex, lastindex, setindex!
 
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
