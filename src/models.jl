@@ -2,7 +2,7 @@ using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
 mutable struct Model{TS, E, A<:Architecture, G, T, EOS<:EquationOfState,
-                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
+                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel{TS, E, A}
 
            architecture :: A                      # Computer `Architecture` on which `Model` is run
                    grid :: G                      # Grid of physical points on which `Model` is solved

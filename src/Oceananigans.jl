@@ -53,8 +53,8 @@ export
     JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
-    HorizontalAverage, NaNChecker, CFLDiagnostic, AdvectiveCFLDiagnostic, DiffusiveCFLDiagnostic,
-    MaxAbsFieldDiagnostic
+    HorizontalAverage, NaNChecker, 
+    Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
 
     # Package utilities
     prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
@@ -100,12 +100,12 @@ abstract type Architecture end
 abstract type ConstantsCollection end
 abstract type EquationOfState end
 abstract type Grid{T} end
-abstract type AbstractModel end
+abstract type AbstractModel{TS, E, A} end
 abstract type Field{A, G} end
 abstract type FaceField{A, G} <: Field{A, G} end
 abstract type OutputWriter end
 abstract type Diagnostic end
-abstract type AbstractTimeseriesDiagnostic end
+abstract type AbstractTimeseriesDiagnostic <: Diagnostic end
 abstract type PoissonSolver end
 
 #####
