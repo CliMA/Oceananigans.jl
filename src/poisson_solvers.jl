@@ -32,6 +32,8 @@ function PoissonBCs(bcs)
     return eval(Expr(:call, Symbol(x, y, z)))
 end
 
+PoissonBCs(model_bcs::ModelBoundaryConditions) = PoissonBCs(model_bcs.solution)
+
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
 
