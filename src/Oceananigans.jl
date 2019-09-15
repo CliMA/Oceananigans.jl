@@ -19,7 +19,7 @@ export
     RegularCartesianGrid,
 
     # Fields
-    CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
     data, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
@@ -107,6 +107,9 @@ end
 abstract type AbstractArchitecture end
 struct CPU <: AbstractArchitecture end
 struct GPU <: AbstractArchitecture end
+
+architecture(::Array) = CPU()
+@hascuda architecture(::CuArray) = GPU()
 
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
