@@ -1,6 +1,3 @@
-using Statistics: mean
-using Printf
-
 ####
 #### Useful kernels
 ####
@@ -19,20 +16,17 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontalAverage{F, R, P, I, T} <: AbstractDiagnostic
+mutable struct HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
         profile :: P
          fields :: F
-      frequency :: I
-       interval :: T
+      frequency :: Ω
+       interval :: I
        previous :: Float64
     return_type :: R
 end
 
-
-function HorizontalAverage(model, fields; frequency=nothing, interval=nothing,
-                           return_type=nothing)
+function HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=Array)
     fields = parenttuple(tupleit(fields))
-    validate_interval(frequency, interval)
     profile = zeros(model.architecture, model.grid, 1, 1, model.grid.Tz)
     return HorizontalAverage(profile, fields, frequency, interval, 0.0, return_type)
 end
@@ -80,18 +74,17 @@ function (havg::HorizontalAverage)(model)
     return havg.return_type(havg.profile)
 end
 
-
 ####
 #### NaN checker
 ####
 
-struct NaNChecker{D} <: AbstractDiagnostic
+struct NaNChecker{F} <: AbstractDiagnostic
     frequency :: Int
-       fields :: D
+       fields :: F
 end
 
-function NaNChecker(model; frequency=1000, fields=Dict(:w => model.velocities.w.data.parent))
-    NaNChecker(frequency, fields)
+function NaNChecker(model; frequency, fields)
+    return NaNChecker(frequency, fields)
 end
 
 function run_diagnostic(model::Model, nc::NaNChecker)
@@ -102,3 +95,106 @@ function run_diagnostic(model::Model, nc::NaNChecker)
         end
     end
 end
+
+####
+#### Timeseries diagnostics
+####
+
+function run_diagnostic(model, diag::AbstractTimeseriesDiagnostic) 
+    push!(diag.data, diag(model))
+    push!(diag.time, model.clock.time)
+    return nothing
+end
+
+"""
+    Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
+
+A generic `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
+
+Example
+=======
+
+cfl = Timeseries(CFL(Δt), model; frequency=1)
+"""
+struct Timeseries{Ω, I, D, TD, TT} <: AbstractTimeseriesDiagnostic
+    diagnostic :: D
+     frequency :: Ω
+      interval :: I
+          data :: Vector{TD}
+          time :: Vector{TT}
+end
+
+function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
+    TD = typeof(diagnostic(model))
+    TT = typeof(model.clock.time)
+    return Timeseries(diagnostic, frequency, interval, TD[], TT[])
+end
+
+@inline (timeseries::Timeseries)(model) = timeseries.diagnostic(model)
+
+"""
+    FieldMaximum(mapping, field)
+
+An object for calculating the maximum of a `mapping` function applied 
+element-wise to `field`.
+
+Example
+=======
+
+julia> max_abs_u = FieldMaximum(abs, model.velocities.u)
+
+julia> max_w² = FieldMaximum(x->x^2, model.velocities.w)
+
+julia> max_abs_u_timeseries = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+
+julia> max_abs_U_timeseries = Timeseries(FieldMaximum(abs, model.velocities), model; frequency=1)
+"""
+struct FieldMaximum{F, M}
+    mapping :: M
+      field :: F
+end
+
+(m::FieldMaximum)(args...) = maximum(m.mapping, m.field.data.parent)
+
+(m::FieldMaximum{<:NamedTuple})(args...) = 
+    NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
+
+"""
+    CFL(Δt, timescale=Oceananigans.cell_advection_timescale)
+
+A diagnostic for computing the Courant-Freidrichs-Lewis (CFL) 
+number, associated with time-step `Δt` and a characteristic `timescale`. 
+If `Δt` is `TimeStepWizard` object, the current `Δt` associated with the 
+wizard is used.
+
+See also `AdvectiveCFL` and `DiffusiveCFL`.
+
+Example
+=======
+
+cfl = CFL(0.5)
+cfl(model)
+"""
+struct CFL{D, S}
+           Δt :: D
+    timescale :: S
+end
+
+CFL(Δt) = CFL(Δt, cell_advection_timescale)
+
+(c::CFL{<:Number})(model) = c.Δt / c.timescale(model)
+(c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
+
+"""
+    AdvectiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
+
+A diagnostic for computing time series of the advective CFL number.
+"""
+AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
+
+"""
+    DiffusiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
+
+A diagnostic for computing time series of the diffusive CFL number.
+"""
+DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)

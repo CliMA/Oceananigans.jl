@@ -1,4 +1,4 @@
-struct RozemaAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
+struct RozemaAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
      C :: T
     Cb :: T
      ν :: T

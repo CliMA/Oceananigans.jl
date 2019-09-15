@@ -1,6 +1,4 @@
-abstract type AbstractSmagorinsky{T} <: IsotropicDiffusivity{T} end
-
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T =
+@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = 
     (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 #####
