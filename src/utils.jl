@@ -29,14 +29,18 @@ function prettytime(t)
         value, units = t * 1e6, "μs"
     elseif t < 1
         value, units = t * 1e3, "ms"
-    elseif t < 60
+    elseif t < minute
         value, units = t, "s"
+    elseif t < hour
+        value, units = t / minute, "min"
+    elseif t < day
+        value, units = t / hour, "hr"
     else
-        value, units = t / 60, "min"
+        value, units = t / day, "day"
     end
+
     return @sprintf("%.3f", value) * " " * units
 end
-
 
 # Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
@@ -51,7 +55,7 @@ end
 #### Creating fields by dispatching on architecture
 ####
 
-function OffsetArray(underlying_data, grid)
+function OffsetArray(underlying_data, grid::AbstractGrid)
     # Starting and ending indices for the offset array.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
     j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
@@ -82,6 +86,9 @@ Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, gri
 #### Courant–Friedrichs–Lewy (CFL) condition number calculation
 ####
 
+# Note: these functions will have to be refactored to work on non-uniform grids.
+
+"Returns the time-scale for advection on a regular grid across a single grid cell."
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
@@ -153,10 +160,6 @@ tupleit(a::AbstractArray) = Tuple(a)
 tupleit(nt) = tuple(nt)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
-
-####
-#### Data tuples
-####
 
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
