@@ -115,9 +115,6 @@ abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
 struct CPU <: AbstractArchitecture end
 struct GPU <: AbstractArchitecture end
 
-architecture(::Array) = CPU()
-@hascuda architecture(::CuArray) = GPU()
-
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
@@ -134,6 +131,9 @@ end
         println(dev)
     end
 end
+
+architecture(::Array) = CPU()
+@hascuda architecture(::CuArray) = GPU()
 
 function buoyancy_perturbation end
 
