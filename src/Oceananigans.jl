@@ -124,7 +124,8 @@ abstract type AbstractGrid{T} end
 abstract type AbstractField{A, G} end
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 abstract type AbstractPoissonSolver end
-abstract type AbstractModel{TS, E, A} end
+
+abstract type AbstractModel end
 
 """
     AbstractDiagnostic
