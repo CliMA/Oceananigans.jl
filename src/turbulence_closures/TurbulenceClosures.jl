@@ -51,7 +51,7 @@ abstract type AbstractAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T
 @inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
 
 # Fallback constructor for diffusivity types without precomputed diffusivities:
-TurbulentDiffusivities(arch::Architecture, grid::Grid, args...) = nothing
+TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
 
 include("turbulence_closure_utils.jl")
 include("closure_operators.jl")

@@ -32,7 +32,7 @@ function nan_checker_aborts_simulation(arch, FT)
     model = BasicModel(N = (16, 16, 2), L = (1, 1, 1), architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
-    nc = NaNChecker(model; frequency=1)
+    nc = NaNChecker(model; frequency=1, fields=Dict(:w => model.velocities.w.data.parent))
     push!(model.diagnostics, nc)
 
     model.velocities.w[4, 3, 2] = NaN
