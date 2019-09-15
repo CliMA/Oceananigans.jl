@@ -29,14 +29,18 @@ function prettytime(t)
         value, units = t * 1e6, "μs"
     elseif t < 1
         value, units = t * 1e3, "ms"
-    elseif t < 60
+    elseif t < minute
         value, units = t, "s"
+    elseif t < hour
+        value, units = t / minute, "min"
+    elseif t < day
+        value, units = t / hour, "hr"
     else
-        value, units = t / 60, "min"
+        value, units = t / day, "day"
     end
+
     return @sprintf("%.3f", value) * " " * units
 end
-
 
 # Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
@@ -58,7 +62,7 @@ function Base.zeros(T, ::CPU, grid)
     k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
 
     underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
-    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
 function Base.zeros(T, ::GPU, grid)
@@ -69,7 +73,7 @@ function Base.zeros(T, ::GPU, grid)
 
     underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
-    OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
 Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
@@ -83,6 +87,9 @@ Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, gri
 #### Courant–Friedrichs–Lewy (CFL) condition number calculation
 ####
 
+# Note: these functions will have to be refactored to work on non-uniform grids.
+
+"Returns the time-scale for advection on a regular grid across a single grid cell."
 function cell_advection_timescale(u, v, w, grid)
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
@@ -154,10 +161,6 @@ tupleit(a::AbstractArray) = Tuple(a)
 tupleit(nt) = tuple(nt)
 
 parenttuple(obj) = Tuple(f.data.parent for f in obj)
-
-####
-#### Data tuples
-####
 
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj

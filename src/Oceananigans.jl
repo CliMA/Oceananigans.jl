@@ -48,11 +48,13 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    restore_from_checkpoint, read_output,
+    NetCDFOutputWriter, 
+    Checkpointer, restore_from_checkpoint, read_output,
+    JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
-    HorizontalAverage, NaNChecker,
+    HorizontalAverage, NaNChecker, 
+    Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
 
     # Package utilities
     prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
@@ -81,6 +83,7 @@ import
     CUDAapi,
     GPUifyLoops
 
+using Statistics: mean
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
@@ -89,6 +92,31 @@ import Base:
     size, length, eltype,
     iterate, similar, show,
     getindex, lastindex, setindex!
+
+#####
+##### Abstract types 
+#####
+
+abstract type AbstractArchitecture end
+abstract type AbstractEquationOfState end
+abstract type AbstractGrid{T} end
+abstract type AbstractField{A, G} end
+abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+abstract type AbstractPoissonSolver end
+abstract type AbstractModel{TS, E, A} end
+abstract type AbstractOutputWriter end
+abstract type AbstractDiagnostic end
+abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
+
+#####
+##### All the code
+#####
+
+struct CPU <: AbstractArchitecture end
+struct GPU <: AbstractArchitecture end
+
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
 
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
@@ -103,22 +131,6 @@ end
         println(dev)
     end
 end
-
-abstract type AbstractArchitecture end
-struct CPU <: AbstractArchitecture end
-struct GPU <: AbstractArchitecture end
-
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
-abstract type AbstractEquationOfState end
-abstract type AbstractGrid{T} end
-abstract type AbstractModel end
-abstract type AbstractField{A, G} end
-abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
-abstract type AbstractOutputWriter end
-abstract type AbstractDiagnostic end
-abstract type AbstractPoissonSolver end
 
 function buoyancy_perturbation end
 
