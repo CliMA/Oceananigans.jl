@@ -30,15 +30,15 @@
     Σ₁₁(i, j, k, grid, u) + Σ₂₂(i, j, k, grid, v) + Σ₃₃(i, j, k, grid, w)
 
 # ffc
-@inline Σ₁₂(i, j, k, grid::Grid{T}, u, v) where T =
+@inline Σ₁₂(i, j, k, grid::RegularCartesianGrid{T}, u, v) where T =
     T(0.5) * (∂y_afa(i, j, k, grid, u) + ∂x_faa(i, j, k, grid, v))
 
 # fcf
-@inline Σ₁₃(i, j, k, grid::Grid{T}, u, w) where T =
+@inline Σ₁₃(i, j, k, grid::RegularCartesianGrid{T}, u, w) where T =
     T(0.5) * (∂z_aaf(i, j, k, grid, u) + ∂x_faa(i, j, k, grid, w))
 
 # cff
-@inline Σ₂₃(i, j, k, grid::Grid{T}, v, w) where T =
+@inline Σ₂₃(i, j, k, grid::RegularCartesianGrid{T}, v, w) where T =
     T(0.5) * (∂z_aaf(i, j, k, grid, v) + ∂y_afa(i, j, k, grid, w))
 
 @inline Σ₁₂²(i, j, k, grid, u, v) = Σ₁₂(i, j, k, grid, u, v)^2
@@ -166,15 +166,15 @@ const norm_∂z_w = ∂z_w
     norm_Σ₁₁(i, j, k, grid, u) + norm_Σ₂₂(i, j, k, grid, v) + norm_Σ₃₃(i, j, k, grid, w)
 
 # ffc
-@inline norm_Σ₁₂(i, j, k, grid::Grid{T}, u, v) where T =
+@inline norm_Σ₁₂(i, j, k, grid::RegularCartesianGrid{T}, u, v) where T =
     T(0.5) * (norm_∂y_u(i, j, k, grid, u) + norm_∂x_v(i, j, k, grid, v))
 
 # fcf
-@inline norm_Σ₁₃(i, j, k, grid::Grid{T}, u, w) where T =
+@inline norm_Σ₁₃(i, j, k, grid::RegularCartesianGrid{T}, u, w) where T =
     T(0.5) * (norm_∂z_u(i, j, k, grid, u) + norm_∂x_w(i, j, k, grid, w))
 
 # cff
-@inline norm_Σ₂₃(i, j, k, grid::Grid{T}, v, w) where T =
+@inline norm_Σ₂₃(i, j, k, grid::RegularCartesianGrid{T}, v, w) where T =
     T(0.5) * (norm_∂z_v(i, j, k, grid, v) + norm_∂y_w(i, j, k, grid, w))
 
 @inline norm_Σ₁₂²(i, j, k, grid, u, v) = norm_Σ₁₂(i, j, k, grid, u, v)^2

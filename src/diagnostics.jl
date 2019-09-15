@@ -19,7 +19,7 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
-mutable struct HorizontalAverage{F, R, P, I, T} <: Diagnostic
+mutable struct HorizontalAverage{F, R, P, I, T} <: AbstractDiagnostic
         profile :: P
          fields :: F
       frequency :: I
@@ -85,7 +85,7 @@ end
 #### NaN checker
 ####
 
-struct NaNChecker{D} <: Diagnostic
+struct NaNChecker{D} <: AbstractDiagnostic
     frequency :: Int
        fields :: D
 end
