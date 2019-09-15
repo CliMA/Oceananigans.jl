@@ -106,14 +106,14 @@ abstract type AbstractPoissonSolver end
 abstract type AbstractModel{TS, E, A} end
 abstract type AbstractOutputWriter end
 abstract type AbstractDiagnostic end
-abstract type AbstractTimeseriesDiagnostic <: Diagnostic end
+abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
 
 #####
 ##### All the code
 #####
 
-struct CPU <: Architecture end
-struct GPU <: Architecture end
+struct CPU <: AbstractArchitecture end
+struct GPU <: AbstractArchitecture end
 
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
