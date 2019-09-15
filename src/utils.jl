@@ -7,8 +7,8 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 
 # Need to adapt SubArray indices as well.
 # See: https://github.com/JuliaGPU/Adapt.jl/issues/16
-#Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
-#    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
+# Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
+#     SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 ####
 #### Convinient definitions
@@ -28,8 +28,16 @@ const TiB = 1024GiB
 #### Pretty printing
 ####
 
-# Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
+"""
+    prettytime(t)
+
+Convert a floating point value `t` representing an amount of time in seconds to a more
+human-friendly formatted string with three decimal places. Depending on the value of `t`
+the string will be formatted to show `t` in nanoseconds (ns), microseconds (μs),
+milliseconds (ms), seconds (s), minutes (min), hours (hr), or days (day).
+"""
 function prettytime(t)
+    # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
     if t < 1e-6
         value, units = t * 1e9, "ns"
     elseif t < 1e-3
@@ -49,8 +57,16 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-# Source: https://stackoverflow.com/a/1094933
+"""
+    pretty_filesize(s, suffix="B")
+
+Convert a floating point value `s` representing a file size to a more human-friendly
+formatted string with one decimal places with a `suffix` defaulting to "B". Depending on
+the value of `s` the string will be formatted to show `s` using an SI prefix from bytes,
+kiB (1024 bytes), MiB (1024² bytes), and so on up to YiB (1024⁸ bytes).
+"""
 function pretty_filesize(s, suffix="B")
+    # Modified from: https://stackoverflow.com/a/1094933
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
         abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
         s /= 1024
@@ -62,7 +78,7 @@ end
 #### Creating fields by dispatching on architecture
 ####
 
-function Base.zeros(T, ::CPU, grid)
+function zeros(T, ::CPU, grid)
     # Starting and ending indices for the offset array.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
     j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
@@ -72,7 +88,7 @@ function Base.zeros(T, ::CPU, grid)
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-function Base.zeros(T, ::GPU, grid)
+function zeros(T, ::GPU, grid)
     # Starting and ending indices for the offset CuArray.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
     j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
@@ -83,12 +99,12 @@ function Base.zeros(T, ::GPU, grid)
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
-Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 
 # Default to type of Grid
-Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
-Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
+zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
 ####
 #### Courant–Friedrichs–Lewy (CFL) condition number calculation
@@ -120,16 +136,18 @@ cell_advection_timescale(model) =
 ####
 
 """
-    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
+    TimeStepWizard{T}
 
-Instantiate a `TimeStepWizard`. On calling `update_Δt!(wizard, model)`,
-the `TimeStepWizard` computes a time-step such that
-`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the
-maximum ratio between model velocity and along-velocity grid spacing
-anywhere on the model grid. The new `Δt` is constrained to change by a
-multiplicative factor no more than `max_change` or no less than
-`min_change` from the previous `Δt`, and to be no greater in absolute
-magnitude than `max_Δt`.
+    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf)
+
+A type for calculating adaptive time steps based on capping the CFL number at `cfl`.
+
+On calling `update_Δt!(wizard, model)`, the `TimeStepWizard` computes a time-step such that
+``cfl = max(u/Δx, v/Δy, w/Δz) Δt``, where ``max(u/Δx, v/Δy, w/Δz)`` is the maximum ratio
+between model velocity and along-velocity grid spacing anywhere on the model grid. The new
+`Δt` is constrained to change by a multiplicative factor no more than `max_change` or no
+less than `min_change` from the previous `Δt`, and to be no greater in absolute magnitude
+than `max_Δt`.
 """
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1
@@ -143,8 +161,8 @@ end
 """
     update_Δt!(wizard, model)
 
-Compute `wizard.Δt` given the velocities and diffusivities
-of `model`, and the parameters of `wizard`.
+Compute `wizard.Δt` given the velocities and diffusivities of `model`, and the parameters
+of `wizard`.
 """
 function update_Δt!(wizard, model)
     Δt = wizard.cfl * cell_advection_timescale(model)
