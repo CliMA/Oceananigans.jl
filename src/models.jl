@@ -166,7 +166,6 @@ end
 ##### Model initialization utilities
 #####
 
-arch(model::Model{A}) where A <: AbstractArchitecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
 
