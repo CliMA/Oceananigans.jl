@@ -1,81 +1,60 @@
-"""
-    CellField{A<:AbstractArray, G<:AbstractGrid} <: Field
+struct Cell end
+struct Face end
 
-A cell-centered field defined on a grid `G` whose values are stored in an `A`.
 """
-struct CellField{A<:AbstractArray, G<:AbstractGrid} <: AbstractField{A, G}
-    data::A
-    grid::G
+    Field(Lx, Ly, Lz, arch, grid)
+
+Return a `Field` at location `(Lx, Ly, Lz)`, on architecture `arch` and `grid`.
+"""
+struct Field{Lx, Ly, Lz, A, G} <: AbstractField{A, G}
+    data :: A
+    grid :: G
 end
 
-"""
-    FaceFieldX{A<:AbstractArray, G<:AbstractGrid} <: FaceField
-
-An x-face-centered field defined on a grid `G` whose values are stored in an `A`.
-"""
-struct FaceFieldX{A<:AbstractArray, G<:AbstractGrid} <: AbstractFaceField{A, G}
-    data::A
-    grid::G
+function Field(Lx, Ly, Lz, arch::AbstractArchitecture, grid)
+    data = zeros(arch, grid)
+    return Field(Lx, Ly, Lz, data, grid)
 end
 
-"""
-    FaceFieldY{A<:AbstractArray, G<:AbstractGrid} <: FaceField
+Field(Lx, Ly, Lz, data::AbstractArray, grid) = Field{Lx, Ly, Lz, typeof(data), typeof(grid)}(data, grid)
 
-A y-face-centered field defined on a grid `G` whose values are stored in an `A`.
-"""
-struct FaceFieldY{A<:AbstractArray, G<:AbstractGrid} <: AbstractFaceField{A, G}
-    data::A
-    grid::G
-end
-
-"""
-    FaceFieldZ{A<:AbstractArray, G<:AbstractGrid} <: Field
-
-A z-face-centered field defined on a grid `G` whose values are stored in an `A`.
-"""
-struct FaceFieldZ{A<:AbstractArray, G<:AbstractGrid} <: AbstractFaceField{A, G}
-    data::A
-    grid::G
-end
-
-# Constructors
+const CellField  = Field{Cell, Cell, Cell}
+const FaceFieldX = Field{Face, Cell, Cell}
+const FaceFieldY = Field{Cell, Face, Cell}
+const FaceFieldZ = Field{Cell, Cell, Face}
 
 """
     CellField([T=eltype(grid)], arch, grid)
 
-Return a `CellField` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `CellField` on `arch` and `grid`.
 """
-CellField(T, arch, grid) = CellField(zeros(T, arch, grid), grid)
+CellField(T, arch, grid) = Field(Cell, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldX([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldX` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldX` on `arch` and `grid`.
 """
-FaceFieldX(T, arch, grid) = FaceFieldX(zeros(T, arch, grid), grid)
+FaceFieldX(T, arch, grid) = Field(Face, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldY([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldY` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldY` on `arch` and `grid`.
 """
-FaceFieldY(T, arch, grid) = FaceFieldY(zeros(T, arch, grid), grid)
+FaceFieldY(T, arch, grid) = Field(Cell, Face, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldZ([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldZ` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldZ` on `arch` and `grid`.
 """
-FaceFieldZ(T, arch, grid) = FaceFieldZ(zeros(T, arch, grid), grid)
+FaceFieldZ(T, arch, grid) = Field(Cell, Cell, Face, zeros(T, arch, grid), grid)
 
- CellField(arch, grid) =  CellField(zeros(arch, grid), grid)
-FaceFieldX(arch, grid) = FaceFieldX(zeros(arch, grid), grid)
-FaceFieldY(arch, grid) = FaceFieldY(zeros(arch, grid), grid)
-FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
+ CellField(arch, grid) = Field(Cell, Cell, Cell, arch, grid)
+FaceFieldX(arch, grid) = Field(Face, Cell, Cell, arch, grid)
+FaceFieldY(arch, grid) = Field(Cell, Face, Cell, arch, grid)
+FaceFieldZ(arch, grid) = Field(Cell, Cell, Face, arch, grid)
 
 fieldtype(f::AbstractField) = typeof(f).name.wrapper
 
@@ -132,9 +111,9 @@ xnodes(ϕ::AbstractField) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
 ynodes(ϕ::AbstractField) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
 znodes(ϕ::AbstractField) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
 
-xnodes(ϕ::FaceFieldX) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::FaceFieldY) = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
-znodes(ϕ::FaceFieldZ) = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
+xnodes(ϕ::Field{Face}) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::Field{X, Face}) where X = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
+znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
