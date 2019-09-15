@@ -78,12 +78,12 @@ end
 #### NaN checker
 ####
 
-struct NaNChecker{D} <: Diagnostic
+struct NaNChecker{F} <: Diagnostic
     frequency :: Int
-       fields :: D
+       fields :: F
 end
 
-function NaNChecker(model; frequency=1000, fields=Dict(:w => model.velocities.w.data.parent))
+function NaNChecker(model; frequency, fields)
     return NaNChecker(frequency, fields)
 end
 
