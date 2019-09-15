@@ -110,13 +110,6 @@ const FieldBoundaryConditions = NamedTuple{(:x, :y, :z)}
 
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-function FieldBoundaryConditions(;
-    x = CoordinateBoundaryConditions(),
-    y = CoordinateBoundaryConditions(),
-    z = CoordinateBoundaryConditions())
-    return FieldBoundaryConditions(x, y, z)
-end
-
 """
     HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, nothing),
                             bottom = BoundaryCondition(Flux, nothing))
