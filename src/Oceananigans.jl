@@ -22,26 +22,25 @@ export
     data, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
-    # Forcing functions
-    Forcing,
-
     # Equation of state
     NoEquationOfState, LinearEquationOfState,
 
     # Boundary conditions
-    BoundaryCondition,
-    Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
-    CoordinateBoundaryConditions,
+    Periodic, Flux, Gradient, Value, NoPenetration, Dirchlet, Neumann,
+    BoundaryCondition, CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
+    SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs, BoundaryConditions,
     getbc, setbc!,
 
     # Time stepping
-    TimeStepWizard,
-    update_Δt!, time_step!,
+    time_step!,
+    TimeStepWizard, update_Δt!,
 
     # Clock
     Clock,
+
+    # Forcing functions
+    Forcing,
 
     # Models
     Model, BasicModel, ChannelModel, BasicChannelModel,
@@ -90,7 +89,7 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     +, -, *,
-    size, length, eltype,
+    size, length, eltype, zeros,
     iterate, similar, show,
     getindex, lastindex, setindex!
 
