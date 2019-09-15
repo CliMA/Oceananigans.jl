@@ -16,6 +16,11 @@ end
 #### Horizontally averaged vertical profiles
 ####
 
+"""
+    HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
+
+A diagnostic for computing horizontal average of a field or the product of multiple fields.
+"""
 mutable struct HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
         profile :: P
          fields :: F
@@ -25,25 +30,52 @@ mutable struct HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
     return_type :: R
 end
 
+"""
+    HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=Array)
+
+Construct a `HorizontalAverage` diagnostic for `model`.
+
+After the horizontal average is computed it will be stored in the `profile` property.
+
+The `HorizontalAverage` can be used as a callable object that computes and returns the
+horizontal average.
+
+If a single field is passed to `fields` the the horizontal average of that single field
+will be computed. If multiple fields are passed to `fields`, then the horizontal average
+of their product will be computed.
+
+A `frequency` or `interval` (or both) can be passed to indicate how often to run this
+diagnostic if it is part of `model.diagnostics`. `frequency` is a number of iterations
+while `interval` is a time interval in units of `model.clock.time`.
+
+A `return_type` can be used to specify the type returned when the `HorizontalAverage` is
+used as a callable object. The default `return_type=Array` is useful when running a GPU
+model and you want to save the output to disk by passing it to an output writer.
+
+Warning
+=======
+Right now taking products of multiple fields does not take into account their locations
+on the staggered grid and no attempt is made to interpolate all the different fields onto
+a common location before calculating the product.
+"""
 function HorizontalAverage(model, fields; frequency=nothing, interval=nothing, return_type=Array)
     fields = parenttuple(tupleit(fields))
     profile = zeros(model.architecture, model.grid, 1, 1, model.grid.Tz)
     return HorizontalAverage(profile, fields, frequency, interval, 0.0, return_type)
 end
 
-"Normalize a horizontal sum to get the horizontal average."
+# Normalize a horizontal sum to get the horizontal average.
 normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)
 
 """
-    run_diagnostic(model, havg)
+    run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})
 
-Compute the horizontal average of `havg.fields` and store the
-result in `havg.profile`. If length(fields) > 1, compute the
-product of the elements of fields (without taking into account
-the possibility that they may have different locations in the
-staggered grid) before computing the horizontal average.
+Compute the horizontal average of `havg.fields` and store the result in `havg.profile`.
+If length(fields) > 1, compute the product of the elements of fields (without taking
+into account the possibility that they may have different locations in the staggered
+grid) before computing the horizontal average.
 """
-function run_diagnostic(model::Model, havg::HorizontalAverage{NTuple{1}})
+function run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})
     zero_halo_regions!(havg.fields[1], model.grid)
     sum!(havg.profile, havg.fields[1])
     normalize_horizontal_sum!(havg, model.grid)
@@ -78,18 +110,30 @@ end
 #### NaN checker
 ####
 
+"""
+    NaNChecker{F} <: AbstractDiagnostic
+
+A diagnostic that checks for `NaN` values and aborts the simulation if any are found.
+"""
 struct NaNChecker{F} <: AbstractDiagnostic
     frequency :: Int
        fields :: F
 end
 
+"""
+    NaNChecker(model; frequency, fields)
+
+Construct a `NaNChecker` for `model`. `fields` should be a `Dict{Symbol,Field}`. A
+`frequency` should be passed to indicate how often to check for NaNs (in number of
+iterations).
+"""
 function NaNChecker(model; frequency, fields)
     return NaNChecker(frequency, fields)
 end
 
 function run_diagnostic(model::Model, nc::NaNChecker)
     for (name, field) in nc.fields
-        if any(isnan, field)
+        if any(isnan, field.data.parent)
             t, i = model.clock.time, model.clock.iteration
             error("time = $t, iteration = $i: NaN found in $name. Aborting simulation.")
         end
@@ -100,7 +144,7 @@ end
 #### Timeseries diagnostics
 ####
 
-function run_diagnostic(model, diag::AbstractTimeseriesDiagnostic) 
+function run_diagnostic(model, diag::AbstractTimeseriesDiagnostic)
     push!(diag.data, diag(model))
     push!(diag.time, model.clock.time)
     return nothing
@@ -135,7 +179,7 @@ end
 """
     FieldMaximum(mapping, field)
 
-An object for calculating the maximum of a `mapping` function applied 
+An object for calculating the maximum of a `mapping` function applied
 element-wise to `field`.
 
 Example
@@ -156,15 +200,15 @@ end
 
 (m::FieldMaximum)(args...) = maximum(m.mapping, m.field.data.parent)
 
-(m::FieldMaximum{<:NamedTuple})(args...) = 
+(m::FieldMaximum{<:NamedTuple})(args...) =
     NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
 
 """
     CFL(Δt, timescale=Oceananigans.cell_advection_timescale)
 
-A diagnostic for computing the Courant-Freidrichs-Lewis (CFL) 
-number, associated with time-step `Δt` and a characteristic `timescale`. 
-If `Δt` is `TimeStepWizard` object, the current `Δt` associated with the 
+A diagnostic for computing the Courant-Freidrichs-Lewis (CFL)
+number, associated with time-step `Δt` and a characteristic `timescale`.
+If `Δt` is `TimeStepWizard` object, the current `Δt` associated with the
 wizard is used.
 
 See also `AdvectiveCFL` and `DiffusiveCFL`.
