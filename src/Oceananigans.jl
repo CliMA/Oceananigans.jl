@@ -34,7 +34,7 @@ export
     Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, ModelBoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
+    BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     getbc, setbc!,
 
     # Time stepping
@@ -88,25 +88,25 @@ using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
-    size, length,
-    getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
+    +, -, *,
+    size, length, eltype,
+    iterate, similar, show,
+    getindex, lastindex, setindex!
 
 #####
 ##### Abstract types 
 #####
 
-abstract type Architecture end
-abstract type ConstantsCollection end
-abstract type EquationOfState end
-abstract type Grid{T} end
+abstract type AbstractArchitecture end
+abstract type AbstractEquationOfState end
+abstract type AbstractGrid{T} end
+abstract type AbstractField{A, G} end
+abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+abstract type AbstractPoissonSolver end
 abstract type AbstractModel{TS, E, A} end
-abstract type Field{A, G} end
-abstract type FaceField{A, G} <: Field{A, G} end
-abstract type OutputWriter end
-abstract type Diagnostic end
+abstract type AbstractOutputWriter end
+abstract type AbstractDiagnostic end
 abstract type AbstractTimeseriesDiagnostic <: Diagnostic end
-abstract type PoissonSolver end
 
 #####
 ##### All the code

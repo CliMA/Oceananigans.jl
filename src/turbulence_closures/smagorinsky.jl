@@ -24,7 +24,7 @@ Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
      κ :: T = κ₀
 end
 
-DeardorffSmagorinsky(T; kwargs...) = 
+DeardorffSmagorinsky(T; kwargs...) =
     typed_keyword_constructor(T, DeardorffSmagorinsky; kwargs...)
 
 """
@@ -36,10 +36,10 @@ Return the stability function
 
 when ``N^2 > 0``, and 1 otherwise.
 """
-@inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T = 
+@inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T =
     ifelse(Σ²==0, zero(T), one(T) - sqrt(stability_factor(N², Σ², Pr, Cb)))
 
-@inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T = 
+@inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T =
     min(one(T), max(zero(T), Cb * N² / (Pr*Σ²)))
 
 """
@@ -82,15 +82,15 @@ struct BlasiusSmagorinsky{ML, T} <: AbstractSmagorinsky{T}
    mixing_length :: ML
 end
 
-BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) = 
+BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) =
     BlasiusSmagorinsky{typeof(mixing_length), T}(Pr, ν, κ, mixing_length)
 
 const BS = BlasiusSmagorinsky
 
-@inline Lm²(i, j, k, grid, closure::BS{<:AbstractFloat}, args...) = 
+@inline Lm²(i, j, k, grid, closure::BS{<:AbstractFloat}, args...) =
     closure.mixing_length^2
 
-@inline Lm²(i, j, k, grid, closure::BS{<:Nothing}, args...) = 
+@inline Lm²(i, j, k, grid, closure::BS{<:Nothing}, args...) =
     geo_mean_Δᶠ(i, j, k, grid)^2
 
 #####
@@ -114,11 +114,11 @@ struct MoninObukhovMixingLength{L, T, U, B}
     Cκ :: T
     z₀ :: T
     L₀ :: L
-    Qu :: U 
+    Qu :: U
     Qb :: U
 end
 
-MoninObukhovMixingLength(T=Float64; Qu, Qb, Cκ=0.4, z₀=0.0, L₀=nothing) = 
+MoninObukhovMixingLength(T=Float64; Qu, Qb, Cκ=0.4, z₀=0.0, L₀=nothing) =
     MoninObukhovMixingLength(T(Cκ), T(z₀), L₀, Qu, Qb)
 
 const MO = MoninObukhovMixingLength
@@ -129,7 +129,7 @@ const MO = MoninObukhovMixingLength
     ϕm(z, Qu, Qb, Cκ)
 
 Return the stability function for monentum at height
-`z` in terms of the velocity flux `Qu`, buoyancy flux 
+`z` in terms of the velocity flux `Qu`, buoyancy flux
 `Qb`, and von Karman constant `Cκ`.
 """
 @inline function ϕm(z::T, Qu, Qb, Cκ) where T
@@ -145,8 +145,8 @@ end
 @inline function Lm²(i, j, k, grid, clo::BlasiusSmagorinsky{<:MO, T}, Σ², N²) where T
     Lm = clo.mixing_length
     z = @inbounds grid.zC[i, j, k]
-    Lm⁻² = ( 
-             ( ϕm(z + Lm.z₀, Lm) * buoyancy_factor(Σ², N²)^T(0.25) / (Lm.Cκ * (z + Lm.z₀)) )^2 
+    Lm⁻² = (
+             ( ϕm(z + Lm.z₀, Lm) * buoyancy_factor(Σ², N²)^T(0.25) / (Lm.Cκ * (z + Lm.z₀)) )^2
             + 1 / L₀(i, j, k, grid, Lm)^2
            )
     return 1 / Lm⁻²
@@ -154,10 +154,10 @@ end
 
 @inline L₀(i, j, k, grid, mixing_length::MO{<:Number}) = mixing_length.L₀
 
-@inline L₀(i, j, k, grid, mixing_length::MO{<:Nothing}) = 
+@inline L₀(i, j, k, grid, mixing_length::MO{<:Nothing}) =
     geo_mean_Δᶠ(i, j, k, grid)
 
-@inline buoyancy_factor(Σ², N²::T) where T = 
+@inline buoyancy_factor(Σ², N²::T) where T =
     ifelse(Σ²==0, zero(T), max(zero(T), (one(T) - N² / Σ²)))
 
 """
@@ -182,7 +182,7 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AbstractSmagorinsky) =
+TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::AbstractSmagorinsky) =
     (νₑ=CellField(arch, grid),)
 
 "Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
@@ -324,4 +324,3 @@ end
             + 2 *   ▶y_aca(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
-

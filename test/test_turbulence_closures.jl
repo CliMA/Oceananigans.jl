@@ -1,7 +1,7 @@
 using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
                                        ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
                                        ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
-                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, 
+                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa,
                                        ▶z_aac, ▶z_aaf
 
 using GPUifyLoops: @launch
@@ -34,7 +34,7 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
     closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState(FT)
+    eos = LinearEquationOfState{FT}()
     grav = one(FT)
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
@@ -52,13 +52,13 @@ function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.
     return closure.ν == ν && closure.κ == κ
 end
 
-function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; 
+function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
                                                      ν=FT(0.3), κ=FT(0.7))
 
     arch = CPU()
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
+    bcs = HorizontallyPeriodicSolutionBCs()
     eos = LinearEquationOfState()
     grav = one(FT)
 
@@ -84,13 +84,13 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
             )
 end
 
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), 
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7),
                                               νv=FT(0.1), κv=FT(0.5))
 
     arch = CPU()
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
+    bcs = HorizontallyPeriodicSolutionBCs()
     eos = LinearEquationOfState()
     grav = one(FT)
     velocities = Oceananigans.VelocityFields(arch, grid)

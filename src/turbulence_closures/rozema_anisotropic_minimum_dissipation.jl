@@ -41,14 +41,14 @@ const Δx_ccf = Δx
 const Δy_ccf = Δy
 const Δz_ccf = Δz
 
-function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::RAMD)
+function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::RAMD)
      νₑ = CellField(arch, grid)
     κTₑ = CellField(arch, grid)
     κSₑ = CellField(arch, grid)
     return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
-@inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::RAMD, c,
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
                        eos, grav, u, v, w, T, S) where FT
 
     q = tr_∇u_ccc(i, j, k, grid, u, v, w)
@@ -64,7 +64,7 @@ end
     return max(zero(FT), νˢᶠˢ) + closure.ν
 end
 
-@inline function ν_ccf(i, j, k, grid::Grid{FT}, closure::RAMD, c,
+@inline function ν_ccf(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
                        eos, grav, u, v, w, T, S) where FT
 
     q = tr_∇u_ccf(i, j, k, grid, u, v, w)
@@ -80,9 +80,9 @@ end
     return max(zero(FT), νˢᶠˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::RAMD, c,
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
                        eos, grav, u, v, w, T, S) where FT
-    
+
     σ = θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
     if σ == 0
@@ -95,9 +95,9 @@ end
     return max(zero(FT), κˢᶠˢ) + closure.κ
 end
 
-@inline function κ_ccf(i, j, k, grid::Grid{FT}, closure::RAMD, c,
+@inline function κ_ccf(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
                        eos, grav, u, v, w, T, S) where FT
-    
+
     σ = θᵢ²_ccf(i, j, k, grid, c) # Tracer variance
 
     if σ == 0

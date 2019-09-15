@@ -13,7 +13,7 @@ end
     test_set_field(N, L, ftf, val)
 
 Test that the field initialized by the field type function `ftf` on the grid g
-can be correctly filled with the value `val` using the `set!(f::Field, v)`
+can be correctly filled with the value `val` using the `set!(f::AbstractField, v)`
 function.
 """
 function correct_field_value_was_set(arch, grid, fieldtype, val::Number)

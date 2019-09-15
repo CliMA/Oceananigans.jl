@@ -2,16 +2,16 @@
 #### Output writer utilities
 ####
 
-ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
+ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Number)        = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
-saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.parent)
+saveproperty!(file, location, p::AbstractField)         = file[location] = Array(p.data.parent)
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
-saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) 
+saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp))
                                         for subp in propertynames(p)]
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
@@ -42,7 +42,7 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = file[location] = p
-serializeproperty!(file, location, p::Union{AbstractArray, Field}) = saveproperty!(file, location, p)
+serializeproperty!(file, location, p::Union{AbstractArray, AbstractField}) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
@@ -51,7 +51,7 @@ serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getp
 has_reference(T, ::AbstractArray{<:Number}) = false
 
 # These two conditions are true, but should not necessary.
-has_reference(::Type{Function}, ::Field) = false
+has_reference(::Type{Function}, ::AbstractField) = false
 has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 
 """
@@ -77,7 +77,7 @@ end
 ####  JLD2 output writer
 ####
 
-mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: OutputWriter
+mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
         filepath :: String
          outputs :: O
         interval :: I
@@ -151,7 +151,7 @@ end
 function write_output(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) 
+    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f)
                                     in zip(keys(fw.outputs), values(fw.outputs)))
     verbose && @info "Calculation time: $(prettytime(tc))"
 
@@ -181,8 +181,8 @@ end
 """
     jld2output!(path, iter, time, data, kwargs)
 
-Write the (name, value) pairs in `data`, including the simulation 
-`time`, to the JLD2 file at `path` in the `timeseries` group, 
+Write the (name, value) pairs in `data`, including the simulation
+`time`, to the JLD2 file at `path` in the `timeseries` group,
 stamping them with `iter` and using `kwargs` when opening
 the JLD2 file.
 """
@@ -262,47 +262,11 @@ function FieldOutputs(fields)
 end
 
 ####
-#### Binary output writer
-####
-
-"A type for writing Binary output."
-Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
-          dir :: AbstractString = "."
-       prefix :: AbstractString = ""
-    frequency :: Int = 1
-      padding :: Int = 9
-end
-
-function write_output(model::Model, fw::BinaryOutputWriter)
-    for (field, field_name) in zip(fw.fields, fw.field_names)
-        filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
-
-        println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
-        if model.metadata == :CPU
-            write(filepath, field.data)
-        elseif model.metadata == :GPU
-            write(filepath, Array(field.data))
-        end
-    end
-end
-
-function read_output(model::Model, fw::BinaryOutputWriter, field_name, time)
-    filepath = joinpath(fw.dir, filename(fw, field_name, time_step))
-    arr = zeros(model.metadata.float_type, model.grid.Nx, model.grid.Ny, model.grid.Nz)
-
-    open(filepath, "r") do fio
-        read!(fio, arr)
-    end
-
-    return arr
-end
-
-####
 #### NetCDF output writer
 ####
 
 "A type for writing NetCDF output."
-Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
+Base.@kwdef mutable struct NetCDFOutputWriter <: AbstractOutputWriter
              dir  :: AbstractString = "."
           prefix  :: AbstractString = ""
         frequency :: Int    = 1
@@ -427,7 +391,7 @@ end
 #### Checkpointer
 ####
 
-mutable struct Checkpointer{I, T, P, A} <: OutputWriter
+mutable struct Checkpointer{I, T, P, A} <: AbstractOutputWriter
          frequency :: I
           interval :: T
           previous :: Float64
@@ -439,10 +403,10 @@ mutable struct Checkpointer{I, T, P, A} <: OutputWriter
            verbose :: Bool
 end
 
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, 
-                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :eos, :constants, 
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
+                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :eos, :constants,
                                                    :closure, :velocities, :tracers, :timestepper])
-                      
+
     validate_interval(frequency, interval)
 
     # Grid needs to be checkpointed for restoring to work.
@@ -459,7 +423,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
             filter!(e -> e != p, properties)
         end
 
-        has_reference(Field, getproperty(model, p)) && push!(has_array_refs, p)
+        has_reference(AbstractField, getproperty(model, p)) && push!(has_array_refs, p)
     end
 
     mkpath(dir)
@@ -469,7 +433,7 @@ end
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."
-    
+
     t0 = time_ns()
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
