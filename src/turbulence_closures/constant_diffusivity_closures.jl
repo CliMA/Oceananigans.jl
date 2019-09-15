@@ -3,14 +3,20 @@
 #####
 
 """
-    ConstantIsotropicDiffusivity(T=Float64; ν=1e-6, κ=1e-7)
+    ConstantIsotropicDiffusivity{T}
 
-or
+    ConstantIsotropicDiffusivity(; ν, κ)
 
-    MolecularDiffusivity(T=Float64; ν=1e-6, κ=1e-7)
+Use a constant isotropic turbulent diffusivty closure with constant viscosity `ν` and
+constant thermal diffusivity `κ`.
 
-Return a `ConstantIsotropicDiffusivity` closure object of type `T` with
-viscosity `ν` and scalar diffusivity `κ`.
+Note that this corresponds to the use an eddy viscosity model with constant `ν` and ``κ`.
+
+By default, a molecular viscosity of ``ν = 1.05×10⁻⁶`` m²/s and a molecular thermal
+diffusivity of ``κ = 1.46×10⁻⁷`` m²/s is used, corresponding to the use of no turbulent
+diffusivity closure at all. These molecular values are the approximate viscosity and
+thermal diffusivity for seawater at 20°C and 35 psu, according to Sharqawy et al.,
+"Thermophysical properties of seawater: A review of existing correlations and data" (2010).
 """
 Base.@kwdef struct ConstantIsotropicDiffusivity{T} <: IsotropicDiffusivity{T}
     ν :: T = ν₀
@@ -53,11 +59,22 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
 #####
 
 """
-    ConstantAnisotropicDiffusivity(T=Float64; νh=1e-6, νv=1e-6, κh=1e-6, κv=1e-6)
+    ConstantAnisotropicDiffusivity{T}
 
-Returns a ConstantAnisotropicDiffusivity object with horizontal viscosity and
-diffusivity `νh` and `κh`, and vertical viscosity and diffusivity
+    ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
+
+Use a constant anisotropic turbulent diffusivty closure with constant horizontal viscosity
+and thermal diffusivity `νh` and `κh`, and constant vertical viscosity and diffusivity
 `νv` and `κv`.
+
+Note that this corresponds to the use an eddy viscosity model with a tensor viscosity
+with heterogeneous diagonal components.
+
+By default, a molecular viscosity of ``ν = 1.05×10⁻⁶`` m²/s and a molecular thermal
+diffusivity of ``κ = 1.46×10⁻⁷`` m²/s is used, corresponding to the use of no turbulent
+diffusivity closure at all. These molecular values are the approximate viscosity and
+thermal diffusivity for seawater at 20°C and 35 psu, according to Sharqawy et al.,
+"Thermophysical properties of seawater: A review of existing correlations and data" (2010).
 """
 Base.@kwdef struct ConstantAnisotropicDiffusivity{T} <: TensorDiffusivity{T}
     νh :: T = ν₀

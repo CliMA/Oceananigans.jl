@@ -1,4 +1,4 @@
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = 
+@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T =
     (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 #####
@@ -7,11 +7,16 @@
 #####
 
 """
-    DeardorffSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν=1.05e-6, κ=1.46e-7)
+    DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
 
-Returns a `DeardorffSmagorinsky` closure object of type `T` with
+    DeardorffSmagorinsky(; C=0.23, Pr=1.0, ν=1.05e-6, κ=1.46e-7)
 
+Use the large eddy simulation model described by Deardorff (197?) based on Smagorinsky
+(196?).
+
+Constants are stoed as elements of type `T` and include
     *  `C` : Smagorinsky model constant
+    * `Cb` : Buoyancy term multipler (Cb = 0 turns it off, Cb = 1 turns it on)
     * `Pr` : Prandtl number
     *  `ν` : background viscosity
     *  `κ` : background diffusivity
