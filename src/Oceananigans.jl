@@ -12,8 +12,7 @@ export
     CPU, GPU,
 
     # Constants
-    PlanetaryConstants, Earth, Europa, Enceladus,
-    second, minute, hour, day,
+    PlanetaryConstants, Earth,
 
     # Grids
     RegularCartesianGrid,
@@ -48,16 +47,18 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter, 
+    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
-    HorizontalAverage, NaNChecker, 
+    HorizontalAverage, NaNChecker,
     Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
 
     # Package utilities
-    prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
+    prettytime, pretty_filesize,
+    second, minute, hour, day,
+    KiB, MiB, GiB, TiB,
 
     # Turbulence closures
     ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
