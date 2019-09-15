@@ -109,7 +109,7 @@ size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "$(g.dim)-dimensional ($(typeof(g.Lx))) regular Cartesian grid\n",
+    print(io, "($(typeof(g.Lx))) regular Cartesian grid\n",
               "(Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "(Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
               "(Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
