@@ -31,12 +31,12 @@ using
   Oceananigans.Operators,
   GPUifyLoops
 
-using Oceananigans: Architecture, Grid, AbstractModel, buoyancy_perturbation
+using Oceananigans: AbstractArchitecture, AbstractGrid, AbstractModel, buoyancy_perturbation
 
 @hascuda using CUDAdrv, CUDAnative
 
 # Approximate viscosities and thermal diffusivities for seawater
-# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical 
+# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical
 # properties of seawater: A review of existing correlations and data" (2010).
 const ν₀ = 1.05e-6
 const κ₀ = 1.46e-7

@@ -47,17 +47,8 @@ end
         for FT in float_types
             @test isbitstype(typeof(RegularCartesianGrid(FT, (16, 16, 16), (1, 1, 1))))
 
-            @test RegularCartesianGrid(FT, (25, 25, 25), L).dim == 3
-            @test RegularCartesianGrid(FT, (5, 25, 125), L).dim == 3
-            @test RegularCartesianGrid(FT, (64, 64, 64), L).dim == 3
-            @test RegularCartesianGrid(FT, (32, 32,  1), L).dim == 2
-            @test RegularCartesianGrid(FT, (32,  1, 32), L).dim == 2
-            @test RegularCartesianGrid(FT, (1,  32, 32), L).dim == 2
-            @test RegularCartesianGrid(FT, (1,  1,  64), L).dim == 1
-
             @test_throws ArgumentError RegularCartesianGrid(FT, (32,), L)
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 64), L)
-            @test_throws ArgumentError RegularCartesianGrid(FT, (1, 1, 1), L)
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32, 16), L)
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100,))
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100))

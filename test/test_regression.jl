@@ -95,8 +95,8 @@ function run_rayleigh_benard_regression_test(arch)
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
-                        eos = LinearEquationOfState(βT=1., βS=0.),
-                  constants = PlanetaryConstants(g=1., f=0.),
+                        eos = LinearEquationOfState(βT=1.0, βS=0.0),
+                  constants = PlanetaryConstants(g=1.0, f=0.0),
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
                                 top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
                     forcing = Forcing(FS=FS)

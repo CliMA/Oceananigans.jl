@@ -4,7 +4,7 @@ function test_z_boundary_condition_simple(arch, T, fldname, bctype, bc, Nx, Ny)
     fieldbcs = HorizontallyPeriodicBCs(top=bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch, 
+    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch,
                        float_type=T, boundary_conditions=modelbcs)
 
     time_step!(model, 1, 1e-16)
@@ -19,10 +19,10 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(N, N, N), L=(0.1, 0.2, 0.3), architecture=arch, 
+    model = BasicModel(N=(N, N, N), L=(0.1, 0.2, 0.3), architecture=arch,
                        float_type=FT, boundary_conditions=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
 
     time_step!(model, 1, 1e-16)
 
@@ -42,10 +42,10 @@ function test_z_boundary_condition_array(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch, 
+    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch,
                        float_type=FT, boundary_conditions=modelbcs)
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
 
     time_step!(model, 1, 1e-16)
 
@@ -60,10 +60,10 @@ function test_flux_budget(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, architecture=arch, 
-                       float_type=FT, eos=LinearEquationOfState(βS=0, βT=0), 
+    model = BasicModel(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, architecture=arch,
+                       float_type=FT, eos=LinearEquationOfState(βS=0.0, βT=0.0), 
                        boundary_conditions=modelbcs)
-                       
+
     if fldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fldname)
     else
@@ -72,7 +72,7 @@ function test_flux_budget(arch, FT, fldname)
 
     @. field.data = 0
 
-    bcs = getfield(model.boundary_conditions, fldname)
+    bcs = getfield(model.boundary_conditions.solution, fldname)
     mean_init = mean(data(field))
 
     τκ = Lz^2 / κ   # Diffusion time-scale

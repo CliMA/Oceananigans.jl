@@ -32,7 +32,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
-    bcs = HorizontallyPeriodicModelBCs()
+    bcs = HorizontallyPeriodicSolutionBCs()
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
@@ -105,7 +105,7 @@ end
     tracer_conserved_in_channel(arch, FT, Nt)
 
 Create a super-coarse eddying channel model with walls in the y and test that
-temperature and salinity are conserved after `Nt` time steps.
+temperature is conserved after `Nt` time steps.
 """
 function tracer_conserved_in_channel(arch, FT, Nt)
     Nx, Ny, Nz = 16, 32, 16
@@ -115,9 +115,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νh, κh = 20.0, 20.0
     νv, κv = α*νh, α*κh
 
-    model = ChannelModel(grid=RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
-                         architecture=arch, float_type=FT,
-                         closure=ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+    model = ChannelModel(architecture = arch, float_type = FT,
+                         grid = RegularCartesianGrid(N = (Nx, Ny, Nz), L = (Lx, Ly, Lz)),
+                         closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
