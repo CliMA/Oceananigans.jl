@@ -1,3 +1,7 @@
+####
+#### Adapting structs
+####
+
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
@@ -15,7 +19,10 @@ const minute = 60.0
 const hour   = 60minute
 const day    = 24hour
 
-KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+const KiB = 1024.0
+const MiB = 1024KiB
+const GiB = 1024MiB
+const TiB = 1024GiB
 
 ####
 #### Pretty printing
