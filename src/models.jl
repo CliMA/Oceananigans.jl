@@ -6,7 +6,7 @@ const AOW = AbstractOutputWriter
 const AD  = AbstractDiagnostic
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquationOfState,
-                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel{TS, E, A}
+                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
 
            architecture :: A              # Computer `Architecture` on which `Model` is run
                    grid :: G              # Grid of physical points on which `Model` is solved
@@ -166,7 +166,6 @@ end
 ##### Model initialization utilities
 #####
 
-arch(model::Model{A}) where A <: AbstractArchitecture = A
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
 
