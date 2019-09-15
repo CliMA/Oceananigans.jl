@@ -85,9 +85,10 @@ using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
-    size, length,
-    getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
+    +, -, *,
+    size, length, eltype,
+    iterate, similar, show,
+    getindex, lastindex, setindex!
 
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
@@ -103,22 +104,21 @@ end
     end
 end
 
-abstract type Architecture end
-struct CPU <: Architecture end
-struct GPU <: Architecture end
+abstract type AbstractArchitecture end
+struct CPU <: AbstractArchitecture end
+struct GPU <: AbstractArchitecture end
 
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
-abstract type ConstantsCollection end
-abstract type EquationOfState end
-abstract type Grid{T} end
+abstract type AbstractEquationOfState end
+abstract type AbstractGrid{T} end
 abstract type AbstractModel end
-abstract type Field{A, G} end
-abstract type FaceField{A, G} <: Field{A, G} end
-abstract type OutputWriter end
-abstract type Diagnostic end
-abstract type PoissonSolver end
+abstract type AbstractField{A, G} end
+abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+abstract type AbstractOutputWriter end
+abstract type AbstractDiagnostic end
+abstract type AbstractPoissonSolver end
 
 function buoyancy_perturbation end
 
@@ -141,6 +141,5 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
-
 
 end # module

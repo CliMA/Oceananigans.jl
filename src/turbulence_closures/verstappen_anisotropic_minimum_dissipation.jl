@@ -17,13 +17,13 @@ Returns a `VerstappenAnisotropicMinimumDissipation` closure object of type `T` w
 
 Based on the version of the anisotropic minimum dissipation closure proposed by:
 
- - Verstappen, R., "How much eddy dissipation is needed to counterbalance the 
-    "nonlinear production of small, unresolved scales in a large-eddy simulation 
+ - Verstappen, R., "How much eddy dissipation is needed to counterbalance the
+    "nonlinear production of small, unresolved scales in a large-eddy simulation
     of turbulence?", 2018
 
 and described by
 
- - Vreugdenhil C., and Taylor J., "Large-eddy simulations of stratified plane Couette 
+ - Vreugdenhil C., and Taylor J., "Large-eddy simulations of stratified plane Couette
  flow using the anisotropic minimum-dissipation model", (2018).
 """
 function VerstappenAnisotropicMinimumDissipation(FT=Float64;
@@ -37,14 +37,14 @@ end
 
 const VAMD = VerstappenAnisotropicMinimumDissipation
 
-function TurbulentDiffusivities(arch::Architecture, grid::Grid, ::VAMD)
+function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::VAMD)
      νₑ = CellField(arch, grid)
     κTₑ = CellField(arch, grid)
     κSₑ = CellField(arch, grid)
     return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
-@inline function ν_ccc(i, j, k, grid::Grid{FT}, closure::VAMD, c,
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c,
                        eos, grav, u, v, w, T, S) where FT
 
     ijk = (i, j, k, grid)
@@ -62,7 +62,7 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::Grid{FT}, closure::VAMD, c,
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c,
                        eos, grav, u, v, w, T, S) where FT
 
     ijk = (i, j, k, grid)
@@ -95,7 +95,7 @@ end
 
       +  2 * norm_∂x_u(ijkuvw...) * ▶xy_cca(ijk..., norm_∂x_v_Σ₁₂, uvw...)
       +  2 * norm_∂x_u(ijkuvw...) * ▶xz_cac(ijk..., norm_∂x_w_Σ₁₃, uvw...)
-      +  2 * ▶xy_cca(ijk..., norm_∂x_v, uvw...) * ▶xz_cac(ijk..., norm_∂x_w, uvw...) 
+      +  2 * ▶xy_cca(ijk..., norm_∂x_v, uvw...) * ▶xz_cac(ijk..., norm_∂x_w, uvw...)
            * ▶yz_acc(ijk..., norm_Σ₂₃, uvw...)
     )
 
@@ -105,7 +105,7 @@ end
       + norm_Σ₃₃(ijkuvw...) * ▶yz_acc(ijk..., norm_∂y_w², uvw...)
 
       +  2 * norm_∂y_v(ijkuvw...) * ▶xy_cca(ijk..., norm_∂y_u_Σ₁₂, uvw...)
-      +  2 * ▶xy_cca(ijk..., norm_∂y_u, uvw...) * ▶yz_acc(ijk..., norm_∂y_w, uvw...) 
+      +  2 * ▶xy_cca(ijk..., norm_∂y_u, uvw...) * ▶yz_acc(ijk..., norm_∂y_w, uvw...)
            * ▶xz_cac(ijk..., norm_Σ₁₃, uvw...)
       +  2 * norm_∂y_v(ijkuvw...) * ▶yz_acc(ijk..., norm_∂y_w_Σ₂₃, uvw...)
     )
@@ -115,7 +115,7 @@ end
       + norm_Σ₂₂(ijkuvw...) * ▶yz_acc(ijk..., norm_∂z_v², uvw...)
       + norm_Σ₃₃(ijkuvw...) * norm_∂z_w(ijk..., w)^2
 
-      +  2 * ▶xz_cac(ijk..., norm_∂z_u, uvw...) * ▶yz_acc(ijk..., norm_∂z_v, uvw...) 
+      +  2 * ▶xz_cac(ijk..., norm_∂z_u, uvw...) * ▶yz_acc(ijk..., norm_∂z_v, uvw...)
            * ▶xy_cca(ijk..., norm_Σ₁₂, uvw...)
       +  2 * norm_∂z_w(ijkuvw...) * ▶xz_cac(ijk..., norm_∂z_u_Σ₁₃, uvw...)
       +  2 * norm_∂z_w(ijkuvw...) * ▶yz_acc(ijk..., norm_∂z_v_Σ₂₃, uvw...)
@@ -136,7 +136,7 @@ end
 
       +  2 *   ▶z_aaf(ijk..., norm_∂x_u, uvw...) * ▶xyz_ccf(ijk..., norm_∂x_v_Σ₁₂, uvw...)
       +  2 *   ▶z_aaf(ijk..., norm_∂x_u, uvw...) *   ▶x_caa(ijk..., norm_∂x_w_Σ₁₃, uvw...)
-      +  2 * ▶xyz_ccf(ijk..., norm_∂x_v, uvw...) *   ▶x_caa(ijk..., norm_∂x_w, uvw...) 
+      +  2 * ▶xyz_ccf(ijk..., norm_∂x_v, uvw...) *   ▶x_caa(ijk..., norm_∂x_w, uvw...)
            *   ▶y_aca(ijk..., norm_Σ₂₃, uvw...)
     )
 
@@ -146,7 +146,7 @@ end
       + ▶z_aaf(ijk..., norm_Σ₃₃, uvw...) *   ▶y_aca(ijk..., norm_∂y_w², uvw...)
 
       +  2 *  ▶z_aaf(ijk..., norm_∂y_v, uvw...) * ▶xyz_ccf(ijk..., norm_∂y_u_Σ₁₂, uvw...)
-      +  2 * ▶xy_cca(ijk..., norm_∂y_u, uvw...) *   ▶y_aca(ijk..., norm_∂y_w, uvw...) 
+      +  2 * ▶xy_cca(ijk..., norm_∂y_u, uvw...) *   ▶y_aca(ijk..., norm_∂y_w, uvw...)
            *  ▶x_caa(ijk..., norm_Σ₁₃, uvw...)
       +  2 *  ▶z_aaf(ijk..., norm_∂y_v, uvw...) *   ▶y_aca(ijk..., norm_∂y_w_Σ₂₃, uvw...)
     )
@@ -156,7 +156,7 @@ end
       + ▶z_aaf(ijk..., norm_Σ₂₂, uvw...) * ▶y_aca(ijk..., norm_∂z_v², uvw...)
       + ▶z_aaf(ijk..., norm_Σ₃₃, uvw...) * ▶z_aaf(ijk..., norm_∂z_w², uvw...)
 
-      +  2 *   ▶x_caa(ijk..., norm_∂z_u, uvw...) * ▶y_aca(ijk..., norm_∂z_v, uvw...) 
+      +  2 *   ▶x_caa(ijk..., norm_∂z_u, uvw...) * ▶y_aca(ijk..., norm_∂z_v, uvw...)
            * ▶xyz_ccf(ijk..., norm_Σ₁₂, uvw...)
       +  2 *   ▶z_aaf(ijk..., norm_∂z_w, uvw...) * ▶x_caa(ijk..., norm_∂z_u_Σ₁₃, uvw...)
       +  2 *   ▶z_aaf(ijk..., norm_∂z_w, uvw...) * ▶y_aca(ijk..., norm_∂z_v_Σ₂₃, uvw...)

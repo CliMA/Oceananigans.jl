@@ -107,7 +107,7 @@ Differentiate the function or callable object
 
 located at `aac` in `z`, across `aaf`.
 """
-@inline ∂z_aaf(i, j, k, grid::Grid, F::TF, args...) where TF<:Function =
+@inline ∂z_aaf(i, j, k, grid::AbstractGrid, F::TF, args...) where TF<:Function =
     (F(i, j, k-1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
 
 """
@@ -148,7 +148,7 @@ Interpolate the function or callable object
 
 from `caa` to `faa`."
 """
-@inline ▶x_faa(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶x_faa(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     T(0.5) * (F(i, j, k, grid, args...) + F(i-1, j, k, grid, args...))
 
 """
@@ -160,7 +160,7 @@ Interpolate the function or callable object
 
 from `faa` to `caa`."
 """
-@inline ▶x_caa(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶x_caa(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     return T(0.5) * (F(i+1, j, k, grid, args...) + F(i, j, k, grid, args...))
 
 """
@@ -172,7 +172,7 @@ Interpolate the function or callable object
 
 from `aca` to `afa`.
 """
-@inline ▶y_afa(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶y_afa(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     return T(0.5) * (F(i, j, k, grid, args...) + F(i, j-1, k, grid, args...))
 
 """
@@ -184,7 +184,7 @@ Interpolate the function or callable object
 
 from `afa` to `aca`."
 """
-@inline ▶y_aca(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶y_aca(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     T(0.5) * (F(i, j+1, k, grid, args...) + F(i, j, k, grid, args...))
 
 """
@@ -196,11 +196,11 @@ Interpolate the function or callable object
 
 from `aac` to `aaf`.
 """
-@inline ▶z_aaf(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶z_aaf(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     T(0.5) * (F(i, j, k, grid, args...) + F(i, j, k-1, grid, args...))
 
 """
-    ▶z_aac(i, j, k, grid::Grid{T}, F, args...) where T
+    ▶z_aac(i, j, k, grid::RegularCartesianGrid{T}, F, args...) where T
 
 Interpolate the function or callable object
 
@@ -208,7 +208,7 @@ Interpolate the function or callable object
 
 from `aaf` to `aac`.
 """
-@inline ▶z_aac(i, j, k, grid::Grid{T}, F::TF, args...) where {T, TF<:Function} =
+@inline ▶z_aac(i, j, k, grid::RegularCartesianGrid{T}, F::TF, args...) where {T, TF<:Function} =
     T(0.5) * (F(i, j, k+1, grid, args...) + F(i, j, k, grid, args...))
 
 # Convenience operators for "interpolating constants"
@@ -219,22 +219,22 @@ from `aaf` to `aac`.
 @inline ▶z_aaf(i, j, k, grid, F::Number, args...) = F
 @inline ▶z_aac(i, j, k, grid, F::Number, args...) = F
 
-@inline ▶x_faa(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+@inline ▶x_faa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i-1, j, k])
 
-@inline ▶x_caa(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+@inline ▶x_caa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i+1, j, k])
 
-@inline ▶y_afa(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+@inline ▶y_afa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i, j-1, k])
 
-@inline ▶y_aca(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+@inline ▶y_aca(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i, j+1, k])
 
-@inline ▶z_aaf(i, j, k, grid::Grid{T}, F::AbstractArray, args...) where T =
+@inline ▶z_aaf(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
     @inbounds T(0.5) * (F[i, j, k] + F[i, j, k-1])
 
-@inline ▶z_aac(i, j, k, grid::Grid{T}, w::AbstractArray, args...) where T =
+@inline ▶z_aac(i, j, k, grid::RegularCartesianGrid{T}, w::AbstractArray, args...) where T =
     @inbounds T(0.5) * (w[i, j, k] + w[i, j, k+1])
 
 #####

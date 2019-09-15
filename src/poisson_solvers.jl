@@ -34,10 +34,10 @@ end
 
 PoissonBCs(model_bcs::ModelBoundaryConditions) = PoissonBCs(model_bcs.solution)
 
-PoissonSolver(::CPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverCPU(pbcs, grid)
-PoissonSolver(::GPU, pbcs::PoissonBCs, grid::Grid) = PoissonSolverGPU(pbcs, grid)
+PoissonSolver(::CPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverCPU(pbcs, grid)
+PoissonSolver(::GPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverGPU(pbcs, grid)
 
-unpack_grid(grid::Grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
+unpack_grid(grid::AbstractGrid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
 """
     ω(M, k)
@@ -47,48 +47,48 @@ Return the `M`th root of unity raised to the `k`th power.
 @inline ω(M, k) = exp(-2im*π*k/M)
 
 """
-    λi(grid::Grid, ::PoissonBCs)
+    λi(grid::AbstractGrid, ::PoissonBCs)
 
 Return an Nx×1×1 array of eigenvalues satisfying the discrete form of Poisson's
 equation with periodic boundary conditions in the x-dimension on `grid`.
 """
-function λi(grid::Grid, ::PoissonBCs)
+function λi(grid::AbstractGrid, ::PoissonBCs)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     is = reshape(1:Nx, Nx, 1, 1)
     @. (2sin((is-1)*π/Nx) / (Lx/Nx))^2
 end
 
 """
-    λj(grid::Grid, ::PPN)
+    λj(grid::AbstractGrid, ::PPN)
 
 Return an 1×Ny×1 array of eigenvalues satisfying the discrete form of Poisson's
 equation with periodic boundary conditions in the y-dimension on `grid`.
 """
-function λj(grid::Grid, ::PPN)
+function λj(grid::AbstractGrid, ::PPN)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     js = reshape(1:Ny, 1, Ny, 1)
     @. (2sin((js-1)*π/Ny) / (Ly/Ny))^2
 end
 
 """
-    λj(grid::Grid, ::PNN)
+    λj(grid::AbstractGrid, ::PNN)
 
 Return an 1×Ny×1 array of eigenvalues satisfying the discrete form of Poisson's
 equation with staggered Neumann boundary conditions in the y-dimension on `grid`.
 """
-function λj(grid::Grid, ::PNN)
+function λj(grid::AbstractGrid, ::PNN)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     js = reshape(1:Ny, 1, Ny, 1)
     @. (2sin((js-1)*π/(2Ny)) / (Ly/Ny))^2
 end
 
 """
-    λk(grid::Grid, ::PoissonBCs)
+    λk(grid::AbstractGrid, ::PoissonBCs)
 
 Return an 1×1×Nz array of eigenvalues satisfying the discrete form of Poisson's
 equation with staggered Neumann boundary conditions in the y-dimension on `grid`.
 """
-function λk(grid::Grid, ::PoissonBCs)
+function λk(grid::AbstractGrid, ::PoissonBCs)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     ks = reshape(1:Nz, 1, 1, Nz)
     @. (2sin((ks-1)*π/(2Nz)) / (Lz/Nz))^2
@@ -134,7 +134,7 @@ function plan_transforms(::PNN, A::Array, planner_flag=FFTW.PATIENT)
     return FFT!, IFFT!, DCT!, IDCT!
 end
 
-struct PoissonSolverCPU{BC, AAR, AAC, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
+struct PoissonSolverCPU{BC, AAR, AAC, FFTT, DCTT, IFFTT, IDCTT} <: AbstractPoissonSolver
         bcs :: BC
         kx² :: AAR
         ky² :: AAR
@@ -146,7 +146,7 @@ struct PoissonSolverCPU{BC, AAR, AAC, FFTT, DCTT, IFFTT, IDCTT} <: PoissonSolver
       IDCT! :: IDCTT
 end
 
-function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIENT)
+function PoissonSolverCPU(pbcs::PoissonBCs, grid::AbstractGrid, planner_flag=FFTW.PATIENT)
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
     # The eigenvalues of the discrete form of Poisson's equation correspond
@@ -166,8 +166,8 @@ function PoissonSolverCPU(pbcs::PoissonBCs, grid::Grid, planner_flag=FFTW.PATIEN
     PoissonSolverCPU(pbcs, kx², ky², kz², storage, FFT!, DCT!, IFFT!, IDCT!)
 end
 
-normalize_idct_output(::PPN, grid::Grid, ϕ::Array) = (@. ϕ = ϕ / (2grid.Nz))
-normalize_idct_output(::PNN, grid::Grid, ϕ::Array) = (@. ϕ = ϕ / (4grid.Ny*grid.Nz))
+normalize_idct_output(::PPN, grid::AbstractGrid, ϕ::Array) = (@. ϕ = ϕ / (2grid.Nz))
+normalize_idct_output(::PNN, grid::AbstractGrid, ϕ::Array) = (@. ϕ = ϕ / (4grid.Ny*grid.Nz))
 
 """
     solve_poisson_3d!(solver::PoissonSolverCPU, grid::RegularCartesianGrid)
@@ -224,7 +224,7 @@ function plan_transforms(::PNN, A)
     return FFT!, FFT_DCT!, IFFT!, IFFT_DCT!
 end
 
-struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: PoissonSolver
+struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: AbstractPoissonSolver
           bcs :: BC
           kx² :: AAR
           ky² :: AAR
@@ -247,7 +247,7 @@ struct PoissonSolverGPU{BC, AAR, AAC, AAI, FFT, FFTD, IFFT, IFFTD} <: PoissonSol
     IFFT_DCT! :: IFFTD
 end
 
-function PoissonSolverGPU(pbcs::PoissonBCs, grid::Grid)
+function PoissonSolverGPU(pbcs::PoissonBCs, grid::AbstractGrid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
     # The eigenvalues of the discrete form of Poisson's equation correspond
