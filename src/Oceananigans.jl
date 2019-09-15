@@ -5,7 +5,7 @@ if VERSION < v"1.1"
 end
 
 export
-    # Helper macro for determining if a CUDA-enabled GPU is available.
+    # Macros
     @hascuda,
 
     # Architectures
@@ -94,31 +94,89 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!
 
-#####
-##### Abstract types 
-#####
+####
+#### Abstract types
+#### Define them all here so we can use start using them early, e.g. in utils.jl. This
+#### would not be possible if we defined them in the appropriate files, e.g. AbstractGrid
+#### in grids.jl.
+####
 
+"""
+    AbstractArchitecture
+
+Abstract supertype for architectures supported by Oceananigans.
+"""
 abstract type AbstractArchitecture end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for equations of state.
+"""
 abstract type AbstractEquationOfState end
+
+"""
+    AbstractGrid{T}
+
+Abstract supertype for grids with elements of type `T`.
+"""
 abstract type AbstractGrid{T} end
 abstract type AbstractField{A, G} end
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 abstract type AbstractPoissonSolver end
 abstract type AbstractModel{TS, E, A} end
-abstract type AbstractOutputWriter end
+
+"""
+    AbstractDiagnostic
+
+Abstract supertype for types that compute diagnostic information from the current model
+state.
+"""
 abstract type AbstractDiagnostic end
+
+"""
+    AbstractTimeseriesDiagnostic
+
+Abstract supertype for types that compute timeseries of diagnostic information from the
+current model state.
+"""
 abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
+
+"""
+    AbstractOutputWriter
+
+Abstract supertype for types that perform input and output.
+"""
+abstract type AbstractOutputWriter end
 
 #####
 ##### All the code
 #####
 
+"""
+    CPU <: AbstractArchitecture
+
+Run Oceananigans on a single-core of a CPU.
+"""
 struct CPU <: AbstractArchitecture end
+
+"""
+    GPU <: AbstractArchitecture
+
+Run Oceananigans on a single NVIDIA CUDA GPU.
+"""
 struct GPU <: AbstractArchitecture end
 
+# Convert between Oceananigans architectures and GPUifyLoops.jl devices.
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
+"""
+    @hascuda
+
+A macro to execute an expression only if CUDA is installed and available. Generally used to
+wrap expressions that can only execute with a GPU.
+"""
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
 end
@@ -133,6 +191,7 @@ end
     end
 end
 
+# Placeholder definition needed by TurbulenceClosures submodule.
 function buoyancy_perturbation end
 
 include("utils.jl")
