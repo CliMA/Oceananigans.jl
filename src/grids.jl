@@ -1,10 +1,18 @@
 """
-    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
+    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
 
-A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
-and \$Δz\$ are constants. Fields are stored using floating-point values of type
-`T`. The cell-centered and face-centered coordinate ranges are stored as ranges
-of type `A`.
+A Cartesian grid with with constant grid spacings ``Δx``, ``Δy``, and ``Δz`` between cell
+centers and cell faces.
+
+Also stores the number of grid points in each dimension (``N_x``,``N_y``, ``N_z``), the
+domain size (``L_x``, ``L_y``, ``L_z``), and the size of the halo regions (``H_x``,
+``H_y``, ``H_z``). Cell-centered coordinate ranges ``x_C``, ``y_C`, and ``z_C` contain
+the locations of all ``N`` cell centers along each dimension. Face-centered coordinate
+ranges ``x_F``, ``y_F``, and ``z_F`` contain the locations of all ``N+1`` cell faces aong
+each dimension.
+
+Constants are stored as elements of type `T`. The cell-centered and face-centered
+coordinate ranges are stored as ranges of type `R`.
 """
 struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
     # Number of grid points in (x,y,z).
@@ -47,14 +55,8 @@ end
 """
     RegularCartesianGrid(T, N, L)
 
-Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
-size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
-of type `T`.
-
-# Examples
-```julia-repl
-julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
-```
+Creates a regular Cartesian grid with ``N = (N_x, N_y, N_z)`` grid points and domain size
+``L = (L_x, L_y, L_z)`` where constants are stored using floating point values of type `T`.
 """
 function RegularCartesianGrid(T, N, L)
     length(N) == 3 || throw(ArgumentError("N=$N must be a tuple of length 3."))
@@ -101,15 +103,25 @@ function RegularCartesianGrid(T, N, L)
                                         xC, yC, zC, xF, yF, zF)
 end
 
-# Constructor aliases.
+"""
+    RegularCartesianGrid(N, L)
+
+Alias for `RegularCartesianGrid(T, N, L)`` with `T = Float64`.
+"""
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
+
+"""
+    RegularCartesianGrid(T=Float64; N, L)
+
+Alias for `RegularCartesianGrid(T, N, L)`` with keyword arguments for `N` and `L`.
+"""
 RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "RegularCartesianGrid{$(typeof(g.Lx))}\n", 
+    print(io, "RegularCartesianGrid{$(typeof(g.Lx))}\n",
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
               "      domain (Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
