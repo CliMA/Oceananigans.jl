@@ -97,13 +97,13 @@ import Base:
 ##### Abstract types 
 #####
 
+abstract type AbstractModel end
 abstract type AbstractArchitecture end
 abstract type AbstractEquationOfState end
 abstract type AbstractGrid{T} end
 abstract type AbstractField{A, G} end
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 abstract type AbstractPoissonSolver end
-abstract type AbstractModel{TS, E, A} end
 abstract type AbstractOutputWriter end
 abstract type AbstractDiagnostic end
 abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
