@@ -1,4 +1,4 @@
-struct VerstappenAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T}
+struct VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
      C :: T
     Cb :: T
      ν :: T

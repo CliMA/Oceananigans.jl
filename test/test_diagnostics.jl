@@ -32,12 +32,64 @@ function nan_checker_aborts_simulation(arch, FT)
     model = BasicModel(N = (16, 16, 2), L = (1, 1, 1), architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
-    nc = NaNChecker(model; frequency=1)
+    nc = NaNChecker(model; frequency=1, fields=Dict(:w => model.velocities.w.data.parent))
     push!(model.diagnostics, nc)
 
     model.velocities.w[4, 3, 2] = NaN
 
     time_step!(model, 1, 1);
+end
+
+TestModel(::GPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(16, 16, 16), L=(16*Δx, 16*Δx, 16*Δx), 
+                                                 architecture=GPU(), float_type=FT, ν=ν, κ=ν)
+
+TestModel(::CPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(3, 3, 3), L=(3*Δx, 3*Δx, 3*Δx), 
+                                                 architecture=CPU(), float_type=FT, ν=ν, κ=ν)
+    
+
+function max_abs_field_diagnostic_is_correct(arch, FT)
+    model = TestModel(arch, FT)
+    set!(model.velocities.u, rand(size(model.grid)))
+    u_max = FieldMaximum(abs, model.velocities.u)
+    return u_max(model) == maximum(abs, model.velocities.u.data.parent)
+end
+
+function advective_cfl_diagnostic_is_correct(arch, FT)
+    model = TestModel(arch, FT)
+
+    Δt = FT(1.3e-6)
+    Δx = FT(model.grid.Δx)
+    u₀ = FT(1.2)
+    CFL_by_hand = Δt * u₀ / Δx
+
+    model.velocities.u.data.parent .= u₀
+    cfl = AdvectiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function diffusive_cfl_diagnostic_is_correct(arch, FT)
+    Δt = FT(1.3e-6)
+    Δx = FT(0.5)
+    ν = FT(1.2)
+    CFL_by_hand = Δt * ν / Δx^2
+
+    model = TestModel(arch, FT, ν, Δx)
+    cfl = DiffusiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+get_iteration(model) = model.clock.iteration
+
+function timeseries_diagnostic_works(arch, FT)
+    model = TestModel(arch, FT)
+    iter_diag = Timeseries(get_iteration, model; frequency=1)
+    push!(model.diagnostics, iter_diag)
+    Δt = 1e-16
+    time_step!(model, 1, Δt)
+
+    return iter_diag.time[end] == FT(Δt) && iter_diag.data[end] == 1
 end
 
 @testset "Diagnostics" begin
@@ -58,6 +110,18 @@ end
             println("  Testing NaN Checker [$(typeof(arch))]")
             for FT in float_types
                 @test_throws ErrorException nan_checker_aborts_simulation(arch, FT)
+            end
+        end
+    end
+
+    for arch in archs
+        @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
+            println("  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]")
+            for FT in float_types
+                @test timeseries_diagnostic_works(arch, FT)
+                @test diffusive_cfl_diagnostic_is_correct(arch, FT)
+                @test advective_cfl_diagnostic_is_correct(arch, FT)
+                @test max_abs_field_diagnostic_is_correct(arch, FT)
             end
         end
     end
