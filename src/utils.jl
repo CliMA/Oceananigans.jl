@@ -1,6 +1,8 @@
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
+zerofunk(args...) = 0
+
 # Need to adapt SubArray indices as well.
 # See: https://github.com/JuliaGPU/Adapt.jl/issues/16
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
@@ -55,25 +57,24 @@ end
 #### Creating fields by dispatching on architecture
 ####
 
-function Base.zeros(T, ::CPU, grid)
+function OffsetArray(underlying_data, grid::AbstractGrid)
     # Starting and ending indices for the offset array.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
     j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
     k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
 
-    underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-function Base.zeros(T, ::GPU, grid)
-    # Starting and ending indices for the offset CuArray.
-    i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
-    j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
-    k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
+function Base.zeros(T, ::CPU, grid)
+    underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
+    return OffsetArray(underlying_data, grid)
+end
 
+function Base.zeros(T, ::GPU, grid)
     underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
-    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+    return OffsetArray(underlying_data, grid)
 end
 
 Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
