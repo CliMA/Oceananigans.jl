@@ -93,7 +93,7 @@ function timeseries_diagnostic_works(arch, FT)
     return iter_diag.time[end] == Δt && iter_diag.data[end] == 1
 end
 
-function timeseries_diagnostic_tuples_work(arch, FT)
+function timeseries_diagnostic_tuples(arch, FT)
     model = TestModel(arch, FT)
     timeseries = Timeseries((iters=get_iteration, itertimes=get_time), model; frequency=2)
     model.diagnostics[:timeseries] = timeseries
@@ -101,6 +101,28 @@ function timeseries_diagnostic_tuples_work(arch, FT)
     time_step!(model, 2, Δt)
     return timeseries.iters[end] == 2 && timeseries.itertimes[end] == 2Δt
 end
+
+function diagnostics_getindex(arch, FT)
+    model = TestModel(arch, FT)
+    iter_timeseries = Timeseries(get_iteration, model)
+    time_timeseries = Timeseries(get_time, model)
+    model.diagnostics[:iters] = iter_timeseries
+    model.diagnostics[:times] = time_timeseries
+    return model.diagnostics[2] == time_timeseries
+end
+
+function diagnostics_setindex(arch, FT)
+    model = TestModel(arch, FT)
+    iter_timeseries = Timeseries(get_iteration, model)
+    time_timeseries = Timeseries(get_time, model)
+    max_abs_u_timeseries = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+
+    push!(model.diagnostics, iter_timeseries, time_timeseries)
+    model.diagnostics[2] = max_abs_u_timeseries
+
+    return model.diagnostics[:diag2] == max_abs_u_timeseries
+end
+
 
 @testset "Diagnostics" begin
     println("Testing diagnostics...")
@@ -132,7 +154,9 @@ end
                 @test advective_cfl_diagnostic_is_correct(arch, FT)
                 @test max_abs_field_diagnostic_is_correct(arch, FT)
                 @test timeseries_diagnostic_works(arch, FT)
-                @test timeseries_diagnostic_tuples_work(arch, FT)
+                @test timeseries_diagnostic_tuples(arch, FT)
+                @test diagnostics_getindex(arch, FT)
+                @test diagnostics_setindex(arch, FT)
             end
         end
     end
