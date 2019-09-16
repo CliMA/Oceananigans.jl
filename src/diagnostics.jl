@@ -100,12 +100,6 @@ end
 #### Timeseries diagnostics
 ####
 
-function run_diagnostic(model, diag::AbstractTimeseriesDiagnostic) 
-    push!(diag.data, diag(model))
-    push!(diag.time, model.clock.time)
-    return nothing
-end
-
 """
     Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
 
@@ -116,7 +110,7 @@ Example
 
 cfl = Timeseries(CFL(Δt), model; frequency=1)
 """
-struct Timeseries{Ω, I, D, T, TT} <: AbstractTimeseriesDiagnostic
+struct Timeseries{D, Ω, I, T, TT} <: AbstractTimeseriesDiagnostic
     diagnostic :: D
      frequency :: Ω
       interval :: I
@@ -124,6 +118,7 @@ struct Timeseries{Ω, I, D, T, TT} <: AbstractTimeseriesDiagnostic
           time :: Vector{TT}
 end
 
+# Single-diagnostic timeseries
 function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
     TD = typeof(diagnostic(model))
     TT = typeof(model.clock.time)
@@ -131,6 +126,34 @@ function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
 end
 
 @inline (timeseries::Timeseries)(model) = timeseries.diagnostic(model)
+
+function run_diagnostic(model, diag::Timeseries) 
+    push!(diag.data, diag(model))
+    push!(diag.time, model.clock.time)
+    return nothing
+end
+
+# Multi-diagnostic timeseries
+function Timeseries(diagnostics::NamedTuple, model; frequency=nothing, interval=nothing)
+    TT = typeof(model.clock.time)
+    TDs = typeof(Tuple(diag(model) for diag in diagnostics))
+    data = NamedTuple{propertynames(diagnostics)}(Tuple(TD[] for T in TDs))
+    return Timeseries(diagnostic, frequency, interval, data, TT[])
+end
+
+function (timeseries::Timeseries{<:NamedTuple})(model) 
+    names = propertynames(timeseries.diagnostic)
+    return NamedTuple{names}(Tuple(diag(model) for diag in timeseries.diagnostics))
+end
+
+function run_diagnostic(model, diag::Timeseries{<:NamedTuple}) 
+    ntuple(Val(length(diag.diagnostic))) do i
+        Base.@_inline_meta
+        push!(diag.data[i], diag.diagnostic[i](model))
+    end
+    push!(diag.time, model.clock.time)
+    return nothing
+end
 
 """
     FieldMaximum(mapping, field)
