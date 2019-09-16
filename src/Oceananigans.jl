@@ -83,6 +83,7 @@ import
     CUDAapi,
     GPUifyLoops
 
+using OrderedCollections: OrderedDict
 using Statistics: mean
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
@@ -91,7 +92,8 @@ import Base:
     +, -, *,
     size, length, eltype,
     iterate, similar, show,
-    getindex, lastindex, setindex!
+    getindex, lastindex, setindex!,
+    push!
 
 #####
 ##### Abstract types 
