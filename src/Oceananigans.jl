@@ -106,7 +106,6 @@ abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 abstract type AbstractPoissonSolver end
 abstract type AbstractOutputWriter end
 abstract type AbstractDiagnostic end
-abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
 
 #####
 ##### All the code
