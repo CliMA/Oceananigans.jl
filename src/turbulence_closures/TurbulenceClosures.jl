@@ -7,7 +7,7 @@ export
   ConstantAnisotropicDiffusivity,
 
   ConstantSmagorinsky,
-  DeardorffSmagorinsky,
+  SmagorinskyLilly,
   BlasiusSmagorinsky,
 
   AnisotropicMinimumDissipation,
@@ -124,8 +124,8 @@ const AnisotropicMinimumDissipation = VerstappenAnisotropicMinimumDissipation
 """
     ConstantSmagorinsky
 
-An alias for `DeardorffSmagorinsky`.
+An alias for `SmagorinskyLilly`.
 """
-const ConstantSmagorinsky = DeardorffSmagorinsky
+const ConstantSmagorinsky = SmagorinskyLilly
 
 end # module
