@@ -81,15 +81,25 @@ function diffusive_cfl_diagnostic_is_correct(arch, FT)
 end
 
 get_iteration(model) = model.clock.iteration
+get_time(model) = model.clock.time
 
 function timeseries_diagnostic_works(arch, FT)
     model = TestModel(arch, FT)
     iter_diag = Timeseries(get_iteration, model; frequency=1)
     push!(model.diagnostics, iter_diag)
-    Δt = 1e-16
+    Δt = FT(1e-16)
     time_step!(model, 1, Δt)
 
-    return iter_diag.time[end] == FT(Δt) && iter_diag.data[end] == 1
+    return iter_diag.time[end] == Δt && iter_diag.data[end] == 1
+end
+
+function timeseries_diagnostic_tuples_work(arch, FT)
+    model = TestModel(arch, FT)
+    timeseries = Timeseries((iters=get_iteration, itertimes=get_time), model; frequency=2)
+    model.diagnostics[:timeseries] = timeseries
+    Δt = FT(1e-16)
+    time_step!(model, 2, Δt)
+    return timeseries.iters[end] == 2 && timeseries.itertimes[end] == 2Δt
 end
 
 @testset "Diagnostics" begin
@@ -118,10 +128,11 @@ end
         @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
             println("  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]")
             for FT in float_types
-                @test timeseries_diagnostic_works(arch, FT)
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)
                 @test max_abs_field_diagnostic_is_correct(arch, FT)
+                @test timeseries_diagnostic_works(arch, FT)
+                @test timeseries_diagnostic_tuples_work(arch, FT)
             end
         end
     end
