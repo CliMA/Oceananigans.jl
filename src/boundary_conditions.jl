@@ -3,18 +3,11 @@
 #####
 
 """
-    AbstractBoundaryConditionType
+    BCType
 
 Abstract supertype for boundary condition types.
 """
-abstract type AbstractBoundaryConditionType end
-
-"""
-    BCType
-
-Abbreviation to make boundary condition definitions more concise.
-"""
-const BCType = AbstractBoundaryConditionType
+abstract type BCType end 
 
 """
     Periodic
@@ -88,6 +81,8 @@ number, an array, or a function with signature:
     `condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition`
 
 that returns a number and where `i` and `j` are indices along the boundary.
+
+Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NoPenetration`.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition :: T
@@ -125,9 +120,9 @@ Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.conditi
 #####
 
 """
-    CoordinateBoundaryConditions{L, R}(left, right)
+    CoordinateBoundaryConditions(left, right)
 
-A set of two `BoundaryCondition`s to be applied along a coordinate x, y, or :z.
+A set of two `BoundaryCondition`s to be applied along a coordinate x, y, or z.
 
 The `left` boundary condition is applied on the negative or lower side of the coordinate
 while the `right` boundary condition is applied on the positive or higher side.
@@ -163,8 +158,8 @@ getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
 """
     FieldBoundaryConditions
 
-A type describing a set of three `CoordinateBoundaryCondition`s stored in a named tuple and
-designed to be applied to a field along each of the three coordinate `:x`, `:y`, and `:z`.
+An alias for `NamedTuple{(:x, :y, :z)}` that represents a set of three `CoordinateBoundaryCondition`s
+applied to a field along x, y, and z.
 """
 const FieldBoundaryConditions = NamedTuple{(:x, :y, :z)}
 
@@ -180,16 +175,11 @@ FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
     HorizontallyPeriodicBCs(;   top = BoundaryCondition(Flux, nothing),
                              bottom = BoundaryCondition(Flux, nothing))
 
-Construct `FieldBoundaryConditions` with `Periodic` boundary conditions for the x and y
-directions. The `top` (+z) and `bottom` (-z) boundary conditions may be specified. This
-set of field boundary conditions is appropriate for use with a doubly periodic model
-configuration.
-
-By default no-flux boundary conditions are applied at the `top` and `bottom` boundaries.
-
-Note that `HorizontallyPeriodicBCs` with the default boundary conditions must not be
-applied to velocity components normal to a wall, i.e. the vertical velocity w, as they
-require `NoPenetration` boundary conditions.
+Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x and y
+directions and specified `top` (+z) and `bottom` (-z) boundary conditions for u, v, 
+and tracer fields.
+	
+`HorizontallyPeriodicBCs` cannot be applied to the the vertical velocity w.
 """
 function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
                                    bottom = BoundaryCondition(Flux, nothing))
@@ -207,17 +197,11 @@ end
                    top = BoundaryCondition(Flux, nothing),
                 bottom = BoundaryCondition(Flux, nothing))
 
-Construct `FieldBoundaryConditions` with `Periodic` boundary conditions along the x
-direction. Boundary conditions for the `north` (+y), `south` (-y), `top` (+z), and
-`bottom` (-z) boundaries may be specified. This set of field boundary conditions is
-appropriate for use with a reentrant channel model configuration.
-
-By default no-flux boundary conditions are applied at the `north`, `south`, `top`, and
-`bottom` boundaries.
-
-Note that `ChannelBCs` with the default boundary conditions must not be applied to
-velocity components normal to a wall, i.e. v and w, as they require `NoPenetration`
-boundary conditions.
+Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x
+direction and specified `north` (+y), `south` (-y), `top` (+z) and `bottom` (-z)
+boundary conditions for u, v, and tracer fields.
+	
+`ChannelBCs` cannot be applied to the the vertical velocity w.
 """
 function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
                        south = BoundaryCondition(Flux, nothing),
@@ -247,15 +231,13 @@ SolutionBoundaryConditions(u, v, w, T, S) = (u=u, v=v, w=w, T=T, S=S)
 """
     HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs(), ...)
 
-Construct a `NamedTuple` of `FieldBoundaryConditions` for a horizontally-periodic model
-configuration with solution fields `u`, `v`, `w`, `T`, and `S`. Boundary conditions may be
-specified via keyword arguments.
+Construct `SolutionBoundaryConditions` for a horizontally-periodic model
+configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
 
-By default `HorizontallyPeriodicBCs` are applied to each field (except for w where
-`NoPenetration` boundary conditions are applied at the top and bottom).
+By default `HorizontallyPeriodicBCs` are applied to `u`, `v`, `T`, and `S`
+and `HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
 
-Any specified non-default boundary condition must be horizontally-periodic, i.e. you can
-only change the top and bottom boundary conditions.
+Use `HorizontallyPeriodicBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
 """
 function HorizontallyPeriodicSolutionBCs(;
     u = HorizontallyPeriodicBCs(),
@@ -270,15 +252,13 @@ end
 """
     ChannelSolutionBCs(u=ChannelBCs(), ...)
 
-Construct a `NamedTuple` of `FieldBoundaryConditions` for a reentrant channel model
-configuration with solution fields `u`, `v`, `w`, `T`, and `S`. Boundary conditions may be
-specified via keyword arguments.
+Construct `SolutionBoundaryConditions` for a reentrant channel model
+configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
 
-By default `ChannelBCs` are applied to each field (except for v and w where `NoPenetration`
-boundary conditions are applied at the wall boundaries).
+By default `ChannelBCs` are applied to `u`, `v`, `T`, and `S`
+and `ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
 
-Any specified non-default boundary condition must be periodic in the x-direction, i.e. you
-can only change the north (+y), south (-y), top (+z), and bottom (-z) boundary conditions.
+Use `ChannelBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
 """
 function ChannelSolutionBCs(;
     u = ChannelBCs(),
@@ -379,7 +359,7 @@ end
 Add the part of flux divergence associated with a top boundary condition on `c`.
 Note that because
 
-    ``tendency = ∂c/∂t = Gc = - ∇ ⋅ flux``
+    `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
 a positive top flux is associated with a *decrease* in `Gc` near the top boundary.
 If `top_bc.condition` is a function, the function must have the signature
@@ -395,7 +375,7 @@ If `top_bc.condition` is a function, the function must have the signature
 Add the flux divergence associated with a bottom flux boundary condition on `c`.
 Note that because
 
-    ``tendency = ∂c/∂t = Gc = - ∇ ⋅ flux``
+    `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
 a positive bottom flux is associated with an *increase* in `Gc` near the bottom boundary.
 If `bottom_bc.condition` is a function, the function must have the signature
