@@ -109,7 +109,7 @@ size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "RegularCartesianGrid{$(typeof(g.Lx))}\n", 
+    print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
               "      domain (Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
