@@ -11,12 +11,13 @@ struct Field{Lx, Ly, Lz, A, G} <: AbstractField{A, G}
     grid :: G
 end
 
-function Field(Lx, Ly, Lz, arch::AbstractArchitecture, grid)
+function Field(L::Tuple, arch::AbstractArchitecture, grid)
     data = zeros(arch, grid)
-    return Field(Lx, Ly, Lz, data, grid)
+    return Field(L, data, grid)
 end
 
-Field(Lx, Ly, Lz, data::AbstractArray, grid) = Field{Lx, Ly, Lz, typeof(data), typeof(grid)}(data, grid)
+Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3], typeof(data), typeof(grid)}(data, grid)
+Field(Lx, Ly, Lz, data, grid) = Field((Lx, Ly, Lz), data, grid)
 
 const CellField  = Field{Cell, Cell, Cell}
 const FaceFieldX = Field{Face, Cell, Cell}
@@ -57,24 +58,23 @@ FaceFieldY(arch, grid) = Field(Cell, Face, Cell, arch, grid)
 FaceFieldZ(arch, grid) = Field(Cell, Cell, Face, arch, grid)
 
 fieldtype(f::AbstractField) = typeof(f).name.wrapper
+location(::Field{Lx, Ly, Lz}) where {Lx, Ly, Lz} = (Lx, Ly, Lz)
 
 @inline size(f::AbstractField) = size(f.grid)
 @inline length(f::AbstractField) = length(f.data)
 
-@inline getindex(f::AbstractField, inds...) = getindex(f.data, inds...)
+@propagate_inbounds getindex(f::AbstractField, inds...) = getindex(f.data, inds...)
+@propagate_inbounds setindex!(f::AbstractField, v, inds...) = setindex!(f.data, v, inds...)
 @inline lastindex(f::AbstractField) = lastindex(f.data)
 @inline lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
-@inline setindex!(f::AbstractField, v, inds...) = setindex!(f.data, v, inds...)
 
 "Returns a view over the interior points of the `field.data`."
 @inline data(f::AbstractField) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
 "Returns a reference to the interior points of `field.data.parent.`"
-@inline parentdata(f::AbstractField) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                             1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                             1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
-
-@inline underlying_data(f::AbstractField) = f.data.parent
+@inline parentdata(f::AbstractField) = @inbounds f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
+                                                               1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
+                                                               1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 
 show(io::IO, f::AbstractField) = show(io, f.data)
 iterate(f::AbstractField, state=1) = iterate(f.data, state)
@@ -117,14 +117,15 @@ znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, 
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
-zerofunk(args...) = 0
+# Niceties 
+const AbstractCPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+@hascuda const AbstractGPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 set!(u::AbstractField, v::Number) = @. u.data = v
 set!(u::AbstractField{A}, v::AbstractField{A}) where A = @. u.data.parent = v.data.parent
 
 "Set the CPU field `u` to the array `v`."
-function set!(u::AbstractField{A}, v::Array) where {
-    A <: OffsetArray{T, D, <:Array} where {T, D}}
+function set!(u::AbstractCPUField, v::Array)
     for k in 1:u.grid.Nz, j in 1:u.grid.Ny, i in 1:u.grid.Nx
         u[i, j, k] = v[i, j, k]
     end
@@ -132,20 +133,21 @@ function set!(u::AbstractField{A}, v::Array) where {
 end
 
 "Set the GPU field `u` to the array `v`."
-@hascuda function set!(u::AbstractField{A}, v::Array) where {
-    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
+#@hascuda function set!(u::AbstractField{A}, v::Array) where {
+#    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
 
+@hascuda function set!(u::AbstractGPUField, v::Array)
     FieldType = fieldtype(u)
-    v_field = FieldType(CPU(), u.grid)
+    v_field = FieldType(location(u), CPU(), u.grid)
     set!(v_field, v)
     set!(u, v_field)
     return nothing
 end
 
 "Set the GPU field `u` to the CuArray `v`."
-@hascuda function set!(u::AbstractField{A}, v::CuArray) where {
-    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
+@hascuda function set!(u::AbstractGPUField, v::CuArray)
     @launch device(GPU()) config=launch_config(u.grid, 3) _set_gpu!(u.data, v, u.grid)
+    return nothing
 end
 
 function _set_gpu!(u, v, grid)
@@ -160,31 +162,18 @@ function _set_gpu!(u, v, grid)
 end
 
 "Set the GPU field `u` data to the CPU field data of `v`."
-@hascuda function set!(u::AbstractField{Au}, v::AbstractField{Av}) where {
-    Au<:OffsetArray{T1, D, <:CuArray}, Av<:OffsetArray{T2, D, <:Array}} where {T1, T2, D}
-
-    copyto!(u.data.parent, v.data.parent)
-    return nothing
-end
+@hascuda set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
 
 "Set the CPU field `u` data to the GPU field data of `v`."
-@hascuda function set!(u::AbstractField{Au}, v::AbstractField{Av}) where {
-    Au<:OffsetArray{T1, D, <:Array}, Av<:OffsetArray{T2, D, <:CuArray}} where {T1, T2, D}
-
-    u.data.parent .= Array(v.data.parent)
-    return nothing
-end
+@hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
 set!(u::AbstractField, f::Function) = data(u) .= f.(nodes(u)...)
 
 "Set the GPU field `u` data to the function `f(x, y, z)`."
-@hascuda function set!(u::AbstractField{A1}, f::Function) where {
-    A1 <: OffsetArray{T, D, <:CuArray} where {T, D}}
-
+@hascuda function set!(u::AbstractGPUField, f::Function)
     FieldType = fieldtype(u)
-    u_cpu = FieldType(CPU(), u.grid)
-
+    u_cpu = FieldType(location(u), CPU(), u.grid)
     set!(u_cpu, f)
     set!(u, u_cpu)
     return nothing
@@ -238,4 +227,4 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set_ic!(model; kwargs...) = set!(model; kwargs...)  # legacy wrapper
+set_ic!(model; kwargs...) = set!(model; kwargs...) # legacy wrapper

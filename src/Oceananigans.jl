@@ -83,6 +83,7 @@ import
     CUDAapi,
     GPUifyLoops
 
+using Base: @propagate_inbounds
 using Statistics: mean
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
