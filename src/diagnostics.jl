@@ -116,11 +116,11 @@ Example
 
 cfl = Timeseries(CFL(Δt), model; frequency=1)
 """
-struct Timeseries{Ω, I, D, TD, TT} <: AbstractTimeseriesDiagnostic
+struct Timeseries{Ω, I, D, T, TT} <: AbstractTimeseriesDiagnostic
     diagnostic :: D
      frequency :: Ω
       interval :: I
-          data :: Vector{TD}
+          data :: T
           time :: Vector{TT}
 end
 
