@@ -136,9 +136,9 @@ end
 # Multi-diagnostic timeseries
 function Timeseries(diagnostics::NamedTuple, model; frequency=nothing, interval=nothing)
     TT = typeof(model.clock.time)
-    TDs = typeof(Tuple(diag(model) for diag in diagnostics))
-    data = NamedTuple{propertynames(diagnostics)}(Tuple(TD[] for T in TDs))
-    return Timeseries(diagnostic, frequency, interval, data, TT[])
+    TDs = Tuple(typeof(diag(model)) for diag in diagnostics)
+    data = NamedTuple{propertynames(diagnostics)}(Tuple(T[] for T in TDs))
+    return Timeseries(diagnostics, frequency, interval, data, TT[])
 end
 
 function (timeseries::Timeseries{<:NamedTuple})(model) 
@@ -153,6 +153,17 @@ function run_diagnostic(model, diag::Timeseries{<:NamedTuple})
     end
     push!(diag.time, model.clock.time)
     return nothing
+end
+
+Base.getproperty(ts::Timeseries{<:NamedTuple}, name::Symbol) = get_timeseries_field(ts, name)
+
+"Returns a field of timeseries, or a field of `timeseries.data` when possible."
+function get_timeseries_field(timeseries, name) 
+    if name ∈ propertynames(timeseries)
+        return getfield(timeseries, name)
+    else
+        return getproperty(timeseries.data, name)
+    end
 end
 
 """
