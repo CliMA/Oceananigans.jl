@@ -213,6 +213,22 @@ end
 #### Utilities shared between diagnostics and output writers
 ####
 
+defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
+defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
+
+const DiagOrWriterDict = OrderedDict{S, <:Union{AbstractDiagnostic, AbstractOutputWriter}} where S
+
+function push!(container::DiagOrWriterDict, elem) where S
+    name = defaultname(elem, length(container))
+    container[name] = elem
+    return nothing
+end
+
+getindex(container::DiagOrWriterDict, inds::Integer...) where S = getindex(container.vals, inds...)
+
+setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) where S = 
+    setindex!(container.vals, newvals, inds...)
+
 """
     validate_interval(frequency, interval)
 
