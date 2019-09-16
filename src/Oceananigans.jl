@@ -19,7 +19,7 @@ export
     RegularCartesianGrid,
 
     # Fields
-    CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
     data, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
@@ -83,8 +83,9 @@ import
     CUDAapi,
     GPUifyLoops
 
-using OrderedCollections: OrderedDict
+using Base: @propagate_inbounds
 using Statistics: mean
+using OrderedCollections: OrderedDict
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
@@ -132,6 +133,9 @@ end
         println(dev)
     end
 end
+
+architecture(::Array) = CPU()
+@hascuda architecture(::CuArray) = GPU()
 
 function buoyancy_perturbation end
 
