@@ -120,7 +120,7 @@ end
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating the
 buoyancy perturbation ``g δρ`` downwards
 
-    ``pHY′ = ∫ g δρ dz`` from ``z=0`` down to ``z=-L_z``
+    `pHY′ = -∫ g δρ dz` from `z=0` down to `z=-Lz`
 """
 function update_hydrostatic_pressure!(pHY′, grid, constants, eos, Φ)
     gΔz = constants.g * grid.Δz
@@ -229,7 +229,7 @@ end
 Evaluate the right-hand-side terms at time step n+½ using a weighted 2nd-order
 Adams-Bashforth method
 
-    ``G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}``
+    `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
 function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ) where FT
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -249,7 +249,7 @@ end
 Calculate the right-hand-side of the elliptic Poisson equation for the non-hydrostatic
 pressure
 
-    ``∇²ϕ_{NH}^{n+1} = (∇·u^n)/Δt + ∇·(Gu, Gv, Gw)``
+    `∇²ϕ_{NH}^{n+1} = (∇·u^n)/Δt + ∇·(Gu, Gv, Gw)`
 """
 function calculate_poisson_right_hand_side!(::CPU, grid::AbstractGrid, ::PoissonBCs, Δt, U, G, RHS)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -377,11 +377,11 @@ end
 """
 Update the horizontal velocities u and v via
 
-    ``u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt``
+    `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
 
 and the tracers via
 
-    ``c^{n+1} = c^n + Gc^{n+½} Δt``
+    `c^{n+1} = c^n + Gc^{n+½} Δt`
 
 Note that the vertical velocity is not explicitly time stepped.
 """
@@ -401,7 +401,7 @@ end
 """
 Compute the vertical velocity w by integrating the continuity equation downwards
 
-    ``w^{n+1} = -∫ (∂u/∂x + ∂v/∂y) dz``
+    `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
 function compute_w_from_continuity!(grid::AbstractGrid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
