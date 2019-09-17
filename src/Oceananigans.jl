@@ -101,6 +101,7 @@ import Base:
 
 abstract type AbstractModel end
 abstract type AbstractArchitecture end
+abstract type AbstractRotation end
 abstract type AbstractEquationOfState end
 abstract type AbstractGrid{T} end
 abstract type AbstractField{A, G} end

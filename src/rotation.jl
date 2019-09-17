@@ -1,5 +1,3 @@
-abstract type AbstractRotation end
-
 """
     VerticalRotationAxis{T} <: AbstractRotation
 
