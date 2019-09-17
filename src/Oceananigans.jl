@@ -175,16 +175,16 @@ struct GPU <: AbstractArchitecture end
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
-macro hascuda(ex)
-    return has_cuda() ? :($(esc(ex))) : :(nothing)
-end
-
 """
     @hascuda
 
 A macro to execute an expression only if CUDA is installed and available. Generally used to
 wrap expressions that can only execute with a GPU.
 """
+macro hascuda(ex)
+    return has_cuda() ? :($(esc(ex))) : :(nothing)
+end
+
 @hascuda begin
     # Import CUDA utilities if it's detected.
     using CUDAdrv, CUDAnative, CuArrays
