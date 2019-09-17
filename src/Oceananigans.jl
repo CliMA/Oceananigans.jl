@@ -28,7 +28,7 @@ export
     Forcing,
 
     # Equation of state
-    NoEquationOfState, LinearEquationOfState,
+    SeawaterBuoyancy, LinearEquationOfState,
 
     # Boundary conditions
     BoundaryCondition,
@@ -139,12 +139,13 @@ architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
 function buoyancy_perturbation end
+function total_buoyancy end
 
 include("utils.jl")
 
 include("clock.jl")
 include("rotation.jl")
-include("planetary_constants.jl")
+include("buoyancy.jl")
 include("grids.jl")
 include("fields.jl")
 
@@ -153,7 +154,6 @@ include("turbulence_closures/TurbulenceClosures.jl")
 
 include("boundary_conditions.jl")
 include("halo_regions.jl")
-include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
 include("time_steppers.jl")
