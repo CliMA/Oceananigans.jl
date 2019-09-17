@@ -37,19 +37,19 @@ simulation of idealized geometries in mind, it employs a similar algorithm to
 the the Massachusetts Institute of Technology general circulation model
 [@Marshall1997] and ships with large eddy simulation capabilities.
 
-Using Julia [@Bezanson2017] has allowed for the development of high-level,
+Using Julia [@Bezanson2017] allows for the development of high-level,
 low-cost abstractions so that both a friendly user interface and a
 high-performance model can be programmed in the same language. Using a
 high-level language greatly reduces development time and allows users to easily
 extend the model and implement new features to carry out their experiments.
-Furthermore Julia's native GPU compiler [@Besard2019] allowed us to develop a
+Furthermore Julia's native GPU compiler [@Besard2019] allows us to develop a
 single code base that executes efficiently on CPUs and GPUs.
 
 Third paragraph on nice features and aspects:
 1. Makes computational fluid dynamics and ocean modeling more accessible:
-   existing models generally not very user-friendly as you have to fumble
-   with compilers and MPI. Also written in Fortran which is no longer
-   being taught to students.
+   generally, existing models are not very user-friendly as you have to fumble
+   with compilers and MPI and are written in Fortran, which is no longer
+   taught to students.
 2. Makes LES more accessible: existing LES code is not usually shared,
    tested, or easy to use.
 3. Simulations are set up by scripts: extensible and flexible, no longer
