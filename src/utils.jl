@@ -1,7 +1,3 @@
-####
-#### Adapting structs
-####
-
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
@@ -9,8 +5,8 @@ zerofunk(args...) = 0
 
 # Need to adapt SubArray indices as well.
 # See: https://github.com/JuliaGPU/Adapt.jl/issues/16
-# Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
-#     SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
+#Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
+#    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 ####
 #### Convinient definitions
@@ -21,25 +17,14 @@ const minute = 60.0
 const hour   = 60minute
 const day    = 24hour
 
-const KiB = 1024.0
-const MiB = 1024KiB
-const GiB = 1024MiB
-const TiB = 1024GiB
+KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
 
 ####
 #### Pretty printing
 ####
 
-"""
-    prettytime(t)
-
-Convert a floating point value `t` representing an amount of time in seconds to a more
-human-friendly formatted string with three decimal places. Depending on the value of `t`
-the string will be formatted to show `t` in nanoseconds (ns), microseconds (μs),
-milliseconds (ms), seconds (s), minutes (min), hours (hr), or days (day).
-"""
+# Source: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
 function prettytime(t)
-    # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
     if t < 1e-6
         value, units = t * 1e9, "ns"
     elseif t < 1e-3
@@ -59,16 +44,8 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-"""
-    pretty_filesize(s, suffix="B")
-
-Convert a floating point value `s` representing a file size to a more human-friendly
-formatted string with one decimal places with a `suffix` defaulting to "B". Depending on
-the value of `s` the string will be formatted to show `s` using an SI prefix from bytes,
-kiB (1024 bytes), MiB (1024² bytes), and so on up to YiB (1024⁸ bytes).
-"""
+# Source: https://stackoverflow.com/a/1094933
 function pretty_filesize(s, suffix="B")
-    # Modified from: https://stackoverflow.com/a/1094933
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]
         abs(s) < 1024 && return @sprintf("%3.1f %s%s", s, unit, suffix)
         s /= 1024
@@ -89,23 +66,23 @@ function OffsetArray(underlying_data, grid::AbstractGrid)
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-function zeros(T, ::CPU, grid)
+function Base.zeros(T, ::CPU, grid)
     underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
     return OffsetArray(underlying_data, grid)
 end
 
-function zeros(T, ::GPU, grid)
+function Base.zeros(T, ::GPU, grid)
     underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
     return OffsetArray(underlying_data, grid)
 end
 
-zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
-zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 
 # Default to type of Grid
-zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
-zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
+Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
 ####
 #### Courant–Friedrichs–Lewy (CFL) condition number calculation
@@ -137,18 +114,16 @@ cell_advection_timescale(model) =
 ####
 
 """
-    TimeStepWizard{T}
+    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, kwargs...)
 
-    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf)
-
-A type for calculating adaptive time steps based on capping the CFL number at `cfl`.
-
-On calling `update_Δt!(wizard, model)`, the `TimeStepWizard` computes a time-step such that
-``cfl = max(u/Δx, v/Δy, w/Δz) Δt``, where ``max(u/Δx, v/Δy, w/Δz)`` is the maximum ratio
-between model velocity and along-velocity grid spacing anywhere on the model grid. The new
-`Δt` is constrained to change by a multiplicative factor no more than `max_change` or no
-less than `min_change` from the previous `Δt`, and to be no greater in absolute magnitude
-than `max_Δt`.
+Instantiate a `TimeStepWizard`. On calling `update_Δt!(wizard, model)`,
+the `TimeStepWizard` computes a time-step such that
+`cfl = max(u/Δx, v/Δy, w/Δz) Δt`, where `max(u/Δx, v/Δy, w/Δz)` is the
+maximum ratio between model velocity and along-velocity grid spacing
+anywhere on the model grid. The new `Δt` is constrained to change by a
+multiplicative factor no more than `max_change` or no less than
+`min_change` from the previous `Δt`, and to be no greater in absolute
+magnitude than `max_Δt`.
 """
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1
@@ -162,8 +137,8 @@ end
 """
     update_Δt!(wizard, model)
 
-Compute `wizard.Δt` given the velocities and diffusivities of `model`, and the parameters
-of `wizard`.
+Compute `wizard.Δt` given the velocities and diffusivities
+of `model`, and the parameters of `wizard`.
 """
 function update_Δt!(wizard, model)
     Δt = wizard.cfl * cell_advection_timescale(model)
@@ -238,6 +213,27 @@ end
 ####
 #### Utilities shared between diagnostics and output writers
 ####
+
+defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
+defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
+
+const DiagOrWriterDict = OrderedDict{S, <:Union{AbstractDiagnostic, AbstractOutputWriter}} where S
+
+function push!(container::DiagOrWriterDict, elem)
+    name = defaultname(elem, length(container))
+    container[name] = elem
+    return nothing
+end
+
+getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.vals, inds...)
+setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) = setindex!(container.vals, newvals, inds...)
+
+function push!(container::DiagOrWriterDict, elems...)
+    for elem in elems
+        push!(container, elem)
+    end
+    return nothing
+end
 
 """
     validate_interval(frequency, interval)
