@@ -34,15 +34,14 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
     closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState{FT}()
-    grav = one(FT)
+    buoyancy = SeawaterBuoyancy(FT, g=1, equation_of_state=LinearEquationOfState(FT))
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
 
     U, Φ, K = datatuples(velocities, tracers, diffusivities)
 
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(
-        K, grid, closure, eos, grav, U, Φ)
+        K, grid, closure, buoyancy, U, Φ)
 
     return true
 end
@@ -59,8 +58,6 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
     bcs = HorizontallyPeriodicSolutionBCs()
-    eos = LinearEquationOfState()
-    grav = one(FT)
 
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
@@ -84,15 +81,12 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
             )
 end
 
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7),
-                                              νv=FT(0.1), κv=FT(0.5))
-
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
     arch = CPU()
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
     bcs = HorizontallyPeriodicSolutionBCs()
-    eos = LinearEquationOfState()
-    grav = one(FT)
+    buoyancy = SeawaterBuoyancy(FT, g=1, equation_of_state=LinearEquationOfState(FT))
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
     u, v, w = velocities
@@ -117,10 +111,10 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     U, Φ = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 6νh + 8νv
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, nothing) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U..., nothing) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U..., nothing) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv
             )
 end
 

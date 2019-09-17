@@ -61,8 +61,7 @@ function test_flux_budget(arch, FT, fldname)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
     model = BasicModel(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, architecture=arch,
-                       float_type=FT, eos=LinearEquationOfState(βS=0.0, βT=0.0), 
-                       boundary_conditions=modelbcs)
+                       float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
 
     if fldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fldname)
