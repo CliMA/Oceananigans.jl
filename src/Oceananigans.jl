@@ -13,6 +13,7 @@ export
 
     # Constants
     PlanetaryConstants, Earth, Europa, Enceladus,
+    FPlane, VerticalRotationAxis,
     second, minute, hour, day,
 
     # Grids
@@ -141,6 +142,7 @@ function buoyancy_perturbation end
 include("utils.jl")
 
 include("clock.jl")
+include("rotation.jl")
 include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
