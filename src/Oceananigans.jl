@@ -115,7 +115,19 @@ abstract type AbstractArchitecture end
 Abstract supertype for grids with elements of type `T`.
 """
 abstract type AbstractGrid{T} end
+
+"""
+    AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
+"""
 abstract type AbstractField{A, G} end
+
+"""
+    AbstractFaceField{A, G} <: AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined the cell faces of a grid `G`.
+"""
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 
 """
