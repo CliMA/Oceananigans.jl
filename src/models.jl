@@ -1,30 +1,26 @@
 using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-# Abbreviations to make Model struct definition more concise.
-const AOW = AbstractOutputWriter
-const AD  = AbstractDiagnostic
-
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquationOfState,
-                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
+                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, OW, DI, Θ} <: AbstractModel
 
-           architecture :: A              # Computer `Architecture` on which `Model` is run
-                   grid :: G              # Grid of physical points on which `Model` is solved
-                  clock :: Clock{T}       # Tracks iteration number and simulation time of `Model`
-                    eos :: EOS            # Relationship between temperature, salinity, and buoyancy
-              constants :: Λ              # Set of physical constants, inc. gravitational acceleration
-             velocities :: U              # Container for velocity fields `u`, `v`, and `w`
-                tracers :: C              # Container for tracer fields
-              pressures :: Φ              # Container for hydrostatic and nonhydrostatic pressure
-                forcing :: F              # Container for forcing functions defined by the user
-                closure :: E              # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: BCS            # Container for 3d bcs on all fields
-            timestepper :: TS             # Object containing timestepper fields and parameters
-         poisson_solver :: S              # Poisson Solver
-          diffusivities :: K              # Container for turbulent diffusivities
-         output_writers :: Array{AOW, 1}  # Objects that write data to disk
-            diagnostics :: Array{AD, 1}   # Objects that calc diagnostics on-line during simulation
-             parameters :: Θ              # Container for arbitrary user-defined parameters
+           architecture :: A         # Computer `Architecture` on which `Model` is run
+                   grid :: G         # Grid of physical points on which `Model` is solved
+                  clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+                    eos :: EOS       # Relationship between temperature, salinity, and buoyancy
+              constants :: Λ         # Set of physical constants, inc. gravitational acceleration
+             velocities :: U         # Container for velocity fields `u`, `v`, and `w`
+                tracers :: C         # Container for tracer fields
+              pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
+                forcing :: F         # Container for forcing functions defined by the user
+                closure :: E         # Diffusive 'turbulence closure' for all model fields
+    boundary_conditions :: BCS       # Container for 3d bcs on all fields
+            timestepper :: TS        # Object containing timestepper fields and parameters
+         poisson_solver :: S         # Poisson Solver
+          diffusivities :: K         # Container for turbulent diffusivities
+         output_writers :: OW        # Objects that write data to disk
+            diagnostics :: DI        # Objects that calc diagnostics on-line during simulation
+             parameters :: Θ         # Container for arbitrary user-defined parameters
 
 end
 
@@ -71,8 +67,8 @@ function Model(;
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
-         output_writers = AbstractOutputWriter[],
-            diagnostics = AbstractDiagnostic[],
+         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
              velocities = VelocityFields(architecture, grid),
