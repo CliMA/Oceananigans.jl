@@ -86,6 +86,7 @@ import
 
 using Base: @propagate_inbounds
 using Statistics: mean
+using OrderedCollections: OrderedDict
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
@@ -93,7 +94,8 @@ import Base:
     +, -, *,
     size, length, eltype,
     iterate, similar, show,
-    getindex, lastindex, setindex!
+    getindex, lastindex, setindex!,
+    push!
 
 #####
 ##### Abstract types 
@@ -109,7 +111,6 @@ abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 abstract type AbstractPoissonSolver end
 abstract type AbstractOutputWriter end
 abstract type AbstractDiagnostic end
-abstract type AbstractTimeseriesDiagnostic <: AbstractDiagnostic end
 
 #####
 ##### All the code
