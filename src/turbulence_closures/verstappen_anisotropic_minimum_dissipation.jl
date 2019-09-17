@@ -44,17 +44,15 @@ function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, 
     return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
-@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, Φ) where FT
     ijk = (i, j, k, grid)
-    q = norm_tr_∇u_ccc(ijk..., u, v, w)
+    q = norm_tr_∇u_ccc(ijk..., U.u, U.v, U.w)
 
     if q == 0 # SGS viscosity is zero when strain is 0
         νˢᵍˢ = zero(FT)
     else
-        r = norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(ijk..., closure, u, v, w)
-        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, eos, grav, w, T, S) / Δᶠz_ccc(ijk...)
+        r = norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(ijk..., closure, U.u, U.v, U.w)
+        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, buoyancy, w, Φ) / Δᶠz_ccc(ijk...)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
     end
@@ -62,16 +60,14 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, Φ) where FT
     ijk = (i, j, k, grid)
     σ =  norm_θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
     if σ == 0
         κˢᵍˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, u, v, w, c)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢ_ccc(ijk..., closure, U.u, U.v, U.w, c)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         κˢᵍˢ = - closure.C * δ² * ϑ / σ
     end
@@ -216,17 +212,17 @@ end
     )
 end
 
-@inline function norm_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
+@inline function norm_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, w, C)
     ijk = (i, j, k, grid)
 
     wx_bx = (▶xz_cac(ijk..., norm_∂x_w, w)
-             * Δᶠx_ccc(ijk...) * ▶x_caa(ijk..., ∂x_faa, buoyancy_perturbation, eos, grav, T, S))
+             * Δᶠx_ccc(ijk...) * ▶x_caa(ijk..., ∂x_faa, buoyancy_perturbation, buoyancy, C))
 
     wy_by = (▶yz_acc(ijk..., norm_∂y_w, w)
-             * Δᶠy_ccc(ijk...) * ▶y_aca(ijk..., ∂y_afa, buoyancy_perturbation, eos, grav, T, S))
+             * Δᶠy_ccc(ijk...) * ▶y_aca(ijk..., ∂y_afa, buoyancy_perturbation, buoyancy, C))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠz_ccc(ijk...) * ▶z_aac(ijk..., ∂z_aaf, buoyancy_perturbation, eos, grav, T, S))
+             * Δᶠz_ccc(ijk...) * ▶z_aac(ijk..., ∂z_aaf, buoyancy_perturbation, buoyancy, C))
 
     return wx_bx + wy_by + wz_bz
 end
@@ -285,13 +281,13 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
 )
 
-function calc_diffusivities!(K, grid, closure::VAMD, eos, grav, U, Φ)
+function calc_diffusivities!(K, grid, closure::VAMD, buoyancy, U, Φ)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
+                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy, U, Φ)
+                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy, U, Φ)
             end
         end
     end
