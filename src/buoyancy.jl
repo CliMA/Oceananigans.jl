@@ -34,7 +34,7 @@ with a linear equation of state is
 
     `b′ = α * T - β * S`
 
-Default constants are taken from Eq. (1.57) of Vallis, "Atmospheric and Oceanic Fluid 
+Default constants are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid 
 Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
 """
 LinearEquationOfState(T=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfState{T}(α, β)
