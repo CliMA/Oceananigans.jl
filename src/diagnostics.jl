@@ -101,14 +101,9 @@ end
 ####
 
 """
-    Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
+    Timeseries{D, Ω, I, T, TT} <: AbstractDiagnostic
 
-A generic `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
-
-Example
-=======
-
-cfl = Timeseries(CFL(Δt), model; frequency=1)
+A diagnostic for collecting and storing timeseries.
 """
 struct Timeseries{D, Ω, I, T, TT} <: AbstractDiagnostic
     diagnostic :: D
@@ -118,7 +113,26 @@ struct Timeseries{D, Ω, I, T, TT} <: AbstractDiagnostic
           time :: Vector{TT}
 end
 
-# Single-diagnostic timeseries
+"""
+    Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
+
+A `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
+
+Example
+=======
+
+julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
+
+julia> max_u = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+
+julia> model.diagnostics[:max_u] = max_u; data(model.velocities.u) .= π; time_step!(model, Nt=3, Δt=1e-16)
+
+julia> max_u.data
+3-element Array{Float64,1}:
+ 3.141592653589793
+ 3.1415926025389127
+ 3.1415925323439517
+"""
 function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
     TD = typeof(diagnostic(model))
     TT = typeof(model.clock.time)
@@ -133,7 +147,31 @@ function run_diagnostic(model, diag::Timeseries)
     return nothing
 end
 
-# Multi-diagnostic timeseries
+"""
+    Timeseries(diagnostics::NamedTuple, model; frequency=nothing, interval=nothing)
+
+A `Timeseries` `Diagnostic` that records a `NamedTuple` of time series of 
+`diag(model)` for each `diag` in `diagnostics`.
+
+Example
+=======
+
+julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1)); Δt = 1.0;
+
+julia> cfl = Timeseries((adv=AdvectiveCFL(Δt), diff=DiffusiveCFL(Δt)), model; frequency=1);
+
+julia> model.diagnostics[:cfl] = cfl; time_step!(model, Nt=3, Δt=Δt)
+
+julia> cfl.data
+(adv = [0.0, 0.0, 0.0, 0.0], diff = [0.0002688, 0.0002688, 0.0002688, 0.0002688])
+
+julia> cfl.adv
+4-element Array{Float64,1}:
+ 0.0
+ 0.0
+ 0.0
+ 0.0
+"""
 function Timeseries(diagnostics::NamedTuple, model; frequency=nothing, interval=nothing)
     TT = typeof(model.clock.time)
     TDs = Tuple(typeof(diag(model)) for diag in diagnostics)
@@ -175,13 +213,11 @@ element-wise to `field`.
 Example
 =======
 
-julia> max_abs_u = FieldMaximum(abs, model.velocities.u)
+julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
 
-julia> max_w² = FieldMaximum(x->x^2, model.velocities.w)
+julia> max_abs_u = FieldMaximum(abs, model.velocities.u);
 
-julia> max_abs_u_timeseries = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
-
-julia> max_abs_U_timeseries = Timeseries(FieldMaximum(abs, model.velocities), model; frequency=1)
+julia> max_w² = FieldMaximum(x->x^2, model.velocities.w);
 """
 struct FieldMaximum{F, M}
     mapping :: M
@@ -194,41 +230,64 @@ end
     NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
 
 """
-    CFL(Δt, timescale=Oceananigans.cell_advection_timescale)
+    CFL{D, S}
 
-A diagnostic for computing the Courant-Freidrichs-Lewis (CFL) 
-number, associated with time-step `Δt` and a characteristic `timescale`. 
-If `Δt` is `TimeStepWizard` object, the current `Δt` associated with the 
-wizard is used.
-
-See also `AdvectiveCFL` and `DiffusiveCFL`.
-
-Example
-=======
-
-cfl = CFL(0.5)
-cfl(model)
+An object for computing the Courant-Freidrichs-Lewy (CFL) number.
 """
 struct CFL{D, S}
            Δt :: D
     timescale :: S
 end
 
+"""
+    CFL(Δt [, timescale=Oceananigans.cell_advection_timescale])
+
+Returns an object for computing the Courant-Freidrichs-Lewy (CFL) number
+associated with time step or `TimeStepWizard` `Δt` and `timescale`.
+
+See also `AdvectiveCFL` and `DiffusiveCFL`
+"""
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 (c::CFL{<:Number})(model) = c.Δt / c.timescale(model)
 (c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
 
 """
-    AdvectiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
+    AdvectiveCFL(Δt)
 
-A diagnostic for computing time series of the advective CFL number.
+Returns an object for computing the Courant-Freidrichs-Lewy (CFL) number
+associated with time step or `TimeStepWizard` `Δt` and the time scale
+for advection across a cell.
+
+Example
+=======
+
+julia> model = BasicModel(N=(16, 16, 16), L=(8, 8, 8));
+
+julia> cfl = AdvectiveCFL(1.0);
+
+julia> data(model.velocities.u) .= π;
+
+julia> cfl(model)
+6.283185307179586
 """
 AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 """
-    DiffusiveCFLDiagnostic([T=Float64], Δt; frequency=nothing, interval=nothing)
+    DiffusiveCFL(Δt)
 
-A diagnostic for computing time series of the diffusive CFL number.
+Returns an object for computing the Courant-Freidrichs-Lewy (CFL) number
+associated with time step or `TimeStepWizard` `Δt` and the time scale
+for diffusion across a cell associated with `model.closure`.
+
+Example
+=======
+
+julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
+
+julia> cfl = DiffusiveCFL(0.1);
+
+julia> cfl(model)
+2.688e-5
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
