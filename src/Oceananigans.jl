@@ -101,20 +101,63 @@ import Base:
 #####
 
 abstract type AbstractModel end
+
+"""
+    AbstractArchitecture
+
+Abstract supertype for architectures supported by Oceananigans.
+"""
 abstract type AbstractArchitecture end
-abstract type AbstractEquationOfState end
+
+"""
+    AbstractGrid{T}
+
+Abstract supertype for grids with elements of type `T`.
+"""
 abstract type AbstractGrid{T} end
 abstract type AbstractField{A, G} end
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for equations of state.
+"""
+abstract type AbstractEquationOfState end
+
 abstract type AbstractPoissonSolver end
-abstract type AbstractOutputWriter end
+
+"""
+    AbstractDiagnostic
+
+Abstract supertype for types that compute diagnostic information from the current model
+state.
+"""
 abstract type AbstractDiagnostic end
+
+"""
+    AbstractOutputWriter
+
+Abstract supertype for types that perform input and output.
+"""
+abstract type AbstractOutputWriter end
 
 #####
 ##### All the code
 #####
 
+"""
+    CPU <: AbstractArchitecture
+
+Run Oceananigans on a single-core of a CPU.
+"""
 struct CPU <: AbstractArchitecture end
+
+"""
+    GPU <: AbstractArchitecture
+
+Run Oceananigans on a single NVIDIA CUDA GPU.
+"""
 struct GPU <: AbstractArchitecture end
 
 device(::CPU) = GPUifyLoops.CPU()
@@ -124,6 +167,12 @@ macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
 end
 
+"""
+    @hascuda
+
+A macro to execute an expression only if CUDA is installed and available. Generally used to
+wrap expressions that can only execute with a GPU.
+"""
 @hascuda begin
     # Import CUDA utilities if it's detected.
     using CUDAdrv, CUDAnative, CuArrays
