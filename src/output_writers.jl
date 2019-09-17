@@ -447,6 +447,7 @@ function write_output(model, c::Checkpointer)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(sz))"
 end
 
+defaultname(::Checkpointer, nelems) = :checkpointer
 _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
