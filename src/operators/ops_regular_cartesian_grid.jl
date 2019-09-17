@@ -27,6 +27,10 @@ using Oceananigans: VerticalRotationAxis, AbstractGrid, RegularCartesianGrid
 @inline avgz_f2c(g::RegularCartesianGrid{T}, f, i, j, k) where T = @inbounds T(0.5) * (f[i, j, k+1] + f[i, j, k])
 @inline avgz_f2e(g::RegularCartesianGrid{T}, f, i, j, k) where T = @inbounds T(0.5) * (f[i, j, k] + f[i, j, k-1])
 
+@inline ∂x_p(i, j, k, grid::RegularCartesianGrid, p) = δx_c2f(grid, p, i, j, k) / grid.Δx
+@inline ∂y_p(i, j, k, grid::RegularCartesianGrid, p) = δy_c2f(grid, p, i, j, k) / grid.Δy
+@inline ∂z_p(i, j, k, grid::RegularCartesianGrid, p) = δz_c2f(grid, p, i, j, k) / grid.Δz
+
 @inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T = 
     T(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
 
