@@ -48,7 +48,7 @@ Base.@kwdef struct SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
      κ :: T = κ₀
 end
 
-SmagorinskyLilly(T=Float64; kwargs...) = typed_keyword_constructor(T, SmagorinskyLilly; kwargs...)
+SmagorinskyLilly(T; kwargs...) = typed_keyword_constructor(T, SmagorinskyLilly; kwargs...)
 
 """
     stability(N², Σ², Pr, Cb)
