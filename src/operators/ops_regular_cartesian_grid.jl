@@ -1,5 +1,4 @@
-using Oceananigans:
-    RegularCartesianGrid
+using Oceananigans: VerticalRotationAxis, AbstractGrid, RegularCartesianGrid
 
 @inline δx_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i,   j, k] - f[i-1, j, k]
 @inline δx_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i+1, j, k] - f[i,   j, k]
@@ -28,8 +27,19 @@ using Oceananigans:
 @inline avgz_f2c(g::RegularCartesianGrid{T}, f, i, j, k) where T = @inbounds T(0.5) * (f[i, j, k+1] + f[i, j, k])
 @inline avgz_f2e(g::RegularCartesianGrid{T}, f, i, j, k) where T = @inbounds T(0.5) * (f[i, j, k] + f[i, j, k-1])
 
-@inline fv(g::RegularCartesianGrid{T}, v, f, i, j, k) where T = T(0.5) * f * (avgy_f2c(g, v, i-1,  j, k) + avgy_f2c(g, v, i, j, k))
-@inline fu(g::RegularCartesianGrid{T}, u, f, i, j, k) where T = T(0.5) * f * (avgx_f2c(g, u, i,  j-1, k) + avgx_f2c(g, u, i, j, k))
+@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T = 
+    T(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
+
+@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T = 
+    T(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
+
+@inline x_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+@inline y_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+
+@inline x_f_cross_U(i, j, k, grid, rotation::VerticalRotationAxis, U) = -fv(i, j, k, grid, rotation.f, U.v)
+@inline y_f_cross_U(i, j, k, grid, rotation::VerticalRotationAxis, U) =  fu(i, j, k, grid, rotation.f, U.u)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::VerticalRotationAxis, U) where T = zero(T)
 
 @inline div_f2c(g::RegularCartesianGrid, fx, fy, fz, i, j, k) =
     (δx_f2c(g, fx, i, j, k) / g.Δx) + (δy_f2c(g, fy, i, j, k) / g.Δy) + (δz_f2c(g, fz, i, j, k) / g.Δz)

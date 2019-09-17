@@ -6,13 +6,14 @@ const AOW = AbstractOutputWriter
 const AD  = AbstractDiagnostic
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquationOfState,
-                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
+                     Λ<:PlanetaryConstants, R, U, C, Φ, F, BCS, S, K, Θ} <: AbstractModel
 
            architecture :: A              # Computer `Architecture` on which `Model` is run
                    grid :: G              # Grid of physical points on which `Model` is solved
                   clock :: Clock{T}       # Tracks iteration number and simulation time of `Model`
                     eos :: EOS            # Relationship between temperature, salinity, and buoyancy
               constants :: Λ              # Set of physical constants, inc. gravitational acceleration
+               rotation :: R              # Set of physical constants, inc. gravitational acceleration
              velocities :: U              # Container for velocity fields `u`, `v`, and `w`
                 tracers :: C              # Container for tracer fields
               pressures :: Φ              # Container for hydrostatic and nonhydrostatic pressure
@@ -67,6 +68,7 @@ function Model(;
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
               constants = Earth(float_type), # rotation rate and gravitational acceleration
+               rotation = nothing,
                     eos = LinearEquationOfState{float_type}(), # relationship between tracers and density
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
@@ -93,7 +95,7 @@ function Model(;
 
     boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
-    return Model(architecture, grid, clock, eos, constants, velocities, tracers,
+    return Model(architecture, grid, clock, eos, constants, rotation, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
