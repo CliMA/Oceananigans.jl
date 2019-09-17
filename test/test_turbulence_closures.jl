@@ -11,7 +11,7 @@ import Oceananigans: datatuple
 closures = (
             :ConstantIsotropicDiffusivity,
             :ConstantAnisotropicDiffusivity,
-            :DeardorffSmagorinsky,
+            :SmagorinskyLilly,
             :BlasiusSmagorinsky,
             :RozemaAnisotropicMinimumDissipation,
             :VerstappenAnisotropicMinimumDissipation
