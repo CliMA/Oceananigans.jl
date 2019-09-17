@@ -52,7 +52,7 @@ end
         νˢᵍˢ = zero(FT)
     else
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(ijk..., closure, U.u, U.v, U.w)
-        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, buoyancy, w, Φ) / Δᶠz_ccc(ijk...)
+        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, buoyancy, U.w, Φ) / Δᶠz_ccc(ijk...)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
     end
@@ -120,48 +120,6 @@ end
     return uᵢ₁_uⱼ₁_Σ₁ⱼ + uᵢ₂_uⱼ₂_Σ₂ⱼ + uᵢ₃_uⱼ₃_Σ₃ⱼ
 end
 
-@inline function norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccf(i, j, k, grid, closure, u, v, w)
-    ijk = (i, j, k, grid)
-    uvw = (u, v, w)
-    ijkuvw = (i, j, k, grid, u, v, w)
-
-    uᵢ₁_uⱼ₁_Σ₁ⱼ = (
-         ▶z_aaf(ijk..., norm_Σ₁₁, uvw...) *   ▶z_aaf(ijk..., norm_∂x_u², uvw...)
-      +  ▶z_aaf(ijk..., norm_Σ₂₂, uvw...) * ▶xyz_ccf(ijk..., norm_∂x_v², uvw...)
-      +  ▶z_aaf(ijk..., norm_Σ₃₃, uvw...) *   ▶x_caa(ijk..., norm_∂x_w², uvw...)
-
-      +  2 *   ▶z_aaf(ijk..., norm_∂x_u, uvw...) * ▶xyz_ccf(ijk..., norm_∂x_v_Σ₁₂, uvw...)
-      +  2 *   ▶z_aaf(ijk..., norm_∂x_u, uvw...) *   ▶x_caa(ijk..., norm_∂x_w_Σ₁₃, uvw...)
-      +  2 * ▶xyz_ccf(ijk..., norm_∂x_v, uvw...) *   ▶x_caa(ijk..., norm_∂x_w, uvw...)
-           *   ▶y_aca(ijk..., norm_Σ₂₃, uvw...)
-    )
-
-    uᵢ₂_uⱼ₂_Σ₂ⱼ = (
-      + ▶z_aaf(ijk..., norm_Σ₁₁, uvw...) * ▶xyz_ccf(ijk..., norm_∂y_u², uvw...)
-      + ▶z_aaf(ijk..., norm_Σ₂₂, uvw...) *   ▶z_aaf(ijk..., norm_∂y_v², uvw...)
-      + ▶z_aaf(ijk..., norm_Σ₃₃, uvw...) *   ▶y_aca(ijk..., norm_∂y_w², uvw...)
-
-      +  2 *  ▶z_aaf(ijk..., norm_∂y_v, uvw...) * ▶xyz_ccf(ijk..., norm_∂y_u_Σ₁₂, uvw...)
-      +  2 * ▶xy_cca(ijk..., norm_∂y_u, uvw...) *   ▶y_aca(ijk..., norm_∂y_w, uvw...)
-           *  ▶x_caa(ijk..., norm_Σ₁₃, uvw...)
-      +  2 *  ▶z_aaf(ijk..., norm_∂y_v, uvw...) *   ▶y_aca(ijk..., norm_∂y_w_Σ₂₃, uvw...)
-    )
-
-    uᵢ₃_uⱼ₃_Σ₃ⱼ = (
-      + ▶z_aaf(ijk..., norm_Σ₁₁, uvw...) * ▶x_caa(ijk..., norm_∂z_u², uvw...)
-      + ▶z_aaf(ijk..., norm_Σ₂₂, uvw...) * ▶y_aca(ijk..., norm_∂z_v², uvw...)
-      + ▶z_aaf(ijk..., norm_Σ₃₃, uvw...) * ▶z_aaf(ijk..., norm_∂z_w², uvw...)
-
-      +  2 *   ▶x_caa(ijk..., norm_∂z_u, uvw...) * ▶y_aca(ijk..., norm_∂z_v, uvw...)
-           * ▶xyz_ccf(ijk..., norm_Σ₁₂, uvw...)
-      +  2 *   ▶z_aaf(ijk..., norm_∂z_w, uvw...) * ▶x_caa(ijk..., norm_∂z_u_Σ₁₃, uvw...)
-      +  2 *   ▶z_aaf(ijk..., norm_∂z_w, uvw...) * ▶y_aca(ijk..., norm_∂z_v_Σ₂₃, uvw...)
-    )
-
-    return uᵢ₁_uⱼ₁_Σ₁ⱼ + uᵢ₂_uⱼ₂_Σ₂ⱼ + uᵢ₃_uⱼ₃_Σ₃ⱼ
-end
-
-
 #####
 ##### trace(∇u) = uᵢⱼ uᵢⱼ
 #####
@@ -186,29 +144,6 @@ end
         # cff
       + ▶yz_acc(ijk..., norm_∂y_w², uvw...)
       + ▶yz_acc(ijk..., norm_∂z_v², uvw...)
-    )
-end
-
-@inline function norm_tr_∇u_ccf(i, j, k, grid, uvw...)
-    ijk = (i, j, k, grid)
-
-    return (
-        # ccc
-          ▶z_aaf(ijk..., norm_∂x_u², uvw...)
-        + ▶z_aaf(ijk..., norm_∂y_v², uvw...)
-        + ▶z_aaf(ijk..., norm_∂z_w², uvw...)
-
-        # ffc
-      + ▶xyz_ccf(ijk..., norm_∂x_v², uvw...)
-      + ▶xyz_ccf(ijk..., norm_∂y_u², uvw...)
-
-        # fcf
-        + ▶x_caa(ijk..., norm_∂x_w², uvw...)
-        + ▶x_caa(ijk..., norm_∂z_u², uvw...)
-
-        # cff
-        + ▶y_aca(ijk..., norm_∂y_w², uvw...)
-        + ▶y_aca(ijk..., norm_∂z_v², uvw...)
     )
 end
 
