@@ -119,7 +119,8 @@ function internal_wave_test(; N=128, Nt=10)
     # Create a model where temperature = buoyancy.
     model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
                        eos=LinearEquationOfState(βT=1.0),
-                       constants=PlanetaryConstants(f=f, g=1.0))
+                       rotation=VerticalRotationAxis(f=f),
+                       constants=PlanetaryConstants(g=1.0))
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
@@ -173,7 +174,7 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
 
     model = Model(        architecture = arch,
                                   grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
-                             constants = PlanetaryConstants(f=0, g=0),  # Turn off rotation and gravity.
+                             constants = PlanetaryConstants(g=0),  # Turn off rotation and gravity.
                                closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
                                    eos = LinearEquationOfState(βT=0.0, βS=0.0),  # Turn off buoyancy.
                    boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs))
