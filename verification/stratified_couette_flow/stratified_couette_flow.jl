@@ -75,7 +75,7 @@ end
     with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
     number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 """
-function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri)
+function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri, end_time=1000)
     ####
     #### Computed parameters
     ####
@@ -248,7 +248,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
 
     cfl(t) = min(0.01*t, 0.1)
 
-    end_time = 1000
     while model.clock.time < end_time
         wizard.cfl = cfl(model.clock.time)
 
