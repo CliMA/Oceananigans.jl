@@ -99,8 +99,9 @@ function run_rayleigh_benard_regression_test(arch)
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
-                   buoyancy = SeawaterBuoyancy(g = 1.0, 
-                                               equation_of_state = LinearEquationOfState(α=1.0, β=0.0)),
+                   buoyancy = SeawaterBuoyancy(
+                                gravitational_acceleration = 1.0, 
+                                equation_of_state = LinearEquationOfState(α=1, β=0)),
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
                                 top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
                     forcing = Forcing(FS=FS)
