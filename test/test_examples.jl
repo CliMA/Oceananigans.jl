@@ -1,5 +1,8 @@
+EXAMPLES_DIR = "../examples/"
+
 function run_deepening_mixed_layer_example(arch)
-    txt = read("../examples/deepening_mixed_layer.jl", String)
+    example_filepath = joinpath(EXAMPLES_DIR, "deepening_mixed_layer.jl")
+    txt = read(example_filepath, String)
 
     arch == GPU() && (txt = replace(txt, "arch = CPU()" => "arch = GPU()"))
 
@@ -15,7 +18,7 @@ function run_deepening_mixed_layer_example(arch)
     try
         include(test_script_filepath)
     catch e
-        @error e
+        @error sprint(showerror, err)
         rm(test_script_filepath)
         return false
     end
