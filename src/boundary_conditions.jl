@@ -7,7 +7,7 @@
 
 Abstract supertype for boundary condition types.
 """
-abstract type BCType end 
+abstract type BCType end
 
 """
     Periodic
@@ -44,13 +44,16 @@ struct Value <: BCType end
 """
     NoPenetration
 
-A type specifying a no-penetration boundary condition for a velocity component. This
-applies to the normal component of velocity at solid walls, where it goes to zero.
+A type specifying a no-penetration boundary condition for a velocity component that is normal to a wall.
+
+Thus `NoPenetration` can only be applied to `u` along x, `v` along y, or `w` along z. For all other cases --- fields
+located at (Cell, Cell, Cell), or `u`, `v`, and `w` in (y, z), (x, z), and (x, y), respectively, either `Value`,
+`Gradient`, or `Flux` conditions must be used.
 
 A condition may not be specified with a `NoPenetration` boundary condition.
 
-Note that this differs from a no-flux boundary condition as no-flux applies to cell-centered
-fields (and could apply to tracers) while a no-penetration boundary condition only applies
+Note that this differs from a zero `Value` boundary condition as `Value` imposes values at the cell centers
+(and could apply to tracers) while a no-penetration boundary condition only applies
 to normal velocity components at a wall, where the velocity at the cell face collocated
 at the wall is known and set to zero.
 """
@@ -176,9 +179,9 @@ FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
                              bottom = BoundaryCondition(Flux, nothing))
 
 Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x and y
-directions and specified `top` (+z) and `bottom` (-z) boundary conditions for u, v, 
+directions and specified `top` (+z) and `bottom` (-z) boundary conditions for u, v,
 and tracer fields.
-	
+
 `HorizontallyPeriodicBCs` cannot be applied to the the vertical velocity w.
 """
 function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
@@ -200,7 +203,7 @@ end
 Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x
 direction and specified `north` (+y), `south` (-y), `top` (+z) and `bottom` (-z)
 boundary conditions for u, v, and tracer fields.
-	
+
 `ChannelBCs` cannot be applied to the the vertical velocity w.
 """
 function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),

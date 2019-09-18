@@ -7,10 +7,9 @@
 
     ConstantIsotropicDiffusivity(; ν, κ)
 
-Use a constant isotropic turbulent diffusivty closure with constant viscosity `ν` and
-constant thermal diffusivity `κ`.
-
-Note that this corresponds to the use an eddy viscosity model with constant `ν` and ``κ`.
+Returns parameters for a constant isotropic diffusivity closure with constant viscosity `ν`
+and constant thermal diffusivity `κ`. `ν` and `κ` may represent molecular diffusivities or
+turbulent eddy diffusivities.
 
 By default, a molecular viscosity of ``ν = 1.05×10⁻⁶`` m²/s and a molecular thermal
 diffusivity of ``κ = 1.46×10⁻⁷`` m²/s is used, corresponding to the use of no turbulent
@@ -63,12 +62,9 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity,
 
     ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
 
-Use a constant anisotropic turbulent diffusivty closure with constant horizontal viscosity
-and thermal diffusivity `νh` and `κh`, and constant vertical viscosity and diffusivity
-`νv` and `κv`.
-
-Note that this corresponds to the use an eddy viscosity model with a tensor viscosity
-with heterogeneous diagonal components.
+Returns parameters for a constant anisotropic diffusivity closure with constant horizontal
+and vertical viscosities `νh`, `νv` and constant horizontal and vertical thermal diffusivities
+`κh`, `κv`. `ν` and `κ` may represent molecular diffusivities or turbulent eddy diffusivities.
 
 By default, a molecular viscosity of ``ν = 1.05×10⁻⁶`` m²/s and a molecular thermal
 diffusivity of ``κ = 1.46×10⁻⁷`` m²/s is used, corresponding to the use of no turbulent

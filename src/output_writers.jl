@@ -80,7 +80,7 @@ end
 """
     JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
 
-An output writer for writing stuff to JLD2 files.
+An output writer for writing to JLD2 files.
 """
 mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
         filepath :: String
@@ -105,9 +105,9 @@ noinit(args...) = nothing
                      prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
                      part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
-Construct a `JLD2OutputWriter` that writes `label, func` pairs in the dictionary `outputs`
-to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function
-of the form `func(model)` that returns the data to be saved.
+Construct a `JLD2OutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`)
+to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)`
+that returns the data to be saved.
 
 Keyword arguments
 =================
