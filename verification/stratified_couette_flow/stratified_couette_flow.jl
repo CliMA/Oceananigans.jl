@@ -74,8 +74,11 @@ Simulate stratified plane Couette flow with `Nxy` grid cells in each horizontal
 direction, `Nz` grid cells in the vertical, in a domain of size (4πh, 2πh, 2h),
 with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
 number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
+
+`Ni` is the number of "intermediate" time steps taken at a time before printing a progress
+statement and updating the time step.
 """
-function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri, end_time=1000)
+function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri, Ni=10, end_time=1000)
     ####
     #### Computed parameters
     ####
@@ -241,10 +244,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
         max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in model.diffusivities.κₑ)...)
         return min(Δ^2 / max_ν, Δ^2 / max_κ)
     end
-
-    # Take Ni "intermediate" time steps at a time before printing a progress
-    # statement and updating the time step.
-    Ni = 10
 
     cfl(t) = min(0.01*t, 0.1)
 
