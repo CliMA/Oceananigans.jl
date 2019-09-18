@@ -29,7 +29,7 @@ affiliations:
    index: 1
  - name: Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology
    index: 2
-date: 12 September 2019
+date: 18 September 2019
 bibliography: paper.bib
 ---
 
@@ -73,8 +73,8 @@ Third paragraph on nice features and aspects:
 
 Funding sources?
 
-We would like to thank Valentin Churavy, Tim Besard, Peter Ahrens, and Alan
-Edelman for their Julia support, particularly in developing the GPU capabilities
+We would like to thank Tim Besard, Peter Ahrens, and Alan Edelman for their
+Julia support, particularly in developing the GPU capabilities
 of ``Oceananigans``.
 
 # References
