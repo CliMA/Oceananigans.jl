@@ -1,22 +1,46 @@
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = 
+@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T =
     (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 #####
-##### The "Deardorff" version of the Smagorinsky turbulence closure.
+##### The turbulence closure proposed by Smagorinsky and Lilly.
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
 """
-    DeardorffSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν=1.05e-6, κ=1.46e-7)
+    SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
 
-Returns a `DeardorffSmagorinsky` closure object of type `T` with
+    SmagorinskyLilly([T=Float64;] C=0.23, Pr=1, ν=1.05e-6, κ=1.46e-7)
 
-    *  `C` : Smagorinsky model constant
-    * `Pr` : Prandtl number
-    *  `ν` : background viscosity
-    *  `κ` : background diffusivity
+Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
+Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
+
+    `νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / (Pr * Σ²)) + ν`,
+
+and an eddy diffusivity of the form
+
+    `κₑ = (νₑ - ν) / Pr + κ`
+
+where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
+the strain tensor `Σᵢⱼ`, and `N²` is the total buoyancy gradient.
+
+Keyword arguments
+=================
+    - `C::T`: Model constant
+    - `Cb::T`: Buoyancy term multipler (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `Pr::T`: Turbulent Prandtl number
+    - `ν::T`: background viscosity
+    - `κ::T`: background diffusivity
+
+References
+==========
+
+* Smagorinsky, J. "On the numerical integration of the primitive equations of motion for 
+    baroclinic flow in a closed region." Monthly Weather Review (1958)
+* Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
+* Smagorinsky, J. "General circulation experiments with the primitive equations: I. 
+    The basic experiment." Monthly weather review (1963)
 """
-Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
+Base.@kwdef struct SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
      C :: T = 0.23
     Cb :: T = 1.0
     Pr :: T = 1.0
@@ -24,23 +48,22 @@ Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
      κ :: T = κ₀
 end
 
-DeardorffSmagorinsky(T; kwargs...) =
-    typed_keyword_constructor(T, DeardorffSmagorinsky; kwargs...)
+SmagorinskyLilly(T; kwargs...) = typed_keyword_constructor(T, SmagorinskyLilly; kwargs...)
 
 """
     stability(N², Σ², Pr, Cb)
 
 Return the stability function
 
-``1 - \\sqrt( Cb N^2 / (Pr Σ^2) )``
+    ``\$ \\sqrt(1 - Cb N^2 / (Pr Σ^2) ) \$``
 
 when ``N^2 > 0``, and 1 otherwise.
 """
 @inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T =
-    ifelse(Σ²==0, zero(T), one(T) - sqrt(stability_factor(N², Σ², Pr, Cb)))
+    ifelse(Σ²==0, zero(T), sqrt(one(T) - stability_factor(N², Σ², Pr, Cb)))
 
 @inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T =
-    min(one(T), max(zero(T), Cb * N² / (Pr*Σ²)))
+    min(one(T), max(zero(T), Cb * N² / (Pr * Σ²)))
 
 """
     νₑ(ς, C, Δᶠ, Σ²)
@@ -51,7 +74,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::DeardorffSmagorinsky, c, eos, grav, u, v, w, T, S)
+@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly, c, eos, grav, u, v, w, T, S)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
     N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy_perturbation, eos, grav, T, S)
      Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
