@@ -11,7 +11,7 @@ for exp in EXPERIMENTS
 end
 
 function run_stratified_couette_flow_verification(arch)
-    simulate_stratified_couette_flow(Nxy=16, Nz=8, arch=arch, Ri=0.01, end_time=1e-15)
+    simulate_stratified_couette_flow(Nxy=16, Nz=8, arch=arch, Ri=0.01, Ni=1, end_time=1e-15)
     return true
 end
 
