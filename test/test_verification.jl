@@ -1,16 +1,17 @@
 VERIFICATION_DIR = "../verification/"
+EXPERIMENTS = ["stratified_couette_flow"]
 
-function run_stratified_couette_flow_verification(arch)
-    script_filepath = joinpath(VERIFICATION_DIR, "stratified_couette_flow", "stratified_couette_flow.jl")
-
+for exp in EXPERIMENTS
+    script_filepath = joinpath(VERIFICATION_DIR, exp, exp * ".jl")
     try
         include(script_filepath)
-        simulate_stratified_couette_flow(Nxy=16, Nz=8, arch=CPU(), Ri=0.01, end_time=1e-15)
-    catch e
-        @error e
-        return false
+    catch err
+        @error sprint(showerror, err)
     end
-    
+end
+
+function run_stratified_couette_flow_verification(arch)
+    simulate_stratified_couette_flow(Nxy=16, Nz=8, arch=arch, Ri=0.01, end_time=1e-15)
     return true
 end
 
