@@ -34,7 +34,7 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
     closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    buoyancy = SeawaterBuoyancy(FT, g=1, equation_of_state=LinearEquationOfState(FT))
+    buoyancy = SeawaterBuoyancy(FT)
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
 
@@ -86,7 +86,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
     bcs = HorizontallyPeriodicSolutionBCs()
-    buoyancy = SeawaterBuoyancy(FT, g=1, equation_of_state=LinearEquationOfState(FT))
+    buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
     u, v, w = velocities

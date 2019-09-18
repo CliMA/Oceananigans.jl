@@ -145,10 +145,16 @@ Note that `N`, `L`, and `Re` are required.
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
 function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
-     buoyancy = SeawaterBuoyancy(float_type, g=Ri, equation_of_state=LinearEquationOfState(α=1.0, β=0.0))
+
+     buoyancy = SeawaterBuoyancy(float_type, 
+                    gravitational_acceleration = Ri, 
+                    equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
+                )
+
     return Model(; float_type=float_type, grid=grid, closure=closure,
                    coriolis=coriolis, buoyancy=buoyancy, skwargs...)
 end
