@@ -3,6 +3,7 @@ function run_deepening_mixed_layer_example(arch)
 
     arch == GPU() && (txt = replace(txt, "arch = CPU()" => "arch = GPU()"))
 
+    txt = replace(txt, "N = 32" => "N = 16")
     txt = replace(txt, "model.clock.time < tf" => "model.clock.time < 0.5")
     txt = replace(txt, "time_step!(model, 10, wizard.Δt)" => "time_step!(model, 1, wizard.Δt)")
 
@@ -19,6 +20,7 @@ function run_deepening_mixed_layer_example(arch)
         return false
     end
 
+    rm(test_script_filepath)
     return true
 end
 
