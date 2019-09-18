@@ -88,10 +88,26 @@ function Model(;
     end
 
     boundary_conditions = ModelBoundaryConditions(boundary_conditions)
+    check_bcs_for_cuarrays(boundary_conditions, architecture)
 
     return Model(architecture, grid, clock, eos, constants, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
+end
+
+"""Advises users to convert BC arrays to CuArrays if architecture is GPU"""
+function check_bcs_for_cuarrays(boundary_conditions, architecture)
+    if architecture == GPU()
+        for fieldbc in boundary_conditions
+            for coordinatebc in fieldbc
+                for bc in coordinatebc
+                    if typeof(bc.condition) <: AbstractArray && typeof(bc.condition) != CuArray
+                        throw("Boundary condition arrays have to be specified as CuArrays for running on GPU architecture")
+                    end
+                end
+            end
+        end
+    end
 end
 
 """
