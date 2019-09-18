@@ -75,7 +75,7 @@ end
     with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
     number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 """
-function simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=0.7, Ri)
+function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri)
     ####
     #### Computed parameters
     ####
@@ -105,7 +105,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=
 
     model = Model(N = (Nxy, Nxy, Nz),
                   L = (4π*h, 2π*h, 2h),
-               arch = GPU(), 
+               arch = arch, 
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
                 eos = LinearEquationOfState(βT=1, βS=0),
           constants = PlanetaryConstants(f=0, g=1),
@@ -275,8 +275,4 @@ function simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=
                 wizard.Δt, prettytime(walltime / Ni))
     end
 end
-
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0)
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.01)
-simulate_stratified_couette_flow(Nxy=128, Nz=128, Ri=0.04)
 
