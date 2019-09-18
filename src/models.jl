@@ -8,7 +8,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
                    grid :: G         # Grid of physical points on which `Model` is solved
                   clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
                buoyancy :: B         # Set of parameters for buoyancy model
-               rotation :: R         # Set of parameters for background rotation rate
+               coriolis :: R         # Set of parameters for the background rotation rate of `Model`
              velocities :: U         # Container for velocity fields `u`, `v`, and `w`
                 tracers :: C         # Container for tracer fields
               pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -41,7 +41,7 @@ Important keyword arguments include
 
     - `buoyancy`: Buoyancy model parameters.
 
-    - `rotation`: Parameters for the background rotation rate of the model.
+    - `coriolis`: Parameters for the background rotation rate of the model.
 
     - `forcing`: User-defined forcing functions that contribute to solution tendencies.
 
@@ -59,7 +59,7 @@ function Model(;
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
                buoyancy = SeawaterBuoyancy(float_type),
-               rotation = nothing,
+               coriolis = nothing,
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
@@ -85,7 +85,7 @@ function Model(;
 
     boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
-    return Model(architecture, grid, clock, buoyancy, rotation, velocities, tracers,
+    return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
@@ -147,10 +147,10 @@ Additional `kwargs` are passed to the regular `Model` constructor.
 function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
-     rotation = VerticalRotationAxis(float_type, f=1/Ro)
+     coriolis = VerticalRotationAxis(float_type, f=1/Ro)
      buoyancy = SeawaterBuoyancy(float_type, g=Ri, equation_of_state=LinearEquationOfState(α=1.0, β=0.0))
     return Model(; float_type=float_type, grid=grid, closure=closure,
-                   rotation=rotation, buoyancy=buoyancy, skwargs...)
+                   coriolis=coriolis, buoyancy=buoyancy, skwargs...)
 end
 
 

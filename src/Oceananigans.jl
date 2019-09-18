@@ -145,7 +145,7 @@ function total_buoyancy end
 include("utils.jl")
 
 include("clock.jl")
-include("rotation.jl")
+include("coriolis.jl")
 include("buoyancy.jl")
 include("grids.jl")
 include("fields.jl")
