@@ -16,6 +16,8 @@ authors:
     affiliation: 1
   - name: Jean-Michel Campin
     affiliation: 1
+  - name: Valentin Churavy
+    affiliation: 2
   - name: Andre Souza
     affiliation: 1
   - name: John Marshall
@@ -25,6 +27,8 @@ authors:
 affiliations:
  - name: Department of Earth, Atmospheric, and Planetary Sciences, Massachusetts Institute of Technology
    index: 1
+ - name: Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology
+   index: 2
 date: 12 September 2019
 bibliography: paper.bib
 ---
