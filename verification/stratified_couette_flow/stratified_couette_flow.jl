@@ -70,10 +70,10 @@ end
 """
     simulate_stratified_couette_flow(; Nxy, Nz, h, U_wall, Re, Pr, Ri)
 
-    Simulate stratified plane Couette flow with `Nxy` grid cells in each horizontal
-    direction, `Nz` grid cells in the vertical, in a domain of size (4πh, 2πh, 2h),
-    with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
-    number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
+Simulate stratified plane Couette flow with `Nxy` grid cells in each horizontal
+direction, `Nz` grid cells in the vertical, in a domain of size (4πh, 2πh, 2h),
+with wall velocities of `U_wall` at the top and -`U_wall` at the bottom, at a Reynolds
+number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 """
 function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri, end_time=1000)
     ####
