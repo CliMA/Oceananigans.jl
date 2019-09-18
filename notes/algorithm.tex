@@ -1,0 +1,156 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{physics}
+
+\title{JULES.jl}
+\author{Tristan Abbott, Ali Ramadhan, and Raphael Rousseau-Rizzi}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Equation Set}
+
+The equation set is written in terms of five prognostic conservative variables: three momenta, mass density, and specific entropy. While defining and deriving these equations, it will prove convenient to define a 4-vector $u^\alpha = (1, u, v, w)$ for $\alpha = (t, x, y, z)$. This allows us to write a conservation law for a variable $\phi$ as
+\begin{equation*}
+\partial_t \rho \phi + \partial_i \rho u_i \phi = \partial_{\alpha} \rho u^{\alpha} \phi = \textrm{ sources and sinks}.
+\end{equation*}
+Because mass conservation written in this form is just
+\begin{equation}
+\partial_\alpha \rho u^{\alpha} = 0,
+\end{equation}
+this immediately provides some useful properties, namely that
+\begin{equation*}
+\partial_\alpha \rho u^{\alpha} \phi = \rho u^{\alpha} \partial_a \phi
+\end{equation*}
+and
+\begin{equation*}
+u^{\alpha} \partial_{\alpha} \rho = -\rho \partial_{\alpha} u^{\alpha}.
+\end{equation*}
+
+Written with this notation, and using ${\bf \tau}^{(i)}$ to denote the stress tensor for component $i$, the momentum equations are
+\begin{align}
+\partial_{\alpha} \rho u^{\alpha} u &= -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \\
+\partial_{\alpha} \rho u^{\alpha} v &= -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \\
+\partial_{\alpha} \rho u^{\alpha} w &= -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \\
+\end{align}
+
+To derive an equation for specific entropy
+\begin{align*}
+s = s_0 + c_v \ln \qty(\frac{T}{T_0}) - R \ln \qty(\frac{\rho}{\rho_0}),
+\end{align*}
+we can write its conservation law as
+\begin{align*}
+\partial_{\alpha} \rho u^{\alpha} s &= \partial_{\alpha} \rho u^{\alpha} c_v \ln \qty(\frac{T}{T_0}) - \partial_\alpha \rho u^{\alpha} R \ln \qty(\frac{\rho}{\rho_0}) \\
+&= \frac{1}{T} \partial_{\alpha} \rho u^{\alpha} c_v T - \frac{R}{\rho} \partial_{\alpha} \rho u^{\alpha} \rho.
+\end{align*}
+The first law of thermodynamics allows us to express $\partial_{\alpha} \rho u^{\alpha} c_v T$ (a conservation law for the internal energy) in terms of a heating rate $Q - \div J + \epsilon$ (which includes contributions from diabatic heating $Q$, convergence of conductive heat fluxes $J$, and dissipation $\epsilon$) and a work rate $-p \div {\bf u}$. Substituting this back into the entropy equation gives
+\begin{align*}
+\partial_{\alpha} \rho u^{\alpha} s &= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) - \frac{R}{\rho} \partial_{\alpha} \rho u^{\alpha} \rho \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) - R u^{\alpha} \partial_{\alpha} \rho \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) + R \rho \partial_{\alpha} u^{\alpha} \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon - p \div {\bf u}) + \frac{p}{T} \div {\bf u} \\
+&= \frac{1}{T} \qty(Q - \div J + \epsilon).
+\end{align*}
+We probably could have written this equation down without going through the derivation, but the derivation might be a useful starting point when we eventually try to derive equations for moist entropy (which will be much more complicated).
+
+In summary, our equation set is
+\begin{align}
+\partial_\alpha \rho u^{\alpha} &= 0 \\
+\partial_{\alpha} \rho u^{\alpha} u &= -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \\
+\partial_{\alpha} \rho u^{\alpha} v &= -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \\
+\partial_{\alpha} \rho u^{\alpha} w &= -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \\
+\partial_{\alpha} \rho u^{\alpha} s &= \frac{1}{T} \qty(Q - \div J + \epsilon)
+\end{align}
+
+In addition to these prognostic equations, we need a set of diagnostic equations that relate $T$, $p$, ${\bf \tau}$, $Q$, ${\bf J}$, and $\epsilon$ to prognostic fields. Diagnostic equations for $p$ and $T$ can be obtained from the definition of $s$ and the ideal gas law, $Q$ is typically provided by model ``physics'', and ${\bf J}$, ${\bf \tau}$, and $\epsilon$ are provided by a sub-grid-scale turbulence closure.
+
+\section{Time integration}
+
+The time integration scheme follows Klemp et. al. (2007). To describe the temporally-discretized equations used for time integration, we'll first define shorthand for the total tendency for each prognostic variable:
+\begin{align*}
+\partial_t \rho &= -\div \rho {\bf u} \equiv R_\rho \\
+\partial_t \rho u &= -\div \rho {\bf u} u -\partial_x p - \grad \cdot {\bf \tau}^{(x)} \equiv R_u\\
+\partial_t \rho v &= -\div \rho {\bf u} v -\partial_y p - \grad \cdot {\bf \tau}^{(y)} \equiv R_v \\
+\partial_t \rho w &= -\div \rho {\bf u} w -\partial_z p - \rho g - \grad \cdot {\bf \tau}^{(z)} \equiv R_w \\
+\partial_t \rho s &= -\div \rho {\bf u} s + \frac{1}{T} \qty(Q - \div J + \epsilon) \equiv R_s.
+\end{align*}
+At the beginning of each large time step, we evaluate the total tendencies to obtain $R_{\rho}^t, R_u^t, R_v^T, R_w^t, R_s^t$. (Because these tendencies are responsible for almost all transport, they are typically computed with a fancy (high-order, non-oscillatory, but computationally expensive) advection scheme.) Then, on the small time steps, we integrate these tendencies (evaluated only at the start of the long time step) plus terms responsible for gravity and acoustic modes, plus linearized flux terms for entropy and density (required to keep the acoustic time steps stable). The equations integrated on the acoustic time steps are cast in terms of perturbations $(\cdot)' = (\cdot) - (\cdot)^t$ from the state at the start of the long time step $(\cdot)^t$:
+\begin{align*}
+\partial_t \rho' &= -\div \qty(\rho {\bf u})' + R_\rho^t \\
+\partial_t \qty(\rho u)' &= -\partial_x p' + R_u^t \\
+\partial_t \qty(\rho v)' &= \partial_y p' + R_v^t \\
+\partial_t \qty(\rho w)' &= \partial_z p' - g \rho' + R_w^t \\
+\partial_t \qty(\rho s)' &= -\div \qty(\rho {\bf u})' s^t + R_s^t.
+\end{align*}
+For computational efficiency, these equations are typically integrated using forward-backward time differencing and fairly simple spatial differencing. The only complication is that, because atmospheric models typically have much finer vertical resolution than horizontal resolution, terms involving vertical derivatives are usually treated implicitly. Using $(\cdot)^0$ to denote a perturbation at the start of an acoustic time step, $(\cdot)^1$ to indicate a perturbation at the end of an acoustic time step, $(\cdot)^{1/2}$ to indicate a (weighted) average of the initial and final perturbations, and $\delta \tau$ to indicate the length of a small time step, the temporally discrete forms of these equations are
+\begin{align}
+\qty(\rho u)^1 &= \qty(\rho u)^0 + \delta \tau \qty(-\partial_x p^0 + R_u^t) \\
+\qty(\rho v)^1 &= \qty(\rho v)^0 + \delta \tau \qty(-\partial_x p^0 + R_u^t) \\
+\qty(\rho w)^1 &= \qty(\rho w)^0 + \delta \tau \qty(-\partial_z p^{1/2} - g \rho^{1/2} + R_w^t) \\
+\rho^1 &= \rho^0 + \delta \tau \qty(-\grad_h \cdot \qty(\rho {\bf u}_h)^{1} -\partial_z (\rho w)^{1/2} + R_{\rho}^t) \\
+\qty(\rho s)^1 &= \qty(\rho s)^0 + \delta \tau \qty(-\grad_h \cdot \qty(\rho {\bf u}_h)^{1} s^t - \partial_z \qty(\rho w)^{1/2} s^t + R_s^t).
+\end{align} 
+By substituting expressions for $\rho^1$ and $(\rho s)^1$ into the equation for $(\rho w)^1$, these equations can be converted to a single implicit equation for $(\rho w)^1$ and explicit equations for all other prognostic fields. After doing so, the system can be stepped forward by solving (1) equations for $(\rho u)^1$ and $(\rho v)^1$ (explicit), (2) the equation for $(\rho w)^1$ (implicit; requires inverting a tridiagonal matrix), and (3) equations for $\rho^1$ and $(\rho s)^1$ (explicit), in that order.
+
+After iterating this procedure for the required number of small time steps $N$, we obtain a set of perturbation fields $(\rho u)', (\rho v)', (\rho w)', \rho', (\rho s)'$. These provide numerical approximations to tendencies over the large time step,
+\begin{align*}
+\partial_t \rho &\approx \frac{1}{N \delta \tau} \rho' \\
+\partial_t \qty(\rho u) &\approx \frac{1}{N \delta \tau} \qty(\rho u)' \\
+\partial_t \qty(\rho v) &\approx \frac{1}{N \delta \tau} \qty(\rho v)' \\
+\partial_t \qty(\rho w) &\approx \frac{1}{N \delta \tau} \qty(\rho w)' \\
+\partial_t \qty(\rho s) &\approx \frac{1}{N \delta \tau} \qty(\rho s)',
+\end{align*}
+that can be used as input to a Runge-Kutta or Adams-Bashforth time integrator.
+
+\subsection{Diagnosing $p'$}
+
+During the acoustic time steps, $p'$ must be diagnosed from $\rho'$ and $(\rho s)'$. This represents a minor challenge: solving the expression for entropy to get $p(s,t)$ can easily provide an equation for $p'(s', \rho')$, but we need an equation for $p'((\rho s)', \rho')$. An easy way to derive one such equation is to write
+\begin{align*}
+\dd{\rho s} &= s \dd{\rho} + \rho \dd{s} \\
+&= s \dd{\rho} + \rho \dd \qty(c_v \ln \qty(\frac{p}{p_0}) - c_p \ln \qty(\frac{\rho}{\rho_0})) \\
+&= s \dd{\rho} + \rho c_v \frac{\dd{p}}{p} - c_p \dd{\rho} \\
+\dd{p} &= \frac{p}{\rho c_v} \qty(\dd{\rho s} + \qty(c_p - s) \dd{\rho}).
+\end{align*}
+Because perturbations remain small over a single large time step, this provides the basis for a sufficiently accurate expression for $p'$ in terms of $(\rho s)'$:
+\begin{equation}
+p' = \frac{p^t}{\rho^t c_v} \qty(\qty(\rho s)' + (c_p - s^t) \rho').
+\end{equation}
+
+\section{Advection scheme}
+
+Since we plan on using this model to carry long integrations and RCE simulations, it is desirable to have a model that is conservative to numerical precision. Furthermore, for certain applications like tropical cyclone simulations it is also desirable to have an advection scheme that can minimize the implicit dispersion near sharp gradient changes. For these reasons, we are using finite volume methods for approximating the advective terms of the prognostic equations.
+
+\subsection{Flux reconstruction for scalars}
+
+We approximate the conservation law $\partial_\alpha \phi u^{\alpha} = 0$, with the finite difference equation (in 1D for now).
+
+\begin{equation}
+\pdv{\phi}{t} + \Big(\frac{F_{j+\frac{1}{2}}-F_{j-\frac{1}{2}}}{\Delta x}\Big) = 0,
+\end{equation}
+
+which is a conservative form, where $\phi$ is some scalar, and where F is the flux of $\phi$ across an edge of the cell. There are two main ways to go about estimating the integrated flux over one time step, using finite-volumes-like methods.
+
+1) The one that fits best the definition of finite volumes entails to reconstruct the subgrid profile of $\phi$. This requires knowing the values of $\phi_{j+\frac{1}{2}}$ and $\phi_{j-\frac{1}{2}}$, which can be estimated either by interpolation (Durran, 2002) or by matching the first derivatives of the volume-conserving subgrid reconstruction (spline method, e.g. Zerroukat et al, 2006). Once this subgrid reconstruction is complete, the integrated flux across a boundary during a time step is given be the space integral over the reconstructed spline, where the bounds are given by the Courant number. In that case, no additional time-integration scheme needs to be derived!
+
+2) An simpler-to-implement alternative (e.g., Hunsdorfer et al, 1995 or Wicker and Skamarock, 2002) entails to use finite difference methods for integral equations. In that case, we use (in 1D) $F_{j+\frac{1}{2}} = (u\phi)_{j+\frac{1}{2}}$. This is one of the instances where a C-grid comes in handy. Since the edges of the scalar cells where we need to reconstruct the flux are where the velocities are defined, all we need to estimate is $\phi_{j+\frac{1}{2}}$.
+
+Lest we redo all the work, we will simply state, using that method, that, to the third order,
+
+\begin{equation}
+F_{j-\frac{1}{2}}^{3rd} = F_{j-\frac{1}{2}}^{4th} - \frac{|u_{j-\frac{1}{2}}|}{12}[3(\phi_i - \phi_{i-1}) - (\phi_{i+1}- \phi_{i-2})],
+\end{equation}
+
+where
+
+\begin{equation}
+F_{j-\frac{1}{2}}^{4th} = \frac{u_{j-\frac{1}{2}}}{12}[7(\phi_i + \phi_{i-1}) - (\phi_{i+1} + \phi_{i-2})].
+\end{equation}
+
+An interesting property of this decomposition is that the third order flux can be written as the sum of the fourth order flux and a numerical dissipation term. Using the third order flux form, we will be able to diagnose the next order numerical dissipation, and to compare it with parameterized diffusion, thus providing interesting insight into the behavior of the model. We will be using third order flux here because odd ordered schemes are more stable than even ordered schemes. 
+
+\end{document}
