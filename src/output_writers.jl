@@ -97,7 +97,7 @@ noinit(args...) = nothing
 
 """
     JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
-                     prefix="", init=noinit, including=[:grid, :rotation, :buoyancy, :closure],
+                     prefix="", init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
                      part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
 Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
@@ -115,7 +115,7 @@ Keyword arguments
     - `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
                            output file is initialized. Default: `noinit(args...) = nothing`.
     - `including::Array` : List of model properties to save with every file. By default, the
-                           grid, equation of state, rotation parameters, buoyancy parameters, 
+                           grid, equation of state, coriolis parameters, buoyancy parameters, 
                            and turbulence closure parameters are saved.
     - `part::Int`        : The starting part number used if `max_filesize` is finite.
                            Default: 1.
@@ -129,7 +129,7 @@ Keyword arguments
     - `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
-                          init=noinit, including=[:grid, :rotation, :buoyancy, :closure],
+                          init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
                           part=1, max_filesize=Inf, force=false, async=false, verbose=false,
                           jld2_kw=Dict{Symbol, Any}())
 
@@ -404,7 +404,7 @@ mutable struct Checkpointer{I, T, P, A} <: AbstractOutputWriter
 end
 
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
-                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :rotation,
+                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
                                                    :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
     validate_interval(frequency, interval)
