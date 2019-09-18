@@ -1,6 +1,6 @@
 using JULES
 using Test
 
-@testset "JULES.jl" begin
+@testset "JULES" begin
     # Write your own tests here.
 end
