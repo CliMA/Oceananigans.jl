@@ -7,7 +7,7 @@ export
   ConstantAnisotropicDiffusivity,
 
   ConstantSmagorinsky,
-  DeardorffSmagorinsky,
+  SmagorinskyLilly,
   BlasiusSmagorinsky,
 
   AnisotropicMinimumDissipation,
@@ -35,17 +35,63 @@ using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation
 
 @hascuda using CUDAdrv, CUDAnative
 
-# Approximate viscosities and thermal diffusivities for seawater
-# at 20ᵒC and 35 psu, according to Sharqawy et al., "Thermophysical
-# properties of seawater: A review of existing correlations and data" (2010).
+####
+#### Molecular viscosity and thermal diffusivity definitions
+#### Approximate viscosities and thermal diffusivities for seawater at 20ᵒC and 35 psu,
+#### according to Sharqawy et al., "Thermophysical properties of seawater: A review of
+#### existing correlations and data" (2010).
+####
+
 const ν₀ = 1.05e-6
 const κ₀ = 1.46e-7
 
+####
+#### Abstract types
+####
+
+"""
+    TurbulenceClosure{T}
+
+Abstract supertype for turbulence closures with model parameters stored as properties of
+type `T`.
+"""
 abstract type TurbulenceClosure{T} end
+
+"""
+    IsotropicDiffusivity{T} <: TurbulenceClosure{T}
+
+Abstract supertype for turbulence closures that are defined by an isotropic viscosity
+and isotropic diffusivities with model parameters stored as properties of type `T`.
+"""
 abstract type IsotropicDiffusivity{T} <: TurbulenceClosure{T} end
+
+"""
+    TensorDiffusivity{T} <: TurbulenceClosure{T}
+
+Abstract supertype for turbulence closures that are defined by a tensor viscosity and
+tensor diffusivities with model parameters stored as properties of type `T`.
+"""
 abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
+
+"""
+    AbstractSmagorinsky{T}
+
+Abstract supertype for large eddy simulation models based off the model described
+by Smagorinsky with model parameters stored as properties of type `T`.
+"""
 abstract type AbstractSmagorinsky{T} <: IsotropicDiffusivity{T} end
+
+"""
+    AbstractAnisotropicMinimumDissipation{T}
+
+Abstract supertype for large eddy simulation models based on the anisotropic minimum
+dissipation principle with model parameters stored as properties of type `T`.
+"""
 abstract type AbstractAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T} end
+
+####
+#### Include module code
+####
 
 @inline ∇_κ_∇T(args...) = ∇_κ_∇c(args...)
 @inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
@@ -64,8 +110,22 @@ include("verstappen_anisotropic_minimum_dissipation.jl")
 
 include("turbulence_closure_diagnostics.jl")
 
-# Some value judgements here:
+####
+#### Some value judgements here
+####
+
+"""
+    AnisotropicMinimumDissipation
+
+An alias for `VerstappenAnisotropicMinimumDissipation`.
+"""
 const AnisotropicMinimumDissipation = VerstappenAnisotropicMinimumDissipation
-const ConstantSmagorinsky = DeardorffSmagorinsky
+
+"""
+    ConstantSmagorinsky
+
+An alias for `SmagorinskyLilly`.
+"""
+const ConstantSmagorinsky = SmagorinskyLilly
 
 end # module

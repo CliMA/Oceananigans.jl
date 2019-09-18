@@ -48,12 +48,12 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter, 
+    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
-    HorizontalAverage, NaNChecker, 
+    HorizontalAverage, NaNChecker,
     Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
 
     # Package utilities
@@ -97,29 +97,90 @@ import Base:
     push!
 
 #####
-##### Abstract types 
+##### Abstract types
 #####
 
 abstract type AbstractModel end
+
+"""
+    AbstractArchitecture
+
+Abstract supertype for architectures supported by Oceananigans.
+"""
 abstract type AbstractArchitecture end
-abstract type AbstractEquationOfState end
+
+"""
+    AbstractGrid{T}
+
+Abstract supertype for grids with elements of type `T`.
+"""
 abstract type AbstractGrid{T} end
+
+"""
+    AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
+"""
 abstract type AbstractField{A, G} end
+
+"""
+    AbstractFaceField{A, G} <: AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined the cell faces of a grid `G`.
+"""
 abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for equations of state.
+"""
+abstract type AbstractEquationOfState end
+
 abstract type AbstractPoissonSolver end
-abstract type AbstractOutputWriter end
+
+"""
+    AbstractDiagnostic
+
+Abstract supertype for types that compute diagnostic information from the current model
+state.
+"""
 abstract type AbstractDiagnostic end
+
+"""
+    AbstractOutputWriter
+
+Abstract supertype for types that perform input and output.
+"""
+abstract type AbstractOutputWriter end
 
 #####
 ##### All the code
 #####
 
+"""
+    CPU <: AbstractArchitecture
+
+Run Oceananigans on a single-core of a CPU.
+"""
 struct CPU <: AbstractArchitecture end
+
+"""
+    GPU <: AbstractArchitecture
+
+Run Oceananigans on a single NVIDIA CUDA GPU.
+"""
 struct GPU <: AbstractArchitecture end
 
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
+"""
+    @hascuda
+
+A macro to execute an expression only if CUDA is installed and available. Generally used to
+wrap expressions that can only execute with a GPU.
+"""
 macro hascuda(ex)
     return has_cuda() ? :($(esc(ex))) : :(nothing)
 end

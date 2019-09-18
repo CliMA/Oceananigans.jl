@@ -1,3 +1,9 @@
+"""
+    VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
+
+Use the anisotropic minimum dissipation large eddy simulation model proposed by Verstappen
+(2018) and described by Vreugdenhil & Taylor (2018).
+"""
 struct VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
      C :: T
     Cb :: T
@@ -6,33 +12,37 @@ struct VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumD
 end
 
 """
-    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, ν=1.05e-6, κ=1.46e-7)
+    VerstappenAnisotropicMinimumDissipation(T=Float64; C = 1/12, Cb = 0.0, ν = ν₀, κ=κ₀)
 
-Returns a `VerstappenAnisotropicMinimumDissipation` closure object of type `T` with
+Use a `VerstappenAnisotropicMinimumDissipation` turbulence closure with parameters of type
+`T`.
 
-    * `C`  : Poincaré constant
-    * `Cb` : Buoyancy modification constant
-    * `ν`  : 'molecular' background viscosity for momentum
-    * `κ`  : 'molecular' background diffusivity for tracers
+Keyword arguments
+=================
+    - `C::T`: Poincaré constant
+    - `Cb::T`: Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `ν::T`: 'molecular' background viscosity for momentum
+    - `κ::T`: 'molecular' background diffusivity for tracers
 
-Based on the version of the anisotropic minimum dissipation closure proposed by:
+By default, `C` = 1/12 which is appropriate for a finite-volume method employing a
+second-order advection scheme, `Cb` = 0 which terms off the buoyancy modification term,
+and molecular values are used for `ν` and `κ`.
 
- - Verstappen, R., "How much eddy dissipation is needed to counterbalance the
-    "nonlinear production of small, unresolved scales in a large-eddy simulation
-    of turbulence?", 2018
-
-and described by
-
- - Vreugdenhil C., and Taylor J., "Large-eddy simulations of stratified plane Couette
- flow using the anisotropic minimum-dissipation model", (2018).
+References
+==========
+Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
+    flow using the anisotropic minimum-dissipation model", Physics of Fluids 30, 085104.
+Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance the nonlinear
+    production of small, unresolved scales in a large-eddy simulation of turbulence?",
+    Computers & Fluids 176, pp. 276-284.
 """
-function VerstappenAnisotropicMinimumDissipation(FT=Float64;
+function VerstappenAnisotropicMinimumDissipation(T=Float64;
      C = 1/12,
     Cb = 0.0,
      ν = ν₀,
      κ = κ₀,
     )
-    return VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+    return VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ)
 end
 
 const VAMD = VerstappenAnisotropicMinimumDissipation
