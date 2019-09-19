@@ -31,8 +31,7 @@ using
   Oceananigans.Operators,
   GPUifyLoops
 
-using Oceananigans: AbstractArchitecture, AbstractGrid, 
-                    buoyancy_perturbation, total_buoyancy
+using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy
 
 @hascuda using CUDAdrv, CUDAnative
 
