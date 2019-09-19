@@ -86,6 +86,8 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 @inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
     - grav(b) * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
 
+const buoyancy = buoyancy_perturbation
+
 #####
 ##### Roquet et al 2015 idealized nonlinear equations of state
 #####
@@ -152,12 +154,14 @@ Flavors of idealized nonlinear equations of state
                        `ρ′ = R₁₀₀ * T + R₀₁₀ * S + R₀₂₀ * T^2 + R₀₁₁ * T * D`
                              + R₂₀₀ * S^2 + R₁₀₁ * S * D + R₁₁₀ * S * T`
 """
-function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobaricity; coeffs=roquet_coeffs[flavor], ρ₀=1025)
+function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobaricity; 
+                                                 coeffs=roquet_coeffs[flavor], ρ₀=1025)
     typed_coeffs = type_convert_roquet_coeffs(coeffs)
     return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
 end
 
-RoquetIdealizedNonlinearEquationOfState(flavor; kwargs...) = RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
+RoquetIdealizedNonlinearEquationOfState(flavor; kwargs...) = 
+    RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
 @inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
     @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
