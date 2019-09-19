@@ -1,22 +1,3 @@
-using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
-                                       ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
-                                       ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
-                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa,
-                                       ▶z_aac, ▶z_aaf
-
-using GPUifyLoops: @launch
-using Oceananigans: launch_config, datatuples, device
-import Oceananigans: datatuple
-
-closures = (
-            :ConstantIsotropicDiffusivity,
-            :ConstantAnisotropicDiffusivity,
-            :SmagorinskyLilly,
-            :BlasiusSmagorinsky,
-            :RozemaAnisotropicMinimumDissipation,
-            :VerstappenAnisotropicMinimumDissipation
-           )
-
 for closure in closures
     @eval begin
         using Oceananigans.TurbulenceClosures: $closure

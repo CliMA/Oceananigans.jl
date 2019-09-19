@@ -1,24 +1,51 @@
 using
-    Test,
-    Statistics,
-    OffsetArrays
-
-import FFTW
-
-using
     Oceananigans,
     Oceananigans.Operators,
-    Oceananigans.TurbulenceClosures
+    Oceananigans.TurbulenceClosures,
+    Test,
+    Random,
+    JLD2,
+    Printf,
+    Statistics,
+    OffsetArrays,
+    FFTW
+
+@hascuda using CuArrays
+
+using Statistics: mean
+using LinearAlgebra: norm
+using GPUifyLoops: @launch, @loop
 
 using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
+                    velocity_div!, compute_w_from_continuity!,
+                    launch_config, datatuples, device,
                     parentdata, buoyancy, fill_halo_regions!, run_diagnostic,
+                    TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
                     RoquetIdealizedNonlinearEquationOfState
+
+import Oceananigans: datatuple
+
+using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
+                                       ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
+                                       ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
+                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa,
+                                       ▶z_aac, ▶z_aaf
+
+float_types = (Float32, Float64)
 
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
-@hascuda using CuArrays
 
-float_types = (Float32, Float64)
+closures = (
+            :ConstantIsotropicDiffusivity,
+            :ConstantAnisotropicDiffusivity,
+            :SmagorinskyLilly,
+            :BlasiusSmagorinsky,
+            :RozemaAnisotropicMinimumDissipation,
+            :VerstappenAnisotropicMinimumDissipation
+           )
+
+EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
 
 @testset "Oceananigans" begin
     include("test_grids.jl")

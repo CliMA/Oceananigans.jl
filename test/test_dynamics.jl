@@ -1,5 +1,3 @@
-using Printf
-
 function getmodelfield(fieldname, model)
     if fieldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fieldname)
