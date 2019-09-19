@@ -28,7 +28,7 @@ export
     Forcing,
 
     # Equation of state
-    SeawaterBuoyancy, LinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
 
     # Boundary conditions
     BoundaryCondition,
@@ -101,6 +101,11 @@ import Base:
 ##### Abstract types
 #####
 
+"""
+    AbstractModel
+
+Abstract supertype for models.
+"""
 abstract type AbstractModel end
 
 """
@@ -141,10 +146,29 @@ abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
 """
     AbstractEquationOfState
 
+Abstract supertype for buoyancy models.
+"""
+abstract type AbstractBuoyancy{EOS} end
+
+"""
+    AbstractEquationOfState
+
 Abstract supertype for equations of state.
 """
 abstract type AbstractEquationOfState end
 
+"""
+    AbstractEquationOfState
+
+Abstract supertype for nonlinar equations of state.
+"""
+abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for solvers for Poisson's equation.
+"""
 abstract type AbstractPoissonSolver end
 
 """
@@ -184,13 +208,13 @@ device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
 """
-    @hascuda
+    @hascuda expr
 
-A macro to execute an expression only if CUDA is installed and available. Generally used to
-wrap expressions that can only execute with a GPU.
+A macro to compile and execute `expr` only if CUDA is installed and available. Generally used to
+wrap expressions that can only be compiled if `CuArrays` and `CUDAnative` can be loaded.
 """
-macro hascuda(ex)
-    return has_cuda() ? :($(esc(ex))) : :(nothing)
+macro hascuda(expr)
+    return has_cuda() ? :($(esc(expr))) : :(nothing)
 end
 
 @hascuda begin
@@ -206,20 +230,19 @@ end
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
-function buoyancy_perturbation end
-function total_buoyancy end
+function buoyancy end
 
 include("utils.jl")
 
 include("clock.jl")
-include("coriolis.jl")
-include("buoyancy.jl")
 include("grids.jl")
 include("fields.jl")
 
-include("operators/operators.jl")
-include("turbulence_closures/TurbulenceClosures.jl")
+include("Operators/Operators.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 
+include("coriolis.jl")
+include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("poisson_solvers.jl")
