@@ -195,7 +195,7 @@ frequency `N²`.
 
 @inline function ν_ccc(i, j, k, grid, clo::BlasiusSmagorinsky, c, buoyancy, U, Φ)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, total_buoyancy, buoyancy, Φ)
+    N² = buoyancy_frequency_squared(i, j, k, grid, buoyancy, Φ)
     Lm_sq = Lm²(i, j, k, grid, clo, Σ², N²)
 
     return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
