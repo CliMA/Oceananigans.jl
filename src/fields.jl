@@ -1,54 +1,107 @@
+"""
+    Cell
+
+A type describing the location at the center of a grid cell.
+"""
 struct Cell end
+
+"""
+	Face
+
+A type describing the location at the face of a grid cell.
+"""
 struct Face end
 
 """
-    Field(Lx, Ly, Lz, arch, grid)
+    Field{LX, LY, LZ, A, G} <: AbstractField{A, G}
 
-Return a `Field` at location `(Lx, Ly, Lz)`, on architecture `arch` and `grid`.
+A field defined at the location (`LX`, `LY`, `LZ`) which can be either `Cell` or `Face`.
 """
 struct Field{Lx, Ly, Lz, A, G} <: AbstractField{A, G}
     data :: A
     grid :: G
 end
 
+"""
+	Field(L::Tuple, arch::AbstractArchitecture, grid)
+
+Construct a `Field` on architecture `arch` and `grid` with location defined by the tuple `L` of length 3 whose elements
+are `Cell` or `Face`.
+"""
 function Field(L::Tuple, arch::AbstractArchitecture, grid)
     data = zeros(arch, grid)
     return Field(L, data, grid)
 end
 
+"""
+	Field(L::Tuple, data::AbstractArray, grid)
+
+Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L` of length 3 whose elements
+are `Cell` or `Face`.
+"""
 Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3], typeof(data), typeof(grid)}(data, grid)
+
+"""
+	Field(Lx, Ly, Lz, data, grid)
+
+Construct a `Field` on `grid` using the array `data` with location defined by `Lx`, `Ly`, and `Lz` which are `Cell`
+or `Face`.
+"""
 Field(Lx, Ly, Lz, data, grid) = Field((Lx, Ly, Lz), data, grid)
 
+"""
+	CellField
+
+A field defined at the cell centers. Used for pressure and tracers.
+"""
 const CellField  = Field{Cell, Cell, Cell}
+
+"""
+	FaceFieldX
+
+A field defined at the faces along the x-direction. Used for horizontal velocity u.
+"""
 const FaceFieldX = Field{Face, Cell, Cell}
+
+"""
+	FaceFieldY
+
+A field defined at the faces along the y-direction. Used for horizontal velocity v.
+"""
 const FaceFieldY = Field{Cell, Face, Cell}
+
+"""
+	FaceFieldY
+
+A field defined at the faces along the z-direction. Used for vertical velocity w.
+"""
 const FaceFieldZ = Field{Cell, Cell, Face}
 
 """
     CellField([T=eltype(grid)], arch, grid)
 
-Return a `CellField` on `arch` and `grid`.
+Return a `CellField` on architecture `arch` and `grid`.
 """
 CellField(T, arch, grid) = Field(Cell, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldX([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldX` on `arch` and `grid`.
+Return a `FaceFieldX` on architecture `arch` and `grid`.
 """
 FaceFieldX(T, arch, grid) = Field(Face, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldY([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldY` on `arch` and `grid`.
+Return a `FaceFieldY` on architecture `arch` and `grid`.
 """
 FaceFieldY(T, arch, grid) = Field(Cell, Face, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldZ([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldZ` on `arch` and `grid`.
+Return a `FaceFieldZ` on architecture `arch` and `grid`.
 """
 FaceFieldZ(T, arch, grid) = Field(Cell, Cell, Face, zeros(T, arch, grid), grid)
 
@@ -117,7 +170,7 @@ znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, 
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
-# Niceties 
+# Niceties
 const AbstractCPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
 @hascuda const AbstractGPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
