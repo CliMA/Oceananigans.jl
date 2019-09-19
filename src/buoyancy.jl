@@ -1,8 +1,5 @@
 using .TurbulenceClosures: ∂z_aaf, ▶z_aaf
 
-abstract type AbstractBuoyancy{EOS} end
-abstract type AbstractNonlinearEquationOfState <: EquationOfState end
-
 const g_Earth = 9.80665
 
 #=
@@ -28,7 +25,7 @@ Supported buoyancy types:
 
 Type indicating that the tracer `T` represents buoyancy.
 """
-struct BuoyancyTracer <: AbstractBuoyancy{Nothing}
+struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 
 @inline buoyancy(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
 @inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.T)
@@ -197,7 +194,7 @@ function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobari
     return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
 end
 
-RoquetIdealizedNonlinearEquationOfState(flavor; kwargs...) = 
+RoquetIdealizedNonlinearEquationOfState(flavor::Symbol; kwargs...) = 
     RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
 @inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
