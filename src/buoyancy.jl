@@ -1,7 +1,7 @@
-using .TurbulenceClosures: ∂z_aaf
+using .TurbulenceClosures: ∂z_aaf, ▶z_aaf
 
 abstract type AbstractBuoyancy{EOS} end
-abstract type AbstractNonlinearEOS <: EquationOfState end
+abstract type AbstractNonlinearEquationOfState <: EquationOfState end
 
 const Earth_gravitational_acceleration = 9.80665
 
@@ -17,7 +17,7 @@ Supported buoyancy types:
 #####
 
 @inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
-@inline N²(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
+@inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
 
 #####
 ##### Seawater buoyancy for buoyancy determined by temperature and salinity
@@ -36,7 +36,7 @@ end
 
 @inline grav(b::SeawaterBuoyancy) = b.gravitational_acceleration
 
-@inline N²(i, j, k, grid, b::SeawaterBuoyancy, C) = 
+@inline buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C) = 
     grav(b) * (    thermal_expansion(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.T)
                 - haline_contraction(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.S))
 
@@ -83,7 +83,7 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 ##### Nonlinear equations of state
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEOS}, C) = 
+@inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
     - grav(b) * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
 
 #####
@@ -101,23 +101,27 @@ roquet_coeffs = Dict(
 
 type_convert_roquet_coeffs(T, coeffs) = NamedTuple{propertynames(coeffs)}(Tuple(T(R) for R in coeffs))
 
-"Return the geopotential depth at `i, j, k` at cell centers."
-@inline D(i, j, k, grid) = @inbounds -grid.zC[k]
+""" Return the geopotential depth at `i, j, k` at cell centers. """
+@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
+const D = D_aac
+
+""" Return the geopotential depth at `i, j, k` at cell z-interfaces. """
+@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
 
 """
-    RoquetIdealizedNonlinearEOS{F, C, T} <: AbstractNonlinearEOS
+    RoquetIdealizedNonlinearEquationOfState{F, C, T} <: AbstractNonlinearEquationOfState
 
 Parameters associated with the idealized nonlinear equation of state proposed by
 Roquet et al., "Defining a Simplified yet 'Realistic' Equation of State for Seawater", 
 Journal of Physical Oceanography (2015).
 """
-struct RoquetIdealizedNonlinearEOS{F, C, T} <: AbstractNonlinearEOS
+struct RoquetIdealizedNonlinearEquationOfState{F, C, T} <: AbstractNonlinearEquationOfState
         ρ₀ :: T
     coeffs :: C
 end
 
 """
-    RoquetIdealizedNonlinearEOS([T=Float64,] flavor, ρ₀=1025, coeffs=roquet_coeffs[flavor])
+    RoquetIdealizedNonlinearEquationOfState([T=Float64,] flavor, ρ₀=1025, coeffs=roquet_coeffs[flavor])
 
 Returns parameters for an idealized nonlinear equation of state with reference density 
 `ρ₀`. The `flavor` of the nonlinear equation of state is a symbol corresponding to one of 
@@ -148,14 +152,14 @@ Flavors of idealized nonlinear equations of state
                        `ρ′ = R₁₀₀ * T + R₀₁₀ * S + R₀₂₀ * T^2 + R₀₁₁ * T * D`
                              + R₂₀₀ * S^2 + R₁₀₁ * S * D + R₁₁₀ * S * T`
 """
-function RoquetIdealizedNonlinearEOS(T, flavor=:cabbeling_thermobaricity; coeffs=roquet_coeffs[flavor], ρ₀=1025)
+function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobaricity; coeffs=roquet_coeffs[flavor], ρ₀=1025)
     typed_coeffs = type_convert_roquet_coeffs(coeffs)
-    return RoquetIdealizedNonlinearEOS{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
+    return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
 end
 
-RoquetIdealizedNonlinearEOS(flavor; kwargs...) = RoquetIdealizedNonlinearEOS(Float64, flavor; kwargs...)
+RoquetIdealizedNonlinearEquationOfState(flavor; kwargs...) = RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
-@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEOS, C) = 
+@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
     @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
                 + eos.coeffs.R₀₁₀ * C.T[i, j, k]
                 + eos.coeffs.R₀₂₀ * C.T[i, j, k]^2
@@ -164,32 +168,14 @@ RoquetIdealizedNonlinearEOS(flavor; kwargs...) = RoquetIdealizedNonlinearEOS(Flo
                 + eos.coeffs.R₁₀₁ * C.S[i, j, k] * D(i, j, k, grid)
                 + eos.coeffs.R₁₁₀ * C.S[i, j, k] * C.T[i, j, k] )
 
-@inline thermal_expansion(i, j, k, eos::RoquetIdealizedNonlinearEOS, C) = 
+@inline thermal_expansion(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
     @inbounds (   eos.coeffs.R₀₁₀
-                + 2 * eos.coeffs.R₀₂₀ * C.T[i, j, k]
-                + eos.coeffs.R₀₁₁ * D(i, j, k, grid)
-                + eos.coeffs.R₁₁₀ * C.T[i, j, k] )
+                + 2 * eos.coeffs.R₀₂₀ * ▶z_aaf(i, j, k, grid, C.T)
+                + eos.coeffs.R₀₁₁ * D_aaf(i, j, k, grid)
+                + eos.coeffs.R₁₁₀ * ▶z_aaf(i, j, k, grid, C.T) )
 
-@inline haline_contraction(i, j, k, eos::RoquetIdealizedNonlinearEOS, C) = 
+@inline haline_contraction(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
     @inbounds (   eos.coeffs.R₁₀₀
-                + 2 * eos.coeffs.R₂₀₀ * C.S[i, j, k]
-                + eos.coeffs.R₁₀₁ * D(i, j, k, grid)
-                + eos.coeffs.R₁₁₀ * C.S[i, j, k] 
-
-#=
-# Optimiziations: do we need?
-@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEOS{:linear}, C) = 
-    @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
-                + eos.coeffs.R₀₁₀ * C.T[i, j, k] )
-
-@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEOS{:cabbeling}, C) = 
-    @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
-                + eos.coeffs.R₀₁₀ * C.T[i, j, k]
-                + eos.coeffs.R₀₂₀ * C.T[i, j, k]^2 )
-
-@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEOS{<:Union{:cabbeling_thermobaricity, :freezing}}, C) =
-    @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
-                + eos.coeffs.R₀₁₀ * C.T[i, j, k]
-                + eos.coeffs.R₀₂₀ * C.T[i, j, k]^2
-                + eos.coeffs.R₀₁₁ * C.T[i, j, k] * D(i, j, k, grid) )
-=#
+                + 2 * eos.coeffs.R₂₀₀ * ▶z_aaf(i, j, k, grid, C.S)
+                + eos.coeffs.R₁₀₁ * D_aaf(i, j, k, grid)
+                + eos.coeffs.R₁₁₀ * ▶z_aaf(i, j, k, grid, C.S) )

@@ -74,9 +74,9 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly, c, buoyancy, U, Φ)
+@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly, c, buoyancy_params, U, Φ)
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, total_buoyancy, buoyancy, Φ)
+    N² = ▶z_aac(i, j, k, grid, buoyancy_frequency_squared, buoyancy_params, Φ)
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
