@@ -110,8 +110,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
                   L = (4π*h, 2π*h, 2h),
                arch = arch, 
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
-                eos = LinearEquationOfState(βT=1, βS=0),
-          constants = PlanetaryConstants(f=0, g=1),
+                eos = LinearEquationOfState(βT=1.0, βS=0.0),
+          constants = PlanetaryConstants(f=0.0, g=1.0),
                 bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs),
          parameters = parameters)
 
