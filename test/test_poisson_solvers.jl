@@ -1,13 +1,3 @@
-using FFTW
-using Statistics: mean
-using LinearAlgebra: norm
-
-import GPUifyLoops: @launch, @loop, @unroll
-@hascuda using CuArrays
-using OffsetArrays
-
-using Oceananigans.Operators
-
 function ∇²!(grid::RegularCartesianGrid, f, ∇²f)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)

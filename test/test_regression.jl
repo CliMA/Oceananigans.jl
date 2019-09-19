@@ -1,4 +1,3 @@
-using Random, Printf, JLD2
 const seed = 420  # Random seed to use for all pseudorandom number generators.
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
