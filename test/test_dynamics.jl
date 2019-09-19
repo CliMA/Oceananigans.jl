@@ -117,10 +117,7 @@ function internal_wave_test(; N=128, Nt=10)
     T₀(x, y, z) = T(x, y, z, 0)
 
     # Create a model where temperature = buoyancy.
-    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
-                       buoyancy=SeawaterBuoyancy(
-                            gravitational_acceleration = 1, 
-                            equation_of_state = LinearEquationOfState(α=1, β=0)),
+    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(),
                        coriolis=VerticalRotationAxis(f=f))
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)

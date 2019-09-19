@@ -34,7 +34,7 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
     closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    buoyancy = SeawaterBuoyancy(FT)
+    buoyancy = BuoyancyTracer()
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
 
