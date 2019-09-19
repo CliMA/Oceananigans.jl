@@ -1,14 +1,14 @@
 using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquationOfState,
-                     Λ<:PlanetaryConstants, U, C, Φ, F, BCS, S, K, OW, DI, Θ} <: AbstractModel
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F, 
+                     BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
                    grid :: G         # Grid of physical points on which `Model` is solved
                   clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-                    eos :: EOS       # Relationship between temperature, salinity, and buoyancy
-              constants :: Λ         # Set of physical constants, inc. gravitational acceleration
+               buoyancy :: B         # Set of parameters for buoyancy model
+               coriolis :: R         # Set of parameters for the background rotation rate of `Model`
              velocities :: U         # Container for velocity fields `u`, `v`, and `w`
                 tracers :: C         # Container for tracer fields
               pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -21,9 +21,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, EOS<:AbstractEquation
          output_writers :: OW        # Objects that write data to disk
             diagnostics :: DI        # Objects that calc diagnostics on-line during simulation
              parameters :: Θ         # Container for arbitrary user-defined parameters
-
 end
-
 
 """
     Model(; grid, kwargs...)
@@ -32,29 +30,27 @@ Construct an `Oceananigans.jl` model on `grid`.
 
 Important keyword arguments include
 
-    `grid`                : (required) The resolution and discrete geometry on which `model` is solved.
-                            Currently the only option is `RegularCartesianGrid`.
+    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+              Currently the only option is `RegularCartesianGrid`.
 
-    `architecture`        : `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 
-    `float_type`          : `Float32` or `Float64`. The floating point type used for `model` data.
+    - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
 
-    `closure`             : The turbulence closure for `model`. See `TurbulenceClosures`.
+    - `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
 
-    `constants`           : `PlanetaryConstants(g=g, f=f)`, determines gravitational acceleration `g`
-                             and Coriolis parameter `f`.
+    - `buoyancy`: Buoyancy model parameters.
 
-    `eos`                 : The equation of state that relates tracers `T` and `S` to density perturbations.
-                            See `EquationOfState`.
+    - `coriolis`: Parameters for the background rotation rate of the model.
 
-    `forcing`             : User-defined forcing functions that contribute to solution tendencies.
+    - `forcing`: User-defined forcing functions that contribute to solution tendencies.
 
-    `boundary_conditions` : User-defined boundary conditions for model fields. Can be either
-                            `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
-                            See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
+    - `boundary_conditions`: User-defined boundary conditions for model fields. Can be either
+                             `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
+                             See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
 
-    `parameters`          : User-defined parameters for use in user-defined forcing functions and boundary
-                            condition functions.
+    - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary
+                    condition functions.
 """
 function Model(;
                    grid, # model resolution and domain
@@ -62,8 +58,8 @@ function Model(;
              float_type = Float64,
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
-              constants = Earth(float_type), # rotation rate and gravitational acceleration
-                    eos = LinearEquationOfState{float_type}(), # relationship between tracers and density
+               buoyancy = SeawaterBuoyancy(float_type),
+               coriolis = nothing,
     # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = Forcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
@@ -89,7 +85,7 @@ function Model(;
 
     boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
-    return Model(architecture, grid, clock, eos, constants, velocities, tracers,
+    return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
@@ -149,12 +145,18 @@ Note that `N`, `L`, and `Re` are required.
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
 function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
-    constants = PlanetaryConstants(float_type, g=Ri, f=1/Ro)
-          eos = LinearEquationOfState{float_type}(βT=1.0, βS=0.0)
+     coriolis = VerticalRotationAxis(float_type, f=1/Ro)
+
+     buoyancy = SeawaterBuoyancy(float_type, 
+                    gravitational_acceleration = Ri, 
+                    equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
+                )
+
     return Model(; float_type=float_type, grid=grid, closure=closure,
-                 constants=constants, eos=eos, skwargs...)
+                   coriolis=coriolis, buoyancy=buoyancy, skwargs...)
 end
 
 

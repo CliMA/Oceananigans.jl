@@ -1,5 +1,3 @@
-using JLD2: jldopen
-
 """
 Run a coarse thermal bubble simulation and save the output to NetCDF at the
 10th time step. Then read back the output and test that it matches the model's
