@@ -1,5 +1,3 @@
-using Oceananigans: velocity_div!, compute_w_from_continuity!
-
 function time_stepping_works(arch, FT, Closure)
     model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
                        closure=Closure(FT))
