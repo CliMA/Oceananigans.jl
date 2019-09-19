@@ -1,119 +1,61 @@
+#=
+
+* Example description here *
+
+=#
+
 using Oceananigans, Printf, PyPlot
 
-include("utils.jl")
+# Internal wave parameters
+Nx, Lx = 128, 2π
+A, x₀, z₀, δ = 1e-9, Lx/2, -Lx/2, Lx/15 # Wave envelope parameters
+m, k = 16, 1 # Vertical and horizontal wavenumber
+N, f = 1, 0.2 # Buoyancy frequency and Coriolis parameter (non-dimensionalized by N)
 
-function informative_message(model, u, w, ℕ)
-    return @sprintf("""
-        This is an informative message.
+# Internal wave frequency via the dispersion relation
+ω = sqrt( (N^2*k^2 + f^2*m^2) / (k^2 + m^2) )
+Δt = 0.001 * 2π/ω
 
-         model vertical resolution : %d
-                   model iteration : %d
-        kinetic + potential energy : %.2e
-                    kinetic energy : %.2e
-               relative error in w : %.2e
-               relative error in u : %.2e
-        """, model.grid.Nz, model.clock.iteration, total_energy(model, ℕ),
-        total_kinetic_energy(model), w_relative_error(model, w), u_relative_error(model, u))
-end
+# Polarization relations
+U = k * ω   / (ω^2 - f^2)
+V = k * f   / (ω^2 - f^2)
+W = m * ω   / (ω^2 - ℕ^2)
+Θ = m * N^2 / (ω^2 - ℕ^2)
 
-function makeplot(axs, model, w)
-    w_num = model.velocities.w
+a(x, y, z) = A * exp( -((x-x₀)^2 + (z-z₀)^2) / (2*δ)^2 )
 
-    w_ans = FaceFieldZ(w.(xnodes(w_num), ynodes(w_num), znodes(w_num),
-                        model.clock.time), model.grid)
+u₀(x, y, z) = a(x, y, z) * U * cos(k*x + m*z)
+v₀(x, y, z) = a(x, y, z) * V * sin(k*x + m*z)
+w₀(x, y, z) = a(x, y, z) * W * cos(k*x + m*z)
+T₀(x, y, z) = a(x, y, z) * Θ * sin(k*x + m*z) + ℕ^2 * z
 
-    wmax = maximum(abs.(w_num.data))
+# Create a model where temperature = buoyancy.
+model = Model(
+        grid = RegularCartesianGrid(N=(Nx, 1, Nx), L=(Lx, Lx, Lx)),
+     closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
+    coriolis = FPlane(f=f), 
+    buoyancy = BuoyancyTracer()
+)
 
-    sca(axs[1, 1])
+set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
-    PyPlot.plot(data(w_ans)[1, 1, :], view(znodes(w_num), 1, 1, :),  "-", linewidth=2, alpha=0.4)
-    PyPlot.plot(data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "--", linewidth=1)
+xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
+zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
 
-    xlim(-wmax, wmax)
-
-    axs[1, 1].spines["top"].set_visible(false)
-    axs[1, 1].spines["right"].set_visible(false)
-
-    xlabel(L"w")
-    ylabel(L"z")
-
-    sca(axs[2, 1])
-    PyPlot.plot(data(w_ans)[1, 1, :] .- data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "-")
-
-    xlim(-wmax, wmax)
-
-    axs[2, 1].spines["top"].set_visible(false)
-    axs[2, 1].spines["right"].set_visible(false)
-
-    xlabel(L"\mathrm{mean} \left [ \left ( w_\mathrm{model} - w_\mathrm{analytical} \right )^2 \right ] / \mathrm{mean} \left ( w_\mathrm{analytical}^2 \right )")
-    ylabel(L"z")
-
-    sca(axs[1, 2])
-    plotxzslice(w_num)
-    axis("off")
-    title("Model vertical velocity")
+function plot_field!(ax, w, t) 
+    pcolormesh(xplot(w), zplot(w), data(model.velocities.w)[:, 1, :])
     xlabel(L"x")
     ylabel(L"z")
-
-    sca(axs[2, 2])
-    plotxzslice(w_ans)
-    axis("off")
-    title("Analytical vertical velocity")
-    xlabel(L"x")
-    ylabel(L"z")
-
+    title(@sprintf("\$ \\omega t / 2 \\pi = %.2f\$", t*ω/2π))
+    ax.set_aspect(1)
+    pause(0.1)
     return nothing
 end
 
-# Internal wave parameters
- ν = κ = 1e-9
- L = 2π
-z₀ = -L/3
- δ = L/20
-a₀ = 1e-3
- m = 16
- k = 1
- f = 0.2
- ℕ = 1.0
- σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
+close("all")
+fig, ax = subplots()
 
-# Numerical parameters
- N = 128
-Δt = 0.01 * 1/σ
-
-@show σ/f
-cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
- U = a₀ * k * σ   / (σ^2 - f^2)
- V = a₀ * k * f   / (σ^2 - f^2)
- W = a₀ * m * σ   / (σ^2 - ℕ^2)
- Θ = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
-
-a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
-
-u(x, y, z, t) =           a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-v(x, y, z, t) =           a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-w(x, y, z, t) =           a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
-T(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * Θ * sin(k*x + m*z - σ*t)
-
-u₀(x, y, z) = u(x, y, z, 0)
-v₀(x, y, z) = v(x, y, z, 0)
-w₀(x, y, z) = w(x, y, z, 0)
-T₀(x, y, z) = T(x, y, z, 0)
-
-# Create a model where temperature = buoyancy.
-model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
-                    eos=LinearEquationOfState(βT=1.0),
-                    constants=PlanetaryConstants(f=f, g=1.0))
-
-set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
-println(informative_message(model, u, w, ℕ))
-
-fig, axs = subplots(ncols=2, nrows=2, figsize=(8, 8))
-
-for Nt in (1, 10, 100)
-    time_step!(model, Nt, Δt)
-    makeplot(axs, model, w)
-    println(informative_message(model, u, w, ℕ))
+for i = 1:10
+    time_step!(model, 200, Δt)
+    plot_field!(ax, model.velocities.w, model.clock.time)
 end
-
-gcf()
