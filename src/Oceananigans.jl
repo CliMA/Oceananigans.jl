@@ -230,7 +230,7 @@ architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
 # Place-holder buoyancy functions for use in TurbulenceClosures module
-function buoyancy end
+function buoyancy_perturbation end
 function buoyancy_frequency_squared end
 
 include("utils.jl")

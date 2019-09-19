@@ -13,7 +13,7 @@ Supported buoyancy types:
 ##### Functions for buoyancy = nothing
 #####
 
-@inline buoyancy(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
+@inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
 @inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
 
 #####
@@ -27,7 +27,7 @@ Type indicating that the tracer `T` represents buoyancy.
 """
 struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 
-@inline buoyancy(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
+@inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
 @inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.T)
 
 """
@@ -108,7 +108,7 @@ LinearEquationOfState(T=Float64; α=1.67e-4, β=7.80e-4) =
 
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
 
-@inline buoyancy(i, j, k, grid, b::LinearSeawaterBuoyancy, C) = 
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) = 
     return @inbounds grav(b) * (   b.equation_of_state.α * C.T[i, j, k]
                                  - b.equation_of_state.β * C.S[i, j, k] )
 
@@ -119,7 +119,7 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 ##### Nonlinear equations of state
 #####
 
-@inline buoyancy(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
+@inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
     - grav(b) * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
 
 #####
