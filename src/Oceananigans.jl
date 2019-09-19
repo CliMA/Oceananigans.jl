@@ -28,7 +28,7 @@ export
     Forcing,
 
     # Equation of state
-    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
 
     # Boundary conditions
     BoundaryCondition,
@@ -187,7 +187,7 @@ Abstract supertype for types that perform input and output.
 abstract type AbstractOutputWriter end
 
 #####
-##### All the code
+##### All the functionality
 #####
 
 """
@@ -230,7 +230,9 @@ end
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
+# Place-holder buoyancy functions for use in TurbulenceClosures module
 function buoyancy end
+function buoyancy_frequency_squared end
 
 include("utils.jl")
 
