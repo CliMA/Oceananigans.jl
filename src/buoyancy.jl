@@ -3,7 +3,7 @@ using .TurbulenceClosures: ∂z_aaf, ▶z_aaf
 abstract type AbstractBuoyancy{EOS} end
 abstract type AbstractNonlinearEquationOfState <: EquationOfState end
 
-const Earth_gravitational_acceleration = 9.80665
+const g_Earth = 9.80665
 
 #=
 Supported buoyancy types:
@@ -16,26 +16,55 @@ Supported buoyancy types:
 ##### Functions for buoyancy = nothing
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
+@inline buoyancy(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
 @inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
 
 #####
 ##### Seawater buoyancy for buoyancy determined by temperature and salinity
 #####
 
+"""
+    SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
+
+Buoyancy model for temperature- and salt-stratified seawater.
+"""
 struct SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
     gravitational_acceleration :: G
     equation_of_state :: EOS
 end
 
+"""
+    SeawaterBuoyancy([T=Float64;] gravitational_acceleration = g_Earth,
+                                  equation_of_state = LinearEquationOfState(T))
+
+Returns parameters for a temperature- and salt-stratified seawater buoyancy model
+with a `gravitational_acceleration` constant (typically called 'g'), and an
+`equation_of_state` that related temperature and salinity (or conservative temperature
+and absolute salinity) to density anomalies and buoyancy.
+"""
 function SeawaterBuoyancy(T=Float64; 
-                          gravitational_acceleration = Earth_gravitational_acceleration, 
+                          gravitational_acceleration = g_Earth, 
                           equation_of_state = LinearEquationOfState(T))
     return SeawaterBuoyancy{T, typeof(equation_of_state)}(gravitational_acceleration, equation_of_state)
 end
 
+""" Convenience function for extracting the gravitational acceleration from a buoyancy struct. """
 @inline grav(b::SeawaterBuoyancy) = b.gravitational_acceleration
 
+""" 
+    buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C)
+
+Returns the buoyancy frequency squared for temperature and salt-stratified water,
+
+```math
+N^2 = g \\left ( \\alpha \\partial_z T - \\beta \\partial_z S \\right ) \\, ,
+```
+
+where ``\$ g \$`` is gravitational acceleration, ``\$ \\alpha \$`` is the thermal expansion 
+coefficient, ``\$ \\beta \$`` is the haline contraction coefficient, ``\$ T \$`` is 
+temperature or conservative temperature, where applicable, and ``\$ S \$`` is the 
+salinity or absolute salinity, where applicable.
+"""
 @inline buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C) = 
     grav(b) * (    thermal_expansion(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.T)
                 - haline_contraction(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.S))
@@ -72,7 +101,7 @@ LinearEquationOfState(T=Float64; α=1.67e-4, β=7.80e-4) =
 
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) = 
+@inline buoyancy(i, j, k, grid, b::LinearSeawaterBuoyancy, C) = 
     return @inbounds grav(b) * (   b.equation_of_state.α * C.T[i, j, k]
                                  - b.equation_of_state.β * C.S[i, j, k] )
 
@@ -83,10 +112,8 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 ##### Nonlinear equations of state
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
+@inline buoyancy(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) = 
     - grav(b) * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
-
-const buoyancy = buoyancy_perturbation
 
 #####
 ##### Roquet et al 2015 idealized nonlinear equations of state
