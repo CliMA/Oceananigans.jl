@@ -194,7 +194,7 @@ function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobari
     return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
 end
 
-RoquetIdealizedNonlinearEquationOfState(flavor::Symbol; kwargs...) = 
+RoquetIdealizedNonlinearEquationOfState(flavor::Symbol=:cabbeling_thermobaricity; kwargs...) = 
     RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
 @inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
