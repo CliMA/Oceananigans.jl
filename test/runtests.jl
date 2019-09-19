@@ -11,7 +11,8 @@ using
     Oceananigans.TurbulenceClosures
 
 using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
-                    parentdata, buoyancy, fill_halo_regions!, run_diagnostic
+                    parentdata, buoyancy, fill_halo_regions!, run_diagnostic,
+                    RoquetIdealizedNonlinearEquationOfState
 
 archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
