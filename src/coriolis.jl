@@ -1,3 +1,11 @@
+#####
+##### Functions for non-rotating models
+#####
+
+@inline x_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+@inline y_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
+
 """
     VerticalRotationAxis{T} <: AbstractRotation
 
@@ -21,3 +29,14 @@ function VerticalRotationAxis(T::DataType=Float64; f)
 end
 
 const FPlane = VerticalRotationAxis
+
+@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T = 
+    T(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
+
+@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T = 
+    T(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
+
+@inline x_f_cross_U(i, j, k, grid, rotation::VerticalRotationAxis, U) = -fv(i, j, k, grid, rotation.f, U.v)
+@inline y_f_cross_U(i, j, k, grid, rotation::VerticalRotationAxis, U) =  fu(i, j, k, grid, rotation.f, U.u)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::VerticalRotationAxis, U) where T = zero(T)
+
