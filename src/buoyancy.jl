@@ -24,6 +24,16 @@ Supported buoyancy types:
 #####
 
 """
+    BuoyancyTracer <: AbstractBuoyancy{Nothing}
+
+Type indicating that the tracer `T` represents buoyancy.
+"""
+struct BuoyancyTracer <: AbstractBuoyancy{Nothing}
+
+@inline buoyancy(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
+@inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.T)
+
+"""
     SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
 
 Buoyancy model for temperature- and salt-stratified seawater.
