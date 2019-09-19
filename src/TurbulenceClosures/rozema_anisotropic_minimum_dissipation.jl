@@ -195,7 +195,7 @@ end
     )
 end
 
-@inline function Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy_params, w, C)
+@inline function Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, w, C)
     ijk = (i, j, k, grid)
 
     Δx = Δx_ccc(ijk..., closure)
@@ -203,13 +203,13 @@ end
     Δz = Δz_ccc(ijk..., closure)
 
     Δx²_wx_bx = Δx^2 * (▶xz_cac(ijk..., ∂x_faa, w)
-                          * ▶x_caa(ijk..., ∂x_faa, buoyancy, buoyancy_params, C))
+                          * ▶x_caa(ijk..., ∂x_faa, buoyancy_perturbation, buoyancy, C))
 
     Δy²_wy_by = Δy^2 * (▶yz_acc(ijk..., ∂y_afa, w)
-                          * ▶y_aca(ijk..., ∂y_afa, buoyancy, buoyancy_params, C))
+                          * ▶y_aca(ijk..., ∂y_afa, buoyancy_perturbation, buoyancy, C))
 
     Δz²_wz_bz = Δz^2 * (∂z_aac(ijk..., w)
-                          * ▶z_aac(ijk..., ∂z_aaf, buoyancy, buoyancy_params, C))
+                          * ▶z_aac(ijk..., ∂z_aaf, buoyancy_perturbation, buoyancy, C))
 
     return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
 end
@@ -307,13 +307,13 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
 )
 
 # This function assumes rigid top and bottom boundary conditions
-function calc_diffusivities!(K, grid, closure::RAMD, buoyancy_params, U, Φ)
+function calc_diffusivities!(K, grid, closure::RAMD, buoyancy, U, Φ)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy_params, U, Φ)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy_params, U, Φ)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy_params, U, Φ)
+                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
+                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy, U, Φ)
+                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy, U, Φ)
             end
         end
     end
