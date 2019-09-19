@@ -1,10 +1,8 @@
 """
-    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
+    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
 
-A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
-and \$Δz\$ are constants. Fields are stored using floating-point values of type
-`T`. The cell-centered and face-centered coordinate ranges are stored as ranges
-of type `A`.
+A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
+and cell faces.
 """
 struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
     # Number of grid points in (x,y,z).
@@ -45,16 +43,33 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{
 end
 
 """
-    RegularCartesianGrid(T, N, L)
+    RegularCartesianGrid([T=Float64]; N, L)
 
-Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
-size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
-of type `T`.
+Creates a `RegularCartesianGrid` with `N = (Nx, Ny, Nz)` grid points and domain size
+`L = (Lx, Ly, Lz)`, where constants are stored using floating point values of type `T`.
 
-# Examples
-```julia-repl
-julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
-```
+Additional properties
+=====================
+- `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
+- `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
+- `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
+- `(Tx, Ty, Tz)::Int`: "Total" grid size (interior + halo points) in the (x, y, z)-direction
+
+Examples
+========
+julia> grid = RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
+RegularCartesianGrid{Float64}
+  resolution (Nx, Ny, Nz) = (32, 32, 32)
+   halo size (Hx, Hy, Hz) = (1, 1, 1)
+      domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
+grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
+
+julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
+RegularCartesianGrid{Float32}
+  resolution (Nx, Ny, Nz) = (32, 32, 16)
+   halo size (Hx, Hy, Hz) = (1, 1, 1)
+      domain (Lx, Ly, Lz) = (8.0f0, 8.0f0, 2.0f0)
+grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
 """
 function RegularCartesianGrid(T, N, L)
     length(N) == 3 || throw(ArgumentError("N=$N must be a tuple of length 3."))
@@ -101,8 +116,8 @@ function RegularCartesianGrid(T, N, L)
                                         xC, yC, zC, xF, yF, zF)
 end
 
-# Constructor aliases.
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
+
 RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
 
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
