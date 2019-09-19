@@ -135,15 +135,6 @@ roquet_coeffs = Dict(
             :second_order => (R₀₁₀ =  0.182e-1, R₁₀₀ = 8.078e-1, R₀₂₀ = -4.937e-3, R₀₁₁ = -2.4677e-5, R₂₀₀ = -1.115e-4, R₁₀₁ = -8.241e-6, R₁₁₀ = -2.446e-3)
 )
 
-type_convert_roquet_coeffs(T, coeffs) = NamedTuple{propertynames(coeffs)}(Tuple(T(R) for R in coeffs))
-
-""" Return the geopotential depth at `i, j, k` at cell centers. """
-@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
-const D = D_aac
-
-""" Return the geopotential depth at `i, j, k` at cell z-interfaces. """
-@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
-
 """
     RoquetIdealizedNonlinearEquationOfState{F, C, T} <: AbstractNonlinearEquationOfState
 
@@ -155,6 +146,8 @@ struct RoquetIdealizedNonlinearEquationOfState{F, C, T} <: AbstractNonlinearEqua
         ρ₀ :: T
     coeffs :: C
 end
+
+type_convert_roquet_coeffs(T, coeffs) = NamedTuple{propertynames(coeffs)}(Tuple(T(R) for R in coeffs))
 
 """
     RoquetIdealizedNonlinearEquationOfState([T=Float64,] flavor, ρ₀=1025, coeffs=roquet_coeffs[flavor])
@@ -190,14 +183,21 @@ Flavors of idealized nonlinear equations of state
 """
 function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobaricity; 
                                                  coeffs=roquet_coeffs[flavor], ρ₀=1025)
-    typed_coeffs = type_convert_roquet_coeffs(coeffs)
+    typed_coeffs = type_convert_roquet_coeffs(T, coeffs)
     return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
 end
 
 RoquetIdealizedNonlinearEquationOfState(flavor::Symbol=:cabbeling_thermobaricity; kwargs...) = 
     RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
-@inline ρ′(i, j, k, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
+""" Return the geopotential depth at `i, j, k` at cell centers. """
+@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
+const D = D_aac
+
+""" Return the geopotential depth at `i, j, k` at cell z-interfaces. """
+@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
+
+@inline ρ′(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) = 
     @inbounds (   eos.coeffs.R₁₀₀ * C.S[i, j, k]
                 + eos.coeffs.R₀₁₀ * C.T[i, j, k]
                 + eos.coeffs.R₀₂₀ * C.T[i, j, k]^2
