@@ -45,7 +45,7 @@ time_step!(model; Nt, Δt, kwargs...) = time_step!(model, Nt, Δt; kwargs...)
 Step forward one time step with a 2nd-order Adams-Bashforth method and pressure-correction
 substep.
 """
-function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closure, forcing, bcs,
+function adams_bashforth_time_step!(model, arch, grid, buoyancy_params, coriolis, closure, forcing, bcs,
                                     U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
     # Arguments for user-defined boundary condition functions:
@@ -55,9 +55,9 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
     fill_halo_regions!(merge(U, Φ), bcs.solution, arch, grid, boundary_condition_args...)
 
-    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, Φ)
+    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy_params, U, Φ)
     fill_halo_regions!(K, bcs.pressure, arch, grid) # diffusivities share bcs with pressure.
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy, Φ)
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy_params, Φ)
     fill_halo_regions!(p.pHY′, bcs.pressure, arch, grid)
 
     # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
@@ -120,10 +120,10 @@ function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻)
 end
 
 """
-Update the hydrostatic pressure perturbation pHY′. This is done by integrating the
-buoyancy perturbation ``g δρ`` downwards
+Update the hydrostatic pressure perturbation pHY′. This is done by integrating
+`buoyancy` downwards:
 
-    `pHY′ = -∫ g δρ dz` from `z=0` down to `z=-Lz`
+    `pHY′ = ∫ buoyancy dz` from `z=0` down to `z=-Lz`
 """
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy_params, Φ)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
