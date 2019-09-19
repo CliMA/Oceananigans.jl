@@ -118,7 +118,7 @@ function internal_wave_test(; N=128, Nt=10)
 
     # Create a model where temperature = buoyancy.
     model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(),
-                       coriolis=VerticalRotationAxis(f=f))
+                       coriolis=FPlane(f=f))
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 

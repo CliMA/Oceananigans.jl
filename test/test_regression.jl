@@ -19,7 +19,7 @@ function run_thermal_bubble_regression_tests(arch)
     Δt = 6
 
     model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
-                       coriolis=VerticalRotationAxis(f=1e-4))
+                       coriolis=FPlane(f=1e-4))
 
     model.tracers.T.data.parent .= T₀
     model.tracers.S.data.parent .= S₀

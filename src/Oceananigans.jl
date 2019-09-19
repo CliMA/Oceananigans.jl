@@ -12,8 +12,7 @@ export
     CPU, GPU,
 
     # Constants
-    PlanetaryConstants, Earth, Europa, Enceladus,
-    FPlane, VerticalRotationAxis,
+    FPlane,
     second, minute, hour, day,
 
     # Grids
