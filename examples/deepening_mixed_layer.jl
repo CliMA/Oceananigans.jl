@@ -32,11 +32,11 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 Tbcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fθ), bottom=BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
-model = Model(      
+model = Model(
            architecture = CPU(), # GPU() # this example will run on the GPU if cuda is available.
                    grid = RegularCartesianGrid(N = (N, N, N), L = (N*Δ, N*Δ, N*Δ)),
-                    eos = LinearEquationOfState(βT=βT, βS=0.0),
-              constants = PlanetaryConstants(f=f, g=g),
+               coriolis = FPlane(f=f),
+               buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=βT)),
                 closure = AnisotropicMinimumDissipation(), # closure = ConstantSmagorinsky(),
     boundary_conditions = BoundaryConditions(u=ubcs, T=Tbcs)
 )
