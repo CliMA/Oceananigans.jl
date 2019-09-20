@@ -1,22 +1,3 @@
-using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
-                                       ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
-                                       ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
-                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, 
-                                       ▶z_aac, ▶z_aaf
-
-using GPUifyLoops: @launch
-using Oceananigans: launch_config, datatuples, device
-import Oceananigans: datatuple
-
-closures = (
-            :ConstantIsotropicDiffusivity,
-            :ConstantAnisotropicDiffusivity,
-            :DeardorffSmagorinsky,
-            :BlasiusSmagorinsky,
-            :RozemaAnisotropicMinimumDissipation,
-            :VerstappenAnisotropicMinimumDissipation
-           )
-
 for closure in closures
     @eval begin
         using Oceananigans.TurbulenceClosures: $closure
@@ -34,15 +15,14 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
     closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, closure)
-    eos = LinearEquationOfState(FT)
-    grav = one(FT)
+    buoyancy = BuoyancyTracer()
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
 
     U, Φ, K = datatuples(velocities, tracers, diffusivities)
 
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(
-        K, grid, closure, eos, grav, U, Φ)
+        K, grid, closure, buoyancy, U, Φ)
 
     return true
 end
@@ -52,15 +32,13 @@ function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.
     return closure.ν == ν && closure.κ == κ
 end
 
-function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; 
+function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
                                                      ν=FT(0.3), κ=FT(0.7))
 
     arch = CPU()
     closure = ConstantIsotropicDiffusivity(FT, κ=κ, ν=ν)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
-    eos = LinearEquationOfState()
-    grav = one(FT)
+    bcs = HorizontallyPeriodicSolutionBCs()
 
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
@@ -84,15 +62,12 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
             )
 end
 
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), 
-                                              νv=FT(0.1), κv=FT(0.5))
-
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
     arch = CPU()
     closure = ConstantAnisotropicDiffusivity(FT, κh=κh, νh=νh, κv=κv, νv=νv)
     grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
-    bcs = HorizontallyPeriodicModelBCs()
-    eos = LinearEquationOfState()
-    grav = one(FT)
+    bcs = HorizontallyPeriodicSolutionBCs()
+    buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
     velocities = Oceananigans.VelocityFields(arch, grid)
     tracers = Oceananigans.TracerFields(arch, grid)
     u, v, w = velocities
@@ -117,10 +92,10 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     U, Φ = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, eos, grav, U..., Φ...) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, eos, grav, U..., Φ...) == 6νh + 8νv
+    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, nothing) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U..., nothing) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U..., nothing) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv
             )
 end
 

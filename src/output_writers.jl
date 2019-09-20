@@ -1,13 +1,17 @@
-ext(fw::OutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
+####
+#### Output writer utilities
+####
+
+ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Number)        = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
-saveproperty!(file, location, p::Field)         = file[location] = Array(p.data.parent)
+saveproperty!(file, location, p::AbstractField)         = file[location] = Array(p.data.parent)
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
-saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp)) 
+saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp))
                                         for subp in propertynames(p)]
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
@@ -38,7 +42,7 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = file[location] = p
-serializeproperty!(file, location, p::Union{AbstractArray, Field}) = saveproperty!(file, location, p)
+serializeproperty!(file, location, p::Union{AbstractArray, AbstractField}) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
@@ -47,9 +51,16 @@ serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getp
 has_reference(T, ::AbstractArray{<:Number}) = false
 
 # These two conditions are true, but should not necessary.
-has_reference(::Type{Function}, ::Field) = false
+has_reference(::Type{Function}, ::AbstractField) = false
 has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 
+"""
+    has_reference(has_type, obj)
+
+Check (or attempt to check) if `obj` contains, somewhere among its
+subfields and subfields of fields, a reference to an object of type
+`has_type`. This function doesn't always work.
+"""
 function has_reference(has_type, obj)
     if typeof(obj) <: has_type
         return true
@@ -62,12 +73,16 @@ function has_reference(has_type, obj)
     end
 end
 
-
 ####
 ####  JLD2 output writer
 ####
 
-mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: OutputWriter
+"""
+    JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
+
+An output writer for writing to JLD2 files.
+"""
+mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
         filepath :: String
          outputs :: O
         interval :: I
@@ -87,37 +102,39 @@ noinit(args...) = nothing
 
 """
     JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
-                     prefix="", init=noinit, including=[:grid, :eos, :constants, :closure],
+                     prefix="", init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
                      part=1, max_filesize=Inf, force=false, async=false, verbose=false)
 
-Construct an `OutputWriter` that writes `label, func` pairs in the dictionary `outputs` to
-a single JLD2 file, where `label` is a symbol that labels the output and `func` is a
-function of the form `func(model)` that returns the data to be saved.
+Construct a `JLD2OutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`)
+to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)`
+that returns the data to be saved.
 
-# Keyword arguments
-- `frequency::Int`   : Save output every `n` model iterations.
-- `interval::Int`    : Save output every `t` units of model clock time.
-- `dir::String`      : Directory to save output to. Default: "." (current working
-                       directory).
-- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
-- `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
-                       output file is initialized. Default: `noinit(args...) = nothing`.
-- `including::Array` : List of model properties to save with every file. By default, the
-                       grid, equation of state, planetary constants, and the turbulence
-                       closure parameters are saved.
-- `part::Int`        : The starting part number used if `max_filesize` is finite.
-                       Default: 1.
-- `max_filesize::Int`: The writer will stop writing to the output file once the file size
-                       exceeds `max_filesize`, and write to a new one with a consistent
-                       naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
-- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-- `async::Bool`      : Write output asynchronously. Default: `false`.
-- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write
-                       times and file sizes. Default: `false`.
-- `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
+Keyword arguments
+=================
+
+    - `frequency::Int`   : Save output every `n` model iterations.
+    - `interval::Int`    : Save output every `t` units of model clock time.
+    - `dir::String`      : Directory to save output to. Default: "." (current working
+                           directory).
+    - `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
+    - `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
+                           output file is initialized. Default: `noinit(args...) = nothing`.
+    - `including::Array` : List of model properties to save with every file. By default, the
+                           grid, equation of state, coriolis parameters, buoyancy parameters, 
+                           and turbulence closure parameters are saved.
+    - `part::Int`        : The starting part number used if `max_filesize` is finite.
+                           Default: 1.
+    - `max_filesize::Int`: The writer will stop writing to the output file once the file size
+                           exceeds `max_filesize`, and write to a new one with a consistent
+                           naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
+    - `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
+    - `async::Bool`      : Write output asynchronously. Default: `false`.
+    - `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write
+                           times and file sizes. Default: `false`.
+    - `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
-                          init=noinit, including=[:grid, :eos, :constants, :closure],
+                          init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
                           part=1, max_filesize=Inf, force=false, async=false, verbose=false,
                           jld2_kw=Dict{Symbol, Any}())
 
@@ -139,7 +156,7 @@ end
 function write_output(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
-    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f) 
+    tc = Base.@elapsed data = Dict((name, f(model)) for (name, f)
                                     in zip(keys(fw.outputs), values(fw.outputs)))
     verbose && @info "Calculation time: $(prettytime(tc))"
 
@@ -169,8 +186,8 @@ end
 """
     jld2output!(path, iter, time, data, kwargs)
 
-Write the (name, value) pairs in `data`, including the simulation 
-`time`, to the JLD2 file at `path` in the `timeseries` group, 
+Write the (name, value) pairs in `data`, including the simulation
+`time`, to the JLD2 file at `path` in the `timeseries` group,
 stamping them with `iter` and using `kwargs` when opening
 the JLD2 file.
 """
@@ -183,7 +200,6 @@ function jld2output!(path, iter, time, data, kwargs)
     end
     return
 end
-
 
 function start_next_file(model::Model, fw::JLD2OutputWriter)
     verbose = fw.verbose
@@ -210,40 +226,44 @@ function start_next_file(model::Model, fw::JLD2OutputWriter)
     end
 end
 
-####
-#### Binary output writer
-####
+"""
+    FieldOutput([return_type=Array], field)
 
-"A type for writing Binary output."
-Base.@kwdef mutable struct BinaryOutputWriter <: OutputWriter
-          dir :: AbstractString = "."
-       prefix :: AbstractString = ""
-    frequency :: Int = 1
-      padding :: Int = 9
+Returns a `FieldOutput` type intended for use with the `JLD2OutputWriter`.
+Calling `FieldOutput(model)` returns `return_type(field.data.parent)`.
+"""
+struct FieldOutput{O, F}
+    return_type :: O
+          field :: F
 end
 
-function write_output(model::Model, fw::BinaryOutputWriter)
-    for (field, field_name) in zip(fw.fields, fw.field_names)
-        filepath = joinpath(fw.dir, filename(fw, field_name, model.clock.iteration))
+FieldOutput(field) = FieldOutput(Array, field) # default
+(fo::FieldOutput)(model) = fo.return_type(fo.field.data.parent)
 
-        println("[BinaryOutputWriter] Writing $field_name to disk: $filepath")
-        if model.metadata == :CPU
-            write(filepath, field.data)
-        elseif model.metadata == :GPU
-            write(filepath, Array(field.data))
-        end
-    end
-end
+"""
+    FieldOutputs(fields)
 
-function read_output(model::Model, fw::BinaryOutputWriter, field_name, time)
-    filepath = joinpath(fw.dir, filename(fw, field_name, time_step))
-    arr = zeros(model.metadata.float_type, model.grid.Nx, model.grid.Ny, model.grid.Nz)
+Returns a dictionary of `FieldOutput` objects with key, value
+pairs corresponding to each name and value in the `NamedTuple` `fields`.
+Intended for use with `JLD2OutputWriter`.
 
-    open(filepath, "r") do fio
-        read!(fio, arr)
-    end
+Examples
+========
 
-    return arr
+```julia
+julia> output_writer = JLD2OutputWriter(model, FieldOutputs(model.velocities), frequency=1);
+
+julia> keys(output_writer.outputs)
+Base.KeySet for a Dict{Symbol,FieldOutput{UnionAll,F} where F} with 3 entries. Keys:
+  :w
+  :v
+  :u
+```
+"""
+function FieldOutputs(fields)
+    names = propertynames(fields)
+    nfields = length(fields)
+    return Dict((names[i], FieldOutput(fields[i])) for i in 1:nfields)
 end
 
 ####
@@ -251,7 +271,7 @@ end
 ####
 
 "A type for writing NetCDF output."
-Base.@kwdef mutable struct NetCDFOutputWriter <: OutputWriter
+Base.@kwdef mutable struct NetCDFOutputWriter <: AbstractOutputWriter
              dir  :: AbstractString = "."
           prefix  :: AbstractString = ""
         frequency :: Int    = 1
@@ -282,11 +302,11 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         "xF" => collect(model.grid.xF),
         "yF" => collect(model.grid.yF),
         "zF" => collect(model.grid.zF),
-        "u" => Array(ardata(model.velocities.u)),
-        "v" => Array(ardata(model.velocities.v)),
-        "w" => Array(ardata(model.velocities.w)),
-        "T" => Array(ardata(model.tracers.T)),
-        "S" => Array(ardata(model.tracers.S))
+        "u" => Array(parentdata(model.velocities.u)),
+        "v" => Array(parentdata(model.velocities.v)),
+        "w" => Array(parentdata(model.velocities.w)),
+        "T" => Array(parentdata(model.tracers.T)),
+        "S" => Array(parentdata(model.tracers.S))
     )
 
     if fw.async
@@ -376,7 +396,12 @@ end
 #### Checkpointer
 ####
 
-mutable struct Checkpointer{I, T, P, A} <: OutputWriter
+"""
+    Checkpointer{I, T, P, A} <: AbstractOutputWriter
+
+An output writer for checkpointing models to a JLD2 file from which models can be restored.
+"""
+mutable struct Checkpointer{I, T, P, A} <: AbstractOutputWriter
          frequency :: I
           interval :: T
           previous :: Float64
@@ -388,10 +413,47 @@ mutable struct Checkpointer{I, T, P, A} <: OutputWriter
            verbose :: Bool
 end
 
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false, 
-                      verbose=false, properties = [:arch, :boundary_conditions, :grid, :clock, :eos, :constants, 
-                                                   :closure, :velocities, :tracers, :timestepper])
-                      
+"""
+    Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
+                        force=false, verbose=false,
+                        properties = [:architecture, :boundary_conditions, :grid, :clock,
+                                      :eos, :constants, :closure, :velocities, :tracers,
+                                      :timestepper])
+
+Construct a `Checkpointer` that checkpoints the model to a JLD2 file every so often as
+specified by `frequency` or `interval`. The `model.clock.iteration` is included in the
+filename to distinguish between multiple checkpoint files.
+
+Note that extra model `properties` can be safely specified, but removing crucial properties
+such as `:velocities` will make restoring from the checkpoint impossible.
+
+The checkpoint file is generated by serializing model properties to JLD2. However,
+functions cannot be serialized to disk (at least not with JLD2). So if a model property
+contains a reference somewhere in its hierarchy it will not be included in the checkpoint
+file (and you will have to manually restore them).
+
+Keyword arguments
+=================
+
+    - `frequency::Int`   : Save output every `n` model iterations.
+    - `interval::Int`    : Save output every `t` units of model clock time.
+    - `dir::String`      : Directory to save output to. Default: "." (current working
+                           directory).
+    - `prefix::String`   : Descriptive filename prefixed to all output files.
+                           Default: "checkpoint".
+    - `force::Bool`      : Remove existing files if their filenames conflict.
+                           Default: `false`.
+    - `verbose::Bool`    : Log what the output writer is doing with statistics on
+                           compute/write times and file sizes. Default: `false`.
+    - `properties::Array`: List of model properties to checkpoint. By default,
+                           properties = [:architecture, :boundary_conditions, :grid,
+                                         :clock, :eos, :constants, :closure, :velocities,
+                                         :tracers, :timestepper]
+"""
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
+                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
+                                                   :buoyancy, :closure, :velocities, :tracers, :timestepper])
+
     validate_interval(frequency, interval)
 
     # Grid needs to be checkpointed for restoring to work.
@@ -408,7 +470,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
             filter!(e -> e != p, properties)
         end
 
-        has_reference(Field, getproperty(model, p)) && push!(has_array_refs, p)
+        has_reference(AbstractField, getproperty(model, p)) && push!(has_array_refs, p)
     end
 
     mkpath(dir)
@@ -418,7 +480,7 @@ end
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."
-    
+
     t0 = time_ns()
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
@@ -432,6 +494,7 @@ function write_output(model, c::Checkpointer)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t1-t0)/1e9)), size=$(pretty_filesize(sz))"
 end
 
+defaultname(::Checkpointer, nelems) = :checkpointer
 _arr(::CPU, a) = a
 _arr(::GPU, a) = CuArray(a)
 
@@ -446,6 +509,13 @@ function restore_fields!(model, file, arch, fieldset; location="$fieldset")
     end
 end
 
+"""
+    restore_from_checkpoint(filepath; kwargs=Dict())
+
+Restore a model from the checkpoint file stored at `filepath`. `kwargs` can be passed
+to the `Model` constructor, which can be especially useful if you need to manually
+restore forcing functions or boundary conditions that rely on functions.
+"""
 function restore_from_checkpoint(filepath; kwargs=Dict())
     file = jldopen(filepath, "r")
 
@@ -460,16 +530,12 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
         end
     end
 
-    # The Model constructor needs N and L.
-    kwargs[:N] = (kwargs[:grid].Nx, kwargs[:grid].Ny, kwargs[:grid].Nz)
-    kwargs[:L] = (kwargs[:grid].Lx, kwargs[:grid].Ly, kwargs[:grid].Lz)
-
     model = Model(; kwargs...)
 
     # Now restore fields.
     for p in cps
         if p in has_array_refs
-            restore_fields!(model, file, model.arch, p)
+            restore_fields!(model, file, model.architecture, p)
         end
     end
 

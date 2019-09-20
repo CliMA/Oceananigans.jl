@@ -1,6 +1,3 @@
-using Printf
-
-
 function getmodelfield(fieldname, model)
     if fieldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fieldname)
@@ -29,7 +26,7 @@ function T_relative_error(model, T)
 end
 
 function test_diffusion_simple(fieldname)
-    model = Model(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    model = BasicModel(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     value = π
     data(field) .= value
@@ -40,23 +37,23 @@ function test_diffusion_simple(fieldname)
 end
 
 function test_diffusion_budget_default(fieldname)
-    model = Model(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    model = BasicModel(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κh, model.grid.Lz)
+    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Lz)
 end
 
 function test_diffusion_budget_channel(fieldname)
-    model = ChannelModel(N=(1, 16, 4), L=(1, 1, 1), ν=1, κ=1, eos=NoEquationOfState())
+    model = BasicChannelModel(N=(1, 16, 4), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     data(field)[:, 1:half_Ny,   :] .= -1
     data(field)[:, half_Ny:end, :] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κh, model.grid.Ly)
+    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Ly)
 end
 
 function test_diffusion_budget(field, model, κ, L)
@@ -67,7 +64,7 @@ end
 
 function test_diffusion_cosine(fieldname)
     Nz, Lz, κ, m = 128, π/2, 1, 2
-    model = Model(N=(1, 1, Nz), L=(1, 1, Lz), ν=κ, κ=κ, eos=NoEquationOfState())
+    model = BasicModel(N=(1, 1, Nz), L=(1, 1, Lz), ν=κ, κ=κ, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
 
     zC = model.grid.zC
@@ -118,9 +115,8 @@ function internal_wave_test(; N=128, Nt=10)
     T₀(x, y, z) = T(x, y, z, 0)
 
     # Create a model where temperature = buoyancy.
-    model = Model(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
-                    eos=LinearEquationOfState(βT=1.),
-                    constants=PlanetaryConstants(f=f, g=1.))
+    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(),
+                       coriolis=FPlane(f=f))
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
@@ -141,7 +137,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     v₀(x, y, z) = V
     T₀(x, y, z) = T(x, y, z, 0)
 
-    model = Model(N=(N, N, 2), L=(L, L, L), ν=κ, κ=κ)
+    model = BasicModel(N=(N, N, 2), L=(L, L, L), ν=κ, κ=κ)
 
     set_ic!(model, u=u₀, v=v₀, T=T₀)
     time_step!(model, Nt, Δt)
@@ -172,11 +168,11 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
     vbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
                                    bottom = BoundaryCondition(Gradient, 0))
 
-    model = Model(N = (Nx, Ny, Nz), L = (Lx, Ly, Lz), arch = arch,
-                  constants = PlanetaryConstants(f=0, g=0),  # Turn off rotation and gravity.
-                    closure = ConstantIsotropicDiffusivity(FT; ν = 1, κ = 0),  # Turn off diffusivity.
-                        eos = LinearEquationOfState(βT=0, βS=0),  # Turn off buoyancy.
-                        bcs = BoundaryConditions(u=ubcs, v=vbcs))
+    model = Model(        architecture = arch,
+                                  grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                               closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
+                              buoyancy = nothing, # turn off buoyancy
+                   boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs))
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)

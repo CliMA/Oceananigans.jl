@@ -46,7 +46,7 @@ version = "1.1.0"
 
 [[CUDAdrv]]
 deps = ["CUDAapi", "Libdl", "Printf"]
-git-tree-sha1 = "9ce99b5732c70e06ed97c042187baed876fb1698"
+git-tree-sha1 = "c8a19eca4d63b0feb9b4ad6a701be3bc719f9a53"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaGPU/CUDAdrv.jl.git"
 uuid = "c5f51814-7f29-56b8-a69c-e4d8f6be1fde"
@@ -54,9 +54,9 @@ version = "3.1.0"
 
 [[CUDAnative]]
 deps = ["Adapt", "CUDAapi", "CUDAdrv", "DataStructures", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Printf", "TimerOutputs"]
-git-tree-sha1 = "0a00bef482b7c9127495c7f4a2a85e73b13b5af8"
+git-tree-sha1 = "52ae1ce10ebfa686e227655c47b19add89308623"
 uuid = "be33ccc6-a3ff-5ff2-a52e-74243cff1e17"
-version = "2.3.0"
+version = "2.3.1"
 
 [[Cassette]]
 git-tree-sha1 = "da85d135b6048d3e78603e277cf9a4609f7e0673"
@@ -119,9 +119,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "BinaryProvider", "Conda", "Libdl", "LinearAlgebra", "Reexport", "Test"]
-git-tree-sha1 = "e1a479d3c972f20c9a70563eec740bbfc786f515"
+git-tree-sha1 = "03f8776fbdae28c20c0d1d2ae4e090cd1dfcd247"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "0.3.0"
+version = "1.0.0"
 
 [[FileIO]]
 deps = ["Pkg"]
@@ -136,22 +136,22 @@ uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "0.6.4"
 
 [[Formatting]]
-deps = ["Compat"]
-git-tree-sha1 = "289003271ce9c8194c1ce56a3c433f1c51841125"
+deps = ["Printf"]
+git-tree-sha1 = "aef8983c0f77c84ae77ced1bb3ecf5ab7d687700"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
-version = "0.3.5"
+version = "0.4.0"
 
 [[GPUArrays]]
 deps = ["Adapt", "FFTW", "FillArrays", "LinearAlgebra", "Printf", "Random", "Serialization", "StaticArrays", "Test"]
-git-tree-sha1 = "dd169c636d1d3656a9faca772f5bd7c226a61254"
+git-tree-sha1 = "b5009ac44b141ded5e6f04c4db83807970f56e91"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "1.0.1"
+version = "1.0.2"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "0a8d8d3d21c67f50804dc18d5c26a974e315358e"
+git-tree-sha1 = "d71c32197caf7dadab270dc10b0f7dce20c9947b"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.6"
+version = "0.2.8"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -171,9 +171,9 @@ version = "0.21.0"
 
 [[LLVM]]
 deps = ["CEnum", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "52cfea426bd248a427aace7d88eb5d45b84ea297"
+git-tree-sha1 = "4a05f742837779a00bd8c9a18da6817367c4245d"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "1.2.0"
+version = "1.3.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -226,9 +226,9 @@ version = "1.1.0"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "db2b35dedab3c0e46dc15996d170af07a5ab91c9"
+git-tree-sha1 = "ef0af6c8601db18c282d092ccbd2f01f3f0cd70b"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "0.3.6"
+version = "0.3.7"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]

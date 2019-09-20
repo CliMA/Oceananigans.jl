@@ -1,5 +1,3 @@
-using JLD2: jldopen
-
 """
 Run a coarse thermal bubble simulation and save the output to NetCDF at the
 10th time step. Then read back the output and test that it matches the model's
@@ -10,7 +8,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -30,15 +28,15 @@ function run_thermal_bubble_netcdf_tests(arch)
     T = read_output(nc_writer, "T", 10)
     S = read_output(nc_writer, "S", 10)
 
-    @test all(u .≈ Array(ardata(model.velocities.u)))
-    @test all(v .≈ Array(ardata(model.velocities.v)))
-    @test all(w .≈ Array(ardata(model.velocities.w)))
-    @test all(T .≈ Array(ardata(model.tracers.T)))
-    @test all(S .≈ Array(ardata(model.tracers.S)))
+    @test all(u .≈ Array(parentdata(model.velocities.u)))
+    @test all(v .≈ Array(parentdata(model.velocities.v)))
+    @test all(w .≈ Array(parentdata(model.velocities.w)))
+    @test all(T .≈ Array(parentdata(model.tracers.T)))
+    @test all(S .≈ Array(parentdata(model.tracers.S)))
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = Model(N=(16, 16, 16), L=(1, 1, 1))
+    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1))
 
     u(model) = Array(model.velocities.u.data.parent)
     fields = Dict(:u => u)
@@ -85,7 +83,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    true_model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, arch=arch)
+    true_model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, architecture=arch)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
