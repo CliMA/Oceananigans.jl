@@ -11,7 +11,7 @@
 #
 # ## Using `Oceananigans.jl`
 #
-# To use `Oceanaingans.jl` after it has been installed, we bring
+# To use `Oceananigans.jl` after it has been installed, we bring
 # `Oceananigans.jl` functions and names into our 'namespace' by writing
 
 using Oceananigans
