@@ -17,7 +17,7 @@ function run_deepening_mixed_layer_example(arch)
 
     try
         include(test_script_filepath)
-    catch e
+    catch err
         @error sprint(showerror, err)
         rm(test_script_filepath)
         return false
@@ -27,13 +27,65 @@ function run_deepening_mixed_layer_example(arch)
     return true
 end
 
+function run_example(replace_strings, example_name)
+    example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")
+    txt = read(example_filepath, String)
+
+    for strs in replace_strings
+        txt = replace(txt, strs[1] => strs[2])
+    end
+
+    test_script_filepath = example_name * "_example_test.jl"
+
+    open(test_script_filepath, "w") do f
+        write(f, txt)
+    end
+
+    try
+        include(test_script_filepath)
+    catch err
+        @error sprint(showerror, err)
+        rm(test_script_filepath)
+        return false
+    end
+
+    rm(test_script_filepath)
+    return true
+end
+
+
+
 @testset "Examples" begin
     println("Testing examples...")
 
+    #=
     for arch in archs
         @testset "Deepening mixed layer example [$(typeof(arch))]" begin
             println("  Testing deepening mixed layer example [$(typeof(arch))]")
             @test run_deepening_mixed_layer_example(arch)
         end
     end
+    =#
+
+    @testset "Simple diffusion example" begin
+        println("  Testing simple diffusion example")
+
+        replace_strings = [ ("N = (1, 1, 128)", "N = (1, 1, 16)"),
+                            ("Nt = 1000", "Nt = 2")
+                          ]
+
+        @test run_example(replace_strings, "simple_diffusion")
+    end
+
+    @testset "Internal wave example" begin
+        println("  Testing internal wave example")
+
+        replace_strings = [ ("Nx = 128", "Nx = 16"),
+                            ("i = 1:10", "i = 1:1"),
+                            ("Nt = 200", "Nt = 2")
+                          ]
+
+        @test run_example(replace_strings, "internal_wave")
+    end
+
 end
