@@ -43,10 +43,10 @@ model = Model(
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
-T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+T0(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 ϵ₀(x, y, z) = 1e-4 * Ξ(z)
 
-set!(model, u=ϵ₀, w=ϵ₀, T=T₀, S=ϵ₀)
+set!(model, u=ϵ₀, w=ϵ₀, T=T0, S=ϵ₀)
 
 ####
 #### Set up output
