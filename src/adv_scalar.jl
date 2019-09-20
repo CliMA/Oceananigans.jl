@@ -20,11 +20,6 @@ References
 ==========
 Durran (2008), "Numerical methods for geophysical fluid dynamics."
 """
-function RK3(f, Φ, Δt)
-    Φ⋆  = Φ + f(Φ)  * Δt/3
-    Φ⋆⋆ = Φ + f(Φ⋆) * Δt/2
-    return Φ + f(Φ⋆⋆) * Δt
-end
 
 function wenos5(x2,us,si,rho0)
 
@@ -129,8 +124,8 @@ n = 2
     
     
 
-        Fu = F.*us;
-        fdiv = (Fu(2:end,:) - Fu(1:end-1,:))./(x2(2:end,:)-x2(1:end-1,:)); 
+       Fu = F.*us;
+       return (Fu(2:end,:) - Fu(1:end-1,:))./(x2(2:end,:)-x2(1:end-1,:)); 
 
     
     
