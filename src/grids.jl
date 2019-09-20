@@ -71,18 +71,29 @@ RegularCartesianGrid{Float32}
       domain (Lx, Ly, Lz) = (8.0f0, 8.0f0, 2.0f0)
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
 """
-function RegularCartesianGrid(T, N, L)
-    length(N) == 3 || throw(ArgumentError("N=$N must be a tuple of length 3."))
-    length(L) == 3 || throw(ArgumentError("L=$L must be a tuple of length 3."))
-
+function RegularCartesianGrid(T; N, x, y, z)
+    length(N) == 3        || throw(ArgumentError("N=$N must be a tuple of length 3."))
     all(isa.(N, Integer)) || throw(ArgumentError("N=$N should contain integers."))
-    all(isa.(L, Number))  || throw(ArgumentError("L=$L should contain numbers."))
+    all(N .>= 1)          || throw(ArgumentError("N=$N must be nonzero and positive!"))
 
-    all(N .>= 1) || throw(ArgumentError("N=$N must be nonzero and positive!"))
-    all(L .> 0)  || throw(ArgumentError("L=$L must be nonzero and positive!"))
+    function coord2xyz(c)
+        c == 1 && return "x"
+        c == 2 && return "y"
+        c == 3 && return "z"
+    end
 
+    for (i, c) in enumerate((x, y, z))
+        name = coord2xyz(i)
+        length(c) == 2       || throw(ArgumentError("$name=$c must be a tuple of length 2."))
+        all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
+        c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
+    end
+
+    x₁, x₂ = x[1], x[2]
+    y₁, y₂ = y[1], y[2]
+    z₁, z₂ = z[1], z[2]
     Nx, Ny, Nz = N
-    Lx, Ly, Lz = L
+    Lx, Ly, Lz = x₂-x₁, y₂-y₁, z₂-z₁
 
     # Right now we only support periodic horizontal boundary conditions and
     # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
@@ -103,18 +114,20 @@ function RegularCartesianGrid(T, N, L)
 
     V = Δx*Δy*Δz
 
-    xC = Δx/2:Δx:Lx
-    yC = Δy/2:Δy:Ly
-    zC = -Δz/2:-Δz:-Lz
+    xC = (x₁ + Δx/2) :  Δx : x₂
+    yC = (y₁ + Δy/2) :  Δy : y₂
+    zC = (z₂ - Δz/2) : -Δz : z₁
 
-    xF = 0:Δx:Lx
-    yF = 0:Δy:Ly
-    zF = 0:-Δz:-Lz
+    xF = x₁ :  Δx : x₂
+    yF = y₁ :  Δy : y₂
+    zF = z₂ : -Δz : z₁
 
     RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
                                         xC, yC, zC, xF, yF, zF)
 end
+
+RegularCartesianGrid(T, N, L) = RegularCartesianGrid(T; N=N, x=(0, L[1]), y=(0, L[2]), z=(-L[3], 0))
 
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
 
@@ -124,8 +137,8 @@ size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
+    print(io, "RegularCartesianGrid{$(eltype(g))}\n",
+              "domain: x ∈ [$(xF[0]), $(xF[end])], y ∈ [$(yF[0]), $(yF[end])], z ∈ [$(zF[0]), $(zF[end])]", '\n',
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
-              "      domain (Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
               "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
