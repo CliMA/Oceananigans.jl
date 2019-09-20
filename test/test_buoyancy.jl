@@ -1,8 +1,3 @@
-function instantiate_coriolis(T)
-    coriolis = FPlane(T, f=π)
-    return coriolis.f == T(π)
-end
-
 function instantiate_linear_equation_of_state(T, α, β)
     eos = LinearEquationOfState(T, α=α, β=β)
     return eos.α == T(α) && eos.β == T(β)
@@ -10,8 +5,8 @@ end
 
 function instantiate_roquet_equations_of_state(T, flavor; coeffs=nothing)
     eos = (coeffs == nothing ? RoquetIdealizedNonlinearEquationOfState(T, flavor) :
-                               RoquetIdealizedNonlinearEquationOfState(T, flavor, coeffs=coeffs))
-    return typeof(eos.coeffs.R₁₀₀) == T
+                               RoquetIdealizedNonlinearEquationOfState(T, flavor, polynomial_coeffs=coeffs))
+    return typeof(eos.polynomial_coeffs.R₁₀₀) == T
 end
 
 function instantiate_seawater_buoyancy(T, EquationOfState) 
@@ -47,15 +42,9 @@ function haline_contraction_works(arch, T, eos)
     return true
 end
 
-@testset "Coriolis and Buoyancy" begin
-    println("Testing Coriolis and buoyancy...")
-
-    @testset "Coriolis" begin
-        for T in float_types
-            @test instantiate_coriolis(T)
-        end
-    end
-
+@testset "Buoyancy" begin
+    println("Testing buoyancy...")
+    
     @testset "Equations of State" begin
         for T in float_types
             @test instantiate_linear_equation_of_state(T, 0.1, 0.3)
