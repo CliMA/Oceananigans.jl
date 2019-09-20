@@ -68,7 +68,7 @@ function (Nu::NusseltNumber)(model)
 end
 
 """
-    simulate_stratified_couette_flow(; Nxy, Nz, h, U_wall, Re, Pr, Ri)
+    simulate_stratified_couette_flow(; Nxy, Nz, h=1, U_wall=1, Re=4250, Pr=0.7, Ri, Ni=10, end_time=1000)
 
 Simulate stratified plane Couette flow with `Nxy` grid cells in each horizontal
 direction, `Nz` grid cells in the vertical, in a domain of size (4πh, 2πh, 2h),
@@ -106,14 +106,14 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
     #### Non-dimensional model setup
     ####
 
-    model = Model(N = (Nxy, Nxy, Nz),
-                  L = (4π*h, 2π*h, 2h),
-               arch = arch, 
+    model = Model(
+       architecture = arch,
+               grid = RegularCartesianGrid(N = (Nxy, Nxy, Nz), L = (4π*h, 2π*h, 2h)),
+           buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
-                eos = LinearEquationOfState(βT=1.0, βS=0.0),
-          constants = PlanetaryConstants(f=0.0, g=1.0),
-                bcs = BoundaryConditions(u=ubcs, v=vbcs, T=Tbcs),
-         parameters = parameters)
+boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
+         parameters = parameters
+    )
 
     ####
     #### Set initial conditions
@@ -177,7 +177,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
    :kappaT => model -> Array(model.diffusivities.κₑ.T.data.parent),
        :nu => model -> Array(model.diffusivities.νₑ.data.parent))
 
-
     field_writer = JLD2OutputWriter(model, fields; dir=base_dir, prefix=prefix * "_fields",
                                     init=init_save_parameters_and_bcs,
                                     interval=10, force=true, verbose=true)
@@ -185,23 +184,15 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
     push!(model.output_writers, field_writer)
 
     ####
-    #### Set up diagnostics
-    ####
-
-    push!(model.diagnostics, NaNChecker(model))
-
-    ####
     #### Set up profile output writer
     ####
 
-    Δtₚ = 1 # Time interval for computing and saving profiles.
-
-    Uavg = HorizontalAverage(model, model.velocities.u;       interval=Δtₚ, return_type=Array)
-    Vavg = HorizontalAverage(model, model.velocities.v;       interval=Δtₚ, return_type=Array)
-    Wavg = HorizontalAverage(model, model.velocities.w;       interval=Δtₚ, return_type=Array)
-    Tavg = HorizontalAverage(model, model.tracers.T;          interval=Δtₚ, return_type=Array)
-    νavg = HorizontalAverage(model, model.diffusivities.νₑ;   interval=Δtₚ, return_type=Array)
-    κavg = HorizontalAverage(model, model.diffusivities.κₑ.T; interval=Δtₚ, return_type=Array)
+    Uavg = HorizontalAverage(model, model.velocities.u;       return_type=Array)
+    Vavg = HorizontalAverage(model, model.velocities.v;       return_type=Array)
+    Wavg = HorizontalAverage(model, model.velocities.w;       return_type=Array)
+    Tavg = HorizontalAverage(model, model.tracers.T;          return_type=Array)
+    νavg = HorizontalAverage(model, model.diffusivities.νₑ;   return_type=Array)
+    κavg = HorizontalAverage(model, model.diffusivities.κₑ.T; return_type=Array)
 
     profiles = Dict(
          :u => model -> Uavg(model),
@@ -212,7 +203,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
     :kappaT => model -> κavg(model))
 
     profile_writer = JLD2OutputWriter(model, profiles; dir=base_dir, prefix=prefix * "_profiles",
-                                      init=init_save_parameters_and_bcs, interval=Δtₚ, force=true, verbose=true)
+                                      init=init_save_parameters_and_bcs, interval=1, force=true, verbose=true)
 
     push!(model.output_writers, profile_writer)
 
@@ -225,25 +216,18 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
 
     statistics = Dict(
         :Re_tau => model -> Reτ(model),
-        :Nu_tau => model -> Nu(model))
+        :Nu     => model -> Nu(model))
 
-    statistic_writer = JLD2OutputWriter(model, statistics; dir=base_dir, prefix=prefix * "_statistics",
-                                     init=init_save_parameters_and_bcs, interval=Δtₚ/2, force=true, verbose=true)
+    statistics_writer = JLD2OutputWriter(model, statistics; dir=base_dir, prefix=prefix * "_statistics",
+                                     init=init_save_parameters_and_bcs, interval=1/2, force=true, verbose=true)
 
-    push!(model.output_writers, statistic_writer)
+    push!(model.output_writers, statistics_writer)
 
     ####
     #### Time stepping
     ####
 
     wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
-
-    function cell_diffusion_timescale(model)
-        Δ = min(model.grid.Δx, model.grid.Δy, model.grid.Δz)
-        max_ν = maximum(model.diffusivities.νₑ.data.parent)
-        max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in model.diffusivities.κₑ)...)
-        return min(Δ^2 / max_ν, Δ^2 / max_κ)
-    end
 
     cfl(t) = min(0.01*t, 0.1)
 
@@ -256,7 +240,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
         umax = maximum(abs, model.velocities.u.data.parent)
         vmax = maximum(abs, model.velocities.v.data.parent)
         wmax = maximum(abs, model.velocities.w.data.parent)
-        CFL = wizard.Δt / cell_advection_timescale(model)
+        CFL = wizard.Δt / Oceananigans.cell_advection_timescale(model)
 
         νmax = maximum(model.diffusivities.νₑ.data.parent)
         κmax = maximum(model.diffusivities.κₑ.T.data.parent)
