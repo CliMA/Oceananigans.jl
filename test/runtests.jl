@@ -53,7 +53,8 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
     include("test_halo_regions.jl")
     include("test_operators.jl")
     include("test_poisson_solvers.jl")
-    include("test_coriolis_buoyancy.jl")
+    include("test_coriolis.jl")
+    include("test_buoyancy.jl")
     include("test_models.jl")
     include("test_time_stepping.jl")
     include("test_boundary_conditions.jl")
@@ -63,4 +64,5 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
     include("test_diagnostics.jl")
     include("test_output_writers.jl")
     include("test_regression.jl")
+    include("test_examples.jl")
 end
