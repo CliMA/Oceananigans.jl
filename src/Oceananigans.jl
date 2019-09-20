@@ -8,69 +8,59 @@ export
     # Helper macro for determining if a CUDA-enabled GPU is available.
     @hascuda,
 
-    Architecture, CPU, GPU, device,
+    # Architectures
+    CPU, GPU,
 
-    # Planetary Constants
-    PlanetaryConstants,
-    Earth, Europa, Enceladus,
+    # Constants
+    FPlane,
     second, minute, hour, day,
 
     # Grids
-    Grid, RegularCartesianGrid,
+    RegularCartesianGrid,
 
     # Fields
-    Field, FaceField, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    data, ardata, ardata_view, underlying_data,
-    set!, set_ic!,
+    Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    data, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
-    # Constructors for NamedTuples of fields
-    VelocityFields, TracerFields, PressureFields,
-
-    # Constructor for a named tuple of forcing functions
+    # Forcing functions
     Forcing,
 
     # Equation of state
-    NoEquationOfState, LinearEquationOfState,
-    δρ, buoyancy,
+    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
 
     # Boundary conditions
-    BoundaryCondition, Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
-    CoordinateBoundaryConditions, FieldBoundaryConditions, ModelBoundaryConditions,
-    HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, HorizontallyPeriodicModelBCs, ChannelModelBCs,
+    BoundaryCondition,
+    Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
+    CoordinateBoundaryConditions,
+    FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
+    BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     getbc, setbc!,
 
-    # Halo regions
-    fill_halo_regions!, zero_halo_regions!,
-
     # Time stepping
-    TimeStepWizard, cell_advection_timescale, update_Δt!, time_step!,
-
-    # Poisson solver
-    PoissonBCs, PPN, PNN,
-    PoissonSolver, PoissonSolverCPU, PoissonSolverGPU,
-    solve_poisson_3d!, solve_poisson_3d_ppn_gpu_planned!,
+    TimeStepWizard,
+    update_Δt!, time_step!,
 
     # Clock
     Clock,
 
     # Models
-    Model, ChannelModel,
+    Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    OutputWriter, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    write_output, read_output, restore_from_checkpoint,
+    NetCDFOutputWriter,
+    Checkpointer, restore_from_checkpoint, read_output,
+    JLD2OutputWriter, FieldOutput, FieldOutputs,
 
     # Model diagnostics
-    Diagnostic, run_diagnostic, HorizontalAverage, NaNChecker,
+    HorizontalAverage, NaNChecker,
+    Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
 
     # Package utilities
-    prettytime, pretty_filesize,
-    KiB, MiB, GiB, TiB,
+    prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
 
     # Turbulence closures
-    TurbulenceClosures, ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+    ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
@@ -93,16 +83,137 @@ import
     CUDAapi,
     GPUifyLoops
 
-import CUDAapi: has_cuda
-import GPUifyLoops: @launch, @loop, @unroll
+using Base: @propagate_inbounds
+using Statistics: mean
+using OrderedCollections: OrderedDict
+using CUDAapi: has_cuda
+using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
-    size, length,
+    +, -, *,
+    size, length, eltype,
+    iterate, similar, show,
     getindex, lastindex, setindex!,
-    iterate, similar, *, +, -
+    push!
 
-macro hascuda(ex)
-    return has_cuda() ? :($(esc(ex))) : :(nothing)
+#####
+##### Abstract types
+#####
+
+"""
+    AbstractModel
+
+Abstract supertype for models.
+"""
+abstract type AbstractModel end
+
+"""
+    AbstractArchitecture
+
+Abstract supertype for architectures supported by Oceananigans.
+"""
+abstract type AbstractArchitecture end
+
+"""
+    AbstractRotation
+
+Abstract supertype for parameters related to background rotation rates.
+"""
+abstract type AbstractRotation end
+
+"""
+    AbstractGrid{T}
+
+Abstract supertype for grids with elements of type `T`.
+"""
+abstract type AbstractGrid{T} end
+
+"""
+    AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
+"""
+abstract type AbstractField{A, G} end
+
+"""
+    AbstractFaceField{A, G} <: AbstractField{A, G}
+
+Abstract supertype for fields stored on an architecture `A` and defined the cell faces of a grid `G`.
+"""
+abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for buoyancy models.
+"""
+abstract type AbstractBuoyancy{EOS} end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for equations of state.
+"""
+abstract type AbstractEquationOfState end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for nonlinar equations of state.
+"""
+abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
+
+"""
+    AbstractEquationOfState
+
+Abstract supertype for solvers for Poisson's equation.
+"""
+abstract type AbstractPoissonSolver end
+
+"""
+    AbstractDiagnostic
+
+Abstract supertype for types that compute diagnostic information from the current model
+state.
+"""
+abstract type AbstractDiagnostic end
+
+"""
+    AbstractOutputWriter
+
+Abstract supertype for types that perform input and output.
+"""
+abstract type AbstractOutputWriter end
+
+#####
+##### All the functionality
+#####
+
+"""
+    CPU <: AbstractArchitecture
+
+Run Oceananigans on a single-core of a CPU.
+"""
+struct CPU <: AbstractArchitecture end
+
+"""
+    GPU <: AbstractArchitecture
+
+Run Oceananigans on a single NVIDIA CUDA GPU.
+"""
+struct GPU <: AbstractArchitecture end
+
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
+
+"""
+    @hascuda expr
+
+A macro to compile and execute `expr` only if CUDA is installed and available. Generally used to
+wrap expressions that can only be compiled if `CuArrays` and `CUDAnative` can be loaded.
+"""
+macro hascuda(expr)
+    return has_cuda() ? :($(esc(expr))) : :(nothing)
 end
 
 @hascuda begin
@@ -115,36 +226,26 @@ end
     end
 end
 
-abstract type Architecture end
-struct CPU <: Architecture end
-struct GPU <: Architecture end
+architecture(::Array) = CPU()
+@hascuda architecture(::CuArray) = GPU()
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
-abstract type ConstantsCollection end
-abstract type EquationOfState end
-abstract type Grid{T} end
-abstract type AbstractModel end
-abstract type Field{A, G} end
-abstract type FaceField{A, G} <: Field{A, G} end
-abstract type OutputWriter end
-abstract type Diagnostic end
-abstract type PoissonSolver end
+# Place-holder buoyancy functions for use in TurbulenceClosures module
+function buoyancy_perturbation end
+function buoyancy_frequency_squared end
 
 include("utils.jl")
 
 include("clock.jl")
-include("planetary_constants.jl")
 include("grids.jl")
 include("fields.jl")
 
-include("operators/operators.jl")
-include("turbulence_closures/TurbulenceClosures.jl")
+include("Operators/Operators.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 
+include("coriolis.jl")
+include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
-include("equation_of_state.jl")
 include("poisson_solvers.jl")
 include("models.jl")
 include("time_steppers.jl")

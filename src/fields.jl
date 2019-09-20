@@ -1,106 +1,136 @@
 """
-    CellField{A<:AbstractArray, G<:Grid} <: Field
+    Cell
 
-A cell-centered field defined on a grid `G` whose values are stored in an `A`.
+A type describing the location at the center of a grid cell.
 """
-struct CellField{A<:AbstractArray, G<:Grid} <: Field{A, G}
-    data::A
-    grid::G
+struct Cell end
+
+"""
+	Face
+
+A type describing the location at the face of a grid cell.
+"""
+struct Face end
+
+"""
+    Field{LX, LY, LZ, A, G} <: AbstractField{A, G}
+
+A field defined at the location (`LX`, `LY`, `LZ`) which can be either `Cell` or `Face`.
+"""
+struct Field{Lx, Ly, Lz, A, G} <: AbstractField{A, G}
+    data :: A
+    grid :: G
 end
 
 """
-    FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField
+	Field(L::Tuple, arch::AbstractArchitecture, grid)
 
-An x-face-centered field defined on a grid `G` whose values are stored in an `A`.
+Construct a `Field` on architecture `arch` and `grid` with location defined by the tuple `L` of length 3 whose elements
+are `Cell` or `Face`.
 """
-struct FaceFieldX{A<:AbstractArray, G<:Grid} <: FaceField{A, G}
-    data::A
-    grid::G
+function Field(L::Tuple, arch::AbstractArchitecture, grid)
+    data = zeros(arch, grid)
+    return Field(L, data, grid)
 end
 
 """
-    FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField
+	Field(L::Tuple, data::AbstractArray, grid)
 
-A y-face-centered field defined on a grid `G` whose values are stored in an `A`.
+Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L` of length 3 whose elements
+are `Cell` or `Face`.
 """
-struct FaceFieldY{A<:AbstractArray, G<:Grid} <: FaceField{A, G}
-    data::A
-    grid::G
-end
+Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3], typeof(data), typeof(grid)}(data, grid)
 
 """
-    FaceFieldZ{A<:AbstractArray, G<:Grid} <: Field
+	Field(Lx, Ly, Lz, data, grid)
 
-A z-face-centered field defined on a grid `G` whose values are stored in an `A`.
+Construct a `Field` on `grid` using the array `data` with location defined by `Lx`, `Ly`, and `Lz` which are `Cell`
+or `Face`.
 """
-struct FaceFieldZ{A<:AbstractArray, G<:Grid} <: FaceField{A, G}
-    data::A
-    grid::G
-end
+Field(Lx, Ly, Lz, data, grid) = Field((Lx, Ly, Lz), data, grid)
 
-# Constructors
+"""
+	CellField
+
+A field defined at the cell centers. Used for pressure and tracers.
+"""
+const CellField  = Field{Cell, Cell, Cell}
+
+"""
+	FaceFieldX
+
+A field defined at the faces along the x-direction. Used for horizontal velocity u.
+"""
+const FaceFieldX = Field{Face, Cell, Cell}
+
+"""
+	FaceFieldY
+
+A field defined at the faces along the y-direction. Used for horizontal velocity v.
+"""
+const FaceFieldY = Field{Cell, Face, Cell}
+
+"""
+	FaceFieldY
+
+A field defined at the faces along the z-direction. Used for vertical velocity w.
+"""
+const FaceFieldZ = Field{Cell, Cell, Face}
 
 """
     CellField([T=eltype(grid)], arch, grid)
 
-Return a `CellField` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `CellField` on architecture `arch` and `grid`.
 """
-CellField(T, arch, grid) = CellField(zeros(T, arch, grid), grid)
+CellField(T, arch, grid) = Field(Cell, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldX([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldX` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldX` on architecture `arch` and `grid`.
 """
-FaceFieldX(T, arch, grid) = FaceFieldX(zeros(T, arch, grid), grid)
+FaceFieldX(T, arch, grid) = Field(Face, Cell, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldY([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldY` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldY` on architecture `arch` and `grid`.
 """
-FaceFieldY(T, arch, grid) = FaceFieldY(zeros(T, arch, grid), grid)
+FaceFieldY(T, arch, grid) = Field(Cell, Face, Cell, zeros(T, arch, grid), grid)
 
 """
     FaceFieldZ([T=eltype(grid)], arch, grid)
 
-Return a `FaceFieldZ` with element type `T` on `arch` and `grid`.
-`T` defaults to the element type of `grid`.
+Return a `FaceFieldZ` on architecture `arch` and `grid`.
 """
-FaceFieldZ(T, arch, grid) = FaceFieldZ(zeros(T, arch, grid), grid)
+FaceFieldZ(T, arch, grid) = Field(Cell, Cell, Face, zeros(T, arch, grid), grid)
 
- CellField(arch, grid) =  CellField(zeros(arch, grid), grid)
-FaceFieldX(arch, grid) = FaceFieldX(zeros(arch, grid), grid)
-FaceFieldY(arch, grid) = FaceFieldY(zeros(arch, grid), grid)
-FaceFieldZ(arch, grid) = FaceFieldZ(zeros(arch, grid), grid)
+ CellField(arch, grid) = Field(Cell, Cell, Cell, arch, grid)
+FaceFieldX(arch, grid) = Field(Face, Cell, Cell, arch, grid)
+FaceFieldY(arch, grid) = Field(Cell, Face, Cell, arch, grid)
+FaceFieldZ(arch, grid) = Field(Cell, Cell, Face, arch, grid)
 
-fieldtype(f::Field) = typeof(f).name.wrapper
+fieldtype(f::AbstractField) = typeof(f).name.wrapper
+location(::Field{Lx, Ly, Lz}) where {Lx, Ly, Lz} = (Lx, Ly, Lz)
 
-@inline size(f::Field) = size(f.grid)
-@inline length(f::Field) = length(f.data)
+@inline size(f::AbstractField) = size(f.grid)
+@inline length(f::AbstractField) = length(f.data)
 
-@inline getindex(f::Field, inds...) = getindex(f.data, inds...)
-@inline lastindex(f::Field) = lastindex(f.data)
-@inline lastindex(f::Field, dim) = lastindex(f.data, dim)
-@inline setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
+@propagate_inbounds getindex(f::AbstractField, inds...) = getindex(f.data, inds...)
+@propagate_inbounds setindex!(f::AbstractField, v, inds...) = setindex!(f.data, v, inds...)
+@inline lastindex(f::AbstractField) = lastindex(f.data)
+@inline lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
 
-@inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
+"Returns a view over the interior points of the `field.data`."
+@inline data(f::AbstractField) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
-@inline ardata_view(f::Field) = view(f.data.parent, 1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                                    1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                                    1+f.grid.Hz:f.grid.Nz+f.grid.Hz)
+"Returns a reference to the interior points of `field.data.parent.`"
+@inline parentdata(f::AbstractField) = @inbounds f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
+                                                               1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
+                                                               1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 
-@inline ardata(f::Field) = f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                         1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                         1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
-
-@inline underlying_data(f::Field) = f.data.parent
-
-show(io::IO, f::Field) = show(io, f.data)
-iterate(f::Field, state=1) = iterate(f.data, state)
+show(io::IO, f::AbstractField) = show(io, f.data)
+iterate(f::AbstractField, state=1) = iterate(f.data, state)
 
 # Define +, -, and * on fields as element-wise calculations on their data. This
 # is only true for fields of the same type, e.g. when adding a FaceFieldY to
@@ -130,24 +160,25 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ)
     end
 end
 
-xnodes(ϕ::Field) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::Field) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
-znodes(ϕ::Field) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
+xnodes(ϕ::AbstractField) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::AbstractField) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
+znodes(ϕ::AbstractField) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
 
-xnodes(ϕ::FaceFieldX) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::FaceFieldY) = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
-znodes(ϕ::FaceFieldZ) = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
+xnodes(ϕ::Field{Face}) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::Field{X, Face}) where X = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
+znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
-zerofunk(args...) = 0
+# Niceties
+const AbstractCPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+@hascuda const AbstractGPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
-set!(u::Field, v::Number) = @. u.data = v
-set!(u::Field{A}, v::Field{A}) where A = @. u.data.parent = v.data.parent
+set!(u::AbstractField, v::Number) = @. u.data = v
+set!(u::AbstractField{A}, v::AbstractField{A}) where A = @. u.data.parent = v.data.parent
 
 "Set the CPU field `u` to the array `v`."
-function set!(u::Field{A}, v::Array) where {
-    A <: OffsetArray{T, D, <:Array} where {T, D}}
+function set!(u::AbstractCPUField, v::Array)
     for k in 1:u.grid.Nz, j in 1:u.grid.Ny, i in 1:u.grid.Nx
         u[i, j, k] = v[i, j, k]
     end
@@ -155,20 +186,21 @@ function set!(u::Field{A}, v::Array) where {
 end
 
 "Set the GPU field `u` to the array `v`."
-@hascuda function set!(u::Field{A}, v::Array) where {
-    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
+#@hascuda function set!(u::AbstractField{A}, v::Array) where {
+#    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
 
+@hascuda function set!(u::AbstractGPUField, v::Array)
     FieldType = fieldtype(u)
-    v_field = FieldType(CPU(), u.grid)
+    v_field = FieldType(location(u), CPU(), u.grid)
     set!(v_field, v)
     set!(u, v_field)
     return nothing
 end
 
 "Set the GPU field `u` to the CuArray `v`."
-@hascuda function set!(u::Field{A}, v::CuArray) where {
-    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
+@hascuda function set!(u::AbstractGPUField, v::CuArray)
     @launch device(GPU()) config=launch_config(u.grid, 3) _set_gpu!(u.data, v, u.grid)
+    return nothing
 end
 
 function _set_gpu!(u, v, grid)
@@ -183,31 +215,18 @@ function _set_gpu!(u, v, grid)
 end
 
 "Set the GPU field `u` data to the CPU field data of `v`."
-@hascuda function set!(u::Field{Au}, v::Field{Av}) where {
-    Au<:OffsetArray{T1, D, <:CuArray}, Av<:OffsetArray{T2, D, <:Array}} where {T1, T2, D}
-
-    copyto!(u.data.parent, v.data.parent)
-    return nothing
-end
+@hascuda set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
 
 "Set the CPU field `u` data to the GPU field data of `v`."
-@hascuda function set!(u::Field{Au}, v::Field{Av}) where {
-    Au<:OffsetArray{T1, D, <:Array}, Av<:OffsetArray{T2, D, <:CuArray}} where {T1, T2, D}
-
-    u.data.parent .= Array(v.data.parent)
-    return nothing
-end
+@hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
-set!(u::Field, f::Function) = data(u) .= f.(nodes(u)...)
+set!(u::AbstractField, f::Function) = data(u) .= f.(nodes(u)...)
 
 "Set the GPU field `u` data to the function `f(x, y, z)`."
-@hascuda function set!(u::Field{A1}, f::Function) where {
-    A1 <: OffsetArray{T, D, <:CuArray} where {T, D}}
-
+@hascuda function set!(u::AbstractGPUField, f::Function)
     FieldType = fieldtype(u)
-    u_cpu = FieldType(CPU(), u.grid)
-
+    u_cpu = FieldType(location(u), CPU(), u.grid)
     set!(u_cpu, f)
     set!(u, u_cpu)
     return nothing
@@ -220,7 +239,7 @@ Set velocity and tracer fields of `model`. The keyword arguments
 `kwargs...` take the form `name=data`, where `name` refers to one of the
 fields of `model.velocities` or `model.tracers`, and the `data` may be an array,
 a function with arguments `(x, y, z)`, or any data type for which a
-`set!(ϕ::Field, data)` function exists.
+`set!(ϕ::AbstractField, data)` function exists.
 
 Example
 =======
@@ -261,4 +280,4 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set_ic!(model; kwargs...) = set!(model; kwargs...)  # legacy wrapper
+set_ic!(model; kwargs...) = set!(model; kwargs...) # legacy wrapper

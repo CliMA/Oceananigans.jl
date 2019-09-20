@@ -2,9 +2,9 @@
 ##### Halo filling for flux, periodic, and no-penetration boundary conditions.
 #####
 
-# For flux boundary conditions we fill halos as for a *no-flux* boundary condition, and add the 
-# flux divergence associated with the flux boundary condition in a separate step. Note that 
-# ranges are used to reference the data copied into halos, as this produces views of the correct 
+# For flux boundary conditions we fill halos as for a *no-flux* boundary condition, and add the
+# flux divergence associated with the flux boundary condition in a separate step. Note that
+# ranges are used to reference the data copied into halos, as this produces views of the correct
 # dimension (eg size = (1, Ny, Nz) for the west halos).
 
  _fill_west_halo!(c, ::FBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[1+H:1+H,  :, :]
@@ -24,7 +24,7 @@ _fill_south_halo!(c, ::PBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, 
  _fill_north_halo!(c, ::PBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
 _fill_bottom_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
-# Recall that, by convention, the first grid point in an array with no penetration boundary 
+# Recall that, by convention, the first grid point in an array with no penetration boundary
 # condition lies on the boundary, where as the final grid point lies in the domain.
 
  _fill_west_halo!(c, ::NPBC, H, N) = @views @. c.parent[1:H+1, :, :] = 0
@@ -45,7 +45,7 @@ for (x, side) in zip(coords, sides)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
     @eval begin
-        $outername(c, bc::Union{FBC, PBC, NPBC}, arch::Architecture, grid::Grid, args...) = 
+        $outername(c, bc::Union{FBC, PBC, NPBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...) =
             $innername(c, bc, grid.$(H), grid.$(N))
     end
 end
@@ -72,7 +72,7 @@ function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return 
+    return
 end
 
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
@@ -85,7 +85,7 @@ function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return 
+    return
 end
 
 function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
@@ -93,7 +93,7 @@ function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
     return
 end
 
-function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::Architecture, grid::Grid, args...)
+function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...)
     @launch device(arch) config=launch_config(grid, 2) _fill_bottom_halo!(c, bc, grid, args...)
     return
 end
@@ -136,7 +136,7 @@ end
 Fill halo regions for each field in the tuple `fields` according
 to the single instances of `FieldBoundaryConditions` in `bcs`.
 """
-function fill_halo_regions!(fields::NamedTuple, bcs::NamedTuple{(:x, :y, :z)}, arch, grid, args...)
+function fill_halo_regions!(fields::NamedTuple, bcs::FieldBoundaryConditions, arch, grid, args...)
     for field in fields
         fill_halo_regions!(field, bcs, arch, grid, args...)
     end

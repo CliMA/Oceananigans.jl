@@ -1,24 +1,46 @@
-abstract type AbstractSmagorinsky{T} <: IsotropicDiffusivity{T} end
-
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = 
+@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T =
     (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 #####
-##### The "Deardorff" version of the Smagorinsky turbulence closure.
+##### The turbulence closure proposed by Smagorinsky and Lilly.
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
 """
-    DeardorffSmagorinsky(T=Float64; C=0.23, Pr=1.0, ν=1.05e-6, κ=1.46e-7)
+    SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
 
-Returns a `DeardorffSmagorinsky` closure object of type `T` with
+    SmagorinskyLilly([T=Float64;] C=0.23, Pr=1, ν=1.05e-6, κ=1.46e-7)
 
-    *  `C` : Smagorinsky model constant
-    * `Pr` : Prandtl number
-    *  `ν` : background viscosity
-    *  `κ` : background diffusivity
+Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
+Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
+
+    `νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / (Pr * Σ²)) + ν`,
+
+and an eddy diffusivity of the form
+
+    `κₑ = (νₑ - ν) / Pr + κ`
+
+where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
+the strain tensor `Σᵢⱼ`, and `N²` is the total buoyancy gradient.
+
+Keyword arguments
+=================
+    - `C::T`: Model constant
+    - `Cb::T`: Buoyancy term multipler (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `Pr::T`: Turbulent Prandtl number
+    - `ν::T`: background viscosity
+    - `κ::T`: background diffusivity
+
+References
+==========
+
+* Smagorinsky, J. "On the numerical integration of the primitive equations of motion for 
+    baroclinic flow in a closed region." Monthly Weather Review (1958)
+* Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
+* Smagorinsky, J. "General circulation experiments with the primitive equations: I. 
+    The basic experiment." Monthly weather review (1963)
 """
-Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
+Base.@kwdef struct SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
      C :: T = 0.23
     Cb :: T = 1.0
     Pr :: T = 1.0
@@ -26,23 +48,22 @@ Base.@kwdef struct DeardorffSmagorinsky{T} <: AbstractSmagorinsky{T}
      κ :: T = κ₀
 end
 
-DeardorffSmagorinsky(T; kwargs...) = 
-    typed_keyword_constructor(T, DeardorffSmagorinsky; kwargs...)
+SmagorinskyLilly(T; kwargs...) = typed_keyword_constructor(T, SmagorinskyLilly; kwargs...)
 
 """
     stability(N², Σ², Pr, Cb)
 
 Return the stability function
 
-``1 - \\sqrt( Cb N^2 / (Pr Σ^2) )``
+    ``\$ \\sqrt(1 - Cb N^2 / (Pr Σ^2) ) \$``
 
 when ``N^2 > 0``, and 1 otherwise.
 """
-@inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T = 
-    ifelse(Σ²==0, zero(T), one(T) - sqrt(stability_factor(N², Σ², Pr, Cb)))
+@inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T =
+    ifelse(Σ²==0, zero(T), sqrt(one(T) - stability_factor(N², Σ², Pr, Cb)))
 
-@inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T = 
-    min(one(T), max(zero(T), Cb * N² / (Pr*Σ²)))
+@inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T =
+    min(one(T), max(zero(T), Cb * N² / (Pr * Σ²)))
 
 """
     νₑ(ς, C, Δᶠ, Σ²)
@@ -53,10 +74,10 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::DeardorffSmagorinsky, c, eos, grav, u, v, w, T, S)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
-     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
+@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly, c, buoyancy_params, U, Φ)
+    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
+    N² = ▶z_aac(i, j, k, grid, buoyancy_frequency_squared, buoyancy_params, Φ)
+    Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Pr, clo.Cb)
 
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
@@ -84,15 +105,15 @@ struct BlasiusSmagorinsky{ML, T} <: AbstractSmagorinsky{T}
    mixing_length :: ML
 end
 
-BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) = 
+BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) =
     BlasiusSmagorinsky{typeof(mixing_length), T}(Pr, ν, κ, mixing_length)
 
 const BS = BlasiusSmagorinsky
 
-@inline Lm²(i, j, k, grid, closure::BS{<:AbstractFloat}, args...) = 
+@inline Lm²(i, j, k, grid, closure::BS{<:AbstractFloat}, args...) =
     closure.mixing_length^2
 
-@inline Lm²(i, j, k, grid, closure::BS{<:Nothing}, args...) = 
+@inline Lm²(i, j, k, grid, closure::BS{<:Nothing}, args...) =
     geo_mean_Δᶠ(i, j, k, grid)^2
 
 #####
@@ -116,11 +137,11 @@ struct MoninObukhovMixingLength{L, T, U, B}
     Cκ :: T
     z₀ :: T
     L₀ :: L
-    Qu :: U 
+    Qu :: U
     Qb :: U
 end
 
-MoninObukhovMixingLength(T=Float64; Qu, Qb, Cκ=0.4, z₀=0.0, L₀=nothing) = 
+MoninObukhovMixingLength(T=Float64; Qu, Qb, Cκ=0.4, z₀=0.0, L₀=nothing) =
     MoninObukhovMixingLength(T(Cκ), T(z₀), L₀, Qu, Qb)
 
 const MO = MoninObukhovMixingLength
@@ -131,7 +152,7 @@ const MO = MoninObukhovMixingLength
     ϕm(z, Qu, Qb, Cκ)
 
 Return the stability function for monentum at height
-`z` in terms of the velocity flux `Qu`, buoyancy flux 
+`z` in terms of the velocity flux `Qu`, buoyancy flux
 `Qb`, and von Karman constant `Cκ`.
 """
 @inline function ϕm(z::T, Qu, Qb, Cκ) where T
@@ -147,8 +168,8 @@ end
 @inline function Lm²(i, j, k, grid, clo::BlasiusSmagorinsky{<:MO, T}, Σ², N²) where T
     Lm = clo.mixing_length
     z = @inbounds grid.zC[i, j, k]
-    Lm⁻² = ( 
-             ( ϕm(z + Lm.z₀, Lm) * buoyancy_factor(Σ², N²)^T(0.25) / (Lm.Cκ * (z + Lm.z₀)) )^2 
+    Lm⁻² = (
+             ( ϕm(z + Lm.z₀, Lm) * buoyancy_factor(Σ², N²)^T(0.25) / (Lm.Cκ * (z + Lm.z₀)) )^2
             + 1 / L₀(i, j, k, grid, Lm)^2
            )
     return 1 / Lm⁻²
@@ -156,10 +177,10 @@ end
 
 @inline L₀(i, j, k, grid, mixing_length::MO{<:Number}) = mixing_length.L₀
 
-@inline L₀(i, j, k, grid, mixing_length::MO{<:Nothing}) = 
+@inline L₀(i, j, k, grid, mixing_length::MO{<:Nothing}) =
     geo_mean_Δᶠ(i, j, k, grid)
 
-@inline buoyancy_factor(Σ², N²::T) where T = 
+@inline buoyancy_factor(Σ², N²::T) where T =
     ifelse(Σ²==0, zero(T), max(zero(T), (one(T) - N² / Σ²)))
 
 """
@@ -172,9 +193,9 @@ frequency `N²`.
 """
 @inline νₑ_blasius(Lm², Σ², N²::T) where T = Lm² * sqrt(Σ²/2 * buoyancy_factor(Σ², N²))
 
-@inline function ν_ccc(i, j, k, grid, clo::BlasiusSmagorinsky, c, eos, grav, u, v, w, T, S)
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
-    N² = ▶z_aac(i, j, k, grid, ∂z_aaf, buoyancy, eos, grav, T, S)
+@inline function ν_ccc(i, j, k, grid, clo::BlasiusSmagorinsky, c, buoyancy, U, Φ)
+    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
+    N² = buoyancy_frequency_squared(i, j, k, grid, buoyancy, Φ)
     Lm_sq = Lm²(i, j, k, grid, clo, Σ², N²)
 
     return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
@@ -184,7 +205,7 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-TurbulentDiffusivities(arch::Architecture, grid::Grid, ::AbstractSmagorinsky) =
+TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::AbstractSmagorinsky) =
     (νₑ=CellField(arch, grid),)
 
 "Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
@@ -212,14 +233,13 @@ const Δᶠ_cff = Δᶠ
             )
 end
 
-
-@inline function κ_ccc(i, j, k, grid, clo::AbstractSmagorinsky, c, eos, grav, u, v, w, T, S)
-    νₑ = ν_ccc(i, j, k, grid, clo, c, eos, grav, u, v, w, T, S)
+@inline function κ_ccc(i, j, k, grid, clo::AbstractSmagorinsky, c, buoyancy, U, Φ)
+    νₑ = ν_ccc(i, j, k, grid, clo, c, buoyancy, U, Φ)
     return (νₑ - clo.ν) / clo.Pr + clo.κ
 end
 
 """
-    κ_∂x_c(i, j, k, grid, c, κ, closure, eos, g, u, v, w, T, S)
+    κ_∂x_c(i, j, k, grid, c, κ, closure, buoyancy, u, v, w, T, S)
 
 Return `κ ∂x c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
@@ -233,7 +253,7 @@ data located at cell centers.
 end
 
 """
-    κ_∂y_c(i, j, k, grid, c, κ, closure::AbstractSmagorinsky, eos, g, u, v, w, T, S)
+    κ_∂y_c(i, j, k, grid, c, κ, closure::AbstractSmagorinsky, buoyancy, u, v, w, T, S)
 
 Return `κ ∂y c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
@@ -247,7 +267,7 @@ data located at cell centers.
 end
 
 """
-    κ_∂z_c(i, j, k, grid, c, κ, closure::AbstractSmagorinsky, eos, g, u, v, w, T, S)
+    κ_∂z_c(i, j, k, grid, c, κ, closure::AbstractSmagorinsky, buoyancy, u, v, w, T, S)
 
 Return `κ ∂z c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
@@ -273,12 +293,11 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 # This function assumes rigid lids on the top and bottom.
-function calc_diffusivities!(diffusivities, grid, closure::AbstractSmagorinsky, eos, grav, U, Φ)
+function calc_diffusivities!(diffusivities, grid, closure::AbstractSmagorinsky, buoyancy, U, Φ)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds diffusivities.νₑ[i, j, k] =
-                    ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                @inbounds diffusivities.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
             end
         end
     end
@@ -326,4 +345,3 @@ end
             + 2 *   ▶y_aca(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
-

@@ -1,15 +1,10 @@
-import Base: size, show
-
 """
-    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid
+    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
 
-A Cartesian grid with regularly spaces cells and faces so that \$Δx\$, \$Δy\$,
-and \$Δz\$ are constants. Fields are stored using floating-point values of type
-`T`. The cell-centered and face-centered coordinate ranges are stored as ranges
-of type `A`.
+A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
+and cell faces.
 """
-struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid{T}
-    dim::Int
+struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -48,43 +43,46 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: Grid{T}
 end
 
 """
-    RegularCartesianGrid(T, N, L)
+    RegularCartesianGrid([T=Float64]; N, L)
 
-Create a regular Cartesian grid with size \$N = (N_x, N_y, N_z)\$ and domain
-size \$L = (L_x, L_y, L_z)\$ where fields are stored using floating-point values
-of type `T`.
+Creates a `RegularCartesianGrid` with `N = (Nx, Ny, Nz)` grid points and domain size
+`L = (Lx, Ly, Lz)`, where constants are stored using floating point values of type `T`.
 
-# Examples
-```julia-repl
-julia> g = RegularCartesianGrid((16, 16, 8), (2π, 2π, 2π))
-```
+Additional properties
+=====================
+- `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
+- `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
+- `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
+- `(Tx, Ty, Tz)::Int`: "Total" grid size (interior + halo points) in the (x, y, z)-direction
+
+Examples
+========
+julia> grid = RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
+RegularCartesianGrid{Float64}
+  resolution (Nx, Ny, Nz) = (32, 32, 32)
+   halo size (Hx, Hy, Hz) = (1, 1, 1)
+      domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
+grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
+
+julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
+RegularCartesianGrid{Float32}
+  resolution (Nx, Ny, Nz) = (32, 32, 16)
+   halo size (Hx, Hy, Hz) = (1, 1, 1)
+      domain (Lx, Ly, Lz) = (8.0f0, 8.0f0, 2.0f0)
+grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
 """
 function RegularCartesianGrid(T, N, L)
-    !(length(N) == 3) && throw(ArgumentError("N=$N must be a tuple of length 3."))
-    !(length(L) == 3) && throw(ArgumentError("L=$L must be a tuple of length 3."))
+    length(N) == 3 || throw(ArgumentError("N=$N must be a tuple of length 3."))
+    length(L) == 3 || throw(ArgumentError("L=$L must be a tuple of length 3."))
 
-    !all(isa.(N, Integer)) && throw(ArgumentError("N=$N should contain integers."))
-    !all(isa.(L, Number))  && throw(ArgumentError("L=$L should contain numbers."))
+    all(isa.(N, Integer)) || throw(ArgumentError("N=$N should contain integers."))
+    all(isa.(L, Number))  || throw(ArgumentError("L=$L should contain numbers."))
 
-    !all(N .>= 1) && throw(ArgumentError("N=$N must be nonzero and positive!"))
-    !all(L .> 0)  && throw(ArgumentError("L=$L must be nonzero and positive!"))
-
-    !(T in [Float32, Float64]) && throw(ArgumentError("T=$T but only Float32 and Float64 grids are supported."))
-
-    # Count the number of dimensions with 1 grid point, i.e. the number of flat
-    # dimensions, and use it to determine the dimension of the model.
-    num_flat_dims = count(i->(i==1), N)
-    dim = 3 - num_flat_dims
-    !(1 <= dim <= 3) && throw(ArgumentError("N=$N has dimension $dim. Only 1D, 2D, and 3D grids are supported."))
+    all(N .>= 1) || throw(ArgumentError("N=$N must be nonzero and positive!"))
+    all(L .> 0)  || throw(ArgumentError("L=$L must be nonzero and positive!"))
 
     Nx, Ny, Nz = N
     Lx, Ly, Lz = L
-
-    dim == 2 && !(Nx == 1 || Ny == 1 || Nz == 1) &&
-        throw(ArgumentError("For 2D grids, Nx, Ny, or Nz must be 1."))
-
-    dim == 3 && !(Nx != 1 && Ny != 1 && Nz != 1) &&
-        throw(ArgumentError("For 3D grids, cannot have dimensions of size 1."))
 
     # Right now we only support periodic horizontal boundary conditions and
     # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
@@ -95,19 +93,15 @@ function RegularCartesianGrid(T, N, L)
     Ty = Ny + 2*Hy
     Tz = Nz + 2*Hz
 
-    Lx = convert(T, Lx)
-    Ly = convert(T, Ly)
-    Lz = convert(T, Lz)
+    Δx = Lx / Nx
+    Δy = Ly / Ny
+    Δz = Lz / Nz
 
-    Δx = convert(T, Lx / Nx)
-    Δy = convert(T, Ly / Ny)
-    Δz = convert(T, Lz / Nz)
+    Ax = Δy*Δz
+    Ay = Δx*Δz
+    Az = Δx*Δy
 
-    Ax = convert(T, Δy*Δz)
-    Ay = convert(T, Δx*Δz)
-    Az = convert(T, Δx*Δy)
-
-    V = convert(T, Δx*Δy*Δz)
+    V = Δx*Δy*Δz
 
     xC = Δx/2:Δx:Lx
     yC = Δy/2:Δy:Ly
@@ -117,23 +111,21 @@ function RegularCartesianGrid(T, N, L)
     yF = 0:Δy:Ly
     zF = 0:-Δz:-Lz
 
-    # Make sure all the coordinate ranges have the same type.
-    !all(typeof.([xC, yC, zC, xF, yF, zF]) .== typeof(xC)) &&
-        throw(ArgumentError("At least one coordinate range type did not match."))
-
-    RegularCartesianGrid{T, typeof(xC)}(dim, Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+    RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
                                         xC, yC, zC, xF, yF, zF)
 end
 
-# Constructor aliases.
 RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
 
+RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
+
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
-Base.eltype(g::RegularCartesianGrid{T}) where T = T
+eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "$(g.dim)-dimensional ($(typeof(g.Lx))) regular Cartesian grid\n",
-              "(Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
-              "(Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
-              "(Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
+    print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
+              "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
+              "      domain (Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
+              "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
