@@ -88,4 +88,17 @@ end
         @test run_example(replace_strings, "internal_wave")
     end
 
+    @testset "Two-dimensional turbulence example" begin
+        println("  Testing two-dimensional turbulence example")
+
+        replace_strings = [ ("N = (128, 128, 1)", "N = (16, 16, 1)"),
+                            ("i = 1:10", "i = 1:1"),
+                            ("Nt = 100", "Nt = 2")
+                          ]
+
+        @test run_example(replace_strings, "two_dimensional_turbulence")
+    end
+
+
+
 end
