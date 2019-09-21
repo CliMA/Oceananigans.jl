@@ -105,11 +105,11 @@ function RegularCartesianGrid(T, N, L)
 
     xC = Δx/2:Δx:Lx
     yC = Δy/2:Δy:Ly
-    zC = -Δz/2:-Δz:-Lz
+    zC = -Lz+Δz/2:Δz:-Δz/2
 
     xF = 0:Δx:Lx
     yF = 0:Δy:Ly
-    zF = 0:-Δz:-Lz
+    zF = -Lz:Δz:0
 
     RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
