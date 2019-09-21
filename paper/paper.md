@@ -18,6 +18,8 @@ authors:
     affiliation: 1
   - name: Valentin Churavy
     affiliation: 2
+  - name: Tim Besard
+    affiliation: 3
   - name: Andre Souza
     affiliation: 1
   - name: John Marshall
@@ -29,7 +31,9 @@ affiliations:
    index: 1
  - name: Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology
    index: 2
-date: 18 September 2019
+ - name: Julia Computing, Inc.
+   index: 3
+date: 21 September 2019
 bibliography: paper.bib
 ---
 
@@ -73,7 +77,7 @@ Third paragraph on nice features and aspects:
 
 Funding sources?
 
-We would like to thank Tim Besard, Peter Ahrens, and Alan Edelman for their
+We would like to thank Peter Ahrens and Alan Edelman for their
 Julia support, particularly in developing the GPU capabilities
 of ``Oceananigans``.
 
