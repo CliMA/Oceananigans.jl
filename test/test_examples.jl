@@ -17,7 +17,7 @@ function run_deepening_mixed_layer_example(arch)
 
     try
         include(test_script_filepath)
-    catch e
+    catch err
         @error sprint(showerror, err)
         rm(test_script_filepath)
         return false

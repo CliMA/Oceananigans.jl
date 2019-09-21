@@ -32,21 +32,21 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 Tbcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fθ), bottom=BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
-model = Model(      
+model = Model(
            architecture = CPU(), # GPU() # this example will run on the GPU if cuda is available.
                    grid = RegularCartesianGrid(N = (N, N, N), L = (N*Δ, N*Δ, N*Δ)),
-                    eos = LinearEquationOfState(βT=βT, βS=0.0),
-              constants = PlanetaryConstants(f=f, g=g),
+               coriolis = FPlane(f=f),
+               buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=βT)),
                 closure = AnisotropicMinimumDissipation(), # closure = ConstantSmagorinsky(),
     boundary_conditions = BoundaryConditions(u=ubcs, T=Tbcs)
 )
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
-T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+T0(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 ϵ₀(x, y, z) = 1e-4 * Ξ(z)
 
-set!(model, u=ϵ₀, w=ϵ₀, T=T₀, S=ϵ₀)
+set!(model, u=ϵ₀, w=ϵ₀, T=T0, S=ϵ₀)
 
 ####
 #### Set up output
