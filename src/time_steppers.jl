@@ -410,9 +410,9 @@ Compute the vertical velocity w by integrating the continuity equation downwards
 function compute_w_from_continuity!(grid::AbstractGrid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds U.w[i, j, 1] = 0
-            @unroll for k in 2:grid.Nz
-                @inbounds U.w[i, j, k] = U.w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
+            @inbounds U.w[i, j, grid.Nz] = 0
+            @unroll for k in grid.Nz-1 : -1 : 1
+                @inbounds U.w[i, j, k] = U.w[i, j, k+1] + grid.Δz * ∇h_u(i, j, k, grid, U.u, U.v)
             end
         end
     end
