@@ -53,7 +53,7 @@ end
 end
 
 @inline div_flux(g::RegularCartesianGrid, u, v, w, Q, i, j, k) =
-	(δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
+    (δx_f2c_ab̄ˣ(g, u, Q, i, j, k) / g.Δx) + (δy_f2c_ab̄ʸ(g, v, Q, i, j, k) / g.Δy) + (δz_f2c_ab̄ᶻ(g, w, Q, i, j, k) / g.Δz)
 
 @inline δx_c2f_ūˣūˣ(g::RegularCartesianGrid, u, i, j, k) =
     avgx_f2c(g, u, i, j, k)^2 - avgx_f2c(g, u, i-1, j, k)^2
@@ -98,7 +98,7 @@ end
 end
 
 @inline δz_c2f_w̄ᶻw̄ᶻ(g::RegularCartesianGrid, w, i, j, k) =
-	avgz_f2c(g, w, i, j, k)^2 - avgz_f2c(g, w, i, j, k-1)^2
+    avgz_f2c(g, w, i, j, k)^2 - avgz_f2c(g, w, i, j, k-1)^2
 
 @inline u∇w(g::RegularCartesianGrid, u, v, w, i, j, k) =
     (δx_e2f_ūᶻw̄ˣ(g, u, w, i, j, k) / g.Δx) + (δy_e2f_v̄ᶻw̄ʸ(g, v, w, i, j, k) / g.Δy) + (δz_c2f_w̄ᶻw̄ᶻ(g, w, i, j, k) / g.Δz)
@@ -128,6 +128,6 @@ end
     ((𝜈h/g.Δx^2) * δx²_f2e2f(g, w, i, j, k)) + ((𝜈h/g.Δy^2) * δy²_f2e2f(g, w, i, j, k)) + ((𝜈v/g.Δz^2) * δz²_f2c2f(g, w, i, j, k))
 
 @inline ∇²(g::RegularCartesianGrid, f, i, j, k) =
-	(δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
+    (δx²_c2f2c(g, f, i, j, k) / g.Δx^2) + (δy²_c2f2c(g, f, i, j, k) / g.Δy^2) + (δz²_c2f2c(g, f, i, j, k) / g.Δz^2)
 
 @inline ∇h_u(i, j, k, grid, u, v) = δx_f2c(grid, u, i, j, k) / grid.Δx + δy_f2c(grid, v, i, j, k) / grid.Δy
