@@ -28,7 +28,7 @@
 @inline VC(i, j, k, grid) = ΔxC(i, j, k, grid) * ΔyC(i, j, k, grid) * Δz(i, j, k, grid)
 
 # Volume of face-centered cells.
-@inline Vᵘ(i, j, k, grid) = (VF(i, j, k, grid) + VF(i+1, j, k, grid)) / 2
+@inline Vᵘ(i, j, k, grid) = (VF(i, j, k, grid) + VF(i, j, k+1, grid)) / 2
 @inline Vᵛ(i, j, k, grid) = (VF(i, j, k, grid) + VF(i, j+1, k, grid)) / 2
-@inline Vʷ(i, j, k, grid) = (VF(i, j, k, grid) + VF(i, j, k+1, grid)) / 2
+@inline Vʷ(i, j, k, grid) = (VF(i, j, k, grid) + VF(i+1, j, k, grid)) / 2
 
