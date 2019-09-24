@@ -15,8 +15,8 @@ Skamarock & Klemp (2008), "A time-split nonhydrostatic atmospheric model for wea
     applications", Journal of Computational Physics 227, pp.3465-3485.
 """
 function RK3(f, Φ, Δt)
-    Φ⋆  = Φ + f(Φ)  * Δt/3
-    Φ⋆⋆ = Φ + f(Φ⋆) * Δt/2
-    return Φ + f(Φ⋆⋆) * Δt
+    Φ′   = Φ + f(Φ)   * Δt/3
+    Φ′′  = Φ + f(Φ′)  * Δt/2
+    return Φ + f(Φ′′) * Δt
 end
 

@@ -1,6 +1,7 @@
-using JULES
 using Test
 
+using JULES
+
 @testset "JULES" begin
-    # Write your own tests here.
+    include("test_time_steppers.jl")
 end
