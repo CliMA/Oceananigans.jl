@@ -17,19 +17,19 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{
     Tx::Int
     Ty::Int
     Tz::Int
-    # Domain size [m].
+    # Domain size
     Lx::T
     Ly::T
     Lz::T
-    # Grid spacing [m].
+    # Grid spacing
     Δx::T
     Δy::T
     Δz::T
-    # Cell face areas [m²].
+    # Cell face areas
     Ax::T
     Ay::T
     Az::T
-    # Volume of a cell [m³].
+    # Volume of a cell
     V::T
     # Range of coordinates at the centers of the cells.
     xC::R
@@ -64,6 +64,7 @@ RegularCartesianGrid{Float64}
    halo size (Hx, Hy, Hz) = (1, 1, 1)
       domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
 grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
+
 julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
 RegularCartesianGrid{Float32}
   resolution (Nx, Ny, Nz) = (32, 32, 16)
