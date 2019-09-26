@@ -9,9 +9,9 @@ end
 
 @withplots using PyPlot
 
-#
-# Model set-up
-#
+####
+#### Model set-up
+####
 
 # Two cases from Van Roekel et al (JAMES, 2018)
 parameters = Dict(:free_convection => Dict(:Fb=>3.39e-8, :Fu=>0.0,     :f=>1e-4, :N²=>1.96e-5),
@@ -32,25 +32,25 @@ ubcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fu))
 Tbcs = HorizontallyPeriodicBCs(top=BoundaryCondition(Flux, Fθ), bottom=BoundaryCondition(Gradient, dTdz))
 
 # Instantiate the model
-model = Model(      
-                   arch = CPU(), # GPU() # this example will run on the GPU if cuda is available.
+model = Model(
+           architecture = CPU(), # GPU() # this example will run on the GPU if cuda is available.
                    grid = RegularCartesianGrid(N = (N, N, N), L = (N*Δ, N*Δ, N*Δ)),
-                    eos = LinearEquationOfState(βT=βT, βS=0.0),
-              constants = PlanetaryConstants(f=f, g=g),
+               coriolis = FPlane(f=f),
+               buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=βT)),
                 closure = AnisotropicMinimumDissipation(), # closure = ConstantSmagorinsky(),
     boundary_conditions = BoundaryConditions(u=ubcs, T=Tbcs)
 )
 
 # Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
-T₀(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+T0(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 ϵ₀(x, y, z) = 1e-4 * Ξ(z)
 
-set!(model, u=ϵ₀, w=ϵ₀, T=T₀, S=ϵ₀)
+set!(model, u=ϵ₀, w=ϵ₀, T=T0, S=ϵ₀)
 
-#
-# Set up output
-#
+####
+#### Set up output
+####
 
 u(model) = Array{Float32}(model.velocities.u.data.parent)
 v(model) = Array{Float32}(model.velocities.v.data.parent)
@@ -62,9 +62,9 @@ filename = @sprintf("%s_n%d", case, N)
 field_writer = JLD2OutputWriter(model, fields; dir="data", prefix=filename, interval=hour/4, force=true)
 push!(model.output_writers, field_writer)
 
-#
-# Run the simulation
-#
+####
+#### Run the simulation
+####
 
 @withplots fig, axs = subplots()
 
@@ -72,7 +72,7 @@ function terse_message(model, walltime, Δt)
     wmax = maximum(abs, model.velocities.w.data.parent)
     cfl = Δt / Oceananigans.cell_advection_timescale(model)
     return @sprintf("i: %d, t: %.4f hours, Δt: %.1f s, wmax: %.6f ms⁻¹, cfl: %.3f, wall time: %s\n",
-                    model.clock.iteration, model.clock.time/3600, Δt, wmax, cfl, prettytime(1e9*walltime))
+                    model.clock.iteration, model.clock.time/3600, Δt, wmax, cfl, prettytime(walltime))
 end
 
 # A wizard for managing the simulation time-step.

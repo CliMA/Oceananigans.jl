@@ -48,62 +48,27 @@ function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, 
     return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
 end
 
-@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
-    q = tr_∇u_ccc(i, j, k, grid, u, v, w)
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT
+    q = tr_∇u_ccc(i, j, k, grid, U.u, U.v, U.w)
 
     if q == 0
         νˢᶠˢ = zero(FT)
     else
-        r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
-        ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
+        r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, U.u, U.v, U.w)
+        ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, U.w, Φ)
         νˢᶠˢ = -closure.C * (r - closure.Cb * ζ) / q
     end
 
     return max(zero(FT), νˢᶠˢ) + closure.ν
 end
 
-@inline function ν_ccf(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
-    q = tr_∇u_ccf(i, j, k, grid, u, v, w)
-
-    if q == 0
-        νˢᶠˢ = zero(FT)
-    else
-        r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccf(i, j, k, grid, closure, u, v, w)
-        ζ = Δ²ᵢ_wᵢ_bᵢ_ccf(i, j, k, grid, closure, eos, grav, w, T, S)
-        νˢᶠˢ = -closure.C * (r - closure.Cb * ζ) / q
-    end
-
-    return max(zero(FT), νˢᶠˢ) + closure.ν
-end
-
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT
     σ = θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
     if σ == 0
         κˢᶠˢ = zero(FT)
     else
-        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, u, v, w, c)
-        κˢᶠˢ = - closure.C * ϑ / σ
-    end
-
-    return max(zero(FT), κˢᶠˢ) + closure.κ
-end
-
-@inline function κ_ccf(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c,
-                       eos, grav, u, v, w, T, S) where FT
-
-    σ = θᵢ²_ccf(i, j, k, grid, c) # Tracer variance
-
-    if σ == 0
-        κˢᶠˢ = zero(FT)
-    else
-        ϑ = Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
+        ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, U.u, U.v, U.w, c)
         κˢᶠˢ = - closure.C * ϑ / σ
     end
 
@@ -230,30 +195,7 @@ end
     )
 end
 
-@inline function tr_∇u_ccf(i, j, k, grid, uvw...)
-    ijk = (i, j, k, grid)
-
-    return (
-        # ccc
-        ▶z_aaf(ijk..., ∂x_u², uvw...)
-      + ▶z_aaf(ijk..., ∂y_v², uvw...)
-      + ▶z_aaf(ijk..., ∂z_w², uvw...)
-
-        # ffc
-      + ▶xyz_ccf(ijk..., ∂x_v², uvw...)
-      + ▶xyz_ccf(ijk..., ∂y_u², uvw...)
-
-        # fcf
-      + ▶x_caa(ijk..., ∂x_w², uvw...)
-      + ▶x_caa(ijk..., ∂z_u², uvw...)
-
-        # cff
-      + ▶y_aca(ijk..., ∂y_w², uvw...)
-      + ▶y_aca(ijk..., ∂z_v², uvw...)
-    )
-end
-
-@inline function Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, eos, grav, w, T, S)
+@inline function Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, w, C)
     ijk = (i, j, k, grid)
 
     Δx = Δx_ccc(ijk..., closure)
@@ -261,32 +203,13 @@ end
     Δz = Δz_ccc(ijk..., closure)
 
     Δx²_wx_bx = Δx^2 * (▶xz_cac(ijk..., ∂x_faa, w)
-                          * ▶x_caa(ijk..., ∂x_faa, buoyancy_perturbation, eos, grav, T, S))
+                          * ▶x_caa(ijk..., ∂x_faa, buoyancy_perturbation, buoyancy, C))
 
     Δy²_wy_by = Δy^2 * (▶yz_acc(ijk..., ∂y_afa, w)
-                          * ▶y_aca(ijk..., ∂y_afa, buoyancy_perturbation, eos, grav, T, S))
+                          * ▶y_aca(ijk..., ∂y_afa, buoyancy_perturbation, buoyancy, C))
 
     Δz²_wz_bz = Δz^2 * (∂z_aac(ijk..., w)
-                          * ▶z_aac(ijk..., ∂z_aaf, buoyancy_perturbation, eos, grav, T, S))
-
-    return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
-end
-
-@inline function Δ²ᵢ_wᵢ_bᵢ_ccf(i, j, k, grid, closure, eos, grav, w, T, S)
-    ijk = (i, j, k, grid)
-
-    Δx = Δx_ccf(ijk..., closure)
-    Δy = Δy_ccf(ijk..., closure)
-    Δz = Δz_ccf(ijk..., closure)
-
-    Δx²_wx_bx = Δx^2 * (▶x_caa(ijk..., ∂x_faa, w)
-                          * ▶xz_caf(ijk..., ∂x_faa, buoyancy_perturbation, eos, grav, T, S))
-
-    Δy²_wy_by = Δy^2 * (▶y_aca(ijk..., ∂y_afa, w)
-                          * ▶yz_acf(ijk..., ∂y_afa, buoyancy_perturbation, eos, grav, T, S))
-
-    Δz²_wz_bz = Δz^2 * (▶z_aaf(ijk..., ∂z_aac, w)
-                          * ∂z_aaf(ijk..., buoyancy_perturbation, eos, grav, T, S))
+                          * ▶z_aac(ijk..., ∂z_aaf, buoyancy_perturbation, buoyancy, C))
 
     return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
 end
@@ -384,34 +307,15 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
 )
 
 # This function assumes rigid top and bottom boundary conditions
-function calc_diffusivities!(K, grid, closure::RAMD, eos, grav, U, Φ)
+function calc_diffusivities!(K, grid, closure::RAMD, buoyancy, U, Φ)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
+                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
+                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy, U, Φ)
+                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy, U, Φ)
             end
         end
     end
     return nothing
 end
-
-#=
-An idea:
-
-function calc_z_boundary_diffusivities!(K, grid, closure, eos, grav, U, Φ)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds K.νₑ[i, j, 1]         = ν_ccf(i, j, 2,       grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-            @inbounds K.κₑ.T[i, j, 1]       = κ_ccf(i, j, 2,       grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-            @inbounds K.κₑ.S[i, j, 1]       = κ_ccf(i, j, 2,       grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-
-            @inbounds K.νₑ[i, j, grid.Nz]   = ν_ccf(i, j, grid.Nz, grid, closure, nothing, eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-            @inbounds K.κₑ.T[i, j, grid.Nz] = κ_ccf(i, j, grid.Nz, grid, closure, Φ.T,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-            @inbounds K.κₑ.S[i, j, grid.Nz] = κ_ccf(i, j, grid.Nz, grid, closure, Φ.S,     eos, grav, U.u, U.v, U.w, Φ.T, Φ.S)
-        end
-    end
-    return nothing
-end
-=#

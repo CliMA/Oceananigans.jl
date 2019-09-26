@@ -1,7 +1,9 @@
-using Random, Printf, JLD2
 const seed = 420  # Random seed to use for all pseudorandom number generators.
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
+
+const T₀ = 9.85
+const S₀ = 35.0
 
 function get_output_tuple(output, iter, tuplename)
     file = jldopen(output.filepath, "r")
@@ -15,10 +17,11 @@ function run_thermal_bubble_regression_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
+    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
+                       coriolis=FPlane(f=1e-4))
 
-    model.tracers.T.data.parent .= model.eos.T₀
-    model.tracers.S.data.parent .= model.eos.S₀
+    model.tracers.T.data.parent .= T₀
+    model.tracers.S.data.parent .= S₀
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -95,8 +98,7 @@ function run_rayleigh_benard_regression_test(arch)
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
-                        eos = LinearEquationOfState(βT=1.0, βS=0.0),
-                  constants = PlanetaryConstants(g=1.0, f=0.0),
+                   buoyancy = BuoyancyTracer(), 
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
                                 top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
                     forcing = Forcing(FS=FS)
