@@ -2,6 +2,7 @@ EXAMPLES_DIR = "../examples/"
 
 function run_deepening_mixed_layer_example(arch)
     example_filepath = joinpath(EXAMPLES_DIR, "deepening_mixed_layer.jl")
+
     txt = read(example_filepath, String)
 
     arch == GPU() && (txt = replace(txt, "arch = CPU()" => "arch = GPU()"))
@@ -38,7 +39,9 @@ function run_example(replace_strings, example_name)
     test_script_filepath = example_name * "_example_test.jl"
 
     open(test_script_filepath, "w") do f
+        write(f, "module Test_$example_name\n")
         write(f, txt)
+        write(f, "\nend # module")
     end
 
     try
