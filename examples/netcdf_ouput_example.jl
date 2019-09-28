@@ -44,9 +44,14 @@ set!(model, u=ϵ₀, w=ϵ₀, T=T0, S=ϵ₀)
 ####
 
 WriteGeometry(model)
-# Oceananigans.NCOutputWriterInit(model, filename="subgeom.nc", xC=3:7)
-Oceananigans.NCOutputWriter(model, Dict("v"=>model.velocities.v),
-                            filename="subgeom.nc", xC=3:7, yF=10:30, zC=5:15)
+ncow = NCOutputWriter(model, Dict("v"=>model.velocities.v,
+                                  "u"=>model.velocities.u,
+                                  "w"=>model.velocities.w,
+                                  "T"=>model.tracers.T,
+                                  "S"=>model.tracers.S),
+                      interval=hour/10, filename="dump.nc",
+                      xC=3:7, xF=5:8, yC=20:30, yF=10:30, zC=5:15, zF=3:21)
+push!(model.output_writers, ncow)
 
 ####
 #### Run the simulation
@@ -68,3 +73,4 @@ while model.clock.time < tf
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
     @printf "%s" terse_message(model, walltime, wizard.Δt)
 end
+OWClose(ncow)

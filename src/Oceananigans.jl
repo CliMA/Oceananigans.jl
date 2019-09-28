@@ -51,7 +51,7 @@ export
     NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
-    WriteGeometry,
+    WriteGeometry, NCOutputWriter, OWClose,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
