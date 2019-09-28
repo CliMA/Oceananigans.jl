@@ -51,6 +51,7 @@ export
     NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
+    WriteGeometry,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
@@ -77,7 +78,8 @@ using
     StaticArrays,
     OffsetArrays,
     JLD2,
-    NetCDF
+    NetCDF,
+    NCDatasets
 
 import
     CUDAapi,
@@ -251,6 +253,7 @@ include("models.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
+include("ncoutputwriter.jl")
 include("diagnostics.jl")
 
 end # module
