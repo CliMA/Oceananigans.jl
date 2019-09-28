@@ -19,12 +19,14 @@ function WriteGeometry(model; filename="./geometry.nc", mode="c", slice_kw...)
         "zF" => collect(model.grid.zF)
     )
 
+    # Applies slices to the dimensions d
     for (d, slice) in slice_kw
         if String(d) in keys(dimensions)
             dimensions[String(d)] = dimensions[String(d)][slice]
         end
     end
 
+    # Writes the sliced dimensions to the specified netcdf file
     Dataset(filename, mode) do ds
         for (dimname, dimarray) in dimensions
             defDim(ds, dimname, length(dimarray)); sync(ds)
