@@ -170,6 +170,17 @@ znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, 
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
+function dims(field::Field{LX, LY, LZ}) where {LX, LY, LZ}
+    xdim(LX), ydim(LY), zdim(LZ)
+end
+
+xdim(::Type{Face}) = "xF"
+xdim(::Type{Cell}) = "xC"
+ydim(::Type{Face}) = "yF"
+ydim(::Type{Cell}) = "yC"
+zdim(::Type{Face}) = "zF"
+zdim(::Type{Cell}) = "zC"
+
 # Niceties
 const AbstractCPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
 @hascuda const AbstractGPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
