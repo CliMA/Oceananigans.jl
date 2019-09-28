@@ -116,8 +116,8 @@ location(::Field{Lx, Ly, Lz}) where {Lx, Ly, Lz} = (Lx, Ly, Lz)
 @inline size(f::AbstractField) = size(f.grid)
 @inline length(f::AbstractField) = length(f.data)
 
-@propagate_inbounds getindex(f::AbstractField, inds...) = getindex(f.data, inds...)
-@propagate_inbounds setindex!(f::AbstractField, v, inds...) = setindex!(f.data, v, inds...)
+@inline @propagate_inbounds getindex(f::AbstractField, inds...) = getindex(f.data, inds...)
+@inline @propagate_inbounds setindex!(f::AbstractField, v, inds...) = setindex!(f.data, v, inds...)
 @inline lastindex(f::AbstractField) = lastindex(f.data)
 @inline lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
 
