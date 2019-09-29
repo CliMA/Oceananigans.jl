@@ -192,5 +192,5 @@ while model.clock.time < end_time
             model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt), 
             wmax(model), prettytime(walltime))           
 
-    makeplot!(axs, model)
+    model.architecture == CPU() && makeplot!(axs, model)
 end
