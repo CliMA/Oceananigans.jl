@@ -271,6 +271,31 @@ end
 ####
 
 """
+    dims(::field)
+
+Returns the dimensions associated with a field.
+
+Examples
+========
+
+julia> dims(model.velocities.u)
+("xF", "yC", "zC")
+
+julia> dims(model.tracers.T)
+("xC", "yC", "zC")
+"""
+function dims(field::Field{LX, LY, LZ}) where {LX, LY, LZ}
+    xdim(LX), ydim(LY), zdim(LZ)
+end
+
+xdim(::Type{Face}) = "xF"
+xdim(::Type{Cell}) = "xC"
+ydim(::Type{Face}) = "yF"
+ydim(::Type{Cell}) = "yC"
+zdim(::Type{Face}) = "zF"
+zdim(::Type{Cell}) = "zC"
+
+"""
     write_grid(model; filename="./geometry.nc", mode="c", slice_kw...)
 
 Writes a geometry.nc file that contains all the dimensions of the domain.
