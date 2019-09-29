@@ -48,10 +48,9 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
-    WriteGeometry, NCOutputWriter, OWClose,
+    write_grid, NetCDFOutputWriter, OWClose,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
@@ -253,7 +252,6 @@ include("models.jl")
 include("time_steppers.jl")
 
 include("output_writers.jl")
-include("ncoutputwriter.jl")
 include("diagnostics.jl")
 
 end # module
