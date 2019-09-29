@@ -61,14 +61,21 @@ end
 @testset "Examples" begin
     println("Testing examples...")
 
-    #=
     for arch in archs
-        @testset "Deepening mixed layer example [$(typeof(arch))]" begin
-            println("  Testing deepening mixed layer example [$(typeof(arch))]")
-            @test run_deepening_mixed_layer_example(arch)
+        @testset "Wind and convection mixing example [$(typeof(arch))]" begin
+            println("  Testing wind and convection-driving mixing example [$(typeof(arch))]")
+
+            replace_strings = [ ("Nz = 48", "Nz = 16"),
+                                ("while model.clock.time < end_time", "while model.clock.iteration < 1"),
+                                ("time_step!(model, 10, wizard.Δt)", "time_step!(model, 1, wizard.Δt)"),
+                              ]
+
+            arch == GPU() && push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
+
+            @test run_example(replace_strings, "ocean_wind_mixing_and_convection")
+            rm("ocean_wind_mixing_and_convection.jld2")
         end
     end
-    =#
 
     @testset "Simple diffusion example" begin
         println("  Testing simple diffusion example")
@@ -85,7 +92,7 @@ end
 
         replace_strings = [ ("Nx = 128", "Nx = 16"),
                             ("i = 1:10", "i = 1:1"),
-                            ("Nt = 200", "Nt = 2")
+                            ("Nt = 200", "Nt = 2"),
                           ]
 
         @test run_example(replace_strings, "internal_wave")
@@ -94,7 +101,7 @@ end
     @testset "Two-dimensional turbulence example" begin
         println("  Testing two-dimensional turbulence example")
 
-        replace_strings = [ ("N = (128, 128, 1)", "N = (16, 16, 1)"),
+        replace_strings = [ ("N=(128, 128, 1)", "N=(16, 16, 1)"),
                             ("i = 1:10", "i = 1:1"),
                             ("Nt = 100", "Nt = 2")
                           ]
