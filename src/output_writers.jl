@@ -296,9 +296,9 @@ zdim(::Type{Face}) = "zF"
 zdim(::Type{Cell}) = "zC"
 
 """
-    write_grid(model; filename="./geometry.nc", mode="c", slice_kw...)
+    write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
 
-Writes a geometry.nc file that contains all the dimensions of the domain.
+Writes a grid.nc file that contains all the dimensions of the domain.
 
 Keyword arguments
 =================
@@ -306,7 +306,7 @@ Keyword arguments
     - `filename::String`  : File name to be saved under
     - `mode::String`      : Netcdf file is opened in either clobber ("c") or append ("a") mode (Default: "c" )
 """
-function write_grid(model; filename="./geometry.nc", mode="c", slice_kw...)
+function write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
     dimensions = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
@@ -326,7 +326,6 @@ function write_grid(model; filename="./geometry.nc", mode="c", slice_kw...)
     # Writes the sliced dimensions to the specified netcdf file
     Dataset(filename, mode) do ds
         for (dimname, dimarray) in dimensions
-            defDim(ds, dimname, length(dimarray)); sync(ds)
             defVar(ds, dimname, dimarray, (dimname,))
         end
     end
@@ -441,7 +440,7 @@ add_dim(x::Array) = reshape(x, (size(x)...,1))
 
 For internal user only. Writes output to the netcdf file at specified intervals. Increments the `Time` dimension every time an output is written to the file.
 """
-function write_output(model, fw::NCOutputWriter)
+function write_output(model, fw::NetCDFOutputWriter)
     fw.nt += 1
     fw.dataset["Time"][fw.nt] = model.clock.time
     for (fieldname, field) in fw.outputs
