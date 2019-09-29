@@ -5,8 +5,8 @@ using Oceananigans, Printf
 ####
 
 Nx, Ny, Nz = 16, 16, 16       # No. of grid points in x, y, and z, respectively.
-Lx, Ly, Lz = 100, 100, 100    # Length of the domain in x, y, and z, respectively.
-tf = 5000
+Lx, Ly, Lz = 100, 100, 100    # Length of the domain in x, y, and z, respectively (m).
+tf = 5000                     # Length of the simulation (s)
 
 model = Model(grid=RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
               closure=ConstantIsotropicDiffusivity())
@@ -23,27 +23,23 @@ model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 ####
 
 write_grid(model)
-subsetwriter = NetCDFOutputWriter(model,
-                                  Dict("v"=>model.velocities.v,
-                                       "u"=>model.velocities.u,
-                                       "w"=>model.velocities.w,
-                                       "T"=>model.tracers.T,
-                                       "S"=>model.tracers.S),
+
+outputs = Dict("v"=>model.velocities.v,
+               "u"=>model.velocities.u,
+               "w"=>model.velocities.w,
+               "T"=>model.tracers.T,
+               "S"=>model.tracers.S)
+subsetwriter = NetCDFOutputWriter(model, outputs,
                                   interval=10, filename="dump_subset.nc",
                                   xC=2:Nx-1, xF=2:Nx-1, yC=2:Ny-1,
                                   yF=2:Ny-1, zC=2:Nz-1, zF=2:Nz-1)
 push!(model.output_writers, subsetwriter)
 
-# TODO: Writing global output fails right now. The lengths of the
+# TODO: Writing global output fails as of now (Sep 29). The lengths of the
 # dimensions are not equal to the lengths of the field arrays due to
 # halo regions. This needs to be discussed.
-# globalwriter = NetCDFOutputWriter(model,
-#                                   Dict("v"=>model.velocities.v,
-#                                        "u"=>model.velocities.u,
-#                                        "w"=>model.velocities.w,
-#                                        "T"=>model.tracers.T,
-#                                        "S"=>model.tracers.S),
-#                                   interval=10, filename="dump_global.nc")
+# globalwriter = NetCDFOutputWriter(model, outputs, interval=10,
+#                                   filename="dump_global.nc")
 # push!(model.output_writers, globalwriter)
 
 ####
