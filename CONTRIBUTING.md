@@ -54,6 +54,49 @@ Oceananigans or by requesting something you think is missing.
   and `] status` is helpful to include. If possible, include complete, minimal example
   code that reproduces the problem.
 
+## Setting up your development environment
+
+* Install [Julia](https://julialang.org/) on your system.
+* Install git on your system if it is not already there (install XCode command line tools on
+  a Mac or git bash on Windows).
+* Login to your GitHub account and make a fork of the
+  [Oceananigans repository](https://github.com/climate-machine/Oceananigans.jl) by
+  clicking the "Fork" button.
+* Clone your fork of the MetPy repository (in terminal on Mac/Linux or git shell/
+  GUI on Windows) in the location you'd like to keep it.
+  ``git clone https://github.com/your-user-name/Oceananigans.jl.git``
+* Navigate to that folder in the terminal or in Anaconda Prompt if you're on Windows.
+* Connect your repository to the upstream (main project).
+  ``git remote add oceananigans https://github.com/climate-machine/Oceananigans.jl.git``
+* Create the development environment by opening Julia via ``julia --project`` then
+  typing in ``] instantiate``. This will install all the dependencies in the ``Project.toml``
+  file.
+* You can test to make sure Oceananigans works by typing in ``] test``.
+
+Your development environment is now ready!
+
+## Pull Requests
+
+Changes and contributions should be made via GitHub pull requests against the ``master`` branch.
+
+When you're done making changes, commit the changes you made. Chris Beams has
+written a [guide](https://chris.beams.io/posts/git-commit/) on how to write
+good commit messages.
+
+When you think your changes are ready to be merged into the main repository,
+push to your fork and [submit a pull request](https://github.com/climate-machine/Oceananigans.jl/compare/).
+
+**Working on your first Pull Request?** You can learn how from this _free_ video series
+[How to Contribute to an Open Source Project on GitHub](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github), Aaron Meurer's [tutorial on the git workflow](https://www.asmeurer.com/git-workflow/), or the guide [“How to Contribute to Open Source"](https://opensource.guide/how-to-contribute/).
+
+## Documentation
+
+Now that you've made your awesome contribution, it's time to tell the world how to use it.
+Writing documentation strings is really important to make sure others use your functionality
+properly. Didn't write new functions? That's fine, but be sure that the documentation for
+the code you touched is still in great shape. It is not uncommon to find some strange wording
+or clarification that you can take care of while you are here.
+
 ## Credits
 
 This contributor's guide is heavily based on the excellent [MetPy contributor's guide](https://github.com/Unidata/MetPy/blob/master/CONTRIBUTING.md).
