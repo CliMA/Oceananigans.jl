@@ -3,10 +3,15 @@
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
 #
-#   * how to use the `SeawaterBuoyancy` model for buoyancy with an equation of state;
-#   * how to use a turbulence closure for large eddy simulation.
+#   * how to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state;
+#   * how to use a turbulence closure for large eddy simulation;
+#   * how to use a function to impose a boundary condition;
+#   * how to use user-defined `model.parameters` in a boundary condition function.
+#
+# In addition to `Oceananigans.jl` we need `PyPlot` for plotting, `Random` for
+# generating random initial conditions, and `Printf` for printing progress messages.
 
-using Oceananigans, Random, Printf, PyPlot
+using Oceananigans, PyPlot, Random, Printf
 
 # ## Model parameters
 #
@@ -17,16 +22,16 @@ using Oceananigans, Random, Printf, PyPlot
 #       by `Qᵀ = Qʰ / (ρ₀ * cᴾ)`, where `Qʰ` is the heat flux, `ρ₀` is a reference density, 
 #       and `cᴾ` is the heat capacity of seawater. With a reference density 
 #       `ρ₀ = 1026 kg m⁻³`and heat capacity `cᴾ = 3991`, our chosen temperature flux of 
-#       `Qᵀ = 10⁻⁴ K m⁻¹ s⁻¹` corresponds to a heat flux of `Qʰ = 409.4 W m⁻²`, a 
+#       `Qᵀ = 5 × 10⁻⁵ K m⁻¹ s⁻¹` corresponds to a heat flux of `Qʰ = 204.7 W m⁻²`, a 
 #       relatively powerful cooling rate.
-#       
 #
 #   2. A velocity flux `Qᵘ` at the top of the domain, which is related
 #       to the `x` momentum flux `τˣ` via `τˣ = ρ₀ * Qᵘ`, where `ρ₀` is a reference density.
-#       Our chosen value of `Qᵘ = 2 × 10⁻⁵ m² s⁻²` roughly corresponds to atmospheric winds
-#       of `uᵃ = 4.5 m s⁻¹` using the parameterization `τ = 0.0025 * |uᵃ| * uᵃ`.
+#       Our chosen value of `Qᵘ = -2 × 10⁻⁵ m² s⁻²` roughly corresponds to atmospheric winds
+#       of `uᵃ = 2.9 m s⁻¹` in the positive `x`-direction, using the parameterization 
+#       `τ = 0.0025 * |uᵃ| * uᵃ`.
 #
-#   3. An evaporation rate `evaporation = 10⁻⁶ m s⁻¹`, or approximately 0.1 millimeter per 
+#   3. An evaporation rate `evaporation = 10⁻⁷ m s⁻¹`, or approximately 0.1 millimeter per 
 #       hour.
 #
 # Finally, we use an initial temperature gradient of `∂T/∂z = 0.005 K m⁻¹`,
@@ -48,9 +53,10 @@ evaporation = 1e-7     # Mass-specific evaporation rate [m s⁻¹]
 
 # ## Boundary conditions
 #
-# Here we define `Flux` boundary conditions at the surface for both `u` and `T`,
+# Here we define `Flux` boundary conditions at the surface for `u`, `T`, and `S`,
 # and a `Gradient` boundary condition on `T` that maintains a constant stratification
-# at the bottom.
+# at the bottom. Our flux boundary condition for salinity uses a function that calculates
+# the salinity flux in terms of the evaporation rate.
 
 u_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qᵘ))
 
@@ -68,7 +74,9 @@ S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
 # using a `FPlane` model for rotation (constant rotation rate), a linear equation 
 # of state for temperature and salinity, the Anisotropic Minimum Dissipation closure 
 # to model the effects of unresolved turbulence, and the previously defined boundary
-# conditions for `u` and `T`.
+# conditions for `u`, `T`, and `S`. We also pass the evaporation rate to the container
+# model.parameters for use in the boundary condition function that calculates the salinity
+# flux.
 
 model = Model(
          architecture = CPU(),
