@@ -29,7 +29,7 @@
 [codecov-img]: https://codecov.io/gh/climate-machine/Oceananigans.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/climate-machine/Oceananigans.jl
 
-Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It is designed to solve the rotating Boussinesq equations used in non-hydrostatic ocean modeling but can be used to solve for any incompressible flow. 
+Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It is designed to solve the rotating Boussinesq equations used in non-hydrostatic ocean modeling but can be used to solve for any incompressible flow.
 
 Our goal is to develop a friendly and intuitive package allowing users to focus on the science. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, and the same code is shared between the CPU and GPU.
 
@@ -91,6 +91,13 @@ You can see some movies from GPU simulations below along with CPU and GPU [perfo
 
 ## Getting help
 If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/climate-machine/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
+
+## Contributing
+If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developes have missed.
+
+Let us know by [opening an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
+
+For more information, check out our [contributor's guide](https://github.com/climate-machine/Oceananigans.jl/blob/master/CONTRIBUTING.md).
 
 ## Movies
 
