@@ -30,8 +30,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     xC_slice = 1:10
     xF_slice = 2:11
     yC_slice = 10:15
-    yF_slice = 11:16
-    zC_slice = 8:10
+    yF_slice = 1
+    zC_slice = 10
     zF_slice = 9:11
     nc_sliced_writer = NetCDFOutputWriter(model, outputs,
                                           filename="dumptestsliced.nc",
