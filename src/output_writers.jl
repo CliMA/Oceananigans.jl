@@ -441,7 +441,7 @@ end
 
 function read_output(fw::NetCDFOutputWriter, fieldname)
     ds = Dataset(fw.filename,"r")
-    field = ds[fieldname][:]
+    field = ds[fieldname][:,:,:,end]
     close(ds)
     return field
 end

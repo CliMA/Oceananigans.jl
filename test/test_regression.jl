@@ -35,15 +35,15 @@ function run_thermal_bubble_regression_tests(arch)
     #                                frequency=10, padding=2)
 
     outputs = Dict("v"=>model.velocities.v,
-                "u"=>model.velocities.u,
-                "w"=>model.velocities.w,
-                "T"=>model.tracers.T,
-                "S"=>model.tracers.S)
+                   "u"=>model.velocities.u,
+                   "w"=>model.velocities.w,
+                   "T"=>model.tracers.T,
+                   "S"=>model.tracers.S)
     nc_writer = NetCDFOutputWriter(model, outputs,
-                                   filename="dumptest.nc",
+                                   filename="regtest.nc",
                                    frequency=10)
     # Uncomment to include a NetCDF output writer that produces the regression.
-    # push!(model.output_writers, nc_writer)
+    push!(model.output_writers, nc_writer)
 
     time_step!(model, 10, Δt)
 
@@ -59,21 +59,21 @@ function run_thermal_bubble_regression_tests(arch)
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ))[2:Nx-1,2:Ny-1,2:Nz-1] - φ_gm)
-        φ_max = maximum(Array(data(φ))[2:Nx-1,2:Ny-1,2:Nz-1] - φ_gm)
-        φ_mean = mean(Array(data(φ))[2:Nx-1,2:Ny-1,2:Nz-1] - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ))[2:Nx-1,2:Ny-1,2:Nz-1] - φ_gm))
-        φ_std = std(Array(data(φ))[2:Nx-1,2:Ny-1,2:Nz-1] - φ_gm)
+        φ_min = minimum(Array(data(φ)) - φ_gm)
+        φ_max = maximum(Array(data(φ)) - φ_gm)
+        φ_mean = mean(Array(data(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
+        φ_std = std(Array(data(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u))[2:Nx-1,2:Ny-1,2:Nz-1] .≈ u)
-    @test all(Array(data(model.velocities.v))[2:Nx-1,2:Ny-1,2:Nz-1] .≈ v)
-    @test all(Array(data(model.velocities.w))[2:Nx-1,2:Ny-1,2:Nz-1] .≈ w)
-    @test all(Array(data(model.tracers.T))[2:Nx-1,2:Ny-1,2:Nz-1]    .≈ T)
-    @test all(Array(data(model.tracers.S))[2:Nx-1,2:Ny-1,2:Nz-1]    .≈ S)
+    @test all(Array(data(model.velocities.u)) .≈ u)
+    @test all(Array(data(model.velocities.v)) .≈ v)
+    @test all(Array(data(model.velocities.w)) .≈ w)
+    @test all(Array(data(model.tracers.T))    .≈ T)
+    @test all(Array(data(model.tracers.S))    .≈ S)
 end
 
 function run_rayleigh_benard_regression_test(arch)
