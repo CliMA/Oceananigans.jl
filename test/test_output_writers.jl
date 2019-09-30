@@ -27,9 +27,23 @@ function run_thermal_bubble_netcdf_tests(arch)
                                    frequency=10)
     push!(model.output_writers, nc_writer)
 
+    xC_slice = 1:10
+    xF_slice = 2:11
+    yC_slice = 10:15
+    yF_slice = 11:16
+    zC_slice = 8:10
+    zF_slice = 9:11
+    nc_sliced_writer = NetCDFOutputWriter(model, outputs,
+                                          filename="dumptestsliced.nc",
+                                          frequency=10,
+                                          xC=xC_slice, xF=xF_slice, yC=yC_slice,
+                                          yF=yF_slice, zC=zC_slice, zF=zF_slice)
+    push!(model.output_writers, nc_sliced_writer)
+
     time_step!(model, 10, Δt)
 
     OWClose(nc_writer)
+    OWClose(nc_sliced_writer)
 
     u = read_output(nc_writer, "u")
     v = read_output(nc_writer, "v")
@@ -42,6 +56,18 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w .≈ Array(parentdata(model.velocities.w)))
     @test all(T .≈ Array(parentdata(model.tracers.T)))
     @test all(S .≈ Array(parentdata(model.tracers.S)))
+
+    u_sliced = read_output(nc_sliced_writer, "u")
+    v_sliced = read_output(nc_sliced_writer, "v")
+    w_sliced = read_output(nc_sliced_writer, "w")
+    T_sliced = read_output(nc_sliced_writer, "T")
+    S_sliced = read_output(nc_sliced_writer, "S")
+
+    @test all(u_sliced .≈ Array(parentdata(model.velocities.u))[xF_slice, yC_slice, zC_slice])
+    @test all(v_sliced .≈ Array(parentdata(model.velocities.v))[xC_slice, yF_slice, zC_slice])
+    @test all(w_sliced .≈ Array(parentdata(model.velocities.w))[xC_slice, yC_slice, zF_slice])
+    @test all(T_sliced .≈ Array(parentdata(model.tracers.T))[xC_slice, yC_slice, zC_slice])
+    @test all(S_sliced .≈ Array(parentdata(model.tracers.S))[xC_slice, yC_slice, zC_slice])
 end
 
 function run_jld2_file_splitting_tests(arch)
