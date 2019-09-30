@@ -24,13 +24,24 @@ model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
 write_grid(model)
 
-outputs = Dict("v"=>model.velocities.v,
-               "u"=>model.velocities.u,
-               "w"=>model.velocities.w,
-               "T"=>model.tracers.T,
-               "S"=>model.tracers.S)
-subsetwriter = NetCDFOutputWriter(model, outputs,
+outputs =      Dict("u" => model.velocities.u,
+                    "v" => model.velocities.v,
+                    "w" => model.velocities.w,
+                    "T" => model.tracers.T,
+                    "S" => model.tracers.S)
+
+outputattrib = Dict("u" => ["longname" => "Velocity in the x-direction", "units" => "m/s"],
+                    "v" => ["longname" => "Velocity in the y-direction", "units" => "m/s"],
+                    "w" => ["longname" => "Velocity in the z-direction", "units" => "m/s"],
+                    "T" => ["longname" => "Temperature", "units" => "K"],
+                    "S" => ["longname" => "Salinity", "units" => "g/kg"])
+
+globalattrib = Dict("f" => 1e-4, "name" => "Thermal bubble expt 1")
+
+subsetwriter = NetCDFOutputWriter(model, outputs;
                                   interval=10, filename="dump_subset.nc",
+                                  outputattrib=outputattrib,
+                                  globalattrib=globalattrib,
                                   xC=2:Nx-1, xF=2:Nx-1, yC=2:Ny-1,
                                   yF=2:Ny-1, zC=2:Nz-1, zF=2:Nz-1)
 push!(model.output_writers, subsetwriter)
