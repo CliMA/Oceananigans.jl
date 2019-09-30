@@ -17,22 +17,31 @@ function run_thermal_bubble_netcdf_tests(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    nc_writer = NetCDFOutputWriter(dir=".", prefix="test_", frequency=10, padding=1)
+    outputs = Dict("v"=>model.velocities.v,
+                "u"=>model.velocities.u,
+                "w"=>model.velocities.w,
+                "T"=>model.tracers.T,
+                "S"=>model.tracers.S)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename="dumptest.nc",
+                                   frequency=10)
     push!(model.output_writers, nc_writer)
 
     time_step!(model, 10, Δt)
 
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
+    OWClose(nc_writer)
 
-    @test all(u .≈ Array(parentdata(model.velocities.u)))
-    @test all(v .≈ Array(parentdata(model.velocities.v)))
-    @test all(w .≈ Array(parentdata(model.velocities.w)))
-    @test all(T .≈ Array(parentdata(model.tracers.T)))
-    @test all(S .≈ Array(parentdata(model.tracers.S)))
+    u = read_output(nc_writer, "u")
+    v = read_output(nc_writer, "v")
+    w = read_output(nc_writer, "w")
+    T = read_output(nc_writer, "T")
+    S = read_output(nc_writer, "S")
+
+    @test all(u .≈ Array(parentdata(model.velocities.u)))[2:Nx-1,2:Ny-1,2:Nz-1]
+    @test all(v .≈ Array(parentdata(model.velocities.v)))[2:Nx-1,2:Ny-1,2:Nz-1]
+    @test all(w .≈ Array(parentdata(model.velocities.w)))[2:Nx-1,2:Ny-1,2:Nz-1]
+    @test all(T .≈ Array(parentdata(model.tracers.T)))[2:Nx-1,2:Ny-1,2:Nz-1]
+    @test all(S .≈ Array(parentdata(model.tracers.S)))[2:Nx-1,2:Ny-1,2:Nz-1]
 end
 
 function run_jld2_file_splitting_tests(arch)

@@ -270,6 +270,9 @@ end
 #### NetCDF output writer
 ####
 
+# Returns the datatype of an array
+get_array_dtype(::Array{T}) where T = T
+
 """
     dims(::field)
 
@@ -296,7 +299,8 @@ zdim(::Type{Face}) = "zF"
 zdim(::Type{Cell}) = "zC"
 
 """
-    write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
+    write_grid(model; filename="./grid.nc", mode="c", 
+               compression=0, attrib=Dict(), slice_kw...)
 
 Writes a grid.nc file that contains all the dimensions of the domain.
 
@@ -305,8 +309,11 @@ Keyword arguments
 
     - `filename::String`  : File name to be saved under
     - `mode::String`      : Netcdf file is opened in either clobber ("c") or append ("a") mode (Default: "c" )
+    - `compression::Int`  : Defines the compression level of data (0-9, default 0)
+    - `attrib::Dict`      : Attributes (default: Dict())
 """
-function write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
+function write_grid(model; filename="./grid.nc", mode="c",
+                    compression=0, attrib=Dict(), slice_kw...)
     dimensions = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
@@ -314,6 +321,14 @@ function write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
         "xF" => collect(model.grid.xF),
         "yF" => collect(model.grid.yF),
         "zF" => collect(model.grid.zF)
+    )
+    dim_attrib = Dict(
+        "xC" => ["longname" => "Locations of the cell centers in the x-direction.", "units" => "m"],
+        "yC" => ["longname" => "Locations of the cell centers in the y-direction.", "units" => "m"],
+        "zC" => ["longname" => "Locations of the cell centers in the z-direction.", "units" => "m"],
+        "xF" => ["longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"],
+        "yF" => ["longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"],
+        "zF" => ["longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"]
     )
 
     # Applies slices to the dimensions d
@@ -324,9 +339,10 @@ function write_grid(model; filename="./grid.nc", mode="c", slice_kw...)
     end
 
     # Writes the sliced dimensions to the specified netcdf file
-    Dataset(filename, mode) do ds
+    Dataset(filename, mode, attrib=attrib) do ds
         for (dimname, dimarray) in dimensions
-            defVar(ds, dimname, dimarray, (dimname,))
+            defVar(ds, dimname, dimarray, (dimname,),
+                   compression=compression, attrib=dim_attrib[dimname])
         end
     end
     return
@@ -344,7 +360,6 @@ mutable struct NetCDFOutputWriter <: AbstractOutputWriter
          outputs :: Dict
         interval :: Union{Nothing, AbstractFloat}
        frequency :: Union{Nothing, Int}
-         attribs :: Dict
          clobber :: Bool
           slices :: Dict
               nt :: Int
@@ -360,41 +375,53 @@ Construct a `NetCDFOutputWriter` that writes `label, func` pairs in `outputs` (w
 Keyword arguments
 =================
 
-    - `filename::String` : Directory to save output to. Default: "." (current working directory).
-    - `frequency::Int`   : Save output every `n` model iterations.
-    - `interval::Int`    : Save output every `t` units of model clock time.
-    - `clobber::Bool`    : Remove existing files if their filenames conflict. Default: `false`.
-    - `attribs::Array`   : List of model properties to save with every file. By default, the
-                           grid, equation of state, coriolis parameters, buoyancy parameters,
-                           and turbulence closure parameters are saved.
-    - `slice_kw`         : dimname = OrdinalRange will slice the dimension `dimname` according
-                           to OrdinalRange
-                           e.g. xC = 3:10 will only produce output along the dimension `xC` between
-                           indices 3 and 10.
+    - `filename::String`    : Directory to save output to. Default: "." (current working directory).
+    - `frequency::Int`      : Save output every `n` model iterations.
+    - `interval::Int`       : Save output every `t` units of model clock time.
+    - `clobber::Bool`       : Remove existing files if their filenames conflict. Default: `false`.
+    - `compression::Int`    : Determines the compression level of data (0-9, default 0)
+    - `globalattrib::Array` : Dict of model properties to save with every file (deafult: Dict())
+    - `outputattrib::Array` : Dict of attributes to be saved with each field variable
+    - `slice_kw`            : dimname = OrdinalRange will slice the dimension `dimname` according
+                              to OrdinalRange
+                              e.g. xC = 3:10 will only produce output along the dimension `xC` between
+                              indices 3 and 10.
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                        clobber=true, attribs=Dict(), slice_kw...)
+                        clobber=true, globalattrib=Dict(), outputattrib=nothing, compression=0, slice_kw...)
 
     validate_interval(interval, frequency)
 
     mode = clobber ? "c" : "a"
 
     # Initiates the output file with dimensions
-    write_grid(model; filename=filename, mode=mode, slice_kw...)
+    write_grid(model; filename=filename, mode=mode,
+               compression=compression, attrib=globalattrib, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
 
     # Creates an unliimited dimension "Time"
     defDim(dataset, "Time", Inf); sync(dataset)
-    defVar(dataset, "Time", Float32, ("Time",)); sync(dataset)
+    defVar(dataset, "Time", Float64, ("Time",)); sync(dataset)
     nt = 0 # Number of time-steps
+
+    if isa(outputattrib, Nothing)
+        outputattrib = Dict("u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
+                            "v" => Dict("longname" => "Velocity in the y-direction", "units" => "m/s"),
+                            "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
+                            "T" => Dict("longname" => "Temperature", "units" => "K"),
+                            "S" => Dict("longname" => "Salinity", "units" => "g/kg"))
+    end
 
     # Initiates empty Float32 arrays for fields from the user-supplied variable outputs
     for (fieldname, field) in outputs
-        defVar(dataset, fieldname, Float32, (dims(field)...,"Time")); sync(dataset)
+        dtype = get_array_dtype(parentdata(field))
+        defVar(dataset, fieldname, dtype, (dims(field)...,"Time"),
+               compression=compression, attrib=outputattrib[fieldname])
     end
+    sync(dataset)
 
     # Stores slices for the dimensions of each output field
     slices = Dict{String, Vector{Union{OrdinalRange,Colon}}}()
@@ -403,14 +430,21 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     end
 
     return NetCDFOutputWriter(filename, dataset, outputs, interval,
-                          frequency, attribs, clobber, slices, nt, 0.0)
+                          frequency, clobber, slices, nt, 0.0)
 end
+
 
 # Closes the outputwriter
 function OWClose(fw::NetCDFOutputWriter)
     close(fw.dataset)
 end
 
+function read_output(fw::NetCDFOutputWriter, fieldname)
+    ds = Dataset(fw.filename,"r")
+    field = ds[fieldname][:]
+    close(ds)
+    return field
+end
 
 """
     slice(field; slice_kw...)
@@ -432,9 +466,6 @@ function slice(field; slice_kw...)
     return slice
 end
 
-# Appends a dimension at the end of an array
-add_dim(x::Array) = reshape(x, (size(x)...,1))
-
 """
     write_output(model, OutputWriter)
 
@@ -444,7 +475,7 @@ function write_output(model, fw::NetCDFOutputWriter)
     fw.nt += 1
     fw.dataset["Time"][fw.nt] = model.clock.time
     for (fieldname, field) in fw.outputs
-        fw.dataset[fieldname][:,:,:,fw.nt] = add_dim(getindex(field.data.parent, fw.slices[fieldname]...))
+        fw.dataset[fieldname][:,:,:,fw.nt] = view(parentdata(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
     return
