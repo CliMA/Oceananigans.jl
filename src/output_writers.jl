@@ -274,20 +274,20 @@ end
 get_array_dtype(::Array{T}) where T = T
 
 """
-    dims(::field)
+    netcdf_spatial_dimensions(::field)
 
 Returns the dimensions associated with a field.
 
 Examples
 ========
 
-julia> dims(model.velocities.u)
+julia> netcdf_spatial_dimensions(model.velocities.u)
 ("xF", "yC", "zC")
 
-julia> dims(model.tracers.T)
+julia> netcdf_spatial_dimensions(model.tracers.T)
 ("xC", "yC", "zC")
 """
-function dims(field::Field{LX, LY, LZ}) where {LX, LY, LZ}
+function netcdf_spatial_dimensions(field::Field{LX, LY, LZ}) where {LX, LY, LZ}
     xdim(LX), ydim(LY), zdim(LZ)
 end
 
@@ -418,7 +418,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     # Initiates empty Float32 arrays for fields from the user-supplied variable outputs
     for (fieldname, field) in outputs
         dtype = get_array_dtype(parentdata(field))
-        defVar(dataset, fieldname, dtype, (dims(field)...,"Time"),
+        defVar(dataset, fieldname, dtype, (netcdf_spatial_dimensions(field)...,"Time"),
                compression=compression, attrib=outputattrib[fieldname])
     end
     sync(dataset)
@@ -453,18 +453,19 @@ For internal use only. Returns a slice for a field based on its dimensions and t
 """
 function slice(field; slice_kw...)
     slice = Vector{Union{AbstractRange,Colon}}()
-    for dim in dims(field)
-        # Hx, Hy, or Hz based on the dimension in consideration
-        Hxyorz =  getproperty(field.grid, Symbol("H"*dim[1]))
-
-        # Nx, Ny, or Nz based on the dimension in consideration
-        Nxyorz =  getproperty(field.grid, Symbol("N"*dim[1]))
-
-        # Creates a slice and stores it (TODO: This is more complicated because of halos, can be simplified)
-        push!(slice, haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : ((Hxyorz+1):(Nxyorz+1)))
+    for dim in netcdf_spatial_dimensions(field)
+        # # Hx, Hy, or Hz based on the dimension in consideration
+        # Hxyorz =  getproperty(field.grid, Symbol("H"*dim[1]))
+        # # Nx, Ny, or Nz based on the dimension in consideration
+        # Nxyorz =  getproperty(field.grid, Symbol("N"*dim[1]))
+        # # Creates a slice and stores it (TODO: This is more complicated because of halos, can be simplified)
+        # push!(slice, haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : ((Hxyorz+1):(Nxyorz+1)))
+        push!(slice, haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : Colon())
     end
     return slice
 end
+
+add_dim(x::Array) = reshape(x, (size(x)...,1))
 
 """
     write_output(model, OutputWriter)
@@ -475,7 +476,9 @@ function write_output(model, fw::NetCDFOutputWriter)
     fw.nt += 1
     fw.dataset["Time"][fw.nt] = model.clock.time
     for (fieldname, field) in fw.outputs
-        fw.dataset[fieldname][:,:,:,fw.nt] = view(parentdata(field), fw.slices[fieldname]...)
+        # a = add_dim(getindex(parentdata(field), fw.slices[fieldname]...))
+        a = view(parentdata(field), fw.slices[fieldname]...)
+        fw.dataset[fieldname][:,:,:,fw.nt] = a
     end
     sync(fw.dataset)
     return
