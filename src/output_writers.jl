@@ -318,9 +318,9 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
         "zC" => collect(model.grid.zC),
-        "xF" => collect(model.grid.xF),
-        "yF" => collect(model.grid.yF),
-        "zF" => collect(model.grid.zF)
+        "xF" => collect(model.grid.xF)[1:end-1], #BIG TODO: Discuss this part
+        "yF" => collect(model.grid.yF)[1:end-1],
+        "zF" => collect(model.grid.zF)[1:end-1]
     )
     dim_attrib = Dict(
         "xC" => ["longname" => "Locations of the cell centers in the x-direction.", "units" => "m"],

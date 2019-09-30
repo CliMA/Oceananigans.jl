@@ -46,12 +46,9 @@ subsetwriter = NetCDFOutputWriter(model, outputs;
                                   yF=2:Ny-1, zC=2:Nz-1, zF=2:Nz-1)
 push!(model.output_writers, subsetwriter)
 
-# TODO: Writing global output fails as of now (Sep 29). The lengths of the
-# dimensions are not equal to the lengths of the field arrays due to
-# halo regions. This needs to be discussed.
-# globalwriter = NetCDFOutputWriter(model, outputs, interval=10,
-#                                   filename="dump_global.nc")
-# push!(model.output_writers, globalwriter)
+globalwriter = NetCDFOutputWriter(model, outputs, interval=10,
+                                  filename="dump_global.nc")
+push!(model.output_writers, globalwriter)
 
 ####
 #### Run the simulation
@@ -75,4 +72,4 @@ end
 
 # Close the NetCDFOutputWriter
 OWClose(subsetwriter)
-#OWClose(globalwriter)
+OWClose(globalwriter)
