@@ -150,8 +150,8 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
 
-     buoyancy = SeawaterBuoyancy(float_type, 
-                    gravitational_acceleration = Ri, 
+     buoyancy = SeawaterBuoyancy(float_type,
+                    gravitational_acceleration = Ri,
                     equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
                 )
 
