@@ -59,12 +59,12 @@ push!(model.output_writers, subsetwriter)
 
 function terse_message(model, walltime, Δt)
     cfl = Δt / Oceananigans.cell_advection_timescale(model)
-    return @sprintf("i: %d, t: %.4f hours, Δt: %.1f s, cfl: %.3f, wall time: %s\n",
-                    model.clock.iteration, model.clock.time/3600, Δt, cfl, prettytime(walltime))
+    return @sprintf("i: %d, t: %.4f s, Δt: %.1f s, cfl: %.3f, wall time: %s\n",
+                    model.clock.iteration, model.clock.time, Δt, cfl, prettytime(walltime))
 end
 
 # A wizard for managing the simulation time-step.
-wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=50.0)
+wizard = TimeStepWizard(cfl=0.2, Δt=10.0, max_change=1.1, max_Δt=50.0)
 
 # Run the model
 while model.clock.time < tf
