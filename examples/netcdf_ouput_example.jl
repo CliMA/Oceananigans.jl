@@ -38,14 +38,17 @@ outputattrib = Dict("u" => ["longname" => "Velocity in the x-direction", "units"
 
 globalattrib = Dict("f" => 1e-4, "name" => "Thermal bubble expt 1")
 
+# The following writer saves a yz plane at xC[5] for all fields that
+# have xC as their dimension and at xF[6] for all fields that have xF
+# as their dimension. Ranges also can be specified (e.g. xC=2:10)
 subsetwriter = NetCDFOutputWriter(model, outputs;
                                   interval=10, filename="dump_subset.nc",
                                   outputattrib=outputattrib,
                                   globalattrib=globalattrib,
-                                  xC=2:Nx-1, xF=2:Nx-1, yC=2:Ny-1,
-                                  yF=2:Ny-1, zC=2:Nz-1, zF=2:Nz-1)
+                                  xC=5, xF=6)
 push!(model.output_writers, subsetwriter)
 
+# The following writer saves a data from the entire domain
 globalwriter = NetCDFOutputWriter(model, outputs, interval=10,
                                   filename="dump_global.nc")
 push!(model.output_writers, globalwriter)

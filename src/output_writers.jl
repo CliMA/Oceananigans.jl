@@ -298,6 +298,11 @@ ydim(::Type{Cell}) = "yC"
 zdim(::Type{Face}) = "zF"
 zdim(::Type{Cell}) = "zC"
 
+# This function converts and integer to a range, and nothing to a Colon
+get_slice(n::Integer) = n:n
+get_slice(n::UnitRange) = n
+get_slice(n::Nothing) = Colon()
+
 """
     write_grid(model; filename="./grid.nc", mode="c", 
                compression=0, attrib=Dict(), slice_kw...)
@@ -318,7 +323,7 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
         "zC" => collect(model.grid.zC),
-        "xF" => collect(model.grid.xF)[1:end-1], #BIG TODO: Discuss this part
+        "xF" => collect(model.grid.xF)[1:end-1],
         "yF" => collect(model.grid.yF)[1:end-1],
         "zF" => collect(model.grid.zF)[1:end-1]
     )
@@ -334,7 +339,7 @@ function write_grid(model; filename="./grid.nc", mode="c",
     # Applies slices to the dimensions d
     for (d, slice) in slice_kw
         if String(d) in keys(dimensions)
-            dimensions[String(d)] = dimensions[String(d)][slice]
+            dimensions[String(d)] = dimensions[String(d)][get_slice(slice)]
         end
     end
 
@@ -452,20 +457,13 @@ end
 For internal use only. Returns a slice for a field based on its dimensions and the supplied slices in `slice_kw`.
 """
 function slice(field; slice_kw...)
-    slice = Vector{Union{AbstractRange,Colon}}()
+    slice_array = Vector{Union{AbstractRange,Colon}}()
     for dim in netcdf_spatial_dimensions(field)
-        # # Hx, Hy, or Hz based on the dimension in consideration
-        # Hxyorz =  getproperty(field.grid, Symbol("H"*dim[1]))
-        # # Nx, Ny, or Nz based on the dimension in consideration
-        # Nxyorz =  getproperty(field.grid, Symbol("N"*dim[1]))
-        # # Creates a slice and stores it (TODO: This is more complicated because of halos, can be simplified)
-        # push!(slice, haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : ((Hxyorz+1):(Nxyorz+1)))
-        push!(slice, haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : Colon())
+        slice = get_slice(haskey(slice_kw, Symbol(dim)) ? slice_kw[Symbol(dim)] : nothing)
+        push!(slice_array, slice)
     end
-    return slice
+    return slice_array
 end
-
-add_dim(x::Array) = reshape(x, (size(x)...,1))
 
 """
     write_output(model, OutputWriter)
@@ -476,9 +474,7 @@ function write_output(model, fw::NetCDFOutputWriter)
     fw.nt += 1
     fw.dataset["Time"][fw.nt] = model.clock.time
     for (fieldname, field) in fw.outputs
-        # a = add_dim(getindex(parentdata(field), fw.slices[fieldname]...))
-        a = view(parentdata(field), fw.slices[fieldname]...)
-        fw.dataset[fieldname][:,:,:,fw.nt] = a
+        fw.dataset[fieldname][:,:,:,fw.nt] = view(parentdata(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
     return
