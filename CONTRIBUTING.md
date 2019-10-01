@@ -62,7 +62,7 @@ Oceananigans or by requesting something you think is missing.
 * Login to your GitHub account and make a fork of the
   [Oceananigans repository](https://github.com/climate-machine/Oceananigans.jl) by
   clicking the "Fork" button.
-* Clone your fork of the MetPy repository (in terminal on Mac/Linux or git shell/
+* Clone your fork of the Oceananigans repository (in terminal on Mac/Linux or git shell/
   GUI on Windows) in the location you'd like to keep it.
   ``git clone https://github.com/your-user-name/Oceananigans.jl.git``
 * Navigate to that folder in the terminal or in Anaconda Prompt if you're on Windows.
