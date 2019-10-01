@@ -392,7 +392,8 @@ Keyword arguments
                               e.g. `xC = 3:10` will only produce output along the dimension `xC` between
                               indices 3 and 10 for all fields with `xC` as one of their dimensions.
                               `xC = 1` is treated like `xC = 1:1`.
-                              Multiple dimensions can be sliced in one call.
+                              Multiple dimensions can be sliced in one call. Not providing slices writes
+                              output over the entire domain.
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
