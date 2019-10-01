@@ -270,9 +270,6 @@ end
 #### NetCDF output writer
 ####
 
-# Returns the datatype of an array
-get_array_dtype(::Array{T}) where T = T
-
 """
     netcdf_spatial_dimensions(::field)
 
@@ -422,7 +419,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
 
     # Initiates empty Float32 arrays for fields from the user-supplied variable outputs
     for (fieldname, field) in outputs
-        dtype = get_array_dtype(parentdata(field))
+        dtype = eltype(parentdata(field))
         defVar(dataset, fieldname, dtype, (netcdf_spatial_dimensions(field)...,"Time"),
                compression=compression, attrib=outputattrib[fieldname])
     end
