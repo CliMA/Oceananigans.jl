@@ -370,9 +370,11 @@ end
 
 """
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                                   clobber=true, attribs=Dict(), slice_kw...)
+                                   clobber=true, globalattrib=Dict(), outputattrib=nothing, slice_kw...)
 
-Construct a `NetCDFOutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`) to a NC file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)` that returns the data to be saved.
+Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which can be a
+`Dict` or `NamedTuple`) to a NC file, where `label` is a symbol that labels the output and
+`field` is a field from the model (e.g. `model.velocities.u`).
 
 Keyword arguments
 =================
@@ -382,12 +384,15 @@ Keyword arguments
     - `interval::Int`       : Save output every `t` units of model clock time.
     - `clobber::Bool`       : Remove existing files if their filenames conflict. Default: `false`.
     - `compression::Int`    : Determines the compression level of data (0-9, default 0)
-    - `globalattrib::Array` : Dict of model properties to save with every file (deafult: Dict())
-    - `outputattrib::Array` : Dict of attributes to be saved with each field variable
-    - `slice_kw`            : dimname = OrdinalRange will slice the dimension `dimname` according
-                              to OrdinalRange
-                              e.g. xC = 3:10 will only produce output along the dimension `xC` between
-                              indices 3 and 10.
+    - `globalattrib::Dict`  : Dict of model properties to save with every file (deafult: Dict())
+    - `outputattrib::Dict`  : Dict of attributes to be saved with each field variable (reasonable
+                              defaults are provided for velocities, temperature, and salinity)
+    - `slice_kw`            : `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
+                              All other keywords are ignored.
+                              e.g. `xC = 3:10` will only produce output along the dimension `xC` between
+                              indices 3 and 10 for all fields with `xC` as one of their dimensions.
+                              `xC = 1` is treated like `xC = 1:1`.
+                              Multiple dimensions can be sliced in one call.
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
