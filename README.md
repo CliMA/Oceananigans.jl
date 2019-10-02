@@ -11,16 +11,16 @@
 <!-- Information badge -->
 <p align="center">
   <a href="https://www.repostatus.org/#active">
-    <img src="https://www.repostatus.org/badges/latest/active.svg" alt="Project Status" />
+    <img alt="Project Status" src="https://www.repostatus.org/badges/latest/active.svg?style=flat-square" />
   </a>
   <a href="https://mit-license.org">
-    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT license">
+    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
   </a>
   <a href="https://github.com/climate-machine/Oceananigans.jl/issues/new">
-    <img src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg" alt="Ask us anything">
+    <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
   <a href="https://climate-machine.github.io/Oceananigans.jl/latest">
-    <img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Ask us anything">
+    <img alt="Documents" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
   </a>
 </p>
 
@@ -50,7 +50,7 @@ Oceananigans.jl is a fast and friendly incompressible fluid flow solver written 
 
 Our goal is to develop a friendly and intuitive package allowing users to focus on the science. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, and the same code is shared between the CPU and GPU.
 
-# Table of Contents
+# Contents
 
 - [Installation instructions](#installation-instructions)
 - [Running your first model](#running-your-first-model)
