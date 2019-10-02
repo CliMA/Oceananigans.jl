@@ -33,16 +33,16 @@
     <img alt="Build Status for GPU" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
   </a>
   <a href="https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl">
-    <img alt="Build Status for Window" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=window&logo=appveyor&logoColor=white&style=flat-square">
+    <img alt="Build Status for Window" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=Window&logo=appveyor&logoColor=white&style=flat-square">
   </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
-    <img alt="Build Status for Docker" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?logo=docker&logoColor=white&style=flat-square">
-  </a>
-  <a href="https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master">
-    <img alt="Coverage Status for Coveralls" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?style=flat-square">
+    <img alt="Build Status for Docker" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
   <a href="https://codecov.io/gh/climate-machine/Oceananigans.jl">
-    <img alt="Coverage Status for Codecov" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?logo=codecov&logoColor=white&style=flat-square">
+    <img alt="Coverage Status for Codecov" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master">
+    <img alt="Coverage Status for Coveralls" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?label=Coveralls&style=flat-square">
   </a>
 </p>
 
