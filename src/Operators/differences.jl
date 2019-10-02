@@ -1,11 +1,11 @@
-@inline δx_caa(i, j, k, grid, f) = @inbounds f[i, j, k+1] - f[i,   j, k]
-@inline δx_faa(i, j, k, grid, f) = @inbounds f[i,   j, k] - f[i, j, k-1]
+@inline δx_caa(i, j, k, grid, f) = @inbounds f[k, j, i+1] - f[k, j,   i]
+@inline δx_faa(i, j, k, grid, f) = @inbounds f[k, j,   i] - f[k, j, i-1]
 
-@inline δy_aca(i, j, k, grid, f) = @inbounds f[i, j+1, k] - f[i, j,   k]
-@inline δy_afa(i, j, k, grid, f) = @inbounds f[i, j,   k] - f[i, j-1, k]
+@inline δy_aca(i, j, k, grid, f) = @inbounds f[k, j+1, i] - f[k, j,   i]
+@inline δy_afa(i, j, k, grid, f) = @inbounds f[k, j,   i] - f[k, j-1, i]
 
-@inline δz_aac(i, j, k, grid, f) = @inbounds f[i+1, j, k] - f[i, j,   k]
-@inline δz_aaf(i, j, k, grid, f) = @inbounds f[i, j,   k] - f[i-1, j, k]
+@inline δz_aac(i, j, k, grid, f) = @inbounds f[k+1, j, i] - f[k,   j, i]
+@inline δz_aaf(i, j, k, grid, f) = @inbounds f[k,   j, i] - f[k-1, j, i]
 
 @inline ∂x_caa(i, j, k, grid, f) = δx_caa(i, j, k, grid, f) / grid.Δx
 @inline ∂x_faa(i, j, k, grid, f) = δx_faa(i, j, k, grid, f) / grid.Δx

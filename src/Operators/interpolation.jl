@@ -1,14 +1,14 @@
-@inline ιx_caa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[i,   j, k] + f[i, j, k+1])
-@inline ιx_faa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[i, j, k-1] + f[i,   j, k])
+@inline ιx_caa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[k, j,   i] + f[k, j, i+1])
+@inline ιx_faa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[k, j, i-1] + f[k, j,   i])
 
-@inline ιy_aca(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[i, j,   k] + f[i, j+1, k])
-@inline ιy_afa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[i, j-1, k] + f[i, j,   k])
+@inline ιy_aca(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[k, j,   i] + f[k, j+1, i])
+@inline ιy_afa(i, j, k, grid::AbstractGrid{T}, f) where T = @inbounds T(0.5) * (f[k, j-1, i] + f[k, j,   i])
 
-@inline ιz_aac(i, j, k, grid::RegularCartesianGrid{T}, f) where T = @inbounds T(0.5) * (f[i, j,   k] + f[i+1, j, k])
-@inline ιz_aaf(i, j, k, grid::RegularCartesianGrid{T}, f) where T = @inbounds T(0.5) * (f[i-1, j, k] + f[i, j,   k])
+@inline ιz_aac(i, j, k, grid::RegularCartesianGrid{T}, f) where T = @inbounds T(0.5) * (f[k,   j, i] + f[k+1, j, i])
+@inline ιz_aaf(i, j, k, grid::RegularCartesianGrid{T}, f) where T = @inbounds T(0.5) * (f[k-1, j, i] + f[k,   j, i])
 
 @inline ιz_aac(i, j, k, grid::VerticallyStretchedCartesianGrid, f) =
-    @inbounds ((grid.zC[i] - grid.zF[i]) * f[i, j, k] + (grid.zF[i+1] - grid.zC[i]) * f[i+1, j, k]) / grid.ΔzF[i]
+    @inbounds ((grid.zC[k] - grid.zF[k]) * f[k, j, i] + (grid.zF[k+1] - grid.zC[k]) * f[k+1, j, i]) / grid.ΔzF[k]
 @inline ιz_aaf(i, j, k, grid::VerticallyStretchedCartesianGrid, f) =
-    @inbounds ((grid.zF[i] - grid.zC[i-1]) * f[i-1, j, k] + (grid.zC[i] - grid.zF[i]) * f[i, j, k]) / grid.ΔzC[i-1]
+    @inbounds ((grid.zF[k] - grid.zC[k-1]) * f[k-1, j, i] + (grid.zC[k] - grid.zF[k]) * f[k, j, i]) / grid.ΔzC[k-1]
 
