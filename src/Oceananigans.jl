@@ -50,7 +50,7 @@ export
     # Model output writers
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
-    write_grid, NetCDFOutputWriter, OWClose,
+    write_grid, NetCDFOutputWriter,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
@@ -77,7 +77,6 @@ using
     StaticArrays,
     OffsetArrays,
     JLD2,
-    NetCDF,
     NCDatasets
 
 import
