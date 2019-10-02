@@ -50,6 +50,20 @@ Oceananigans.jl is a fast and friendly incompressible fluid flow solver written 
 
 Our goal is to develop a friendly and intuitive package allowing users to focus on the science. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, and the same code is shared between the CPU and GPU.
 
+# Table of Contents
+
+- [Installation instructions](#installation-instructions)
+- [Running your first model](#running-your-first-model)
+  - [More interesting example](#more-interesting-example)
+- [Getting help](#getting-help)
+- [Movies](#movies)
+  - [Deep convection](#deep-convection)
+  - [Free convection](#free-convection)
+  - [Winds blowing over the ocean](#winds-blowing-over-the-ocean)
+  - [Free convection with wind stress](#free-convection-with-wind-stress)
+- [Performance benchmarks](#performance-benchmarks)
+- [Development team](#development-team)
+
 ## Installation instructions
 You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
 ```julia
