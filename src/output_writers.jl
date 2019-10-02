@@ -301,7 +301,7 @@ get_slice(n::UnitRange) = n
 get_slice(n::Nothing) = Colon()
 
 """
-    write_grid(model; filename="./grid.nc", mode="c", 
+    write_grid(model; filename="grid.nc", mode="c", 
                compression=0, attrib=Dict(), slice_kw...)
 
 Writes a grid.nc file that contains all the dimensions of the domain.
@@ -357,15 +357,15 @@ end
 An output writer for writing to NetCDF files.
 """
 mutable struct NetCDFOutputWriter <: AbstractOutputWriter
-        filename :: String
-         dataset :: Any
-         outputs :: Dict
-        interval :: Union{Nothing, AbstractFloat}
-       frequency :: Union{Nothing, Int}
-         clobber :: Bool
-          slices :: Dict
-              nt :: Int
-        previous :: Float64
+             filename :: String
+              dataset :: Any
+              outputs :: Dict
+             interval :: Union{Nothing, AbstractFloat}
+            frequency :: Union{Nothing, Int}
+              clobber :: Bool
+               slices :: Dict
+   len_time_dimension :: Int
+             previous :: Float64
 end
 
 """
@@ -413,7 +413,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     # Creates an unliimited dimension "Time"
     defDim(dataset, "Time", Inf); sync(dataset)
     defVar(dataset, "Time", Float64, ("Time",)); sync(dataset)
-    nt = 0 # Number of time-steps
+    len_time_dimension = 0 # Number of time-steps so far
 
     if isa(outputattrib, Nothing)
         outputattrib = Dict("u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
@@ -438,14 +438,12 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     end
 
     return NetCDFOutputWriter(filename, dataset, outputs, interval,
-                          frequency, clobber, slices, nt, 0.0)
+                          frequency, clobber, slices, len_time_dimension, 0.0)
 end
 
 
 # Closes the outputwriter
-function OWClose(fw::NetCDFOutputWriter)
-    close(fw.dataset)
-end
+Base.close(fw::NetCDFOutputWriter) = close(fw.dataset)
 
 function read_output(fw::NetCDFOutputWriter, fieldname)
     ds = Dataset(fw.filename,"r")
@@ -474,10 +472,10 @@ end
 For internal user only. Writes output to the netcdf file at specified intervals. Increments the `Time` dimension every time an output is written to the file.
 """
 function write_output(model, fw::NetCDFOutputWriter)
-    fw.nt += 1
-    fw.dataset["Time"][fw.nt] = model.clock.time
+    fw.len_time_dimension += 1
+    fw.dataset["Time"][fw.len_time_dimension] = model.clock.time
     for (fieldname, field) in fw.outputs
-        fw.dataset[fieldname][:,:,:,fw.nt] = view(parentdata(field), fw.slices[fieldname]...)
+        fw.dataset[fieldname][:,:,:,fw.len_time_dimension] = view(parentdata(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
     return

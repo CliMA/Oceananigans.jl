@@ -141,12 +141,6 @@ git-tree-sha1 = "8fba6ddaf66b45dec830233cea0aae43eb1261ad"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "0.6.4"
 
-[[Formatting]]
-deps = ["Printf"]
-git-tree-sha1 = "a0c901c29c0e7c763342751c0a94211d56c0de5c"
-uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
-version = "0.4.1"
-
 [[GPUArrays]]
 deps = ["Adapt", "FFTW", "FillArrays", "LinearAlgebra", "Printf", "Random", "Serialization", "StaticArrays", "Test"]
 git-tree-sha1 = "77e27264276fe97a7e7fb928bf8999a145abc018"
@@ -223,12 +217,6 @@ deps = ["Libdl", "LinearAlgebra", "Requires", "Statistics", "TimerOutputs"]
 git-tree-sha1 = "0c667371391fc6bb31f7f12f96a56a17098b3de8"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.6.0"
-
-[[NetCDF]]
-deps = ["BinDeps", "CondaBinDeps", "Formatting", "Libdl"]
-git-tree-sha1 = "fce0c7962fb14b8cf2f33ea77885f3b7c7e1485e"
-uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
-version = "0.8.0"
 
 [[OffsetArrays]]
 git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"

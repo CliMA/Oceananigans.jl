@@ -42,8 +42,8 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     time_step!(model, 10, Δt)
 
-    OWClose(nc_writer)
-    OWClose(nc_sliced_writer)
+    close(nc_writer)
+    close(nc_sliced_writer)
 
     u = read_output(nc_writer, "u")
     v = read_output(nc_writer, "v")
