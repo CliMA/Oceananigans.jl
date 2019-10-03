@@ -2,6 +2,7 @@ variables:
   CI_IMAGE_TAG: 'cuda'
   JULIA_NUM_THREADS: '4'
 
+# See: https://github.com/JuliaGPU/gitlab-ci
 include:
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/test.yml'
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
