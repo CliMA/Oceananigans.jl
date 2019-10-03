@@ -48,9 +48,9 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
+    write_grid, NetCDFOutputWriter,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
@@ -77,7 +77,7 @@ using
     StaticArrays,
     OffsetArrays,
     JLD2,
-    NetCDF
+    NCDatasets
 
 import
     CUDAapi,
