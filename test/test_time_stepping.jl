@@ -12,11 +12,11 @@ function run_first_AB2_time_step_tests(arch, FT)
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
-    @test all(data(model.timestepper.Gⁿ.Gu) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.Gv) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.Gw) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.GT) .≈ 1.0)
-    @test all(data(model.timestepper.Gⁿ.GS) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.u) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.v) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.w) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.T) .≈ 1.0)
+    @test all(data(model.timestepper.Gⁿ.S) .≈ 0)
 
     return nothing
 end

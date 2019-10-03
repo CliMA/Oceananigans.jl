@@ -22,7 +22,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
 
     FT = eltype(model.grid)
     RHS = model.poisson_solver.storage
-    U, Φ, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ,
+    U, C, Gⁿ, G⁻, K, p = datatuples(model.velocities, model.tracers, model.timestepper.Gⁿ,
                                     model.timestepper.G⁻, model.diffusivities, model.pressures)
 
     for n in 1:Nt
@@ -30,7 +30,7 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
 
         adams_bashforth_time_step!(model, model.architecture, model.grid, model.buoyancy, model.coriolis, 
                                    model.closure, model.forcing, model.boundary_conditions, 
-                                   U, Φ, p, K, RHS, Gⁿ,  G⁻, Δt, χ)
+                                   U, C, p, K, RHS, Gⁿ,  G⁻, Δt, χ)
 
         [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
         [ time_to_run(model.clock, out) && write_output(model, out) for out in values(model.output_writers) ]
@@ -46,22 +46,22 @@ Step forward one time step with a 2nd-order Adams-Bashforth method and pressure-
 substep.
 """
 function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closure, forcing, bcs,
-                                    U, Φ, p, K, RHS, Gⁿ, G⁻, Δt, χ)
+                                    U, C, p, K, RHS, Gⁿ, G⁻, Δt, χ)
 
     # Arguments for user-defined boundary condition functions:
-    boundary_condition_args = (model.clock.time, model.clock.iteration, U, Φ, model.parameters)
+    boundary_condition_args = (model.clock.time, model.clock.iteration, U, C, model.parameters)
 
     # Pre-computations:
     @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
-    fill_halo_regions!(merge(U, Φ), bcs.solution, arch, grid, boundary_condition_args...)
+    fill_halo_regions!(merge(U, C), bcs.solution, arch, grid, boundary_condition_args...)
 
-    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, Φ)
+    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, C)
     fill_halo_regions!(K, bcs.pressure, arch, grid) # diffusivities share bcs with pressure.
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy, Φ)
+    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy, C)
     fill_halo_regions!(p.pHY′, bcs.pressure, arch, grid)
 
     # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
-    calculate_interior_source_terms!(Gⁿ, arch, grid, coriolis, closure, U, Φ, p.pHY′, K, forcing, 
+    calculate_interior_source_terms!(Gⁿ, arch, grid, coriolis, closure, U, C, p.pHY′, K, forcing, 
                                      model.parameters, model.clock.time)
     calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs.solution, boundary_condition_args...)
 
@@ -77,7 +77,7 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     fill_halo_regions!(p.pNHS, bcs.pressure, arch, grid)
 
     # Complete pressure correction step:
-    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
+    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, C, p.pNHS, Gⁿ, Δt)
 
     # Recompute vertical velocity w from continuity equation to ensure incompressibility
     fill_halo_regions!(U, bcs.solution[1:3], arch, grid, boundary_condition_args...)
@@ -109,11 +109,11 @@ function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds G⁻.Gu[i, j, k] = Gⁿ.Gu[i, j, k]
-                @inbounds G⁻.Gv[i, j, k] = Gⁿ.Gv[i, j, k]
-                @inbounds G⁻.Gw[i, j, k] = Gⁿ.Gw[i, j, k]
-                @inbounds G⁻.GT[i, j, k] = Gⁿ.GT[i, j, k]
-                @inbounds G⁻.GS[i, j, k] = Gⁿ.GS[i, j, k]
+                @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
+                @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
+                @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
+                @inbounds G⁻.T[i, j, k] = Gⁿ.T[i, j, k]
+                @inbounds G⁻.S[i, j, k] = Gⁿ.S[i, j, k]
             end
         end
     end
@@ -125,20 +125,20 @@ the `buoyancy_perturbation` downwards:
 
     `pHY′ = ∫ buoyancy_perturbation dz` from `z=0` down to `z=-Lz`
 """
-function update_hydrostatic_pressure!(pHY′, grid, buoyancy, Φ)
+function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = - ▶z_aaf(i, j, 1, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
+            @inbounds pHY′[i, j, 1] = - ▶z_aaf(i, j, 1, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
             @unroll for k in 2:grid.Nz
                 @inbounds pHY′[i, j, k] = 
-                    pHY′[i, j, k-1] - ▶z_aaf(i, j, k, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
+                    pHY′[i, j, k-1] - ▶z_aaf(i, j, k, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
             end
         end
     end
 end
 
 """ Calculate the right-hand-side of the u-momentum equation. """
-function calculate_Gu!(Gu, grid, coriolis, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_Gu!(Gu, grid, coriolis, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -146,14 +146,14 @@ function calculate_Gu!(Gu, grid, coriolis, closure, U, Φ, pHY′, K, F, paramet
                                             - x_f_cross_U(i, j, k, grid, coriolis, U)
                                             - ∂x_p(i, j, k, grid, pHY′)
                                             + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.u(i, j, k, grid, time, U, Φ, parameters))
+                                            + F.u(i, j, k, grid, time, U, C, parameters))
             end
         end
     end
 end
 
 """ Calculate the right-hand-side of the v-momentum equation. """
-function calculate_Gv!(Gv, grid, coriolis, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_Gv!(Gv, grid, coriolis, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -161,47 +161,47 @@ function calculate_Gv!(Gv, grid, coriolis, closure, U, Φ, pHY′, K, F, paramet
                                             - y_f_cross_U(i, j, k, grid, coriolis, U)
                                             - ∂y_p(i, j, k, grid, pHY′)
                                             + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.v(i, j, k, grid, time, U, Φ, parameters))
+                                            + F.v(i, j, k, grid, time, U, C, parameters))
             end
         end
     end
 end
 
 """ Calculate the right-hand-side of the w-momentum equation. """
-function calculate_Gw!(Gw, grid, coriolis, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_Gw!(Gw, grid, coriolis, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gw[i, j, k] = (-u∇w(grid, U.u, U.v, U.w, i, j, k)
                                             - z_f_cross_U(i, j, k, grid, coriolis, U)
                                             + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.w(i, j, k, grid, time, U, Φ, parameters))
+                                            + F.w(i, j, k, grid, time, U, C, parameters))
             end
         end
     end
 end
 
 """ Calculate the right-hand-side of the temperature advection-diffusion equation. """
-function calculate_GT!(GT, grid, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_GT!(GT, grid, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds GT[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, Φ.T, i, j, k)
-                                            + ∇_κ_∇T(i, j, k, grid, Φ.T, closure, K)
-                                            + F.T(i, j, k, grid, time, U, Φ, parameters))
+                @inbounds GT[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, C.T, i, j, k)
+                                            + ∇_κ_∇T(i, j, k, grid, C.T, closure, K)
+                                            + F.T(i, j, k, grid, time, U, C, parameters))
             end
         end
     end
 end
 
 """ Calculate the right-hand-side of the salinity advection-diffusion equation. """
-function calculate_GS!(GS, grid, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_GS!(GS, grid, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds GS[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, Φ.S, i, j, k)
-                                            + ∇_κ_∇S(i, j, k, grid, Φ.S, closure, K)
-                                            + F.S(i, j, k, grid, time, U, Φ, parameters))
+                @inbounds GS[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, C.S, i, j, k)
+                                            + ∇_κ_∇S(i, j, k, grid, C.S, closure, K)
+                                            + F.S(i, j, k, grid, time, U, C, parameters))
             end
         end
     end
@@ -209,22 +209,22 @@ end
 
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, Φ, pHY′, K, F, parameters, time)
+function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C, pHY′, K, F, parameters, time)
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.Gu, grid, coriolis, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.u, grid, coriolis, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.Gv, grid, coriolis, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.v, grid, coriolis, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.Gw, grid, coriolis, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.w, grid, coriolis, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT!(G.GT, grid, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT!(G.T, grid, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS!(G.GS, grid, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS!(G.S, grid, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
 end
 
@@ -238,11 +238,11 @@ function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gⁿ.Gu[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gu[i, j, k] - (FT(0.5) + χ) * G⁻.Gu[i, j, k]
-                @inbounds Gⁿ.Gv[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gv[i, j, k] - (FT(0.5) + χ) * G⁻.Gv[i, j, k]
-                @inbounds Gⁿ.Gw[i, j, k] = (FT(1.5) + χ) * Gⁿ.Gw[i, j, k] - (FT(0.5) + χ) * G⁻.Gw[i, j, k]
-                @inbounds Gⁿ.GT[i, j, k] = (FT(1.5) + χ) * Gⁿ.GT[i, j, k] - (FT(0.5) + χ) * G⁻.GT[i, j, k]
-                @inbounds Gⁿ.GS[i, j, k] = (FT(1.5) + χ) * Gⁿ.GS[i, j, k] - (FT(0.5) + χ) * G⁻.GS[i, j, k]
+                @inbounds Gⁿ.u[i, j, k] = (FT(1.5) + χ) * Gⁿ.u[i, j, k] - (FT(0.5) + χ) * G⁻.u[i, j, k]
+                @inbounds Gⁿ.v[i, j, k] = (FT(1.5) + χ) * Gⁿ.v[i, j, k] - (FT(0.5) + χ) * G⁻.v[i, j, k]
+                @inbounds Gⁿ.w[i, j, k] = (FT(1.5) + χ) * Gⁿ.w[i, j, k] - (FT(0.5) + χ) * G⁻.w[i, j, k]
+                @inbounds Gⁿ.T[i, j, k] = (FT(1.5) + χ) * Gⁿ.T[i, j, k] - (FT(0.5) + χ) * G⁻.T[i, j, k]
+                @inbounds Gⁿ.S[i, j, k] = (FT(1.5) + χ) * Gⁿ.S[i, j, k] - (FT(0.5) + χ) * G⁻.S[i, j, k]
             end
         end
     end
@@ -260,7 +260,7 @@ function calculate_poisson_right_hand_side!(::CPU, grid::AbstractGrid, ::Poisson
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
                 @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                         div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                                         div_f2c(grid, G.u, G.v, G.w, i, j, k)
             end
         end
     end
@@ -286,7 +286,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::AbstractGrid, ::PPN, Δ
                     k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
                 end
                 @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                          div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                                          div_f2c(grid, G.u, G.v, G.w, i, j, k)
             end
         end
     end
@@ -319,7 +319,7 @@ function calculate_poisson_right_hand_side!(::GPU, grid::AbstractGrid, ::PNN, Δ
                 end
 
                 @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                           div_f2c(grid, G.Gu, G.Gv, G.Gw, i, j, k)
+                                           div_f2c(grid, G.u, G.v, G.w, i, j, k)
             end
         end
     end
@@ -388,15 +388,15 @@ and the tracers via
 
 Note that the vertical velocity is not explicitly time stepped.
 """
-function update_velocities_and_tracers!(grid::AbstractGrid, U, Φ, pNHS, Gⁿ, Δt)
+function update_velocities_and_tracers!(grid::AbstractGrid, U, C, pNHS, Gⁿ, Δt)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                                             
-                @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
-                @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
-                @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
-                @inbounds Φ.S[i, j, k] = Φ.S[i, j, k] + (Gⁿ.GS[i, j, k] * Δt)
+                @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
+                @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
+                @inbounds C.T[i, j, k] = C.T[i, j, k] + (Gⁿ.T[i, j, k] * Δt)
+                @inbounds C.S[i, j, k] = C.S[i, j, k] + (Gⁿ.S[i, j, k] * Δt)
             end
         end
     end

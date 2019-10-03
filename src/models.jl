@@ -67,11 +67,11 @@ function Model(;
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
+                tracers = (:T, :S),
              velocities = VelocityFields(architecture, grid),
-                tracers = TracerFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125),
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, tracernames(tracers), 0.125),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
@@ -83,6 +83,7 @@ function Model(;
         end
     end
 
+    tracers = TracerFields(architecture, grid, tracers)
     boundary_conditions = ModelBoundaryConditions(boundary_conditions)
 
     return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
@@ -195,11 +196,15 @@ end
 Return a NamedTuple with tracer fields initialized
 as `CellField`s on the architecture `arch` and `grid`.
 """
-function TracerFields(arch, grid)
-    T = CellField(arch, grid)
-    S = CellField(arch, grid)
-    return (T=T, S=S)
+function TracerFields(arch, grid, tracernames=(:T, :S))
+    tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
+    return NamedTuple{tracernames}(tracerfields)
 end
+
+TracerFields(tracers::NamedTuple) = tracers
+
+tracernames(::NamedTuple{names}) where names = names
+tracernames(tracers::NTuple{N, Symbol}) where N = tracers
 
 """
     PressureFields(arch, grid)
@@ -214,23 +219,23 @@ function PressureFields(arch, grid)
 end
 
 """
-    Tendencies(arch, grid)
+    Tendencies(arch, grid, tracernames)
 
 Return a NamedTuple with tendencies for all solution fields
 (velocity fields and tracer fields), initialized on
 the architecture `arch` and `grid`.
 """
-function Tendencies(arch, grid)
-    Gu = FaceFieldX(arch, grid)
-    Gv = FaceFieldY(arch, grid)
-    Gw = FaceFieldZ(arch, grid)
-    GT = CellField(arch, grid)
-    GS = CellField(arch, grid)
-    return (Gu=Gu, Gv=Gv, Gw=Gw, GT=GT, GS=GS)
+function Tendencies(arch, grid, tracernames)
+    U = (u = FaceFieldX(arch, grid),
+         v = FaceFieldY(arch, grid),
+         w = FaceFieldZ(arch, grid))
+
+    C = TracerFields(arch, grid, tracernames)
+    return merge(U, C)
 end
 
 """
-    AdamsBashforthTimestepper(float_type, arch, grid, χ)
+    AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
 
 Return an AdamsBashforthTimestepper object with tendency
 fields on `arch` and `grid` and AB2 parameter `χ`.
@@ -241,8 +246,8 @@ struct AdamsBashforthTimestepper{T, TG}
        χ :: T
 end
 
-function AdamsBashforthTimestepper(float_type, arch, grid, χ)
-   Gⁿ = Tendencies(arch, grid)
-   G⁻ = Tendencies(arch, grid)
+function AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
+   Gⁿ = Tendencies(arch, grid, tracers)
+   G⁻ = Tendencies(arch, grid, tracers)
    return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end
