@@ -48,18 +48,19 @@ function FPlane(T=Float64; Ω, lat)
 end
 
 
-# """
-#     βPlane{T} <: AbstractRotation
-#
-# A parameter object for linearly increasing rotation in meridional direction.
-# """
-# struct βPlane{T} <: AbstractRotation
-#     f :: T
-# end
-#
-# function βPlane(T=Float64; f₀, β)
-#     return βPlane{T}(f₀ + β*y)
-# end
+"""
+    βPlane{T} <: AbstractRotation
+
+A parameter object for meridionally increasing rotation (`f = f₀ + βy`).
+"""
+struct βPlane{T} <: AbstractRotation
+    f₀ :: T
+    β  :: T
+end
+
+function βPlane(T=Float64; f₀, β)
+    return βPlane{T}(f₀, β)
+end
 
 @inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T =
     T(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
@@ -67,7 +68,15 @@ end
 @inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T =
     T(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
 
+@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, v) where T =
+    T(0.5) * (f₀ + β * grid.yC[j]) * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
+
+@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, u) where T =
+    T(0.5) * (f₀ + β * grid.yF[j]) * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
+
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
 @inline y_f_cross_U(i, j, k, grid, rotation::FPlane, U) =  fu(i, j, k, grid, rotation.f, U.u)
+@inline x_f_cross_U(i, j, k, grid, rotation::βPlane, U) = -fv(i, j, k, grid, rotation.f, rotation.β, U.v)
+@inline y_f_cross_U(i, j, k, grid, rotation::βPlane, U) =  fu(i, j, k, grid, rotation.f, rotation.β, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::FPlane, U) where T = zero(T)
 
