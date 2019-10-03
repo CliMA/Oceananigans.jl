@@ -203,8 +203,8 @@ end
 
 TracerFields(tracers::NamedTuple) = tracers
 
-tracernames(::NamedTuple{names}) where names = names
-tracernames(tracers::NTuple{N, Symbol}) where N = tracers
+tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : names
+tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 """
     PressureFields(arch, grid)
@@ -226,12 +226,14 @@ Return a NamedTuple with tendencies for all solution fields
 the architecture `arch` and `grid`.
 """
 function Tendencies(arch, grid, tracernames)
-    U = (u = FaceFieldX(arch, grid),
-         v = FaceFieldY(arch, grid),
-         w = FaceFieldZ(arch, grid))
 
-    C = TracerFields(arch, grid, tracernames)
-    return merge(U, C)
+    velocities = (u = FaceFieldX(arch, grid),
+                  v = FaceFieldY(arch, grid),
+                  w = FaceFieldZ(arch, grid))
+
+    tracers = TracerFields(arch, grid, tracernames)
+
+    return merge(velocities, tracers)
 end
 
 """
