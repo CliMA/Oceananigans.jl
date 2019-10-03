@@ -24,19 +24,47 @@ end
     FPlane([T=Float64;] f)
 
 Returns a parameter object for constant rotation at the angular frequency
-`2f`, and therefore with background vorticity `f`, around a vertical axis.
+`f`, and therefore with background vorticity `2f`, around a vertical axis.
 
-Also called `FPlane`, after the "f-plane" approximation for the local effect of 
+Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(T=Float64; f) 
+function FPlane(T=Float64; f)
     return FPlane{T}(f)
 end
 
-@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T = 
+"""
+    FPlane([T=Float64;] Ω, lat)
+
+Returns a parameter object for constant rotation at the angular frequency
+`f = 2Ωsin(lat)`, and therefore with background vorticity `f = 4Ωsin(lat)`,
+around a vertical axis.
+
+Also called `FPlane`, after the "f-plane" approximation for the local effect of
+Earth's rotation in a planar coordinate system tangent to the Earth's surface.
+"""
+function FPlane(T=Float64; Ω, lat)
+    return FPlane{T}(2*Ω*sind(lat))
+end
+
+
+# """
+#     βPlane{T} <: AbstractRotation
+#
+# A parameter object for linearly increasing rotation in meridional direction.
+# """
+# struct βPlane{T} <: AbstractRotation
+#     f :: T
+# end
+#
+# function βPlane(T=Float64; f₀, β)
+#     return βPlane{T}(f₀ + β*y)
+# end
+
+@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f, v) where T =
     T(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
 
-@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T = 
+@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T =
     T(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
 
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
