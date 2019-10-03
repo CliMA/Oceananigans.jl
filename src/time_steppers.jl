@@ -109,11 +109,10 @@ function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
-                @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
-                @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
-                @inbounds G⁻.T[i, j, k] = Gⁿ.T[i, j, k]
-                @inbounds G⁻.S[i, j, k] = Gⁿ.S[i, j, k]
+                ntuple(Val(length(G⁻))) do α
+                    Base.@_inline_meta
+                    @inbounds G⁻[α][i, j, k] = Gⁿ[α][i, j, k]
+                end
             end
         end
     end
@@ -238,11 +237,10 @@ function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gⁿ.u[i, j, k] = (FT(1.5) + χ) * Gⁿ.u[i, j, k] - (FT(0.5) + χ) * G⁻.u[i, j, k]
-                @inbounds Gⁿ.v[i, j, k] = (FT(1.5) + χ) * Gⁿ.v[i, j, k] - (FT(0.5) + χ) * G⁻.v[i, j, k]
-                @inbounds Gⁿ.w[i, j, k] = (FT(1.5) + χ) * Gⁿ.w[i, j, k] - (FT(0.5) + χ) * G⁻.w[i, j, k]
-                @inbounds Gⁿ.T[i, j, k] = (FT(1.5) + χ) * Gⁿ.T[i, j, k] - (FT(0.5) + χ) * G⁻.T[i, j, k]
-                @inbounds Gⁿ.S[i, j, k] = (FT(1.5) + χ) * Gⁿ.S[i, j, k] - (FT(0.5) + χ) * G⁻.S[i, j, k]
+                ntuple(Val(length(Gⁿ))) do α
+                    Base.@_inline_meta
+                    @inbounds Gⁿ[α][i, j, k] = (FT(1.5) + χ) * Gⁿ[α][i, j, k] - (FT(0.5) + χ) * G⁻[α][i, j, k]
+                end
             end
         end
     end
@@ -393,10 +391,14 @@ function update_velocities_and_tracers!(grid::AbstractGrid, U, C, pNHS, Gⁿ, Δ
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                                             
-                @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
-                @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
-                @inbounds C.T[i, j, k] = C.T[i, j, k] + (Gⁿ.T[i, j, k] * Δt)
-                @inbounds C.S[i, j, k] = C.S[i, j, k] + (Gⁿ.S[i, j, k] * Δt)
+                @inbounds U.u[i, j, k] += (Gⁿ.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
+                @inbounds U.v[i, j, k] += (Gⁿ.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
+
+                ntuple(Val(length(Gⁿ)-3)) do α
+                    Base.@_inline_meta
+                    c, Gcⁿ = C[α], Gⁿ[α+3]
+                    @inbounds c[i, j, k] += Gcⁿ[i, j, k] * Δt
+                end
             end
         end
     end
