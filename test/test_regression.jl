@@ -152,11 +152,11 @@ function run_rayleigh_benard_regression_test(arch)
     data(model.tracers.T)    .= ArrayType(T₀)
     data(model.tracers.S)    .= ArrayType(S₀)
 
-    data(model.timestepper.Gⁿ.Gu) .= ArrayType(Gu)
-    data(model.timestepper.Gⁿ.Gv) .= ArrayType(Gv)
-    data(model.timestepper.Gⁿ.Gw) .= ArrayType(Gw)
-    data(model.timestepper.Gⁿ.GT) .= ArrayType(GT)
-    data(model.timestepper.Gⁿ.GS) .= ArrayType(GS)
+    data(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
+    data(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
+    data(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
+    data(model.timestepper.Gⁿ.T) .= ArrayType(GT)
+    data(model.timestepper.Gⁿ.S) .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
