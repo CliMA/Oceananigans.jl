@@ -4,7 +4,7 @@
 Return a named tuple of forcing functions
 for each solution field.
 """
-Forcings(; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk) =
+ModelForcing(; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk) =
     (u=u, v=v, w=w, T=T, S=S)
 
 struct SpatialForcing{Lx, Ly, Lz, F}

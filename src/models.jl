@@ -61,7 +61,7 @@ function Model(;
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
     # Forcing and boundary conditions for (u, v, w, T, S)
-                forcing = Forcing(),
+                forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
