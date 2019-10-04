@@ -101,7 +101,7 @@ function run_rayleigh_benard_regression_test(arch)
                    buoyancy = BuoyancyTracer(), 
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
                                 top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
-                    forcing = Forcings(S=FS)
+                    forcing = ModelForcing(S=FS)
     )
 
     ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
