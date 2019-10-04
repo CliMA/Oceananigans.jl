@@ -12,7 +12,7 @@ function time_step_with_forcing_functions(arch)
     @inline Fv(i, j, k, grid, time, U, Φ, params) = @inbounds ifelse(k == grid.Nz, -U.v[i, j, k] / 60, 0)
     @inline Fw(i, j, k, grid, time, U, Φ, params) = @inbounds ifelse(k == grid.Nz, -U.w[i, j, k] / 60, 0)
 
-    forcing = ModelForcing(u=Fu, v=Fv, Fw=w)
+    forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 
     model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=forcing)
     time_step!(model, 1, 1)
