@@ -22,11 +22,10 @@ model = Model(
 # Our initial condition randomizes `u` and `v`. We also ensure that both have
 # zero mean for purely aesthetic reasons.
 
-ϵ(x, y, z) = rand()
-set!(model, u=ϵ, v=ϵ)
+u₀ = rand(size(model.grid)...)
+u₀ .-= mean(u₀) 
 
-model.velocities.u.data .-= mean(data(model.velocities.u))
-model.velocities.v.data .-= mean(data(model.velocities.v))
+set!(model, u=u₀, v=u₀)
 
 # Next we define a function for calculating the vertical vorticity 
 # associated with the velocity fields `u` and `v`.
