@@ -41,9 +41,9 @@ end
 calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
 
 @inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantIsotropicDiffusivity, args...) = (
-      closure.κ / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
-    + closure.κ / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)
-    + closure.κ / grid.Δz^2 * δz²_c2f2c(grid, c, i, j, k)
+      closure.κ.T / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
+    + closure.κ.T / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)
+    + closure.κ.T / grid.Δz^2 * δz²_c2f2c(grid, c, i, j, k)
 )
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, u, v, w, args...) = (

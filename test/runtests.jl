@@ -34,7 +34,7 @@ using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_fa
 float_types = (Float32, Float64)
 
 archs = (CPU(),)
-@hascuda archs = (CPU(), GPU())
+#@hascuda archs = (CPU(), GPU())
 
 closures = (
             :ConstantIsotropicDiffusivity,

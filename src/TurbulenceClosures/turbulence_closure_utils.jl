@@ -21,7 +21,7 @@ function Base.convert(::TurbulenceClosure{T2}, closure::TurbulenceClosure{T1}) w
     return Closure(T2; paramdict...)
 end
 
-tracer_diffusivities(tracers, κ::Number) = with_tracers(tracers, (), κ)
+tracer_diffusivities(tracers, κ::Number) = with_tracers(tracers, (), (tracers, init) -> κ)
 
 function tracer_diffusivities(tracers, κ::NamedTuple)
 
@@ -33,4 +33,4 @@ function tracer_diffusivities(tracers, κ::NamedTuple)
 end
 
 convert_diffusivity(T, κ::Number) = convert(T, κ)
-convert_diffusivity(T, κ::NamedTuple) = convert(propertynames(κ), NTuple{length(κ), T}, κ)
+convert_diffusivity(T, κ::NamedTuple) = convert(NamedTuple{propertynames(κ), NTuple{length(κ), T}}, κ)
