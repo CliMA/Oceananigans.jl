@@ -234,7 +234,7 @@ fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions
 and may contain some or all of the boundary conditions on `tracers`.
 """
 SolutionBoundaryConditions(tracers, proposal_bcs) = 
-    with_tracers(tracers, proposal_bcs, default_tracer_bcs)
+    with_tracers(tracers, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
 """
     HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs(), ...)
