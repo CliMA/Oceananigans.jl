@@ -70,7 +70,7 @@ end
 Return a NamedTuple with tracer fields initialized
 as `CellField`s on the architecture `arch` and `grid`.
 """
-function TracerFields(arch, grid, tracernames=(:T, :S))
+function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
     return NamedTuple{tracernames}(tracerfields)
 end
