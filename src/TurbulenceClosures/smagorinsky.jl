@@ -238,7 +238,7 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::AbstractSmagorinsky) =
+TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky) =
     (νₑ=CellField(arch, grid),)
 
 "Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."

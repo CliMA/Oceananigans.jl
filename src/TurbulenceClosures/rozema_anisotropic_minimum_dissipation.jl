@@ -1,8 +1,12 @@
-struct RozemaAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
+struct RozemaAnisotropicMinimumDissipation{T, K} <: AbstractAnisotropicMinimumDissipation{T}
      C :: T
     Cb :: T
      ν :: T
-     κ :: T
+     κ :: K
+    function VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ) where T
+        κ = convert_diffusivity(T, κ)
+        return new{T, typeof(κ)}(C, Cb, ν, κ)
+    end
 end
 
 """
@@ -16,13 +20,18 @@ Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `T` with
 
 See Rozema et al., " (2015)
 """
-function RozemaAnisotropicMinimumDissipation(FT=Float64;
+function RozemaAnisotropicMinimumDissipation(T=Float64;
          C = 0.33,
         Cb = 0.0,
          ν = ν₀,
          κ = κ₀
     )
-    return RozemaAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+    return RozemaAnisotropicMinimumDissipation{T}(C, Cb, ν, κ)
+end
+
+function with_tracers(tracers, closure::RozemaAnisotropicMinimumDissipation{T}) where T
+    κ = tracer_diffusivities(tracers, closure.κ)
+    return RozemaAnisotropicMinimumDissipation{T}(closure.C, closure.Cb, closure.ν, κ)
 end
 
 # Bindings
@@ -41,11 +50,10 @@ const Δx_ccf = Δx
 const Δy_ccf = Δy
 const Δz_ccf = Δz
 
-function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::RAMD)
-     νₑ = CellField(arch, grid)
-    κTₑ = CellField(arch, grid)
-    κSₑ = CellField(arch, grid)
-    return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
+function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::RAMD)
+    νₑ = CellField(arch, grid)
+    κₑ = TracerFields(arch, grid, tracers)
+    return (νₑ=νₑ, κₑ=κₑ)
 end
 
 @inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT

@@ -1,31 +1,35 @@
 """
     VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
 
-Use the anisotropic minimum dissipation large eddy simulation model proposed by Verstappen
+Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by Verstappen
 (2018) and described by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
+struct VerstappenAnisotropicMinimumDissipation{T, K} <: AbstractAnisotropicMinimumDissipation{T}
      C :: T
     Cb :: T
      ν :: T
-     κ :: T
+     κ :: K
+    function VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ) where T
+        κ = convert_diffusivity(T, κ)
+        return new{T, typeof(κ)}(C, Cb, ν, κ)
+    end
 end
 
 """
-    VerstappenAnisotropicMinimumDissipation(T=Float64; C = 1/12, Cb = 0.0, ν = ν₀, κ=κ₀)
+    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀)
 
-Use a `VerstappenAnisotropicMinimumDissipation` turbulence closure with parameters of type
-`T`.
+Returns parameters of type `T` for the `VerstappenAnisotropicMinimumDissipation` 
+turbulence closure. 
 
 Keyword arguments
 =================
     - `C::T`: Poincaré constant
     - `Cb::T`: Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
     - `ν::T`: 'molecular' background viscosity for momentum
-    - `κ::T`: 'molecular' background diffusivity for tracers
+    - `κ`: 'molecular' background diffusivity for each tracer
 
-By default, `C` = 1/12 which is appropriate for a finite-volume method employing a
-second-order advection scheme, `Cb` = 0 which terms off the buoyancy modification term,
+By default, `C` = 1/12, which is appropriate for a finite-volume method employing a
+second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
 and molecular values are used for `ν` and `κ`.
 
 References
@@ -45,13 +49,17 @@ function VerstappenAnisotropicMinimumDissipation(T=Float64;
     return VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ)
 end
 
+function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{T}) where T
+    κ = tracer_diffusivities(tracers, closure.κ)
+    return VerstappenAnisotropicMinimumDissipation{T}(closure.C, closure.Cb, closure.ν, κ)
+end
+
 const VAMD = VerstappenAnisotropicMinimumDissipation
 
-function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::VAMD)
-     νₑ = CellField(arch, grid)
-    κTₑ = CellField(arch, grid)
-    κSₑ = CellField(arch, grid)
-    return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
+function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::VAMD)
+    νₑ = CellField(arch, grid)
+    κₑ = TracerFields(arch, grid, tracers)
+    return (νₑ=νₑ, κₑ=κₑ)
 end
 
 @inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, Φ) where FT
