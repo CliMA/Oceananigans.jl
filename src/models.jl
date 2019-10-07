@@ -69,7 +69,7 @@ function Model(;
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
              velocities = VelocityFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
-          diffusivities = TurbulentDiffusivities(architecture, grid, closure),
+          diffusivities = TurbulentDiffusivities(architecture, grid, tracers(tracers), closure),
             timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, tracernames(tracers), 0.125),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)

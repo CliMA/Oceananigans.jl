@@ -35,7 +35,7 @@ ConstantIsotropicDiffusivity(T=Float64; ν=ν₀, κ=κ₀) = ConstantIsotropicD
 
 function with_tracers(tracers, closure::ConstantIsotropicDiffusivity{T}) where T
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ConstantIsotropicDiffusivity(T, closure.ν, κ)
+    return ConstantIsotropicDiffusivity{T}(closure.ν, κ)
 end
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
