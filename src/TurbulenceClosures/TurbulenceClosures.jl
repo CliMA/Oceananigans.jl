@@ -31,6 +31,8 @@ using
   Oceananigans.Operators,
   GPUifyLoops
 
+import Oceananigans: with_tracers
+
 using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared, 
                     TracerFields
 

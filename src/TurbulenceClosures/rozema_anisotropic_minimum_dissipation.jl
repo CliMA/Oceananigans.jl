@@ -3,7 +3,7 @@ struct RozemaAnisotropicMinimumDissipation{T, K} <: AbstractAnisotropicMinimumDi
     Cb :: T
      ν :: T
      κ :: K
-    function VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ) where T
+    function RozemaAnisotropicMinimumDissipation{T}(C, Cb, ν, κ) where T
         κ = convert_diffusivity(T, κ)
         return new{T, typeof(κ)}(C, Cb, ν, κ)
     end
@@ -16,7 +16,7 @@ Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `T` with
 
     * `C` : Poincaré constant
     * `ν` : 'molecular' background viscosity
-    * `κ` : 'molecular' background diffusivity
+    * `κ` : 'molecular' background diffusivity for each tracer
 
 See Rozema et al., " (2015)
 """
@@ -60,27 +60,27 @@ end
     q = tr_∇u_ccc(i, j, k, grid, U.u, U.v, U.w)
 
     if q == 0
-        νˢᶠˢ = zero(FT)
+        νˢᵍˢ = zero(FT)
     else
         r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, U.u, U.v, U.w)
         ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, U.w, Φ)
-        νˢᶠˢ = -closure.C * (r - closure.Cb * ζ) / q
+        νˢᵍˢ = -closure.C * (r - closure.Cb * ζ) / q
     end
 
-    return max(zero(FT), νˢᶠˢ) + closure.ν
+    return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
 @inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT
     σ = θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
     if σ == 0
-        κˢᶠˢ = zero(FT)
+        κˢᵍˢ = zero(FT)
     else
         ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, U.u, U.v, U.w, c)
-        κˢᶠˢ = - closure.C * ϑ / σ
+        κˢᵍˢ = - closure.C * ϑ / σ
     end
 
-    return max(zero(FT), κˢᶠˢ) + closure.κ
+    return max(zero(FT), κˢᵍˢ) + closure.κ.T
 end
 
 #####
@@ -289,6 +289,20 @@ end
     + ▶yz_acf(i, j, k, grid, ∂y_c², c)
     + ∂z_c²(i, j, k, grid, c)
 )
+
+"""
+    ∇_κ_∇c(i, j, k, grid, c, closure, diffusivities, tracer_name)
+
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
+"""
+@inline function ∇_κ_∇c(i, j, k, grid, c, closure::RAMD, diffusivities, tracer_name)
+    κ = getproperty(diffusivities.κₑ, tracer_name)
+    return (  ∂x_caa(i, j, k, grid, κ_∂x_c, c, κ, closure)
+            + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κ, closure)
+            + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κ, closure)
+           )
+end
 
 """
     ∇_κ_∇T(i, j, k, grid, T, closure, diffusivities)

@@ -62,7 +62,7 @@ function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, 
     return (νₑ=νₑ, κₑ=κₑ)
 end
 
-@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, Φ) where FT
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇u_ccc(ijk..., U.u, U.v, U.w)
 
@@ -70,7 +70,7 @@ end
         νˢᵍˢ = zero(FT)
     else
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(ijk..., closure, U.u, U.v, U.w)
-        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, buoyancy, U.w, Φ) / Δᶠz_ccc(ijk...)
+        ζ = norm_wᵢ_bᵢ_ccc(ijk..., closure, buoyancy, U.w, C) / Δᶠz_ccc(ijk...)
         δ² = 3 / (1 / Δᶠx_ccc(ijk...)^2 + 1 / Δᶠy_ccc(ijk...)^2 + 1 / Δᶠz_ccc(ijk...)^2)
         νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
     end
@@ -78,7 +78,7 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, Φ) where FT
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     σ =  norm_θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
 
@@ -90,7 +90,7 @@ end
         κˢᵍˢ = - closure.C * δ² * ϑ / σ
     end
 
-    return max(zero(FT), κˢᵍˢ) + closure.κ
+    return max(zero(FT), κˢᵍˢ) + closure.κ.T
 end
 
 #####
@@ -234,13 +234,13 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
 )
 
-function calc_diffusivities!(K, grid, closure::VAMD, buoyancy, U, Φ)
+function calc_diffusivities!(K, grid, closure::VAMD, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy, U, Φ)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy, U, Φ)
+                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, C)
+                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, C.T,     buoyancy, U, C)
+                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, C.S,     buoyancy, U, C)
             end
         end
     end

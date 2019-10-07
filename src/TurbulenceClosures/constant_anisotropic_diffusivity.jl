@@ -41,9 +41,6 @@ end
 calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,
                     args...) = nothing
 
-ConstantAnisotropicDiffusivity(T; kwargs...) =
-    typed_keyword_constructor(T, ConstantAnisotropicDiffusivity; kwargs...)
-
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, K) = (
       closure.νh * ∂x²_faa(i, j, k, grid, u)
     + closure.νh * ∂y²_aca(i, j, k, grid, u)
@@ -63,7 +60,7 @@ ConstantAnisotropicDiffusivity(T; kwargs...) =
     )
 
 @inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantAnisotropicDiffusivity, K) = (
-      closure.κh * ∂x²_caa(i, j, k, grid, c)
-    + closure.κh * ∂y²_aca(i, j, k, grid, c)
-    + closure.κv * ∂z²_aac(i, j, k, grid, c)
+      closure.κh.T * ∂x²_caa(i, j, k, grid, c)
+    + closure.κh.T * ∂y²_aca(i, j, k, grid, c)
+    + closure.κv.T * ∂z²_aac(i, j, k, grid, c)
     )
