@@ -66,19 +66,19 @@ function with_tracers(tracers, closure::SmagorinskyLilly{T}) where T
 end
 
 """
-    stability(N², Σ², Pr, Cb)
+    stability(N², Σ², Cb)
 
 Return the stability function
 
-    ``\$ \\sqrt(1 - Cb N^2 / (Pr Σ^2) ) \$``
+    ``\$ \\sqrt(1 - Cb N^2 / Σ^2 ) \$``
 
 when ``N^2 > 0``, and 1 otherwise.
 """
-@inline stability(N²::T, Σ²::T, Pr::T, Cb::T) where T =
-    ifelse(Σ²==0, zero(T), sqrt(one(T) - stability_factor(N², Σ², Pr, Cb)))
+@inline stability(N²::T, Σ²::T, Cb::T) where T =
+    ifelse(Σ²==0, zero(T), sqrt(one(T) - stability_factor(N², Σ², Cb)))
 
-@inline stability_factor(N²::T, Σ²::T, Pr::T, Cb::T) where T =
-    min(one(T), max(zero(T), Cb * N² / (Pr * Σ²)))
+@inline stability_factor(N²::T, Σ²::T, Cb::T) where T =
+    min(one(T), max(zero(T), Cb * N² / Σ²))
 
 """
     νₑ(ς, C, Δᶠ, Σ²)
@@ -89,11 +89,11 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly, c, buoyancy_params, U, C)
+@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly{DF}, c, buoyancy_params, U, C) where DF
     Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
     N² = ▶z_aac(i, j, k, grid, buoyancy_frequency_squared, buoyancy_params, C)
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
-     ς = stability(N², Σ², clo.Pr, clo.Cb)
+     ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
@@ -115,7 +115,7 @@ struct BlasiusSmagorinsky{ML, T, P, K} <: AbstractSmagorinsky{T}
                 κ :: K
     mixing_length :: ML
 
-    function ConstantIsotropicDiffusivity{T}(Pr, ν, κ, mixing_length) where T
+    function BlasiusSmagorinsky{T}(Pr, ν, κ, mixing_length) where T
         Pr = convert_diffusivity(T, Pr)
          κ = convert_diffusivity(T, κ)
         return new{typeof(mixing_length), T, typeof(Pr), typeof(κ)}(Pr, ν, κ, mixing_length)
@@ -133,7 +133,7 @@ Returns a `BlasiusSmagorinsky` closure object of type `T` with
 
 """
 BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=nothing) =
-    BlasiusSmagorinsky{typeof(mixing_length), T}(Pr, ν, κ, mixing_length)
+    BlasiusSmagorinsky{T}(Pr, ν, κ, mixing_length)
 
 function with_tracers(tracers, closure::BlasiusSmagorinsky{ML, T}) where {ML, T}
     Pr = tracer_diffusivities(tracers, closure.Pr)

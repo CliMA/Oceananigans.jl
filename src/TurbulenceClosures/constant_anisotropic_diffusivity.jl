@@ -33,8 +33,8 @@ ConstantAnisotropicDiffusivity(T=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=�
     ConstantAnisotropicDiffusivity{T}(νh, νv, κh, κv)
 
 function with_tracers(tracers, closure::ConstantAnisotropicDiffusivity{T}) where T
-    κh = tracer_diffusivities(tracers, κh)
-    κv = tracer_diffusivities(tracers, κv)
+    κh = tracer_diffusivities(tracers, closure.κh)
+    κv = tracer_diffusivities(tracers, closure.κv)
     return ConstantAnisotropicDiffusivity{T}(closure.νh, closure.νv, κh, κv)
 end
 
@@ -60,7 +60,7 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity
     )
 
 @inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantAnisotropicDiffusivity, K) = (
-      closure.κh.T * ∂x²_caa(i, j, k, grid, c)
-    + closure.κh.T * ∂y²_aca(i, j, k, grid, c)
-    + closure.κv.T * ∂z²_aac(i, j, k, grid, c)
+      closure.κh[1] * ∂x²_caa(i, j, k, grid, c)
+    + closure.κh[1] * ∂y²_aca(i, j, k, grid, c)
+    + closure.κv[1] * ∂z²_aac(i, j, k, grid, c)
     )
