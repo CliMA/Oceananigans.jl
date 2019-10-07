@@ -23,10 +23,8 @@ SimpleForcing(location::Tuple, forcing::SimpleForcing) = SimpleForcing(location,
 @inline (forcing::SimpleForcing{X, Y, Z})(i, j, k, grid, time, U, C, params) where {X, Y, Z} =
     @inbounds forcing.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), time)
 
-convert_forcing(u::SimpleForcing) =
-
-at_location(u::Function, location) = u
-at_location(u::SimpleForcing, location) = SimpleForcing(location, u)
+at_location(location, u::Function) = u
+at_location(location, u::SimpleForcing) = SimpleForcing(location, u)
 
 """
     ModelForcing(; kwargs...)
@@ -34,9 +32,9 @@ at_location(u::SimpleForcing, location) = SimpleForcing(location, u)
 Return a named tuple of forcing functions for each solution field.
 """
 function ModelForcing(; u=zerofunk, v=zerofunk, w=zerofunk, T=zerofunk, S=zerofunk)
-    u = at_location(u, (Face, Cell, Cell))
-    v = at_location(v, (Cell, Face, Cell))
-    w = at_location(w, (Cell, Cell, Face))
+    u = at_location((Face, Cell, Cell), u)
+    v = at_location((Cell, Face, Cell), v)
+    w = at_location((Cell, Cell, Face), w)
 
     return (u=u, v=v, w=w, T=T, S=S)
 end
