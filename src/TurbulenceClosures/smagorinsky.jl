@@ -9,6 +9,22 @@
 """
     SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
 
+Parameters for the Smagorinsky-Lilly turbulence closure.
+"""
+struct SmagorinskyLilly{T, P, K} <: AbstractSmagorinsky{T}
+     C :: T
+    Cb :: T
+    Pr :: P
+     ν :: T
+     κ :: K
+    function SmagorinskyLilly{T}(C, Cb, Pr, ν, κ) where T
+        Pr = convert_diffusivity(T, Pr)
+         κ = convert_diffusivity(T, κ)
+        return new{T, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
+    end
+end
+
+"""
     SmagorinskyLilly([T=Float64;] C=0.23, Pr=1, ν=1.05e-6, κ=1.46e-7)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
@@ -27,9 +43,9 @@ Keyword arguments
 =================
     - `C::T`: Model constant
     - `Cb::T`: Buoyancy term multipler (`Cb = 0` turns it off, `Cb = 1` turns it on)
-    - `Pr::T`: Turbulent Prandtl number
+    - `Pr`: Turbulent Prandtl numbers for each tracer (a single `Pr` is applied to every tracer)
     - `ν::T`: background viscosity
-    - `κ::T`: background diffusivity
+    - `κ`: background diffusivities for each tracer (a single `κ` is applied to every tracer)
 
 References
 ==========
@@ -40,15 +56,14 @@ References
 * Smagorinsky, J. "General circulation experiments with the primitive equations: I. 
     The basic experiment." Monthly weather review (1963)
 """
-Base.@kwdef struct SmagorinskyLilly{T} <: AbstractSmagorinsky{T}
-     C :: T = 0.23
-    Cb :: T = 1.0
-    Pr :: T = 1.0
-     ν :: T = ν₀
-     κ :: T = κ₀
-end
+SmagorinskyLilly(T=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=ν₀, κ=κ₀) =
+    SmagorinskyLilly{T}(C, Cb, Pr, ν, κ)
 
-SmagorinskyLilly(T; kwargs...) = typed_keyword_constructor(T, SmagorinskyLilly; kwargs...)
+function with_tracers(tracers, closure::SmagorinskyLilly{T}) where T
+    Pr = tracer_diffusivities(tracers, closure.Pr)
+     κ = tracer_diffusivities(tracers, closure.κ)
+    return SmagorinskyLilly{T}(closure.C, closure.Cb, Pr, closure.ν, κ)
+end
 
 """
     stability(N², Σ², Pr, Cb)
@@ -89,6 +104,25 @@ end
 ####
 
 """
+    BlasiusSmagorinsky{ML, T}
+
+Parameters for the version of the Smagorinsky closure used in the UK Met Office code
+Blasius, according to Polton and Belcher (2007).
+"""
+struct BlasiusSmagorinsky{ML, T, P, K} <: AbstractSmagorinsky{T}
+               Pr :: P
+                ν :: T
+                κ :: K
+    mixing_length :: ML
+
+    function ConstantIsotropicDiffusivity{T}(Pr, ν, κ, mixing_length) where T
+        Pr = convert_diffusivity(T, Pr)
+         κ = convert_diffusivity(T, κ)
+        return new{typeof(mixing_length), T, typeof(Pr), typeof(κ)}(Pr, ν, κ, mixing_length)
+    end
+end
+
+"""
     BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=1.05e-6, κ=1.46e-7)
 
 Returns a `BlasiusSmagorinsky` closure object of type `T` with
@@ -98,15 +132,14 @@ Returns a `BlasiusSmagorinsky` closure object of type `T` with
     *  `κ` : background diffusivity
 
 """
-struct BlasiusSmagorinsky{ML, T} <: AbstractSmagorinsky{T}
-              Pr :: T
-               ν :: T
-               κ :: T
-   mixing_length :: ML
-end
-
-BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=1.0) =
+BlasiusSmagorinsky(T=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=nothing) =
     BlasiusSmagorinsky{typeof(mixing_length), T}(Pr, ν, κ, mixing_length)
+
+function with_tracers(tracers, closure::BlasiusSmagorinsky{ML, T}) where {ML, T}
+    Pr = tracer_diffusivities(tracers, closure.Pr)
+     κ = tracer_diffusivities(tracers, closure.κ)
+    return BlasiusSmagorinsky{T}(Pr, closure.ν, κ, closure.mixing_length)
+end
 
 const BS = BlasiusSmagorinsky
 
