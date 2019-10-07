@@ -1,9 +1,4 @@
-#####
-##### Model initialization utilities
-#####
-
-float_type(m::Model) = eltype(model.grid)
-add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
+float_type(m::AbstractModel) = eltype(model.grid)
 
 """
     with_tracers(tracers, initial_tuple, tracer_default)
@@ -16,11 +11,14 @@ a default tuple value for each tracer if not included in `initial_tuple`.
 """
 function with_tracers(tracers, initial_tuple, tracer_default; with_velocities=false)
     solution_values = [] # Array{Any, 1}
+    solution_names = []
 
     if with_velocities
         push!(solution_values, initial_tuple.u)
         push!(solution_values, initial_tuple.v)
         push!(solution_values, initial_tuple.w)
+
+        append!(solution_names, [:u, :v, :w])
     end
 
     for name in tracers
@@ -31,7 +29,6 @@ function with_tracers(tracers, initial_tuple, tracer_default; with_velocities=fa
         push!(solution_values, tracer_elem)
     end
 
-    solution_names = [:u, :v, :w]
     append!(solution_names, tracers)
 
     return NamedTuple{Tuple(solution_names)}(Tuple(solution_values))
