@@ -180,6 +180,21 @@ function calculate_Gw!(Gw, grid, coriolis, closure, U, C, pHY′, K, F, paramete
     end
 end
 
+""" Calculate the right-hand-side of the tracer advection-diffusion equation. """
+function calculate_Gc!(Gc, grid, closure, tracer, U, C, pHY′, K, F, parameters, time)
+    c = getproperty(C, tracer)
+    Fc = getproperty(F, tracer)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds GT[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
+                                            + ∇_κ_∇c(i, j, k, grid, c, tracer, closure, K)
+                                            + Fc(i, j, k, grid, time, U, C, parameters))
+            end
+        end
+    end
+end
+
 """ Calculate the right-hand-side of the temperature advection-diffusion equation. """
 function calculate_GT!(GT, grid, closure, U, C, pHY′, K, F, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -225,6 +240,13 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C
 
     @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS!(G.S, grid, closure, U, C, pHY′, 
                                                                             K, F, parameters, time)
+
+    #=
+    for tracer in propertynames(C)
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(getproperty(G, tracer), grid, closure, tracer, 
+                                                                                U, C, pHY′, K, F, parameters, time)
+    end
+    =#
 end
 
 """
