@@ -43,7 +43,7 @@ function test_diffusion_budget_default(fieldname)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Lz)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Lz)
 end
 
 function test_diffusion_budget_channel(fieldname)
@@ -53,7 +53,7 @@ function test_diffusion_budget_channel(fieldname)
     data(field)[:, 1:half_Ny,   :] .= -1
     data(field)[:, half_Ny:end, :] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Ly)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Ly)
 end
 
 function test_diffusion_budget(field, model, κ, L)
