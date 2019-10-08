@@ -3,13 +3,10 @@ module TurbulenceClosures
 export
   IsotropicDiffusivity,
   ConstantIsotropicDiffusivity,
-
   ConstantAnisotropicDiffusivity,
-
   ConstantSmagorinsky,
   SmagorinskyLilly,
   BlasiusSmagorinsky,
-
   AnisotropicMinimumDissipation,
   RozemaAnisotropicMinimumDissipation,
   VerstappenAnisotropicMinimumDissipation,
@@ -34,7 +31,7 @@ using
 import Oceananigans: with_tracers
 
 using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared, 
-                    TracerFields
+                    TracerFields, device, launch_config
 
 @hascuda using CUDAdrv, CUDAnative
 
@@ -53,51 +50,48 @@ const κ₀ = 1.46e-7
 ####
 
 """
-    TurbulenceClosure{T}
+    TurbulenceClosure{FT}
 
 Abstract supertype for turbulence closures with model parameters stored as properties of
-type `T`.
+type `FT`.
 """
-abstract type TurbulenceClosure{T} end
+abstract type TurbulenceClosure{FT} end
 
 """
-    IsotropicDiffusivity{T} <: TurbulenceClosure{T}
+    IsotropicDiffusivity{FT} <: TurbulenceClosure{FT}
 
 Abstract supertype for turbulence closures that are defined by an isotropic viscosity
-and isotropic diffusivities with model parameters stored as properties of type `T`.
+and isotropic diffusivities with model parameters stored as properties of type `FT`.
 """
-abstract type IsotropicDiffusivity{T} <: TurbulenceClosure{T} end
+abstract type IsotropicDiffusivity{FT} <: TurbulenceClosure{FT} end
 
 """
-    TensorDiffusivity{T} <: TurbulenceClosure{T}
+    TensorDiffusivity{FT} <: TurbulenceClosure{FT}
 
 Abstract supertype for turbulence closures that are defined by a tensor viscosity and
-tensor diffusivities with model parameters stored as properties of type `T`.
+tensor diffusivities with model parameters stored as properties of type `FT`.
 """
-abstract type TensorDiffusivity{T} <: TurbulenceClosure{T} end
+abstract type TensorDiffusivity{FT} <: TurbulenceClosure{FT} end
 
 """
-    AbstractSmagorinsky{T}
+    AbstractSmagorinsky{FT}
 
 Abstract supertype for large eddy simulation models based off the model described
-by Smagorinsky with model parameters stored as properties of type `T`.
+by Smagorinsky with model parameters stored as properties of type `FT`.
 """
-abstract type AbstractSmagorinsky{T} <: IsotropicDiffusivity{T} end
+abstract type AbstractSmagorinsky{FT} <: IsotropicDiffusivity{FT} end
 
 """
-    AbstractAnisotropicMinimumDissipation{T}
+    AbstractAnisotropicMinimumDissipation{FT}
 
 Abstract supertype for large eddy simulation models based on the anisotropic minimum
-dissipation principle with model parameters stored as properties of type `T`.
+dissipation principle with model parameters stored as properties of type `FT`.
 """
-abstract type AbstractAnisotropicMinimumDissipation{T} <: IsotropicDiffusivity{T} end
+abstract type AbstractAnisotropicMinimumDissipation{FT} <: IsotropicDiffusivity{FT} end
 
 ####
 #### Include module code
 ####
-
-@inline ∇_κ_∇T(args...) = ∇_κ_∇c(args...)
-@inline ∇_κ_∇S(args...) = ∇_κ_∇c(args...)
 
 # Fallback constructor for diffusivity types without precomputed diffusivities:
 TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing

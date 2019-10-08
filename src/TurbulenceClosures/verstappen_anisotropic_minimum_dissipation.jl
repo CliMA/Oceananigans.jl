@@ -82,9 +82,9 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, tracer, buoyancy, U, C) where FT
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, tracer_idx, U) where FT
     ijk = (i, j, k, grid)
-    κ = getproperty(closure.κ, tracer)
+    @inbounds κ = closure.κ[tracer_idx]
 
     σ =  norm_θᵢ²_ccc(i, j, k, grid, c)
 
@@ -100,31 +100,47 @@ end
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, tracer, closure, diffusivities, tracer_name)
+    ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, c, tracer, closure::AbstractAnisotropicMinimumDissipation, diffusivities)
-    κ = getproperty(diffusivities.κₑ, tracer)
-    return (  ∂x_caa(i, j, k, grid, κ_∂x_c, c, κ, closure)
-            + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κ, closure)
-            + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κ, closure)
+@inline function ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::AbstractAnisotropicMinimumDissipation, diffusivities)
+    κₑ = diffusivities.κₑ[tracer_idx]
+    return (  ∂x_caa(i, j, k, grid, κ_∂x_c, c, κₑ, closure)
+            + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κₑ, closure)
+            + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κₑ, closure)
            )
 end
 
-function calc_diffusivities!(K, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+function calc_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+    @launch device(arch) config=launch_config(grid, 3) calc_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
+
+    for i in 1:length(K.κₑ)
+        @inbounds κₑ = K.κₑ[i]
+        @inbounds c = C[i]
+        @launch device(arch) config=launch_config(grid, 3) calc_tracer_diffusivity!(κₑ, grid, closure, c, i, U) 
+    end
+
+    return nothing
+end
+
+function calc_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+                @inbounds νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+            end
+        end
+    end
+    return nothing
+end
 
-                ntuple(Val(length(C))) do α
-                    Base.@_inline_meta
-                    tracer = propertynames(C)[α]
-                    κₑ, c = getproperty(K.κₑ, tracer), C[α]
-                    @inbounds κₑ[i, j, k] = κ_ccc(i, j, k, grid, closure, c, tracer, buoyancy, U, C)
-                end
+function calc_tracer_diffusivity!(κₑ, grid, closure, c, tracer_idx, U)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds κₑ[i, j, k] = κ_ccc(i, j, k, grid, closure, c, tracer_idx, U)
             end
         end
     end

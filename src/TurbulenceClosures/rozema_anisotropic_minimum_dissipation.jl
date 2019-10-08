@@ -63,8 +63,8 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, tracer, buoyancy, U, C) where FT
-    κ = getproperty(closure.κ, tracer)
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, tracer_idx, buoyancy, U) where FT
+    @inbounds κ = closure.κ[tracer_idx]
 
     σ = θᵢ²_ccc(i, j, k, grid, c) 
 
