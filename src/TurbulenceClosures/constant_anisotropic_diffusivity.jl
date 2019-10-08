@@ -9,9 +9,7 @@ struct ConstantAnisotropicDiffusivity{FT, KH, KV} <: TensorDiffusivity{FT}
     κh :: KH
     κv :: KV
     function ConstantAnisotropicDiffusivity{FT}(νh, νv, κh, κv) where FT
-        κh = convert_diffusivity(FT, κh)
-        κv = convert_diffusivity(FT, κv)
-        return new{FT, typeof(κh), typeof(κv)}(νh, νv, κh, κv)
+        return new{FT, typeof(κh), typeof(κv)}(νh, νv, convert_diffusivity(FT, κh), convert_diffusivity(FT, κv))
     end
 end
 
@@ -22,8 +20,8 @@ Returns parameters for a constant anisotropic diffusivity closure with constant 
 and vertical viscosities `νh`, `νv` and constant horizontal and vertical thermal 
 diffusivities `κh`, `κv`. 
 
-By default, a viscosity of ``ν = 1.05×10⁻⁶`` m² s⁻¹ is used for both the horizontal 
-and vertical viscosity, and a diffusivity of ``κ = 1.46×10⁻⁷`` m² s⁻¹ is used
+By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal 
+and vertical viscosity, and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used
 for the horizontal and vertical diffusivities applied to every tracer.
 These values are the approximate viscosity and thermal diffusivity for seawater at 20°C 
 and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review 
@@ -38,8 +36,7 @@ function with_tracers(tracers, closure::ConstantAnisotropicDiffusivity{FT}) wher
     return ConstantAnisotropicDiffusivity{FT}(closure.νh, closure.νv, κh, κv)
 end
 
-calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,
-                    args...) = nothing
+calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, K) = (
       closure.νh * ∂x²_faa(i, j, k, grid, u)

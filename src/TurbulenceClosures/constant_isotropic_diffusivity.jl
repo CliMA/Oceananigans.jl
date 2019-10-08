@@ -11,8 +11,7 @@ struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicDiffusivity{FT}
     ν :: FT
     κ :: K
     function ConstantIsotropicDiffusivity{FT}(ν, κ) where FT
-        κ = convert_diffusivity(FT, κ)
-        return new{FT, typeof(κ)}(ν, κ)
+        return new{FT, typeof(κ)}(ν, convert_diffusivity(FT, κ))
     end
 end
 
@@ -25,8 +24,8 @@ and constant thermal diffusivities `κ` for each tracer field in `tracers`
 features are explicitly resovled, or turbulent eddy diffusivities that model the effect of 
 unresolved, subgrid-scale turbulence.
 
-By default, a molecular viscosity of ``ν = 1.05×10⁻⁶`` m² s⁻¹ and a molecular thermal
-diffusivity of ``κ = 1.46×10⁻⁷`` m² s⁻¹ is used for each tracer. These molecular values are 
+By default, a molecular viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ and a molecular thermal
+diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are 
 the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 psu, 
 according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing 
 correlations and data" (2010).
