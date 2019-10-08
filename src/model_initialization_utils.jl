@@ -72,12 +72,12 @@ function TracerFields(arch, grid, tracernames)
     return NamedTuple{tracernames}(tracerfields)
 end
 
-TracerFields(arch, grid, tracers::Union{Tuple{}, Nothing}) = NamedTuple{()}(())
-TracerFields(arch, grid, tracers::Symbol) = TracerFields(arch, grid, tuple(tracers))
+TracerFields(arch, grid, ::Union{Tuple{}, Nothing}) = NamedTuple{()}(())
+TracerFields(arch, grid, tracer::Symbol) = TracerFields(arch, grid, tuple(tracer))
 TracerFields(arch, grid, tracers::NamedTuple) = tracers
 
-tracernames(name::Symbol) = tuple(name)
 tracernames(::Nothing) = ()
+tracernames(name::Symbol) = tuple(name)
 tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
