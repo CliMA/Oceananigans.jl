@@ -12,7 +12,7 @@ function test_closure_instantiation(FT, closurename)
 end
 
 function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
-      tracernames = (:T, :S)
+      tracernames = (:b,)
           closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
           closure = with_tracers(tracernames, closure)
              grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
