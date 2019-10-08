@@ -107,11 +107,11 @@ function solve_for_pressure!(::GPU, model::Model)
 end
 
 """ Store previous source terms before updating them. """
-function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻, nfields)
+function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻, nsolution)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                ntuple(Val(nfields)) do α
+                ntuple(Val(nsolution)) do α
                     Base.@_inline_meta
                     @inbounds G⁻[α][i, j, k] = Gⁿ[α][i, j, k]
                 end
@@ -223,11 +223,11 @@ Adams-Bashforth method
 
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
-function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ, nfields) where FT
+function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ, nsolution) where FT
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                ntuple(Val(nfields)) do α
+                ntuple(Val(nsolution)) do α
                     Base.@_inline_meta
                     @inbounds Gⁿ[α][i, j, k] = (FT(1.5) + χ) * Gⁿ[α][i, j, k] - (FT(0.5) + χ) * G⁻[α][i, j, k]
                 end
