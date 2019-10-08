@@ -56,7 +56,7 @@ model = Model(
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4), 
                buoyancy = BuoyancyTracer(),
-                forcing = Forcings(S=growth_and_decay),
+                forcing = ModelForcing(S=growth_and_decay),
     boundary_conditions = BoundaryConditions(T=Tbcs)
 )
 
