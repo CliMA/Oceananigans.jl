@@ -89,6 +89,8 @@ function Model(;
     boundary_conditions = ModelBoundaryConditions(tracernames(tracers), boundary_conditions)
     closure = with_tracers(tracernames(tracers), closure)
 
+    validate_buoyancy(buoyancy, tracernames(tracers))
+
     return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
@@ -130,35 +132,32 @@ function BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
 end
 
 """
-    NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+    NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
 Construct a "Non-dimensional" `Model` with resolution `N`, domain extent `L`,
 precision `float_type`, and the four non-dimensional numbers:
 
     * `Re = U λ / ν` (Reynolds number)
     * `Pr = U λ / κ` (Prandtl number)
-    * `Ri = B λ U²`  (Richardson number)
     * `Ro = U / f λ` (Rossby number)
 
 for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`,
-tracer diffusivity `κ`, buoyancy scale (or differential) `B`, and
-Coriolis parameter `f`.
+tracer diffusivity `κ`, and Coriolis parameter `f`. Buoyancy is scaled
+with `λ U²`, so that the Richardson number is `Ri=B`, where `B` is a
+non-dimensional buoyancy scale set by the user via initial conditions or 
+forcing.
 
 Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
-function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
-
-     buoyancy = SeawaterBuoyancy(float_type, 
-                    gravitational_acceleration = Ri, 
-                    equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
-                )
+     buoyancy = BuoyancyTracer()
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
-                   coriolis=coriolis, buoyancy=buoyancy, kwargs...)
+                   coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
 end

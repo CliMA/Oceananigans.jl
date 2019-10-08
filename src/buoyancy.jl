@@ -6,8 +6,22 @@ const g_Earth = 9.80665
 Supported buoyancy types:
 
 - Nothing 
+- BuoyancyTracer
 - SeawaterBuoyancy
 =#
+
+validate_buoyancy(::Nothing, tracers) = nothing
+
+function validate_buoyancy(buoyancy, tracers) 
+    req_tracers = required_tracers(buoyancy)
+
+    all(tracer ∈ tracers for tracer in req_tracers) || 
+        error("$(req_tracers) must be among the list of tracers to use $(typeof(buoyancy).name.wrapper)")
+
+    return nothing
+end
+
+required_tracers(args...) = ()
 
 #####
 ##### Functions for buoyancy = nothing
@@ -26,6 +40,8 @@ Supported buoyancy types:
 Type indicating that the tracer `T` represents buoyancy.
 """
 struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
+
+required_tracers(::BuoyancyTracer) = (:T,)
 
 @inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
 @inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.T)
@@ -54,6 +70,8 @@ function SeawaterBuoyancy(T=Float64;
                           equation_of_state = LinearEquationOfState(T))
     return SeawaterBuoyancy{T, typeof(equation_of_state)}(gravitational_acceleration, equation_of_state)
 end
+
+required_tracers(::SeawaterBuoyancy) = (:T, :S)
 
 """ 
     buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C)
