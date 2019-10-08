@@ -64,7 +64,7 @@ using Oceananigans
 
 # We'll set up a 2D model with an xz-slice so there's only 1 grid point in y
 # and use an artificially high viscosity ν and diffusivity κ.
-model = BasicModel(N=(256, 1, 256), L=(2000, 1, 2000), architecture=CPU(), ν=4e-2, κ=4e-2)
+model = BasicModel(N=(128, 128, 128), L=(2000, 2000, 2000), architecture=CPU(), ν=4e-2, κ=4e-2)
 
 # Set a temperature perturbation with a Gaussian profile located at the center
 # of the vertical slice. This will create a buoyant thermal bubble that will
