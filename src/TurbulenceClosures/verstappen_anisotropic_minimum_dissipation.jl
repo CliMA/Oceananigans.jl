@@ -1,33 +1,36 @@
 """
-    VerstappenAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
+    VerstappenAnisotropicMinimumDissipation{FT} <: AbstractAnisotropicMinimumDissipation{FT}
 
-Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by Verstappen
-(2018) and described by Vreugdenhil & Taylor (2018).
+Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by 
+Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{T, K} <: AbstractAnisotropicMinimumDissipation{T}
-     C :: T
-    Cb :: T
-     ν :: T
+struct VerstappenAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
+     C :: FT
+    Cb :: FT
+     ν :: FT
      κ :: K
-    function VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ) where T
-        κ = convert_diffusivity(T, κ)
-        return new{T, typeof(κ)}(C, Cb, ν, κ)
+    function VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ) where FT
+        return new{FT, typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
-"""
-    VerstappenAnisotropicMinimumDissipation(T=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀)
+const VAMD = VerstappenAnisotropicMinimumDissipation
 
-Returns parameters of type `T` for the `VerstappenAnisotropicMinimumDissipation` 
+"""
+    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀)
+
+Returns parameters of type `FT` for the `VerstappenAnisotropicMinimumDissipation` 
 turbulence closure. 
 
 Keyword arguments
 =================
-    - `C::T`: Poincaré constant
-    - `Cb::T`: Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
-    - `ν::T`: 'molecular' background viscosity for momentum
-    - `κ`: 'molecular' background diffusivity for each tracer
-
+    - `C`  : Poincaré constant
+    - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `ν`  : Constant background viscosity for momentum
+    - `κ`  : Constant background diffusivity for tracer. Can either be a single number 
+             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each 
+             tracer.
+             
 By default, `C` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
 and molecular values are used for `ν` and `κ`.
@@ -36,25 +39,22 @@ References
 ==========
 Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
     flow using the anisotropic minimum-dissipation model", Physics of Fluids 30, 085104.
+
 Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance the nonlinear
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function VerstappenAnisotropicMinimumDissipation(T=Float64;
-     C = 1/12,
-    Cb = 0.0,
-     ν = ν₀,
-     κ = κ₀,
-    )
-    return VerstappenAnisotropicMinimumDissipation{T}(C, Cb, ν, κ)
-end
+VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀) =
+    VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
 
-function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{T}) where T
+function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
-    return VerstappenAnisotropicMinimumDissipation{T}(closure.C, closure.Cb, closure.ν, κ)
+    return VerstappenAnisotropicMinimumDissipation{FT}(closure.C, closure.Cb, closure.ν, κ)
 end
 
-const VAMD = VerstappenAnisotropicMinimumDissipation
+#####
+##### Constructor
+#####
 
 function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::VAMD)
     νₑ = CellField(arch, grid)
@@ -62,7 +62,11 @@ function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, 
     return (νₑ=νₑ, κₑ=κₑ)
 end
 
-@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, C) where FT
+#####
+##### Kernel functions
+#####
+
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇u_ccc(ijk..., U.u, U.v, U.w)
 
@@ -78,9 +82,11 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, buoyancy, U, C) where FT
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, tracer, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
-    σ =  norm_θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
+    κ = getproperty(closure.κ, tracer)
+
+    σ =  norm_θᵢ²_ccc(i, j, k, grid, c)
 
     if σ == 0
         κˢᵍˢ = zero(FT)
@@ -90,7 +96,56 @@ end
         κˢᵍˢ = - closure.C * δ² * ϑ / σ
     end
 
-    return max(zero(FT), κˢᵍˢ) + closure.κ.T
+    return max(zero(FT), κˢᵍˢ) + κ
+end
+
+"""
+    ∇_κ_∇c(i, j, k, grid, c, tracer, closure, diffusivities, tracer_name)
+
+Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
+`closure`, where `c` is an array of scalar data located at cell centers.
+"""
+@inline function ∇_κ_∇c(i, j, k, grid, c, tracer, closure::AbstractAnisotropicMinimumDissipation, diffusivities)
+    κ = getproperty(diffusivities.κₑ, tracer)
+    return (  ∂x_caa(i, j, k, grid, κ_∂x_c, c, κ, closure)
+            + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κ, closure)
+            + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κ, closure)
+           )
+end
+
+function calc_diffusivities!(K, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds K.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+
+                ntuple(Val(length(C))) do α
+                    Base.@_inline_meta
+                    tracer = propertynames(C)[α]
+                    κₑ, c = getproperty(K.κₑ, tracer), C[α]
+                    @inbounds κₑ[i, j, k] = κ_ccc(i, j, k, grid, closure, c, tracer, buoyancy, U, C)
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+#####
+##### Filter width at various locations
+#####
+
+# Recall that filter widths are 2x the grid spacing in VAMD
+@inline Δᶠx_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δx
+@inline Δᶠy_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δy
+@inline Δᶠz_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δz
+
+for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
+    Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
+    Δ_ccc = Symbol(:Δᶠ, ξ, :_ccc)
+    @eval begin
+        const $Δ_loc = $Δ_ccc
+    end
 end
 
 #####
@@ -210,56 +265,3 @@ end
     + ▶z_aac(i, j, k, grid, norm_∂z_c², c)
 )
 
-"""
-    ∇_κ_∇T(i, j, k, grid, T, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇T(i, j, k, grid, T, closure::VAMD, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, T, diffusivities.κₑ.T, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, T, diffusivities.κₑ.T, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, T, diffusivities.κₑ.T, closure)
-)
-
-"""
-    ∇_κ_∇S(i, j, k, grid, S, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇S(i, j, k, grid, S, closure::VAMD, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, S, diffusivities.κₑ.S, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, S, diffusivities.κₑ.S, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
-)
-
-function calc_diffusivities!(K, grid, closure::VAMD, buoyancy, U, C)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, C)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, C.T,     buoyancy, U, C)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, C.S,     buoyancy, U, C)
-            end
-        end
-    end
-    return nothing
-end
-
-#####
-##### Filter width at various locations
-#####
-
-# Recall that filter widths are 2x the grid spacing in VAMD
-@inline Δᶠx_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δx
-@inline Δᶠy_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δy
-@inline Δᶠz_ccc(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δz
-
-for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
-    Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
-    Δ_ccc = Symbol(:Δᶠ, ξ, :_ccc)
-    @eval begin
-        const $Δ_loc = $Δ_ccc
-    end
-end
