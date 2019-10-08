@@ -54,7 +54,7 @@ end
 
         replace_strings = [ ("Nz = 128", "Nz = 16"),
                            ("end_time = 1day", "end_time=1.0"),
-                           ("time_step!(model, 10,", "time_step!(model, 1")
+                           ("time_step!(model, 10", "time_step!(model, 1")
                           ]
 
         @test run_example(replace_strings, "ocean_convection_with_plankton")
