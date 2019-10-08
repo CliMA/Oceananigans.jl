@@ -3,21 +3,21 @@
 #####
 
 """
-    ConstantIsotropicDiffusivity{T, N, S}
+    ConstantIsotropicDiffusivity{FT, K}
 
 Parameters for constant isotropic diffusivity models.
 """
-struct ConstantIsotropicDiffusivity{T, K} <: IsotropicDiffusivity{T}
-    ν :: T
+struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicDiffusivity{FT}
+    ν :: FT
     κ :: K
-    function ConstantIsotropicDiffusivity{T}(ν, κ) where T
-        κ = convert_diffusivity(T, κ)
-        return new{T, typeof(κ)}(ν, κ)
+    function ConstantIsotropicDiffusivity{FT}(ν, κ) where FT
+        κ = convert_diffusivity(FT, κ)
+        return new{FT, typeof(κ)}(ν, κ)
     end
 end
 
 """
-    ConstantIsotropicDiffusivity([T=Float64;] ν, κ)
+    ConstantIsotropicDiffusivity([FT=Float64;] ν, κ)
 
 Returns parameters for a constant isotropic diffusivity model with constant viscosity `ν`
 and constant thermal diffusivities `κ` for each tracer field in `tracers` 
@@ -31,20 +31,23 @@ the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 p
 according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing 
 correlations and data" (2010).
 """
-ConstantIsotropicDiffusivity(T=Float64; ν=ν₀, κ=κ₀) = ConstantIsotropicDiffusivity{T}(ν, κ)
+ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀) = ConstantIsotropicDiffusivity{FT}(ν, κ)
 
-function with_tracers(tracers, closure::ConstantIsotropicDiffusivity{T}) where T
+function with_tracers(tracers, closure::ConstantIsotropicDiffusivity{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ConstantIsotropicDiffusivity{T}(closure.ν, κ)
+    return ConstantIsotropicDiffusivity{FT}(closure.ν, κ)
 end
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
 
-@inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantIsotropicDiffusivity, args...) = (
-      closure.κ.T / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
-    + closure.κ.T / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)
-    + closure.κ.T / grid.Δz^2 * δz²_c2f2c(grid, c, i, j, k)
-)
+@inline function ∇_κ_∇c(i, j, k, grid, c, tracer, closure::ConstantIsotropicDiffusivity, args...)
+    κ = getproperty(closure.κ, tracer) 
+
+    return (  κ / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
+            + κ / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)
+            + κ / grid.Δz^2 * δz²_c2f2c(grid, c, i, j, k)
+           )
+end
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, u, v, w, args...) = (
       closure.ν / grid.Δx^2 * δx²_f2c2f(grid, u, i, j, k)

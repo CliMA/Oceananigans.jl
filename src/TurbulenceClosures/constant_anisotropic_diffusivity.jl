@@ -1,17 +1,17 @@
 """
-    ConstantAnisotropicDiffusivity{T}
+    ConstantAnisotropicDiffusivity{FT, KH, KV}
 
 Parameters for constant anisotropic diffusivity models.
 """
-struct ConstantAnisotropicDiffusivity{T, KH, KV} <: TensorDiffusivity{T}
-    νh :: T
-    νv :: T
+struct ConstantAnisotropicDiffusivity{FT, KH, KV} <: TensorDiffusivity{FT}
+    νh :: FT
+    νv :: FT
     κh :: KH
     κv :: KV
-    function ConstantAnisotropicDiffusivity{T}(νh, νv, κh, κv) where T
-        κh = convert_diffusivity(T, κh)
-        κv = convert_diffusivity(T, κv)
-        return new{T, typeof(κh), typeof(κv)}(νh, νv, κh, κv)
+    function ConstantAnisotropicDiffusivity{FT}(νh, νv, κh, κv) where FT
+        κh = convert_diffusivity(FT, κh)
+        κv = convert_diffusivity(FT, κv)
+        return new{FT, typeof(κh), typeof(κv)}(νh, νv, κh, κv)
     end
 end
 
@@ -29,13 +29,13 @@ These values are the approximate viscosity and thermal diffusivity for seawater 
 and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review 
 of existing correlations and data" (2010).
 """
-ConstantAnisotropicDiffusivity(T=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=κ₀) =
-    ConstantAnisotropicDiffusivity{T}(νh, νv, κh, κv)
+ConstantAnisotropicDiffusivity(FT=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=κ₀) =
+    ConstantAnisotropicDiffusivity{FT}(νh, νv, κh, κv)
 
-function with_tracers(tracers, closure::ConstantAnisotropicDiffusivity{T}) where T
+function with_tracers(tracers, closure::ConstantAnisotropicDiffusivity{FT}) where FT
     κh = tracer_diffusivities(tracers, closure.κh)
     κv = tracer_diffusivities(tracers, closure.κv)
-    return ConstantAnisotropicDiffusivity{T}(closure.νh, closure.νv, κh, κv)
+    return ConstantAnisotropicDiffusivity{FT}(closure.νh, closure.νv, κh, κv)
 end
 
 calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity,
@@ -59,8 +59,12 @@ calc_diffusivities!(diffusivities, grid, closure::ConstantAnisotropicDiffusivity
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
     )
 
-@inline ∇_κ_∇c(i, j, k, grid, c, closure::ConstantAnisotropicDiffusivity, K) = (
-      closure.κh[1] * ∂x²_caa(i, j, k, grid, c)
-    + closure.κh[1] * ∂y²_aca(i, j, k, grid, c)
-    + closure.κv[1] * ∂z²_aac(i, j, k, grid, c)
-    )
+@inline function ∇_κ_∇c(i, j, k, grid, c, tracer, closure::ConstantAnisotropicDiffusivity, args...)
+    κh = getproperty(closure.κh, tracer)
+    κv = getproperty(closure.κv, tracer)
+
+    return (  κh * ∂x²_caa(i, j, k, grid, c)
+            + κh * ∂y²_aca(i, j, k, grid, c)
+            + κv * ∂z²_aac(i, j, k, grid, c)
+           )
+end
