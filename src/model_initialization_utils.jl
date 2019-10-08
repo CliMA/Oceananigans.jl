@@ -67,13 +67,17 @@ end
 Return a NamedTuple with tracer fields initialized
 as `CellField`s on the architecture `arch` and `grid`.
 """
-function TracerFields(arch, grid, tracernames=(:T, :S))
+function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
     return NamedTuple{tracernames}(tracerfields)
 end
 
-TracerFields(tracers::NamedTuple) = tracers
+TracerFields(arch, grid, tracers::Union{Tuple{}, Nothing}) = NamedTuple{()}(())
+TracerFields(arch, grid, tracers::Symbol) = TracerFields(arch, grid, tuple(tracers))
+TracerFields(arch, grid, tracers::NamedTuple) = tracers
 
+tracernames(name::Symbol) = tuple(name)
+tracernames(::Nothing) = ()
 tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
