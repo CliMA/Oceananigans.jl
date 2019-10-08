@@ -27,8 +27,8 @@ required_tracers(args...) = ()
 ##### Functions for buoyancy = nothing
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
-@inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{T}, ::Nothing, C) where T = zero(T)
+@inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
 
 #####
 ##### Seawater buoyancy for buoyancy determined by temperature and salinity
@@ -37,38 +37,38 @@ required_tracers(args...) = ()
 """
     BuoyancyTracer <: AbstractBuoyancy{Nothing}
 
-Type indicating that the tracer `T` represents buoyancy.
+Type indicating that the tracer `b` represents buoyancy.
 """
 struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 
-required_tracers(::BuoyancyTracer) = (:T,)
+required_tracers(::BuoyancyTracer) = (:b,)
 
-@inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.T[i, j, k]
-@inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.T)
+@inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
+@inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.b)
 
 """
     SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
 
 Buoyancy model for temperature- and salt-stratified seawater.
 """
-struct SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
-    gravitational_acceleration :: G
+struct SeawaterBuoyancy{FT, EOS} <: AbstractBuoyancy{EOS}
+    gravitational_acceleration :: FT
     equation_of_state :: EOS
 end
 
 """
-    SeawaterBuoyancy([T=Float64;] gravitational_acceleration = g_Earth,
-                                  equation_of_state = LinearEquationOfState(T))
+    SeawaterBuoyancy([FT=Float64;] gravitational_acceleration = g_Earth,
+                                  equation_of_state = LinearEquationOfState(FT))
 
 Returns parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called 'g'), and an
 `equation_of_state` that related temperature and salinity (or conservative temperature
 and absolute salinity) to density anomalies and buoyancy.
 """
-function SeawaterBuoyancy(T=Float64; 
+function SeawaterBuoyancy(FT=Float64; 
                           gravitational_acceleration = g_Earth, 
-                          equation_of_state = LinearEquationOfState(T))
-    return SeawaterBuoyancy{T, typeof(equation_of_state)}(gravitational_acceleration, equation_of_state)
+                          equation_of_state = LinearEquationOfState(FT))
+    return SeawaterBuoyancy{FT, typeof(equation_of_state)}(gravitational_acceleration, equation_of_state)
 end
 
 required_tracers(::SeawaterBuoyancy) = (:T, :S)
@@ -97,17 +97,17 @@ salinity or absolute salinity, where applicable.
 #####
 
 """
-    LinearEquationOfState{T} <: AbstractEquationOfState
+    LinearEquationOfState{FT} <: AbstractEquationOfState
 
 Linear equation of state for seawater. 
 """
-struct LinearEquationOfState{T} <: AbstractEquationOfState
-    α :: T
-    β :: T
+struct LinearEquationOfState{FT} <: AbstractEquationOfState
+    α :: FT
+    β :: FT
 end
 
 """
-    LinearEquationOfState([T=Float64;] α=1.67e-4, β=7.80e-4)
+    LinearEquationOfState([FT=Float64;] α=1.67e-4, β=7.80e-4)
 
 Returns parameters for a linear equation of state for seawater with
 thermal expansion coefficient `α` [K⁻¹] and haline contraction coefficient 
@@ -119,8 +119,8 @@ thermal expansion coefficient `α` [K⁻¹] and haline contraction coefficient
 Default constants are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid 
 Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
 """
-LinearEquationOfState(T=Float64; α=1.67e-4, β=7.80e-4) = 
-    LinearEquationOfState{T}(α, β)
+LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = 
+    LinearEquationOfState{FT}(α, β)
 
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
 
@@ -158,15 +158,15 @@ Parameters associated with the idealized nonlinear equation of state proposed by
 Roquet et al., "Defining a Simplified yet 'Realistic' Equation of State for Seawater", 
 Journal of Physical Oceanography (2015).
 """
-struct RoquetIdealizedNonlinearEquationOfState{F, C, T} <: AbstractNonlinearEquationOfState
-                   ρ₀ :: T
+struct RoquetIdealizedNonlinearEquationOfState{F, C, FT} <: AbstractNonlinearEquationOfState
+                   ρ₀ :: FT
     polynomial_coeffs :: C
 end
 
-type_convert_roquet_coeffs(T, coeffs) = NamedTuple{propertynames(coeffs)}(Tuple(T(R) for R in coeffs))
+type_convert_roquet_coeffs(FT, coeffs) = NamedTuple{propertynames(coeffs)}(Tuple(FT(R) for R in coeffs))
 
 """
-    RoquetIdealizedNonlinearEquationOfState([T=Float64,] flavor, ρ₀=1024.6, 
+    RoquetIdealizedNonlinearEquationOfState([FT=Float64,] flavor, ρ₀=1024.6, 
                                             polynomial_coeffs=optimized_roquet_coeffs[flavor])
 
 Returns parameters for the idealized polynomial nonlinear equation of state with 
@@ -227,10 +227,10 @@ References
 
     - "Thermodynamic Equation of State for Seawater" (TEOS-10), http://www.teos-10.org
 """
-function RoquetIdealizedNonlinearEquationOfState(T, flavor=:cabbeling_thermobaricity; 
+function RoquetIdealizedNonlinearEquationOfState(FT, flavor=:cabbeling_thermobaricity; 
                                                  polynomial_coeffs=optimized_roquet_coeffs[flavor], ρ₀=1024.6)
-    typed_coeffs = type_convert_roquet_coeffs(T, polynomial_coeffs)
-    return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), T}(ρ₀, typed_coeffs)
+    typed_coeffs = type_convert_roquet_coeffs(FT, polynomial_coeffs)
+    return RoquetIdealizedNonlinearEquationOfState{flavor, typeof(typed_coeffs), FT}(ρ₀, typed_coeffs)
 end
 
 RoquetIdealizedNonlinearEquationOfState(flavor::Symbol=:cabbeling_thermobaricity; kwargs...) = 
