@@ -71,7 +71,9 @@ wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=90.0)
 ## Create a plot
 fig, axs = subplots(ncols=2, figsize=(10, 6))
 
-plot_slice(ϕ) = pcolormesh(xnodes(ϕ, 1, Lz), znodes(ϕ, Lz, 1, Lz), data(ϕ)[:, 1, :])
+xC = repeat(model.grid.xC, 1, model.grid.Nz)
+zF = repeat(reshape(model.grid.zF[1:end-1], 1, model.grid.Nz), model.grid.Nx, 1)
+zC = repeat(reshape(model.grid.zC, 1, model.grid.Nz), model.grid.Nx, 1)
 
 ## Run the model
 while model.clock.time < end_time
@@ -79,17 +81,18 @@ while model.clock.time < end_time
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
 
     sca(axs[1]); cla()
-    plot_slice(model.velocities.w)
+    pcolormesh(xC, zF, data(model.velocities.w)[:, 1, :])
     title("Vertical velocity")
     xlabel("\$ x \$ (m)")
     ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla()
-    plot_slice(model.tracers.S)
+    pcolormesh(xC, zC, data(model.tracers.S)[:, 1, :])
     title("Phytoplankton concentration")
     xlabel("\$ x \$ (m)")
     axs[2].tick_params(left=false, labelleft=false)
 
     suptitle(@sprintf("\$ t = %.2f\$ hours", model.clock.time / hour))
+    [ax.set_aspect(1) for ax in axs]
     gcf(); pause(0.01)
 end
