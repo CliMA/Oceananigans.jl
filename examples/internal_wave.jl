@@ -1,119 +1,106 @@
-using Oceananigans, Printf, PyPlot
+# # Internal wave example
+#
+# In this example, we initialize an internal wave packet in two-dimensions
+# and watch is propagate.
 
-include("utils.jl")
+using Oceananigans, PyPlot, Printf
 
-function informative_message(model, u, w, ℕ)
-    return @sprintf("""
-        This is an informative message.
+# ## Numerical, domain, and internal wave parameters
+#
+# First, we pick some numerical and physical parameters for our model
+# and its rotation rate.
 
-         model vertical resolution : %d
-                   model iteration : %d
-        kinetic + potential energy : %.2e
-                    kinetic energy : %.2e
-               relative error in w : %.2e
-               relative error in u : %.2e
-        """, model.grid.Nz, model.clock.iteration, total_energy(model, ℕ),
-        total_kinetic_energy(model), w_relative_error(model, w), u_relative_error(model, u))
-end
+Nx = 128 # resolution
+Lx = 2π  # domain extent
 
-function makeplot(axs, model, w)
-    w_num = model.velocities.w
+# We set up an internal wave with the pressure field
+#
+# $$ p(x, y, z, t) = a(x, z) cos(kx + mz - \omega t) $$ .
+#
+# where `m` is the vertical wavenumber, `k` is the horizontal wavenumber,
+# `ω` is the wave frequncy, and `a(x, z)` is a Gaussian envelope.
 
-    w_ans = FaceFieldZ(w.(xnodes(w_num), ynodes(w_num), znodes(w_num),
-                        model.clock.time), model.grid)
+## Non-dimensional internal wave parameters
+m = 16      # vertical wavenumber
+k = 1       # horizontal wavenumber
+N = 1       # buoyancy frequency
+f = 0.2     # inertial frequency
 
-    wmax = maximum(abs.(w_num.data))
+# ## A Gaussian wavepacket
+#
+# Next, we set up an initial condition corresponding to a propagating 
+# wave packet with a Gaussian envelope. The internal wave dispersion relation yields
 
-    sca(axs[1, 1])
+ω² = (N^2 * k^2 + f^2 * m^2) / (k^2 + m^2)
 
-    PyPlot.plot(data(w_ans)[1, 1, :], view(znodes(w_num), 1, 1, :),  "-", linewidth=2, alpha=0.4)
-    PyPlot.plot(data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "--", linewidth=1)
+## and thus
+ω = sqrt(ω²)
 
-    xlim(-wmax, wmax)
+# The internal wave polarization relations follow from the linearized
+# Boussinesq equations, 
 
-    axs[1, 1].spines["top"].set_visible(false)
-    axs[1, 1].spines["right"].set_visible(false)
+U = k * ω   / (ω^2 - f^2)
+V = k * f   / (ω^2 - f^2)
+W = m * ω   / (ω^2 - N^2)
+Θ = m * N^2 / (ω^2 - N^2)
 
-    xlabel(L"w")
-    ylabel(L"z")
+# Finally, we set-up a small-amplitude, Gaussian envelope for the wave packet
 
-    sca(axs[2, 1])
-    PyPlot.plot(data(w_ans)[1, 1, :] .- data(w_num)[1, 1, :], view(znodes(w_num), 1, 1, :), "-")
+## Some Gaussian parameters
+A, x₀, z₀, δ = 1e-9, Lx/2, -Lx/2, Lx/15 
 
-    xlim(-wmax, wmax)
+## A Gaussian envelope
+a(x, z) = A * exp( -( (x - x₀)^2 + (z - z₀)^2 ) / 2δ^2 )
 
-    axs[2, 1].spines["top"].set_visible(false)
-    axs[2, 1].spines["right"].set_visible(false)
+# Create initial condition functions
+u₀(x, y, z) = a(x, z) * U * cos(k*x + m*z)
+v₀(x, y, z) = a(x, z) * V * sin(k*x + m*z)
+w₀(x, y, z) = a(x, z) * W * cos(k*x + m*z)
+T₀(x, y, z) = a(x, z) * Θ * sin(k*x + m*z) + N^2 * z 
 
-    xlabel(L"\mathrm{mean} \left [ \left ( w_\mathrm{model} - w_\mathrm{analytical} \right )^2 \right ] / \mathrm{mean} \left ( w_\mathrm{analytical}^2 \right )")
-    ylabel(L"z")
+# We are now ready to instantiate our model on a uniform grid. 
+# We give the model a constant rotation rate with background vorticity `f`,
+# use temperature as a buoyancy tracer, and use a small constant viscosity 
+# and diffusivity to stabilize the model.
 
-    sca(axs[1, 2])
-    plotxzslice(w_num)
-    axis("off")
-    title("Model vertical velocity")
+model = Model(
+        grid = RegularCartesianGrid(N=(Nx, 1, Nx), L=(Lx, Lx, Lx)),
+     closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
+    coriolis = FPlane(f=f), 
+    buoyancy = BuoyancyTracer()
+)
+
+# We initialize the velocity and buoyancy (temperature) fields
+# with our internal wave initial condition.
+
+set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+
+# ## Some plotting utilities
+#
+# To watch the wave packet propagate interactively as the model runs,
+# we build some plotting utilities.
+
+xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
+zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
+
+function plot_field!(ax, w, t) 
+    pcolormesh(xplot(w), zplot(w), data(model.velocities.w)[:, 1, :])
     xlabel(L"x")
     ylabel(L"z")
-
-    sca(axs[2, 2])
-    plotxzslice(w_ans)
-    axis("off")
-    title("Analytical vertical velocity")
-    xlabel(L"x")
-    ylabel(L"z")
-
+    title(@sprintf("\$ \\omega t / 2 \\pi = %.2f\$", t*ω/2π))
+    ax.set_aspect(1)
+    pause(0.1)
     return nothing
 end
 
-# Internal wave parameters
- ν = κ = 1e-9
- L = 2π
-z₀ = -L/3
- δ = L/20
-a₀ = 1e-3
- m = 16
- k = 1
- f = 0.2
- ℕ = 1.0
- σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
+close("all")
+fig, ax = subplots()
 
-# Numerical parameters
- N = 128
-Δt = 0.01 * 1/σ
+# ## A wave packet on the loose
+#
+# Finally, we release the packet:
 
-@show σ/f
-cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
- U = a₀ * k * σ   / (σ^2 - f^2)
- V = a₀ * k * f   / (σ^2 - f^2)
- W = a₀ * m * σ   / (σ^2 - ℕ^2)
- Θ = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
-
-a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
-
-u(x, y, z, t) =           a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-v(x, y, z, t) =           a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-w(x, y, z, t) =           a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
-T(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * Θ * sin(k*x + m*z - σ*t)
-
-u₀(x, y, z) = u(x, y, z, 0)
-v₀(x, y, z) = v(x, y, z, 0)
-w₀(x, y, z) = w(x, y, z, 0)
-T₀(x, y, z) = T(x, y, z, 0)
-
-# Create a model where temperature = buoyancy.
-model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ,
-                    eos=LinearEquationOfState(βT=1.0),
-                    constants=PlanetaryConstants(f=f, g=1.0))
-
-set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
-println(informative_message(model, u, w, ℕ))
-
-fig, axs = subplots(ncols=2, nrows=2, figsize=(8, 8))
-
-for Nt in (1, 10, 100)
-    time_step!(model, Nt, Δt)
-    makeplot(axs, model, w)
-    println(informative_message(model, u, w, ℕ))
+for i = 1:10
+    time_step!(model, Nt = 200, Δt = 0.001 * 2π/ω)
+    plot_field!(ax, model.velocities.w, model.clock.time)
 end
-
-gcf()
