@@ -52,7 +52,7 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     boundary_condition_args = (model.clock.time, model.clock.iteration, U, C, model.parameters)
 
     # Pre-computations:
-    @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
+    @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻, length(Gⁿ))
     fill_halo_regions!(merge(U, C), bcs.solution, arch, grid, boundary_condition_args...)
 
     @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, C)
@@ -66,7 +66,8 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs.solution, boundary_condition_args...)
 
     # Complete explicit substep:
-    @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
+    @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ,
+                                                                                            length(Gⁿ))
 
     # Start pressure correction substep with a pressure solve:
     fill_halo_regions!(Gⁿ[1:3], bcs.tendency[1:3], arch, grid)
@@ -77,7 +78,8 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     fill_halo_regions!(p.pNHS, bcs.pressure, arch, grid)
 
     # Complete pressure correction step:
-    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, C, p.pNHS, Gⁿ, Δt)
+    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, C, p.pNHS, Gⁿ, Δt,
+                                                                                      length(C))
 
     # Recompute vertical velocity w from continuity equation to ensure incompressibility
     fill_halo_regions!(U, bcs.solution[1:3], arch, grid, boundary_condition_args...)
@@ -105,11 +107,11 @@ function solve_for_pressure!(::GPU, model::Model)
 end
 
 """ Store previous source terms before updating them. """
-function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻)
+function store_previous_source_terms!(grid::AbstractGrid, Gⁿ, G⁻, nfields)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                ntuple(Val(length(G⁻))) do α
+                ntuple(Val(nfields)) do α
                     Base.@_inline_meta
                     @inbounds G⁻[α][i, j, k] = Gⁿ[α][i, j, k]
                 end
@@ -221,11 +223,11 @@ Adams-Bashforth method
 
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
-function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ) where FT
+function adams_bashforth_update_source_terms!(grid::AbstractGrid{FT}, Gⁿ, G⁻, χ, nfields) where FT
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                ntuple(Val(length(Gⁿ))) do α
+                ntuple(Val(nfields)) do α
                     Base.@_inline_meta
                     @inbounds Gⁿ[α][i, j, k] = (FT(1.5) + χ) * Gⁿ[α][i, j, k] - (FT(0.5) + χ) * G⁻[α][i, j, k]
                 end
@@ -374,7 +376,7 @@ and the tracers via
 
 Note that the vertical velocity is not explicitly time stepped.
 """
-function update_velocities_and_tracers!(grid::AbstractGrid, U, C, pNHS, Gⁿ, Δt)
+function update_velocities_and_tracers!(grid::AbstractGrid, U, C, pNHS, Gⁿ, Δt, ntracers)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -382,7 +384,7 @@ function update_velocities_and_tracers!(grid::AbstractGrid, U, C, pNHS, Gⁿ, Δ
                 @inbounds U.u[i, j, k] += (Gⁿ.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
                 @inbounds U.v[i, j, k] += (Gⁿ.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
 
-                ntuple(Val(length(Gⁿ)-3)) do α
+                ntuple(Val(ntracers)) do α
                     Base.@_inline_meta
                     c, Gcⁿ = C[α], Gⁿ[α+3]
                     @inbounds c[i, j, k] += Gcⁿ[i, j, k] * Δt
