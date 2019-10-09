@@ -234,7 +234,6 @@ function buoyancy_perturbation end
 function buoyancy_frequency_squared end
 
 include("utils.jl")
-include("model_initialization_utils.jl")
 
 include("clock.jl")
 include("grids.jl")
