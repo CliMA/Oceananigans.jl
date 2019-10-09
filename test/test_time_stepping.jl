@@ -8,7 +8,7 @@ end
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
     model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       forcing=Forcing(FT=add_ones))
+                       forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
