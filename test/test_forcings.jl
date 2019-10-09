@@ -4,7 +4,7 @@ function test_forcing(fld)
     kwarg = Dict(fld => add_one)
     forcing = ModelForcing(; kwarg...)
     f = getfield(forcing, fld)
-    f() == 1.0
+    return f() == 1.0
 end
 
 function time_step_with_forcing_functions(arch)
@@ -30,7 +30,6 @@ function time_step_with_forcing_functions_params(arch)
     time_step!(model, 1, 1)
     return true
 end
-
 
 function time_step_with_forcing_functions_sin_exp(arch)
     @inline Fu(i, j, k, grid, time, U, Φ, params) = @inbounds sin(grid.xC[i])
