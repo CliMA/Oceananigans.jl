@@ -43,6 +43,20 @@ function time_step_with_forcing_functions_sin_exp(arch)
     return true
 end
 
+function time_step_with_simple_forcing(arch)
+    u_forcing = SimpleForcing((x, y, z, t) -> sin(x))
+    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=ModelForcing(u=u_forcing))
+    time_step!(model, 1, 1)
+    return true
+end
+
+function time_step_with_simple_forcing_parameters(arch)
+    u_forcing = SimpleForcing((x, y, z, t, p) -> sin(p.ω * x), parameters=(ω=π,))
+    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=ModelForcing(u=u_forcing))
+    time_step!(model, 1, 1)
+    return true
+end
+
 @testset "ModelForcing" begin
     println("Testing forcings...")
 
@@ -59,6 +73,8 @@ end
             @test time_step_with_forcing_functions(arch)
             @test time_step_with_forcing_functions_params(arch)
             @test time_step_with_forcing_functions_sin_exp(arch)
+            @test time_step_with_simple_forcing(arch)
+            @test time_step_with_simple_forcing_parameters(arch)
         end
     end
 end
