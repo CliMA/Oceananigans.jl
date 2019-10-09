@@ -37,7 +37,7 @@ function with_tracers(tracers, closure::ConstantIsotropicDiffusivity{FT}) where 
     return ConstantIsotropicDiffusivity{FT}(closure.ν, κ)
 end
 
-calc_diffusivities!(K, arch, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(K, arch, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
 
 @inline function ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::ConstantIsotropicDiffusivity, args...)
     @inbounds κ = closure.κ[tracer_idx]

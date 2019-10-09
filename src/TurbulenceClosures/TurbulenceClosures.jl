@@ -12,7 +12,7 @@ export
   VerstappenAnisotropicMinimumDissipation,
 
   TurbulentDiffusivities,
-  calc_diffusivities!,
+  calculate_diffusivities!,
 
   ∇_κ_∇c,
   ∇_κ_∇T,

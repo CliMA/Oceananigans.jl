@@ -113,19 +113,19 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
            )
 end
 
-function calc_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @launch device(arch) config=launch_config(grid, 3) calc_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
+function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+    @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
 
     for i in 1:length(K.κₑ)
         @inbounds κₑ = K.κₑ[i]
         @inbounds c = C[i]
-        @launch device(arch) config=launch_config(grid, 3) calc_tracer_diffusivity!(κₑ, grid, closure, c, i, U) 
+        @launch device(arch) config=launch_config(grid, 3) calculate_tracer_diffusivity!(κₑ, grid, closure, c, i, U) 
     end
 
     return nothing
 end
 
-function calc_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
@@ -136,7 +136,7 @@ function calc_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipa
     return nothing
 end
 
-function calc_tracer_diffusivity!(κₑ, grid, closure, c, tracer_idx, U)
+function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_idx, U)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)

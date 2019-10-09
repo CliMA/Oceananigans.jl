@@ -311,12 +311,12 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_idx, closure, diffusivities.νₑ)
 )
 
-function calc_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, args...)
-    @launch device(arch) config=launch_config(grid, 3) calc_viscosity!(K, grid, closure, args...)
+function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, args...)
+    @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K, grid, closure, args...)
     return nothing
 end
 
-function calc_viscosity!(diffusivities, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
+function calculate_viscosity!(diffusivities, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
