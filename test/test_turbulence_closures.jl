@@ -11,7 +11,7 @@ function test_closure_instantiation(FT, closurename)
     return eltype(closure) == FT
 end
 
-function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
+function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
       tracernames = (:b,)
           closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
           closure = with_tracers(tracernames, closure)
@@ -23,8 +23,7 @@ function test_calc_diffusivities(arch, closurename, FT=Float64; kwargs...)
 
     U, C, K = datatuples(velocities, tracers, diffusivities)
 
-    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, C,
-                                                                           length(C))
+    calculate_diffusivities!(K, arch, grid, closure, buoyancy, U, C)
 
     return true
 end
@@ -180,7 +179,7 @@ end
             for arch in archs
                 for closure in closures
                     println("    Calculating diffusivities for $closure ($T, $arch)")
-                    @test test_calc_diffusivities(arch, closure, T)
+                    @test test_calculate_diffusivities(arch, closure, T)
                 end
             end
         end
