@@ -49,6 +49,17 @@ end
         end
     end
 
+    @testset "Ocean convection with plankton example" begin
+        println("  Testing ocean convection with plankton example")
+
+        replace_strings = [ ("Nz = 128", "Nz = 16"),
+                           ("end_time = 1day", "end_time=1.0"),
+                           ("time_step!(model, 10", "time_step!(model, 1")
+                          ]
+
+        @test run_example(replace_strings, "ocean_convection_with_plankton")
+    end
+
     @testset "Simple diffusion example" begin
         println("  Testing simple diffusion example")
 
