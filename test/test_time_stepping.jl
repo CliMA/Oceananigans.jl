@@ -42,7 +42,7 @@ function compute_w_from_continuity(arch, FT)
 
     fill_halo_regions!(u.data, bcs.u, arch, grid)
     fill_halo_regions!(v.data, bcs.v, arch, grid)
-    compute_w_from_continuity!(grid, (u=u.data, v=v.data, w=w.data))
+    compute_w_from_continuity!((u=u.data, v=v.data, w=w.data), grid)
 
     fill_halo_regions!(w.data, bcs.w, arch, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
