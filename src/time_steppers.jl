@@ -197,12 +197,14 @@ end
 ##### Pressure-related functions
 #####
 
+"Solve the Poisson equation for non-hydrostatic pressure on the CPU."
 function solve_for_pressure!(pressure, ::CPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
     view(pressure, 1:grid.Nx, 1:grid.Ny, 1:grid.Nz) .= real.(ϕ)
     return nothing 
 end
 
+"Solve the Poisson equation for non-hydrostatic pressure on the GPU."
 function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
     @launch device(GPU()) config=launch_config(grid, 3) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
@@ -229,7 +231,7 @@ function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
 end
 
 """
-Calculate the right-hand-side of the elliptic Poisson equation for the non-hydrostatic
+Calculate the right-hand-side of the Poisson equation for the non-hydrostatic
 pressure
 
     `∇²ϕ_{NH}^{n+1} = (∇·u^n)/Δt + ∇·(Gu, Gv, Gw)`
@@ -249,7 +251,7 @@ function calculate_poisson_right_hand_side!(RHS, ::CPU, grid, ::PoissonBCs, Δt,
 end
 
 """
-Calculate the right-hand-side of the elliptic Poisson equation for the non-hydrostatic
+Calculate the right-hand-side of the Poisson equation for the non-hydrostatic
 pressure and in the process apply the permutation
 
     [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
@@ -277,7 +279,7 @@ function calculate_poisson_right_hand_side!(RHS, ::GPU, grid, ::PPN, Δt, U, G)
 end
 
 """
-Calculate the right-hand-side of the elliptic Poisson equation for the non-hydrostatic
+Calculate the right-hand-side of the Poisson equation for the non-hydrostatic
 pressure and in the process apply the permutation
 
     [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
@@ -469,15 +471,10 @@ function adams_bashforth_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
     return nothing
 end
 
-
 """
 Update the horizontal velocities u and v via
 
     `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
-
-and the tracers via
-
-    `c^{n+1} = c^n + Gc^{n+½} Δt`
 
 Note that the vertical velocity is not explicitly time stepped.
 """
@@ -494,6 +491,11 @@ function update_velocities!(U, grid, Δt, G, pNHS)
     return nothing
 end
 
+"""
+Update tracers via
+
+    `c^{n+1} = c^n + Gc^{n+½} Δt`
+"""
 function update_tracer!(c, grid, Δt, Gc)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -506,6 +508,7 @@ function update_tracer!(c, grid, Δt, Gc)
     return nothing
 end
 
+"Update the solution variables (velocities and tracers)."
 function update_solution!(U, C, arch, grid, G, pNHS, Δt)
     @launch device(arch) config=launch_config(grid, 3) update_velocities!(U, grid, Δt, G, pNHS)
 
