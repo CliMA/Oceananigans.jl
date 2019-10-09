@@ -36,9 +36,10 @@ julia> v_forcing = SimpleForcing(parameterized_forcing, parameters=(μ=42, λ=0.
 
 """
 SimpleForcing(location::Tuple, func::Function; parameters=nothing) = 
-    SimpleForcing{location[1], location[2], location[3], typeof(func)}(func, parameters)
+    SimpleForcing{location[1], location[2], location[3], typeof(func), typeof(parameters)}(func, parameters)
 
 SimpleForcing(func::Function; kwargs...) = SimpleForcing((Cell, Cell, Cell), func; kwargs...)
+
 SimpleForcing(location::Tuple, forcing::SimpleForcing) = SimpleForcing(location, forcing.func)
 
 @inline (f::SimpleForcing{X, Y, Z})(i, j, k, grid, time, U, C, params) where {X, Y, Z} =
