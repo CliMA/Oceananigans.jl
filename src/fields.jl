@@ -25,8 +25,8 @@ end
 """
 	Field(L::Tuple, arch::AbstractArchitecture, grid)
 
-Construct a `Field` on architecture `arch` and `grid` with location defined by the tuple `L` of length 3 whose elements
-are `Cell` or `Face`.
+Construct a `Field` on architecture `arch` and `grid` with location defined by the tuple 
+`L` of length 3 whose elements are `Cell` or `Face`.
 """
 function Field(L::Tuple, arch::AbstractArchitecture, grid)
     data = zeros(arch, grid)
@@ -36,16 +36,17 @@ end
 """
 	Field(L::Tuple, data::AbstractArray, grid)
 
-Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L` of length 3 whose elements
-are `Cell` or `Face`.
+Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L` 
+of length 3 whose elements are `Cell` or `Face`.
 """
-Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3], typeof(data), typeof(grid)}(data, grid)
+Field(L::Tuple, data::AbstractArray, grid) = 
+    Field{L[1], L[2], L[3], typeof(data), typeof(grid)}(data, grid)
 
 """
 	Field(X, Y, Z, data, grid)
 
-Construct a `Field` on `grid` using the array `data` with location defined by `Lx`, `Ly`, and `Lz` which are `Cell`
-or `Face`.
+Construct a `Field` on `grid` using the array `data` with location defined by `Lx`, `Ly`, 
+and `Lz` which are `Cell` or `Face`.
 """
 Field(X, Y, Z, data, grid) = Field((X, Y, Z), data, grid)
 
@@ -112,6 +113,12 @@ FaceFieldZ(arch, grid) = Field(Cell, Cell, Face, arch, grid)
 
 location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
+architecture(::Array) = CPU()
+@hascuda architecture(::CuArray) = GPU()
+
+architecture(f::Field) = architecture(f.data)
+architecture(o::OffsetArray) = architecture(f.parent)
+
 @inline size(f::AbstractField) = size(f.grid)
 @inline length(f::Field) = length(f.data)
 
@@ -155,11 +162,16 @@ znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
 # Niceties
-const AbstractCPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
-@hascuda const AbstractGPUField = AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+const AbstractCPUField = 
+    AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+
+@hascuda const AbstractGPUField = 
+    AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 set!(u::Field, v::Number) = @. u.data = v
-set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} = @. u.data.parent = v.data.parent
+
+set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} = 
+    @. u.data.parent = v.data.parent
 
 "Set the CPU field `u` to the array `v`."
 function set!(u::AbstractCPUField, v::Array)
