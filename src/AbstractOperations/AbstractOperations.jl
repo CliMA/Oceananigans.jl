@@ -6,7 +6,8 @@ using Base: @propagate_inbounds
 
 using Oceananigans
 
-using Oceananigans: Face, Cell, AbstractLocatedField, device, launch_config, architecture,
+using Oceananigans: AbstractModel, AbstractLocatedField, Face, Cell, 
+                    device, launch_config, architecture,
                     HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
 
 import Oceananigans: data, architecture

@@ -14,6 +14,27 @@ function horizontal_average_is_correct(arch, FT)
     return all(Array(T̅.result[:][2:end-1]) ≈ correct_profile)
 end
 
+function horizontal_average_of_product_is_correct(arch, FT)
+    model = BasicModel(N = (16, 16, 16), L = (1, 1, 1), architecture=arch, float_type=FT)
+
+    # Set a linear stably stratified temperature profile and a sinusoidal u(z) profile.
+    u₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+
+    set!(model; u=u₀, T=T₀)
+
+    u = model.velocities.u
+    T = model.tracers.T
+
+    uT = HorizontalAverage(u * T, model; interval=0.5second)
+    computed_profile = uT(model)
+
+    correct_profile = @. sin.(model.grid.zC) * (20 + 0.01 * model.grid.zC)
+
+    return computed_profile[:][2:end-1] ≈ correct_profile
+end
+
+
 function nan_checker_aborts_simulation(arch, FT)
     model = BasicModel(N = (16, 16, 2), L = (1, 1, 1), architecture=arch, float_type=FT)
 
@@ -117,6 +138,7 @@ end
             println("  Testing horizontal average [$(typeof(arch))]")
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
+                @test horizontal_average_of_product_is_correct(arch, FT)
             end
         end
     end
