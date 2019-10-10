@@ -1,6 +1,6 @@
 EXAMPLES_DIR = "../examples/"
 
-function run_example(replace_strings, example_name)
+function run_example(replace_strings, example_name, module_suffix="")
     example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")
     txt = read(example_filepath, String)
 
@@ -11,7 +11,7 @@ function run_example(replace_strings, example_name)
     test_script_filepath = example_name * "_example_test.jl"
 
     open(test_script_filepath, "w") do f
-        write(f, "module Test_$example_name\n")
+        write(f, "module Test_$example_name" * "_$module_suffix\n")
         write(f, txt)
         write(f, "\nend # module")
     end
@@ -28,8 +28,6 @@ function run_example(replace_strings, example_name)
     return true
 end
 
-
-
 @testset "Examples" begin
     println("Testing examples...")
 
@@ -44,7 +42,7 @@ end
 
             arch == GPU() && push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
 
-            @test run_example(replace_strings, "ocean_wind_mixing_and_convection")
+            @test run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
             rm("ocean_wind_mixing_and_convection.jld2")
         end
     end
@@ -91,7 +89,5 @@ end
 
         @test run_example(replace_strings, "two_dimensional_turbulence")
     end
-
-
 
 end
