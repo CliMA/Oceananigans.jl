@@ -94,7 +94,7 @@ end
 
             for arch in archs
                 u, v, w = Oceananigans.VelocityFields(arch, grid)
-                T, S = Oceananigans.TracerFields(arch, grid)
+                T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
 
                 for op in (+, *, -, /)
                     @test test_simple_binary_operation(op, u, v, num1, num2)
@@ -114,7 +114,7 @@ end
 
             for arch in archs
                 u, v, w = Oceananigans.VelocityFields(arch, grid)
-                T, S = Oceananigans.TracerFields(arch, grid)
+                T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
                 for a in (u, v, w, T)
                     @test test_x_derivative(a)
                     @test test_y_derivative(a)
