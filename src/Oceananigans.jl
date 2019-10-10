@@ -255,6 +255,6 @@ include("time_steppers.jl")
 include("output_writers.jl")
 include("diagnostics.jl")
 
-include("abstract_operations.jl")
+include("AbstractOperations/AbstractOperations.jl")
 
 end # module
