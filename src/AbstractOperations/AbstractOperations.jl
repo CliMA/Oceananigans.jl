@@ -27,5 +27,6 @@ Base.parent(op::AbstractOperation) = op
 include("binary_operations.jl")
 include("derivatives.jl")
 include("computations.jl")
+include("function_fields.jl")
 
 end # module
