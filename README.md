@@ -64,7 +64,7 @@ using Oceananigans
 
 # We'll set up a 2D model with an xz-slice so there's only 1 grid point in y
 # and use an artificially high viscosity ν and diffusivity κ.
-model = BasicModel(N=(256, 1, 256), L=(2000, 1, 2000), arch=CPU(), ν=4e-2, κ=4e-2)
+model = BasicModel(N=(128, 128, 128), L=(2000, 2000, 2000), architecture=CPU(), ν=4e-2, κ=4e-2)
 
 # Set a temperature perturbation with a Gaussian profile located at the center
 # of the vertical slice. This will create a buoyant thermal bubble that will
@@ -77,10 +77,6 @@ set!(model; T=T₀)
 time_step!(model; Δt=10, Nt=5000)
 ```
 By changing `arch=CPU()` to `arch=GPU()`, the example will run on an Nvidia GPU!
-
-Check out [`rising_thermal_bubble_2d.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/examples/rising_thermal_bubble_2d.jl) to see how you can plot a 2D movie with the output.
-
-**Note**: You need to have Plots.jl and ffmpeg installed for the movie to be automatically created by Plots.jl.
 
 GPU model output can be plotted on-the-fly and animated using [Makie.jl](https://github.com/JuliaPlots/Makie.jl)! This [NextJournal notebook](https://nextjournal.com/sdanisch/oceananigans) has an example. Thanks [@SimonDanisch](https://github.com/SimonDanisch)! Some Makie.jl isosurfaces from a rising spherical thermal bubble (the GPU example):
 <p align="center">
