@@ -1,17 +1,20 @@
-struct Computation{OU, OP, G, RT}
+struct Computation{RT, OU, OP, G}
        operator :: OP
          result :: OU
            grid :: G
     return_type :: RT
-    function Computation(op, result, return_type)
-        return new{typeof(op), typeof(result), typeof(op.grid), 
-                   typeof(return_type)}(op, result, op.grid, return_type)
-    end
 end
+
+function Computation(op, result, return_type)
+    return Computation(op, result, op.grid, return_type)
+end
+
+architecture(comp::Computation) = architecture(result)
+Base.parent(comp::Computation) = comp
 
 function compute!(comp::Computation)
     arch = architecture(comp.result)
-    @launch device(arch) config=launch_config(grid, 3) _compute!(comp.result, comp.grid, comp.operator)
+    @launch device(arch) config=launch_config(grid, 3) _compute!(data(comp.result), comp.grid, comp.operator)
     return nothing
 end
 
@@ -28,5 +31,18 @@ end
 
 function (comp::Computation)(args...)
     compute!(comp)
-    return comp.return_type(comp.result)
+    return comp.return_type(data(comp.result))
+end
+
+function (comp::Computation{<:Nothing})(args...)
+    compute!(comp)
+    return comp.result
+end
+
+function run_diagnostic(model, havg::HorizontalAverage{<:Computation})
+    compute!(havg.field)
+    zero_halo_regions!(parent(havg.field.result), model.grid)
+    sum!(havg.result, parent(havg.field.result))
+    normalize_horizontal_sum!(havg, model.grid)
+    return nothing
 end

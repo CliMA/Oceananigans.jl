@@ -1,6 +1,6 @@
 const seed = 420  # Random seed to use for all pseudorandom number generators.
 
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
+datatuple(A) = NamedTuple{propertynames(A)}(Array(interior(a)) for a in A)
 
 const T₀ = 9.85
 const S₀ = 35.0
@@ -49,21 +49,21 @@ function run_thermal_bubble_regression_tests(arch)
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ)) - φ_gm)
-        φ_max = maximum(Array(data(φ)) - φ_gm)
-        φ_mean = mean(Array(data(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
-        φ_std = std(Array(data(φ)) - φ_gm)
+        φ_min = minimum(Array(interior(φ)) - φ_gm)
+        φ_max = maximum(Array(interior(φ)) - φ_gm)
+        φ_mean = mean(Array(interior(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
+        φ_std = std(Array(interior(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u)) .≈ u)
-    @test all(Array(data(model.velocities.v)) .≈ v)
-    @test all(Array(data(model.velocities.w)) .≈ w)
-    @test all(Array(data(model.tracers.T))    .≈ T)
-    @test all(Array(data(model.tracers.S))    .≈ S)
+    @test all(Array(interior(model.velocities.u)) .≈ u)
+    @test all(Array(interior(model.velocities.v)) .≈ v)
+    @test all(Array(interior(model.velocities.w)) .≈ w)
+    @test all(Array(interior(model.tracers.T))    .≈ T)
+    @test all(Array(interior(model.tracers.S))    .≈ S)
 end
 
 function run_rayleigh_benard_regression_test(arch)
@@ -147,17 +147,17 @@ function run_rayleigh_benard_regression_test(arch)
     b₀, c₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
     Gu, Gv, Gw, Gb, Gc = get_output_tuple(outputwriter, spinup_steps, :G)
 
-    data(model.velocities.u) .= ArrayType(u₀)
-    data(model.velocities.v) .= ArrayType(v₀)
-    data(model.velocities.w) .= ArrayType(w₀)
-    data(model.tracers.b)    .= ArrayType(b₀)
-    data(model.tracers.c)    .= ArrayType(c₀)
+    interior(model.velocities.u) .= ArrayType(u₀)
+    interior(model.velocities.v) .= ArrayType(v₀)
+    interior(model.velocities.w) .= ArrayType(w₀)
+    interior(model.tracers.b)    .= ArrayType(b₀)
+    interior(model.tracers.c)    .= ArrayType(c₀)
 
-    data(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
-    data(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
-    data(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
-    data(model.timestepper.Gⁿ.b) .= ArrayType(Gb)
-    data(model.timestepper.Gⁿ.c) .= ArrayType(Gc)
+    interior(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
+    interior(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
+    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
+    interior(model.timestepper.Gⁿ.b) .= ArrayType(Gb)
+    interior(model.timestepper.Gⁿ.c) .= ArrayType(Gc)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -173,21 +173,21 @@ function run_rayleigh_benard_regression_test(arch)
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
     fields_gm = [u₁, v₁, w₁, b₁, c₁]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ)) - φ_gm)
-        φ_max = maximum(Array(data(φ)) - φ_gm)
-        φ_mean = mean(Array(data(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
-        φ_std = std(Array(data(φ)) - φ_gm)
+        φ_min = minimum(Array(interior(φ)) - φ_gm)
+        φ_max = maximum(Array(interior(φ)) - φ_gm)
+        φ_mean = mean(Array(interior(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
+        φ_std = std(Array(interior(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u)) .≈ u₁)
-    @test all(Array(data(model.velocities.v)) .≈ v₁)
-    @test all(Array(data(model.velocities.w)) .≈ w₁)
-    @test all(Array(data(model.tracers.b))    .≈ b₁)
-    @test all(Array(data(model.tracers.c))    .≈ c₁)
+    @test all(Array(interior(model.velocities.u)) .≈ u₁)
+    @test all(Array(interior(model.velocities.v)) .≈ v₁)
+    @test all(Array(interior(model.velocities.w)) .≈ w₁)
+    @test all(Array(interior(model.tracers.b))    .≈ b₁)
+    @test all(Array(interior(model.tracers.c))    .≈ c₁)
     return nothing
 end
 

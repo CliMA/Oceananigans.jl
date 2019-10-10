@@ -20,7 +20,7 @@ export
 
     # Fields
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    data, set!, set_ic!,
+    interior, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
     # Forcing functions

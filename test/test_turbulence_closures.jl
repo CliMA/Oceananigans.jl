@@ -45,10 +45,10 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
        T, S = tracers
 
     for k in 1:4
-        data(u)[:, 1, k] .= [0, -1, 0]
-        data(v)[:, 1, k] .= [0, -2, 0]
-        data(w)[:, 1, k] .= [0, -3, 0]
-        data(T)[:, 1, k] .= [0, -1, 0]
+        interior(u)[:, 1, k] .= [0, -1, 0]
+        interior(v)[:, 1, k] .= [0, -2, 0]
+        interior(w)[:, 1, k] .= [0, -3, 0]
+        interior(T)[:, 1, k] .= [0, -1, 0]
     end
 
     U, C = datatuples(velocities, tracers)
@@ -71,21 +71,21 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
 
     u, v, w, T, S = merge(velocities, tracers)
 
-    data(u)[:, 1, 2] .= [0,  1, 0]
-    data(u)[:, 1, 3] .= [0, -1, 0]
-    data(u)[:, 1, 4] .= [0,  1, 0]
+    interior(u)[:, 1, 2] .= [0,  1, 0]
+    interior(u)[:, 1, 3] .= [0, -1, 0]
+    interior(u)[:, 1, 4] .= [0,  1, 0]
 
-    data(v)[:, 1, 2] .= [0,  1, 0]
-    data(v)[:, 1, 3] .= [0, -2, 0]
-    data(v)[:, 1, 4] .= [0,  1, 0]
+    interior(v)[:, 1, 2] .= [0,  1, 0]
+    interior(v)[:, 1, 3] .= [0, -2, 0]
+    interior(v)[:, 1, 4] .= [0,  1, 0]
 
-    data(w)[:, 1, 2] .= [0,  1, 0]
-    data(w)[:, 1, 3] .= [0, -3, 0]
-    data(w)[:, 1, 4] .= [0,  1, 0]
+    interior(w)[:, 1, 2] .= [0,  1, 0]
+    interior(w)[:, 1, 3] .= [0, -3, 0]
+    interior(w)[:, 1, 4] .= [0,  1, 0]
 
-    data(T)[:, 1, 2] .= [0,  1, 0]
-    data(T)[:, 1, 3] .= [0, -4, 0]
-    data(T)[:, 1, 4] .= [0,  1, 0]
+    interior(T)[:, 1, 2] .= [0,  1, 0]
+    interior(T)[:, 1, 3] .= [0, -4, 0]
+    interior(T)[:, 1, 4] .= [0,  1, 0]
 
     U, C = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, C), bcs, arch, grid)

@@ -85,7 +85,7 @@ xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
 zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
 
 function plot_field!(ax, w, t) 
-    pcolormesh(xplot(w), zplot(w), data(model.velocities.w)[:, 1, :])
+    pcolormesh(xplot(w), zplot(w), interior(model.velocities.w)[:, 1, :])
     xlabel(L"x")
     ylabel(L"z")
     title(@sprintf("\$ \\omega t / 2 \\pi = %.2f\$", t*ω/2π))

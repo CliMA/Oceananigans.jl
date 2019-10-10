@@ -5,27 +5,13 @@ function horizontal_average_is_correct(arch, FT)
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model, model.tracers.T; interval=0.5second)
+    T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
     push!(model.diagnostics, T̅)
 
     time_step!(model, 1, 1)
     correct_profile = @. 20 + 0.01 * collect(model.grid.zC)
-    all(Array(T̅.profile[:][2:end-1]) ≈ correct_profile)
-end
 
-function product_profile_is_correct(arch, FT)
-    model = BasicModel(N = (16, 16, 16), L = (100, 100, 100), architecture=arch, float_type=FT)
-
-    # Set a linear stably stratified temperature profile and a sinusoidal u(z) profile.
-    u₀(x, y, z) = sin(z)
-    T₀(x, y, z) = 20 + 0.01*z
-    set!(model; u=u₀, T=T₀)
-
-    uT = HorizontalAverage(model, [model.velocities.u, model.tracers.T]; interval=0.5second)
-    run_diagnostic(model, uT)
-
-    correct_profile = @. sin.(model.grid.zC) * (20 + 0.01 * model.grid.zC)
-    Array(uT.profile[:][2:end-1]) ≈ correct_profile
+    return all(Array(T̅.result[:][2:end-1]) ≈ correct_profile)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
@@ -46,7 +32,6 @@ TestModel(::GPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(16, 16, 16), L=(16*Δx, 16
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(3, 3, 3), L=(3*Δx, 3*Δx, 3*Δx), 
                                                  architecture=CPU(), float_type=FT, ν=ν, κ=ν)
     
-
 function max_abs_field_diagnostic_is_correct(arch, FT)
     model = TestModel(arch, FT)
     set!(model.velocities.u, rand(size(model.grid)))
@@ -132,7 +117,6 @@ end
             println("  Testing horizontal average [$(typeof(arch))]")
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
-                @test product_profile_is_correct(arch, FT)
             end
         end
     end

@@ -6,7 +6,7 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     field = CellField(FT, arch, grid)
 
     # Fill the interior with random numbers.
-    data(field) .= rand(FT, Nx, Ny, Nz)
+    interior(field) .= rand(FT, Nx, Ny, Nz)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -27,7 +27,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     field = CellField(FT, arch, grid)
     fbcs = HorizontallyPeriodicBCs()
 
-    data(field) .= rand(FT, Nx, Ny, Nz)
+    interior(field) .= rand(FT, Nx, Ny, Nz)
     fill_halo_regions!(field.data, fbcs, arch, grid)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
