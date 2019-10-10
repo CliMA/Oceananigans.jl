@@ -2,14 +2,14 @@
 ##### Differential operators for regular grids
 #####
 
-@inline ∂x_caa(i, j, k, grid, u::AbstractArray) = @inbounds (u[i+1, j, k] - u[i, j, k]) / grid.Δx
-@inline ∂x_faa(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i-1, j, k]) / grid.Δx
+@inline ∂x_caa(i, j, k, grid, u) = @inbounds (u[i+1, j, k] - u[i, j, k]) / grid.Δx
+@inline ∂x_faa(i, j, k, grid, c) = @inbounds (c[i, j, k] - c[i-1, j, k]) / grid.Δx
 
-@inline ∂y_aca(i, j, k, grid, v::AbstractArray) = @inbounds (v[i, j+1, k] - v[i, j, k]) / grid.Δy
-@inline ∂y_afa(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i, j-1, k]) / grid.Δy
+@inline ∂y_aca(i, j, k, grid, v) = @inbounds (v[i, j+1, k] - v[i, j, k]) / grid.Δy
+@inline ∂y_afa(i, j, k, grid, c) = @inbounds (c[i, j, k] - c[i, j-1, k]) / grid.Δy
 
-@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
-@inline ∂z_aaf(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
+@inline ∂z_aac(i, j, k, grid, w) = @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
+@inline ∂z_aaf(i, j, k, grid, c) = @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
 
 #
 # Differentiation and interpolation operators for functions
@@ -107,7 +107,7 @@ Differentiate the function or callable object
 
 located at `aac` in `z`, across `aaf`.
 """
-@inline ∂z_aaf(i, j, k, grid::AbstractGrid, F::TF, args...) where TF<:Function =
+@inline ∂z_aaf(i, j, k, grid, F::TF, args...) where TF<:Function =
     (F(i, j, k-1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
 
 """
@@ -212,30 +212,30 @@ from `aaf` to `aac`.
     T(0.5) * (F(i, j, k+1, grid, args...) + F(i, j, k, grid, args...))
 
 # Convenience operators for "interpolating constants"
-@inline ▶x_faa(i, j, k, grid, F::Number, args...) = F
-@inline ▶x_caa(i, j, k, grid, F::Number, args...) = F
-@inline ▶y_afa(i, j, k, grid, F::Number, args...) = F
-@inline ▶y_aca(i, j, k, grid, F::Number, args...) = F
-@inline ▶z_aaf(i, j, k, grid, F::Number, args...) = F
-@inline ▶z_aac(i, j, k, grid, F::Number, args...) = F
+@inline ▶x_faa(i, j, k, grid, a::Number) = a
+@inline ▶x_caa(i, j, k, grid, a::Number) = a
+@inline ▶y_afa(i, j, k, grid, a::Number) = a
+@inline ▶y_aca(i, j, k, grid, a::Number) = a
+@inline ▶z_aaf(i, j, k, grid, a::Number) = a
+@inline ▶z_aac(i, j, k, grid, a::Number) = a
 
-@inline ▶x_faa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (F[i, j, k] + F[i-1, j, k])
+@inline ▶x_faa(i, j, k, grid::RegularCartesianGrid{FT}, c) where FT =
+    @inbounds FT(0.5) * (c[i, j, k] + c[i-1, j, k])
 
-@inline ▶x_caa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (F[i, j, k] + F[i+1, j, k])
+@inline ▶x_caa(i, j, k, grid::RegularCartesianGrid{FT}, u) where FT =
+    @inbounds FT(0.5) * (u[i, j, k] + u[i+1, j, k])
 
-@inline ▶y_afa(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (F[i, j, k] + F[i, j-1, k])
+@inline ▶y_afa(i, j, k, grid::RegularCartesianGrid{FT}, c) where FT = 
+    @inbounds FT(0.5) * (c[i, j, k] + c[i, j-1, k])
 
-@inline ▶y_aca(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (F[i, j, k] + F[i, j+1, k])
+@inline ▶y_aca(i, j, k, grid::RegularCartesianGrid{FT}, v) where FT =
+    @inbounds FT(0.5) * (v[i, j, k] + v[i, j+1, k])
 
-@inline ▶z_aaf(i, j, k, grid::RegularCartesianGrid{T}, F::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (F[i, j, k] + F[i, j, k-1])
+@inline ▶z_aaf(i, j, k, grid::RegularCartesianGrid{FT}, c) where FT =
+    @inbounds FT(0.5) * (c[i, j, k] + c[i, j, k-1])
 
-@inline ▶z_aac(i, j, k, grid::RegularCartesianGrid{T}, w::AbstractArray, args...) where T =
-    @inbounds T(0.5) * (w[i, j, k] + w[i, j, k+1])
+@inline ▶z_aac(i, j, k, grid::RegularCartesianGrid{FT}, w) where FT =
+    @inbounds FT(0.5) * (w[i, j, k] + w[i, j, k+1])
 
 #####
 ##### Double interpolation: 12 operators
