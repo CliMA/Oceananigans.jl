@@ -60,7 +60,7 @@ for i = 1:10
     vorticity!(ω, model.velocities.u, model.velocities.v)
 
     cla()
-    imshow(data(ω)[:, :, 1])
+    imshow(interior(ω)[:, :, 1])
     ax.axis("off")
     pause(0.1)
 end

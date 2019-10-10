@@ -76,14 +76,14 @@ ylabel(L"z")
 plot(Tᵢ.(0, 0, model.grid.zC), model.grid.zC, "--", label=L"t=0")
 
 ## Plot current solution
-plot(data(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
+plot(interior(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
 legend()
 
 # Interesting! Running the model even longer makes even more interesting results.
 
 for i = 1:3
     time_step!(model, Nt = 1000, Δt = 0.1 * cell_diffusion_time_scale)
-    plot(data(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
+    plot(interior(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
 end
 
 legend()

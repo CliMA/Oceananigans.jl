@@ -50,14 +50,14 @@ used as a callable object. The default `return_type=Array` is useful when runnin
 model and you want to save the output to disk by passing it to an output writer.
 """
 function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array) 
-    arch = archiecture(field) 
+    arch = architecture(field) 
     profile = zeros(arch, field.grid, 1, 1, field.grid.Tz) 
-    return HorizontalAverage(profile, totaldata(field), frequency, interval, 0.0, 
+    return HorizontalAverage(profile, field, frequency, interval, 0.0, 
                              return_type, field.grid)
 end
 
 # Normalize a horizontal sum to get the horizontal average.
-normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)
+normalize_horizontal_sum!(havg, grid) = havg.profile /= (grid.Nx * grid.Ny)
 
 """
     run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})
@@ -65,8 +65,8 @@ normalize_horizontal_sum!(hsum, grid) = hsum.profile /= (grid.Nx * grid.Ny)
 Compute the horizontal average of `havg.field` and store the result in `havg.profile`.
 """
 function run_diagnostic(model, havg::HorizontalAverage)
-    zero_halo_regions!(havg.field, model.grid)
-    sum!(havg.profile, havg.field)
+    zero_halo_regions!(parent(havg.field), model.grid)
+    sum!(havg.profile, parent(havg.field))
     normalize_horizontal_sum!(havg, model.grid)
     return nothing
 end

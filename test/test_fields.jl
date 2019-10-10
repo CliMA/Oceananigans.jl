@@ -19,7 +19,7 @@ function.
 function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
     f = fieldtype(arch, grid)
     set!(f, val)
-    return data(f) ≈ val * ones(size(f))
+    return interior(f) ≈ val * ones(size(f))
 end
 
 @testset "Fields" begin

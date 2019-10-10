@@ -72,7 +72,7 @@ function test_flux_budget(arch, FT, fldname)
     @. field.data = 0
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
-    mean_init = mean(data(field))
+    mean_init = mean(interior(field))
 
     τκ = Lz^2 / κ   # Diffusion time-scale
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
@@ -82,7 +82,7 @@ function test_flux_budget(arch, FT, fldname)
 
     # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz
-    isapprox(mean(data(field)) - mean_init, bottom_flux * model.clock.time / Lz)
+    isapprox(mean(interior(field)) - mean_init, bottom_flux * model.clock.time / Lz)
 end
 
 @testset "Boundary conditions" begin

@@ -18,8 +18,8 @@ using GPUifyLoops: @launch, @loop
 
 using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
                     velocity_div!, compute_w_from_continuity!,
-                    launch_config, datatuples, device, Face, Cell, with_tracers,
-                    parentdata, fill_halo_regions!, run_diagnostic,
+                    architecture, launch_config, datatuples, device, Face, Cell, with_tracers,
+                    interiorparent, interior, fill_halo_regions!, run_diagnostic, location,
                     TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
                     RoquetIdealizedNonlinearEquationOfState, required_tracers
 

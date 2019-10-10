@@ -3,11 +3,9 @@ struct Derivative{X, Y, Z, A, D, G} <: AbstractOperation{X, Y, Z, G}
        ∂ :: D
     grid :: G
     function Derivative{X, Y, Z}(a, ∂) where {X, Y, Z}
-        return new{X, Y, Z, typeof(totaldata(a)), typeof(∂), typeof(a.grid)}(totaldata(a), ∂, a.grid)
+        return new{X, Y, Z, typeof(data(a)), typeof(∂), typeof(a.grid)}(data(a), ∂, a.grid)
     end
 end
-
-data(bop::BinaryOperation) = bop
 
 flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face

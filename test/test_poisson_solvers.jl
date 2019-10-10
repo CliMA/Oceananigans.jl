@@ -21,24 +21,24 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     fbcs = HorizontallyPeriodicBCs()
 
     RHS = CellField(FT, arch, grid)
-    data(RHS) .= rand(Nx, Ny, Nz)
-    data(RHS) .= data(RHS) .- mean(data(RHS))
+    interior(RHS) .= rand(Nx, Ny, Nz)
+    interior(RHS) .= interior(RHS) .- mean(interior(RHS))
 
     RHS_orig = deepcopy(RHS)
-    solver.storage .= data(RHS)
+    solver.storage .= interior(RHS)
     solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
 
-    data(ϕ) .= real.(solver.storage)
+    interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
     fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
 
-    data(∇²ϕ) ≈ data(RHS_orig)
+    interior(∇²ϕ) ≈ interior(RHS_orig)
 end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
@@ -48,26 +48,26 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     fbcs = ChannelBCs()
 
     RHS = CellField(FT, arch, grid)
-    data(RHS) .= rand(Nx, Ny, Nz)
-    data(RHS) .= data(RHS) .- mean(data(RHS))
+    interior(RHS) .= rand(Nx, Ny, Nz)
+    interior(RHS) .= interior(RHS) .- mean(interior(RHS))
 
     RHS_orig = deepcopy(RHS)
 
-    solver.storage .= data(RHS)
+    solver.storage .= interior(RHS)
 
     solve_poisson_3d!(solver, grid)
 
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
 
-    data(ϕ) .= real.(solver.storage)
+    interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ, ∇²ϕ)
 
     fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
 
-    data(∇²ϕ) ≈ data(RHS_orig)
+    interior(∇²ϕ) ≈ interior(RHS_orig)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
@@ -98,13 +98,13 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
 
-    data(ϕ) .= real.(solver.storage)
+    interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
     fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
-    data(∇²ϕ) ≈ RHS_orig
+    interior(∇²ϕ) ≈ RHS_orig
 end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
@@ -129,7 +129,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
 
-    ϕ_p = view(data(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
+    ϕ_p = view(interior(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
 
     @. ϕ_p = real(solver.storage)
 
@@ -137,7 +137,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
     fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
-    data(∇²ϕ) ≈ RHS_orig
+    interior(∇²ϕ) ≈ RHS_orig
 end
 
 """

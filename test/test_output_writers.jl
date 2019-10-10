@@ -28,11 +28,11 @@ function run_thermal_bubble_netcdf_tests(arch)
     T = read_output(nc_writer, "T", 10)
     S = read_output(nc_writer, "S", 10)
 
-    @test all(u .≈ Array(parentdata(model.velocities.u)))
-    @test all(v .≈ Array(parentdata(model.velocities.v)))
-    @test all(w .≈ Array(parentdata(model.velocities.w)))
-    @test all(T .≈ Array(parentdata(model.tracers.T)))
-    @test all(S .≈ Array(parentdata(model.tracers.S)))
+    @test all(u .≈ Array(interiorparent(model.velocities.u)))
+    @test all(v .≈ Array(interiorparent(model.velocities.v)))
+    @test all(w .≈ Array(interiorparent(model.velocities.w)))
+    @test all(T .≈ Array(interiorparent(model.tracers.T)))
+    @test all(S .≈ Array(interiorparent(model.tracers.S)))
 end
 
 function run_jld2_file_splitting_tests(arch)
