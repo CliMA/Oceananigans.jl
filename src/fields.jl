@@ -127,6 +127,10 @@ architecture(o::OffsetArray) = architecture(f.parent)
 @inline lastindex(f::Field) = lastindex(f.data)
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 
+"Returns either `field.data` if a `Field`."
+totaldata(f::AbstractArray) = f
+totaldata(f::Field) = f.data
+
 "Returns a view over the interior points of the `field.data`."
 @inline data(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
 
