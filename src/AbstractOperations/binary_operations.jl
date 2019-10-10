@@ -6,7 +6,8 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, O, G} <: AbstractOperation{X, Y, Z
       ▶b :: IB
     grid :: G
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b) where {X, Y, Z}
-        @assert a.grid === b.grid
+        a.grid === b.grid && throw(ArgumentError("Both fields in a BinaryOperation must be
+                                                  on the same grid."))
         return new{X, Y, Z, typeof(data(a)), typeof(data(b)), typeof(▶a), typeof(▶b), 
                    typeof(op), typeof(a.grid)}(op, data(a), data(b), ▶a, ▶b, a.grid)
     end
