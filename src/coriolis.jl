@@ -51,14 +51,36 @@ end
 """
     BetaPlane{T} <: AbstractRotation
 
-A parameter object for meridionally increasing rotation (`f = f₀ + βy`).
+A parameter object for meridionally increasing Coriolis
+parameter (`f = f₀ + βy`).
 """
 struct BetaPlane{T} <: AbstractRotation
     f₀ :: T
     β  :: T
 end
 
+"""
+    BetaPlane([T=Float64;] f₀, β)
+
+A parameter object for meridionally increasing Coriolis
+parameter (`f = f₀ + βy`).
+"""
 function BetaPlane(T=Float64; f₀, β)
+    return BetaPlane{T}(f₀, β)
+end
+
+"""
+    BetaPlane([T=Float64;] Ω, latitude, R)
+
+Returns a parameter object for meridionally increasing rotation at the
+angular frequency `Ωsin(latitude), and therefore with Coriolis parameter
+ `f₀ = 2Ωsin(latitude), around a vertical axis.
+The Coriolis parameter increases meridionally as `f = f₀ + βy`, where
+`β = 2Ωcos(latitude)/R`.
+"""
+function BetaPlane(T=Float64; Ω, latitude, R)
+    f₀ = 2*Ω*sind(latitude)
+    β = 2*Ω*cosd(latitude)/R
     return BetaPlane{T}(f₀, β)
 end
 
@@ -68,11 +90,11 @@ end
 @inline fu(i, j, k, grid::RegularCartesianGrid{T}, f, u) where T =
     T(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
 
-@inline fv(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, v) where T =
-     T(0.5) * (f₀ + β * @inbounds(grid.yC[j])) * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
+@inbounds @inline fv(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, v) where T =
+     T(0.5) * (f₀ + β * grid.yC[j]) * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
 
-@inline fu(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, u) where T =
-     T(0.5) * (f₀ + β * @inbounds(grid.yF[j])) * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
+@inbounbds @inline fu(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, u) where T =
+     T(0.5) * (f₀ + β * grid.yF[j]) * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
 
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
 @inline y_f_cross_U(i, j, k, grid, rotation::FPlane, U) =  fu(i, j, k, grid, rotation.f, U.u)
