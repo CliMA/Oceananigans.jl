@@ -5,7 +5,7 @@ struct Computation{RT, OU, OP, G}
     return_type :: RT
 end
 
-function Computation(op, result, return_type)
+function Computation(op, result; return_type=Array)
     return Computation(op, result, op.grid, return_type)
 end
 
@@ -38,6 +38,18 @@ function (comp::Computation{<:Nothing})(args...)
     compute!(comp)
     return comp.result
 end
+
+#####
+##### Functionality for using computations with HorizontalAverage
+#####
+
+function HorizontalAverage(op::AbstractOperation, result; kwargs...)
+    computation = Computation(op, result)
+    return HorizontalAverage(computation; kwargs...)
+end
+
+HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) = 
+    HorizontalAverage(op, model.pressures.pHY′; kwargs...)
 
 function run_diagnostic(model, havg::HorizontalAverage{<:Computation})
     compute!(havg.field)
