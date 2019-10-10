@@ -108,8 +108,6 @@ architecture(o::OffsetArray) = architecture(o.parent)
 @inline data(f::AbstractArray) = f
 @inline data(f::Field) = f.data
 
-const totaldata = data
-
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::Field) = f.data.parent
 
