@@ -29,7 +29,7 @@ Returns a parameter object for constant rotation at the angular frequency
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(T::DataType=Float64; f) 
+function FPlane(T::DataType=Float64; f)
     return FPlane{T}(f)
 end
 
@@ -98,9 +98,9 @@ end
 
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
 @inline y_f_cross_U(i, j, k, grid, rotation::FPlane, U) =  fu(i, j, k, grid, rotation.f, U.u)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::FPlane, U) where T = zero(T)
+
 
 @inline x_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) = -fv(i, j, k, grid, rotation.f₀, rotation.β, U.v)
 @inline y_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) =  fu(i, j, k, grid, rotation.f₀, rotation.β, U.u)
-
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::FPlane, U) where T = zero(T)
-
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::BetaPlane, U) where T = zero(T)
