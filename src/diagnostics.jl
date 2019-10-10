@@ -13,7 +13,7 @@ function velocity_div!(grid::RegularCartesianGrid, u, v, w, div)
 end
 
 ####
-#### Horizontally averaged vertical profiles
+#### Horizontal averages
 ####
 
 """
@@ -22,7 +22,7 @@ end
 A diagnostic for computing horizontal average of a field.
 """
 mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic
-        profile :: P
+         result :: P
           field :: F
       frequency :: Ω
        interval :: I
@@ -36,7 +36,7 @@ end
 
 Construct a `HorizontalAverage` of `field`.
 
-After the horizontal average is computed it will be stored in the `profile` property.
+After the horizontal average is computed it will be stored in the `result` property.
 
 The `HorizontalAverage` can be used as a callable object that computes and returns the
 horizontal average.
@@ -51,34 +51,33 @@ model and you want to save the output to disk by passing it to an output writer.
 """
 function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array) 
     arch = architecture(field) 
-    profile = zeros(arch, field.grid, 1, 1, field.grid.Tz) 
-    return HorizontalAverage(profile, field, frequency, interval, 0.0, 
-                             return_type, field.grid)
+    result = zeros(arch, field.grid, 1, 1, field.grid.Tz) 
+    return HorizontalAverage(result, field, frequency, interval, 0.0, return_type, field.grid)
 end
 
 # Normalize a horizontal sum to get the horizontal average.
-normalize_horizontal_sum!(havg, grid) = havg.profile /= (grid.Nx * grid.Ny)
+normalize_horizontal_sum!(havg, grid) = havg.result /= (grid.Nx * grid.Ny)
 
 """
     run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})
 
-Compute the horizontal average of `havg.field` and store the result in `havg.profile`.
+Compute the horizontal average of `havg.field` and store the result in `havg.result`.
 """
 function run_diagnostic(model, havg::HorizontalAverage)
     zero_halo_regions!(parent(havg.field), model.grid)
-    sum!(havg.profile, parent(havg.field))
+    sum!(havg.result, parent(havg.field))
     normalize_horizontal_sum!(havg, model.grid)
     return nothing
 end
 
 function (havg::HorizontalAverage{F, Nothing})(model) where F
     run_diagnostic(model, havg)
-    return havg.profile
+    return havg.result
 end
 
 function (havg::HorizontalAverage)(model)
     run_diagnostic(model, havg)
-    return havg.return_type(havg.profile)
+    return havg.return_type(havg.result)
 end
 
 ####
