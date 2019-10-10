@@ -99,8 +99,8 @@ end
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
 @inline y_f_cross_U(i, j, k, grid, rotation::FPlane, U) =  fu(i, j, k, grid, rotation.f, U.u)
 
-@inline x_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) = -fv(i, j, k, grid, rotation.f, rotation.β, U.v)
-@inline y_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) =  fu(i, j, k, grid, rotation.f, rotation.β, U.u)
+@inline x_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) = -fv(i, j, k, grid, rotation.f₀, rotation.β, U.v)
+@inline y_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) =  fu(i, j, k, grid, rotation.f₀, rotation.β, U.u)
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::FPlane, U) where T = zero(T)
 
