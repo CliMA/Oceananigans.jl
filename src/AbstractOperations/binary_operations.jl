@@ -7,8 +7,8 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, O, G} <: AbstractOperation{X, Y, Z
     grid :: G
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b) where {X, Y, Z}
         @assert a.grid === b.grid
-        return new{X, Y, Z, typeof(alldata(a)), typeof(alldata(b)), typeof(▶a), typeof(▶b), 
-                   typeof(op), typeof(a.grid)}(op, alldata(a), alldata(b), ▶a, ▶b, a.grid)
+        return new{X, Y, Z, typeof(totaldata(a)), typeof(totaldata(b)), typeof(▶a), typeof(▶b), 
+                   typeof(op), typeof(a.grid)}(op, totaldata(a), totaldata(b), ▶a, ▶b, a.grid)
     end
 end
 

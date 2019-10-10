@@ -3,7 +3,7 @@ struct Derivative{X, Y, Z, A, D, G} <: AbstractOperation{X, Y, Z, G}
        ∂ :: D
     grid :: G
     function Derivative{X, Y, Z}(a, ∂) where {X, Y, Z}
-        return new{X, Y, Z, typeof(alldata(a)), typeof(∂), typeof(a.grid)}(alldata(a), ∂, a.grid)
+        return new{X, Y, Z, typeof(totaldata(a)), typeof(∂), typeof(a.grid)}(totaldata(a), ∂, a.grid)
     end
 end
 
