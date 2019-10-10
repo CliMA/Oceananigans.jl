@@ -93,7 +93,7 @@ end
 @inbounds @inline fv(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, v) where T =
      T(0.5) * (f₀ + β * grid.yC[j]) * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
 
-@inbounbds @inline fu(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, u) where T =
+@inbounds @inline fu(i, j, k, grid::RegularCartesianGrid{T}, f₀, β, u) where T =
      T(0.5) * (f₀ + β * grid.yF[j]) * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
 
 @inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
