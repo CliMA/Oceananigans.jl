@@ -255,9 +255,9 @@ Return `κ ∂x c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_c(i, j, k, grid, c, tracer_idx, closure::AbstractSmagorinsky, νₑ) 
-    @inbounds Pr = closure.Pr[tracer_idx]
-    @inbounds κ = closure.κ[tracer_idx]
+@inline function κ_∂x_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+    @inbounds Pr = closure.Pr[tracer_index]
+    @inbounds κ = closure.κ[tracer_index]
 
     νₑ = ▶x_faa(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
@@ -272,9 +272,9 @@ Return `κ ∂y c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_c(i, j, k, grid, c, tracer_idx, closure::AbstractSmagorinsky, νₑ) 
-    @inbounds Pr = closure.Pr[tracer_idx]
-    @inbounds κ = closure.κ[tracer_idx]
+@inline function κ_∂y_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+    @inbounds Pr = closure.Pr[tracer_index]
+    @inbounds κ = closure.κ[tracer_index]
 
     νₑ = ▶y_afa(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
@@ -289,9 +289,9 @@ Return `κ ∂z c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_c(i, j, k, grid, c, tracer_idx, closure::AbstractSmagorinsky, νₑ) 
-    @inbounds Pr = closure.Pr[tracer_idx]
-    @inbounds κ = closure.κ[tracer_idx]
+@inline function κ_∂z_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+    @inbounds Pr = closure.Pr[tracer_index]
+    @inbounds κ = closure.κ[tracer_index]
 
     νₑ = ▶z_aaf(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
@@ -305,22 +305,17 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::AbstractSmagorinsky, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_idx, closure, diffusivities.νₑ)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_idx, closure, diffusivities.νₑ)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_idx, closure, diffusivities.νₑ)
+@inline ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, diffusivities) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_index, closure, diffusivities.νₑ)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_index, closure, diffusivities.νₑ)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
 )
 
-function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
-    @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
-    return nothing
-end
-
-function calculate_viscosity!(νₑ, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
+function calculate_diffusivities!(K, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+                @inbounds K.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
             end
         end
     end

@@ -23,7 +23,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
 
     U, C, K = datatuples(velocities, tracers, diffusivities)
 
-    calculate_diffusivities!(K, arch, grid, closure, buoyancy, U, C)
+    @launch device(arch) config=launch_config(grid, 3) calculate_diffusivities!(K, grid, closure, buoyancy, U, C)
 
     return true
 end
