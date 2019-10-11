@@ -16,7 +16,9 @@ import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, 
                                         ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf,
                                         ▶xy_cca, ▶xy_ffa, ▶xy_cfa, ▶xy_fca, 
                                         ▶xz_cac, ▶xz_faf, ▶xz_caf, ▶xz_fac, 
-                                        ▶yz_acc, ▶yz_aff, ▶yz_acf, ▶yz_afc 
+                                        ▶yz_acc, ▶yz_aff, ▶yz_acf, ▶yz_afc,
+                                        ▶xyz_ccc, ▶xyz_fcc, ▶xyz_cfc, ▶xyz_ccf,
+                                        ▶xyz_fff, ▶xyz_ffc, ▶xyz_fcf, ▶xyz_cff
 
 using GPUifyLoops: @launch, @loop
 
