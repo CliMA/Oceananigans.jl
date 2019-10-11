@@ -192,7 +192,48 @@ end
 @testset "Abstract operations" begin
     println("Testing abstract operations...")
 
-    @testset "Simple binary operations" begin
+    arch = CPU()
+
+    for FT in float_types
+        grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+        u, v, w = Oceananigans.VelocityFields(arch, grid)
+        c = Field(Cell, Cell, Cell, arch, grid)
+
+        @testset "Unary operations and derivatives [$FT]" begin
+            for ψ in (u, v, w, c)
+                for op_symbol in Oceananigans.AbstractOperations.unary_operators
+                    op = eval(op_symbol)
+                    @test typeof(op(ψ)[2, 2, 2]) <: Number
+                end
+
+                for d_symbol in Oceananigans.AbstractOperations.derivative_operators
+                    d = eval(d_symbol)
+                    @test typeof(d(ψ)[2, 2, 2]) <: Number
+                end
+            end
+        end
+
+        @testset "Binary operations [$FT]" begin
+            generic_function(x, y, z) = x + y + z
+            for (ψ, ϕ) in ((u, v), (u, w), (v, w), (u, c), (generic_function, c), (u, generic_function))
+                for op_symbol in Oceananigans.AbstractOperations.binary_operators
+                    op = eval(op_symbol)
+                    @test typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
+                end
+            end
+        end
+
+        @testset "Polynary operations [$FT]" begin
+            for (ψ, ϕ, σ) in ((u, v, w), (u, v, c))
+                for op_symbol in Oceananigans.AbstractOperations.polynary_operators
+                    op = eval(op_symbol)
+                    @test typeof(op(ψ, ϕ, σ)[2, 2, 2]) <: Number
+                end
+            end
+        end
+    end
+
+    @testset "Fidelity of simple binary operations" begin
         arch = CPU()
         println("  Testing simple binary operations...")
         for FT in float_types
