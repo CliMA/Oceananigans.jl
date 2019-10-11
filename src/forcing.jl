@@ -73,7 +73,7 @@ function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forc
     v = at_location((Cell, Face, Cell), v)
     w = at_location((Cell, Cell, Face), w)
 
-    return merge((u=u, v=v, w=w), tracer_forcing)
+    return merge((u=u, v=v, w=w), tracer_forcings)
 end
 
 default_tracer_forcing(args...) = zeroforcing
