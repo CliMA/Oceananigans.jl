@@ -2,7 +2,7 @@ function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
     interior(b) .= num2
-    return a_b[2, 1, 2] == op(num1, num2)
+    return a_b[2, 2, 2] == op(num1, num2)
 end
 
 function three_field_addition(a, b, c, num1, num2)
@@ -10,7 +10,7 @@ function three_field_addition(a, b, c, num1, num2)
     interior(a) .= num1
     interior(b) .= num2
     interior(c) .= num2
-    return a_b_c[2, 1, 2] == num1 + num2 + num2
+    return a_b_c[2, 2, 2] == num1 + num2 + num2
 end
 
 function x_derivative(a)
@@ -68,7 +68,7 @@ function binary_operation_derivative_mix(FT, arch)
     a = Field(Cell, Cell, Cell, arch, grid)
     b = Field(Cell, Cell, Cell, arch, grid)
 
-    a∇b = b * ∂x(a)
+    a∇b = @at (Face, Cell, Cell) b * ∂x(a)
 
     interior(b) .= 2
 
@@ -136,6 +136,9 @@ function multiplication_and_derivative_ccf(model)
     return all(computed_profile[:][2:end-1] .≈ correct_profile[1:end-1])
 end
 
+const C = Cell
+const F = Face
+
 function multiplication_and_derivative_ccc(model)
     w₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
@@ -144,25 +147,15 @@ function multiplication_and_derivative_ccc(model)
     w = model.velocities.w
     T = model.tracers.T
 
-    wT_ccc = @at (Cell, Cell, Cell) w * ∂z(T)
-    wT_ccf = @at (Cell, Cell, Face) w * ∂z(T)
-
+    wT_ccc = @at (C, C, C) w * ∂z(T)
     wT_ccc_avg = HorizontalAverage(wT_ccc, model)
-    wT_ccf_avg = HorizontalAverage(wT_ccf, model)
-
     computed_profile_ccc = wT_ccc_avg(model)
-    computed_profile_ccf = wT_ccf_avg(model)
 
-    sinusoid = sin.(π.*model.grid.zF)
-    sinusoid[model.grid.Nz+1] = 0
+    sinusoid = sin.(π*model.grid.zF)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
-
-    incorrect_profile = sin.(π*model.grid.zC) .* 42
     correct_profile = interped_sin .* 42
 
-    @show correct_profile incorrect_profile computed_profile_ccc[:][2:end-1] computed_profile_ccf[:][2:end-1]
-
-    return all(computed_profile_ccc[:][2:end-1] .≈ correct_profile)
+    return all(computed_profile_ccc[:][3:end-2] .≈ correct_profile[2:end-1])
 end
 
 @testset "Abstract operations" begin
@@ -173,7 +166,7 @@ end
         for FT in float_types
             num1 = FT(π)
             num2 = FT(42)
-            grid = RegularCartesianGrid(FT, (3, 1, 3), (3, 1, 3))
+            grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
 
             for arch in archs
                 u, v, w = Oceananigans.VelocityFields(arch, grid)
