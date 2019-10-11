@@ -19,8 +19,14 @@ struct PolynaryOperation{X, Y, Z, N, A, I, L, O, G} <: AbstractOperation{X, Y, Z
 end
 
 @propagate_inbounds function getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N}
-    return Π.op(ntuple(i -> Π.▶a[i](i, j, k, Π.grid, Π.a[i]), N)...)
+    #return Π.op(ntuple(β -> Π.▶a[β](i, j, k, Π.grid, Π.a[β]), N)...)
+    return Π.op(tupled_interpolation(i, j, k, Π.grid, Val(N), Π.▶a, Π.a)...)
 end
+
+@inline tupled_interpolation(i, j, k, grid, ::Val{N}, ▶a, a) where N =
+    ntuple(N) do β
+        ▶a[β](i, j, k, grid, a[β])
+    end
 
 for op in (:+, :*)
     for (Tb, Tc) in zip((Number, AbstractLocatedField, AbstractLocatedField), 
