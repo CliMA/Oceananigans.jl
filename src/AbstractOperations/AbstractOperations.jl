@@ -13,7 +13,10 @@ using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Ce
 import Oceananigans: data, architecture, location, run_diagnostic
 
 import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, ∂z_aac, ∂z_aaf, 
-                                        ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf
+                                        ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf,
+                                        ▶xy_cca, ▶xy_ffa, ▶xy_cfa, ▶xy_fca, 
+                                        ▶xz_cac, ▶xz_faf, ▶xz_caf, ▶xz_fac, 
+                                        ▶yz_acc, ▶yz_aff, ▶yz_acf, ▶yz_afc 
 
 using GPUifyLoops: @launch, @loop
 
@@ -51,16 +54,18 @@ end
 @inline identity(i, j, k, grid, a::Number) = a
 @inline identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
 
+interp_code(::Type{Face}) = :f
+interp_code(::Type{Cell}) = :c
 interp_code(::Face) = :f
 interp_code(::Cell) = :c
 interp_code(from::L, to::L) where L = :a
 interp_code(from, to) = interp_code(to)
 
-for ξ in (:x, :y, :z)
+for ξ in ("x", "y", "z")
     ▶sym = Symbol(:▶, ξ, :sym)
     @eval begin
         $▶sym(s::Symbol) = $▶sym(Val(s))
-        $▶sym(::Union{Val{:f}, Val{:c}}) = string(ξ)
+        $▶sym(::Union{Val{:f}, Val{:c}}) = $ξ
         $▶sym(::Val{:a}) = ""
     end
 end
