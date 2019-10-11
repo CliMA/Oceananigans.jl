@@ -9,7 +9,7 @@ struct Derivative{X, Y, Z, A, D, I, L, G} <: AbstractOperation{X, Y, Z, G}
          L = location(a)
          ▶ = interp_operator(L, (X, Y, Z))
         return new{X, Y, Z, typeof(data(a)), typeof(∂), 
-                   typeof(▶), typeof(L), typeof(a.grid)}(data(a), ∂, ▶, La, a.grid)
+                   typeof(▶), typeof(L), typeof(a.grid)}(data(a), ∂, ▶, L, a.grid)
     end
 end
 
