@@ -280,6 +280,7 @@ end
                 @test compute_derivative(model, ∂x)
                 @test compute_derivative(model, ∂y)
                 @test compute_derivative(model, ∂z)
+                #=
                 @test compute_plus(model)
                 @test compute_minus(model)
                 @test compute_times(model)
@@ -291,6 +292,7 @@ end
 
                 @test multiplication_and_derivative_ccf(model)
                 @test multiplication_and_derivative_ccc(model)
+                =#
             end
         end
     end
