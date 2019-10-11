@@ -69,8 +69,9 @@ function times_x_derivative(a, b, location, i, j, k, answer)
 end
 
 function compute_derivative(model, ∂)
-    set!(model; S=π)
+    #set!(model; S=π)
     T, S = model.tracers
+    S.data.parent .= π
 
     computation = Computation(∂(S), model.pressures.pHY′)
     compute!(computation)
@@ -192,9 +193,8 @@ end
 @testset "Abstract operations" begin
     println("Testing abstract operations...")
 
-    arch = CPU()
-
     for FT in float_types
+        arch = CPU()
         grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
         u, v, w = Oceananigans.VelocityFields(arch, grid)
         c = Field(Cell, Cell, Cell, arch, grid)
@@ -321,7 +321,7 @@ end
                 @test compute_derivative(model, ∂x)
                 @test compute_derivative(model, ∂y)
                 @test compute_derivative(model, ∂z)
-                #=
+
                 @test compute_plus(model)
                 @test compute_minus(model)
                 @test compute_times(model)
@@ -333,7 +333,6 @@ end
 
                 @test multiplication_and_derivative_ccf(model)
                 @test multiplication_and_derivative_ccc(model)
-                =#
             end
         end
     end
