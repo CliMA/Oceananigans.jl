@@ -22,8 +22,8 @@ end
 A diagnostic for computing horizontal average of a field.
 """
 mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic
-         result :: P
           field :: F
+         result :: P
       frequency :: Ω
        interval :: I
        previous :: Float64
@@ -52,7 +52,7 @@ model and you want to save the output to disk by passing it to an output writer.
 function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array) 
     arch = architecture(field) 
     result = zeros(arch, field.grid, 1, 1, field.grid.Tz) 
-    return HorizontalAverage(result, field, frequency, interval, 0.0, return_type, field.grid)
+    return HorizontalAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
 end
 
 # Normalize a horizontal sum to get the horizontal average.
