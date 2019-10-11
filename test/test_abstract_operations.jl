@@ -1,11 +1,11 @@
-function test_simple_binary_operation(op, a, b, num1, num2)
+function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
     interior(b) .= num2
     return a_b[2, 1, 2] == op(num1, num2)
 end
 
-function test_three_field_addition(a, b, c, num1, num2)
+function three_field_addition(a, b, c, num1, num2)
     a_b_c = a + b + c
     interior(a) .= num1
     interior(b) .= num2
@@ -13,7 +13,7 @@ function test_three_field_addition(a, b, c, num1, num2)
     return a_b_c[2, 1, 2] == num1 + num2 + num2
 end
 
-function test_x_derivative(a)
+function x_derivative(a)
     dx_a = ∂x(a)
 
     for k in 1:3
@@ -25,7 +25,7 @@ function test_x_derivative(a)
     return dx_a[2, 2, 2] == 1 
 end
 
-function test_y_derivative(a)
+function y_derivative(a)
     dy_a = ∂y(a)
 
     for k in 1:3
@@ -37,7 +37,7 @@ function test_y_derivative(a)
     return dy_a[2, 2, 2] == 2 
 end
 
-function test_z_derivative(a)
+function z_derivative(a)
     dz_a = ∂z(a)
 
     for k in 1:3
@@ -49,7 +49,7 @@ function test_z_derivative(a)
     return dz_a[2, 2, 2] == -3 
 end
 
-function test_x_derivative_cell(FT, arch)
+function x_derivative_cell(FT, arch)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     a = Field(Cell, Cell, Cell, arch, grid)
     dx_a = ∂x(a)
@@ -63,7 +63,7 @@ function test_x_derivative_cell(FT, arch)
     return dx_a[2, 2, 2] == 3 
 end
 
-function test_binary_operation_derivative_mix(FT, arch)
+function binary_operation_derivative_mix(FT, arch)
     grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
     a = Field(Cell, Cell, Cell, arch, grid)
     b = Field(Cell, Cell, Cell, arch, grid)
@@ -81,6 +81,90 @@ function test_binary_operation_derivative_mix(FT, arch)
     return a∇b[2, 2, 2] == 6
 end
 
+function horizontal_average_of_plus(model)
+    S₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+    set!(model; S=S₀, T=T₀)
+    T, S = model.tracers
+
+    ST = HorizontalAverage(S + T, model)
+    computed_profile = ST(model)
+    correct_profile = @. sin(π*model.grid.zC) + 42 * model.grid.zC
+
+    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+end
+
+function horizontal_average_of_minus(model)
+    S₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+    set!(model; S=S₀, T=T₀)
+    T, S = model.tracers
+
+    ST = HorizontalAverage(S - T, model)
+    computed_profile = ST(model)
+
+    correct_profile = @. sin(π*model.grid.zC) - 42 * model.grid.zC
+
+    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+end
+
+function horizontal_average_of_times(model)
+    S₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+    set!(model; S=S₀, T=T₀)
+    T, S = model.tracers
+
+    ST = HorizontalAverage(S * T, model)
+    computed_profile = ST(model)
+    correct_profile = @. sin(π*model.grid.zC) * 42 * model.grid.zC
+
+    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+end
+
+function multiplication_and_derivative_ccf(model)
+    w₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+    set!(model; w=w₀, T=T₀)
+
+    w = model.velocities.w
+    T = model.tracers.T
+
+    wT = HorizontalAverage(w * ∂z(T), model)
+    computed_profile = wT(model)
+    correct_profile = @. sin(π*model.grid.zF) * 42
+
+    return all(computed_profile[:][2:end-1] .≈ correct_profile[1:end-1])
+end
+
+function multiplication_and_derivative_ccc(model)
+    w₀(x, y, z) = sin(π*z)
+    T₀(x, y, z) = 42*z
+    set!(model; w=w₀, T=T₀)
+
+    w = model.velocities.w
+    T = model.tracers.T
+
+    wT_ccc = @at (Cell, Cell, Cell) w * ∂z(T)
+    wT_ccf = @at (Cell, Cell, Face) w * ∂z(T)
+
+    wT_ccc_avg = HorizontalAverage(wT_ccc, model)
+    wT_ccf_avg = HorizontalAverage(wT_ccf, model)
+
+    computed_profile_ccc = wT_ccc_avg(model)
+    computed_profile_ccf = wT_ccf_avg(model)
+
+    sinusoid = sin.(π.*model.grid.zF)
+    sinusoid[model.grid.Nz+1] = 0
+    interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
+
+    incorrect_profile = sin.(π*model.grid.zC) .* 42
+    correct_profile = interped_sin .* 42
+
+    @show correct_profile incorrect_profile computed_profile_ccc[:][2:end-1] computed_profile_ccf[:][2:end-1]
+
+    return all(computed_profile_ccc[:][2:end-1] .≈ correct_profile)
+end
+
 @testset "Abstract operations" begin
     println("Testing abstract operations...")
 
@@ -96,12 +180,12 @@ end
                 T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
 
                 for op in (+, *, -, /)
-                    @test test_simple_binary_operation(op, u, v, num1, num2)
-                    @test test_simple_binary_operation(op, u, w, num1, num2)
-                    @test test_simple_binary_operation(op, u, T, num1, num2)
-                    @test test_simple_binary_operation(op, T, S, num1, num2)
+                    @test simple_binary_operation(op, u, v, num1, num2)
+                    @test simple_binary_operation(op, u, w, num1, num2)
+                    @test simple_binary_operation(op, u, T, num1, num2)
+                    @test simple_binary_operation(op, T, S, num1, num2)
                 end
-                @test test_three_field_addition(u, v, w, num1, num2)
+                @test three_field_addition(u, v, w, num1, num2)
             end
         end
     end
@@ -115,11 +199,11 @@ end
                 u, v, w = Oceananigans.VelocityFields(arch, grid)
                 T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
                 for a in (u, v, w, T)
-                    @test test_x_derivative(a)
-                    @test test_y_derivative(a)
-                    @test test_z_derivative(a)
+                    @test x_derivative(a)
+                    @test y_derivative(a)
+                    @test z_derivative(a)
                 end
-                @test test_x_derivative_cell(FT, arch)
+                @test x_derivative_cell(FT, arch)
             end
         end
     end
@@ -128,7 +212,16 @@ end
         println("  Testing combined binary operations and derivatives...")
         for FT in float_types
             for arch in archs
-                @test test_binary_operation_derivative_mix(FT, arch)
+                @test binary_operation_derivative_mix(FT, arch)
+
+                model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
+
+                @test horizontal_average_of_plus(model)
+                @test horizontal_average_of_minus(model)
+                @test horizontal_average_of_times(model)
+
+                @test multiplication_and_derivative_ccf(model)
+                @test multiplication_and_derivative_ccc(model)
             end
         end
     end
