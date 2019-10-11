@@ -18,9 +18,11 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation
     end
 end
 
-@propagate_inbounds function getindex(β::BinaryOperation, i, j, k) 
-    return β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
-end
+@inline getindex(β::BinaryOperation, i, j, k) =
+    interpolate_then_operate(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
+
+@inline interpolate_then_operate(i, j, k, grid, op, ▶a, ▶b, a, b) =
+    op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
 for op in (:+, :-, :/, :*)
     @eval begin
