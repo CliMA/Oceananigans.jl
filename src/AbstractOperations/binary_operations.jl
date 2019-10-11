@@ -1,15 +1,21 @@
-struct BinaryOperation{X, Y, Z, A, B, IA, IB, O, G} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
       ▶a :: IA
       ▶b :: IB
+      La :: LA
+      Lb :: LB
     grid :: G
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b) where {X, Y, Z}
-        a.grid === b.grid && throw(ArgumentError("Both fields in a BinaryOperation must be
-                                                  on the same grid."))
-        return new{X, Y, Z, typeof(data(a)), typeof(data(b)), typeof(▶a), typeof(▶b), 
-                   typeof(op), typeof(a.grid)}(op, data(a), data(b), ▶a, ▶b, a.grid)
+        a.grid === b.grid || throw(ArgumentError("Both fields in a BinaryOperation must be on the same grid."))
+
+        La = location(a)
+        Lb = location(b)
+
+        return new{X, Y, Z, typeof(data(a)), typeof(data(b)), 
+                   typeof(▶a), typeof(▶b), typeof(La), typeof(Lb),
+                   typeof(op), typeof(a.grid)}(op, data(a), data(b), ▶a, ▶b, La, Lb, a.grid)
     end
 end
 
@@ -45,11 +51,20 @@ end
 
 for op in (:+, :-, :/, :*)
     @eval begin
-        function $op(a::AbstractLocatedField{XA, YA, ZA}, 
-                     b::AbstractLocatedField{XB, YB, ZB}) where {XA, YA, ZA, XB, YB, ZB}
+        function $op(a::F, b::F) where F<:AbstractLocatedField
+            La = location(a)
+            Lb = location(b)
             ▶a = identity
-            ▶b = interp_operator((XA, YA, ZA), (XB, YB, ZB))
+            ▶b = interp_operator(La, Lb)
             return BinaryOperation{XA, YA, ZA}($op, a, b, ▶a, ▶b)
+        end
+
+        function $op(Lop::Tuple, a::F, b::F) where F<:AbstractLocatedField
+            La = location(a)
+            Lb = location(b)
+            ▶a = interp_operator(Lop, La)
+            ▶b = interp_operator(Lop, Lb)
+            return BinaryOperation{Lop[1], Lop[2], Lop[3]}($op, a, b, ▶a, ▶b)
         end
     end
 end
