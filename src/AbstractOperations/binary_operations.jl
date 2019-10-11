@@ -38,7 +38,7 @@ for op in (:+, :-, :/, :*)
         $op(a::Number, b::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} =
             BinaryOperation{X, Y, Z}($op, a, b, identity, identity)
 
-        function $op(Lop::Tuple, a::AbstractLocatedField, b::AbstractLocatedField)
+        function $op(Lop::Tuple, a, b)
             La = location(a)
             Lb = location(b)
             ▶a = interp_operator(La, Lop)

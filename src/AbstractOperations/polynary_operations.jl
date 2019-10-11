@@ -10,10 +10,10 @@ struct PolynaryOperation{X, Y, Z, N, A, I, L, O, G} <: AbstractOperation{X, Y, Z
 
         grid = validate_grid(a...)
 
-        a_data = Tuple(data(ai) for ai in a)
         La = Tuple(location(ai) for ai in a)
+        a = Tuple(data(ai) for ai in a)
 
-        return new{X, Y, Z, length(a), typeof(a_data), typeof(▶a), typeof(La), typeof(op), 
+        return new{X, Y, Z, length(a), typeof(a), typeof(▶a), typeof(La), typeof(op), 
                    typeof(grid)}(op, a, ▶a, La, grid)
     end
 end
@@ -23,19 +23,40 @@ end
 end
 
 for op in (:+, :*)
-    @eval begin
-        function $op(b::AbstractLocatedField, c::AbstractLocatedField, d::AbstractLocatedField...)
-             a = merge((b, c), Tuple(d))
-             L = merge((Lb, Lc), Tuple(location(di) for di in d))
-            L1 = L[1]
-             ▶ = Tuple(interp_operator(Li, L1) for Li in L)
-            return PolynaryOperation{L1[1], L1[2], L1[3]}($op, a, ▶)
-        end
+    for (Tb, Tc) in zip((Any, AbstractLocatedField, AbstractLocatedField), 
+                        (AbstractLocatedField, Any, AbstractLocatedField))
+        @eval begin
+            function $op(b::$Tb, c::$Tc, d...)
+                a = []
+                push!(a, b, c, d...)
+                a = Tuple(a)
 
-        function $op(Lop::Tuple, b::AbstractLocatedField, c::AbstractLocatedField, d::AbstractLocatedField...)
-            a = merge((b, c), Tuple(d))
-            L = merge((Lb, Lc), Tuple(location(di) for di in d))
+                L = []
+                push!(L, location(b), location(c))
+                append!(L, [location(di) for di in d])
+                L = Tuple(L)
+
+                L1 = L[1]
+                ▶ = Tuple(interp_operator(Li, L1) for Li in L)
+
+                return PolynaryOperation{L1[1], L1[2], L1[3]}($op, a, ▶)
+            end
+        end
+    end
+
+    @eval begin
+        function $op(Lop::Tuple, b, c, d...)
+            a = []
+            push!(a, b, c, d...)
+            a = Tuple(a)
+
+            L = []
+            push!(L, location(b), location(c))
+            append!(L, [location(di) for di in d])
+            L = Tuple(L)
+
             ▶ = Tuple(interp_operator(Li, Lop) for Li in L)
+
             return PolynaryOperation{Lop[1], Lop[2], Lop[3]}($op, a, ▶)
         end
     end
