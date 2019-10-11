@@ -11,7 +11,7 @@ struct PolynaryOperation{X, Y, Z, N, A, I, L, G, O} <: AbstractOperation{X, Y, Z
     end
 end
 
-@propagate_inbounds getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
+@inline Base.getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.a[γ]), N)...)
 
 const polynary_operators = [:+, :*]
