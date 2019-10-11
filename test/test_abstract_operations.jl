@@ -63,22 +63,9 @@ function x_derivative_cell(FT, arch)
     return dx_a[2, 2, 2] == 3 
 end
 
-function binary_operation_derivative_mix(FT, arch)
-    grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
-    a = Field(Cell, Cell, Cell, arch, grid)
-    b = Field(Cell, Cell, Cell, arch, grid)
-
-    a∇b = @at (Face, Cell, Cell) b * ∂x(a)
-
-    interior(b) .= 2
-
-    for k in 1:3
-        interior(a)[:, 1, k] .= [1, 4, 4]
-        interior(a)[:, 2, k] .= [1, 4, 4]
-        interior(a)[:, 3, k] .= [1, 4, 4]
-    end
-
-    return a∇b[2, 2, 2] == 6
+function times_x_derivative(a, b, location, i, j, k, answer)
+    a∇b = @at location b * ∂x(a)
+    return a∇b[i, j, k] == answer
 end
 
 function compute_plus(model)
@@ -234,8 +221,46 @@ end
 
     @testset "Combined binary operations and derivatives" begin
         println("  Testing combined binary operations and derivatives...")
+        arch = CPU()
+        Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
-            @test binary_operation_derivative_mix(FT, CPU())
+            grid = RegularCartesianGrid(FT, (Nx, Nx, Nx), (Nx, Nx, Nx))
+            a, b = Tuple(Field(Cell, Cell, Cell, arch, grid) for i in 1:2)
+    
+            set!(b, 2)
+            set!(a, (x, y, z) -> x < 2 ? 3x : 6)
+    
+            #                            0   0.5   1   1.5   2   2.5   3
+            # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
+            #        i Face:    0        1         2        3          4
+            #        i Cell:        0         1         2         3         4
+
+            #              a = [    0,       1.5,      4.5,       6,        0    ]
+            #              b = [    0,        2,        2,        2,        0    ]
+            #          ∂x(a) = [        1.5,       3,       1.5,      -6         ] 
+
+            # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
+            #        i Face:    0        1         2         3         4
+            #        i Cell:        0         1         2         3         4
+
+            # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ] 
+            # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ] 
+
+
+            @test times_x_derivative(a, b, (C, C, C), 1, 2, 2, 4.5)
+            @test times_x_derivative(a, b, (F, C, C), 1, 2, 2, 3)
+
+            @test times_x_derivative(a, b, (C, C, C), 2, 2, 2, 4.5)
+            @test times_x_derivative(a, b, (F, C, C), 2, 2, 2, 6)
+
+            @test times_x_derivative(a, b, (C, C, C), 3, 2, 2, -4.5)
+            @test times_x_derivative(a, b, (F, C, C), 3, 2, 2, 3)
+        end
+    end
+
+    @testset "Combined binary operations and derivatives" begin
+        println("  Testing combined binary operations and derivatives...")
+        for FT in float_types
             for arch in archs
                 println("    Testing computation of abstract operations [$(typeof(arch))]...")
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
