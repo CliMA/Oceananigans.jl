@@ -269,10 +269,10 @@ end
         end
     end
 
-    @testset "Combined binary operations and derivatives" begin
-        println("  Testing combined binary operations and derivatives...")
-        for FT in float_types
-            for arch in archs
+    for arch in archs
+        @testset "Computations [$(typeof(arch))]" begin
+            println("  Testing combined binary operations and derivatives...")
+            for FT in float_types
                 println("    Testing computation of abstract operations [$(typeof(arch))]...")
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
 
