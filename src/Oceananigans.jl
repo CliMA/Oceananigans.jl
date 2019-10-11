@@ -204,9 +204,6 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
 """
     @hascuda expr
 
@@ -226,6 +223,9 @@ end
         println(dev)
     end
 end
+
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
 
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
