@@ -1,8 +1,8 @@
-struct Computation{RT, OU, OP, G}
-      operation :: OP
-         result :: OU
+struct Computation{R, T, O, G}
+      operation :: O
+         result :: R
            grid :: G
-    return_type :: RT
+    return_type :: T
 end
 
 function Computation(op, result; return_type=Array)
@@ -30,9 +30,9 @@ function _compute!(result, grid, operation)
     return nothing
 end
 
-function (comp::Computation)(args...)
+function (comp::Computation{<:Array, <:Field})(args...)
     compute!(comp)
-    return comp.return_type(data(comp.result))
+    return comp.return_type(interior(comp.result))
 end
 
 function (comp::Computation{<:Nothing})(args...)
