@@ -90,9 +90,6 @@ FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
 
 location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
-architecture(::Array) = CPU()
-@hascuda architecture(::CuArray) = GPU()
-
 architecture(f::Field) = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
 
