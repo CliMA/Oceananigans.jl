@@ -2,13 +2,13 @@ struct Derivative{X, Y, Z, A, D, I, L, G} <: AbstractOperation{X, Y, Z, G}
        a :: A
        ∂ :: D
        ▶ :: I
-      La :: L
+      L∂ :: L
     grid :: G
 
     function Derivative{X, Y, Z}(a, ∂, L∂) where {X, Y, Z}
          ▶ = interp_operator(L∂, (X, Y, Z))
         return new{X, Y, Z, typeof(data(a)), typeof(∂), 
-                   typeof(▶), typeof(L), typeof(a.grid)}(data(a), ∂, ▶, L, a.grid)
+                   typeof(▶), typeof(L∂), typeof(a.grid)}(data(a), ∂, ▶, L∂, a.grid)
     end
 end
 
