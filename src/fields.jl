@@ -103,7 +103,7 @@ architecture(o::OffsetArray) = architecture(o.parent)
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 
 "Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
-@inline data(f::AbstractArray) = f
+@inline data(a) = a
 @inline data(f::Field) = f.data
 
 "Returns `f.data.parent` for `f::Field`."
