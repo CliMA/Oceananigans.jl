@@ -79,8 +79,15 @@ for ξ in ("x", "y", "z")
     end
 end
 
+instantiate(L::NTuple{N, <:DataType}) where N = Tuple(X() for X in L)
+instantiate(x, y...) = instantiate(tuple(x, y...))
+instantiate(Σ::NTuple{N, <:NTuple{M, <:DataType}}) where {N, M} = Tuple(instantiate(L) for L in Σ)
+
+interpolation_operator(from::NTuple{N, <:DataType}, to::NTuple{N, <:DataType}) where N =
+    interpolation_operator(instantiate(from), instantiate(to))
+
 function interpolation_operator(from, to)
-    x, y, z = (interpolation_code(X(), Y()) for (X, Y) in zip(from, to))
+    x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
     if all(ξ === :a for ξ in (x, y, z))
         return identity

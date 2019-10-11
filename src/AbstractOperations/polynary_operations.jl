@@ -4,8 +4,10 @@ struct PolynaryOperation{X, Y, Z, N, A, I, L, G, O} <: AbstractOperation{X, Y, Z
        ▶ :: I
       La :: L
     grid :: G
+
     function PolynaryOperation{X, Y, Z}(op, a, L, grid) where {X, Y, Z}
         ▶ = Tuple(interpolation_operator(Li, (X, Y, Z)) for Li in L)
+        L = instantiate(L)
         return new{X, Y, Z, length(a), typeof(a), typeof(▶), typeof(L), 
                    typeof(grid), typeof(op)}(op, a, ▶, L, grid)
     end
@@ -35,4 +37,4 @@ for op in (:+, :*)
 end
 
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =
-    PolynaryOperation{X, Y, Z}(polynary.op, adapt(to, polynary.a), polynary.La, polynary.grid)
+    PolynaryOperation{X, Y, Z}(adapt(to, polynary.op), adapt(to, polynary.a), polynary.La, polynary.grid)

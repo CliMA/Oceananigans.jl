@@ -7,6 +7,7 @@ struct Derivative{X, Y, Z, A, I, L, G, D} <: AbstractOperation{X, Y, Z, G}
 
     function Derivative{X, Y, Z}(∂, a, L∂, grid) where {X, Y, Z}
         ▶ = interpolation_operator(L∂, (X, Y, Z))
+        L∂ = instantiate(L∂)
         return new{X, Y, Z, typeof(a), typeof(▶), typeof(L∂), typeof(grid), typeof(∂)}(∂, a, ▶, L∂, grid)
     end
 end
@@ -38,6 +39,4 @@ append!(operators, derivative_operators)
 ∂z(a::ALF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), a)
 
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
-    Derivative{X, Y, Z}(deriv.∂, adapt(to, deriv.a), deriv.L∂, deriv.grid)
-
-Base.parent(deriv::Derivative) = parent(deriv.a)
+    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.a), deriv.L∂, deriv.grid)

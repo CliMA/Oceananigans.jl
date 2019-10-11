@@ -2,6 +2,7 @@ struct FunctionField{X, Y, Z, C, F, G} <: AbstractLocatedField{X, Y, Z, F, G}
      func :: F
      grid :: G
     clock :: C
+
     function FunctionField{X, Y, Z}(func, grid; clock=nothing) where {X, Y, Z}
         return new{X, Y, Z, typeof(clock), typeof(func), typeof(grid)}(func, grid, clock)
     end
@@ -30,3 +31,6 @@ function compute(f::FunctionField, arch)
     set!(computed_f, f)
     return computed_f
 end
+
+Adapt.adapt_structure(to, f::FunctionField{X, Y, Z}) where {X, Y, Z} =
+    FunctionField{X, Y, Z}(adapt(to, func), grid, clock)
