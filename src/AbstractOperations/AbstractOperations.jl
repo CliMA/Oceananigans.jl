@@ -1,6 +1,6 @@
 module AbstractOperations
 
-export ∂x, ∂y, ∂z
+export ∂x, ∂y, ∂z, @at
 
 using Base: @propagate_inbounds
 
