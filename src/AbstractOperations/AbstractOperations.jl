@@ -107,6 +107,7 @@ macro at(location, ex)
     return esc(ex)
 end
 
+include("unary_operations.jl")
 include("binary_operations.jl")
 include("polynary_operations.jl")
 include("derivatives.jl")

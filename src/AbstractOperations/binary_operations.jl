@@ -48,3 +48,9 @@ for op in (:+, :-, :/, :*)
     end
 end
 
+for op in (:^,)
+    @eval begin
+        $op(a::AbstractLocatedField{X, Y, Z}, b::Number) where {X, Y, Z} =
+            BinaryOperation{X, Y, Z}($op, a, b, identity, identity)
+    end
+end
