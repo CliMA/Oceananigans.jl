@@ -373,17 +373,17 @@ in `y` and `z`, from `afc` to `acf`.
 """
 @inline ▶yz_acf(i, j, k, grid, F, args...) = ▶z_aaf(i, j, k, grid, ▶y_aca, F, args...)
 
-"""
-    ▶xyc_ffc(i, j, k, grid, F, args...)
+@inline ▶xyz_ccc(i, j, k, grid, F, args...) = ▶x_caa(i, j, k, grid, ▶y_aca, ▶z_aac, F, args...)
+@inline ▶xyz_fff(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_afa, ▶z_aaf, F, args...)
 
-Interpolate the function
-
-    `F(i, j, k, grid, args...)`
-
-in `x`, `y`, and `z` from `ccf` to `ffc`.
-"""
-@inline ▶xyz_ffc(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_afa, ▶z_aac, F, args...)
 @inline ▶xyz_ccf(i, j, k, grid, F, args...) = ▶x_caa(i, j, k, grid, ▶y_aca, ▶z_aaf, F, args...)
+@inline ▶xyz_cfc(i, j, k, grid, F, args...) = ▶x_caa(i, j, k, grid, ▶y_afa, ▶z_aac, F, args...)
+@inline ▶xyz_fcc(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_aca, ▶z_aac, F, args...)
+
+@inline ▶xyz_cff(i, j, k, grid, F, args...) = ▶x_caa(i, j, k, grid, ▶y_afa, ▶z_aaf, F, args...)
+@inline ▶xyz_fcf(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_aca, ▶z_aaf, F, args...)
+@inline ▶xyz_ffc(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_afa, ▶z_aac, F, args...)
+
 
 """
     ν_Σᵢⱼ(i, j, k, grid, ν, Σᵢⱼ, closure, buoyancy, u, v, w, T, S)
