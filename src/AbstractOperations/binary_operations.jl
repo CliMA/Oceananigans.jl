@@ -18,7 +18,7 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation
 end
 
 @inline getindex(β::BinaryOperation, i, j, k) =
-    β.op(▶β.a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
+    β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
 
     #interpolate_then_operate(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
 #@inline interpolate_then_operate(i, j, k, grid, op, ▶a, ▶b, a, b) =
