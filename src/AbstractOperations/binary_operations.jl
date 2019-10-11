@@ -7,6 +7,7 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation
       La :: LA
       Lb :: LB
     grid :: G
+
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b) where {X, Y, Z}
         grid = validate_grid(a, b)
         La = location(a)
@@ -23,7 +24,7 @@ end
 
 for op in (:+, :-, :/, :*)
     @eval begin
-        function $op(a::F, b::F) where F<:AbstractLocatedField
+        function $op(a::AbstractLocatedField, b::AbstractLocatedField)
             La = location(a)
             Lb = location(b)
             ▶a = identity
@@ -37,7 +38,7 @@ for op in (:+, :-, :/, :*)
         $op(a::Number, b::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} =
             BinaryOperation{X, Y, Z}($op, a, b, identity, identity)
 
-        function $op(Lop::Tuple, a::F, b::F) where F<:AbstractLocatedField
+        function $op(Lop::Tuple, a::AbstractLocatedField, b::AbstractLocatedField)
             La = location(a)
             Lb = location(b)
             ▶a = interp_operator(La, Lop)
