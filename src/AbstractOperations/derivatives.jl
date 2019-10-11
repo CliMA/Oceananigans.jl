@@ -7,8 +7,7 @@ struct Derivative{X, Y, Z, A, D, I, L, G} <: AbstractOperation{X, Y, Z, G}
 
     function Derivative{X, Y, Z}(a, ∂, L∂, grid) where {X, Y, Z}
          ▶ = interp_operator(L∂, (X, Y, Z))
-        return new{X, Y, Z, typeof(a), typeof(∂), 
-                   typeof(▶), typeof(L∂), typeof(grid)}(a, ∂, ▶, L∂, grid)
+        return new{X, Y, Z, typeof(a), typeof(∂), typeof(▶), typeof(L∂), typeof(grid)}(a, ∂, ▶, L∂, grid)
     end
 end
 
@@ -17,35 +16,21 @@ end
 flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face
 
-function ∂x(a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂x_, interp_code(flip(X)), :aa))
-    return Derivative{flip(X), Y, Z}(data(a), ∂, (flip(X), Y, Z), a.grid)
-end
+∂x(X::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂x_, interp_code(flip(X)), :aa))
+∂y(Y::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂y_a, interp_code(flip(Y)), :a))
+∂z(Z::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂z_aa, interp_code(flip(Z))))
 
-function ∂y(a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂y_a, interp_code(flip(Y)), :a))
-    return Derivative{X, flip(Y), Z}(data(a), ∂, (X, flip(Y), Z), a.grid)
-end
+const ALF = AbstractLocatedField
 
-function ∂z(a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂z_aa, interp_code(flip(Z))))
-    return Derivative{X, Y, flip(Z)}(data(a), ∂, (X, Y, flip(Z)), a.grid)
-end
+∂x(a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{flip(X), Y, Z}(data(a), ∂x(X), (flip(X), Y, Z), a.grid)
+∂y(a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{X, flip(Y), Z}(data(a), ∂y(Y), (X, flip(Y), Z), a.grid)
+∂z(a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{X, Y, flip(Z)}(data(a), ∂z(Z), (X, Y, flip(Z)), a.grid)
 
-function ∂x(L::Tuple, a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂x_, interp_code(flip(X)), :aa))
-    return Derivative{L[1], L[2], L[3]}(data(a), ∂, (flip(X), Y, Z), a.grid)
-end
-
-function ∂y(L::Tuple, a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂y_a, interp_code(flip(Y)), :a))
-    return Derivative{L[1], L[2], L[3]}(data(a), ∂, (X, flip(Y), Z), a.grid)
-end
-
-function ∂z(L::Tuple, a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
-    ∂ = eval(Symbol(:∂z_aa, interp_code(flip(Z))))
-    return Derivative{L[1], L[2], L[3]}(data(a), ∂, (X, Y, flip(Z)), a.grid)
-end
+∂x(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{L[1], L[2], L[3]}(data(a), ∂x(X), (flip(X), Y, Z), a.grid)
+∂y(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{L[1], L[2], L[3]}(data(a), ∂y(Y), (X, flip(Y), Z), a.grid)
+∂z(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = Derivative{L[1], L[2], L[3]}(data(a), ∂z(Z), (X, Y, flip(Z)), a.grid)
 
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
     Derivative{X, Y, Z}(adapt(to, parent(deriv.a)), deriv.∂, deriv.L∂, deriv.grid)
+
+Base.parent(deriv::Derivative) = parent(deriv.a)
