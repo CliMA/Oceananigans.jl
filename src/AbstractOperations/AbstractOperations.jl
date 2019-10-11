@@ -51,8 +51,8 @@ end
 @inline identity(i, j, k, grid, a::Number) = a
 @inline identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
 
-interp_code(::Type{Face}) = :f
-interp_code(::Type{Cell}) = :c
+interp_code(::Face) = :f
+interp_code(::Cell) = :c
 interp_code(from::L, to::L) where L = :a
 interp_code(from, to) = interp_code(to)
 
@@ -66,7 +66,7 @@ for ξ in (:x, :y, :z)
 end
 
 function interp_operator(from, to)
-    x, y, z = (interp_code(f, t) for (f, t) in zip(from, to))
+    x, y, z = (interp_code(f(), t()) for (f, t) in zip(from, to))
 
     if all(ξ === :a for ξ in (x, y, z))
         return identity
