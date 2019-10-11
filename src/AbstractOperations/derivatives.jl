@@ -11,7 +11,7 @@ struct Derivative{X, Y, Z, A, I, L, G, D} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
-@propagate_inbounds getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.a)
+@inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.a)
 
 flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face

@@ -10,7 +10,7 @@ struct UnaryOperation{X, Y, Z, A, I, L, G, O} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
-@propagate_inbounds getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.a)
+@inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.a)
 
 const unary_operators = [:sqrt, :sin, :cos, :exp]
 append!(operators, unary_operators)

@@ -17,7 +17,8 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, G, O} <: AbstractOperation
     end
 end
 
-@inline getindex(β::BinaryOperation, i, j, k) = β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
+@inline Base.getindex(β::BinaryOperation, i, j, k) = 
+    β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
 
 const binary_operators = [:+, :-, :/, :*, :^]
 append!(operators, binary_operators)

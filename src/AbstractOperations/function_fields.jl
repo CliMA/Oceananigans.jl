@@ -13,10 +13,10 @@ architecture(::FunctionField) = nothing
 data(f::FunctionField) = f
 Base.parent(f::FunctionField) = f
 
-@propagate_inbounds getindex(f::FunctionField{X, Y, Z, <:Nothing}, i, j, k) where {X, Y, Z} =
+@inline Base.getindex(f::FunctionField{X, Y, Z, <:Nothing}, i, j, k) where {X, Y, Z} =
     f.func(xnode(X, i, f.grid), ynode(Y, j, f.grid), znode(Z, k, f.grid))
 
-@propagate_inbounds getindex(f::FunctionField{X, Y, Z}, i, j, k) where {X, Y, Z} =
+@inline Base.getindex(f::FunctionField{X, Y, Z}, i, j, k) where {X, Y, Z} =
     f.func(xnode(X, i, f.grid), ynode(Y, j, f.grid), znode(Z, k, f.grid), f.clock.time)
 
 @inline (f::FunctionField)(x, y, z) = f.func(x, y, z, f.clock.time)
