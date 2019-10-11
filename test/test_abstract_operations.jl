@@ -265,10 +265,12 @@ end
                 println("    Testing computation of abstract operations [$(typeof(arch))]...")
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
 
+                println("      Testing compute!...")
                 @test compute_plus(model)
                 @test compute_minus(model)
                 @test compute_times(model)
 
+                println("      Testing horizontal averges...")
                 @test horizontal_average_of_plus(model)
                 @test horizontal_average_of_minus(model)
                 @test horizontal_average_of_times(model)
