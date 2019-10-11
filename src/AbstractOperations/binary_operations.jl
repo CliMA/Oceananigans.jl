@@ -11,6 +11,8 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, G, O} <: AbstractOperation
     function BinaryOperation{X, Y, Z}(op, a, b, La, Lb, grid) where {X, Y, Z}
         ▶a = interpolation_operator(La, (X, Y, Z))
         ▶b = interpolation_operator(Lb, (X, Y, Z))
+        La = instantiate(La)
+        Lb = instantiate(Lb)
         return new{X, Y, Z, typeof(a), typeof(b), 
                    typeof(▶a), typeof(▶b), typeof(La), typeof(Lb),
                    typeof(grid), typeof(op)}(op, a, b, ▶a, ▶b, La, Lb, grid)
@@ -49,5 +51,5 @@ for op in binary_operators
 end
 
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
-    BinaryOperation{X, Y, Z}(binary.op, adapt(to, binary.a), adapt(to, binary.b), 
+    BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b), 
                             binary.La,  binary.Lb, binary.grid)

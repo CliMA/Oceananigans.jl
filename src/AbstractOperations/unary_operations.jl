@@ -4,8 +4,10 @@ struct UnaryOperation{X, Y, Z, A, I, L, G, O} <: AbstractOperation{X, Y, Z, G}
        ▶ :: I
       La :: L
     grid :: G
+
     function UnaryOperation{X, Y, Z}(op, a, La, grid) where {X, Y, Z}
         ▶ = interpolation_operator(La, (X, Y, Z))
+        La = instantiate(La)
         return new{X, Y, Z, typeof(a), typeof(▶), typeof(La), typeof(grid), typeof(op)}(op, a, ▶, La, grid)
     end
 end
@@ -32,4 +34,4 @@ for op in unary_operators
 end
 
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
-    UnaryOperation{X, Y, Z}(unary.op, adapt(to, unary.a), unary.La, unary.grid)
+    UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.a), unary.La, unary.grid)
