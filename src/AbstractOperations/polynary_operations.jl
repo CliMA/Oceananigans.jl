@@ -23,8 +23,8 @@ end
 end
 
 for op in (:+, :*)
-    for (Tb, Tc) in zip((Any, AbstractLocatedField, AbstractLocatedField), 
-                        (AbstractLocatedField, Any, AbstractLocatedField))
+    for (Tb, Tc) in zip((Number, AbstractLocatedField, AbstractLocatedField), 
+                        (AbstractLocatedField, Number, AbstractLocatedField))
         @eval begin
             function $op(b::$Tb, c::$Tc, d...)
                 a = []
