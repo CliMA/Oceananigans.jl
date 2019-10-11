@@ -81,6 +81,39 @@ function binary_operation_derivative_mix(FT, arch)
     return a∇b[2, 2, 2] == 6
 end
 
+function compute_plus(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+
+    computation = Computation(S + T, model.pressures.pHY′)
+    compute!(computation)
+    result = Array(interior(computation.result))
+
+    return all(result .≈ eltype(model.grid)(π+42))
+end
+
+function compute_minus(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+
+    computation = Computation(S - T, model.pressures.pHY′)
+    compute!(computation)
+    result = Array(interior(computation.result))
+
+    return all(result .≈ eltype(model.grid)(π-42))
+end
+
+function compute_times(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+
+    computation = Computation(S * T, model.pressures.pHY′)
+    compute!(computation)
+    result = Array(interior(computation.result))
+
+    return all(result .≈ eltype(model.grid)(π*42))
+end
+
 function horizontal_average_of_plus(model)
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
@@ -162,52 +195,54 @@ end
     println("Testing abstract operations...")
 
     @testset "Simple binary operations" begin
+        arch = CPU()
         println("  Testing simple binary operations...")
         for FT in float_types
             num1 = FT(π)
             num2 = FT(42)
             grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
 
-            for arch in archs
-                u, v, w = Oceananigans.VelocityFields(arch, grid)
-                T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
+            u, v, w = Oceananigans.VelocityFields(arch, grid)
+            T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
 
-                for op in (+, *, -, /)
-                    @test simple_binary_operation(op, u, v, num1, num2)
-                    @test simple_binary_operation(op, u, w, num1, num2)
-                    @test simple_binary_operation(op, u, T, num1, num2)
-                    @test simple_binary_operation(op, T, S, num1, num2)
-                end
-                @test three_field_addition(u, v, w, num1, num2)
+            for op in (+, *, -, /)
+                @test simple_binary_operation(op, u, v, num1, num2)
+                @test simple_binary_operation(op, u, w, num1, num2)
+                @test simple_binary_operation(op, u, T, num1, num2)
+                @test simple_binary_operation(op, T, S, num1, num2)
             end
+            @test three_field_addition(u, v, w, num1, num2)
         end
     end
 
     @testset "Derivatives" begin
+        arch = CPU()
         println("  Testing derivatives...")
         for FT in float_types
             grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
 
-            for arch in archs
-                u, v, w = Oceananigans.VelocityFields(arch, grid)
-                T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
-                for a in (u, v, w, T)
-                    @test x_derivative(a)
-                    @test y_derivative(a)
-                    @test z_derivative(a)
-                end
-                @test x_derivative_cell(FT, arch)
+            u, v, w = Oceananigans.VelocityFields(arch, grid)
+            T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
+            for a in (u, v, w, T)
+                @test x_derivative(a)
+                @test y_derivative(a)
+                @test z_derivative(a)
             end
+            @test x_derivative_cell(FT, arch)
         end
     end
 
     @testset "Combined binary operations and derivatives" begin
         println("  Testing combined binary operations and derivatives...")
         for FT in float_types
+            @test binary_operation_derivative_mix(FT, CPU())
             for arch in archs
-                @test binary_operation_derivative_mix(FT, arch)
-
+                println("    Testing computation of abstract operations [$(typeof(arch))]...")
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
+
+                @test compute_plus(model)
+                @test compute_minus(model)
+                @test compute_times(model)
 
                 @test horizontal_average_of_plus(model)
                 @test horizontal_average_of_minus(model)

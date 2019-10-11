@@ -33,6 +33,8 @@ using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_fa
 
 using Oceananigans.AbstractOperations
 
+using Oceananigans.AbstractOperations: Computation, compute!
+
 float_types = (Float32, Float64)
 
 archs = (CPU(),)
