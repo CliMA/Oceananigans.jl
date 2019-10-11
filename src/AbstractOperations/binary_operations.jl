@@ -1,4 +1,4 @@
-struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, G, O} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
@@ -8,54 +8,45 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, LA, LB, O, G} <: AbstractOperation
       Lb :: LB
     grid :: G
 
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, grid) where {X, Y, Z}
-        La = location(a)
-        Lb = location(b)
-        return new{X, Y, Z, typeof(data(a)), typeof(data(b)), 
+    function BinaryOperation{X, Y, Z}(op, a, b, La, Lb, grid) where {X, Y, Z}
+        ▶a = interpolation_operator(La, (X, Y, Z))
+        ▶b = interpolation_operator(Lb, (X, Y, Z))
+        return new{X, Y, Z, typeof(a), typeof(b), 
                    typeof(▶a), typeof(▶b), typeof(La), typeof(Lb),
-                   typeof(op), typeof(grid)}(op, data(a), data(b), ▶a, ▶b, La, Lb, grid)
+                   typeof(grid), typeof(op)}(op, a, b, ▶a, ▶b, La, Lb, grid)
     end
 end
 
-@inline getindex(β::BinaryOperation, i, j, k) =
-    β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
+@inline getindex(β::BinaryOperation, i, j, k) = β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
 
-    #interpolate_then_operate(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
-#@inline interpolate_then_operate(i, j, k, grid, op, ▶a, ▶b, a, b) =
-#    op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+const binary_operators = [:+, :-, :/, :*, :^]
+append!(operators, binary_operators)
 
-
-for op in (:+, :-, :/, :*)
+for op in binary_operators
     @eval begin
-        function $op(a::AbstractLocatedField, b::AbstractLocatedField)
-            La = location(a)
-            Lb = location(b)
-            ▶a = identity
-            ▶b = interp_operator(Lb, La)
-            grid = validate_grid(a, b)
-            return BinaryOperation{La[1], La[2], La[3]}($op, a, b, ▶a, ▶b, grid)
-        end
-
-        $op(a::AbstractLocatedField{X, Y, Z}, b::Number) where {X, Y, Z} =
-            BinaryOperation{X, Y, Z}($op, a, b, identity, identity, a.grid)
-
-        $op(a::Number, b::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} =
-            BinaryOperation{X, Y, Z}($op, a, b, identity, identity, b.grid)
+        import Base: $op 
 
         function $op(Lop::Tuple, a, b)
             La = location(a)
             Lb = location(b)
-            ▶a = interp_operator(La, Lop)
-            ▶b = interp_operator(Lb, Lop)
             grid = validate_grid(a, b)
-            return BinaryOperation{Lop[1], Lop[2], Lop[3]}($op, a, b, ▶a, ▶b, grid)
+            return BinaryOperation{Lop[1], Lop[2], Lop[3]}($op, data(a), data(b), La, Lb, grid)
         end
+
+        # Sugary versions with default locations
+        $op(a::AbstractLocatedField, b::AbstractLocatedField) = $op(location(a), a, b)
+        $op(a::AbstractLocatedField, b::Number) = $op(location(a), a, b)
+        $op(a::Number, b::AbstractLocatedField) = $op(location(b), a, b)
+
+        # Sugar for mixing in functions of (x, y, z)
+        $op(Lop::Tuple, a::Function, b::AbstractField) = $op(Lop, FunctionField(Lop, a, b.grid), b) 
+        $op(Lop::Tuple, a::AbstractField, b::Function) = $op(Lop, a, FunctionField(Lop, b, a.grid))
+
+        $op(a::AbstractLocatedField, b::Function) = $op(location(a), a, FunctionField(location(a), b, a.grid))
+        $op(a::Function, b::AbstractLocatedField) = $op(location(b), FunctionField(location(b), a, b.grid), b)
     end
 end
 
-for op in (:^,)
-    @eval begin
-        $op(a::AbstractLocatedField{X, Y, Z}, b::Number) where {X, Y, Z} =
-            BinaryOperation{X, Y, Z}($op, a, b, identity, identity)
-    end
-end
+Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
+    BinaryOperation{X, Y, Z}(binary.op, adapt(to, binary.a), adapt(to, binary.b), 
+                            binary.La,  binary.Lb, binary.grid)
