@@ -254,3 +254,6 @@ function set!(Φ::NamedTuple; kwargs...)
 end
 
 set_ic!(model; kwargs...) = set!(model; kwargs...) # legacy wrapper
+
+Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} =
+    Field{X, Y, Z}(adapt(to, data), field.grid)
