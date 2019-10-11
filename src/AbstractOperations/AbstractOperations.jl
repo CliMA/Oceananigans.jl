@@ -6,8 +6,8 @@ using Base: @propagate_inbounds
 
 using Oceananigans
 
-using Oceananigans: AbstractModel, AbstractLocatedField, Face, Cell, 
-                    device, launch_config, architecture,
+using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Cell, 
+                    device, launch_config, architecture, location,
                     HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
 
 import Oceananigans: data, architecture
@@ -39,7 +39,7 @@ function validate_grid(a, b, c...)
     append!(grids, [validate_grid(a, ci) for ci in c])
 
     for g in grids
-        if g !=== nothing
+        if !(g === nothing)
             return g
         end
     end
