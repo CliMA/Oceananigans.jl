@@ -88,6 +88,7 @@ FaceFieldX(arch, grid) = Field((Face, Cell, Cell), arch, grid)
 FaceFieldY(arch, grid) = Field((Cell, Face, Cell), arch, grid)
 FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
 
+location(a) = nothing
 location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
 architecture(f::Field) = architecture(f.data)
