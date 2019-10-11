@@ -5,16 +5,16 @@ struct Computation{R, T, O, G}
     return_type :: T
 end
 
-function Computation(op, result; return_type=Array)
-    return Computation(op, result, op.grid, return_type)
-end
+Computation(op, result; return_type=Array) = Computation(op, result, op.grid, return_type)
 
 architecture(comp::Computation) = architecture(comp.result)
 Base.parent(comp::Computation) = comp
 
 function compute!(comp::Computation)
-    arch = architecture(comp)
-    @launch device(arch) config=launch_config(comp.grid, 3) _compute!(data(comp.result), comp.grid, 
+    arch = architecture(comp.result)
+    result_data = data(comp.result)
+    @launch device(arch) config=launch_config(comp.grid, 3) _compute!(result_data,
+                                                                      comp.grid, 
                                                                       comp.operation)
     return nothing
 end
