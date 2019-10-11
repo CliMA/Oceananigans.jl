@@ -6,11 +6,12 @@ using Base: @propagate_inbounds
 
 using Oceananigans, Adapt
 
-using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Cell, 
+using Oceananigans: AbstractModel, 
+                    AbstractField, AbstractLocatedField, Face, Cell, xnode, ynode, znode,
                     device, launch_config, architecture, 
                     HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
 
-import Oceananigans: data, architecture, location, run_diagnostic
+import Oceananigans: data, architecture, location, run_diagnostic, AbstractGrid
 
 import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, ∂z_aac, ∂z_aaf, 
                                         ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf,
@@ -22,9 +23,11 @@ import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, 
 
 using GPUifyLoops: @launch, @loop
 
-import Base: *, -, +, /, getindex
+import Base: getindex
 
 abstract type AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
+
+const ALF = AbstractLocatedField
 
 data(op::AbstractOperation) = op
 Base.parent(op::AbstractOperation) = op
@@ -56,12 +59,12 @@ end
 @inline identity(i, j, k, grid, a::Number) = a
 @inline identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
 
-interp_code(::Type{Face}) = :f
-interp_code(::Type{Cell}) = :c
-interp_code(::Face) = :f
-interp_code(::Cell) = :c
-interp_code(from::L, to::L) where L = :a
-interp_code(from, to) = interp_code(to)
+interpolation_code(::Type{Face}) = :f
+interpolation_code(::Type{Cell}) = :c
+interpolation_code(::Face) = :f
+interpolation_code(::Cell) = :c
+interpolation_code(from::L, to::L) where L = :a
+interpolation_code(from, to) = interpolation_code(to)
 
 for ξ in ("x", "y", "z")
     ▶sym = Symbol(:▶, ξ, :sym)
@@ -72,8 +75,8 @@ for ξ in ("x", "y", "z")
     end
 end
 
-function interp_operator(from, to)
-    x, y, z = (interp_code(f(), t()) for (f, t) in zip(from, to))
+function interpolation_operator(from, to)
+    x, y, z = (interpolation_code(X(), Y()) for (X, Y) in zip(from, to))
 
     if all(ξ === :a for ξ in (x, y, z))
         return identity
@@ -82,9 +85,17 @@ function interp_operator(from, to)
     end
 end
 
-interp_operator(::Nothing, to) = identity
+interpolation_operator(::Nothing, to) = identity
 
-const operators = [:+, :-, :*, :/, :∂x, :∂y, :∂z]
+# New operators must add to this list
+const operators = []
+
+include("unary_operations.jl")
+include("binary_operations.jl")
+include("polynary_operations.jl")
+include("derivatives.jl")
+include("computations.jl")
+include("function_fields.jl")
 
 function insert_location!(ex::Expr, location)
     if ex.head === :call && ex.args[1] ∈ operators
@@ -107,11 +118,5 @@ macro at(location, ex)
     return esc(ex)
 end
 
-include("unary_operations.jl")
-include("binary_operations.jl")
-include("polynary_operations.jl")
-include("derivatives.jl")
-include("computations.jl")
-include("function_fields.jl")
 
 end # module
