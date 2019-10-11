@@ -21,9 +21,13 @@ import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, 
                                         ▶xyz_ccc, ▶xyz_fcc, ▶xyz_cfc, ▶xyz_ccf,
                                         ▶xyz_fff, ▶xyz_ffc, ▶xyz_fcf, ▶xyz_cff
 
+@hascuda using CUDAnative, CUDAdrv, CuArrays
+
 using GPUifyLoops: @launch, @loop
 
-import Base: getindex
+#####
+##### Basic functionality
+#####
 
 abstract type AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
 
@@ -87,7 +91,7 @@ end
 
 interpolation_operator(::Nothing, to) = identity
 
-# New operators must add to this list
+# New AbstractOperation types add their associated functions to this list
 const operators = []
 
 include("unary_operations.jl")
