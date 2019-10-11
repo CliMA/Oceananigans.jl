@@ -68,6 +68,17 @@ function times_x_derivative(a, b, location, i, j, k, answer)
     return a∇b[i, j, k] == answer
 end
 
+function compute_derivative(model, ∂)
+    set!(model; S=π)
+    T, S = model.tracers
+
+    computation = Computation(∂(S), model.pressures.pHY′)
+    compute!(computation)
+    result = Array(interior(computation.result))
+
+    return all(result .≈ zero(eltype(model.grid)))
+end
+
 function compute_plus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
@@ -266,6 +277,9 @@ end
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
 
                 println("      Testing compute!...")
+                @test compute_derivative(model, ∂x)
+                @test compute_derivative(model, ∂y)
+                @test compute_derivative(model, ∂z)
                 @test compute_plus(model)
                 @test compute_minus(model)
                 @test compute_times(model)
