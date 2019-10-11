@@ -12,6 +12,10 @@ struct Derivative{X, Y, Z, A, D, I, L, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
+function Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z}
+    return Derivative{X, Y, Z}(Adapt.adapt(to, parent(deriv.a)), deriv.∂, deriv.L∂)
+end
+
 flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face
 

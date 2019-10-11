@@ -4,7 +4,7 @@ export ∂x, ∂y, ∂z, @at
 
 using Base: @propagate_inbounds
 
-using Oceananigans
+using Oceananigans, Adapt
 
 using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Cell, 
                     device, launch_config, architecture, 
