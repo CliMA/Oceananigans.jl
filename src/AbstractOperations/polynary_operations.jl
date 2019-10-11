@@ -24,7 +24,7 @@ end
 
 for op in (:+, :*)
     @eval begin
-        function $op(b::AbstractLocatedField, c::AbstractLocatedFieldF, d::AbstractLocatedField...)
+        function $op(b::AbstractLocatedField, c::AbstractLocatedField, d::AbstractLocatedField...)
              a = merge((b, c), Tuple(d))
              L = merge((Lb, Lc), Tuple(location(di) for di in d))
             L1 = L[1]
