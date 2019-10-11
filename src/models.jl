@@ -61,7 +61,7 @@ function Model(;
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-                forcing = Forcing(),
+                forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
@@ -166,20 +166,6 @@ end
 #####
 
 float_type(m::AbstractModel) = eltype(model.grid)
-
-"""
-    ModelForcing(; kwargs...)
-
-Return a named tuple of forcing functions for each solution field.
-"""
-ModelForcing(; u=zerofunk, v=zerofunk, w=zerofunk, tracer_forcings...) =
-    merge((u=u, v=v, w=w), tracer_forcings)
-
-const Forcing = ModelForcing
-
-default_tracer_forcing(args...) = zerofunk
-ModelForcing(tracers, proposal_forcing) = with_tracers(tracers, proposal_forcing, default_tracer_forcing, 
-                                                       with_velocities=true)
 
 """
     VelocityFields(arch, grid)
