@@ -46,4 +46,4 @@ function ∂z(L::Tuple, a::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
     return Derivative{L[1], L[2], L[3]}(a, ∂)
 end
 
-@propagate_inbounds getindex(d::Derivative, i, j, k) = d.▶(i, j, k, grid, d.∂, d.a)
+@propagate_inbounds getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.a)

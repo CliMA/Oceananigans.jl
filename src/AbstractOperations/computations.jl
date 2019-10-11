@@ -1,5 +1,5 @@
 struct Computation{RT, OU, OP, G}
-       operator :: OP
+      operation :: OP
          result :: OU
            grid :: G
     return_type :: RT
@@ -9,20 +9,21 @@ function Computation(op, result; return_type=Array)
     return Computation(op, result, op.grid, return_type)
 end
 
-architecture(comp::Computation) = architecture(result)
+architecture(comp::Computation) = architecture(comp.result)
 Base.parent(comp::Computation) = comp
 
 function compute!(comp::Computation)
-    arch = architecture(comp.result)
-    @launch device(arch) config=launch_config(grid, 3) _compute!(data(comp.result), comp.grid, comp.operator)
+    arch = architecture(comp)
+    @launch device(arch) config=launch_config(comp.grid, 3) _compute!(data(comp.result), comp.grid, 
+                                                                      comp.operation)
     return nothing
 end
 
-function _compute!(result, grid, operator)
+function _compute!(result, grid, operation)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds result[i, j, k] = operator[i, j, k]
+                @inbounds result[i, j, k] = operation[i, j, k]
             end
         end
     end
