@@ -2,6 +2,8 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at
 
+@hascuda using CUDAnative, CUDAdrv, CuArrays
+
 using Base: @propagate_inbounds
 
 using Oceananigans, Adapt
@@ -20,8 +22,6 @@ import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, 
                                         ▶yz_acc, ▶yz_aff, ▶yz_acf, ▶yz_afc,
                                         ▶xyz_ccc, ▶xyz_fcc, ▶xyz_cfc, ▶xyz_ccf,
                                         ▶xyz_fff, ▶xyz_ffc, ▶xyz_fcf, ▶xyz_cff
-
-@hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using GPUifyLoops: @launch, @loop
 
