@@ -169,7 +169,7 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
                                    bottom = BoundaryCondition(Gradient, 0))
 
     model = Model(        architecture = arch,
-                                  grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                                  grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz)),
                                closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
                               buoyancy = nothing, # turn off buoyancy
                    boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs))

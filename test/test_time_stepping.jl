@@ -114,7 +114,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νv, κv = α*νh, α*κh
 
     model = ChannelModel(architecture = arch, float_type = FT,
-                         grid = RegularCartesianGrid(N = (Nx, Ny, Nz), L = (Lx, Ly, Lz)),
+                         grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz)),
                          closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].

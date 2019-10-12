@@ -96,7 +96,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     model = Model(
                architecture = arch,
-                       grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                       grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                    buoyancy = BuoyancyTracer(), 
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(

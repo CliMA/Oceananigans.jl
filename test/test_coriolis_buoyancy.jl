@@ -20,28 +20,28 @@ function instantiate_seawater_buoyancy(T, EquationOfState)
 end
 
 function density_perturbation_works(arch, T, eos)
-    grid = RegularCartesianGrid(T, N=(3, 3, 3), L=(1, 1, 1))
+    grid = RegularCartesianGrid(T, (3, 3, 3), (1, 1, 1))
     C = datatuple(TracerFields(arch, grid))
     density_anomaly = ρ′(2, 2, 2, grid, eos, C)
     return true
 end
 
 function buoyancy_frequency_squared_works(arch, T, buoyancy)
-    grid = RegularCartesianGrid(N=(3, 3, 3), L=(1, 1, 1))
+    grid = RegularCartesianGrid((3, 3, 3), (1, 1, 1))
     C = datatuple(TracerFields(arch, grid))
     N² = buoyancy_frequency_squared(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function thermal_expansion_works(arch, T, eos)
-    grid = RegularCartesianGrid(T, N=(3, 3, 3), L=(1, 1, 1))
+    grid = RegularCartesianGrid(T, (3, 3, 3), (1, 1, 1))
     C = datatuple(TracerFields(arch, grid))
     α = thermal_expansion(2, 2, 2, grid, eos, C)
     return true
 end
 
 function haline_contraction_works(arch, T, eos)
-    grid = RegularCartesianGrid(N=(3, 3, 3), L=(1, 1, 1))
+    grid = RegularCartesianGrid((3, 3, 3), (1, 1, 1))
     C = datatuple(TracerFields(arch, grid))
     β = haline_contraction(2, 2, 2, grid, eos, C)
     return true
