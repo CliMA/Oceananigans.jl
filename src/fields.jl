@@ -268,8 +268,7 @@ shortname(a::Array) = string(typeof(a).name.wrapper)
                                                                             
 show(io::IO, field::Field) =
     print(io, 
-          short_show(field), " on a grid with size ", 
-            size(field.grid), " and domain ", show_domain(field.grid), '\n',
+          short_show(field), '\n',
           "├── data: ", typeof(field.data), '\n',
           "└── grid: ", typeof(field.grid), '\n',
           "    ├── size: ", size(field.grid), '\n',
