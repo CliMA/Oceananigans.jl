@@ -11,7 +11,7 @@ end
 
 function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, grid)
+    return Derivative{L[1], L[2], L[3]}(∂, data(arg), ▶, grid)
 end
 
 @inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)

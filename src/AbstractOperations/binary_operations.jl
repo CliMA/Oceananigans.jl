@@ -17,7 +17,7 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
      ▶a = interpolation_operator(La, Lop)
      ▶b = interpolation_operator(Lb, Lop)
     ▶op = interpolation_operator(Lop, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, data(a), data(b), ▶a, ▶b, ▶op, grid)
 end
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = 

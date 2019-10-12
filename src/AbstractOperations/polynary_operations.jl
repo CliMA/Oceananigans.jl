@@ -11,7 +11,7 @@ end
 
 function _polynary_operation(L, op, a, Largs, grid) where {X, Y, Z}
     ▶ = Tuple(interpolation_operator(Li, L) for Li in Largs)
-    return PolynaryOperation{L[1], L[2], L[3]}(op, a, ▶, grid)
+    return PolynaryOperation{L[1], L[2], L[3]}(op, Tuple(data(ai) for ai in a), ▶, grid)
 end
 
 @inline Base.getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
