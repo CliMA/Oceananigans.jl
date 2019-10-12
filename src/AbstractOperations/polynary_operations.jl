@@ -34,5 +34,5 @@ for op in (:+, :*)
 end
 
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =
-    PolynaryOperation{X, Y, Z}(adapt(to, polynary.op), adapt(to, polynary.a), 
+    PolynaryOperation{X, Y, Z}(adapt(to, polynary.op), adapt(to, polynary.args), 
                                adapt(to, polynary.▶), polynary.grid)
