@@ -7,7 +7,7 @@ struct PolynaryOperation{X, Y, Z, N, A, I, L, G, O} <: AbstractOperation{X, Y, Z
 
     function PolynaryOperation{X, Y, Z}(op, a, L, grid) where {X, Y, Z}
         ▶ = Tuple(interpolation_operator(Li, (X, Y, Z)) for Li in L)
-        L = instantiate(L)
+        L = Tuple(instantiate(Li) for Li in L)
         return new{X, Y, Z, length(a), typeof(a), typeof(▶), typeof(L), 
                    typeof(grid), typeof(op)}(op, a, ▶, L, grid)
     end
