@@ -1,4 +1,4 @@
-struct PolynaryOperation{X, Y, Z, N, O, A, I, L, G} <: AbstractOperation{X, Y, Z, G}
+struct PolynaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        ▶ :: I
