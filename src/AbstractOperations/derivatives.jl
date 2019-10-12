@@ -1,16 +1,20 @@
 struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
        ∂ :: D
-       a :: A
+     arg :: A
        ▶ :: I
     grid :: G
 
-    function Derivative{X, Y, Z}(∂, a, L∂, grid) where {X, Y, Z}
-        ▶ = interpolation_operator(L∂, (X, Y, Z))
-        return new{X, Y, Z, typeof(∂), typeof(a), typeof(▶), typeof(grid)}(∂, a, ▶, grid)
+    function Derivative{X, Y, Z}(∂, arg, ▶, grid) where {X, Y, Z}
+        return new{X, Y, Z, typeof(∂), typeof(arg), typeof(▶), typeof(grid)}(∂, arg, ▶, grid)
     end
 end
 
-@inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.a)
+function Derivative{X, Y, Z}(∂, arg, L∂::Tuple, grid) where {X, Y, Z}
+    ▶ = interpolation_operator(L∂, (X, Y, Z))
+    return Derivative{X, Y, Z}(∂, arg, ▶, grid)
+end
+
+@inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)
 
 flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face
@@ -22,19 +26,20 @@ flip(::Type{Cell}) = Face
 const derivative_operators = [:∂x, :∂y, :∂z]
 append!(operators, derivative_operators)
 
-∂x(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂x(X), data(a), (flip(X), Y, Z), a.grid)
+∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+    Derivative{L[1], L[2], L[3]}(∂x(X), data(arg), (flip(X), Y, Z), arg.grid)
 
-∂y(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂y(Y), data(a), (X, flip(Y), Z), a.grid)
+∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+    Derivative{L[1], L[2], L[3]}(∂y(Y), data(arg), (X, flip(Y), Z), arg.grid)
 
-∂z(L::Tuple, a::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂z(Z), data(a), (X, Y, flip(Z)), a.grid)
+∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+    Derivative{L[1], L[2], L[3]}(∂z(Z), data(arg), (X, Y, flip(Z)), arg.grid)
 
 # Defaults
-∂x(a::ALF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), a)
-∂y(a::ALF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), a)
-∂z(a::ALF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), a)
+∂x(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
+∂y(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
+∂z(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
 
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
-    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.a), deriv.L∂, deriv.grid)
+    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg), 
+                        adapt(to, deriv.▶), deriv.grid)

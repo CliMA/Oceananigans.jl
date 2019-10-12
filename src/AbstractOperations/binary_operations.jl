@@ -7,15 +7,19 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
      ▶op :: IΩ
     grid :: G
 
-    function BinaryOperation{X, Y, Z}(op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
-         ▶a = interpolation_operator(La, Lop)
-         ▶b = interpolation_operator(Lb, Lop)
-        ▶op = interpolation_operator(Lop, (X, Y, Z))
+    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
         return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
                    typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
-                   
     end
 end
+
+function BinaryOperation{X, Y, Z}(op, a, b, La::Tuple, Lb::Tuple, Lop::Tuple, grid) where {X, Y, Z}
+     ▶a = interpolation_operator(La, Lop)
+     ▶b = interpolation_operator(Lb, Lop)
+    ▶op = interpolation_operator(Lop, (X, Y, Z))
+    return BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
+end
+
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = 
     β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
@@ -59,4 +63,5 @@ end
 
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b), 
-                             binary.La,  binary.Lb, binary.Lop, binary.grid)
+                             adapt(to, binary.▶a), adapt(to, binary.▶b), adapt(to, binary.▶op),  
+                             binary.grid)
