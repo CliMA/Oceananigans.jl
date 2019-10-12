@@ -127,18 +127,12 @@ function RegularCartesianGrid(T; N, x, y, z)
                                         xC, yC, zC, xF, yF, zF)
 end
 
-RegularCartesianGrid(T, N, L) = RegularCartesianGrid(T; N=N, x=(0, L[1]), y=(0, L[2]), z=(-L[3], 0))
-
-RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
-
-RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
-
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
     print(io, "RegularCartesianGrid{$(eltype(g))}\n",
-              "domain: x ∈ [$(xF[0]), $(xF[end])], y ∈ [$(yF[0]), $(yF[end])], z ∈ [$(zF[0]), $(zF[end])]", '\n',
+              "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[end]), $(g.zF[1])]", '\n',
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
