@@ -261,14 +261,18 @@ show_location(X, Y, Z) = string("(", string(typeof(X())), ", ",
                                      string(typeof(Y())), ", ",
                                      string(typeof(Z())), ")")
 
+show_location(field::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = show_location(X, Y, Z)
+
 short_show(a) = string(typeof(a))
 shortname(a::Array) = string(typeof(a).name.wrapper)
                                                                             
-show(io::IO, field::Field{X, Y, Z}) where {X, Y, Z} = 
+show(io::IO, field::Field) =
     print(io, 
-          short_show(field), '\n',
+          short_show(field), " on a grid with size ", 
+            size(field.grid), " and domain ", show_domain(field.grid), '\n',
           "├── data: ", typeof(field.data), '\n',
-          "└── grid: ", typeof(field.grid)
-         )
+          "└── grid: ", typeof(field.grid), '\n',
+          "    ├── size: ", size(field.grid), '\n',
+          "    └── domain: ", show_domain(field.grid))
 
-short_show(field::Field{X, Y, Z}) where {X, Y, Z} = string("Field at ", show_location(X, Y, Z))
+short_show(field::AbstractLocatedField) = string("Field at ", show_location(field))

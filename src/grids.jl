@@ -125,6 +125,10 @@ eltype(g::RegularCartesianGrid{T}) where T = T
 
 short_show(grid::RegularCartesianGrid{T}) where T = "RegularCartesianGrid{$T}"
 
+show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ", 
+                           "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ", 
+                           "z ∈ [", grid.zF[1], ", ", grid.zF[end], "]") 
+
 show(io::IO, g::RegularCartesianGrid) =
     print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
