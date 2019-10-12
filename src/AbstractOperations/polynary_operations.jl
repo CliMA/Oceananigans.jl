@@ -36,3 +36,13 @@ end
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =
     PolynaryOperation{X, Y, Z}(adapt(to, polynary.op), adapt(to, polynary.args), 
                                adapt(to, polynary.▶), polynary.grid)
+
+function tree_show(polynary::PolynaryOperation{X, Y, Z, N}, depth, nesting) where {X, Y, Z, N}
+    padding = "    "^(depth-nesting) * "│   "^nesting
+
+    out = string(polynary.op, " at ", show_location(X, Y, Z), '\n',
+        ntuple(i -> padding * "├── " * tree_show(polynary.args[i], depth+1, nesting+1) * '\n', Val(N-1))...,
+                    padding * "└── " * tree_show(polynary.args[N], depth+1, nesting)
+                )
+    return out
+end

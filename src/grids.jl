@@ -123,6 +123,8 @@ RegularCartesianGrid(T=Float64; N, L) = RegularCartesianGrid(T, N, L)
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
+short_show(grid::RegularCartesianGrid{T}) where T = "RegularCartesianGrid{$T}"
+
 show(io::IO, g::RegularCartesianGrid) =
     print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',

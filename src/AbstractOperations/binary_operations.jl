@@ -37,7 +37,7 @@ for op in binary_operators
             La = location(a)
             Lb = location(b)
             grid = validate_grid(a, b)
-            return _binary_operation(Lc, $op, data(a), data(b), La, Lb, Lop, grid)
+            return _binary_operation(Lc, $op, a, b, La, Lb, Lop, grid)
         end
 
         $op(Lc::Tuple, a, b) = $op(Lc, Lc, a, b)
@@ -64,3 +64,11 @@ Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b), 
                              adapt(to, binary.▶a), adapt(to, binary.▶b), adapt(to, binary.▶op),  
                              binary.grid)
+
+function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y, Z}
+    padding = "    "^(depth-nesting) * "│   "^nesting
+
+    return string(binary.op, " at ", show_location(X, Y, Z), '\n',
+                  padding, "├── ", tree_show(binary.a, depth+1, nesting+1), '\n',
+                  padding, "└── ", tree_show(binary.b, depth+1, nesting))
+end

@@ -117,7 +117,6 @@ architecture(o::OffsetArray) = architecture(o.parent)
                                                            1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
                                                            1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
 
-show(io::IO, f::Field) = show(io, f.data)
 iterate(f::Field, state=1) = iterate(f.data, state)
 
 @inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
@@ -257,3 +256,19 @@ set_ic!(model; kwargs...) = set!(model; kwargs...) # legacy wrapper
 
 Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} =
     Field{X, Y, Z}(adapt(to, data), field.grid)
+
+show_location(X, Y, Z) = string("(", string(typeof(X())), ", ",
+                                     string(typeof(Y())), ", ",
+                                     string(typeof(Z())), ")")
+
+short_show(a) = string(typeof(a))
+shortname(a::Array) = string(typeof(a).name.wrapper)
+                                                                            
+show(io::IO, field::Field{X, Y, Z}) where {X, Y, Z} = 
+    print(io, 
+          short_show(field), '\n',
+          "├── data: ", typeof(field.data), '\n',
+          "└── grid: ", typeof(field.grid)
+         )
+
+short_show(field::Field{X, Y, Z}) where {X, Y, Z} = string("Field at ", show_location(X, Y, Z))
