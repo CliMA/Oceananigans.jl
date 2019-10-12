@@ -11,7 +11,7 @@ using Oceananigans: @hascuda
 using Oceananigans, Adapt
 
 using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Cell, 
-                    xnode, ynode, znode, show_location,
+                    xnode, ynode, znode, show_location, show_domain,
                     device, launch_config, architecture, 
                     HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
 
@@ -99,7 +99,14 @@ end
 
 interpolation_operator(::Nothing, to) = identity
 
-Base.show(io::IO, abstract_op::AbstractOperation) = print(io, tree_show(abstract_op, 0, 0))
+Base.show(io::IO, operation::AbstractOperation) = 
+    print(io, 
+          operation_name(operation), " at ", show_location(operation), '\n',
+          "├── grid: ", typeof(operation.grid), '\n',
+          "│   ├── size: ", size(operation.grid), '\n',
+          "│   └── domain: ", show_domain(operation.grid), '\n',
+          "└── tree: ", "\n"^2, tree_show(operation, 0, 0))
+          
 tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
 tree_show(a, depth, nesting) = short_show(a) # fallback
 
@@ -112,6 +119,13 @@ include("polynary_operations.jl")
 include("derivatives.jl")
 include("computations.jl")
 include("function_fields.jl")
+
+for op_string in ("UnaryOperation", "BinaryOperation", "PolynaryOperation", "Derivative")
+    op = eval(Symbol(op_string))
+    @eval begin
+        operation_name(::$op) = $op_string
+    end
+end
 
 function insert_location!(ex::Expr, location)
     if ex.head === :call && ex.args[1] ∈ operators
