@@ -1,4 +1,4 @@
-struct BinaryOperation{X, Y, Z, A, B, IA, IB, IΩ, G, O} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
@@ -11,8 +11,8 @@ struct BinaryOperation{X, Y, Z, A, B, IA, IB, IΩ, G, O} <: AbstractOperation{X,
          ▶a = interpolation_operator(La, Lop)
          ▶b = interpolation_operator(Lb, Lop)
         ▶op = interpolation_operator(Lop, (X, Y, Z))
-        return new{X, Y, Z, typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
-                   typeof(▶op), typeof(grid), typeof(op)}(op, a, b, ▶a, ▶b, ▶op, grid)
+        return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
+                   typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
                    
     end
 end
@@ -42,14 +42,15 @@ for op in binary_operators
         $op(Lc::Tuple, a, b::Number) = $op(Lc, location(a), a, b)
         $op(Lc::Tuple, a::ALF{X, Y, Z}, b::ALF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
 
+        # Sugar for mixing in functions of (x, y, z)
+        $op(Lc::Tuple, a::Function, b::AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b) 
+        $op(Lc::Tuple, a::AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
+
         # Sugary versions with default locations
         $op(a::AbstractLocatedField, b::AbstractLocatedField) = $op(location(a), a, b)
+
         $op(a::AbstractLocatedField, b::Number) = $op(location(a), a, b)
         $op(a::Number, b::AbstractLocatedField) = $op(location(b), a, b)
-
-        # Sugar for mixing in functions of (x, y, z)
-        $op(Lop::Tuple, a::Function, b::AbstractField) = $op(Lop, FunctionField(Lop, a, b.grid), b) 
-        $op(Lop::Tuple, a::AbstractField, b::Function) = $op(Lop, a, FunctionField(Lop, b, a.grid))
 
         $op(a::AbstractLocatedField, b::Function) = $op(location(a), a, FunctionField(location(a), b, a.grid))
         $op(a::Function, b::AbstractLocatedField) = $op(location(b), FunctionField(location(b), a, b.grid), b)
