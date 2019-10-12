@@ -20,3 +20,12 @@ test:v1.3:
 test:dev:
   extends: .test:dev
   allow_failure: true
+
+coverage:
+  extends: .coverage
+  variables:
+    CI_VERSION_TAG: 'v1.2'
+  dependencies:
+    - gpu:test:v1.2
+  allow_failure: true
+  
