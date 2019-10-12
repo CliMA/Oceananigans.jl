@@ -23,6 +23,8 @@ export
 
   cell_diffusion_timescale
 
+using Oceananigans: @hascuda
+
 @hascuda using CUDAdrv, CUDAnative
 
 using

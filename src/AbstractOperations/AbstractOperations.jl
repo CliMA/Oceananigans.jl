@@ -2,9 +2,11 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at
 
-@hascuda using CUDAnative, CUDAdrv, CuArrays
-
 using Base: @propagate_inbounds
+
+using Oceananigans: @hascuda
+
+@hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using Oceananigans, Adapt
 
