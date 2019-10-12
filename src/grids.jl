@@ -127,6 +127,10 @@ function RegularCartesianGrid(T; N, x, y, z)
                                         xC, yC, zC, xF, yF, zF)
 end
 
+RegularCartesianGrid(T, N, L) = RegularCartesianGrid(T; N=N, x=(0, L[1]), y=(0, L[2]), z=(-L[3], 0))
+
+RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
+
 size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
