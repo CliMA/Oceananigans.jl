@@ -9,9 +9,9 @@ struct PolynaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G
     end
 end
 
-function PolynaryOperation{X, Y, Z}(op, a, L::Tuple{<:Tuple}, grid) where {X, Y, Z}
-    ▶ = Tuple(interpolation_operator(Li, (X, Y, Z)) for Li in L)
-    return PolynaryOperation{X, Y, Z}(op, a, ▶, grid)
+function _polynary_operation(L, op, a, Largs, grid) where {X, Y, Z}
+    ▶ = Tuple(interpolation_operator(Li, L) for Li in Largs)
+    return PolynaryOperation{L[1], L[2], L[3]}(op, a, ▶, grid)
 end
 
 @inline Base.getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
@@ -26,9 +26,9 @@ for op in (:+, :*)
 
         function $op(Lop::Tuple, b, c, d...)
             a = tuple(b, c, d...)
-            L = tuple(location(b), location(c), (location(di) for di in d)...)
+            Largs = tuple(location(b), location(c), (location(di) for di in d)...)
             grid = validate_grid(a...)
-            return PolynaryOperation{Lop[1], Lop[2], Lop[3]}($op, a, L, grid)
+            return _polynary_operation(Lop, $op, a, Largs, grid)
         end
     end
 end

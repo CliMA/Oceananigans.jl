@@ -13,13 +13,12 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     end
 end
 
-function BinaryOperation{X, Y, Z}(op, a, b, La::Tuple, Lb::Tuple, Lop::Tuple, grid) where {X, Y, Z}
+function _binary_operation(L, op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
      ▶a = interpolation_operator(La, Lop)
      ▶b = interpolation_operator(Lb, Lop)
-    ▶op = interpolation_operator(Lop, (X, Y, Z))
-    return BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
+    ▶op = interpolation_operator(Lop, L)
+    return BinaryOperation{L[1], L[2], L[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
 end
-
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = 
     β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
@@ -38,7 +37,7 @@ for op in binary_operators
             La = location(a)
             Lb = location(b)
             grid = validate_grid(a, b)
-            return BinaryOperation{Lc[1], Lc[2], Lc[3]}($op, data(a), data(b), La, Lb, Lop, grid)
+            return _binary_operation(Lc, $op, data(a), data(b), La, Lb, Lop, grid)
         end
 
         $op(Lc::Tuple, a, b) = $op(Lc, Lc, a, b)
