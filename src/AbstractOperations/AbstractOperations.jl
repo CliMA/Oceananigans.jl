@@ -10,12 +10,12 @@ using Oceananigans: @hascuda
 
 using Oceananigans, Adapt
 
-using Oceananigans: AbstractModel, 
-                    AbstractField, AbstractLocatedField, Face, Cell, xnode, ynode, znode,
+using Oceananigans: AbstractModel, AbstractField, AbstractLocatedField, Face, Cell, 
+                    xnode, ynode, znode, show_location,
                     device, launch_config, architecture, 
                     HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
 
-import Oceananigans: data, architecture, location, run_diagnostic, AbstractGrid
+import Oceananigans: data, architecture, location, run_diagnostic, AbstractGrid, short_show
 
 import Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, ∂z_aac, ∂z_aaf, 
                                         ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf,
@@ -99,6 +99,10 @@ end
 
 interpolation_operator(::Nothing, to) = identity
 
+Base.show(io::IO, abstract_op::AbstractOperation) = print(io, tree_show(abstract_op, 0, 0))
+tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
+tree_show(a, depth, nesting) = short_show(a) # fallback
+
 # New AbstractOperation types add their associated functions to this list
 const operators = []
 
@@ -129,6 +133,5 @@ macro at(location, ex)
     insert_location!(ex, location)
     return esc(ex)
 end
-
 
 end # module

@@ -28,7 +28,7 @@ for op in unary_operators
 
         function $op(Lop::Tuple, a::AbstractLocatedField)
             L = location(a)
-            return _unary_operation(Lop, $op, data(a), L, a.grid)
+            return _unary_operation(Lop, $op, a, L, a.grid)
         end
 
         $op(a::AbstractLocatedField) = $op(location(a), a)
@@ -38,3 +38,10 @@ end
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
     UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.arg), 
                             adapt(to, unary.▶), unary.grid)
+
+function tree_show(unary::UnaryOperation{X, Y, Z}, depth, nesting)  where {X, Y, Z}
+    padding = "    "^(depth-nesting) * "│   "^nesting
+
+    return string(unary.op, " at ", show_location(X, Y, Z), '\n',
+                  padding, "└── ", tree_show(unary.arg, depth+1, nesting))
+end

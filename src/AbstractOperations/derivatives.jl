@@ -27,13 +27,13 @@ const derivative_operators = [:∂x, :∂y, :∂z]
 append!(operators, derivative_operators)
 
 ∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    _derivative(L, ∂x(X), data(arg), (flip(X), Y, Z), arg.grid)
+    _derivative(L, ∂x(X), arg, (flip(X), Y, Z), arg.grid)
 
 ∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    _derivative(L, ∂y(Y), data(arg), (X, flip(Y), Z), arg.grid)
+    _derivative(L, ∂y(Y), arg, (X, flip(Y), Z), arg.grid)
 
 ∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    _derivative(L, ∂z(Z), data(arg), (X, Y, flip(Z)), arg.grid)
+    _derivative(L, ∂z(Z), arg, (X, Y, flip(Z)), arg.grid)
 
 # Defaults
 ∂x(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
@@ -43,3 +43,9 @@ append!(operators, derivative_operators)
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
     Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg), 
                         adapt(to, deriv.▶), deriv.grid)
+
+function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
+    padding = "    "^(depth-nesting) * "│   "^nesting
+    return string(deriv.∂, " at ", show_location(X, Y, Z), '\n',
+                  padding, "└── ", tree_show(deriv.arg, depth+1, nesting))
+end
