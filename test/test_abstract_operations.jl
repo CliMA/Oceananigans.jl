@@ -124,7 +124,7 @@ function compute_kinetic_energy(model)
     compute!(computation)
     result = Array(interior(computation.result))
 
-    return all(result .≈ 6)
+    return all(result .≈ 7)
 end
 
 function horizontal_average_of_plus(model)
