@@ -11,7 +11,7 @@ end
 
 function _unary_operation(L, op, arg, Larg, grid) where {X, Y, Z}
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(op, arg, ▶, grid)
+    return UnaryOperation{L[1], L[2], L[3]}(op, data(arg), ▶, grid)
 end
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
