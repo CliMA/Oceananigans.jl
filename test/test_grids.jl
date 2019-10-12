@@ -50,10 +50,6 @@ end
             @test_throws ArgumentError RegularCartesianGrid(FT, (32,), L)
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 64), L)
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32, 16), L)
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100,))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, 1, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (100, 100, -100))
 
             @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32.0), (1, 1, 1))
             @test_throws ArgumentError RegularCartesianGrid(FT, (20.1, 32, 32), (1, 1, 1))
