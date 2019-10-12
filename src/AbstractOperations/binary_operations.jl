@@ -13,11 +13,11 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     end
 end
 
-function _binary_operation(L, op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
+function _binary_operation(Lc, op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
      ▶a = interpolation_operator(La, Lop)
      ▶b = interpolation_operator(Lb, Lop)
-    ▶op = interpolation_operator(Lop, L)
-    return BinaryOperation{L[1], L[2], L[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
+    ▶op = interpolation_operator(Lop, Lc)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
 end
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = 
