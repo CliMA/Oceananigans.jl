@@ -1,4 +1,4 @@
-struct UnaryOperation{X, Y, Z, A, I, G, O} <: AbstractOperation{X, Y, Z, G}
+struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        ▶ :: I
@@ -6,7 +6,7 @@ struct UnaryOperation{X, Y, Z, A, I, G, O} <: AbstractOperation{X, Y, Z, G}
 
     function UnaryOperation{X, Y, Z}(op, a, La, grid) where {X, Y, Z}
         ▶ = interpolation_operator(La, (X, Y, Z))
-        return new{X, Y, Z, typeof(a), typeof(▶), typeof(grid), typeof(op)}(op, a, ▶, grid)
+        return new{X, Y, Z, typeof(op), typeof(a), typeof(▶), typeof(grid)}(op, a, ▶, grid)
     end
 end
 
