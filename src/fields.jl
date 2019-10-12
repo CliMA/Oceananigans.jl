@@ -97,8 +97,8 @@ architecture(o::OffsetArray) = architecture(o.parent)
 @inline size(f::AbstractField) = size(f.grid)
 @inline length(f::Field) = length(f.data)
 
-@inline getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
-@propagate_inbounds setindex!(f::Field, v, inds...) = setindex!(f.data, v, inds...)
+@propagate_inbounds getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
+@propagate_inbounds setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 @inline lastindex(f::Field) = lastindex(f.data)
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 
