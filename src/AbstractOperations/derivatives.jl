@@ -9,9 +9,9 @@ struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
-function Derivative{X, Y, Z}(∂, arg, L∂::Tuple, grid) where {X, Y, Z}
-    ▶ = interpolation_operator(L∂, (X, Y, Z))
-    return Derivative{X, Y, Z}(∂, arg, ▶, grid)
+function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
+    ▶ = interpolation_operator(L∂, L)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, grid)
 end
 
 @inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)
@@ -27,13 +27,13 @@ const derivative_operators = [:∂x, :∂y, :∂z]
 append!(operators, derivative_operators)
 
 ∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂x(X), data(arg), (flip(X), Y, Z), arg.grid)
+    _derivative(L, ∂x(X), data(arg), (flip(X), Y, Z), arg.grid)
 
 ∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂y(Y), data(arg), (X, flip(Y), Z), arg.grid)
+    _derivative(L, ∂y(Y), data(arg), (X, flip(Y), Z), arg.grid)
 
 ∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
-    Derivative{L[1], L[2], L[3]}(∂z(Z), data(arg), (X, Y, flip(Z)), arg.grid)
+    _derivative(L, ∂z(Z), data(arg), (X, Y, flip(Z)), arg.grid)
 
 # Defaults
 ∂x(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)

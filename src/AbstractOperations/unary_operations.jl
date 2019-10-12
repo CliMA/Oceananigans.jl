@@ -9,9 +9,9 @@ struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
-function UnaryOperation{X, Y, Z}(op, arg, L::Tuple, grid) where {X, Y, Z}
-    ▶ = interpolation_operator(L, (X, Y, Z))
-    return UnaryOperation{X, Y, Z}(op, arg, ▶, grid)
+function _unary_operation(L, op, arg, Larg, grid) where {X, Y, Z}
+    ▶ = interpolation_operator(Larg, L)
+    return UnaryOperation{L[1], L[2], L[3]}(op, arg, ▶, grid)
 end
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
@@ -28,7 +28,7 @@ for op in unary_operators
 
         function $op(Lop::Tuple, a::AbstractLocatedField)
             L = location(a)
-            return UnaryOperation{L[1], L[2], L[3]}($op, data(a), L, a.grid)
+            return _unary_operation(Lop, $op, data(a), L, a.grid)
         end
 
         $op(a::AbstractLocatedField) = $op(location(a), a)
