@@ -113,6 +113,20 @@ function compute_times(model)
     return all(result .≈ eltype(model.grid)(π*42))
 end
 
+function compute_kinetic_energy(model)
+    u, v, w = model.velocities
+    set!(u, 1)
+    set!(v, 2)
+    set!(w, 3)
+
+    kinetic_energy = @at (Cell, Cell, Cell) (u^2 + v^2 + w^2) / 2
+    computation = Computation(kinetic_energy, model.pressures.pHY′)
+    compute!(computation)
+    result = Array(interior(computation.result))
+
+    return all(result .≈ 6)
+end
+
 function horizontal_average_of_plus(model)
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
@@ -227,7 +241,7 @@ end
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c))
                 for op_symbol in Oceananigans.AbstractOperations.polynary_operators
                     op = eval(op_symbol)
-                    @test typeof(op(ψ, ϕ, σ)[2, 2, 2]) <: Number
+                    @test typeof(op((Cell, Cell, Cell), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
@@ -325,6 +339,7 @@ end
                 @test compute_plus(model)
                 @test compute_minus(model)
                 @test compute_times(model)
+                @test compute_kinetic_energy(model)
 
                 println("      Testing horizontal averges...")
                 @test horizontal_average_of_plus(model)
