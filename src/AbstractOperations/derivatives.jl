@@ -1,14 +1,12 @@
-struct Derivative{X, Y, Z, A, I, L, G, D} <: AbstractOperation{X, Y, Z, G}
+struct Derivative{X, Y, Z, A, I, G, D} <: AbstractOperation{X, Y, Z, G}
        ∂ :: D
        a :: A
        ▶ :: I
-      L∂ :: L
     grid :: G
 
     function Derivative{X, Y, Z}(∂, a, L∂, grid) where {X, Y, Z}
         ▶ = interpolation_operator(L∂, (X, Y, Z))
-        L∂ = instantiate(L∂)
-        return new{X, Y, Z, typeof(a), typeof(▶), typeof(L∂), typeof(grid), typeof(∂)}(∂, a, ▶, L∂, grid)
+        return new{X, Y, Z, typeof(a), typeof(▶), typeof(grid), typeof(∂)}(∂, a, ▶, grid)
     end
 end
 
