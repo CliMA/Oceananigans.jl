@@ -103,7 +103,6 @@ const operators = []
 
 include("unary_operations.jl")
 include("binary_operations.jl")
-#include("polynary_operations.jl")
 include("derivatives.jl")
 include("computations.jl")
 include("function_fields.jl")

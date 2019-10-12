@@ -1,25 +1,19 @@
-struct BinaryOperation{X, Y, Z, A, B, IA, IB, IΩ, LA, LB, LΩ, G, O} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, A, B, IA, IB, IΩ, G, O} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
       ▶a :: IA
       ▶b :: IB
      ▶op :: IΩ
-      La :: LA
-      Lb :: LB
-     Lop :: LΩ
     grid :: G
 
     function BinaryOperation{X, Y, Z}(op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
          ▶a = interpolation_operator(La, Lop)
          ▶b = interpolation_operator(Lb, Lop)
         ▶op = interpolation_operator(Lop, (X, Y, Z))
-         La = instantiate(La)
-         Lb = instantiate(Lb)
-        Lop = instantiate(Lop)
-        return new{X, Y, Z, typeof(a), typeof(b), 
-                   typeof(▶a), typeof(▶b), typeof(▶op), typeof(La), typeof(Lb),
-                   typeof(Lop), typeof(grid), typeof(op)}(op, a, b, ▶a, ▶b, ▶op, La, Lb, Lop, grid)
+        return new{X, Y, Z, typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
+                   typeof(▶op), typeof(grid), typeof(op)}(op, a, b, ▶a, ▶b, ▶op, grid)
+                   
     end
 end
 
