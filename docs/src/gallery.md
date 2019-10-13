@@ -1,3 +1,7 @@
+# Gallery
+
+Collection of cool movies!
+
 ## [Deep convection](https://www.youtube.com/watch?v=kpUrxnKKMjI)
 An idealized simulation of deep convection in the ocean. The simulation employs a resolution of 256x256x128 volumes in
 a 2x2x1 km horizontally periodic domain. Heat is sucked out of the ocean surface within a cooling disk of radius 600 m
