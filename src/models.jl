@@ -1,7 +1,7 @@
 using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F, 
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -28,29 +28,19 @@ end
 
 Construct an `Oceananigans.jl` model on `grid`.
 
-Important keyword arguments include
-
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-              Currently the only option is `RegularCartesianGrid`.
-
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-
-    - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
-
-    - `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
-
-    - `buoyancy`: Buoyancy model parameters.
-
-    - `coriolis`: Parameters for the background rotation rate of the model.
-
-    - `forcing`: User-defined forcing functions that contribute to solution tendencies.
-
-    - `boundary_conditions`: User-defined boundary conditions for model fields. Can be either
-                             `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
-                             See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
-
-    - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary
-                    condition functions.
+Keyword arguments
+=================
+- `grid`: (required) The resolution and discrete geometry on which `model` is solved. Currently the only option is
+  `RegularCartesianGrid`.
+- `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+- `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
+- `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
+- `buoyancy`: Buoyancy model parameters.
+- `coriolis`: Parameters for the background rotation rate of the model.
+- `forcing`: User-defined forcing functions that contribute to solution tendencies.
+- `boundary_conditions`: User-defined boundary conditions for model fields. Can be either`SolutionBoundaryConditions`
+  or `ModelBoundaryConditions`. See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs`, and `ChannelSolutionBCs`.
+- `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
 function Model(;
                    grid, # model resolution and domain
@@ -150,8 +140,8 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
 
-     buoyancy = SeawaterBuoyancy(float_type, 
-                    gravitational_acceleration = Ri, 
+     buoyancy = SeawaterBuoyancy(float_type,
+                    gravitational_acceleration = Ri,
                     equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
                 )
 
