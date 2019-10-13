@@ -81,7 +81,7 @@ const Neumann = Gradient
 Construct a boundary condition of type `C` with a `condition` that may be given by a
 number, an array, or a function with signature:
 
-    `condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition`
+    condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition
 
 that returns a number and where `i` and `j` are indices along the boundary.
 
