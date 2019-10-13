@@ -272,6 +272,6 @@ show(io::IO, field::Field) =
           "├── data: ", typeof(field.data), '\n',
           "└── grid: ", typeof(field.grid), '\n',
           "    ├── size: ", size(field.grid), '\n',
-          "    └── domain: ", show_domain(field.grid))
+          "    └── domain: ", show_domain(field.grid), '\n')
 
 short_show(field::AbstractLocatedField) = string("Field at ", show_location(field))

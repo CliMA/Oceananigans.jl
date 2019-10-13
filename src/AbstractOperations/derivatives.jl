@@ -46,6 +46,6 @@ Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
 
 function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = "    "^(depth-nesting) * "│   "^nesting
-    return string(deriv.∂, " at ", show_location(X, Y, Z), '\n',
+    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", deriv.▶, '\n',
                   padding, "└── ", tree_show(deriv.arg, depth+1, nesting))
 end

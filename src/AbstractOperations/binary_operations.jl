@@ -1,15 +1,17 @@
-struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, LA, LB, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
       ▶a :: IA
       ▶b :: IB
      ▶op :: IΩ
+      La :: LA
+      Lb :: LB
     grid :: G
 
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
+    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, La, Lb, grid) where {X, Y, Z}
         return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
-                   typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
+                   typeof(▶op), typeof(La), typeof(Lb), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, La, Lb, grid)
     end
 end
 
@@ -17,7 +19,9 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lop, grid) where {X, Y, Z}
      ▶a = interpolation_operator(La, Lop)
      ▶b = interpolation_operator(Lb, Lop)
     ▶op = interpolation_operator(Lop, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, data(a), data(b), ▶a, ▶b, ▶op, grid)
+     La = instantiate(La)
+     Lb = instantiate(La)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, data(a), data(b), ▶a, ▶b, ▶op, La, Lb, grid)
 end
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = 
@@ -63,12 +67,12 @@ end
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b), 
                              adapt(to, binary.▶a), adapt(to, binary.▶b), adapt(to, binary.▶op),  
-                             binary.grid)
+                             binary.La, binary.Lb, binary.grid)
 
 function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y, Z}
     padding = "    "^(depth-nesting) * "│   "^nesting
 
-    return string(binary.op, " at ", show_location(X, Y, Z), '\n',
+    return string(binary.op, " at ", show_location(X, Y, Z), " via ", binary.▶op, '\n',
                   padding, "├── ", tree_show(binary.a, depth+1, nesting+1), '\n',
                   padding, "└── ", tree_show(binary.b, depth+1, nesting))
 end
