@@ -42,6 +42,6 @@ Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
 function tree_show(unary::UnaryOperation{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = "    "^(depth-nesting) * "│   "^nesting
 
-    return string(unary.op, " at ", show_location(X, Y, Z), '\n',
+    return string(unary.op, " at ", show_location(X, Y, Z), " via ", unary.▶, '\n',
                   padding, "└── ", tree_show(unary.arg, depth+1, nesting))
 end
