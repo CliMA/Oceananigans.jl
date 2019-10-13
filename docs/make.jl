@@ -20,17 +20,18 @@ makedocs(
      pages = ["Home"       => "index.md",
               "Manual"     => ["Continuous equations" => "manual/equations.md",
                                "Numerical methods" => [
-                                                       "Overview" => "manual/overview.md",
-                                                       "Finite volume method" => "manual/finite_volume.md",
-                                                       "Staggered grid" => "manual/staggered_grid.md",
+                                                       "Overview"               => "manual/overview.md",
+                                                       "Finite volume method"   => "manual/finite_volume.md",
+                                                       "Staggered grid"         => "manual/staggered_grid.md",
                                                        "Fractional step method" => "manual/fractional_step.md",
-                                                       "Time stepping" => "manual/time_stepping.md",
-                                                       "Spatial operators" => "manual/spatial_operators.md",
-                                                       "Poisson solvers" => "manual/poisson_solvers.md",
-                                                       "Boundary conditions" => "manual/boundary_conditions.md",
-                                                       "Turbulence closures" => "manual/turbulence_closures.md",
-                                                       "Large eddy simulation" => "manual/large_eddy_simulation.md"
+                                                       "Time stepping"          => "manual/time_stepping.md",
+                                                       "Spatial operators"      => "manual/spatial_operators.md",
+                                                       "Poisson solvers"        => "manual/poisson_solvers.md",
+                                                       "Boundary conditions"    => "manual/boundary_conditions.md",
+                                                       "Turbulence closures"    => "manual/turbulence_closures.md",
+                                                       "Large eddy simulation"  => "manual/large_eddy_simulation.md"
                                                       ],
+                               "Model setup" => "manual/model_setup.md",
                                "Examples" => [
                                               "Rising thermal bubble" => "examples/rising_thermal_bubble.md"
                                              ],
