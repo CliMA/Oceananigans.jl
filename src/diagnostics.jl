@@ -274,7 +274,6 @@ end
     NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
 
 """
-=======
     CFL{D, S}
 
 An object for computing the Courant-Freidrichs-Lewy (CFL) number.
