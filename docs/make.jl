@@ -4,9 +4,34 @@ push!(LOAD_PATH,"../src/turbulence_closures/")
 
 using
     Documenter,
+    Literate,
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
+
+####
+#### Generate examples
+####
+
+const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
+const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
+
+examples = [
+    "simple_diffusion.jl",
+    "two_dimensional_turbulence.jl",
+    # "ocean_wind_mixing_and_convection.jl",
+    # "ocean_convection_with_plankton.jl",
+    "internal_wave.jl"
+]
+
+for example in examples
+    example_filepath = joinpath(EXAMPLES_DIR, example)
+    Literate.markdown(example_filepath, OUTPUT_DIR, documenter=true)
+end
+
+####
+#### Build docs
+####
 
 makedocs(
    modules = [Oceananigans, Oceananigans.Operators, Oceananigans.TurbulenceClosures],
@@ -35,7 +60,11 @@ makedocs(
              ],
              "Model setup" => "manual/model_setup.md",
              "Examples" => [
-                 "Rising thermal bubble" => "examples/rising_thermal_bubble.md"
+                 "One-dimensional diffusion"        => "generated/simple_diffusion.md",
+                 "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
+                 # "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
+                 # "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
+                 "Internal wave"                    => "generated/internal_wave.md"
              ],
              "Verification" => [
                  "Taylor-Green vortex"     => "verification/taylor_green_vortex.md",
