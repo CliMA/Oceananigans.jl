@@ -160,12 +160,25 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ)
     end
 end
 
+@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
+
+@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
+
+@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
+
+@inline xnode(i, ϕ::Field{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ϕ.grid)
+@inline ynode(j, ϕ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ϕ.grid)
+@inline znode(k, ϕ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ϕ.grid)
+
 xnodes(ϕ::AbstractField) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
 ynodes(ϕ::AbstractField) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
 znodes(ϕ::AbstractField) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
 
-xnodes(ϕ::Field{Face}) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::Field{X, Face}) where X = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
+xnodes(ϕ::Field{Face})                    = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::Field{X, Face}) where X         = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
 znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
@@ -185,10 +198,7 @@ function set!(u::AbstractCPUField, v::Array)
     return nothing
 end
 
-"Set the GPU field `u` to the array `v`."
-#@hascuda function set!(u::AbstractField{A}, v::Array) where {
-#    A <: OffsetArray{T, D, <:CuArray} where {T, D}}
-
+# Set the GPU field `u` to the array `v`.
 @hascuda function set!(u::AbstractGPUField, v::Array)
     FieldType = fieldtype(u)
     v_field = FieldType(location(u), CPU(), u.grid)
@@ -197,7 +207,7 @@ end
     return nothing
 end
 
-"Set the GPU field `u` to the CuArray `v`."
+# Set the GPU field `u` to the CuArray `v`.
 @hascuda function set!(u::AbstractGPUField, v::CuArray)
     @launch device(GPU()) config=launch_config(u.grid, 3) _set_gpu!(u.data, v, u.grid)
     return nothing
@@ -214,16 +224,16 @@ function _set_gpu!(u, v, grid)
     return nothing
 end
 
-"Set the GPU field `u` data to the CPU field data of `v`."
+# Set the GPU field `u` data to the CPU field data of `v`.
 @hascuda set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
 
-"Set the CPU field `u` data to the GPU field data of `v`."
+# Set the CPU field `u` data to the GPU field data of `v`.
 @hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
 set!(u::AbstractField, f::Function) = data(u) .= f.(nodes(u)...)
 
-"Set the GPU field `u` data to the function `f(x, y, z)`."
+# Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)
     FieldType = fieldtype(u)
     u_cpu = FieldType(location(u), CPU(), u.grid)
