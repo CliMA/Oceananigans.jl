@@ -209,7 +209,7 @@ end
 
 # Set the GPU field `u` to the CuArray `v`.
 @hascuda function set!(u::AbstractGPUField, v::CuArray)
-    @launch device(GPU()) config=launch_config(u.grid, 3) _set_gpu!(u.data, v, u.grid)
+    @launch device(GPU()) config=launch_config(u.grid, :xyz) _set_gpu!(u.data, v, u.grid)
     return nothing
 end
 
