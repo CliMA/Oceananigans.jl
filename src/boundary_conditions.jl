@@ -344,7 +344,7 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the top and bottom.
 """
 function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
-    @launch device(arch) config=launch_config(grid, 2) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
     return
 end
 

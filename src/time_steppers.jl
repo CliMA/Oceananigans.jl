@@ -49,12 +49,12 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     boundary_condition_args = (model.clock.time, model.clock.iteration, U, Φ, model.parameters)
 
     # Pre-computations:
-    @launch device(arch) config=launch_config(grid, 3) store_previous_source_terms!(grid, Gⁿ, G⁻)
+    @launch device(arch) config=launch_config(grid, :xyz) store_previous_source_terms!(grid, Gⁿ, G⁻)
     fill_halo_regions!(merge(U, Φ), bcs.solution, arch, grid, boundary_condition_args...)
 
-    @launch device(arch) config=launch_config(grid, 3) calc_diffusivities!(K, grid, closure, buoyancy, U, Φ)
+    @launch device(arch) config=launch_config(grid, :xyz) calc_diffusivities!(K, grid, closure, buoyancy, U, Φ)
     fill_halo_regions!(K, bcs.pressure, arch, grid) # diffusivities share bcs with pressure.
-    @launch device(arch) config=launch_config(grid, 2) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy, Φ)
+    @launch device(arch) config=launch_config(grid, :xy) update_hydrostatic_pressure!(p.pHY′, grid, buoyancy, Φ)
     fill_halo_regions!(p.pHY′, bcs.pressure, arch, grid)
 
     # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
@@ -63,22 +63,22 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs.solution, boundary_condition_args...)
 
     # Complete explicit substep:
-    @launch device(arch) config=launch_config(grid, 3) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
+    @launch device(arch) config=launch_config(grid, :xyz) adams_bashforth_update_source_terms!(grid, Gⁿ, G⁻, χ)
 
     # Start pressure correction substep with a pressure solve:
     fill_halo_regions!(Gⁿ[1:3], bcs.tendency[1:3], arch, grid)
-    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(arch, grid,
+    @launch device(arch) config=launch_config(grid, :xyz) calculate_poisson_right_hand_side!(arch, grid,
                                                                                           model.poisson_solver.bcs,
                                                                                           Δt, U, Gⁿ, RHS)
     solve_for_pressure!(arch, model)
     fill_halo_regions!(p.pNHS, bcs.pressure, arch, grid)
 
     # Complete pressure correction step:
-    @launch device(arch) config=launch_config(grid, 3) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
+    @launch device(arch) config=launch_config(grid, :xyz) update_velocities_and_tracers!(grid, U, Φ, p.pNHS, Gⁿ, Δt)
 
     # Recompute vertical velocity w from continuity equation to ensure incompressibility
     fill_halo_regions!(U, bcs.solution[1:3], arch, grid, boundary_condition_args...)
-    @launch device(arch) config=launch_config(grid, 2) compute_w_from_continuity!(grid, U)
+    @launch device(arch) config=launch_config(grid, :xy) compute_w_from_continuity!(grid, U)
 
     model.clock.time += Δt
     model.clock.iteration += 1
@@ -97,7 +97,7 @@ function solve_for_pressure!(::GPU, model::Model)
     ϕ = model.poisson_solver.storage
 
     solve_poisson_3d!(model.poisson_solver, model.grid)
-    @launch device(GPU()) config=launch_config(model.grid, 3) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ,
+    @launch device(GPU()) config=launch_config(model.grid, :xyz) idct_permute!(model.grid, model.poisson_solver.bcs, ϕ,
                                                                             model.pressures.pNHS.data)
 end
 

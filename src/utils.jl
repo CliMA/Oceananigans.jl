@@ -209,17 +209,17 @@ function launch_config(grid, dims)
         fun = kernel.fun
         config = launch_configuration(fun)
 
-        # adapt the suggested config from 1D to the requested grid dimensions
-        if dims == 3
+        # Adapt the suggested config from 1D to the requested grid dimensions.
+        if dims == :xyz
             threads = floor(Int, cbrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
             threads = [threads, threads, threads]
-        elseif dims == 2
+        elseif dims == :xy
             threads = floor(Int, sqrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
             threads = [threads, threads]
         else
-            error("unsupported launch configuration")
+            error("Unsupported launch configuration: $dims")
         end
 
         return (threads=Tuple(threads), blocks=Tuple(blocks))
