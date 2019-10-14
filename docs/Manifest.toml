@@ -38,6 +38,12 @@ version = "0.21.0"
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
+[[Literate]]
+deps = ["Base64", "JSON", "REPL"]
+git-tree-sha1 = "707c58359f2de555ace074313baea957c3187f2b"
+uuid = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+version = "2.0.4"
+
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
