@@ -57,7 +57,7 @@ Additional properties
 
 Examples
 ========
-```jldoctest
+```
 julia> grid = RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
 RegularCartesianGrid{Float64}
   resolution (Nx, Ny, Nz) = (32, 32, 32)
@@ -65,7 +65,7 @@ RegularCartesianGrid{Float64}
       domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
 grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
 ```
-```jldoctest
+```
 julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
 RegularCartesianGrid{Float32}
   resolution (Nx, Ny, Nz) = (32, 32, 16)
