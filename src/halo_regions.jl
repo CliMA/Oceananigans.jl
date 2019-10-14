@@ -56,11 +56,44 @@ end
 
 @inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
 
-@inline top_gradient(bc::GBC, c¹, Δ, i, j, args...) = getbc(bc, i, j, args...)
-@inline bottom_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
+@inline left_gradient(bc::GBC, c¹, Δ, i, j, args...)  = getbc(bc, i, j, args...)
+@inline right_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
 
-@inline top_gradient(bc::VBC, c¹, Δ, i, j, args...) =    ( getbc(bc, i, j, args...) - c¹ ) / (Δ/2)
-@inline bottom_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( cᴺ - getbc(bc, i, j, args...) ) / (Δ/2)
+@inline left_gradient(bc::VBC, c¹, Δ, i, j, args...)  = (getbc(bc, i, j, args...) - c¹) / (Δ/2)
+@inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = (cᴺ - getbc(bc, i, j, args...)) / (Δ/2)
+
+const top_gradient = left_gradient
+const bottom_gradient = right_gradient
+
+function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _fill_top_halo!(c, bc, grid, args...)
+    return nothing
+end
+
+function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(c, bc, grid, args...)
+    return nothing
+end
+
+function fill_south_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, :xz) _fill_south_halo!(c, bc, grid, args...)
+    return nothing
+end
+
+function fill_north_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, :xz) _fill_north_halo!(c, bc, grid, args...)
+    return nothing
+end
+
+function fill_west_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, :yz) _fill_west_halo!(c, bc, grid, args...)
+    return nothing
+end
+
+function fill_east_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
+    @launch device(arch) config=launch_config(grid, :yz) _fill_east_halo!(c, bc, grid, args...)
+    return nothing
+end
 
 function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
@@ -72,7 +105,7 @@ function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return
+    return nothing
 end
 
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
@@ -85,17 +118,59 @@ function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return
+    return nothing
 end
 
-function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
-    @launch device(arch) config=launch_config(grid, :xy) _fill_top_halo!(c, bc, grid, args...)
-    return
+function _fill_south_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = left_gradient(bc, c[i, 1, k], grid.Δy, i, k, grid, args...)
+            @unroll for j in (1-grid.Hy):0
+                Δ = (1-j) * grid.Δy
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, 1, k], ∇c, Δ)
+            end
+        end
+    end
+    return nothing
 end
 
-function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...)
-    @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(c, bc, grid, args...)
-    return
+function _fill_north_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = right_gradient(bc, c[i, grid.Ny, k], grid.Δy, i, k, grid, args...)
+            @unroll for j in grid.Ny+1:grid.Ny+grid.Hy
+                Δ = (j-grid.Ny) * grid.Δy
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, grid.Ny, k], ∇c, Δ)
+            end
+        end
+    end
+    return nothing
+end
+
+function _fill_west_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for j in (1:grid.Ny; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = left_gradient(bc, c[1, j, k], grid.Δx, i, k, grid, args...)
+            @unroll for i in (1-grid.Hx):0
+                Δ = (1-i) * grid.Δx
+                @inbounds c[i, j, k] = linearly_extrapolate(c[1, j, k], ∇c, Δ)
+            end
+        end
+    end
+    return nothing
+end
+
+function _fill_east_halo!(c, bc::Union{VBC, GBC}, grid, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for j in (1:grid.Ny; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+            @inbounds ∇c = right_gradient(bc, c[grid.Nx, j, k], grid.Δx, j, k, grid, args...)
+            @unroll for i in grid.Nx+1:grid.Nx+grid.Hx
+                Δ = (i-grid.Nx) * grid.Δx
+                @inbounds c[i, j, k] = linearly_extrapolate(c[grid.Nx, j, k], ∇c, Δ)
+            end
+        end
+    end
+    return nothing
 end
 
 #####
@@ -104,7 +179,6 @@ end
 
 "Fill halo regions in x, y, and z for a given field."
 function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
-
       fill_west_halo!(c, fieldbcs.x.left,  arch, grid, args...)
       fill_east_halo!(c, fieldbcs.x.right, arch, grid, args...)
 
@@ -113,8 +187,7 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
 
        fill_top_halo!(c, fieldbcs.z.left,  arch, grid, args...)
     fill_bottom_halo!(c, fieldbcs.z.right, arch, grid, args...)
-
-    return
+    return nothing
 end
 
 """
@@ -127,7 +200,7 @@ function fill_halo_regions!(fields::NamedTuple, bcs, arch, grid, args...)
     for (field, fieldbcs) in zip(fields, bcs)
         fill_halo_regions!(field, fieldbcs, arch, grid, args...)
     end
-    return
+    return nothing
 end
 
 """
@@ -140,6 +213,7 @@ function fill_halo_regions!(fields::NamedTuple, bcs::FieldBoundaryConditions, ar
     for field in fields
         fill_halo_regions!(field, bcs, arch, grid, args...)
     end
+    return nothing
 end
 
 fill_halo_regions!(::Nothing, args...) = nothing
@@ -163,12 +237,12 @@ function zero_halo_regions!(c::AbstractArray, grid)
      zero_north_halo!(c, grid.Hy, grid.Ny)
        zero_top_halo!(c, grid.Hz, grid.Nz)
     zero_bottom_halo!(c, grid.Hz, grid.Nz)
-    return
+    return nothing
 end
 
 function zero_halo_regions!(fields::Tuple, grid)
     for field in fields
         zero_halo_regions!(field, grid)
     end
-    return
+    return nothing
 end
