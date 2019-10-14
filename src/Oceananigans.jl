@@ -24,7 +24,7 @@ export
     nodes, xnodes, ynodes, znodes,
 
     # Forcing functions
-    Forcing,
+    ModelForcing, SimpleForcing,
 
     # Equation of state
     BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
@@ -247,6 +247,7 @@ include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("poisson_solvers.jl")
+include("forcing.jl")
 include("models.jl")
 include("time_steppers.jl")
 

@@ -61,7 +61,7 @@ function Model(;
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
     # Forcing and boundary conditions for (u, v, w, T, S)
-                forcing = Forcing(),
+                forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
@@ -159,22 +159,12 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
                    coriolis=coriolis, buoyancy=buoyancy, skwargs...)
 end
 
-
 #####
 ##### Model initialization utilities
 #####
 
 float_type(m::Model) = eltype(model.grid)
 add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
-
-"""
-    Forcing(; kwargs...)
-
-Return a named tuple of forcing functions
-for each solution field.
-"""
-Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) =
-    (u=Fu, v=Fv, w=Fw, T=FT, S=FS)
 
 """
     VelocityFields(arch, grid)
