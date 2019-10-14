@@ -1,7 +1,7 @@
 using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F, 
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -148,15 +148,15 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float6
 
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
-     coriolis = VerticalRotationAxis(float_type, f=1/Ro)
+     coriolis = FPlane(float_type, f=1/Ro)
 
-     buoyancy = SeawaterBuoyancy(float_type, 
-                    gravitational_acceleration = Ri, 
+     buoyancy = SeawaterBuoyancy(float_type,
+                    gravitational_acceleration = Ri,
                     equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
                 )
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
-                   coriolis=coriolis, buoyancy=buoyancy, skwargs...)
+                   coriolis=coriolis, buoyancy=buoyancy, kwargs...)
 end
 
 #####
