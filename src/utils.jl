@@ -211,13 +211,21 @@ function launch_config(grid, dims)
 
         # Adapt the suggested config from 1D to the requested grid dimensions.
         if dims == :xyz
-            threads = floor(Int, cbrt(config.threads))
-            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
-            threads = [threads, threads, threads]
+            t = floor(Int, cbrt(config.threads))
+            threads = [t, t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ t)
         elseif dims == :xy
-            threads = floor(Int, sqrt(config.threads))
-            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
-            threads = [threads, threads]
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ t)
+        elseif dims == :xz
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Nz] ./ t)
+        elseif dims == :yz
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Ny, grid.Nz] ./ t)
         else
             error("Unsupported launch configuration: $dims")
         end
