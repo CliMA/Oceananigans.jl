@@ -25,8 +25,8 @@ function time_step!(model, Nt, Δt; init_with_euler=true)
     for n in 1:Nt
         χ = ifelse(init_with_euler && n==1, FT(-0.5), model.timestepper.χ)
 
-        adams_bashforth_time_step!(model, model.architecture, model.grid, model.buoyancy, model.coriolis, 
-                                   model.closure, model.forcing, model.boundary_conditions, 
+        adams_bashforth_time_step!(model, model.architecture, model.grid, model.buoyancy, model.coriolis,
+                                   model.closure, model.forcing, model.boundary_conditions,
                                    U, Φ, p, K, RHS, Gⁿ,  G⁻, Δt, χ)
 
         [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
@@ -58,7 +58,7 @@ function adams_bashforth_time_step!(model, arch, grid, buoyancy, coriolis, closu
     fill_halo_regions!(p.pHY′, bcs.pressure, arch, grid)
 
     # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
-    calculate_interior_source_terms!(Gⁿ, arch, grid, coriolis, closure, U, Φ, p.pHY′, K, forcing, 
+    calculate_interior_source_terms!(Gⁿ, arch, grid, coriolis, closure, U, Φ, p.pHY′, K, forcing,
                                      model.parameters, model.clock.time)
     calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs.solution, boundary_condition_args...)
 
@@ -127,7 +127,7 @@ function update_hydrostatic_pressure!(pHY′, grid, buoyancy, Φ)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             @inbounds pHY′[i, j, 1] = - ▶z_aaf(i, j, 1, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
             @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = 
+                @inbounds pHY′[i, j, k] =
                     pHY′[i, j, k-1] - ▶z_aaf(i, j, k, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
             end
         end
@@ -212,20 +212,20 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, �
 
     Tx, Ty = 16, 16 # CUDA threads per block
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
-    
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.Gu, grid, coriolis, closure, U, Φ, pHY′, 
+
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.Gu, grid, coriolis, closure, U, Φ, pHY′,
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.Gv, grid, coriolis, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.Gv, grid, coriolis, closure, U, Φ, pHY′,
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.Gw, grid, coriolis, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.Gw, grid, coriolis, closure, U, Φ, pHY′,
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT!(G.GT, grid, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GT!(G.GT, grid, closure, U, Φ, pHY′,
                                                                             K, F, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS!(G.GS, grid, closure, U, Φ, pHY′, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_GS!(G.GS, grid, closure, U, Φ, pHY′,
                                                                             K, F, parameters, time)
 end
 
@@ -393,7 +393,7 @@ function update_velocities_and_tracers!(grid::AbstractGrid, U, Φ, pNHS, Gⁿ, �
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                                            
+
                 @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
                 @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
                 @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
@@ -424,11 +424,15 @@ function calculate_boundary_source_terms!(Gⁿ, arch, grid, bcs, args...)
 
     # Velocity fields
     for (i, ubcs) in enumerate(bcs[1:3])
+        apply_x_bcs!(Gⁿ[i], arch, grid, ubcs.x.left, ubcs.x.right, args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, ubcs.y.left, ubcs.y.right, args...)
         apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.left, ubcs.z.right, args...)
     end
 
     # Tracer fields
     for (i, cbcs) in enumerate(bcs[4:end])
+        apply_x_bcs!(Gⁿ[i+3], arch, grid, cbcs.x.left, cbcs.x.right, args...)
+        apply_y_bcs!(Gⁿ[i+3], arch, grid, cbcs.y.left, cbcs.y.right, args...)
         apply_z_bcs!(Gⁿ[i+3], arch, grid, cbcs.z.left, cbcs.z.right, args...)
     end
 

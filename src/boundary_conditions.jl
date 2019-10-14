@@ -336,6 +336,8 @@ ModelBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
 # a non-trivial flux.
 const NotFluxBC = Union{VBC, GBC, PBC, NPBC, NFBC}
 apply_z_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
+apply_y_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
+apply_x_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 
 """
     apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
@@ -348,13 +350,67 @@ function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
     return
 end
 
+function apply_y_bcs!(Gc, arch, grid, left_bc, right_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xz) _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
+    return
+end
+
+function apply_x_bcs!(Gc, arch, grid, left_bc, right_bc, args...)
+    @launch device(arch) config=launch_config(grid, :yz) _apply_x_bcs!(Gc, grid, left_bc, right_bc, args...)
+    return
+end
+
+"""
+    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+
+Apply a top and/or bottom boundary condition to variable `c`.
+"""
+function _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
+            apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+        end
+    end
+end
+
+function _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+             apply_y_left_bc!(Gc,  left_bc, i, k, grid, args...)
+            apply_y_right_bc!(Gc, right_bc, i, k, grid, args...)
+        end
+    end
+end
+
+function _apply_x_bcs!(Gc, grid, left_bc, right_bc, args...)
+    @loop for k in (1:grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+        @loop for j in (1:grid.Ny; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+             apply_x_left_bc!(Gc, left_bc,  j, k, grid, args...)
+            apply_x_right_bc!(Gc, right_bc, j, k, grid, args...)
+        end
+    end
+end
+
 # Fall back functions for boundary conditions that are not of type Flux.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
 
+@inline apply_y_left_bc!(args...) = nothing
+@inline apply_y_right_bc!(args...) = nothing
+
+@inline apply_x_left_bc!(args...) = nothing
+@inline apply_x_right_bc!(args...) = nothing
+
 # Shortcuts for 'no-flux' boundary conditions.
 @inline apply_z_top_bc!(Gc, ::NFBC, args...) = nothing
 @inline apply_z_bottom_bc!(Gc, ::NFBC, args...) = nothing
+
+@inline apply_y_left_bc!(Gc, ::NFBC, args...) = nothing
+@inline apply_y_right_bc!(Gc, ::NFBC, args...) = nothing
+
+@inline apply_x_left_bc!(Gc, ::NFBC, args...) = nothing
+@inline apply_x_right_bc!(Gc, ::NFBC, args...) = nothing
 
 """
     apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...)
@@ -372,6 +428,12 @@ If `top_bc.condition` is a function, the function must have the signature
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
+@inline apply_y_left_bc!(Gc, left_flux::BC{<:Flux}, i, k, grid, args...) =
+    @inbounds Gc[i, 1, k] -= getbc(top_flux, i, k, grid, args...) / grid.Δy
+
+@inline apply_x_left_bc!(Gc, left_flux::BC{<:Flux}, j, k, grid, args...) =
+    @inbounds Gc[1, j, k] -= getbc(top_flux, j, k, grid, args...) / grid.Δx
+
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
 
@@ -388,16 +450,8 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
-"""
-    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+@inline apply_y_right_bc!(Gc, right_flux::BC{<:Flux}, i, k, grid, args...) =
+    @inbounds Gc[i, grid.Ny, k] += getbc(right_flux, i, k, grid, args...) / grid.Δy
 
-Apply a top and/or bottom boundary condition to variable `c`.
-"""
-function _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
-            apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
-        end
-    end
-end
+@inline apply_x_right_bc!(Gc, right_flux::BC{<:Flux}, j, k, grid, args...) =
+    @inbounds Gc[grid.Nx, j, k] += getbc(right_flux, j, k, grid, args...) / grid.Δx
