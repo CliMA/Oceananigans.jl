@@ -12,7 +12,7 @@ In this test we follow \citet{Vreugdenhil18} who use stratified Couette flow as 
 model. We will compare our results to theirs and the direct numerical simulation results of \citet{Deusebio15} and
 \citet{Zhou17}.
 
-In our setup replicating that of \citet{Vreugdenhil18}, a domain of size ``(L_x, L_y, L_z)/h = (4\pi, 2, 2\pi)``
+In our setup replicating that of \citet{Vreugdenhil18}, a domain of size ``(L_x, L_y, L_z)/h = (4\pi, 2\pi, 2)``
 is bounded in the vertical ``z``-direction by two infinite, parallel plates or walls at ``z = \pm h`` with horizontal
 velocity ``u = \pm U_w`` and constant temperature ``\theta = \pm \Theta_w`` where ``\theta`` denotes temperature in this
 section. The resulting flow is governed by the Reynolds, Richardson, and Prandtl numbers
