@@ -138,12 +138,12 @@ function calculate_Gw!(Gw, grid, coriolis, closure, U, C, K, F, parameters, time
 end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-function calculate_Gc!(Gc, grid, closure, c, tracer_idx, U, C, K, Fc, parameters, time)
+function calculate_Gc!(Gc, grid, closure, c, tracer_index, U, C, K, Fc, parameters, time)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                 @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
-                                            + ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure, K)
+                                            + ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, K)
                                             + Fc(i, j, k, grid, time, U, C, parameters))
             end
         end
@@ -165,11 +165,11 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C
     @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.w, grid, coriolis, closure, U, C, K, F, 
                                                                             parameters, time)
 
-    for tracer_idx in 1:length(C)
-        @inbounds Gc = G[tracer_idx+3]
-        @inbounds Fc = F[tracer_idx+3]
-        @inbounds  c = C[tracer_idx]
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, tracer_idx, 
+    for tracer_index in 1:length(C)
+        @inbounds Gc = G[tracer_index+3]
+        @inbounds Fc = F[tracer_index+3]
+        @inbounds  c = C[tracer_index]
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, Val(tracer_index), 
                                                                                 U, C, K, Fc, parameters, time)
                                                                                 
     end

@@ -39,8 +39,10 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
 
-@inline function ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::ConstantIsotropicDiffusivity, args...)
-    @inbounds κ = closure.κ[tracer_idx]
+@inline function ∇_κ_∇c(i, j, k, grid, c, ::Val{tracer_index}, 
+                        closure::ConstantIsotropicDiffusivity, args...) where tracer_index
+
+    @inbounds κ = closure.κ[tracer_index]
 
     return (  κ / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
             + κ / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)

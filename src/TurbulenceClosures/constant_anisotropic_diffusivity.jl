@@ -56,9 +56,11 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity,
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
     )
 
-@inline function ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::ConstantAnisotropicDiffusivity, args...)
-    @inbounds κh = closure.κh[tracer_idx]
-    @inbounds κv = closure.κv[tracer_idx]
+@inline function ∇_κ_∇c(i, j, k, grid, c, ::Val{tracer_index}, 
+                        closure::ConstantAnisotropicDiffusivity, args...) where tracer_index
+
+    @inbounds κh = closure.κh[tracer_index]
+    @inbounds κv = closure.κv[tracer_index]
 
     return (  κh * ∂x²_caa(i, j, k, grid, c)
             + κh * ∂y²_aca(i, j, k, grid, c)
