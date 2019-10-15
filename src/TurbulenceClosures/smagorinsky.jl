@@ -256,6 +256,7 @@ diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
 @inline function κ_∂x_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -273,6 +274,7 @@ diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
 @inline function κ_∂y_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -290,6 +292,7 @@ diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
 @inline function κ_∂z_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -305,13 +308,11 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, 
-                        diffusivities) where tracer_index
-    return (  ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_index, closure, diffusivities.νₑ)
-            + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_index, closure, diffusivities.νₑ)
-            + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
-           )
-end
+@inline ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, diffusivities) =
+    (   ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_index, closure, diffusivities.νₑ)
+      + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_index, closure, diffusivities.νₑ)
+      + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
+)
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
     @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
