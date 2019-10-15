@@ -36,6 +36,13 @@ function ranges_have_correct_length(FT)
             length(grid.zC) == Nz && length(grid.zF) == Nz+1)
 end
 
+# See: https://github.com/climate-machine/Oceananigans.jl/issues/480
+function no_roundoff_error_in_ranges(FT)
+    Nx, Ny, Nz = 1, 1, 64
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, π/2))
+    return length(grid.zC) == Nz
+end
+
 @testset "Grids" begin
     println("Testing grids...")
 
@@ -47,6 +54,7 @@ end
             @test faces_start_at_zero(FT)
             @test end_faces_match_grid_length(FT)
             @test ranges_have_correct_length(FT)
+            @test no_roundoff_error_in_ranges(FT)
         end
     end
 
