@@ -18,14 +18,14 @@ end
 
 function faces_start_at_zero(ft::DataType)
     g = RegularCartesianGrid(ft, (10, 10, 10), (2π, 2π, 2π))
-    g.xF[1] == 0 && g.yF[1] == 0 && g.zF[1] == 0
+    g.xF[1] == 0 && g.yF[1] == 0 && g.zF[end] == 0
 end
 
 function end_faces_match_grid_length(ft::DataType)
     g = RegularCartesianGrid(ft, (12, 13, 14), (π, π^2, π^3))
     (g.xF[end] - g.xF[1] ≈ π   &&
      g.yF[end] - g.yF[1] ≈ π^2 &&
-     g.zF[1] - g.zF[end] ≈ π^3)
+     g.zF[end] - g.zF[1] ≈ π^3)
 end
 
 @testset "Grids" begin
