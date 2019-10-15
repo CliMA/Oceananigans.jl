@@ -28,6 +28,14 @@ function end_faces_match_grid_length(ft::DataType)
      g.zF[end] - g.zF[1] ≈ π^3)
 end
 
+function ranges_have_correct_length(FT)
+    Nx, Ny, Nz = 8, 9, 10
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, 1))
+    return (length(grid.xC) == Nx && length(grid.xF) == Nx+1 &&
+            length(grid.yC) == Ny && length(grid.yF) == Ny+1 &&
+            length(grid.zC) == Nz && length(grid.zF) == Nz+1)
+end
+
 @testset "Grids" begin
     println("Testing grids...")
 
@@ -38,6 +46,7 @@ end
             @test correct_cell_volume(FT)
             @test faces_start_at_zero(FT)
             @test end_faces_match_grid_length(FT)
+            @test ranges_have_correct_length(FT)
         end
     end
 
