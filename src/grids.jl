@@ -103,13 +103,13 @@ function RegularCartesianGrid(T, N, L)
 
     V = Δx*Δy*Δz
 
-    xC = Δx/2:Δx:Lx
-    yC = Δy/2:Δy:Ly
-    zC = -Lz+Δz/2:Δz:-Δz/2
+    xC = Nx == 1 ? (Δx/2:Δx:Lx) : range(Δx/2, Lx-Δx/2; length=Nx)
+    yC = Ny == 1 ? (Δy/2:Δy:Ly) : range(Δy/2, Ly-Δy/2; length=Ny)
+    zC = Nz == 1 ? (-Lz+Δz/2:Δz:-Δz/2) : range(-Lz+Δz/2, -Δz/2; length=Nz)
 
-    xF = 0:Δx:Lx
-    yF = 0:Δy:Ly
-    zF = -Lz:Δz:0
+    xF = Nx == 1 ? (0:Δx:Lx) : range(0, Lx; length=Nx+1)
+    yF = Ny == 1 ? (0:Δy:Ly) : range(0, Ly; length=Ny+1)
+    zF = Nz == 1 ? (-Lz:Δz:0) : range(-Lz, 0; length=Nz+1)
 
     RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
@@ -124,7 +124,7 @@ size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
 eltype(g::RegularCartesianGrid{T}) where T = T
 
 show(io::IO, g::RegularCartesianGrid) =
-    print(io, "RegularCartesianGrid{$(eltype(g))}\n", 
+    print(io, "RegularCartesianGrid{$(eltype(g))}\n",
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
               "      domain (Lx, Ly, Lz) = ", (g.Lx, g.Ly, g.Lz), '\n',
