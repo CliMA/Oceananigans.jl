@@ -1,8 +1,6 @@
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
-zerofunk(args...) = 0
-
 # Need to adapt SubArray indices as well.
 # See: https://github.com/JuliaGPU/Adapt.jl/issues/16
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =

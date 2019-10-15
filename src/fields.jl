@@ -160,12 +160,25 @@ for ft in (:CellField, :FaceFieldX, :FaceFieldY, :FaceFieldZ)
     end
 end
 
+@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
+
+@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
+
+@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
+
+@inline xnode(i, ϕ::Field{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ϕ.grid)
+@inline ynode(j, ϕ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ϕ.grid)
+@inline znode(k, ϕ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ϕ.grid)
+
 xnodes(ϕ::AbstractField) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
 ynodes(ϕ::AbstractField) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
 znodes(ϕ::AbstractField) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
 
-xnodes(ϕ::Field{Face}) = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::Field{X, Face}) where X = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
+xnodes(ϕ::Field{Face})                    = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
+ynodes(ϕ::Field{X, Face}) where X         = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
 znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
