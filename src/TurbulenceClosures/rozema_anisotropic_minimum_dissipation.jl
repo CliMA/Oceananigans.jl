@@ -63,8 +63,10 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, tracer_idx, U) where FT
-    @inbounds κ = closure.κ[tracer_idx]
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, ::Val{tracer_index}, 
+                       U) where {FT, tracer_index}
+
+    @inbounds κ = closure.κ[tracer_index]
 
     σ = θᵢ²_ccc(i, j, k, grid, c) 
 
