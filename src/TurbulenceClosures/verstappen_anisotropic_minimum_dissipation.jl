@@ -82,9 +82,11 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, tracer_idx, U) where FT
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, ::Val{tracer_index}, 
+                       U) where {FT, tracer_index}
+
     ijk = (i, j, k, grid)
-    @inbounds κ = closure.κ[tracer_idx]
+    @inbounds κ = closure.κ[tracer_index]
 
     σ =  norm_θᵢ²_ccc(i, j, k, grid, c)
 
@@ -100,7 +102,7 @@ end
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
@@ -119,10 +121,10 @@ end
 function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
     @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
 
-    for i in 1:length(K.κₑ)
-        @inbounds κₑ = K.κₑ[i]
-        @inbounds c = C[i]
-        @launch device(arch) config=launch_config(grid, 3) calculate_tracer_diffusivity!(κₑ, grid, closure, c, i, U) 
+    for (tracer_index, κₑ) in enumerate(K.κₑ)
+        @inbounds c = C[tracer_index]
+        @launch device(arch) config=launch_config(grid, 3) calculate_tracer_diffusivity!(κₑ, grid, closure, c, 
+                                                                                         Val(tracer_index), U) 
     end
 
     return nothing
@@ -139,11 +141,11 @@ function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDi
     return nothing
 end
 
-function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_idx, U)
+function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds κₑ[i, j, k] = κ_ccc(i, j, k, grid, closure, c, tracer_idx, U)
+                @inbounds κₑ[i, j, k] = κ_ccc(i, j, k, grid, closure, c, tracer_index, U)
             end
         end
     end
