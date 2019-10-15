@@ -65,4 +65,5 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
     include("test_output_writers.jl")
     include("test_regression.jl")
     include("test_examples.jl")
+    include("test_verification.jl")
 end
