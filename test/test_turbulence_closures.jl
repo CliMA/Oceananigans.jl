@@ -52,13 +52,13 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64;
         data(T)[:, 1, k] .= [0, -1, 0]
     end
 
-    U, Φ = datatuples(velocities, tracers)
-    fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
+    U, C = datatuples(velocities, tracers)
+    fill_halo_regions!(merge(U, C), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U...) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U...) == 6ν
+    return (   ∇_κ_∇c(2, 1, 2, grid, C.T, closure)  == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, U...) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, U...) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, U...) == 6ν
             )
 end
 
@@ -73,29 +73,29 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     u, v, w = velocities
     T, S = tracers
 
-    data(u)[:, 1, 2] .= [0,  1, 0]
-    data(u)[:, 1, 3] .= [0, -1, 0]
-    data(u)[:, 1, 4] .= [0,  1, 0]
+    data(u)[:, 1, 3] .= [0,  1, 0]
+    data(u)[:, 1, 2] .= [0, -1, 0]
+    data(u)[:, 1, 1] .= [0,  1, 0]
 
-    data(v)[:, 1, 2] .= [0,  1, 0]
-    data(v)[:, 1, 3] .= [0, -2, 0]
-    data(v)[:, 1, 4] .= [0,  1, 0]
+    data(v)[:, 1, 3] .= [0,  1, 0]
+    data(v)[:, 1, 2] .= [0, -2, 0]
+    data(v)[:, 1, 1] .= [0,  1, 0]
 
-    data(w)[:, 1, 2] .= [0,  1, 0]
-    data(w)[:, 1, 3] .= [0, -3, 0]
-    data(w)[:, 1, 4] .= [0,  1, 0]
+    data(w)[:, 1, 3] .= [0,  1, 0]
+    data(w)[:, 1, 2] .= [0, -3, 0]
+    data(w)[:, 1, 1] .= [0,  1, 0]
 
-    data(T)[:, 1, 2] .= [0,  1, 0]
-    data(T)[:, 1, 3] .= [0, -4, 0]
-    data(T)[:, 1, 4] .= [0,  1, 0]
+    data(T)[:, 1, 3] .= [0,  1, 0]
+    data(T)[:, 1, 2] .= [0, -4, 0]
+    data(T)[:, 1, 1] .= [0,  1, 0]
 
     U, Φ = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, Φ), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, Φ.T, closure, nothing) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U..., nothing) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U..., nothing) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv
+    return (   ∇_κ_∇c(2, 1, 2, grid, Φ.T, closure, nothing) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 2, grid, closure, U..., nothing) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 2, grid, closure, U..., nothing) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 2, grid, closure, U..., nothing) == 6νh + 8νv
             )
 end
 
@@ -138,9 +138,8 @@ function test_function_differentiation(T=Float64)
     ∂y_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
     ∂y_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
 
-    # Note reverse indexing here!
-    ∂z_ϕ_f = ϕ²[2, 2, 1] - ϕ²[2, 2, 2]
-    ∂z_ϕ_c = ϕ²[2, 2, 2] - ϕ²[2, 2, 3]
+    ∂z_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
+    ∂z_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
 
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
