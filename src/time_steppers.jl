@@ -392,7 +392,7 @@ function update_velocities_and_tracers!(grid::AbstractGrid, U, Φ, pNHS, Gⁿ, �
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                
+
                 @inbounds U.u[i, j, k] = U.u[i, j, k] + (Gⁿ.Gu[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
                 @inbounds U.v[i, j, k] = U.v[i, j, k] + (Gⁿ.Gv[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
                 @inbounds Φ.T[i, j, k] = Φ.T[i, j, k] + (Gⁿ.GT[i, j, k] * Δt)
@@ -410,8 +410,8 @@ Compute the vertical velocity w by integrating the continuity equation downwards
 function compute_w_from_continuity!(grid::AbstractGrid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds U.w[i, j, grid.Nz] = 0
-            @unroll for k in grid.Nz-1 : -1 : 1
+            # U.w[i, j, grid.Nz+1] = 0 is enforced via halo regions.
+            @unroll for k in grid.Nz : -1 : 1
                 @inbounds U.w[i, j, k] = U.w[i, j, k+1] + grid.Δz * ∇h_u(i, j, k, grid, U.u, U.v)
             end
         end
