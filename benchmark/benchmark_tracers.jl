@@ -9,15 +9,15 @@ const timer = TimerOutput()
 #### Benchmark parameters
 ####
 
-Ni = 2  # Number of iterations before benchmarking starts.
-Nt = 5  # Number of iterations to use for benchmarking time stepping.
+Ni = 2   # Number of iterations before benchmarking starts.
+Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
          archs = [CPU()]             # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
+@hascuda archs = [GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
 FT = Float64
 Nxyz(::CPU) = (32, 32, 32)
-Nxyz(::GPU) = (128, 128, 128)
+Nxyz(::GPU) = (256, 256, 256)
 
 ####
 #### Utility functions for generating tracer lists
@@ -45,7 +45,7 @@ end
 #### Run benchmarks.
 ####
 
-test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10), (2, 50)]
+test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
 
 for arch in archs, test_case in test_cases
     N = Nxyz(arch)
