@@ -39,8 +39,8 @@ end_time = 1day
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-b_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb), 
-                                bottom = BoundaryCondition(Gradient, N²))
+buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb), 
+                                       bottom = BoundaryCondition(Gradient, N²))
 
 # ## Define a forcing function
 #
@@ -58,7 +58,7 @@ model = Model(
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
                 forcing = ModelForcing(plankton=growth_and_decay),
-    boundary_conditions = BoundaryConditions(b=b_bcs)
+    boundary_conditions = BoundaryConditions(b=buoyancy_bcs)
 )
 
 ## Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
