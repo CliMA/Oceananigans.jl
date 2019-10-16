@@ -61,7 +61,6 @@ function Model(;
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-    # Forcing and boundary conditions for (u, v, w, T, S)
                 forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),

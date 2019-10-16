@@ -36,7 +36,7 @@ function with_tracers(tracers, closure::ConstantAnisotropicDiffusivity{FT}) wher
     return ConstantAnisotropicDiffusivity{FT}(closure.νh, closure.νv, κh, κv)
 end
 
-calculate_diffusivities!(K, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, u, v, w, K) = (
       closure.νh * ∂x²_faa(i, j, k, grid, u)
@@ -56,9 +56,11 @@ calculate_diffusivities!(K, grid, closure::ConstantAnisotropicDiffusivity, args.
     + closure.νv * ∂z²_aaf(i, j, k, grid, w)
     )
 
-@inline function ∇_κ_∇c(i, j, k, grid, c, tracer_idx, closure::ConstantAnisotropicDiffusivity, args...)
-    @inbounds κh = closure.κh[tracer_idx]
-    @inbounds κv = closure.κv[tracer_idx]
+@inline function ∇_κ_∇c(i, j, k, grid, c, ::Val{tracer_index}, 
+                        closure::ConstantAnisotropicDiffusivity, args...) where tracer_index
+
+    @inbounds κh = closure.κh[tracer_index]
+    @inbounds κv = closure.κv[tracer_index]
 
     return (  κh * ∂x²_caa(i, j, k, grid, c)
             + κh * ∂y²_aca(i, j, k, grid, c)

@@ -255,7 +255,8 @@ Return `κ ∂x c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+@inline function κ_∂x_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -272,7 +273,8 @@ Return `κ ∂y c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+@inline function κ_∂y_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -289,7 +291,8 @@ Return `κ ∂z c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, νₑ) 
+@inline function κ_∂z_c(i, j, k, grid, c, ::Val{tracer_index}, closure::AbstractSmagorinsky, νₑ) where tracer_index
+
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
@@ -311,11 +314,16 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
     + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
 )
 
-function calculate_diffusivities!(K, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
+function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
+    @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
+    return nothing
+end
+
+function calculate_viscosity!(νₑ, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+                @inbounds νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
             end
         end
     end
