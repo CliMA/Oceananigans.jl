@@ -1,9 +1,9 @@
 function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
 
-    spinup_steps = 1000
-      test_steps = 100
-              Δt = 10.0
+    spinup_steps = 10000
+      test_steps = 10
+              Δt = 2.0
 
     #=
     # Parameters
@@ -34,8 +34,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
     time_step!(model, spinup_steps-test_steps, Δt)
-    model.output_writers[:checkpointer] = Checkpointer(model; frequency=test_steps, 
-                                                       prefix=name * "_", dir=dirname(@__FILE__))
+    model.output_writers[:checkpointer] = Checkpointer(model; 
+                                                       frequency = test_steps, 
+                                                          prefix = name * "_", 
+                                                             dir = joinpath(dirname(@__FILE__), "data")
+                                                      )
                                                        
     time_step!(model, 2test_steps, Δt)
     =#
