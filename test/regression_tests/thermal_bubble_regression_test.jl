@@ -1,3 +1,4 @@
+
 function run_thermal_bubble_regression_test(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -6,8 +7,8 @@ function run_thermal_bubble_regression_test(arch)
     model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
                        coriolis=FPlane(f=1e-4))
 
-    model.tracers.T.data.parent .= T₀
-    model.tracers.S.data.parent .= S₀
+    model.tracers.T.data.parent .= 9.85
+    model.tracers.S.data.parent .= 35.0
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
