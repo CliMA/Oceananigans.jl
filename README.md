@@ -1,42 +1,56 @@
-# Oceananigans.jl
+<!-- Title -->
+<h1 align="center">
+  Oceananigans.jl
+</h1>
 
-[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://mit-license.org/)
-[![Ask us anything](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/climate-machine/Oceananigans.jl/issues/new)
+<!-- description -->
+<p align="center">
+  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/oceananigans</strong>
+</p>
 
+<!-- Information badge -->
+<p align="center">
+  <a href="https://www.repostatus.org/#active">
+    <img alt="Project Status" src="https://www.repostatus.org/badges/latest/active.svg?style=flat-square" />
+  </a>
+  <a href="https://mit-license.org">
+    <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
+  </a>
+  <a href="https://github.com/climate-machine/Oceananigans.jl/issues/new">
+    <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
+  </a>
+  <a href="https://climate-machine.github.io/Oceananigans.jl/latest">
+    <img alt="Documents" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
+  </a>
+</p>
 
-
-| **Documentation**             | **Build Status** (CPU, GPU, Windows, Docker)                                                                                 | **Code coverage**                                                                   |
-|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------|
-| [![docs][docs-img]][docs-url] | [![travis][travis-img]][travis-url] [![gitlab][gitlab-img]][gitlab-url] [![appveyor][appveyor-img]][appveyor-url] [![docker][docker-img]][docker-url]   | [![coveralls][coveralls-img]][coveralls-url] [![codecov][codecov-img]][codecov-url] |
-
-[docs-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-url]: https://climate-machine.github.io/Oceananigans.jl/latest/
-
-[travis-img]: https://travis-ci.com/climate-machine/Oceananigans.jl.svg?branch=master
-[travis-url]: https://travis-ci.com/climate-machine/Oceananigans.jl
-
-[gitlab-img]: https://gitlab.com/JuliaGPU/Oceananigans-jl/badges/master/pipeline.svg
-[gitlab-url]: https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master
-
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/sc488kyni1wp93he?svg=true
-[appveyor-url]: https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl
-
-[docker-img]: https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans.svg
-[docker-url]: https://hub.docker.com/r/aliramadhan/oceananigans
-
-[coveralls-img]: https://coveralls.io/repos/github/climate-machine/Oceananigans.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master
-
-[codecov-img]: https://codecov.io/gh/climate-machine/Oceananigans.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/climate-machine/Oceananigans.jl
+<!-- CI/CD badge -->
+<p align="center">
+  <a href="https://travis-ci.com/climate-machine/Oceananigans.jl">
+    <img alt="Build Status for CPU" src="https://img.shields.io/travis/com/climate-machine/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master">
+    <img alt="Build Status for GPU" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl">
+    <img alt="Build Status for Window" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=Window&logo=appveyor&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
+    <img alt="Build Status for Docker" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://codecov.io/gh/climate-machine/Oceananigans.jl">
+    <img alt="Coverage Status for Codecov" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
+  </a>
+  <a href="https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master">
+    <img alt="Coverage Status for Coveralls" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?label=Coveralls&style=flat-square">
+  </a>
+</p>
 
 Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It is designed to solve the rotating Boussinesq equations used in non-hydrostatic ocean modeling but can be used to solve for any incompressible flow.
 
 Our goal is to develop a friendly and intuitive package allowing users to focus on the science. Thanks to high-level, zero-cost abstractions that the Julia programming language makes possible, the model can have the same look and feel no matter the dimension or grid of the underlying simulation, and the same code is shared between the CPU and GPU.
 
-Contents
-=========
+## Contents
 * [Installation instructions](#installation-instructions)
 * [Running your first model](#running-your-first-model)
   * [More interesting example](#more-interesting-example)
