@@ -1,17 +1,3 @@
-const seed = 420  # Random seed to use for all pseudorandom number generators.
-
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
-
-const T₀ = 9.85
-const S₀ = 35.0
-
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
-
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
