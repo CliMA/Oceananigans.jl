@@ -403,16 +403,16 @@ function update_velocities_and_tracers!(grid::AbstractGrid, U, Φ, pNHS, Gⁿ, �
 end
 
 """
-Compute the vertical velocity w by integrating the continuity equation downwards
+Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
 function compute_w_from_continuity!(grid::AbstractGrid, U)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            # U.w[i, j, grid.Nz+1] = 0 is enforced via halo regions.
-            @unroll for k in grid.Nz : -1 : 1
-                @inbounds U.w[i, j, k] = U.w[i, j, k+1] + grid.Δz * ∇h_u(i, j, k, grid, U.u, U.v)
+            # U.w[i, j, 0] = 0 is enforced via halo regions.
+            @unroll for k in 2:grid.Nz
+                @inbounds U.w[i, j, k] = U.w[i, j, k-1] - grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
             end
         end
     end
