@@ -26,7 +26,7 @@ end
 function q_wall(model, Tavg)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     Θ_wall = model.parameters.Θ_wall
-    κ = model.closure.κ
+    κ = model.closure.κ.T
 
     Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
 
@@ -58,7 +58,7 @@ end
 
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
-    κ = model.closure.κ
+    κ = model.closure.κ.T
     h = model.grid.Lz / 2
     Θ_wall = model.parameters.Θ_wall
 
