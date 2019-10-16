@@ -128,10 +128,10 @@ the `buoyancy_perturbation` downwards:
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy, Φ)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, grid.Nz] = - ▶z_aaf(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
-            @unroll for k in grid.Nz-1 : -1 : 1
+            @inbounds pHY′[i, j, grid.Nz+1] = - ▶z_aaf(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
+            @unroll for k in grid.Nz : -1 : 2
                 @inbounds pHY′[i, j, k] =
-                    pHY′[i, j, k+1] - ▶z_aaf(i, j, k+1, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
+                    pHY′[i, j, k+1] - ▶z_aaf(i, j, k, grid, buoyancy_perturbation, buoyancy, Φ) * grid.Δz
             end
         end
     end
