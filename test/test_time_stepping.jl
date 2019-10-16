@@ -49,7 +49,7 @@ function compute_w_from_continuity(arch, FT)
 
     # Set div_u to zero at the top because the initial velocity field is not divergence-free
     # so we end up some divergence at the top if we don't do this.
-    data(div_u)[:, :, Nz-1:Nz] .= zero(FT)
+    data(div_u)[:, :, Nz] .= zero(FT)
 
     min_div = minimum(data(div_u))
     max_div = maximum(data(div_u))
