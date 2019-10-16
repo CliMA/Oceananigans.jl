@@ -46,11 +46,30 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     checkpointed_model = restore_from_checkpoint(joinpath(dirname(@__FILE__), "data", name * "_$(spinup_steps+test_steps).jld2"))
 
-    @test all(Array(data(checkpointed_model.velocities.u) .≈ Array(data(test_model.velocities.u))))
-    @test all(Array(data(checkpointed_model.velocities.v) .≈ Array(data(test_model.velocities.v))))
-    @test all(Array(data(checkpointed_model.velocities.w) .≈ Array(data(test_model.velocities.w))))
-    @test all(Array(data(checkpointed_model.tracers.T)    .≈ Array(data(test_model.tracers.T))))
-    @test all(Array(data(checkpointed_model.tracers.S)    .≈ Array(data(test_model.tracers.S))))
+    field_names = ["u", "v", "w", "T", "S"]
+
+    fields = [test_model.velocities.u, test_model.velocities.v, test_model.velocities.w, test_model.tracers.T, test_model.tracers.S]
+
+    fields_gm = [checkpointed_model.velocities.u, checkpointed_model.velocities.v, checkpointed_model.velocities.w, 
+                 checkpointed_model.tracers.T, checkpointed_model.tracers.S]
+
+    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
+        φ_min = minimum(Array(data(φ)) - data(φ_gm))
+        φ_max = maximum(Array(data(φ)) - data(φ_gm))
+        φ_mean = mean(Array(data(φ)) - data(φ_gm))
+        φ_abs_mean = mean(abs.(Array(data(φ)) - data(φ_gm)))
+        φ_std = std(Array(data(φ)) - data(φ_gm))
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+
+
+
+    @test all(Array(data(checkpointed_model.velocities.u)) .≈ Array(data(test_model.velocities.u)))
+    @test all(Array(data(checkpointed_model.velocities.v)) .≈ Array(data(test_model.velocities.v)))
+    @test all(Array(data(checkpointed_model.velocities.w)) .≈ Array(data(test_model.velocities.w)))
+    @test all(Array(data(checkpointed_model.tracers.T))    .≈ Array(data(test_model.tracers.T)))
+    @test all(Array(data(checkpointed_model.tracers.S))    .≈ Array(data(test_model.tracers.S)))
 
     return nothing
 end
