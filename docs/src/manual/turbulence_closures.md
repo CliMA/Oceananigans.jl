@@ -8,12 +8,12 @@ unit mass.
 As pointed out way back by \citet{Corrsin61}, to run a simulation on a horizontal domain about 10 times the size of an
 "average eddy" with 100 vertical levels and where the grid spacing is given by $\eta$ would require the computer to
 store on the order of $10^{14}$ variables.[^1] This is still impractical today, although may be within
-reach in  less than a decade. He ends by suggesting the use of an analog rather digital computer---a tank of water.
+reach in less than a decade. He ends by suggesting the use of an analog rather digital computer---a tank of water.
 
 [^1]: And even then, $\eta$ gives the *maximum* allowable grid spacing. There is significant flow structure
     smaller than $\eta$.
 
-To have any hope of simulating interesting flows we need some way of resolving the sub-grid scale motions.[^2]
+To have any hope of simulating high Reynolds number flows we need some way of resolving the sub-grid scale motions.[^2]
 
 [^2]: In reality there is no need to resolve all motions down to the Kolmogorov length scale to achieve
     acceptable accuracy. Perhaps good results can be achieved if 80\% of the kinetic energy is resolved
