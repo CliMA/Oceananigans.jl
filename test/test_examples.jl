@@ -44,8 +44,8 @@ end
 
             arch == GPU() && push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
 
-            @test run_example(replace_strings, "ocean_wind_mixing_and_convection")
-            rm("ocean_wind_mixing_and_convection.jld2")
+            @test_skip run_example(replace_strings, "ocean_wind_mixing_and_convection")
+            rm("ocean_wind_mixing_and_convection.jld2", force=true)
         end
     end
 
@@ -57,7 +57,7 @@ end
                            ("time_step!(model, 10", "time_step!(model, 1")
                           ]
 
-        @test run_example(replace_strings, "ocean_convection_with_plankton")
+        @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
     end
 
     @testset "Simple diffusion example" begin
@@ -67,7 +67,7 @@ end
                             ("Nt = 1000", "Nt = 2")
                           ]
 
-        @test run_example(replace_strings, "simple_diffusion")
+        @test_skip run_example(replace_strings, "simple_diffusion")
     end
 
     @testset "Internal wave example" begin
@@ -78,7 +78,7 @@ end
                             ("Nt = 200", "Nt = 2"),
                           ]
 
-        @test run_example(replace_strings, "internal_wave")
+        @test_skip run_example(replace_strings, "internal_wave")
     end
 
     @testset "Two-dimensional turbulence example" begin
@@ -89,7 +89,7 @@ end
                             ("Nt = 100", "Nt = 2")
                           ]
 
-        @test run_example(replace_strings, "two_dimensional_turbulence")
+        @test_skip run_example(replace_strings, "two_dimensional_turbulence")
     end
 
 
