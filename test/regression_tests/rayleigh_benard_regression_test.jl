@@ -23,17 +23,18 @@ function run_rayleigh_benard_regression_test(arch)
     #####
 
     # Force salinity as a passive tracer (βS=0)
-    S★(x, z) = exp(4z) * sin(2π/Lx * x)
-    FS(i, j, k, grid, time, U, Φ, params) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
+    c★(x, z) = exp(4z) * sin(2π/Lx * x)
+    Fc(i, j, k, grid, time, U, C, params) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - C.c[i, j, k])
 
     model = Model(
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+                    tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(), 
-        boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
-                                top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
-                    forcing = ModelForcing(S=FS)
+        boundary_conditions = BoundaryConditions(b=HorizontallyPeriodicBCs(top=BoundaryCondition(Value, 0.0), 
+                                                                           bottom=BoundaryCondition(Value, Δb))),
+                    forcing = ModelForcing(c=Fc)
     )
 
     ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
@@ -82,14 +83,14 @@ function run_rayleigh_benard_regression_test(arch)
     data(model.velocities.u) .= ArrayType(u₀)
     data(model.velocities.v) .= ArrayType(v₀)
     data(model.velocities.w) .= ArrayType(w₀)
-    data(model.tracers.T)    .= ArrayType(T₀)
-    data(model.tracers.S)    .= ArrayType(S₀)
+    data(model.tracers.b)    .= ArrayType(T₀)
+    data(model.tracers.c)    .= ArrayType(S₀)
 
-    data(model.timestepper.Gⁿ.Gu) .= ArrayType(Gu)
-    data(model.timestepper.Gⁿ.Gv) .= ArrayType(Gv)
-    data(model.timestepper.Gⁿ.Gw) .= ArrayType(Gw)
-    data(model.timestepper.Gⁿ.GT) .= ArrayType(GT)
-    data(model.timestepper.Gⁿ.GS) .= ArrayType(GS)
+    data(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
+    data(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
+    data(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
+    data(model.timestepper.Gⁿ.b) .= ArrayType(GT)
+    data(model.timestepper.Gⁿ.c) .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -102,7 +103,7 @@ function run_rayleigh_benard_regression_test(arch)
     T₁, S₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
+    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
     fields_gm = [u₁, v₁, w₁, T₁, S₁]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
         φ_min = minimum(Array(data(φ)) - φ_gm)
@@ -118,8 +119,8 @@ function run_rayleigh_benard_regression_test(arch)
     @test all(Array(data(model.velocities.u)) .≈ u₁)
     @test all(Array(data(model.velocities.v)) .≈ v₁)
     @test all(Array(data(model.velocities.w)) .≈ w₁)
-    @test all(Array(data(model.tracers.T))    .≈ T₁)
-    @test all(Array(data(model.tracers.S))    .≈ S₁)
+    @test all(Array(data(model.tracers.b))    .≈ T₁)
+    @test all(Array(data(model.tracers.c))    .≈ S₁)
     return nothing
 end
 
