@@ -1,7 +1,14 @@
 # # Two dimensional turbulence example
 #
 # In this example, we initialize a random velocity field and observe its viscous,
-# turbulent decay in a two-dimensional domain.
+# turbulent decay in a two-dimensional domain. This example demonstrates:
+#
+#   * How to run a model with no buoyancy equation or tracers;
+#   * How to create user-defined fields
+#   * How to use differentiation functions
+#
+# For this example, we need `PyPlot` for plotting and `Statistics` for setting up
+# a random initial condition with zero mean velocity.
 
 using Oceananigans, PyPlot, Statistics
 
@@ -16,6 +23,8 @@ using Oceananigans.TurbulenceClosures: ∂x_faa, ∂y_afa
 
 model = Model(
         grid = RegularCartesianGrid(N=(128, 128, 1), L=(2π, 2π, 2π)),
+    buoyancy = nothing, 
+     tracers = nothing,
      closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)
 )
 
@@ -46,7 +55,7 @@ close("all")
 fig, ax = subplots()
 
 for i = 1:10
-    time_step!(model, Nt = 100, Δt = 1e-1)
+    time_step!(model, Nt=100, Δt=1e-1)
 
     vorticity!(ω, model.velocities.u, model.velocities.v)
 

@@ -52,7 +52,7 @@ set!(model, T=Tᵢ)
 # `time_step!`, with a time-step size that ensures numerical stability.
 
 ## Time-scale for diffusion across a grid cell
-cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ
+cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 
 ## The function `time_step!` executes `Nt` time steps with step size `Δt`
 ## using a second-order Adams-Bashforth method
