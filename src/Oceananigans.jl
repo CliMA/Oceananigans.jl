@@ -229,9 +229,10 @@ end
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
-# Place-holder buoyancy functions for use in TurbulenceClosures module
+# Place-holder functions for use in TurbulenceClosures module
 function buoyancy_perturbation end
 function buoyancy_frequency_squared end
+function TracerFields end
 
 include("utils.jl")
 
@@ -241,6 +242,8 @@ include("fields.jl")
 
 include("Operators/Operators.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
+
+using .TurbulenceClosures
 
 include("coriolis.jl")
 include("buoyancy.jl")

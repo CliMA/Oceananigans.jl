@@ -8,20 +8,25 @@ cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.
 "Returns the time-scale for diffusion on a regular grid across a single grid cell."
 function cell_diffusion_timescale(closure::IsotropicDiffusivity, diffusivities, grid)
     Δ = min_Δxyz(grid)
-    return min(Δ^2 / closure.ν, Δ^2 / closure.κ)
+    max_κ = maximum(closure.κ)
+    return min(Δ^2 / closure.ν, Δ^2 / max_κ)
 end
 
 function cell_diffusion_timescale(closure::TensorDiffusivity, diffusivies, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
+    max_κh = maximum(closure.κh)
+    max_κv = maximum(closure.κv)
     return min(Δz^2 / closure.νv, Δh^2 / closure.νh,
-               Δz^2 / closure.κv, Δh^2 / closure.κh)
+               Δz^2 / max_κv, Δh^2 / max_κh)
 end
 
 function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivies, grid)
     Δ = min_Δxyz(grid)
-    max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/closure.Pr)
-    return min(Δ^2 / max_νκ, Δ^2 / closure.κ)
+    min_Pr = minimum(closure.Pr)
+    max_κ = maximum(closure.κ)
+    max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/min_Pr)
+    return min(Δ^2 / max_νκ, Δ^2 / max_κ)
 end
 
 function cell_diffusion_timescale(closure::AbstractAnisotropicMinimumDissipation, diffusivies, grid)

@@ -19,7 +19,7 @@ for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type)
+    model = Model(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)))
     time_step!(model, Ni, 1)
 
     bname =  benchmark_name(N, "", arch, float_type)

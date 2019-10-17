@@ -39,8 +39,8 @@ end_time = 1day
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-Tbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb), 
-                               bottom = BoundaryCondition(Gradient, N²))
+buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb), 
+                                       bottom = BoundaryCondition(Gradient, N²))
 
 # ## Define a forcing function
 #
@@ -55,15 +55,16 @@ model = Model(
                    grid = RegularCartesianGrid(N = (Nz, 1, Nz), L = (Lz, Lz, Lz)),
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4), 
+                tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
-                forcing = ModelForcing(S=growth_and_decay),
-    boundary_conditions = BoundaryConditions(T=Tbcs)
+                forcing = ModelForcing(plankton=growth_and_decay),
+    boundary_conditions = BoundaryConditions(b=buoyancy_bcs)
 )
 
 ## Set initial condition. Initial velocity and salinity fluctuations needed for AMD.
 Ξ(z) = randn() * z / Lz * (1 + z / Lz) # noise
-T₀(x, y, z) = N² * z + N² * Lz * 1e-6 * Ξ(z)
-set!(model, T=T₀)
+b₀(x, y, z) = N² * z + N² * Lz * 1e-6 * Ξ(z)
+set!(model, b=b₀)
 
 ## A wizard for managing the simulation time-step.
 wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=90.0)
@@ -87,7 +88,7 @@ while model.clock.time < end_time
     ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla()
-    pcolormesh(xC, zC, data(model.tracers.S)[:, 1, :])
+    pcolormesh(xC, zC, data(model.tracers.plankton)[:, 1, :])
     title("Phytoplankton concentration")
     xlabel("\$ x \$ (m)")
     axs[2].tick_params(left=false, labelleft=false)

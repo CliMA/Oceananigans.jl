@@ -63,16 +63,19 @@ Return a named tuple of forcing functions for each solution field.
 
 Example
 =======
-```julia
-julia> T_forcing = SimpleForcing((x, y, z, t) -> exp(z) * cos(t))
 
-julia> model = Model(forcing=ModelForcing(T=T_forcing))
-```
+julia> u_forcing = SimpleForcing((x, y, z, t) -> exp(z) * cos(t))
+
+julia> model = Model(forcing=ModelForcing(u=u_forcing))
 """
-function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, T=zeroforcing, S=zeroforcing)
+function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forcings...)
     u = at_location((Face, Cell, Cell), u)
     v = at_location((Cell, Face, Cell), v)
     w = at_location((Cell, Cell, Face), w)
 
-    return (u=u, v=v, w=w, T=T, S=S)
+    return merge((u=u, v=v, w=w), tracer_forcings)
 end
+
+default_tracer_forcing(args...) = zeroforcing
+ModelForcing(tracers, proposal_forcing) = with_tracers(tracers, proposal_forcing, default_tracer_forcing, 
+                                                       with_velocities=true)
