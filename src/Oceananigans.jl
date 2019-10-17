@@ -243,6 +243,8 @@ include("fields.jl")
 include("Operators/Operators.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
+using .TurbulenceClosures
+
 include("coriolis.jl")
 include("buoyancy.jl")
 include("boundary_conditions.jl")
