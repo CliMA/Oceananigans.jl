@@ -1,4 +1,3 @@
-using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F, 
