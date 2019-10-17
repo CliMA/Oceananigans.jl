@@ -118,11 +118,11 @@ function run_thermal_bubble_checkpointer_tests(arch)
     @test all(restored_model.velocities.w.data      .≈ true_model.velocities.w.data)
     @test all(restored_model.tracers.T.data         .≈ true_model.tracers.T.data)
     @test all(restored_model.tracers.S.data         .≈ true_model.tracers.S.data)
-    @test all(restored_model.timestepper.Gⁿ.Gu.data .≈ true_model.timestepper.Gⁿ.Gu.data)
-    @test all(restored_model.timestepper.Gⁿ.Gv.data .≈ true_model.timestepper.Gⁿ.Gv.data)
-    @test all(restored_model.timestepper.Gⁿ.Gw.data .≈ true_model.timestepper.Gⁿ.Gw.data)
-    @test all(restored_model.timestepper.Gⁿ.GT.data .≈ true_model.timestepper.Gⁿ.GT.data)
-    @test all(restored_model.timestepper.Gⁿ.GS.data .≈ true_model.timestepper.Gⁿ.GS.data)
+    @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
+    @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
+    @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
+    @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
+    @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
 end
 
 @testset "Output writers" begin

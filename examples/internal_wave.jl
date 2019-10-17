@@ -42,7 +42,7 @@ f = 0.2     # inertial frequency
 U = k * ω   / (ω^2 - f^2)
 V = k * f   / (ω^2 - f^2)
 W = m * ω   / (ω^2 - N^2)
-Θ = m * N^2 / (ω^2 - N^2)
+B = m * N^2 / (ω^2 - N^2)
 
 # Finally, we set-up a small-amplitude, Gaussian envelope for the wave packet
 
@@ -56,7 +56,7 @@ a(x, z) = A * exp( -( (x - x₀)^2 + (z - z₀)^2 ) / 2δ^2 )
 u₀(x, y, z) = a(x, z) * U * cos(k*x + m*z)
 v₀(x, y, z) = a(x, z) * V * sin(k*x + m*z)
 w₀(x, y, z) = a(x, z) * W * cos(k*x + m*z)
-T₀(x, y, z) = a(x, z) * Θ * sin(k*x + m*z) + N^2 * z 
+b₀(x, y, z) = a(x, z) * B * sin(k*x + m*z) + N^2 * z 
 
 # We are now ready to instantiate our model on a uniform grid. 
 # We give the model a constant rotation rate with background vorticity `f`,
@@ -67,13 +67,14 @@ model = Model(
         grid = RegularCartesianGrid(N=(Nx, 1, Nx), L=(Lx, Lx, Lx)),
      closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
     coriolis = FPlane(f=f), 
+     tracers = :b,
     buoyancy = BuoyancyTracer()
 )
 
-# We initialize the velocity and buoyancy (temperature) fields
+# We initialize the velocity and buoyancy fields
 # with our internal wave initial condition.
 
-set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
 # ## Some plotting utilities
 #
