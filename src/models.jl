@@ -84,6 +84,37 @@ function Model(;
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end
 
+function ordered_dict_show(dict, padchar) 
+    if length(dict) == 0
+        return string(typeof(dict), " with no entries")
+    elseif length(dict) == 1
+        return string(typeof(dict), " with 1 entry:", '\n',
+                      padchar, "   └── ", dict.keys[1], " => ", typeof(dict.vals[1]))
+    else
+        return string(typeof(dict), " with $(length(dict)) entries:", '\n',
+                      Tuple(string(padchar, 
+                                   "   ├── ", name, " => ", typeof(dict[name]), '\n') 
+                            for name in dict.keys[1:end-1]
+                           )...,
+                           padchar, "   └── ", dict.keys[end], " => ", typeof(dict.vals[end])
+                      )
+    end
+end
+
+Base.show(io::IO, model::Model) =
+    print(io,
+              "Oceananigans.Model on a ", typeof(model.architecture), " architecture (time = ", 
+                                          prettytime(model.clock.time), ", iteration = ", 
+                                          model.clock.iteration, ") \n",
+              "├── grid: ", typeof(model.grid), '\n',
+              "├── tracers: ", tracernames(model.tracers), '\n',
+              "├── closure: ", typeof(model.closure), '\n',
+              "├── buoyancy: ", typeof(model.buoyancy), '\n',
+              "├── coriolis: ", typeof(model.coriolis), '\n',
+              "├── output writers: ", ordered_dict_show(model.output_writers, "│"), '\n',
+              "└── diagnostics: ", ordered_dict_show(model.diagnostics, " "))
+              
+
 """
     ChannelModel(; kwargs...)
 
