@@ -25,6 +25,8 @@ using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
 
 import Oceananigans: datatuple
 
+using Oceananigans.TurbulenceClosures
+
 using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
                                        ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
                                        ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
@@ -34,6 +36,18 @@ using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_fa
 using Oceananigans.AbstractOperations
 
 using Oceananigans.AbstractOperations: Computation, compute!
+
+const seed = 420  # Random seed to use for all pseudorandom number generators.
+
+
+datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
+
+function get_output_tuple(output, iter, tuplename)
+    file = jldopen(output.filepath, "r")
+    output_tuple = file["timeseries/$tuplename/$iter"]
+    close(file)
+    return output_tuple
+end
 
 float_types = (Float32, Float64)
 
@@ -70,4 +84,5 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
     include("test_regression.jl")
     include("test_examples.jl")
     include("test_abstract_operations.jl")
+    include("test_verification.jl")
 end

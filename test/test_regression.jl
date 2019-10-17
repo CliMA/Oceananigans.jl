@@ -1,195 +1,7 @@
-const seed = 420  # Random seed to use for all pseudorandom number generators.
 
-datatuple(A) = NamedTuple{propertynames(A)}(Array(interior(a)) for a in A)
-
-const T₀ = 9.85
-const S₀ = 35.0
-
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
-
-function run_thermal_bubble_regression_tests(arch)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 100, 100, 100
-    Δt = 6
-
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
-                       coriolis=FPlane(f=1e-4))
-
-    model.tracers.T.data.parent .= T₀
-    model.tracers.S.data.parent .= S₀
-
-    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
-    # of the domain volume.
-    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
-    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
-    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
-
-    nc_writer = NetCDFOutputWriter(dir=".",
-                                   prefix="thermal_bubble_regression_",
-                                   frequency=10, padding=2)
-
-    # Uncomment to include a NetCDF output writer that produces the regression.
-    # push!(model.output_writers, nc_writer)
-
-    time_step!(model, 10, Δt)
-
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
-
-    field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
-    fields_gm = [u, v, w, T, S]
-    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(interior(φ)) - φ_gm)
-        φ_max = maximum(Array(interior(φ)) - φ_gm)
-        φ_mean = mean(Array(interior(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
-        φ_std = std(Array(interior(φ)) - φ_gm)
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
-    end
-
-    # Now test that the model state matches the regression output.
-    @test all(Array(interior(model.velocities.u)) .≈ u)
-    @test all(Array(interior(model.velocities.v)) .≈ v)
-    @test all(Array(interior(model.velocities.w)) .≈ w)
-    @test all(Array(interior(model.tracers.T))    .≈ T)
-    @test all(Array(interior(model.tracers.S))    .≈ S)
-end
-
-function run_rayleigh_benard_regression_test(arch)
-
-    #####
-    ##### Parameters
-    #####
-          α = 2                 # aspect ratio
-          n = 1                 # resolution multiple
-         Ra = 1e6               # Rayleigh number
-    Nx = Ny = 8n * α            # horizontal resolution
-    Lx = Ly = 1.0 * α           # horizontal extent
-         Nz = 16n               # vertical resolution
-         Lz = 1.0               # vertical extent
-         Pr = 0.7               # Prandtl number
-          a = 1e-1              # noise amplitude for initial condition
-         Δb = 1.0               # buoyancy differential
-
-    # Rayleigh and Prandtl determine transport coefficients
-    ν = sqrt(Δb * Pr * Lz^3 / Ra)
-    κ = ν / Pr
-
-    #####
-    ##### Model setup
-    #####
-
-    # Passive tracer forcing
-    c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, time, U, C, params) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - C.c[i, j, k])
-
-    model = Model(
-               architecture = arch,
-                       grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
-                    closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
-                   buoyancy = BuoyancyTracer(), 
-                    tracers = (:b, :c),
-        boundary_conditions = BoundaryConditions(b=HorizontallyPeriodicBCs(
-                                top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
-                    forcing = ModelForcing(c=Fc)
-    )
-
-    ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
-
-    spinup_steps = 1000
-      test_steps = 100
-
-    output_U(model) = datatuple(model.velocities)
-    output_Φ(model) = datatuple(model.tracers)
-    output_G(model) = datatuple(model.timestepper.Gⁿ)
-    outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
-
-    prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields; dir=".", prefix=prefix,
-                                    frequency=test_steps, including=[])
-
-    #####
-    ##### Initial condition and spinup steps for creating regression test data
-    #####
-
-    #=
-    @warn ("Generating new data for the Rayleigh-Benard regression test.
-           New regression test data generation will fail unless the JLD2
-           file $prefix.jld2 is manually deleted.")
-
-    ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
-    b₀(x, y, z) = (ξ(z) - z) / Lz
-    set_ic!(model, b=b₀)
-
-    time_step!(model, spinup_steps-test_steps, Δt)
-    push!(model.output_writers, outputwriter)
-    time_step!(model, 2test_steps, Δt)
-    =#
-
-    #####
-    ##### Regression test
-    #####
-
-    # Load initial state
-    u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)
-    b₀, c₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
-    Gu, Gv, Gw, Gb, Gc = get_output_tuple(outputwriter, spinup_steps, :G)
-
-    interior(model.velocities.u) .= ArrayType(u₀)
-    interior(model.velocities.v) .= ArrayType(v₀)
-    interior(model.velocities.w) .= ArrayType(w₀)
-    interior(model.tracers.b)    .= ArrayType(b₀)
-    interior(model.tracers.c)    .= ArrayType(c₀)
-
-    interior(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
-    interior(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
-    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
-    interior(model.timestepper.Gⁿ.b) .= ArrayType(Gb)
-    interior(model.timestepper.Gⁿ.c) .= ArrayType(Gc)
-
-    model.clock.iteration = spinup_steps
-    model.clock.time = spinup_steps * Δt
-    length(model.output_writers) > 0 && pop!(model.output_writers)
-
-    # Step the model forward and perform the regression test
-    time_step!(model, test_steps, Δt; init_with_euler=false)
-
-    u₁, v₁, w₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :U)
-    b₁, c₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
-
-    field_names = ["u", "v", "w", "b", "c"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
-    fields_gm = [u₁, v₁, w₁, b₁, c₁]
-    for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(interior(φ)) - φ_gm)
-        φ_max = maximum(Array(interior(φ)) - φ_gm)
-        φ_mean = mean(Array(interior(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
-        φ_std = std(Array(interior(φ)) - φ_gm)
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
-    end
-
-    # Now test that the model state matches the regression output.
-    @test all(Array(interior(model.velocities.u)) .≈ u₁)
-    @test all(Array(interior(model.velocities.v)) .≈ v₁)
-    @test all(Array(interior(model.velocities.w)) .≈ w₁)
-    @test all(Array(interior(model.tracers.b))    .≈ b₁)
-    @test all(Array(interior(model.tracers.c))    .≈ c₁)
-    return nothing
-end
+include("regression_tests/thermal_bubble_regression_test.jl")
+include("regression_tests/rayleigh_benard_regression_test.jl")
+include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 
 @testset "Regression" begin
     println("Running regression tests...")
@@ -197,12 +9,20 @@ end
     for arch in archs
         @testset "Thermal bubble [$(typeof(arch))]" begin
             println("  Testing thermal bubble regression [$(typeof(arch))]")
-            run_thermal_bubble_regression_tests(arch)
+            run_thermal_bubble_regression_test(arch)
         end
 
         @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
             println("  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]")
             run_rayleigh_benard_regression_test(arch)
+        end
+
+        @testset "Ocean large eddy simulation [$(typeof(arch))]" begin
+            for closure in (AnisotropicMinimumDissipation(), ConstantSmagorinsky())
+                closurename = string(typeof(closure).name.wrapper)
+                println("  Testing oceanic large eddy simulation regression [$closurename, $(typeof(arch))]")
+                run_ocean_large_eddy_simulation_regression_test(arch, closure)
+            end
         end
     end
 end
