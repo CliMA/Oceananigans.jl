@@ -32,16 +32,16 @@ model = Model(
 # zero mean for purely aesthetic reasons.
 
 u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀) 
+u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
 
-# Next we define a function for calculating the vertical vorticity 
+# Next we define a function for calculating the vertical vorticity
 # associated with the velocity fields `u` and `v`.
 
 function vorticity!(ω, u, v)
     for j = 1:u.grid.Ny, i = 1:u.grid.Nx
-        @inbounds ω.data[i, j, 1] = ∂x_faa(i, j, 1, u.grid, v.data) - ∂y_afa(i, j, 1, u.grid, u.data) 
+        @inbounds ω.data[i, j, 1] = ∂x_faa(i, j, 1, u.grid, v.data) - ∂y_afa(i, j, 1, u.grid, u.data)
     end
     return nothing
 end
@@ -49,7 +49,7 @@ end
 # Finally, we create the vorticity field for storing `u` and `v`, initialize a
 # figure, and run the model forward
 
-ω = Field(Face, Face, Cell, model.architecture, model.grid) 
+ω = Field(Face, Face, Cell, model.architecture, model.grid)
 
 close("all")
 fig, ax = subplots()
@@ -64,3 +64,6 @@ for i = 1:10
     ax.axis("off")
     pause(0.1)
 end
+
+# We can plot out the final vorticity field.
+gcf()

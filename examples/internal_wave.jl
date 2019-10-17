@@ -28,7 +28,7 @@ f = 0.2     # inertial frequency
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition corresponding to a propagating 
+# Next, we set up an initial condition corresponding to a propagating
 # wave packet with a Gaussian envelope. The internal wave dispersion relation yields
 
 ω² = (N^2 * k^2 + f^2 * m^2) / (k^2 + m^2)
@@ -37,7 +37,7 @@ f = 0.2     # inertial frequency
 ω = sqrt(ω²)
 
 # The internal wave polarization relations follow from the linearized
-# Boussinesq equations, 
+# Boussinesq equations,
 
 U = k * ω   / (ω^2 - f^2)
 V = k * f   / (ω^2 - f^2)
@@ -47,7 +47,7 @@ B = m * N^2 / (ω^2 - N^2)
 # Finally, we set-up a small-amplitude, Gaussian envelope for the wave packet
 
 ## Some Gaussian parameters
-A, x₀, z₀, δ = 1e-9, Lx/2, -Lx/2, Lx/15 
+A, x₀, z₀, δ = 1e-9, Lx/2, -Lx/2, Lx/15
 
 ## A Gaussian envelope
 a(x, z) = A * exp( -( (x - x₀)^2 + (z - z₀)^2 ) / 2δ^2 )
@@ -58,9 +58,9 @@ v₀(x, y, z) = a(x, z) * V * sin(k*x + m*z)
 w₀(x, y, z) = a(x, z) * W * cos(k*x + m*z)
 b₀(x, y, z) = a(x, z) * B * sin(k*x + m*z) + N^2 * z 
 
-# We are now ready to instantiate our model on a uniform grid. 
+# We are now ready to instantiate our model on a uniform grid.
 # We give the model a constant rotation rate with background vorticity `f`,
-# use temperature as a buoyancy tracer, and use a small constant viscosity 
+# use temperature as a buoyancy tracer, and use a small constant viscosity
 # and diffusivity to stabilize the model.
 
 model = Model(
@@ -84,7 +84,7 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
 zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
 
-function plot_field!(ax, w, t) 
+function plot_field!(ax, w, t)
     pcolormesh(xplot(w), zplot(w), data(model.velocities.w)[:, 1, :])
     xlabel(L"x")
     ylabel(L"z")
