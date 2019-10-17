@@ -1,4 +1,0 @@
-# Grids
-```@docs
-RegularCartesianGrid
-```
