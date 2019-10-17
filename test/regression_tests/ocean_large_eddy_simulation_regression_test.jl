@@ -66,6 +66,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
       boundary_conditions = BoundaryConditions(u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
+    ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
+
     #=
     # Initialize model: random noise damped at top and bottom
     Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
@@ -89,25 +91,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
     
-    #set!(model; u=solution₀.u, v=solution₀.v, w=solution₀.w, T=solution₀.T, S=solution₀.S)
+    model.velocities.u.data.parent .= ArrayType(solution₀.u)
+    model.velocities.v.data.parent .= ArrayType(solution₀.v)
+    model.velocities.w.data.parent .= ArrayType(solution₀.w)
+    model.tracers.T.data.parent    .= ArrayType(solution₀.T)
+    model.tracers.S.data.parent    .= ArrayType(solution₀.S)
 
-    model.velocities.u.data.parent .= solution₀.u
-    model.velocities.v.data.parent .= solution₀.v
-    model.velocities.w.data.parent .= solution₀.w
-    model.tracers.T.data.parent    .= solution₀.T
-    model.tracers.S.data.parent    .= solution₀.S
+    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
+    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
+    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
+    model.timestepper.Gⁿ.T.data.parent .= ArrayType(Gⁿ₀.T)
+    model.timestepper.Gⁿ.S.data.parent .= ArrayType(Gⁿ₀.S)
 
-    model.timestepper.Gⁿ.u.data.parent .= Gⁿ₀.u
-    model.timestepper.Gⁿ.v.data.parent .= Gⁿ₀.v
-    model.timestepper.Gⁿ.w.data.parent .= Gⁿ₀.w
-    model.timestepper.Gⁿ.T.data.parent .= Gⁿ₀.T
-    model.timestepper.Gⁿ.S.data.parent .= Gⁿ₀.S
-
-    model.timestepper.G⁻.u.data.parent .= G⁻₀.u
-    model.timestepper.G⁻.v.data.parent .= G⁻₀.v
-    model.timestepper.G⁻.w.data.parent .= G⁻₀.w
-    model.timestepper.G⁻.T.data.parent .= G⁻₀.T
-    model.timestepper.G⁻.S.data.parent .= G⁻₀.S
+    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
+    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
+    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
+    model.timestepper.G⁻.T.data.parent .= ArrayType(G⁻₀.T)
+    model.timestepper.G⁻.S.data.parent .= ArrayType(G⁻₀.S)
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
@@ -120,14 +120,14 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     for name in (:u, :v, :w, :T, :S)
         if name ∈ (:u, :v, :w)
-            φ = getproperty(model.velocities, name)
+            test_field = getproperty(model.velocities, name)
         else
-            φ = getproperty(model.tracers, name)
+            test_field = getproperty(model.tracers, name)
         end
 
-        φ_gm = getproperty(solution₁, name)
+        correct_field = getproperty(solution₁, name)
 
-        Δ = Array(φ.data.parent) .- φ_gm
+        Δ = Array(test_field.data.parent) .- correct_field
 
         Δ_min      = minimum(Δ)
         Δ_max      = maximum(Δ)
