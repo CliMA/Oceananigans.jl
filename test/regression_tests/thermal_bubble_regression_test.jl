@@ -1,4 +1,3 @@
-
 function run_thermal_bubble_regression_test(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -15,7 +14,7 @@ function run_thermal_bubble_regression_test(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    model.tracers.T.data[i1:i2, j1:j2, k1+1:k2+1] .+= 0.01
 
     nc_writer = NetCDFOutputWriter(dir=joinpath(dirname(@__FILE__), "data"),
                                    prefix="thermal_bubble_regression_",
@@ -31,6 +30,14 @@ function run_thermal_bubble_regression_test(arch)
     w = read_output(nc_writer, "w", 10)
     T = read_output(nc_writer, "T", 10)
     S = read_output(nc_writer, "S", 10)
+
+    u = reverse(u; dims=3)
+    v = reverse(v; dims=3)
+    T = reverse(T; dims=3)
+    S = reverse(S; dims=3)
+
+    w = reverse(w[:, :, 2:Nz]; dims=3)
+    w = cat(zeros(Nx, Ny), w; dims=3)
 
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
@@ -48,9 +55,7 @@ function run_thermal_bubble_regression_test(arch)
     # Now test that the model state matches the regression output.
     @test all(Array(data(model.velocities.u)) .≈ u)
     @test all(Array(data(model.velocities.v)) .≈ v)
-    @test all(Array(data(model.velocities.w)) .≈ w)
+    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w[:, :, 2:Nz])
     @test all(Array(data(model.tracers.T))    .≈ T)
     @test all(Array(data(model.tracers.S))    .≈ S)
 end
-
-
