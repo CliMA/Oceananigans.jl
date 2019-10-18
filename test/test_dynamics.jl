@@ -43,7 +43,7 @@ function test_diffusion_budget_default(fieldname)
     data(field)[:, :,   1:half_Nz] .= -1
     data(field)[:, :, half_Nz:end] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Lz)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Lz)
 end
 
 function test_diffusion_budget_channel(fieldname)
@@ -53,7 +53,7 @@ function test_diffusion_budget_channel(fieldname)
     data(field)[:, 1:half_Ny,   :] .= -1
     data(field)[:, half_Ny:end, :] .=  1
 
-    return test_diffusion_budget(field, model, model.closure.κ, model.grid.Ly)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Ly)
 end
 
 function test_diffusion_budget(field, model, κ, L)
@@ -100,25 +100,25 @@ function internal_wave_test(; N=128, Nt=10)
      U = a₀ * k * σ   / (σ^2 - f^2)
      V = a₀ * k * f   / (σ^2 - f^2)
      W = a₀ * m * σ   / (σ^2 - ℕ^2)
-     Θ = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
+     B = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
 
     a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
 
     u(x, y, z, t) =           a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
     v(x, y, z, t) =           a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
     w(x, y, z, t) =           a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
-    T(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * Θ * sin(k*x + m*z - σ*t)
+    b(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
     w₀(x, y, z) = w(x, y, z, 0)
-    T₀(x, y, z) = T(x, y, z, 0)
+    b₀(x, y, z) = b(x, y, z, 0)
 
     # Create a model where temperature = buoyancy.
-    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(),
+    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(), tracers=:b,
                        coriolis=FPlane(f=f))
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+    set_ic!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     time_step!(model, Nt, Δt)
 
@@ -164,24 +164,15 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    ubcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
-                                   bottom = BoundaryCondition(Gradient, 0))
-
-    vbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Gradient, 0),
-                                   bottom = BoundaryCondition(Gradient, 0))
-
-    model = Model(        architecture = arch,
-                                  grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
-                               closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
-                              buoyancy = nothing, # turn off buoyancy
-                   boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs))
+    model = Model(architecture = arch,
+                          grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                       closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
+                       tracers = nothing,
+                      buoyancy = nothing) # turn off buoyancy
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
-    T₀(x, y, z) = 0
-    S₀(x, y, z) = 0
-
-    set_ic!(model; u=u₀, v=v₀, T=T₀, S=S₀)
+    set_ic!(model; u=u₀, v=v₀)
 
     time_step!(model, Nt, Δt)
 
