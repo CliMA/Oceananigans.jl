@@ -69,7 +69,7 @@ function run_thermal_bubble_regression_tests(arch)
     # Now test that the model state matches the regression output.
     @test all(Array(data(model.velocities.u)) .≈ u)
     @test all(Array(data(model.velocities.v)) .≈ v)
-    @test all(Array(data(model.velocities.w)) .≈ w)
+    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w[:, :, 2:Nz])
     @test all(Array(data(model.tracers.T))    .≈ T)
     @test all(Array(data(model.tracers.S))    .≈ S)
 end
@@ -213,12 +213,10 @@ function run_rayleigh_benard_regression_test(arch)
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
-    show(data(model.velocities.w) .- w₁)
-
     # Now test that the model state matches the regression output.
     @test all(Array(data(model.velocities.u)) .≈ u₁)
     @test all(Array(data(model.velocities.v)) .≈ v₁)
-    @test all(Array(data(model.velocities.w)) .≈ w₁)
+    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w₁[:, :, 2:Nz])
     @test all(Array(data(model.tracers.T))    .≈ T₁)
     @test all(Array(data(model.tracers.S))    .≈ S₁)
     return nothing
