@@ -139,20 +139,17 @@ const CBC = CoordinateBoundaryConditions
 PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
 
 # Here we overload setproperty! and getproperty to permit users to call
-# the 'right' and 'left' bcs in the z-direction 'bottom' and 'top'.
-#
-# Note that 'right' technically corresponds to face point N+1. Thus
-# the fact that right == bottom is associated with the reverse z-indexing
-# convention. With ordinary indexing, right == top.
+# the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'.
+# Note that 'right' technically corresponds to face point N+1.
 Base.setproperty!(cbc::CBC, side::Symbol, bc) = setbc!(cbc, Val(side), bc)
 setbc!(cbc::CBC, ::Val{S}, bc) where S = setfield!(cbc, S, bc)
-setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :right, bc)
-setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :left, bc)
+setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :left, bc)
+setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :right, bc)
 
 Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
 getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
-getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
-getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
+getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :left)
+getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :right)
 
 #####
 ##### Boundary conditions for Fields
@@ -370,7 +367,7 @@ If `top_bc.condition` is a function, the function must have the signature
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
@@ -386,7 +383,7 @@ If `bottom_bc.condition` is a function, the function must have the signature
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
     _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
