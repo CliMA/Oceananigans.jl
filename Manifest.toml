@@ -143,9 +143,9 @@ version = "0.4.0"
 
 [[GPUArrays]]
 deps = ["Adapt", "FFTW", "FillArrays", "LinearAlgebra", "Printf", "Random", "Serialization", "StaticArrays", "Test"]
-git-tree-sha1 = "b5009ac44b141ded5e6f04c4db83807970f56e91"
+git-tree-sha1 = "77e27264276fe97a7e7fb928bf8999a145abc018"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "1.0.2"
+version = "1.0.3"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
