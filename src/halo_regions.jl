@@ -56,19 +56,19 @@ end
 
 @inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
 
-@inline top_gradient(bc::GBC, c¹, Δ, i, j, args...) = getbc(bc, i, j, args...)
-@inline bottom_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
+@inline top_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
+@inline bottom_gradient(bc::GBC, c¹, Δ, i, j, args...) = getbc(bc, i, j, args...)
 
-@inline top_gradient(bc::VBC, c¹, Δ, i, j, args...) =    ( getbc(bc, i, j, args...) - c¹ ) / (Δ/2)
-@inline bottom_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( cᴺ - getbc(bc, i, j, args...) ) / (Δ/2)
+@inline top_gradient(bc::VBC, cᴺ, Δ, i, j, args...) =    ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
+@inline bottom_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 
 function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds ∇c = top_gradient(bc, c[i, j, 1], grid.Δz, i, j, grid, args...)
-            @unroll for k in (1-grid.Hz):0
-                Δ = (1-k) * grid.Δz
-                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, 1], ∇c, Δ)
+            @inbounds ∇c = top_gradient(bc, c[i, j, grid.Nz], grid.Δz, i, j, grid, args...)
+            @unroll for k in (grid.Nz + 1) : (grid.Nz + grid.Hz)
+                Δ = (k - grid.Nz) * grid.Δz
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, grid.Nz], ∇c, Δ)
             end
         end
     end
@@ -78,10 +78,10 @@ end
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds ∇c = bottom_gradient(bc, c[i, j, grid.Nz], grid.Δz, i, j, grid, args...)
-            @unroll for k in grid.Nz+1:grid.Nz+grid.Hz
-                Δ = (grid.Nz-k) * grid.Δz # separation between bottom grid cell and halo is negative
-                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, grid.Nz], ∇c, Δ)
+            @inbounds ∇c = bottom_gradient(bc, c[i, j, 1], grid.Δz, i, j, grid, args...)
+            @unroll for k in (1 - grid.Hz):0
+                Δ = (k - 1) * grid.Δz  # separation between bottom grid cell and halo is negative
+                @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, 1], ∇c, Δ)
             end
         end
     end
@@ -111,9 +111,8 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
      fill_south_halo!(c, fieldbcs.y.left,  arch, grid, args...)
      fill_north_halo!(c, fieldbcs.y.right, arch, grid, args...)
 
-       fill_top_halo!(c, fieldbcs.z.left,  arch, grid, args...)
-    fill_bottom_halo!(c, fieldbcs.z.right, arch, grid, args...)
-
+     fill_bottom_halo!(c, fieldbcs.z.bottom, arch, grid, args...)
+        fill_top_halo!(c, fieldbcs.z.top,    arch, grid, args...)
     return
 end
 
