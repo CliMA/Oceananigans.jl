@@ -186,7 +186,7 @@ function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
 
     x = PeriodicBCs()
     y = PeriodicBCs()
-    z = CoordinateBoundaryConditions(top, bottom)
+    z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
 end
@@ -211,7 +211,7 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
 
     x = PeriodicBCs()
     y = CoordinateBoundaryConditions(south, north)
-    z = CoordinateBoundaryConditions(top, bottom)
+    z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
 end

@@ -102,13 +102,15 @@ function run_rayleigh_benard_regression_test(arch)
     S★(x, z) = exp(4z) * sin(2π/Lx * x)
     FS(i, j, k, grid, time, U, Φ, params) = 1/10 * (S★(grid.xC[i], grid.zC[k]) - Φ.S[i, j, k])
 
+    Tbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.0),
+                                   bottom = BoundaryCondition(Value, Δb))
+
     model = Model(
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                    buoyancy = BuoyancyTracer(),
-        boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
-                                bottom=BoundaryCondition(Value, 0.0), top=BoundaryCondition(Value, Δb))),
+        boundary_conditions = BoundaryConditions(T=Tbcs),
                     forcing = Forcing(FS=FS)
     )
 
