@@ -56,3 +56,42 @@ function weno_flux(i, f)
     w₀, w₁, w₂ = weno_weights(i, f)
     return w₀ * p₀(i, f) + w₁ * p₁(i, f) + w₂ * p₂(i, f)
 end
+
+####
+#### Testing with linear advection equation
+####
+
+using Printf, PyPlot
+
+const n = 128
+const L = 1
+const c = 1
+
+const Δx = L / n
+const Δt = 0.1Δx
+const M = 5
+
+ϕ₀ = vcat(zeros(16), ones(32), zeros(n-32-16))
+ϕ = copy(ϕ₀)
+f = copy(ϕ₀)
+F = similar(f)
+
+for m in 1:M
+    f .= ϕ
+    for i in 3:n-3
+        F[i] = c * weno_flux(i, f)
+    end
+    for i in 3:n-3
+        ϕ[i] = ϕ[i] - (Δt/Δx) * (F[i+1] - F[i])
+        # ϕ[i] = ϕ[i] - (Δt/Δx) * (c/2) * ((ϕ[i+1] + ϕ[i]) - (ϕ[i] - ϕ[i-1]))
+    end
+end
+
+x = range(0, 1; length=n)
+
+plot(x, ϕ₀, label="t = 0")
+plot(x, ϕ,  label=@sprintf("t = %.4f", M*Δt))
+title("WENO-5 advection of a square after $M time steps")
+xlabel("x")
+ylabel("ϕ")
+legend()
