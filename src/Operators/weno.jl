@@ -27,11 +27,11 @@ const C3₂ = 1/10
 ####
 
 const ϵ = 1e-6
-const n = 2
+const weno_exp = 2
 
-@inline α₀(i, f) = C3₀ / (β₀(i, f) + ϵ)^n
-@inline α₁(i, f) = C3₁ / (β₁(i, f) + ϵ)^n
-@inline α₂(i, f) = C3₂ / (β₂(i, f) + ϵ)^n
+@inline α₀(i, f) = C3₀ / (β₀(i, f) + ϵ)^weno_exp
+@inline α₁(i, f) = C3₁ / (β₁(i, f) + ϵ)^weno_exp
+@inline α₂(i, f) = C3₂ / (β₂(i, f) + ϵ)^weno_exp
 
 ####
 #### WENO-5 normalized weights
@@ -52,7 +52,7 @@ end
 #### WENO-5 flux reconstruction
 ####
 
-function F(i, f)
-    w₁, w₂, w₃ = weno_weights(i, f)
+function weno_flux(i, f)
+    w₀, w₁, w₂ = weno_weights(i, f)
     return w₀ * p₀(i, f) + w₁ * p₁(i, f) + w₂ * p₂(i, f)
 end
