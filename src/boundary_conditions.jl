@@ -361,13 +361,13 @@ Note that because
 
     `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
-a positive top flux is associated with a *decrease* in `Gc` near the top boundary.
+a positive top flux is associated with an *increase* in `Gc` near the top boundary.
 If `top_bc.condition` is a function, the function must have the signature
 
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, grid.Nz] += getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
@@ -377,13 +377,13 @@ Note that because
 
     `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
-a positive bottom flux is associated with an *increase* in `Gc` near the bottom boundary.
+a positive bottom flux is associated with a *decrease* in `Gc` near the bottom boundary.
 If `bottom_bc.condition` is a function, the function must have the signature
 
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, 1] -= getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
     _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
