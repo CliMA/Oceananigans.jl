@@ -47,13 +47,15 @@ function run_thermal_bubble_regression_tests(arch)
 
     u = reverse(u; dims=3)
     v = reverse(v; dims=3)
-    w = reverse(w[:, :, 2:Nz]; dims=3)
     T = reverse(T; dims=3)
     S = reverse(S; dims=3)
 
+    w = reverse(w[:, :, 2:Nz]; dims=3)
+    w = cat(zeros(Nx, Ny), w; dims=3)
+
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
-    fields_gm = [u, v, T, S]
+    fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
         φ_min = minimum(Array(data(φ)) - φ_gm)
         φ_max = maximum(Array(data(φ)) - φ_gm)
@@ -64,12 +66,10 @@ function run_thermal_bubble_regression_tests(arch)
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
-    show(data(model.velocities.w)[:, :, 2:Nz] .- w)
-
     # Now test that the model state matches the regression output.
     @test all(Array(data(model.velocities.u)) .≈ u)
     @test all(Array(data(model.velocities.v)) .≈ v)
-    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w)
+    @test all(Array(data(model.velocities.w)) .≈ w)
     @test all(Array(data(model.tracers.T))    .≈ T)
     @test all(Array(data(model.tracers.S))    .≈ S)
 end
@@ -108,7 +108,7 @@ function run_rayleigh_benard_regression_test(arch)
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                    buoyancy = BuoyancyTracer(),
         boundary_conditions = BoundaryConditions(T=HorizontallyPeriodicBCs(
-                                top=BoundaryCondition(Value, 0.0), bottom=BoundaryCondition(Value, Δb))),
+                                bottom=BoundaryCondition(Value, 0.0), top=BoundaryCondition(Value, Δb))),
                     forcing = Forcing(FS=FS)
     )
 
@@ -154,6 +154,22 @@ function run_rayleigh_benard_regression_test(arch)
     T₀, S₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
     Gu, Gv, Gw, GT, GS = get_output_tuple(outputwriter, spinup_steps, :G)
 
+    u₀ = reverse(u₀; dims=3)
+    v₀ = reverse(v₀; dims=3)
+    T₀ = reverse(T₀; dims=3)
+    S₀ = reverse(S₀; dims=3)
+
+    w₀ = reverse(w₀[:, :, 2:Nz]; dims=3)
+    w₀ = cat(zeros(Nx, Ny), w₀; dims=3)
+
+    Gu = reverse(Gu; dims=3)
+    Gv = reverse(Gv; dims=3)
+    GT = reverse(GT; dims=3)
+    GS = reverse(GS; dims=3)
+
+    Gw = reverse(Gw[:, :, 2:Nz]; dims=3)
+    Gw = cat(zeros(Nx, Ny), Gw; dims=3)
+
     data(model.velocities.u) .= ArrayType(u₀)
     data(model.velocities.v) .= ArrayType(v₀)
     data(model.velocities.w) .= ArrayType(w₀)
@@ -176,6 +192,14 @@ function run_rayleigh_benard_regression_test(arch)
     u₁, v₁, w₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :U)
     T₁, S₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
 
+    u₁ = reverse(u₁; dims=3)
+    v₁ = reverse(v₁; dims=3)
+    T₁ = reverse(T₁; dims=3)
+    S₁ = reverse(S₁; dims=3)
+
+    w₁ = reverse(w₁[:, :, 2:Nz]; dims=3)
+    w₁ = cat(zeros(Nx, Ny), w₁; dims=3)
+
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u₁, v₁, w₁, T₁, S₁]
@@ -189,12 +213,14 @@ function run_rayleigh_benard_regression_test(arch)
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
+    show(data(model.velocities.w) .- w₁)
+
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u)) .≈ reverse(u₁; dims=3))
-    @test all(Array(data(model.velocities.v)) .≈ reverse(v₁; dims=3))
-    @test all(Array(data(model.velocities.w)) .≈ reverse(w₁; dims=3))
-    @test all(Array(data(model.tracers.T))    .≈ reverse(T₁; dims=3))
-    @test all(Array(data(model.tracers.S))    .≈ reverse(S₁; dims=3))
+    @test all(Array(data(model.velocities.u)) .≈ u₁)
+    @test all(Array(data(model.velocities.v)) .≈ v₁)
+    @test all(Array(data(model.velocities.w)) .≈ w₁)
+    @test all(Array(data(model.tracers.T))    .≈ T₁)
+    @test all(Array(data(model.tracers.S))    .≈ S₁)
     return nothing
 end
 
