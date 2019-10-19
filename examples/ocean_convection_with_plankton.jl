@@ -17,11 +17,11 @@ using Oceananigans, PyPlot, Random, Printf
 # implying a resolution of 0.5 m. Our fluid is initially stratified with 
 # a squared buoyancy frequency
 #
-# $$ N\^2 = 10^{-5} \, \mathrm{s^{-2}} $$
+# $ N² = 10⁻⁵ \rm{s⁻²} $
 #
 # and a surface buoyancy flux 
 #
-# $$ Q_b2 = 10^{-8} \, \mathrm{m^3 \, s^{-2}} $$
+# $ Q_b = 10⁻⁸ \rm{m³ s⁻²} $
 #
 # Because we use the physics-based convection whereby buoyancy flux by a
 # positive vertical velocity implies positive flux, a positive buoyancy flux
@@ -108,7 +108,8 @@ function makeplot!(axs, model)
     return nothing
 end
 
-## Run the model
+# Run the model:
+
 while model.clock.time < end_time
     update_Δt!(wizard, model)
     walltime = @elapsed time_step!(model, 100, wizard.Δt)
@@ -123,3 +124,4 @@ end
 
 # Plot the result at the end
 makeplot!(axs, model)
+gcf()
