@@ -5,6 +5,13 @@ $\Delta x_{i, j, k}, \Delta y_{i, j, k}$ and vertical dimension
 $\Delta z_{i, j, k}$, where $(i, j, k)$ index the location of each cell in the staggered grid.
 Note that the indices $(i, j, k)$ increase with increasing coordinate $(x, y, z)$.
 
+![Schematic of staggered grid](assets/staggered_grid.png)
+*A schematic of \texttt{Oceananigans.jl} finite volumes for a two-dimensional staggered grid in $(x, z)$.
+Tracers $c$ and pressure $p$ are defined at the center of the control volume. The $u$ control volumes are 
+centered on the left and right edges of the pressure control volume while the $w$ control volumes are centered 
+on the top and bottom edges of the pressure control volumes. The indexing convention places the $i^{\rm{th}}$ 
+$u$-node on cell $x$-faces to the left of the $i$ tracer point at cell centers.*
+
 Dropping explicit indexing, the areas of cell faces are given by
 ```math
     A_x = \Delta y \Delta z, \quad A_y = \Delta x \Delta z, \quad A_z = \Delta x \Delta y
