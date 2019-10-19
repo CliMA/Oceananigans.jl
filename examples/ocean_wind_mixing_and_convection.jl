@@ -146,7 +146,7 @@ wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=5.0)
 # A diagnostic that returns the maximum absolute value of `w` by calling
 # `wmax(model)`:
 
-wmax = FieldMaximum(abs, model.velocities.w)
+wmax = FieldMaximum(abs, model.velocities.w);
 
 # We also create a figure and define a plotting function for live plotting of results.
 
