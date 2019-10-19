@@ -88,17 +88,13 @@ model = Model(
            parameters = (evaporation = evaporation,)
 )
 
-# To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient), use
+# Notes:
 #
-# ```julia
-# closure = ConstantSmagorinsky()
-# ```
+# * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
+#   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
-# To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
-# 
-# ```julia
-# architecture = GPU()
-# ```
+# * To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
+#   `architecture = GPU()``
 #
 # Set makeplot = true to live-update a plot of vertical velocity, temperature, and salinity
 # as the simulation runs.
@@ -138,7 +134,7 @@ field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=
                                 prefix="ocean_wind_mixing_and_convection", force=true)
                                 
 ## Add the output writer to the models `output_writers`.
-model.output_writers[:fields] = field_writer
+model.output_writers[:fields] = field_writer;
 
 # ## Running the simulation
 #
@@ -199,7 +195,7 @@ while model.clock.time < end_time
     update_Δt!(wizard, model)
 
     ## Time step the model forward
-    walltime = @elapsed time_step!(model, 10, wizard.Δt)
+    walltime = @elapsed time_step!(model, 100, wizard.Δt)
 
     ## Print a progress message
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n", 
