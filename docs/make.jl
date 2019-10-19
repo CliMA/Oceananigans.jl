@@ -17,8 +17,8 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 examples = [
     "simple_diffusion.jl",
     "two_dimensional_turbulence.jl",
-    # "ocean_wind_mixing_and_convection.jl",
-    # "ocean_convection_with_plankton.jl",
+    "ocean_wind_mixing_and_convection.jl",
+    "ocean_convection_with_plankton.jl",
     "internal_wave.jl"
 ]
 
@@ -43,31 +43,33 @@ makedocs(
      pages = [
          "Home"   => "index.md",
          "Manual" => [
+             #"Model setup" => "manual/model_setup.md",
+             "Examples" => [
+                 "One-dimensional diffusion"        => "generated/simple_diffusion.md",
+                 "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
+                 "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
+                 "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
+                 "Internal wave"                    => "generated/internal_wave.md"
+             ],
              "Physics" => "manual/physics.md",
              "Numerical implementation" => [
-                 "Overview"               => "manual/overview.md",
+                 #"Overview"               => "manual/overview.md",
                  "Pressure decomposition" => "manual/pressure_decomposition.md",
                  "Time stepping"          => "manual/time_stepping.md",
                  "Finite volume method"   => "manual/finite_volume.md",
-                 #"Staggered grid"         => "manual/staggered_grid.md",
-                 #"Fractional step method" => "manual/fractional_step.md",
                  "Spatial operators"      => "manual/spatial_operators.md",
                  "Boundary conditions"    => "manual/boundary_conditions.md",
                  "Poisson solvers"        => "manual/poisson_solvers.md",
                  "Large eddy simulation"  => "manual/large_eddy_simulation.md"
              ],
-             "Model setup" => "manual/model_setup.md",
-             "Examples" => [
-                 "One-dimensional diffusion"        => "generated/simple_diffusion.md",
-                 "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-                 # "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-                 # "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
-                 "Internal wave"                    => "generated/internal_wave.md"
-             ],
              "Verification" => [
                  "Taylor-Green vortex"     => "verification/taylor_green_vortex.md",
                  "Stratified Couette flow" => "verification/stratified_couette_flow.md"
-             ]
+             ],
+             #"Appendix" => [
+                 #"Staggered grid"         => "manual/staggered_grid.md",
+                 #"Fractional step method" => "manual/fractional_step.md",
+             #],
          ],
          "Gallery"    => "gallery.md",
          "Benchmarks" => "benchmarks.md",

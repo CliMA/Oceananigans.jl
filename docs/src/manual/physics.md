@@ -9,14 +9,13 @@ approximation[^1], generalized stresses and tracer fluxes associated with viscou
 diffusive physics, and arbitrary "forcing functions" --- are determined by the whims of the 
 user.
 
-[^1]: {
-    Named after Boussinesq (1903) although used earlier by Oberbeck (1879), the Boussinesq
-    approximation neglects density differences in the momentum equation except when associated with the gravitational
-    term. It is an accurate approximation for many flows, and especially so for oceanic flows where density differences 
-    are very small. See Vallis (2017, section 2.4) for an oceanographic introduction to the Boussinesq equations and
-    Vallis (2017, Section 2.A) for an asymptotic derivation. See Kundu (2015, Section 4.9) for an engineering 
-    introduction.
-}
+[^1]: Named after Boussinesq (1903) although used earlier by Oberbeck (1879), the Boussinesq
+      approximation neglects density differences in the momentum equation except when associated 
+      with the gravitational term. It is an accurate approximation for many flows, and especially 
+      so for oceanic flows where density differences are very small. See Vallis (2017, section 2.4) 
+      for an oceanographic introduction to the Boussinesq equations and Vallis (2017, Section 2.A) 
+      for an asymptotic derivation. See Kundu (2015, Section 4.9) for an engineering 
+      introduction.
 
 ## Coordinate system and notation
 
@@ -135,15 +134,13 @@ vertical axis, such that
 ```
 where $f$ is constant and determined by the user. 
 
-[^3]: {
-    The $f$-plane approximation is used to model the effects of Earth's rotation on 
-    anisotropic fluid motion in a plane tangent to the Earth's surface. In this case, $\bm{f}$ is 
-    ```math
-        \bm{f} \approx \frac{4 \pi}{\text{day}} \sin \varphi \bm{\hat z} \, , $
-    ```
-    where $\phi$ is latitude and the Earth's rotation rate is approximately $2 \pi / \text{day}$.
-    This approximation neglects the vertical component of Earth's rotation vector at $\varphi$.
-}
+[^3]: The $f$-plane approximation is used to model the effects of Earth's rotation on 
+      anisotropic fluid motion in a plane tangent to the Earth's surface. In this case, $\bm{f}$ is 
+      ```math
+          \bm{f} \approx \frac{4 \pi}{\text{day}} \sin \varphi \bm{\hat z} \, , $
+      ```
+      where $\phi$ is latitude and the Earth's rotation rate is approximately $2 \pi / \text{day}$.
+      This approximation neglects the vertical component of Earth's rotation vector at $\varphi$.
 
 ### The $\beta$-plane approximation
 
@@ -276,27 +273,29 @@ while the eddy diffusivity predictor for tracer $c$ is
         {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k c \right) \hat{\partial}_i c}
         {\left( \hat{\partial}_l c \right) \left( \hat{\partial}_l c \right)} \, .
 ```
-$C$ and $C_b$ are user-specified 
-model constants, $\Delta_f$ is a "filter width" associated with the finite volume grid 
-spacing, and the hat decorators on partial derivatives, velocities, and the Kronecker 
+In the definitions of the eddy viscosity and eddy diffusivity predictor, $C$ and $C_b$ are 
+user-specified model constants, $\Delta_f$ is a "filter width" associated with the finite volume 
+grid spacing, and the hat decorators on partial derivatives, velocities, and the Kronecker 
 delta $\hat \delta_{i3}$ are defined such that
 ```math
     \hat \partial_i \equiv \Delta_i \partial_i, \qquad
-    \hat{u}_i(x, t) \equiv \frac{u_i(x, t)}{\Delta_i}, \qquad
-    \hat{\delta}_{i3} \equiv \frac{\delta_{i3}}{\Delta_3}
+    \hat{u}_i(x, t) \equiv \frac{u_i(x, t)}{\Delta_i}, \quad \text{and} \quad
+    \hat{\delta}_{i3} \equiv \frac{\delta_{i3}}{\Delta_3} \, .
 ```
 A velocity gradient, for example, is therefore 
 $\hat{\partial}_i \hat{u}_j(x, t) = \frac{\Delta_i}{\Delta_j} \partial_i u_j(x, t)$, 
-while the normalized strain tensor becomes
+while the normalized strain tensor is
 ```math
     \hat{\Sigma}_{ij} =
-    \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(x, t) + \hat{\partial}_j \hat{u}_i(x, t) \right]
-```
+        \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(x, t) + \hat{\partial}_j \hat{u}_i(x, t) \right] \, .
+``` 
 The filter width $\Delta_f$ in that appears in the viscosity and diffusivity predictors
 is taken as the square root of the harmonic mean of the squares of the filter widths in 
 each direction:
 ```math
-    \frac{1}{\Delta_f^2} = \frac{1}{3} \left( \frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2} \right)
+    \frac{1}{\Delta_f^2} = \frac{1}{3} \left(   \frac{1}{\Delta x^2} 
+                                              + \frac{1}{\Delta y^2} 
+                                              + \frac{1}{\Delta z^2} \right) \, .
 ```
 The constant $C_b$ permits the "buoyancy modification" term it multiplies to be omitted 
 from a calculation.
@@ -314,20 +313,32 @@ direction is \textit{no-penetration}.
 
 A flux boundary condition prescribes flux of a quantity normal to the boundary. 
 For a tracer $c$ this corresponds to prescribing 
-$\bm{q}_c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b}$, where $\partial \Omega_b$ is an
-external boundary.
+```math
+q_c \, |_b \equiv \bm{q}_c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b} \, , 
+```
+where $\partial \Omega_b$ is an external boundary.
 
 ### Gradient (Neumann) boundary condition 
 
 A gradient boundary condition prescribes the gradient of a field normal to the boundary. 
-For a tracer $c$ this prescribes $\bm{\nabla} c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b}$.
+For a tracer $c$ this prescribes 
+```math
+\gamma \equiv \bm{\nabla} c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b} \, .
+```
 
 ### Value (Dirichlet) boundary condition 
 
 A value boundary condition prescribes the value of a field on a boundary; for a tracer this 
-prescribes $c \, |_{\partial \Omega_b}$.
+prescribes 
+```math
+c_b \equiv c \, |_{\partial \Omega_b} \, .
+```
 
 ### No penetration boundary condition 
 
-A no penetration boundary condition prescribes the velocity component normal to a boundary to be 0.
+A no penetration boundary condition prescribes the velocity component normal to a boundary to be 0,
+so that
+```math
+\bm{\hat{n}} \bm{\cdot} \bm{u} \, |_{\partial \Omega_b} = 0 \, .
+```
 
