@@ -71,7 +71,7 @@ A field defined at the faces along the y-direction. Used for horizontal velocity
 const FaceFieldY = Field{Cell, Face, Cell}
 
 """
-	FaceFieldY
+	FaceFieldZ
 
 A field defined at the faces along the z-direction. Used for vertical velocity w.
 """
