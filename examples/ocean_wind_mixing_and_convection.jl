@@ -100,6 +100,12 @@ model = Model(
 # architecture = GPU()
 # ```
 #
+# Set makeplot = true to live-update a plot of vertical velocity, temperature, and salinity
+# as the simulation runs.
+
+makeplot = false
+
+#
 # ## Initial conditions
 #
 # Out initial condition for temperature consists of a linear stratification superposed with 
@@ -166,17 +172,17 @@ function makeplot!(axs, model)
 
     sca(axs[1]); cla()
     title("Vertical velocity")
-    pcolormesh(xC, zF, data(model.velocities.w)[:, jhalf, :])
+    pcolormesh(xC, zF, Array(data(model.velocities.w))[:, jhalf, :])
     xlabel("\$ x \$ (m)"); ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla() 
     title("Temperature")
-    pcolormesh(xC, zC, data(model.tracers.T)[:, jhalf, :])
+    pcolormesh(xC, zC, Array(data(model.tracers.T))[:, jhalf, :])
     xlabel("\$ x \$ (m)")
 
     sca(axs[3]); cla()
     title("Salinity")
-    pcolormesh(xC, zC, data(model.tracers.S)[:, jhalf, :])
+    pcolormesh(xC, zC, Array(data(model.tracers.S))[:, jhalf, :])
     xlabel("\$ x \$ (m)")
 
     [ax.set_aspect(1) for ax in axs]
@@ -200,5 +206,10 @@ while model.clock.time < end_time
             model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt), 
             wmax(model), prettytime(walltime))           
 
-    model.architecture == CPU() && makeplot!(axs, model)
+    makeplot && makeplot!(axs, model)
 end
+
+# Show the reults in a plot
+
+makeplot!(axs, model)
+gcf()
