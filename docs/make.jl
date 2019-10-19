@@ -1,6 +1,4 @@
-push!(LOAD_PATH,"../src/")
-push!(LOAD_PATH,"../src/operators/")
-push!(LOAD_PATH,"../src/turbulence_closures/")
+push!(LOAD_PATH, "..")
 
 using
     Documenter,
@@ -40,22 +38,22 @@ makedocs(
  checkdocs = :all,
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true",
                              canonical = "https://climate-machine.github.io/Oceananigans.jl/latest/"),
-   authors = "Ali Ramadhan, Greg Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
+   authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
          "Home"   => "index.md",
          "Manual" => [
-             "Continuous equations" => "manual/equations.md",
-             "Numerical methods" => [
+             "Physics" => "manual/physics.md",
+             "Numerical implementation" => [
                  "Overview"               => "manual/overview.md",
-                 "Finite volume method"   => "manual/finite_volume.md",
-                 "Staggered grid"         => "manual/staggered_grid.md",
-                 "Fractional step method" => "manual/fractional_step.md",
+                 "Pressure decomposition" => "manual/pressure_decomposition.md",
                  "Time stepping"          => "manual/time_stepping.md",
+                 "Finite volume method"   => "manual/finite_volume.md",
+                 #"Staggered grid"         => "manual/staggered_grid.md",
+                 #"Fractional step method" => "manual/fractional_step.md",
                  "Spatial operators"      => "manual/spatial_operators.md",
-                 "Poisson solvers"        => "manual/poisson_solvers.md",
                  "Boundary conditions"    => "manual/boundary_conditions.md",
-                 "Turbulence closures"    => "manual/turbulence_closures.md",
+                 "Poisson solvers"        => "manual/poisson_solvers.md",
                  "Large eddy simulation"  => "manual/large_eddy_simulation.md"
              ],
              "Model setup" => "manual/model_setup.md",
@@ -68,8 +66,6 @@ makedocs(
              ],
              "Verification" => [
                  "Taylor-Green vortex"     => "verification/taylor_green_vortex.md",
-                 "Lid-driven cavity"       => "verification/lid_driven_cavity.md",
-                 "Free convection"         => "verification/free_convection.md",
                  "Stratified Couette flow" => "verification/stratified_couette_flow.md"
              ]
          ],
