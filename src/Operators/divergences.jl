@@ -2,19 +2,10 @@
 #### Calculating fluxes
 ####
 
-# Calculate fluxes of a vector field (fx, fy, fz) through each face where the
-# components (fx, fy, fz) are defined normal to the faces (e.g. a velocity field).
-# The flux in this case is given by (Ax*fx, Ay*fy, and Az*fz).
-
-@inline flux_x(i, j, k, grid, fx) = @inbounds AxF(i, j, k, grid) * fx[i, j, k]
-@inline flux_y(i, j, k, grid, fy) = @inbounds AyF(i, j, k, grid) * fy[i, j, k]
-@inline flux_z(i, j, k, grid, fz) = @inbounds  Az(i, j, k, grid) * fz[i, j, k]
-
-# Calculate the flux of a tracer quantity Q (e.g. temperature) through the faces
-# of a cell. In this case, the fluxes are given by u*Ax*T̅ˣ, v*Ay*T̅ʸ, and
-# w*Az*T̅ᶻ.
-@inline tracer_flux_x(i, j, k, grid, u, c) = @inbounds AxF(i, j, k, grid) * u[i, j, k] * ℑx_faa(i, j, k, grid, c)
-@inline tracer_flux_y(i, j, k, grid, v, c) = @inbounds AyF(i, j, k, grid) * v[i, j, k] * ℑy_afa(i, j, k, grid, c)
+# Calculate the flux of a tracer quantity c through the faces of a cell.
+# In this case, the fluxes are given by u*Ax*T̅ˣ, v*Ay*T̅ʸ, and w*Az*T̅ᶻ.
+@inline tracer_flux_x(i, j, k, grid, u, c) = @inbounds AxC(i, j, k, grid) * u[i, j, k] * ℑx_faa(i, j, k, grid, c)
+@inline tracer_flux_y(i, j, k, grid, v, c) = @inbounds AyC(i, j, k, grid) * v[i, j, k] * ℑy_afa(i, j, k, grid, c)
 @inline tracer_flux_z(i, j, k, grid, w, c) = @inbounds  Az(i, j, k, grid) * w[i, j, k] * ℑz_aaf(i, j, k, grid, c)
 
 ####
@@ -24,36 +15,36 @@
 """
     div_cc(i, j, k, grid, u, v)
 
-Calculates the horizontal divergence ∇ₕ·(u, v) of the velocity (u, v) via
+Calculates the horizontal divergence ∇ₕ·(u, v) of a 2D velocity field (u, v) via
 
     1/V * [δx_caa(Ax * u) + δy_aca(Ay * v)]
 
 which will end up at the location `cca`.
 """
 @inline function div_cc(i, j, k, grid, u, v)
-    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, flux_x, u) +
-                          δy_aca(i, j, k, grid, flux_y, v))
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, u) +
+                          δy_aca(i, j, k, grid, fy_v, v))
 end
 
 """
     div_ccc(i, j, k, grid, fx, fy, fz)
 
-Calculates the divergence ∇·f of a vector field f = (fx, fy, fz),
+Calculates the divergence ∇·U of a vector field U = (u, v, w),
 
     1/V * [δx_caa(Ax * fx) + δx_aca(Ay * fy) + δz_aac(Az * fz)],
 
 which will end up at the cell centers `ccc`.
 """
-@inline function div_ccc(i, j, k, grid, u, v)
-    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, flux_x, fx) +
-                          δy_aca(i, j, k, grid, flux_y, fy) +
-                          δz_aac(i, j, k, grid, flux_z, fz))
+@inline function div_ccc(i, j, k, grid, u, v, w)
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, fx) +
+                          δy_aca(i, j, k, grid, Ay_v, fy) +
+                          δz_aac(i, j, k, grid, Az_w, fz))
 end
 
 """
     div_flux(i, j, k, grid, U, c)
 
-Calculates the divergence of the flux of a tracer quantity Q being advected by
+Calculates the divergence of the flux of a tracer quantity c being advected by
 a velocity field U = (u, v, w), ∇·(Uc),
 
     1/V * [δx_caa(Ax * u * ℑx_faa(c)) + δy_aca(Ay * v * ℑy_afa(c)) + δz_aac(Az * w * ℑz_aaf(c))]
