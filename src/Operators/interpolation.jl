@@ -59,7 +59,7 @@ const RCG = RegularCartesianGrid
 @inline ℑyz_acf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑy_aca, f, args...)
 
 ####
-#### Triple interpolation 
+#### Triple interpolation
 ####
 
 @inline ℑxyz_ffc(i, j, k, grid, f, args...) = ℑx_faa(i, j, k, grid, ℑy_afa, ℑz_aac, f, args...)
