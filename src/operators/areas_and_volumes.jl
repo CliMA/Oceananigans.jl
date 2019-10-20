@@ -2,11 +2,8 @@
 #### Grid spacings
 ####
 
-@inline Δx(i, j, k, grid::RegularCartesianGrid) = grid.Δx
-@inline Δx(i, j, k, grid::VerticallyStretchedCartesianGrid) = grid.Δx
-
-@inline Δy(i, j, k, grid::RegularCartesianGrid) = grid.Δy
-@inline Δy(i, j, k, grid::VerticallyStretchedCartesianGrid) = grid.Δy
+@inline Δx(i, j, k, grid) = grid.Δx
+@inline Δy(i, j, k, grid) = grid.Δy
 
 @inline ΔzC(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzC(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzC[k]
