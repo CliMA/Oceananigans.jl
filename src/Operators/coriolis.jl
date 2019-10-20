@@ -1,29 +1,10 @@
-""" Calculate fVv̅ʸ -> ccc. """
-@inline fVv̅ʸ(i, j, k, grid::Grid, v::AbstractArray, f::AbstractFloat) =
-    f * V(i, j, k, grid) * ϊy_aca(i, j, k, grid, v)
+####
+#### Coriolis terms following Marshall et al. (1997) equation (25).
+####
 
-"""
-    fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat)
+@inline fVv̅ʸ(i, j, k, grid, v, f) = f * V(i, j, k, grid) * ℑy_aca(i, j, k, grid, v)
+@inline fVu̅ˣ(i, j, k, grid, u, f) = f * V(i, j, k, grid) * ℑx_caa(i, j, k, grid, u)
 
-Calculate the Coriolis term in the u-momentum equation, 1/Vᵘ * (fVv̅ʸ)ˣ -> fcc.
-"""
-@inline fv(i, j, k, grid::Grid{T}, v::AbstractArray, f::AbstractFloat) where T =
-    1/Vᵘ(i, j, k, grid) * T(0.5) * (fVv̅ʸ(i-1, j, k, grid, v) + fVv̅ʸ(i, j, k, grid, v))
+@inline fv(i, j, k, grid, v, f) = 1/Vᵘ(i, j, k, grid) * ℑx_faa(i, j, k, grid, fVv̅ʸ, v, f)
+@inline fu(i, j, k, grid, u, f) = 1/Vᵛ(i, j, k, grid) * ℑy_afa(i, j, k, grid, fVu̅ˣ, u, f)
 
-
-""" Calculate fVu̅ˣ -> ccc. """
-@inline fVu̅ˣ(i, j, k, grid::Grid, u::AbstractArray, f::AbstractFloat) =
-    f * V(i, j, k, grid) * ϊx_caa(i, j, k, grid, u)
-
-"""
-    fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat)
-
-Calculate the Coriolis term in the v-momentum equation, 1/Vᵛ * (fVu̅ˣ)ʸ -> cfc.
-
-Note that the minus sign is not included in here as this operator just computes
-the "magnitude of fu". The reasoning behind this is so that the minus sign can
-show up in the Gv calculation making the calculation of the right-hand-side
-look like the continuous equations of motion where -fu is more familiar.
-"""
-@inline fu(i, j, k, grid::Grid{T}, u::AbstractArray, f::AbstractFloat) where T =
-    1/Vᵛ(i, j, k, grid) * T(0.5) * (fVu̅ˣ(i, j-1, k, grid, u) + fVu̅ˣ(i, j, k, grid, u))
