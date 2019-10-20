@@ -32,16 +32,16 @@ where the `a` stands for any as the location is unchanged by the operator and is
 by the input.
 
 As a result the interpolation of a quantity ϕ from a cell i to face i
-(this operation is denoted "ϊx_faa" in the code below) is
+(this operation is denoted "ℑx_faa" in the code below) is
 
-    ϊx_faa(ϕ)ᵢ = (ϕᵢ + ϕᵢ₋₁) / 2
+    ℑx_faa(ϕ)ᵢ = (ϕᵢ + ϕᵢ₋₁) / 2
 
 Conversely, the interpolation of a quantity u from a face i to cell i is given by
 
-    ϊx_caa(u)ᵢ = (uᵢ₊₁ + uᵢ) / 2
+    ℑx_caa(u)ᵢ = (uᵢ₊₁ + uᵢ) / 2
 
-The `ϊ` (`\iota\ddot`) symbol indicates that an interpolation is being performed.
-`ϊx`, for example, indicates that the interpolation is performed along the x-dimension.
+The `ℑ` (`\iota\ddot`) symbol indicates that an interpolation is being performed.
+`ℑx`, for example, indicates that the interpolation is performed along the x-dimension.
 The three following characters in the interpolation function name indicate the
 position that is being interpolated to following the same convention used for difference
 operators.
@@ -86,23 +86,23 @@ toward the bottom. This is equivalent to setting f(Nz+1) = 0.
     face Nz+1   ---------   <-- f(Nz+1) = 0
     
 
-The `ϊz_aaf` function interpolates the value of a cell-centered field f onto the cell faces.
+The `ℑz_aaf` function interpolates the value of a cell-centered field f onto the cell faces.
 Again, to interpolate onto face 1 we would need to know the value of f above the surface,
 which we don't. We can consistently impose that the gradient goes to zero at the surface and
 thus impose that the interpolation of f at face 1 is the value of f at cell center 1.
 
-    face 1      ---------   <-- ϊz_aaf = f(1) at the surface
+    face 1      ---------   <-- ℑz_aaf = f(1) at the surface
     cell 1          x       <-- f(1)
     face 2         ---
     cell 2          x       <-- f(2)
 
 
-The `ϊz_aac` function interpolates the value of a face-centered field f onto the cell-centers.
+The `ℑz_aac` function interpolates the value of a face-centered field f onto the cell-centers.
 Again, to interpolate onto cell center Nz, we would need to know the value of f at face Nz+1,
 which we don't. We can consistently impose that the gradient goes to zero at the bottom and
 thus impose that the interpolation of f at cell Nz is f(Nz)/2.
 
     cell Nz-1       x
     face Nz        ---      <-- f(Nz)
-    cell Nz         x       <-- ϊz_aac = f(Nz)/2 at the bottom cell
+    cell Nz         x       <-- ℑz_aac = f(Nz)/2 at the bottom cell
     face Nz+1   ---------   <-- f(Nz+1) = 0
