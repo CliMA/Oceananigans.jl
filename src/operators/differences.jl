@@ -41,12 +41,25 @@
 #### Derivative operators acting on functions
 ####
 
-@inline ∂x_caa(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i+1, j, k, grid, args...) - F(i,   j, k, grid, args...)) / Δx(i, j, k, grid)
-@inline ∂x_faa(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i,   j, k, grid, args...) - F(i-1, j, k, grid, args...)) / Δx(i, j, k, grid)
+@inline ∂x_caa(f::F, i, j, k, grid, args...) where F<:Function = (f(i+1, j, k, grid, args...) - f(i,   j, k, grid, args...)) / Δx(i, j, k, grid)
+@inline ∂x_faa(f::F, i, j, k, grid, args...) where F<:Function = (f(i,   j, k, grid, args...) - f(i-1, j, k, grid, args...)) / Δx(i, j, k, grid)
 
-@inline ∂y_aca(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i, j+1, k, grid, args...) - F(i, j,   k, grid, args...)) / Δy(i, j, k, grid)
-@inline ∂y_afa(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i, j,   k, grid, args...) - F(i, j-1, k, grid, args...)) / Δy(i, j, k, grid)
+@inline ∂y_aca(f::F, i, j, k, grid, args...) where F<:Function = (f(i, j+1, k, grid, args...) - f(i, j,   k, grid, args...)) / Δy(i, j, k, grid)
+@inline ∂y_afa(f::F, i, j, k, grid, args...) where F<:Function = (f(i, j,   k, grid, args...) - f(i, j-1, k, grid, args...)) / Δy(i, j, k, grid)
 
-@inline ∂z_aac(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i, j, k+1, grid, args...) - F(i, j, k,   grid, args...)) / ΔzF(i, j, k, grid)
-@inline ∂z_aaf(F::TF, i, j, k, grid, args...) where TF<:Function = (F(i, j, k,   grid, args...) - F(i, j, k-1, grid, args...)) / ΔzC(i, j, k, grid)
+@inline ∂z_aac(f::F, i, j, k, grid, args...) where F<:Function = (f(i, j, k+1, grid, args...) - f(i, j, k,   grid, args...)) / ΔzF(i, j, k, grid)
+@inline ∂z_aaf(f::F, i, j, k, grid, args...) where F<:Function = (f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)) / ΔzC(i, j, k, grid)
+
+####
+#### Second derivatives
+####
+
+@inline ∂x²_caa(i, j, k, grid, c) = ∂x_caa(∂x_faa, i, j, k, grid, c)
+@inline ∂x²_faa(i, j, k, grid, u) = ∂x_faa(∂x_caa, i, j, k, grid, u)
+
+@inline ∂y²_aca(i, j, k, grid, c) = ∂y_aca(∂y_afa, i, j, k, grid, c)
+@inline ∂y²_afa(i, j, k, grid, v) = ∂y_afa(∂y_aca, i, j, k, grid, v)
+
+@inline ∂z²_aac(i, j, k, grid, c) = ∂z_aac(∂z_aaf, i, j, k, grid, c)
+@inline ∂z²_aaf(i, j, k, grid, w) = ∂z_aaf(∂z_aac, i, j, k, grid, w)
 
