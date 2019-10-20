@@ -28,7 +28,8 @@ struct DryIdealGas{FT} <: AbstractEquationOfState
     c_p :: FT
     c_v :: FT
     κ   :: FT
+    γ   :: FT
 end
 
-DryIdealGas(FT; R=R_d_air, c_p=c_p_d, c_v=c_v_d, κ=κ_d) = DryIdealGas{FT}(R, c_p, c_v, κ)
+DryIdealGas(FT; R=R_d_air, c_p=c_p_d, c_v=c_v_d, κ=κ_d, γ=γ_d) = DryIdealGas{FT}(R, c_p, c_v, κ, γ)
 
