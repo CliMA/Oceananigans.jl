@@ -1,5 +1,5 @@
 ####
-#### Difference operators
+#### Base difference operators
 ####
 
 @inline δx_caa(i, j, k, grid, u) = @inbounds u[i+1, j, k] - u[i,   j, k]
