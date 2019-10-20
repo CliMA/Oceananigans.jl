@@ -17,23 +17,22 @@ const RCG = RegularCartesianGrid
 #### Interpolation operators acting on functions
 ####
 
-@inline ℑx_caa(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i,   j, k, grid, args...) + f(i+1, j, k, grid, args...))
-@inline ℑx_faa(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i-1, j, k, grid, args...) + f(i,   j, k, grid, args...))
+@inline ℑx_caa(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i,   j, k, grid, args...) + f(i+1, j, k, grid, args...))
+@inline ℑx_faa(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i-1, j, k, grid, args...) + f(i,   j, k, grid, args...))
 
-@inline ℑy_aca(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,   k, grid, args...) + f(i, j+1, k, grid, args...))
-@inline ℑy_afa(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-1, k, grid, args...) + f(i, j,   k, grid, args...))
+@inline ℑy_aca(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,   k, grid, args...) + f(i, j+1, k, grid, args...))
+@inline ℑy_afa(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-1, k, grid, args...) + f(i, j,   k, grid, args...))
 
-@inline ℑz_aac(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,   grid, args...) + f(i, j, k+1, grid, args...))
-@inline ℑz_aaf(f::F, i, j, k, grid::RCG{FT}, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
+@inline ℑz_aac(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,   grid, args...) + f(i, j, k+1, grid, args...))
+@inline ℑz_aaf(i, j, k, grid::RCG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
 
 ####
 #### Convenience operators for "interpolating constants"
 ####
 
-@inline ℑx_faa(f::Number, i, j, k, grid, args...) = f
-@inline ℑx_caa(f::Number, i, j, k, grid, args...) = f
-@inline ℑy_afa(f::Number, i, j, k, grid, args...) = f
-@inline ℑy_aca(f::Number, i, j, k, grid, args...) = f
-@inline ℑz_aaf(f::Number, i, j, k, grid, args...) = f
-@inline ℑz_aac(f::Number, i, j, k, grid, args...) = f
-
+@inline ℑx_faa(i, j, k, grid, f::Number, args...) = f
+@inline ℑx_caa(i, j, k, grid, f::Number, args...) = f
+@inline ℑy_afa(i, j, k, grid, f::Number, args...) = f
+@inline ℑy_aca(i, j, k, grid, f::Number, args...) = f
+@inline ℑz_aaf(i, j, k, grid, f::Number, args...) = f
+@inline ℑz_aac(i, j, k, grid, f::Number, args...) = f
