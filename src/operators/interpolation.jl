@@ -1,3 +1,7 @@
+####
+#### Convinient aliases
+####
+
 const RCG = RegularCartesianGrid
 
 ####
@@ -36,3 +40,28 @@ const RCG = RegularCartesianGrid
 @inline ℑy_aca(i, j, k, grid, f::Number, args...) = f
 @inline ℑz_aaf(i, j, k, grid, f::Number, args...) = f
 @inline ℑz_aac(i, j, k, grid, f::Number, args...) = f
+
+####
+#### Double interpolation
+####
+
+@inline ℑxy_cca(i, j, k, grid, f, args...) = ℑy_aca(i, j, k, grid, ℑx_caa, f, args...)
+@inline ℑxy_fca(i, j, k, grid, f, args...) = ℑy_aca(i, j, k, grid, ℑx_faa, f, args...)
+@inline ℑxy_ffa(i, j, k, grid, f, args...) = ℑy_afa(i, j, k, grid, ℑx_faa, f, args...)
+@inline ℑxy_cfa(i, j, k, grid, f, args...) = ℑy_afa(i, j, k, grid, ℑx_caa, f, args...)
+@inline ℑxz_cac(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑx_caa, f, args...)
+@inline ℑxz_fac(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑx_faa, f, args...)
+@inline ℑxz_faf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑx_faa, f, args...)
+@inline ℑxz_caf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑx_caa, f, args...)
+@inline ℑyz_acc(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑy_aca, f, args...)
+@inline ℑyz_afc(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑy_afa, f, args...)
+@inline ℑyz_aff(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑy_afa, f, args...)
+@inline ℑyz_acf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑy_aca, f, args...)
+
+####
+#### Triple interpolation 
+####
+
+@inline ℑxyz_ffc(i, j, k, grid, f, args...) = ℑx_faa(i, j, k, grid, ℑy_afa, ℑz_aac, f, args...)
+@inline ℑxyz_ccf(i, j, k, grid, f, args...) = ℑx_caa(i, j, k, grid, ℑy_aca, ℑz_aaf, f, args...)
+
