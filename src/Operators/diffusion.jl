@@ -1,44 +1,26 @@
-# Calculate diffusive fluxes.
-""" Calculate κ * AxF * δx_faa(Q) -> fcc. """
-@inline diffusive_flux_x(i, j, k, grid::Grid, Q::AbstractArray, κ_fcc::AbstractFloat) =
-    κ_fcc * AxF(i, j, k, grid) * δx_faa(i, j, k, Q)
+####
+#### Diffusive fluxes
+####
 
-""" Calculate κ * AyF * δy_afa(Q) -> cfc. """
-@inline diffusive_flux_y(i, j, k, grid::Grid, Q::AbstractArray, κ_cfc:AbstractFloat) =
-    κ_cfc * AyF(i, j, k, grid) * δy_afa(i, j, k, Q)
+@inline diffusive_flux_x(i, j, k, grid, c, κ_fcc) = κ_fcc * AxF(i, j, k, grid) * δx_faa(i, j, k, c)
+@inline diffusive_flux_y(i, j, k, grid, c, κ_cfc) = κ_cfc * AyF(i, j, k, grid) * δy_afa(i, j, k, c)
+@inline diffusive_flux_z(i, j, k, grid, c, κ_ccf) = κ_ccf *  Az(i, j, k, grid) * δz_aaf(i, j, k, c)
 
-""" Calculate κ * Az * δz_aaf(Q) -> ccf. """
-@inline diffusive_flux_z(i, j, k, grid::Grid, Q::AbstractArray, κ_ccf:AbstractFloat) =
-    κ_ccf * Az(i, j, k ,grid) * δz_aaf(i, j, k, Q)
-
-""" Calculate δx_caa[κ * AxF * δx_faa(Q)] -> ccc. """
-@inline δx_diffusive_flux(i, j, k, grid::Grid, Q::AbstractArray, κ_fcc::AbstractFloat) =
-    diffusive_flux_x(i+1, j, k, grid, Q, κ_fcc) - diffusive_flux_x(i, j, k, grid, Q, κ_fcc)
-
-""" Calculate δy_aca[κ * AyF * δy_afa(Q)] -> ccc. """
-@inline δy_diffusive_flux(i, j, k, grid::Grid, Q::AbstractArray, κ_cfc::AbstractFloat) =
-    diffusive_flux_y(i, j+1, k, grid, Q, κ_cfc) - diffusive_flux_y(i, j, k, grid, Q, κ_cfc)
-
-""" Calculate δz_aac[κ * Az * δz_aaf(Q)] -> ccc. """
-@inline function δz_diffusive_Flux(i, j, k, grid::Grid, Q::AbstractArray, κ_ccf::AbstractFloat)
-    if k == grid.Nz
-        return diffusive_flux_z(i, j, k, grid, Q, κ_ccf)
-    else
-        return diffusive_flux_z(i, j, k, grid, Q, κ_ccf) - diffusive_flux_z(i, j, k+1, grid, Q, κ_ccf)
-    end
-end
+####
+#### Laplacian diffusion operator
+####
 
 """
-    ∇κ∇Q(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
+    ∇κ∇c(i, j, k, grid, c, κ)
 
-Calculates diffusion for a tracer Q via
+Calculates diffusion for a tracer c via
 
-    1/V * [δx_caa(κ * Ax * δx_faa(Q)) + δy_aca(κ * Ay * δy_afa(Q)) + δz_aac(κ * Az * δz_aaf(Q))]
+    1/V * [δx_caa(κ * Ax * δx_faa(c)) + δy_aca(κ * Ay * δy_afa(c)) + δz_aac(κ * Az * δz_aaf(c))]
 
 which will end up at the location `ccc`.
 """
-@inline function ∇κ∇Q(i, j, k, grid::Grid, Q::AbstractArray, κ::AbstractFloat)
-    1/V(i, j, k, grid) * (δx_diffusive_flux(i, j, k, grid, Q, κ) +
-                          δy_diffusive_flux(i, j, k, grid, Q, κ) +
-                          δz_diffusive_Flux(i, j, k, grid, Q, κ))
+@inline function ∇κ∇c(i, j, k, grid, c, κ)
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, diffusive_flux_x, u, c) +
+                          δy_aca(i, j, k, grid, diffusive_flux_y, v, c) +
+                          δz_aac(i, j, k, grid, diffusive_flux_z, w, c))
 end
