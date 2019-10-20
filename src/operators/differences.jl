@@ -1,45 +1,24 @@
-# Difference operators.
-@inline δx_caa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i+1, j, k] - f[i,   j, k]
-@inline δx_faa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i,   j, k] - f[i-1, j, k]
+####
+#### Difference operators
+####
 
-@inline δy_aca(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j+1, k] - f[i, j,   k]
-@inline δy_afa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds f[i, j,   k] - f[i, j-1, k]
+@inline δx_caa(i, j, k, grid, u) = @inbounds u[i+1, j, k] - u[i,   j, k]
+@inline δx_faa(i, j, k, grid, c) = @inbounds c[i,   j, k] - c[i-1, j, k]
 
-@inline function δz_aac(i, j, k, g::Grid{T}, f::AbstractArray) where T
-    if k == grid.Nz
-        @inbounds return f[i, j, k]
-    else
-        @inbounds return f[i, j, k] - f[i, j, k+1]
-    end
-end
+@inline δy_aca(i, j, k, grid, v) = @inbounds v[i, j+1, k] - v[i, j,   k]
+@inline δy_afa(i, j, k, grid, c) = @inbounds c[i, j,   k] - c[i, j-1, k]
 
-@inline function δz_aaf(i, j, k, g::Grid{T}, f::AbstractArray) where T
-    if k == 1
-        return -zero(T)
-    else
-        @inbounds return f[i, j, k-1] - f[i, j, k]
-    end
-end
+@inline δz_aac(i, j, k, grid, w) = @inbounds w[i, j, k+1] - w[i, j,   k]
+@inline δz_aaf(i, j, k, grid, c) = @inbounds c[i, j,   k] - c[i, j, k-1]
+
 
 # Difference operators of the form δ(A*f) where A is an area and f is an array.
-@inline δxA_caa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ax(i+1, j, k, grid) * f[i+1, j, k] - Ax(i,   j, k) * f[i,   j, k]
-@inline δxA_faa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ax(i,   j, k, grid) * f[i,   j, k] - Ax(i-1, j, k) * f[i-1, j, k]
+@inline δxA_caa(i, j, k, grid, u) = @inbounds Ax(i+1, j, k, grid) * u[i+1, j, k] - Ax(i,   j, k, grid) * u[i,   j, k]
+@inline δxA_faa(i, j, k, grid, c) = @inbounds Ax(i,   j, k, grid) * c[i,   j, k] - Ax(i-1, j, k, grid) * c[i-1, j, k]
 
-@inline δyA_aca(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ay(i, j+1, k, grid) * f[i, j+1, k] - Ay(i, j,   k, grid) * f[i, j,   k]
-@inline δyA_afa(i, j, k, grid::Grid, f::AbstractArray) = @inbounds Ay(i,   j, k, grid) * f[i, j,   k] - Ay(i, j-1, k, grid) * f[i, j-1, k]
+@inline δyA_aca(i, j, k, grid, v) = @inbounds Ay(i, j+1, k, grid) * v[i, j+1, k] - Ay(i, j,   k, grid) * v[i, j,   k]
+@inline δyA_afa(i, j, k, grid, c) = @inbounds Ay(i,   j, k, grid) * c[i, j,   k] - Ay(i, j-1, k, grid) * c[i, j-1, k]
 
-@inline function δzA_aac(i, j, k, g::Grid{T}, f::AbstractArray) where T
-    if k == grid.Nz
-        @inbounds return Az(i, j, k, grid) * f[i, j, k]
-    else
-        @inbounds return Az(i, j, k, grid) * f[i, j, k] - Az(i, j, k+1, grid) * f[i, j, k+1]
-    end
-end
+@inline δzA_aac(i, j, k, grid, w) = @inbounds Az(i, j, k+1, grid) * w[i, j, k+1] - Az(i, j, k,   grid) * w[i, j,   k]
+@inline δzA_aaf(i, j, k, grid, c) = @inbounds Az(i, j,   k, grid) * c[i, j,   k] - Az(i, j, k-1, grid) * c[i, j, k-1] 
 
-@inline function δzA_aaf(i, j, k, g::Grid{T}, f::AbstractArray) where T
-    if k == 1
-        return -zero(T)
-    else
-        @inbounds return Az(i, j, k-1, grid) * f[i, j, k-1] - Az(i, j, k, grid) * f[i, j, k]
-    end
-end
