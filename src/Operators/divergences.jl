@@ -1,56 +1,28 @@
+####
+#### Calculating fluxes
+####
+
 # Calculate fluxes of a vector field (fx, fy, fz) through each face where the
 # components (fx, fy, fz) are defined normal to the faces (e.g. a velocity field).
-# The flux in this case is given by Ax*fx, Ay*fy, and Az*fz.
-@inline flux_x(i, j, k, grid::Grid, fx::AbstractArray) = @inbounds AxF(i, j, k, grid) * fx[i, j, k]
-@inline flux_y(i, j, k, grid::Grid, fy::AbstractArray) = @inbounds AyF(i, j, k, grid) * fy[i, j, k]
-@inline flux_z(i, j, k, grid::Grid, fz::AbstractArray) = @inbounds  Az(i, j, k, grid) * fz[i, j, k]
+# The flux in this case is given by (Ax*fx, Ay*fy, and Az*fz).
 
-# Calculate components of the divergence of a flux (fx, fy, fz).
-@inline δx_flux(i, j, k, grid::Grid, fx::AbstractArray) =
-    flux_x(i+1, j, k, grid, fx) - flux_x(i, j, k, grid, fx)
-
-@inline δy_flux(i, j, k, grid::Grid, fy::AbstractArray) =
-    flux_y(i, j+1, k, grid, fx) - flux_y(i, j, k, grid, fy)
-
-@inline function δz_flux(i, j, k, grid::Grid, fz::AbstractArray)
-    if k == grid.Nz
-        return flux_z(i, j, k, grid, fz)
-    else
-        return flux_z(i, j, k, grid, fz) - flux_z(i, j, k+1, grid, fz)
-    end
-end
+@inline flux_x(i, j, k, grid, fx) = @inbounds AxF(i, j, k, grid) * fx[i, j, k]
+@inline flux_y(i, j, k, grid, fy) = @inbounds AyF(i, j, k, grid) * fy[i, j, k]
+@inline flux_z(i, j, k, grid, fz) = @inbounds  Az(i, j, k, grid) * fz[i, j, k]
 
 # Calculate the flux of a tracer quantity Q (e.g. temperature) through the faces
 # of a cell. In this case, the fluxes are given by u*Ax*T̅ˣ, v*Ay*T̅ʸ, and
 # w*Az*T̅ᶻ.
-@inline tracer_flux_x(i, j, k, grid::Grid, u::AbstractArray, Q::AbstractArray) =
-    @inbounds AxF(i, j, k, grid) * u[i, j, k] * ϊx_faa(i, j, k, grid, Q)
+@inline tracer_flux_x(i, j, k, grid, u, c) = @inbounds AxF(i, j, k, grid) * u[i, j, k] * ℑx_faa(i, j, k, grid, c)
+@inline tracer_flux_y(i, j, k, grid, v, c) = @inbounds AyF(i, j, k, grid) * v[i, j, k] * ℑy_afa(i, j, k, grid, c)
+@inline tracer_flux_z(i, j, k, grid, w, c) = @inbounds  Az(i, j, k, grid) * w[i, j, k] * ℑz_aaf(i, j, k, grid, c)
 
-@inline tracer_flux_y(i, j, k, grid::Grid, v::AbstractArray, Q::AbstractArray) =
-    @inbounds AyF(i, j, k, grid) * v[i, j, k] * ϊy_afa(i, j, k, grid, Q)
-
-@inline tracer_flux_z(i, j, k, grid::Grid, w::AbstractArray, Q::AbstractArray) =
-    @inbounds Az(i, j, k, grid)  * w[i, j, k] * ϊz_aaf(i, j, k, grid, Q)
-
-
-# Calculate the components of the divergence of the flux of a tracer quantity Q
-# over a cell.
-@inline δx_tracer_flux(i, j, k, grid::Grid, u::AbstractArray, Q::AbstractArray) =
-    tracer_flux_x(i+1, j, k, grid, u, Q) - tracer_flux_x(i, j, k, grid, u, Q)
-
-@inline δy_tracer_flux(i, j, k, grid::Grid, v::AbstractArray, Q::AbstractArray) =
-    tracer_flux_y(i, j+1, k, grid, v, Q) - tracer_flux_y(i, j, k, grid, v, Q)
-
-@inline function δz_tracer_flux(i, j, k, grid::Grid, w::AbstractArray, Q::AbstractArray)
-    if k == grid.Nz
-        return tracer_flux_z(i, j, k, grid, w, Q)
-    else
-        return tracer_flux_z(i, j, k, grid, w, Q) - tracer_flux_z(i, j, k+1, grid, w, Q)
-    end
-end
+####
+#### Divergence operators
+####
 
 """
-    divh_u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray)
+    div_cc(i, j, k, grid, u, v)
 
 Calculates the horizontal divergence ∇ₕ·(u, v) of the velocity (u, v) via
 
@@ -58,12 +30,13 @@ Calculates the horizontal divergence ∇ₕ·(u, v) of the velocity (u, v) via
 
 which will end up at the location `cca`.
 """
-@inline function divh_u(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray)
-    1/V(i, j, k, grid) * (δx_flux(i, j, k, grid, u) + δy_flux(i, j, k, grid, v))
+@inline function div_cc(i, j, k, grid, u, v)
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, flux_x, u) +
+                          δy_aca(i, j, k, grid, flux_y, v))
 end
 
 """
-    div_ccc(i, j, k, grid::Grid, fx::AbstractArray, fy::AbstractArray, fz::AbstractArray)
+    div_ccc(i, j, k, grid, fx, fy, fz)
 
 Calculates the divergence ∇·f of a vector field f = (fx, fy, fz),
 
@@ -71,30 +44,25 @@ Calculates the divergence ∇·f of a vector field f = (fx, fy, fz),
 
 which will end up at the cell centers `ccc`.
 """
-@inline function div_ccc(i, j, k, grid::Grid, fx::AbstractArray, fy::AbstractArray, fz::AbstractArray)
-    1/V(i, j, k, grid) * (δx_flux(i, j, k, grid, fx) +
-                          δy_flux(i, j, k, grid, fy) +
-                          δz_flux(i, j, k, grid, fz))
+@inline function div_ccc(i, j, k, grid, u, v)
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, flux_x, fx) +
+                          δy_aca(i, j, k, grid, flux_y, fy) +
+                          δz_aac(i, j, k, grid, flux_z, fz))
 end
 
 """
-    div_flux(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray, Q::AbstractArray)
+    div_flux(i, j, k, grid, U, c)
 
 Calculates the divergence of the flux of a tracer quantity Q being advected by
-a velocity field v = (u, v, w), ∇·(vQ),
+a velocity field U = (u, v, w), ∇·(Uc),
 
-    1/V * [δx_caa(Ax * u * ϊx_faa(Q)) + δy_aca(Ay * v * ϊy_afa(Q)) + δz_aac(Az * w * ϊz_aaf(Q))]
+    1/V * [δx_caa(Ax * u * ℑx_faa(c)) + δy_aca(Ay * v * ℑy_afa(c)) + δz_aac(Az * w * ℑz_aaf(c))]
 
 which will end up at the location `ccc`.
 """
-@inline function div_flux(i, j, k, grid::Grid, u::AbstractArray, v::AbstractArray, w::AbstractArray, Q::AbstractArray)
-    if k == 1
-        return @inbounds 1/V(i, j, k, grid) * (δx_tracer_flux(i, j, k, grid, u, Q) +
-                                               δy_tracer_flux(i, j, k, grid, v, Q) -
-                                               tracer_flux_z(i, j, 2, w, Q))
-    else
-        return 1/V(i, j, k, grid) * (δx_tracer_flux(i, j, k, grid, u, Q) +
-                                     δy_tracer_flux(i, j, k, grid, v, Q) +
-                                     δz_tracer_flux(i, j, k, grid, w, Q))
-    end
+@inline function div_flux(i, j, k, grid, u, v, w, c)
+    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, tracer_flux_x, u, c) +
+                          δy_aca(i, j, k, grid, tracer_flux_y, v, c) +
+                          δz_aac(i, j, k, grid, tracer_flux_z, w, c))
 end
+
