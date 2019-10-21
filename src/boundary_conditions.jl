@@ -225,12 +225,12 @@ default_tracer_bcs(tracers, solution_bcs) = DefaultTracerBoundaryConditions(solu
 """
     SolutionBoundaryConditions(tracers, proposal_bcs)
 
-Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with 
-fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions 
-`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w` 
+Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with
+fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions
+`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w`
 and may contain some or all of the boundary conditions on `tracers`.
 """
-SolutionBoundaryConditions(tracers, proposal_bcs) = 
+SolutionBoundaryConditions(tracers, proposal_bcs) =
     with_tracers(tracers, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
 """
@@ -279,7 +279,7 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 #####
 ##### Tracer, tendency and pressure boundary condition "translators":
 #####
-#####   * Default boundary conditions on tracers are periodic or no flux and 
+#####   * Default boundary conditions on tracers are periodic or no flux and
 #####     can be derived from boundary conditions on any field
 #####
 #####   * Boundary conditions on tendency terms are
@@ -293,7 +293,7 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 DefaultTracerBC(::BC) = BoundaryCondition(Flux, nothing)
 DefaultTracerBC(::PBC) = PeriodicBC()
 
-DefaultTracerCoordinateBCs(bcs) = 
+DefaultTracerCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
 
 DefaultTracerBoundaryConditions(field_bcs) =
@@ -307,7 +307,7 @@ TendencyBC(::NPBC) = NoPenetrationBC()
 TendencyCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
 
-TendencyFieldBCs(field_bcs) = 
+TendencyFieldBCs(field_bcs) =
     FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
 
 TendenciesBoundaryConditions(solution_bcs) =
@@ -387,7 +387,7 @@ If `top_bc.condition` is a function, the function must have the signature
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, grid.Nz] += getbc(top_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
@@ -403,18 +403,18 @@ If `bottom_bc.condition` is a function, the function must have the signature
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, 1] -= getbc(bottom_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
     _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
-function _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
             apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
         end
     end
 end
