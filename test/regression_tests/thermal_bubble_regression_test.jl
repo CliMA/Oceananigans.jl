@@ -17,20 +17,25 @@ function run_thermal_bubble_regression_test(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    nc_writer = NetCDFOutputWriter(dir=joinpath(dirname(@__FILE__), "data"),
-                                   prefix="thermal_bubble_regression_",
-                                   frequency=10, padding=2)
-
-    # Uncomment to include a NetCDF output writer that produces the regression.
-    # push!(model.output_writers, nc_writer)
+    outputs = Dict("v"=>model.velocities.v,
+                   "u"=>model.velocities.u,
+                   "w"=>model.velocities.w,
+                   "T"=>model.tracers.T,
+                   "S"=>model.tracers.S)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename="thermal_bubble_regression_test.nc",
+                                   frequency=10)
+    push!(model.output_writers, nc_writer)
 
     time_step!(model, 10, Δt)
 
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
+    close(nc_writer)
+
+    u = read_output(nc_writer, "u")
+    v = read_output(nc_writer, "v")
+    w = read_output(nc_writer, "w")
+    T = read_output(nc_writer, "T")
+    S = read_output(nc_writer, "S")
 
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
