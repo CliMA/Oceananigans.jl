@@ -26,11 +26,5 @@ Base.parent(f::FunctionField) = f
 set!(u, f::FunctionField) = set!(u, (x, y, z) -> f.func(x, y, z, f.clock.time))
 set!(u, f::FunctionField{X, Y, Z, <:Nothing}) where {X, Y, Z} = set!(u, f.func)
 
-function compute(f::FunctionField, arch)
-    computed_f = Field(location(f), arch, f.grid)    
-    set!(computed_f, f)
-    return computed_f
-end
-
 Adapt.adapt_structure(to, f::FunctionField{X, Y, Z}) where {X, Y, Z} =
     FunctionField{X, Y, Z}(adapt(to, func), grid, clock)

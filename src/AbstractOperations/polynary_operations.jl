@@ -4,19 +4,20 @@ struct PolynaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G
        ▶ :: I
     grid :: G
 
-    function PolynaryOperation{X, Y, Z}(op, a, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, length(a), typeof(op), typeof(a), typeof(▶), typeof(grid)}(op, a, ▶, grid)
+    function PolynaryOperation{X, Y, Z}(op, args, ▶, grid) where {X, Y, Z}
+        return new{X, Y, Z, length(args), typeof(op), typeof(args), typeof(▶), typeof(grid)}(op, args, ▶, grid)
     end
 end
 
-function _polynary_operation(L, op, a, Largs, grid) where {X, Y, Z}
-    ▶ = Tuple(interpolation_operator(Li, L) for Li in Largs)
-    return PolynaryOperation{L[1], L[2], L[3]}(op, Tuple(data(ai) for ai in a), ▶, grid)
+function _polynary_operation(L, op, args, Largs, grid) where {X, Y, Z}
+    ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
+    return PolynaryOperation{L[1], L[2], L[3]}(op, Tuple(data(a) for a in args), ▶, grid)
 end
 
 @inline Base.getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
+#=
 const polynary_operators = [:+, :*]
 append!(operators, polynary_operators)
 
@@ -32,17 +33,43 @@ for op in (:+, :*)
         end
     end
 end
+=#
 
+macro polynary(ops...)
+    expr = Expr(:block)
+
+    for op in ops
+        define_polynary_operator = quote
+            import Oceananigans
+
+            function $op(Lop::Tuple, a, b, c...)
+                args = tuple(a, b, c...)
+                Largs = tuple(Oceananigans.location(a), Oceananigans.location(b), 
+                              (Oceananigans.location(ci) for ci in c)...)
+                grid = Oceananigans.AbstractOperations.validate_grid(args...)
+                return Oceananigans.AbstractOperations._polynary_operation(Lop, $op, args, Largs, grid)
+            end
+
+            push!(Oceananigans.AbstractOperations.polynary_operators, $op)
+            push!(Oceananigans.AbstractOperations.operators, $op)
+        end
+
+        push!(expr.args, :($(esc(define_polynary_operator))))
+    end
+
+    push!(expr.args, :(nothing))
+        
+    return expr
+end
+
+const polynary_operators = []
+
+import Base: +, *
+
+@polynary +
+@polynary *
+
+"Adapt `PolynaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =
     PolynaryOperation{X, Y, Z}(adapt(to, polynary.op), adapt(to, polynary.args), 
                                adapt(to, polynary.▶), polynary.grid)
-
-function tree_show(polynary::PolynaryOperation{X, Y, Z, N}, depth, nesting) where {X, Y, Z, N}
-    padding = "    "^(depth-nesting) * "│   "^nesting
-
-    out = string(polynary.op, " at ", show_location(X, Y, Z), '\n',
-        ntuple(i -> padding * "├── " * tree_show(polynary.args[i], depth+1, nesting+1) * '\n', Val(N-1))...,
-                    padding * "└── " * tree_show(polynary.args[N], depth+1, nesting)
-                )
-    return out
-end
