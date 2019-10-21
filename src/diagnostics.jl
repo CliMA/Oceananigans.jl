@@ -164,7 +164,7 @@ A `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
 
 Example
 =======
-
+```julia
 julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
 
 julia> max_u = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
@@ -176,6 +176,7 @@ julia> max_u.data
  3.141592653589793
  3.1415926025389127
  3.1415925323439517
+```
 """
 function Timeseries(diagnostic, model; frequency=nothing, interval=nothing)
     TD = typeof(diagnostic(model))
@@ -199,7 +200,7 @@ A `Timeseries` `Diagnostic` that records a `NamedTuple` of time series of
 
 Example
 =======
-
+```julia
 julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1)); Δt = 1.0;
 
 julia> cfl = Timeseries((adv=AdvectiveCFL(Δt), diff=DiffusiveCFL(Δt)), model; frequency=1);
@@ -215,6 +216,7 @@ julia> cfl.adv
  0.0
  0.0
  0.0
+```
 """
 function Timeseries(diagnostics::NamedTuple, model; frequency=nothing, interval=nothing)
     TT = typeof(model.clock.time)
@@ -254,14 +256,15 @@ end
 An object for calculating the maximum of a `mapping` function applied
 element-wise to `field`.
 
-Example
+Examples
 =======
-
+```julia
 julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
 
 julia> max_abs_u = FieldMaximum(abs, model.velocities.u);
 
 julia> max_w² = FieldMaximum(x->x^2, model.velocities.w);
+```
 """
 struct FieldMaximum{F, M}
     mapping :: M
@@ -274,7 +277,6 @@ end
     NamedTuple{propertynames(m.field)}(maximum(m.mapping, f.data.parent) for f in m.field)
 
 """
-=======
     CFL{D, S}
 
 An object for computing the Courant-Freidrichs-Lewy (CFL) number.
@@ -306,7 +308,7 @@ for advection across a cell.
 
 Example
 =======
-
+```julia
 julia> model = BasicModel(N=(16, 16, 16), L=(8, 8, 8));
 
 julia> cfl = AdvectiveCFL(1.0);
@@ -315,6 +317,7 @@ julia> data(model.velocities.u) .= π;
 
 julia> cfl(model)
 6.283185307179586
+```
 """
 AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 
@@ -327,12 +330,13 @@ for diffusion across a cell associated with `model.closure`.
 
 Example
 =======
-
+```julia
 julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
 
 julia> cfl = DiffusiveCFL(0.1);
 
 julia> cfl(model)
 2.688e-5
+```
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
