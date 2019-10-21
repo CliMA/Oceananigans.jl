@@ -81,7 +81,7 @@ const Neumann = Gradient
 Construct a boundary condition of type `C` with a `condition` that may be given by a
 number, an array, or a function with signature:
 
-    `condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition`
+    condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition
 
 that returns a number and where `i` and `j` are indices along the boundary.
 
@@ -223,13 +223,18 @@ end
 ##### Boundary conditions for model solutions
 #####
 
-"""
-    SolutionBoundaryConditions(u, v, w, T, S)
+default_tracer_bcs(tracers, solution_bcs) = DefaultTracerBoundaryConditions(solution_bcs[1])
 
-Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with solution fields
-`u`, `v`, `w`, `T`, and `S`.
 """
-SolutionBoundaryConditions(u, v, w, T, S) = (u=u, v=v, w=w, T=T, S=S)
+    SolutionBoundaryConditions(tracers, proposal_bcs)
+
+Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with 
+fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions 
+`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w` 
+and may contain some or all of the boundary conditions on `tracers`.
+"""
+SolutionBoundaryConditions(tracers, proposal_bcs) = 
+    with_tracers(tracers, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
 """
     HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs(), ...)
@@ -246,10 +251,9 @@ function HorizontallyPeriodicSolutionBCs(;
     u = HorizontallyPeriodicBCs(),
     v = HorizontallyPeriodicBCs(),
     w = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
-    T = HorizontallyPeriodicBCs(),
-    S = HorizontallyPeriodicBCs()
-   )
-    return SolutionBoundaryConditions(u, v, w, T, S)
+    tracerbcs...)
+
+    return merge((u=u, v=v, w=w), tracerbcs)
 end
 
 """
@@ -267,17 +271,19 @@ function ChannelSolutionBCs(;
     u = ChannelBCs(),
     v = ChannelBCs(north=NoPenetrationBC(), south=NoPenetrationBC()),
     w = ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
-    T = ChannelBCs(),
-    S = ChannelBCs()
-   )
-    return SolutionBoundaryConditions(u, v, w, T, S)
+    tracerbcs...)
+
+    return merge((u=u, v=v, w=w), tracerbcs)
 end
 
 # Default semantics
 const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 
 #####
-##### Tendency and pressure boundary condition "translators":
+##### Tracer, tendency and pressure boundary condition "translators":
+#####
+#####   * Default boundary conditions on tracers are periodic or no flux and 
+#####     can be derived from boundary conditions on any field
 #####
 #####   * Boundary conditions on tendency terms are
 #####     derived from the boundary conditions on their repsective fields.
@@ -286,17 +292,29 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 #####     on the north-south horizontal velocity, v.
 #####
 
+# Tracers
+DefaultTracerBC(::BC) = BoundaryCondition(Flux, nothing)
+DefaultTracerBC(::PBC) = PeriodicBC()
+
+DefaultTracerCoordinateBCs(bcs) = 
+    CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
+
+DefaultTracerBoundaryConditions(field_bcs) =
+    FieldBoundaryConditions(Tuple(DefaultTracerCoordinateBCs(bcs) for bcs in field_bcs))
+
+# Tendencies
 TendencyBC(::BC) = BoundaryCondition(Flux, nothing)
 TendencyBC(::PBC) = PeriodicBC()
 TendencyBC(::NPBC) = NoPenetrationBC()
 
-TendencyCoordinateBCs(bcs) = CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
+TendencyCoordinateBCs(bcs) =
+    CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
 
-TendencyFieldBoundaryConditions(field_bcs) =
+TendencyFieldBCs(field_bcs) = 
     FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
 
 TendenciesBoundaryConditions(solution_bcs) =
-    NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBoundaryConditions(bcs) for bcs in solution_bcs))
+    NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBCs(bcs) for bcs in solution_bcs))
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 # Note that a zero flux boundary condition is simpler than a zero gradient boundary condition.
@@ -316,14 +334,16 @@ end
 
 const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure)}
 
-function ModelBoundaryConditions(solution_boundary_conditions::NamedTuple)
+function ModelBoundaryConditions(tracers, proposal_bcs::NamedTuple)
+    solution_boundary_conditions = SolutionBoundaryConditions(tracers, proposal_bcs)
+
     model_boundary_conditions = (solution = solution_boundary_conditions,
                                  tendency = TendenciesBoundaryConditions(solution_boundary_conditions),
                                  pressure = PressureBoundaryConditions(solution_boundary_conditions.v))
     return model_boundary_conditions
 end
 
-ModelBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
+ModelBoundaryConditions(tracers, model_boundary_conditions::ModelBoundaryConditions) =
     model_boundary_conditions
 
 #####

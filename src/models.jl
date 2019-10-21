@@ -1,7 +1,6 @@
-using .TurbulenceClosures
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F, 
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -28,50 +27,39 @@ end
 
 Construct an `Oceananigans.jl` model on `grid`.
 
-Important keyword arguments include
-
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-              Currently the only option is `RegularCartesianGrid`.
-
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-
-    - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
-
-    - `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
-
-    - `buoyancy`: Buoyancy model parameters.
-
-    - `coriolis`: Parameters for the background rotation rate of the model.
-
-    - `forcing`: User-defined forcing functions that contribute to solution tendencies.
-
-    - `boundary_conditions`: User-defined boundary conditions for model fields. Can be either
-                             `SolutionBoundaryConditions` or `ModelBoundaryConditions`.
-                             See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs` and `ChannelSolutionBCs`.
-
-    - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary
-                    condition functions.
+Keyword arguments
+=================
+- `grid`: (required) The resolution and discrete geometry on which `model` is solved. Currently the only option is
+  `RegularCartesianGrid`.
+- `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+- `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
+- `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
+- `buoyancy`: Buoyancy model parameters.
+- `coriolis`: Parameters for the background rotation rate of the model.
+- `forcing`: User-defined forcing functions that contribute to solution tendencies.
+- `boundary_conditions`: User-defined boundary conditions for model fields. Can be either`SolutionBoundaryConditions`
+  or `ModelBoundaryConditions`. See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs`, and `ChannelSolutionBCs`.
+- `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
 function Model(;
                    grid, # model resolution and domain
            architecture = CPU(), # model architecture
              float_type = Float64,
+                tracers = (:T, :S),
                 closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
                   clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-    # Forcing and boundary conditions for (u, v, w, T, S)
-                forcing = Forcing(),
+                forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
     # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
              velocities = VelocityFields(architecture, grid),
-                tracers = TracerFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
-          diffusivities = TurbulentDiffusivities(architecture, grid, closure),
-            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, 0.125),
+          diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
+            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, tracernames(tracers), 0.125),
     # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
@@ -83,7 +71,13 @@ function Model(;
         end
     end
 
-    boundary_conditions = ModelBoundaryConditions(boundary_conditions)
+    tracers = TracerFields(architecture, grid, tracers)
+    validate_buoyancy(buoyancy, tracernames(tracers))
+
+    # Regularize forcing, boundary conditions, and closure for given tracer fields
+    forcing = ModelForcing(tracernames(tracers), forcing)
+    boundary_conditions = ModelBoundaryConditions(tracernames(tracers), boundary_conditions)
+    closure = with_tracers(tracernames(tracers), closure)
 
     return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
@@ -126,55 +120,41 @@ function BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
 end
 
 """
-    NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+    NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
 Construct a "Non-dimensional" `Model` with resolution `N`, domain extent `L`,
 precision `float_type`, and the four non-dimensional numbers:
 
     * `Re = U λ / ν` (Reynolds number)
     * `Pr = U λ / κ` (Prandtl number)
-    * `Ri = B λ U²`  (Richardson number)
     * `Ro = U / f λ` (Rossby number)
 
 for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`,
-tracer diffusivity `κ`, buoyancy scale (or differential) `B`, and
-Coriolis parameter `f`.
+tracer diffusivity `κ`, and Coriolis parameter `f`. Buoyancy is scaled
+with `λ U²`, so that the Richardson number is `Ri=B`, where `B` is a
+non-dimensional buoyancy scale set by the user via initial conditions or 
+forcing.
 
 Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
-function NonDimensionalModel(; N, L, Re, Pr=0.7, Ri=1, Ro=Inf, float_type=Float64, kwargs...)
+function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
          grid = RegularCartesianGrid(float_type, N, L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
-
-     buoyancy = SeawaterBuoyancy(float_type,
-                    gravitational_acceleration = Ri,
-                    equation_of_state = LinearEquationOfState(float_type, α=1, β=0)
-                )
+     buoyancy = BuoyancyTracer()
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
-                   coriolis=coriolis, buoyancy=buoyancy, skwargs...)
+                   coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
 end
 
-
 #####
-##### Model initialization utilities
+##### Utils
 #####
 
-float_type(m::Model) = eltype(model.grid)
-add_bcs!(model::Model; kwargs...) = add_bcs(model.boundary_conditions; kwargs...)
-
-"""
-    Forcing(; kwargs...)
-
-Return a named tuple of forcing functions
-for each solution field.
-"""
-Forcing(; Fu=zerofunk, Fv=zerofunk, Fw=zerofunk, FT=zerofunk, FS=zerofunk) =
-    (u=Fu, v=Fv, w=Fw, T=FT, S=FS)
+float_type(m::AbstractModel) = eltype(model.grid)
 
 """
     VelocityFields(arch, grid)
@@ -195,11 +175,19 @@ end
 Return a NamedTuple with tracer fields initialized
 as `CellField`s on the architecture `arch` and `grid`.
 """
-function TracerFields(arch, grid)
-    T = CellField(arch, grid)
-    S = CellField(arch, grid)
-    return (T=T, S=S)
+function TracerFields(arch, grid, tracernames)
+    tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
+    return NamedTuple{tracernames}(tracerfields)
 end
+
+TracerFields(arch, grid, ::Union{Tuple{}, Nothing}) = NamedTuple{()}(())
+TracerFields(arch, grid, tracer::Symbol) = TracerFields(arch, grid, tuple(tracer))
+TracerFields(arch, grid, tracers::NamedTuple) = tracers
+
+tracernames(::Nothing) = ()
+tracernames(name::Symbol) = tuple(name)
+tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : names
+tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 """
     PressureFields(arch, grid)
@@ -214,23 +202,25 @@ function PressureFields(arch, grid)
 end
 
 """
-    Tendencies(arch, grid)
+    Tendencies(arch, grid, tracernames)
 
 Return a NamedTuple with tendencies for all solution fields
 (velocity fields and tracer fields), initialized on
 the architecture `arch` and `grid`.
 """
-function Tendencies(arch, grid)
-    Gu = FaceFieldX(arch, grid)
-    Gv = FaceFieldY(arch, grid)
-    Gw = FaceFieldZ(arch, grid)
-    GT = CellField(arch, grid)
-    GS = CellField(arch, grid)
-    return (Gu=Gu, Gv=Gv, Gw=Gw, GT=GT, GS=GS)
+function Tendencies(arch, grid, tracernames)
+
+    velocities = (u = FaceFieldX(arch, grid),
+                  v = FaceFieldY(arch, grid),
+                  w = FaceFieldZ(arch, grid))
+
+    tracers = TracerFields(arch, grid, tracernames)
+
+    return merge(velocities, tracers)
 end
 
 """
-    AdamsBashforthTimestepper(float_type, arch, grid, χ)
+    AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
 
 Return an AdamsBashforthTimestepper object with tendency
 fields on `arch` and `grid` and AB2 parameter `χ`.
@@ -241,8 +231,8 @@ struct AdamsBashforthTimestepper{T, TG}
        χ :: T
 end
 
-function AdamsBashforthTimestepper(float_type, arch, grid, χ)
-   Gⁿ = Tendencies(arch, grid)
-   G⁻ = Tendencies(arch, grid)
+function AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
+   Gⁿ = Tendencies(arch, grid, tracers)
+   G⁻ = Tendencies(arch, grid, tracers)
    return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end

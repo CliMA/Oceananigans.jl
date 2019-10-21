@@ -1,6 +1,6 @@
 EXAMPLES_DIR = "../examples/"
 
-function run_example(replace_strings, example_name)
+function run_example(replace_strings, example_name, module_suffix="")
     example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")
     txt = read(example_filepath, String)
 
@@ -11,7 +11,7 @@ function run_example(replace_strings, example_name)
     test_script_filepath = example_name * "_example_test.jl"
 
     open(test_script_filepath, "w") do f
-        write(f, "module Test_$example_name\n")
+        write(f, "module Test_$example_name" * "_$module_suffix\n")
         write(f, txt)
         write(f, "\nend # module")
     end
@@ -28,8 +28,6 @@ function run_example(replace_strings, example_name)
     return true
 end
 
-
-
 @testset "Examples" begin
     println("Testing examples...")
 
@@ -44,9 +42,20 @@ end
 
             arch == GPU() && push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
 
-            @test run_example(replace_strings, "ocean_wind_mixing_and_convection")
-            rm("ocean_wind_mixing_and_convection.jld2")
+            @test_skip run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
+            rm("ocean_wind_mixing_and_convection.jld2", force=true)
         end
+    end
+
+    @testset "Ocean convection with plankton example" begin
+        println("  Testing ocean convection with plankton example")
+
+        replace_strings = [ ("Nz = 128", "Nz = 16"),
+                           ("end_time = 1day", "end_time=1.0"),
+                           ("time_step!(model, 10", "time_step!(model, 1")
+                          ]
+
+        @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
     end
 
     @testset "Simple diffusion example" begin
@@ -56,7 +65,7 @@ end
                             ("Nt = 1000", "Nt = 2")
                           ]
 
-        @test run_example(replace_strings, "simple_diffusion")
+        @test_skip run_example(replace_strings, "simple_diffusion")
     end
 
     @testset "Internal wave example" begin
@@ -67,7 +76,7 @@ end
                             ("Nt = 200", "Nt = 2"),
                           ]
 
-        @test run_example(replace_strings, "internal_wave")
+        @test_skip run_example(replace_strings, "internal_wave")
     end
 
     @testset "Two-dimensional turbulence example" begin
@@ -78,9 +87,7 @@ end
                             ("Nt = 100", "Nt = 2")
                           ]
 
-        @test run_example(replace_strings, "two_dimensional_turbulence")
+        @test_skip run_example(replace_strings, "two_dimensional_turbulence")
     end
-
-
 
 end
