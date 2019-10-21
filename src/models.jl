@@ -145,7 +145,7 @@ function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwa
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
      buoyancy = BuoyancyTracer()
-
+      tracers = (:b,)
     return Model(; float_type=float_type, grid=grid, closure=closure,
                    coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
 end
