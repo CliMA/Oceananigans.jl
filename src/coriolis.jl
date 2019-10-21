@@ -81,8 +81,10 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
     f_and_β = f₀ != nothing && β != nothing
     planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
 
-    (f_and_β || planet_parameters) && !(f_and_β && planet_parameters) || throw(ArgumentError(
-        "Either keywords f₀ and β must be specified, *or* all of rotation_rate, latitude, and radius."))
+    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) || 
+    (planet_parameters && all(Tuple(p === nothing for p in (f₀, β)))) ||
+        throw(ArgumentError("Either both keywords f₀ and β must be specified, 
+                            *or* all of rotation_rate, latitude, and radius."))
 
     if planet_parameters
         f₀ = 2rotation_rate * sind(latitude)
@@ -93,9 +95,9 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, v)
+    @inbounds (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, v) 
+    @inbounds (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, U.v) 
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::BetaPlane, U) where T = zero(T)
