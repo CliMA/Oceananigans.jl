@@ -40,12 +40,7 @@ append!(operators, derivative_operators)
 ∂y(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
 ∂z(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
 
+"Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
     Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg), 
                         adapt(to, deriv.▶), deriv.grid)
-
-function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
-    padding = "    "^(depth-nesting) * "│   "^nesting
-    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", deriv.▶, '\n',
-                  padding, "└── ", tree_show(deriv.arg, depth+1, nesting))
-end

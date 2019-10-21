@@ -24,15 +24,10 @@ end
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
 
-const unary_operators = [:sqrt, :sin, :cos, :exp]
-append!(operators, unary_operators)
-
 """
-    @unary op
-
     @unary op1 op2 op3...
 
-Turn the unary function `op`, or each unary function in the list `(op1, op2, op3...)` 
+Turn each unary function in the list `(op1, op2, op3...)` 
 into a unary operator on `Oceananigans.Fields` for use in `AbstractOperations`. 
 
 Note: a unary function is a function with one argument: for example, `sin(x)` is a unary function.
@@ -65,47 +60,44 @@ square_it at (Cell, Cell, Cell) via identity
 └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
 
 """
-macro unary(op)
-    esc(quote
-        import Oceananigans
+macro unary(ops...)
+    expr = Expr(:block)
 
-        @inline $op(i, j, k, grid::Oceananigans.AbstractGrid, a) = @inbounds $op(a[i, j, k])
-        @inline $op(i, j, k, grid::Oceananigans.AbstractGrid, a::Number) = $op(a)
+    for op in ops
+        define_unary_operator = quote
+            import Oceananigans
 
-        function $op(Lop::Tuple, a::Oceananigans.AbstractLocatedField)
-            L = Oceananigans.location(a)
-            return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
+            @inline $op(i, j, k, grid::Oceananigans.AbstractGrid, a) = @inbounds $op(a[i, j, k])
+            @inline $op(i, j, k, grid::Oceananigans.AbstractGrid, a::Number) = $op(a)
+
+            """
+                $($op)(Lop::Tuple, a::Oceananigans.AbstractLocatedField)
+
+            Returns an abstract representation of the operator `$($op)` acting on the Oceananigans `Field`
+            `a`, and subsequently interpolated to the location indicated by `Lop`.
+            """
+            function $op(Lop::Tuple, a::Oceananigans.AbstractLocatedField)
+                L = Oceananigans.location(a)
+                return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
+            end
+
+            $op(a::Oceananigans.AbstractLocatedField) = $op(Oceananigans.location(a), a)
+
+            push!(Oceananigans.AbstractOperations.unary_operators, $op)
+            push!(Oceananigans.AbstractOperations.operators, $op)
         end
 
-        $op(a::Oceananigans.AbstractLocatedField) = $op(Oceananigans.location(a), a)
+        push!(expr.args, :($(esc(define_unary_operator))))
+    end
+    
+    push!(expr.args, :(nothing))
 
-        push!(Oceananigans.AbstractOperations.operators, $op)
-
-        nothing
-    end)
-end
-
-macro unary(op1, ops...)
-    expr = Expr(:block)
-    push!(expr.args, :(@unary $(esc(op1));))
-    append!(expr.args, [:(@unary $(esc(op));) for op in ops])
     return expr
 end
 
-# Make some unary operators
-import Base: sqrt, sin, cos, exp, tanh, -
+const unary_operators = []
 
-@unary sqrt sin cos exp tanh
-@unary -
-
+"Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
     UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.arg), 
                             adapt(to, unary.▶), unary.grid)
-
-function tree_show(unary::UnaryOperation{X, Y, Z}, depth, nesting)  where {X, Y, Z}
-    padding = "    "^(depth-nesting) * "│   "^nesting
-
-    return string(unary.op, " at ", show_location(X, Y, Z), " via ", unary.▶, '\n',
-                  padding, "└── ", tree_show(unary.arg, depth+1, nesting))
-end
-
