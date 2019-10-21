@@ -1,3 +1,5 @@
+using Oceananigans: AbstractArchitecture
+
 arch_name(::CPU) = "CPU"
 arch_name(::GPU) = "GPU"
 
