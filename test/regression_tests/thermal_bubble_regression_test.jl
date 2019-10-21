@@ -29,6 +29,8 @@ function run_thermal_bubble_regression_test(arch)
 
     time_step!(model, 10, Δt)
 
+    close(nc_writer)
+
     u = read_output(nc_writer, "u")
     v = read_output(nc_writer, "v")
     w = read_output(nc_writer, "w")
