@@ -176,7 +176,7 @@ function write_output(model, fw::JLD2OutputWriter)
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                               prettytime((t1-t0)/1e9), pretty_filesize(newsz), pretty_filesize(newsz-sz))
 
-    return
+    return nothing
 end
 
 """
@@ -194,7 +194,7 @@ function jld2output!(path, iter, time, data, kwargs)
             file["timeseries/$name/$iter"] = datum
         end
     end
-    return
+    return nothing
 end
 
 function start_next_file(model::Model, fw::JLD2OutputWriter)
@@ -291,7 +291,7 @@ ydim(::Type{Cell}) = "yC"
 zdim(::Type{Face}) = "zF"
 zdim(::Type{Cell}) = "zC"
 
-# This function converts and integer to a range, and nothing to a Colon
+# This function converts an integer to a range, and nothing to a Colon
 get_slice(n::Integer) = n:n
 get_slice(n::UnitRange) = n
 get_slice(n::Nothing) = Colon()
@@ -343,7 +343,7 @@ function write_grid(model; filename="./grid.nc", mode="c",
                    compression=compression, attrib=dim_attrib[dimname])
         end
     end
-    return
+    return nothing
 end
 
 
@@ -474,7 +474,7 @@ function write_output(model, fw::NetCDFOutputWriter)
         fw.dataset[fieldname][:,:,:,fw.len_time_dimension] = view(parentdata(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
-    return
+    return nothing
 end
 
 ####
