@@ -176,7 +176,7 @@ function write_output(model, fw::JLD2OutputWriter)
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                               prettytime((t1-t0)/1e9), pretty_filesize(newsz), pretty_filesize(newsz-sz))
 
-    return
+    return nothing
 end
 
 """
@@ -194,7 +194,7 @@ function jld2output!(path, iter, time, data, kwargs)
             file["timeseries/$name/$iter"] = datum
         end
     end
-    return
+    return nothing
 end
 
 function start_next_file(model::Model, fw::JLD2OutputWriter)
@@ -313,7 +313,7 @@ function write_output(model::Model, fw::NetCDFOutputWriter)
         write_output_netcdf(fw, fields, model.clock.iteration)
     end
 
-    return
+    return nothing
 end
 
 function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
@@ -378,7 +378,7 @@ function write_output_netcdf(fw::NetCDFOutputWriter, fields, iteration)
 
     ncclose(filepath)
 
-    return
+    return nothing
 end
 
 function read_output(fw::NetCDFOutputWriter, field_name, iter)
