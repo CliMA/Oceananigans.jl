@@ -381,7 +381,7 @@ Note that because
 
     `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
-a positive top flux is associated with an *increase* in `Gc` near the top boundary.
+a positive top flux is associated with a *decrease* in `Gc` near the top boundary.
 If `top_bc.condition` is a function, the function must have the signature
 
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
@@ -397,7 +397,7 @@ Note that because
 
     `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
 
-a positive bottom flux is associated with a *decrease* in `Gc` near the bottom boundary.
+a positive bottom flux is associated with an *increase* in `Gc` near the bottom boundary.
 If `bottom_bc.condition` is a function, the function must have the signature
 
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`

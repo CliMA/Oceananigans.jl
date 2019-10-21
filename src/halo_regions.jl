@@ -7,33 +7,33 @@
 # ranges are used to reference the data copied into halos, as this produces views of the correct
 # dimension (eg size = (1, Ny, Nz) for the west halos).
 
- _fill_west_halo!(c, ::FBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[1+H:1+H,  :, :]
-_fill_south_halo!(c, ::FBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, 1+H:1+H,  :]
-  _fill_top_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :,  1+H:1+H]
+  _fill_west_halo!(c, ::FBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[1+H:1+H,  :, :]
+ _fill_south_halo!(c, ::FBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, 1+H:1+H,  :]
+_fill_bottom_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :,  1+H:1+H]
 
-  _fill_east_halo!(c, ::FBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[N+H:N+H, :, :]
- _fill_north_halo!(c, ::FBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, N+H:N+H, :]
-_fill_bottom_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, N+H:N+H]
+ _fill_east_halo!(c, ::FBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[N+H:N+H, :, :]
+_fill_north_halo!(c, ::FBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, N+H:N+H, :]
+  _fill_top_halo!(c, ::FBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, N+H:N+H]
 
 # Periodic boundary conditions
- _fill_west_halo!(c, ::PBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
-_fill_south_halo!(c, ::PBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
-  _fill_top_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
+  _fill_west_halo!(c, ::PBC, H, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
+ _fill_south_halo!(c, ::PBC, H, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
+_fill_bottom_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
 
-  _fill_east_halo!(c, ::PBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
- _fill_north_halo!(c, ::PBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
-_fill_bottom_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
+ _fill_east_halo!(c, ::PBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
+_fill_north_halo!(c, ::PBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
+  _fill_top_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
 # Recall that, by convention, the first grid point (k=1) in an array with a no-penetration boundary
 # condition lies on the boundary, where as the last grid point (k=Nz) lies in the domain.
 
- _fill_west_halo!(c, ::NPBC, H, N) = @views @. c.parent[1:1+H, :, :] = 0
-_fill_south_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, 1:1+H, :] = 0
-  _fill_top_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, 1:1+H] = 0
+  _fill_west_halo!(c, ::NPBC, H, N) = @views @. c.parent[1:1+H, :, :] = 0
+ _fill_south_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, 1:1+H, :] = 0
+_fill_bottom_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, 1:1+H] = 0
 
-  _fill_east_halo!(c, ::NPBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = 0
- _fill_north_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = 0
-_fill_bottom_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = 0
+ _fill_east_halo!(c, ::NPBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = 0
+_fill_north_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = 0
+  _fill_top_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = 0
 
 # Generate functions that implement flux, periodic, and no-penetration boundary conditions
 sides = (:west, :east, :south, :north, :top, :bottom)
@@ -147,13 +147,13 @@ fill_halo_regions!(::Nothing, args...) = nothing
 #### Halo zeroing functions
 ####
 
- zero_west_halo!(c, H, N) = @views @. c[1:H, :, :] = 0
-zero_south_halo!(c, H, N) = @views @. c[:, 1:H, :] = 0
-  zero_top_halo!(c, H, N) = @views @. c[:, :, 1:H] = 0
+  zero_west_halo!(c, H, N) = @views @. c[1:H, :, :] = 0
+ zero_south_halo!(c, H, N) = @views @. c[:, 1:H, :] = 0
+zero_bottom_halo!(c, H, N) = @views @. c[:, :, 1:H] = 0
 
-  zero_east_halo!(c, H, N) = @views @. c[N+H+1:N+2H, :, :] = 0
- zero_north_halo!(c, H, N) = @views @. c[:, N+H+1:N+2H, :] = 0
-zero_bottom_halo!(c, H, N) = @views @. c[:, :, N+H+1:N+2H] = 0
+ zero_east_halo!(c, H, N) = @views @. c[N+H+1:N+2H, :, :] = 0
+zero_north_halo!(c, H, N) = @views @. c[:, N+H+1:N+2H, :] = 0
+  zero_top_halo!(c, H, N) = @views @. c[:, :, N+H+1:N+2H] = 0
 
 function zero_halo_regions!(c::AbstractArray, grid)
       zero_west_halo!(c, grid.Hx, grid.Nx)
