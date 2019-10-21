@@ -29,7 +29,7 @@ Returns a parameter object for constant rotation at the angular frequency
 Also called `FPlane`, after the "f-plane" approximation for the local effect of 
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(T=Float64; f) 
+function FPlane(T::DataType=Float64; f) 
     return FPlane{T}(f)
 end
 
