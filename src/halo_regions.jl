@@ -72,7 +72,7 @@ function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return
+    return nothing
 end
 
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
@@ -85,17 +85,17 @@ function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
             end
         end
     end
-    return
+    return nothing
 end
 
 function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
     @launch device(arch) config=launch_config(grid, 2) _fill_top_halo!(c, bc, grid, args...)
-    return
+    return nothing
 end
 
 function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...)
     @launch device(arch) config=launch_config(grid, 2) _fill_bottom_halo!(c, bc, grid, args...)
-    return
+    return nothing
 end
 
 ####
@@ -112,7 +112,7 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
 
      fill_bottom_halo!(c, fieldbcs.z.bottom, arch, grid, args...)
         fill_top_halo!(c, fieldbcs.z.top,    arch, grid, args...)
-    return
+    return nothing
 end
 
 """
@@ -125,7 +125,7 @@ function fill_halo_regions!(fields::NamedTuple, bcs, arch, grid, args...)
     for (field, fieldbcs) in zip(fields, bcs)
         fill_halo_regions!(field, fieldbcs, arch, grid, args...)
     end
-    return
+    return nothing
 end
 
 """
