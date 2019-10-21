@@ -1,3 +1,9 @@
+"""
+    UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
+
+An abstract representation of a unary operation on an `AbstractField`; or a function
+`f(x)` with on argument acting on `x::AbstractField`.
+"""
 struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
      arg :: A
@@ -9,9 +15,11 @@ struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
-function _unary_operation(L, op, arg, Larg, grid) where {X, Y, Z}
+"""Create a unary operation for `operator` acting on `arg` which interpolates the
+result from `Larg` to `L`."""
+function _unary_operation(L, operator, arg, Larg, grid) where {X, Y, Z}
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(op, data(arg), ▶, grid)
+    return UnaryOperation{L[1], L[2], L[3]}(operator, data(arg), ▶, grid)
 end
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
