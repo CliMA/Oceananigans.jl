@@ -104,7 +104,6 @@ end
 
 "Fill halo regions in x, y, and z for a given field."
 function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
-
       fill_west_halo!(c, fieldbcs.x.left,  arch, grid, args...)
       fill_east_halo!(c, fieldbcs.x.right, arch, grid, args...)
 
