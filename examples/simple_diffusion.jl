@@ -22,7 +22,7 @@ using PyPlot, Printf
 
 # ## Instantiating and configuring a `Model`
 #
-# To begin using Oceananigans, we instantiate a `Model` by calling the 
+# To begin using Oceananigans, we instantiate a `Model` by calling the
 # `Model` constructor:
 
 model = Model(
@@ -30,13 +30,13 @@ model = Model(
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
 
-# The keyword arguments `grid` and `closure` indicate that 
+# The keyword arguments `grid` and `closure` indicate that
 # our model grid is Cartesian with uniform grid spacing, that our diffusive
-# stress and tracer fluxes are determined by diffusion with a constant 
+# stress and tracer fluxes are determined by diffusion with a constant
 # diffusivity `κ` (note that we do not use viscosity in this example).
 
 # Note that by default, a `Model` has no-flux boundary condition on all
-# variables. Next, we set an initial condition on our "passive tracer", 
+# variables. Next, we set an initial condition on our "passive tracer",
 # temperature. Our objective is to observe the diffusion of a Gaussian.
 
 ## Build a Gaussian initial condition function with width `δ`:
@@ -52,7 +52,7 @@ set!(model, T=Tᵢ)
 # `time_step!`, with a time-step size that ensures numerical stability.
 
 ## Time-scale for diffusion across a grid cell
-cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ
+cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 
 ## The function `time_step!` executes `Nt` time steps with step size `Δt`
 ## using a second-order Adams-Bashforth method
@@ -78,6 +78,7 @@ plot(Tᵢ.(0, 0, model.grid.zC), model.grid.zC, "--", label=L"t=0")
 ## Plot current solution
 plot(data(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
 legend()
+gcf()
 
 # Interesting! Running the model even longer makes even more interesting results.
 
@@ -87,3 +88,4 @@ for i = 1:3
 end
 
 legend()
+gcf()

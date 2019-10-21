@@ -111,27 +111,23 @@ that returns the data to be saved.
 
 Keyword arguments
 =================
-
-    - `frequency::Int`   : Save output every `n` model iterations.
-    - `interval::Int`    : Save output every `t` units of model clock time.
-    - `dir::String`      : Directory to save output to. Default: "." (current working
-                           directory).
-    - `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
-    - `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2
-                           output file is initialized. Default: `noinit(args...) = nothing`.
-    - `including::Array` : List of model properties to save with every file. By default, the
-                           grid, equation of state, coriolis parameters, buoyancy parameters, 
-                           and turbulence closure parameters are saved.
-    - `part::Int`        : The starting part number used if `max_filesize` is finite.
-                           Default: 1.
-    - `max_filesize::Int`: The writer will stop writing to the output file once the file size
-                           exceeds `max_filesize`, and write to a new one with a consistent
-                           naming scheme ending in `part1`, `part2`, etc. Defaults to `Inf`.
-    - `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-    - `async::Bool`      : Write output asynchronously. Default: `false`.
-    - `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write
-                           times and file sizes. Default: `false`.
-    - `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
+- `frequency::Int`   : Save output every `n` model iterations.
+- `interval::Int`    : Save output every `t` units of model clock time.
+- `dir::String`      : Directory to save output to. Default: "." (current working directory).
+- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
+- `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
+                       Default: `noinit(args...) = nothing`.
+- `including::Array` : List of model properties to save with every file. By default, the grid, equation of state,
+                       Coriolis parameters, buoyancy parameters, and turbulence closure parameters are saved.
+- `part::Int`        : The starting part number used if `max_filesize` is finite. Default: 1.
+- `max_filesize::Int`: The writer will stop writing to the output file once the file size exceeds `max_filesize`, and
+                       write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc. Defaults to
+                       `Inf`.
+- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
+- `async::Bool`      : Write output asynchronously. Default: `false`.
+- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write times and file sizes.
+                       Default: `false`.
+- `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
                           init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
@@ -180,7 +176,7 @@ function write_output(model, fw::JLD2OutputWriter)
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                               prettytime((t1-t0)/1e9), pretty_filesize(newsz), pretty_filesize(newsz-sz))
 
-    return
+    return nothing
 end
 
 """
@@ -198,7 +194,7 @@ function jld2output!(path, iter, time, data, kwargs)
             file["timeseries/$name/$iter"] = datum
         end
     end
-    return
+    return nothing
 end
 
 function start_next_file(model::Model, fw::JLD2OutputWriter)
@@ -295,14 +291,14 @@ ydim(::Type{Cell}) = "yC"
 zdim(::Type{Face}) = "zF"
 zdim(::Type{Cell}) = "zC"
 
-# This function converts and integer to a range, and nothing to a Colon
+# This function converts an integer to a range, and nothing to a Colon
 get_slice(n::Integer) = n:n
 get_slice(n::UnitRange) = n
 get_slice(n::Nothing) = Colon()
 
 """
     write_grid(model; filename="grid.nc", mode="c", 
-               compression=0, attrib=Dict(), slice_kw...)
+               compression=0, attributes=Dict(), slice_kw...)
 
 Writes a grid.nc file that contains all the dimensions of the domain.
 
@@ -312,10 +308,10 @@ Keyword arguments
     - `filename::String`  : File name to be saved under
     - `mode::String`      : Netcdf file is opened in either clobber ("c") or append ("a") mode (Default: "c" )
     - `compression::Int`  : Defines the compression level of data (0-9, default 0)
-    - `attrib::Dict`      : Attributes (default: Dict())
+    - `attributes::Dict`  : Attributes (default: Dict())
 """
 function write_grid(model; filename="./grid.nc", mode="c",
-                    compression=0, attrib=Dict(), slice_kw...)
+                    compression=0, attributes=Dict(), slice_kw...)
     dimensions = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
@@ -341,13 +337,13 @@ function write_grid(model; filename="./grid.nc", mode="c",
     end
 
     # Writes the sliced dimensions to the specified netcdf file
-    Dataset(filename, mode, attrib=attrib) do ds
+    Dataset(filename, mode, attrib=attributes) do ds
         for (dimname, dimarray) in dimensions
             defVar(ds, dimname, dimarray, (dimname,),
                    compression=compression, attrib=dim_attrib[dimname])
         end
     end
-    return
+    return nothing
 end
 
 
@@ -370,7 +366,7 @@ end
 
 """
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                                   clobber=true, globalattrib=Dict(), outputattrib=nothing, slice_kw...)
+                                   clobber=true, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
 
 Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which can be a
 `Dict` or `NamedTuple`) to a NC file, where `label` is a symbol that labels the output and
@@ -379,25 +375,25 @@ Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (
 Keyword arguments
 =================
 
-    - `filename::String`    : Directory to save output to. Default: "." (current working directory).
-    - `frequency::Int`      : Save output every `n` model iterations.
-    - `interval::Int`       : Save output every `t` units of model clock time.
-    - `clobber::Bool`       : Remove existing files if their filenames conflict. Default: `false`.
-    - `compression::Int`    : Determines the compression level of data (0-9, default 0)
-    - `globalattrib::Dict`  : Dict of model properties to save with every file (deafult: Dict())
-    - `outputattrib::Dict`  : Dict of attributes to be saved with each field variable (reasonable
-                              defaults are provided for velocities, temperature, and salinity)
-    - `slice_kw`            : `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
-                              All other keywords are ignored.
-                              e.g. `xC = 3:10` will only produce output along the dimension `xC` between
-                              indices 3 and 10 for all fields with `xC` as one of their dimensions.
-                              `xC = 1` is treated like `xC = 1:1`.
-                              Multiple dimensions can be sliced in one call. Not providing slices writes
-                              output over the entire domain.
+    - `filename::String`         : Directory to save output to. Default: "." (current working directory).
+    - `frequency::Int`           : Save output every `n` model iterations.
+    - `interval::Int`            : Save output every `t` units of model clock time.
+    - `clobber::Bool`            : Remove existing files if their filenames conflict. Default: `false`.
+    - `compression::Int`         : Determines the compression level of data (0-9, default 0)
+    - `global_attributes::Dict`  : Dict of model properties to save with every file (deafult: Dict())
+    - `output_attributes::Dict`  : Dict of attributes to be saved with each field variable (reasonable
+                                   defaults are provided for velocities, temperature, and salinity)
+    - `slice_kw`                 : `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
+                                   All other keywords are ignored.
+                                   e.g. `xC = 3:10` will only produce output along the dimension `xC` between
+                                   indices 3 and 10 for all fields with `xC` as one of their dimensions.
+                                   `xC = 1` is treated like `xC = 1:1`.
+                                   Multiple dimensions can be sliced in one call. Not providing slices writes
+                                   output over the entire domain.
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                        clobber=true, globalattrib=Dict(), outputattrib=nothing, compression=0, slice_kw...)
+                        clobber=true, global_attributes=Dict(), output_attributes=nothing, compression=0, slice_kw...)
 
     validate_interval(interval, frequency)
 
@@ -405,7 +401,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
 
     # Initiates the output file with dimensions
     write_grid(model; filename=filename, mode=mode,
-               compression=compression, attrib=globalattrib, slice_kw...)
+               compression=compression, attrib=global_attributes, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
@@ -415,8 +411,8 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     defVar(dataset, "Time", Float64, ("Time",)); sync(dataset)
     len_time_dimension = 0 # Number of time-steps so far
 
-    if isa(outputattrib, Nothing)
-        outputattrib = Dict("u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
+    if isa(output_attributes, Nothing)
+        output_attributes = Dict("u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
                             "v" => Dict("longname" => "Velocity in the y-direction", "units" => "m/s"),
                             "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
                             "T" => Dict("longname" => "Temperature", "units" => "K"),
@@ -427,7 +423,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     for (fieldname, field) in outputs
         dtype = eltype(parentdata(field))
         defVar(dataset, fieldname, dtype, (netcdf_spatial_dimensions(field)...,"Time"),
-               compression=compression, attrib=outputattrib[fieldname])
+               compression=compression, attrib=output_attributes[fieldname])
     end
     sync(dataset)
 
@@ -478,7 +474,7 @@ function write_output(model, fw::NetCDFOutputWriter)
         fw.dataset[fieldname][:,:,:,fw.len_time_dimension] = view(parentdata(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
-    return
+    return nothing
 end
 
 ####
@@ -523,21 +519,14 @@ file (and you will have to manually restore them).
 
 Keyword arguments
 =================
-
-    - `frequency::Int`   : Save output every `n` model iterations.
-    - `interval::Int`    : Save output every `t` units of model clock time.
-    - `dir::String`      : Directory to save output to. Default: "." (current working
-                           directory).
-    - `prefix::String`   : Descriptive filename prefixed to all output files.
-                           Default: "checkpoint".
-    - `force::Bool`      : Remove existing files if their filenames conflict.
-                           Default: `false`.
-    - `verbose::Bool`    : Log what the output writer is doing with statistics on
-                           compute/write times and file sizes. Default: `false`.
-    - `properties::Array`: List of model properties to checkpoint. By default,
-                           properties = [:architecture, :boundary_conditions, :grid,
-                                         :clock, :eos, :constants, :closure, :velocities,
-                                         :tracers, :timestepper]
+- `frequency::Int`   : Save output every `n` model iterations.
+- `interval::Int`    : Save output every `t` units of model clock time.
+- `dir::String`      : Directory to save output to. Default: "." (current working directory).
+- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "checkpoint".
+- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
+- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write times and file sizes.
+                       Default: `false`.
+- `properties::Array`: List of model properties to checkpoint.
 """
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
                       verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,

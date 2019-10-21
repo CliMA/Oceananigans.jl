@@ -1,28 +1,30 @@
-struct RozemaAnisotropicMinimumDissipation{T} <: AbstractAnisotropicMinimumDissipation{T}
-     C :: T
-    Cb :: T
-     ν :: T
-     κ :: T
+struct RozemaAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
+     C :: FT
+    Cb :: FT
+     ν :: FT
+     κ :: K
+    function RozemaAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ) where FT
+        return new{FT, typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
+    end
 end
 
 """
-    RozemaAnisotropicMinimumDissipation(T=Float64; C=0.33, ν=1.05e-6, κ=1.46e-7)
+    RozemaAnisotropicMinimumDissipation(FT=Float64; C=0.33, ν=1.05e-6, κ=1.46e-7)
 
-Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `T` with
+Returns a `RozemaAnisotropicMinimumDissipation` closure object of type `FT` with
 
     * `C` : Poincaré constant
     * `ν` : 'molecular' background viscosity
-    * `κ` : 'molecular' background diffusivity
+    * `κ` : 'molecular' background diffusivity for each tracer
 
 See Rozema et al., " (2015)
 """
-function RozemaAnisotropicMinimumDissipation(FT=Float64;
-         C = 0.33,
-        Cb = 0.0,
-         ν = ν₀,
-         κ = κ₀
-    )
-    return RozemaAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+RozemaAnisotropicMinimumDissipation(FT=Float64; C=0.33, Cb=0.0, ν=ν₀, κ=κ₀) =
+    RozemaAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+
+function with_tracers(tracers, closure::RozemaAnisotropicMinimumDissipation{FT}) where FT
+    κ = tracer_diffusivities(tracers, closure.κ)
+    return RozemaAnisotropicMinimumDissipation{FT}(closure.C, closure.Cb, closure.ν, κ)
 end
 
 # Bindings
@@ -41,46 +43,45 @@ const Δx_ccf = Δx
 const Δy_ccf = Δy
 const Δz_ccf = Δz
 
-function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, ::RAMD)
-     νₑ = CellField(arch, grid)
-    κTₑ = CellField(arch, grid)
-    κSₑ = CellField(arch, grid)
-    return (νₑ=νₑ, κₑ=(T=κTₑ, S=κSₑ))
+function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::RAMD)
+    νₑ = CellField(arch, grid)
+    κₑ = TracerFields(arch, grid, tracers)
+    return (νₑ=νₑ, κₑ=κₑ)
 end
 
-@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT
+@inline function ν_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, buoyancy, U, C) where FT
     q = tr_∇u_ccc(i, j, k, grid, U.u, U.v, U.w)
 
     if q == 0
-        νˢᶠˢ = zero(FT)
+        νˢᵍˢ = zero(FT)
     else
         r = Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, U.u, U.v, U.w)
-        ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, U.w, Φ)
-        νˢᶠˢ = -closure.C * (r - closure.Cb * ζ) / q
+        ζ = Δ²ᵢ_wᵢ_bᵢ_ccc(i, j, k, grid, closure, buoyancy, U.w, C)
+        νˢᵍˢ = -closure.C * (r - closure.Cb * ζ) / q
     end
 
-    return max(zero(FT), νˢᶠˢ) + closure.ν
+    return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, buoyancy, U, Φ) where FT
-    σ = θᵢ²_ccc(i, j, k, grid, c) # Tracer variance
+@inline function κ_ccc(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, c, ::Val{tracer_index}, 
+                       U) where {FT, tracer_index}
+
+    @inbounds κ = closure.κ[tracer_index]
+
+    σ = θᵢ²_ccc(i, j, k, grid, c) 
 
     if σ == 0
-        κˢᶠˢ = zero(FT)
+        κˢᵍˢ = zero(FT)
     else
         ϑ =  Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccc(i, j, k, grid, closure, U.u, U.v, U.w, c)
-        κˢᶠˢ = - closure.C * ϑ / σ
+        κˢᵍˢ = - closure.C * ϑ / σ
     end
 
-    return max(zero(FT), κˢᶠˢ) + closure.κ
+    return max(zero(FT), κˢᵍˢ) + κ
 end
 
 #####
-##### *** 30 terms ***
-#####
-
-#####
-##### the heinous
+##### The *** 30 terms *** of AMD
 #####
 
 @inline function Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccc(i, j, k, grid, closure, u, v, w)
@@ -124,49 +125,6 @@ end
 
     return Δx²_uᵢ₁_uⱼ₁_Σ₁ⱼ + Δy²_uᵢ₂_uⱼ₂_Σ₂ⱼ + Δz²_uᵢ₃_uⱼ₃_Σ₃ⱼ
 end
-
-@inline function Δ²ₐ_uᵢₐ_uⱼₐ_Σᵢⱼ_ccf(i, j, k, grid, closure, u, v, w)
-    Δx = Δx_ccf(i, j, k, grid, closure)
-    Δy = Δy_ccf(i, j, k, grid, closure)
-    Δz = Δz_ccf(i, j, k, grid, closure)
-
-    ijk = (i, j, k, grid)
-    uvw = (u, v, w)
-    ijkuvw = (i, j, k, grid, u, v, w)
-
-    Δx²_uᵢ₁_uⱼ₁_Σ₁ⱼ = Δx^2 * (
-         ▶z_aaf(ijk..., Σ₁₁, uvw...) *   ▶z_aaf(ijk..., ∂x_u², uvw...)
-      +  ▶z_aaf(ijk..., Σ₂₂, uvw...) * ▶xyz_ccf(ijk..., ∂x_v², uvw...)
-      +  ▶z_aaf(ijk..., Σ₃₃, uvw...) *   ▶x_caa(ijk..., ∂x_w², uvw...)
-
-      +  2 *   ▶z_aaf(ijk..., ∂x_u, uvw...) * ▶xyz_ccf(ijk..., ∂x_v_Σ₁₂, uvw...)
-      +  2 *   ▶z_aaf(ijk..., ∂x_u, uvw...) *   ▶x_caa(ijk..., ∂x_w_Σ₁₃, uvw...)
-      +  2 * ▶xyz_ccf(ijk..., ∂x_v, uvw...) *   ▶x_caa(ijk..., ∂x_w, uvw...) * ▶y_aca(ijk..., Σ₂₃, uvw...)
-    )
-
-    Δy²_uᵢ₂_uⱼ₂_Σ₂ⱼ = Δy^2 * (
-      + ▶z_aaf(ijk..., Σ₁₁, uvw...) * ▶xyz_ccf(ijk..., ∂y_u², uvw...)
-      + ▶z_aaf(ijk..., Σ₂₂, uvw...) *   ▶z_aaf(ijk..., ∂y_v², uvw...)
-      + ▶z_aaf(ijk..., Σ₃₃, uvw...) *   ▶y_aca(ijk..., ∂y_w², uvw...)
-
-      +  2 *  ▶z_aaf(ijk..., ∂y_v, uvw...) * ▶xyz_ccf(ijk..., ∂y_u_Σ₁₂, uvw...)
-      +  2 * ▶xy_cca(ijk..., ∂y_u, uvw...) *   ▶y_aca(ijk..., ∂y_w, uvw...) * ▶x_caa(ijk..., Σ₁₃, uvw...)
-      +  2 *  ▶z_aaf(ijk..., ∂y_v, uvw...) *   ▶y_aca(ijk..., ∂y_w_Σ₂₃, uvw...)
-    )
-
-    Δz²_uᵢ₃_uⱼ₃_Σ₃ⱼ = Δz^2 * (
-      + ▶z_aaf(ijk..., Σ₁₁, uvw...) * ▶x_caa(ijk..., ∂z_u², uvw...)
-      + ▶z_aaf(ijk..., Σ₂₂, uvw...) * ▶y_aca(ijk..., ∂z_v², uvw...)
-      + ▶z_aaf(ijk..., Σ₃₃, uvw...) * ▶z_aaf(ijk..., ∂z_w², uvw...)
-
-      +  2 * ▶x_caa(ijk..., ∂z_u, uvw...) * ▶y_aca(ijk..., ∂z_v, uvw...) * ▶xyz_ccf(ijk..., Σ₁₂, uvw...)
-      +  2 * ▶z_aaf(ijk..., ∂z_w, uvw...) * ▶x_caa(ijk..., ∂z_u_Σ₁₃, uvw...)
-      +  2 * ▶z_aaf(ijk..., ∂z_w, uvw...) * ▶y_aca(ijk..., ∂z_v_Σ₂₃, uvw...)
-    )
-
-    return Δx²_uᵢ₁_uⱼ₁_Σ₁ⱼ + Δy²_uᵢ₂_uⱼ₂_Σ₂ⱼ + Δz²_uᵢ₃_uⱼ₃_Σ₃ⱼ
-end
-
 
 #####
 ##### trace(∇u) = uᵢⱼ uᵢⱼ
@@ -242,80 +200,8 @@ end
     return Δx²_cx_ux + Δy²_cy_uy + Δz²_cz_uz
 end
 
-@inline function Δ²ⱼ_uᵢⱼ_cⱼ_cᵢ_ccf(i, j, k, grid, closure, u, v, w, c)
-    ijk = (i, j, k, grid)
-
-    Δx = Δx_ccf(ijk..., closure)
-    Δy = Δy_ccf(ijk..., closure)
-    Δz = Δz_ccf(ijk..., closure)
-
-    Δx²_cx_ux = Δx^2 * (
-            ▶z_aaf(ijk..., ∂x_caa, u) * ▶xz_caf(ijk..., ∂x_c², c)
-        + ▶xyz_ccf(ijk..., ∂x_v, v)   * ▶xz_caf(ijk..., ∂x_faa, c) * ▶yz_acf(ijk..., ∂y_afa, c)
-        +   ▶x_caa(ijk..., ∂x_w, w)   * ▶xz_caf(ijk..., ∂x_faa, c) *  ∂z_aaf(ijk..., c)
-    )
-
-    Δy²_cy_uy = Δy^2 * (
-          ▶xyz_ccf(ijk..., ∂y_u, u) * ▶yz_acf(ijk..., ∂y_afa, c) * ▶xz_caf(ijk..., ∂x_faa, c)
-        +   ∂y_aca(ijk..., v)       * ▶yz_acf(ijk..., ∂y_c², c)
-        +   ▶x_caa(ijk..., ∂y_w, w) * ▶yz_acf(ijk..., ∂y_afa, c) * ∂z_aaf(ijk..., c)
-    )
-
-    Δz²_cz_uz = Δz^2 * (
-          ▶x_caa(ijk..., ∂z_u, u)   * ∂z_aaf(ijk..., c) * ▶xz_caf(ijk..., ∂x_faa, c)
-        + ▶y_aca(ijk..., ∂z_v, v)   * ∂z_aaf(ijk..., c) * ▶yz_acf(ijk..., ∂y_afa, c)
-        + ▶z_aaf(ijk..., ∂z_aac, w) *  ∂z_c²(ijk..., c)
-    )
-
-    return Δx²_cx_ux + Δy²_cy_uy + Δz²_cz_uz
-end
-
 @inline θᵢ²_ccc(i, j, k, grid, c) = (
       ▶x_caa(i, j, k, grid, ∂x_c², c)
     + ▶y_aca(i, j, k, grid, ∂y_c², c)
     + ▶z_aac(i, j, k, grid, ∂z_c², c)
 )
-
-@inline θᵢ²_ccf(i, j, k, grid, c) = (
-      ▶xz_caf(i, j, k, grid, ∂x_c², c)
-    + ▶yz_acf(i, j, k, grid, ∂y_c², c)
-    + ∂z_c²(i, j, k, grid, c)
-)
-
-"""
-    ∇_κ_∇T(i, j, k, grid, T, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇T(i, j, k, grid, T, closure::RAMD, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, T, diffusivities.κₑ.T, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, T, diffusivities.κₑ.T, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, T, diffusivities.κₑ.T, closure)
-)
-
-"""
-    ∇_κ_∇S(i, j, k, grid, S, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ S)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇S(i, j, k, grid, S, closure::RAMD, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, S, diffusivities.κₑ.S, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, S, diffusivities.κₑ.S, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, S, diffusivities.κₑ.S, closure)
-)
-
-# This function assumes rigid top and bottom boundary conditions
-function calc_diffusivities!(K, grid, closure::RAMD, buoyancy, U, Φ)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds K.νₑ[i, j, k]   = ν_ccc(i, j, k, grid, closure, nothing, buoyancy, U, Φ)
-                @inbounds K.κₑ.T[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.T,     buoyancy, U, Φ)
-                @inbounds K.κₑ.S[i, j, k] = κ_ccc(i, j, k, grid, closure, Φ.S,     buoyancy, U, Φ)
-            end
-        end
-    end
-    return nothing
-end
