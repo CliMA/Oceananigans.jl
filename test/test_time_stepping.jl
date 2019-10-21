@@ -8,15 +8,15 @@ end
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
     model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       forcing=Forcing(FT=add_ones))
+                       forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
-    @test all(data(model.timestepper.Gⁿ.Gu) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.Gv) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.Gw) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.GT) .≈ 1.0)
-    @test all(data(model.timestepper.Gⁿ.GS) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.u) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.v) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.w) .≈ 0)
+    @test all(data(model.timestepper.Gⁿ.T) .≈ 1.0)
+    @test all(data(model.timestepper.Gⁿ.S) .≈ 0)
 
     return nothing
 end
@@ -42,7 +42,7 @@ function compute_w_from_continuity(arch, FT)
 
     fill_halo_regions!(u.data, bcs.u, arch, grid)
     fill_halo_regions!(v.data, bcs.v, arch, grid)
-    compute_w_from_continuity!(grid, (u=u.data, v=v.data, w=w.data))
+    compute_w_from_continuity!((u=u.data, v=v.data, w=w.data), grid)
 
     fill_halo_regions!(w.data, bcs.w, arch, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
