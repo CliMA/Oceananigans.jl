@@ -95,9 +95,9 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
+    @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, U.v) 
+    @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, U.u) 
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::BetaPlane, U) where T = zero(T)
