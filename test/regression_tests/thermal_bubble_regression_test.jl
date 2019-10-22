@@ -3,8 +3,8 @@ function run_thermal_bubble_regression_test(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
-                       coriolis=FPlane(f=1e-4))
+    model = BasicModel(architecture = arch, N = (Nx, Ny, Nz), L = (Lx, Ly, Lz),
+                       ν = 4e-2, κ = 4e-2, coriolis = FPlane(f = 1e-4))
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
@@ -16,25 +16,28 @@ function run_thermal_bubble_regression_test(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     model.tracers.T.data[i1:i2, j1:j2, k1+1:k2+1] .+= 0.01
 
-    outputs = Dict("v"=>model.velocities.v,
-                   "u"=>model.velocities.u,
-                   "w"=>model.velocities.w,
-                   "T"=>model.tracers.T,
-                   "S"=>model.tracers.S)
-    nc_writer = NetCDFOutputWriter(model, outputs,
-                                   filename="thermal_bubble_regression_test.nc",
-                                   frequency=10)
-    push!(model.output_writers, nc_writer)
+    # Uncomment to generate regression data.
+    # outputs = Dict("v" => model.velocities.v,
+    #                "u" => model.velocities.u,
+    #                "w" => model.velocities.w,
+    #                "T" => model.tracers.T,
+    #                "S" => model.tracers.S)
+    #
+    # nc_writer = NetCDFOutputWriter(model, outputs,
+    #                                filename="data/thermal_bubble_regression_10.nc",
+    #                                frequency=10)
+    # push!(model.output_writers, nc_writer)
 
     time_step!(model, 10, Δt)
 
-    close(nc_writer)
+    regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression_10.nc")
+    ds = Dataset(regression_data_filepath, "r")
 
-    u = read_output(nc_writer, "u")
-    v = read_output(nc_writer, "v")
-    w = read_output(nc_writer, "w")
-    T = read_output(nc_writer, "T")
-    S = read_output(nc_writer, "S")
+    u = ds["u"][:]
+    v = ds["v"][:]
+    w = ds["w"][:]
+    T = ds["T"][:]
+    S = ds["S"][:]
 
     u = reverse(u; dims=3)
     v = reverse(v; dims=3)
