@@ -6,6 +6,11 @@
 @inline y_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{T}, ::Nothing, U) where T = zero(T)
 
+#####
+##### The 'FPlane' approximation. This is equivalent to a model with a constant
+##### rotation rate around its vertical axis.
+#####
+
 """
     FPlane{T} <: AbstractRotation
 
