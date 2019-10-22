@@ -15,6 +15,7 @@ using
 using Statistics: mean
 using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
+using NCDatasets: Dataset
 
 using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
                     velocity_div!, compute_w_from_continuity!,
