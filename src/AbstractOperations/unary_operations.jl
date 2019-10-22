@@ -41,13 +41,16 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
+7-element Array{Any,1}:
+ :sqrt
+ :sin
+ :cos
+ :exp
+ :tanh
+ :-
+ :square_it
 
-julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1)))
-Field at (Cell, Cell, Cell)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-└── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
-    ├── size: (1, 1, 16)
-    └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1)));
 
 julia> square_it(c)
 UnaryOperation at (Cell, Cell, Cell)
@@ -58,7 +61,6 @@ UnaryOperation at (Cell, Cell, Cell)
 
 square_it at (Cell, Cell, Cell) via identity
 └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-
 """
 macro unary(ops...)
     expr = Expr(:block)
@@ -83,14 +85,12 @@ macro unary(ops...)
 
             $op(a::Oceananigans.AbstractLocatedField) = $op(Oceananigans.location(a), a)
 
-            push!(Oceananigans.AbstractOperations.unary_operators, $op)
-            push!(Oceananigans.AbstractOperations.operators, $op)
+            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.operators, Symbol($op))
+            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
         end
 
         push!(expr.args, :($(esc(define_unary_operator))))
     end
-    
-    push!(expr.args, :(nothing))
 
     return expr
 end

@@ -1,6 +1,6 @@
 module AbstractOperations
 
-export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary
+export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @polynary
 
 using Base: @propagate_inbounds
 
@@ -38,6 +38,18 @@ const ALF = AbstractLocatedField
 data(op::AbstractOperation) = op
 Base.parent(op::AbstractOperation) = op
 
+"""
+    uniquepush!(collection, items...)
+
+Push each item in `items` into `collection` if it is not already there.
+"""
+function uniquepush!(collection, items...)
+    for item in items
+        !(item ∈ collection) && push!(collection, item)
+    end
+    return collection
+end
+
 # AbstractOperation macros add their associated functions to this list
 const operators = []
 
@@ -47,24 +59,37 @@ include("grid_validation.jl")
 
 include("unary_operations.jl")
 include("binary_operations.jl")
-#include("polynary_operations.jl")
+include("polynary_operations.jl")
 include("derivatives.jl")
 
 include("computations.jl")
 include("show_abstract_operations.jl")
 
 # Make some operators!
-import Base: sqrt, sin, cos, exp, tanh
+
+# Some unaries:
+import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh
 @unary -
 
-#=
-@binary +
-@binary -
-@binary /
-@binary *
+@binary + 
+@binary - 
+@binary / 
 @binary ^
-=#
+
+@polynary + 
+
+# For unknown reasons, the operator definition macros @binary and @polynary fail to work 
+# properly for :*. We thus manually define :* for fields.
+import Base: *
+
+eval(define_binary_operator(:*))
+push!(operators, :*)
+push!(binary_operators, :*)
+
+eval(define_polynary_operator(:*))
+push!(operators, :*)
+push!(polynary_operators, :*)
 
 end # module

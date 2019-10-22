@@ -1,4 +1,4 @@
-for op_string in ("UnaryOperation", "BinaryOperation", "Derivative")
+for op_string in ("UnaryOperation", "BinaryOperation", "PolynaryOperation", "Derivative")
     op = eval(Symbol(op_string))
     @eval begin
         operation_name(::$op) = $op_string
@@ -39,7 +39,6 @@ function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y
                   padding, "└── ", tree_show(binary.b, depth+1, nesting))
 end
 
-#=
 "Return a string representaion of a `PolynaryOperation` leaf within a tree visualization of an `AbstractOperation`."
 function tree_show(polynary::PolynaryOperation{X, Y, Z, N}, depth, nesting) where {X, Y, Z, N}
     padding = get_tree_padding(depth, nesting)
@@ -50,7 +49,6 @@ function tree_show(polynary::PolynaryOperation{X, Y, Z, N}, depth, nesting) wher
                 )
     return out
 end
-=#
 
 "Return a string representaion of a `Derivative` leaf within a tree visualization of an `AbstractOperation`."
 function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
