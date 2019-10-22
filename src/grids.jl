@@ -146,12 +146,9 @@ function RegularCartesianGrid(FT; size, length=nothing, x=nothing, y=nothing, z=
                                         xC, yC, zC, xF, yF, zF)
 end
 
-RegularCartesianGrid(T, N, L) = RegularCartesianGrid(T; N=N, x=(0, L[1]), y=(0, L[2]), z=(-L[3], 0))
-
-RegularCartesianGrid(N, L) = RegularCartesianGrid(Float64, N, L)
-
-size(g::RegularCartesianGrid) = (g.Nx, g.Ny, g.Nz)
-eltype(g::RegularCartesianGrid{T}) where T = T
+size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
+length(grid::RegularCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
+eltype(grid::RegularCartesianGrid{FT}) where FT = FT
 
 show(io::IO, g::RegularCartesianGrid) =
     print(io, "RegularCartesianGrid{$(eltype(g))}\n",
