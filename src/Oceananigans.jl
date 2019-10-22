@@ -24,7 +24,7 @@ export
     nodes, xnodes, ynodes, znodes,
 
     # Forcing functions
-    Forcing,
+    ModelForcing, SimpleForcing,
 
     # Equation of state
     BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
@@ -48,9 +48,9 @@ export
     Model, BasicModel, ChannelModel, BasicChannelModel,
 
     # Model output writers
-    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint, read_output,
-    JLD2OutputWriter, FieldOutput, FieldOutputs,
+    JLD2OutputWriter, NetCDFOutputWriter, FieldOutput, FieldOutputs,
+    write_grid, NetCDFOutputWriter,
 
     # Model diagnostics
     HorizontalAverage, NaNChecker,
@@ -77,7 +77,7 @@ using
     StaticArrays,
     OffsetArrays,
     JLD2,
-    NetCDF
+    NCDatasets
 
 import
     CUDAapi,
@@ -229,9 +229,10 @@ end
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
-# Place-holder buoyancy functions for use in TurbulenceClosures module
+# Place-holder functions for use in TurbulenceClosures module
 function buoyancy_perturbation end
 function buoyancy_frequency_squared end
+function TracerFields end
 
 include("utils.jl")
 
@@ -242,11 +243,14 @@ include("fields.jl")
 include("Operators/Operators.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
+using .TurbulenceClosures
+
 include("coriolis.jl")
 include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("poisson_solvers.jl")
+include("forcing.jl")
 include("models.jl")
 include("time_steppers.jl")
 

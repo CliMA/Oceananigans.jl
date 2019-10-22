@@ -57,19 +57,22 @@ Additional properties
 
 Examples
 ========
+```
 julia> grid = RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
 RegularCartesianGrid{Float64}
   resolution (Nx, Ny, Nz) = (32, 32, 32)
    halo size (Hx, Hy, Hz) = (1, 1, 1)
       domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
 grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
-
+```
+```
 julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
 RegularCartesianGrid{Float32}
   resolution (Nx, Ny, Nz) = (32, 32, 16)
    halo size (Hx, Hy, Hz) = (1, 1, 1)
       domain (Lx, Ly, Lz) = (8.0f0, 8.0f0, 2.0f0)
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
+```
 """
 function RegularCartesianGrid(T; N, x, y, z)
     length(N) == 3        || throw(ArgumentError("N=$N must be a tuple of length 3."))
@@ -114,13 +117,13 @@ function RegularCartesianGrid(T; N, x, y, z)
 
     V = Δx*Δy*Δz
 
-    xC = (x₁ + Δx/2) :  Δx : x₂
-    yC = (y₁ + Δy/2) :  Δy : y₂
-    zC = (z₂ - Δz/2) : -Δz : z₁
+    xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
+    yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
+    zC = range(z₁ + Δz/2, z₂ - Δz/2; length=Nz)
 
-    xF = x₁ :  Δx : x₂
-    yF = y₁ :  Δy : y₂
-    zF = z₂ : -Δz : z₁
+    xF = range(x₁, x₂; length=Nx+1)
+    yF = range(y₁, y₂; length=Ny+1)
+    zF = range(z₁, z₂; length=Nz+1)
 
     RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
