@@ -74,10 +74,26 @@ RegularCartesianGrid{Float32}
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
 ```
 """
-function RegularCartesianGrid(T; N, x, y, z)
-    length(N) == 3        || throw(ArgumentError("N=$N must be a tuple of length 3."))
-    all(isa.(N, Integer)) || throw(ArgumentError("N=$N should contain integers."))
-    all(N .>= 1)          || throw(ArgumentError("N=$N must be nonzero and positive!"))
+function RegularCartesianGrid(FT; size, length=nothing, x=nothing, y=nothing, z=nothing)
+    # Hack that allows us to use `size` and `length` as keyword arguments but then also
+    # use the `size` and `length` functions.
+    sz, len = size, length
+    length = Base.length
+
+    length(sz) == 3        || throw(ArgumentError("size=$size must be a tuple of length 3."))
+    all(isa.(sz, Integer)) || throw(ArgumentError("size=$size should contain integers."))
+    all(sz .>= 1)          || throw(ArgumentError("size=$size must be nonzero and positive!"))
+
+    if !isnothing(len)
+        length(len) == 3       || throw(ArgumentError("length=$len must be a tuple of length 3."))
+        all(isa.(len, Number)) || throw(ArgumentError("length=$len should contain numbers."))
+        all(len .>= 0)         || throw(ArgumentError("length=$len must be nonzero and positive!"))
+
+        Lx, Ly, Lz = len
+        x = (0, Lx)
+        y = (0, Ly)
+        z = (-Lz, 0)
+    end
 
     function coord2xyz(c)
         c == 1 && return "x"
