@@ -79,7 +79,7 @@ function run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})
     zero_halo_regions!(havg.fields[1], model.grid)
     sum!(havg.profile, havg.fields[1])
     normalize_horizontal_sum!(havg, model.grid)
-    return
+    return nothing
 end
 
 function run_diagnostic(model::Model, havg::HorizontalAverage)
@@ -93,7 +93,7 @@ function run_diagnostic(model::Model, havg::HorizontalAverage)
     sum!(havg.profile, tmp)
     normalize_horizontal_sum!(havg, model.grid)
 
-    return
+    return nothing
 end
 
 function (havg::HorizontalAverage{F, Nothing})(model) where F
