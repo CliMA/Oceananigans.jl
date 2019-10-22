@@ -17,57 +17,113 @@ end
 @inline Base.getindex(Π::PolynaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
-#=
-const polynary_operators = [:+, :*]
-append!(operators, polynary_operators)
+"""Return `a`, or convert `a` to `FunctionField` if `a::Function`"""
+fieldify(L, a, grid) = a
+fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
 
-for op in (:+, :*)
-    @eval begin
-        import Base: $op
+"""Return an expression that defines an abstract `PolynaryOperator` named `op` for `AbstractLocatedField`."""
+function define_polynary_operator(op)
+    return quote
+        import Oceananigans
 
-        function $op(Lop::Tuple, b, c, d...)
-            a = tuple(b, c, d...)
-            Largs = tuple(location(b), location(c), (location(di) for di in d)...)
-            grid = validate_grid(a...)
-            return _polynary_operation(Lop, $op, a, Largs, grid)
+        local location = Oceananigans.location
+
+        # "Function, or Field"
+        local FuFi = Union{Function, Oceananigans.AbstractField}
+
+        function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi...)
+            args = tuple(a, b, c...)
+            grid = Oceananigans.AbstractOperations.validate_grid(args...)
+
+            # Convert any functions to FunctionFields
+            args = Tuple(Oceananigans.AbstractOperations.fieldify(Lop, a, grid) for a in args)
+            Largs = Tuple(location(a) for a in args)
+
+            return Oceananigans.AbstractOperations._polynary_operation(Lop, $op, args, Largs, grid)
         end
+
+        $op(a::FuFi, b::FuFi, c::FuFi...) = $op(location(a), a, b, c...)
     end
 end
-=#
 
+"""
+    @polynary op1 op2 op3...
+
+Turn each polynary operator in the list `(op1, op2, op3...)` 
+into a polynary operator on `Oceananigans.Fields` for use in `AbstractOperations`. 
+
+Note that a polynary operator:
+    * is a function with two or more arguments: for example, `+(x, y, z)` is a polynary function;
+    * must be imported to be extended if part of `Base`: use `import Base: op; @polynary op`;
+    * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
+
+Example
+=======
+
+```jldoctest
+julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
+harmonic_plus(generic function with 1 method)
+
+julia> @polynary harmonic_plus
+3-element Array{Any,1}:
+ :+
+ :*
+ :harmonic_plus
+
+julia> c, d, e = Tuple(Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1))) for i = 1:3);
+
+julia> harmonic_plus(c, d, e) # this calls the original function, which in turn returns a (correct) operation tree
+BinaryOperation at (Cell, Cell, Cell)
+├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
+│   ├── size: (1, 1, 16)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+└── tree:
+
+* at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+├── 0.3333333333333333
+└── + at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+    ├── + at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+    │   ├── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+    │   │   ├── 1
+    │   │   └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+    │   └── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+        │   ├── 1
+        │   └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+    └── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+        ├── 1
+        └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+
+julia> @at (Cell, Cell, Cell) harmonic_plus(c, d, e) # this returns a `PolynaryOperation` as expected
+PolynaryOperation at (Cell, Cell, Cell)
+├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
+│   ├── size: (1, 1, 16)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+└── tree: 
+
+harmonic_plus at (Cell, Cell, Cell)
+├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+└── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+"""
 macro polynary(ops...)
     expr = Expr(:block)
 
     for op in ops
-        define_polynary_operator = quote
-            import Oceananigans
+        defexpr = define_polynary_operator(op)
+        push!(expr.args, :($(esc(defexpr))))
 
-            function $op(Lop::Tuple, a, b, c...)
-                args = tuple(a, b, c...)
-                Largs = tuple(Oceananigans.location(a), Oceananigans.location(b), 
-                              (Oceananigans.location(ci) for ci in c)...)
-                grid = Oceananigans.AbstractOperations.validate_grid(args...)
-                return Oceananigans.AbstractOperations._polynary_operation(Lop, $op, args, Largs, grid)
-            end
-
-            push!(Oceananigans.AbstractOperations.polynary_operators, $op)
-            push!(Oceananigans.AbstractOperations.operators, $op)
+        add_to_operator_lists = quote
+            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.operators, Symbol($op))
+            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.polynary_operators, Symbol($op))
         end
 
-        push!(expr.args, :($(esc(define_polynary_operator))))
+        push!(expr.args, :($(esc(add_to_operator_lists))))
     end
 
-    push!(expr.args, :(nothing))
-        
     return expr
 end
 
 const polynary_operators = []
-
-import Base: +, *
-
-@polynary +
-@polynary *
 
 "Adapt `PolynaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =

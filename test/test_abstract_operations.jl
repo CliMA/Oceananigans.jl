@@ -105,7 +105,7 @@ function compute_many_plus(model)
     T, S = model.tracers
     u, v, w = model.velocities
 
-    computation = Computation(u + T + S, model.pressures.pHY′)
+    computation = Computation(@at((Cell, Cell, Cell), u + T + S), model.pressures.pHY′)
     compute!(computation)
     result = Array(interior(computation.result))
 
@@ -258,16 +258,15 @@ end
             end
         end
 
-        #=
         @testset "Polynary operations [$FT]" begin
-            for (ψ, ϕ, σ) in ((u, v, w), (u, v, c))
+            generic_function(x, y, z) = x + y + z
+            for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.polynary_operators
                     op = eval(op_symbol)
                     @test typeof(op((Cell, Cell, Cell), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
-        =#
     end
 
     @testset "Fidelity of simple binary operations" begin
@@ -351,37 +350,47 @@ end
         @testset "Computations [$(typeof(arch))]" begin
             println("  Testing combined binary operations and derivatives...")
             for FT in float_types
-                println("    Testing computation of abstract operations [$(typeof(arch))]...")
+                println("    Testing computation of abstract operations [$FT, $(typeof(arch))]...")
                 model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
 
-                println("      Testing compute! derivatives...")
-                @test compute_derivative(model, ∂x)
-                @test compute_derivative(model, ∂y)
-                @test compute_derivative(model, ∂z)
-
-                println("      Testing compute! unary operations...")
-                for unary in Oceananigans.AbstractOperations.unary_operators
-                    @test compute_unary(unary, model)
+                @testset "Derivative computations [$FT, $(typeof(arch))]" begin
+                    println("      Testing compute! derivatives...")
+                    @test compute_derivative(model, ∂x)
+                    @test compute_derivative(model, ∂y)
+                    @test compute_derivative(model, ∂z)
                 end
 
-                println("      Testing compute! binary operations...")
-                @test compute_plus(model)
-                @test compute_minus(model)
-                @test compute_times(model)
+                @testset "Unary computations [$FT, $(typeof(arch))]" begin
+                    println("      Testing compute! unary operations...")
+                    for unary in Oceananigans.AbstractOperations.unary_operators
+                        @test compute_unary(eval(unary), model)
+                    end
+                end
 
-                #println("      Testing compute! polynary operations...")
-                #@test compute_many_plus(model)
+                @testset "Binary computations [$FT, $(typeof(arch))]" begin
+                    println("      Testing compute! binary operations...")
+                    @test compute_plus(model)
+                    @test compute_minus(model)
+                    @test compute_times(model)
+                end
 
-                #println("      Testing compute! kinetic energy...")
-                #@test compute_kinetic_energy(model)
+                @testset "Polynary computations [$FT, $(typeof(arch))]" begin
+                    println("      Testing compute! polynary operations...")
+                    @test compute_many_plus(model)
 
-                println("      Testing horizontal averges...")
-                @test horizontal_average_of_plus(model)
-                @test horizontal_average_of_minus(model)
-                @test horizontal_average_of_times(model)
+                    println("      Testing compute! kinetic energy...")
+                    @test compute_kinetic_energy(model)
+                end
 
-                @test multiplication_and_derivative_ccf(model)
-                @test multiplication_and_derivative_ccc(model)
+                @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
+                    println("      Testing horizontal averges...")
+                    @test horizontal_average_of_plus(model)
+                    @test horizontal_average_of_minus(model)
+                    @test horizontal_average_of_times(model)
+
+                    @test multiplication_and_derivative_ccf(model)
+                    @test multiplication_and_derivative_ccc(model)
+                end
             end
         end
     end
