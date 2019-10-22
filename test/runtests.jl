@@ -76,7 +76,7 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
     include("test_models.jl")
     include("test_time_stepping.jl")
     include("test_boundary_conditions.jl")
-    nclude("test_forcings.jl")
+    include("test_forcings.jl")
     include("test_turbulence_closures.jl")
     include("test_dynamics.jl")
     include("test_diagnostics.jl")
