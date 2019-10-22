@@ -67,7 +67,7 @@ function grid(zF)
     return zF, zC, ΔzF, ΔzC
 end
 
-Nx, Ny = 4, 4
+Nx, Ny = 8, 8
 Lx, Ly = 1, 1
 Δx, Δy = Lx/Nx, Ly/Ny
 
