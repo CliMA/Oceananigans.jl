@@ -200,7 +200,8 @@ function multiplication_and_derivative_ccf(model)
     computed_profile = wT(model)
     correct_profile = @. sin(π*model.grid.zF) * 42
 
-    return all(computed_profile[:][2:end-1] .≈ correct_profile[2:end])
+    # Computed profile includes halos
+    return all(computed_profile[:][3:end-1] .≈ correct_profile[2:end-1])
 end
 
 const C = Cell
@@ -222,7 +223,8 @@ function multiplication_and_derivative_ccc(model)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
     correct_profile = interped_sin .* 42
 
-    return all(computed_profile_ccc[:][3:end-2] .≈ correct_profile[1:end-2])
+    # Computed profile includes halos.
+    return all(computed_profile_ccc[:][3:end-2] .≈ correct_profile[2:end-1])
 end
 
 @testset "Abstract operations" begin
