@@ -49,7 +49,7 @@ export
 
     # Model output writers
     Checkpointer, restore_from_checkpoint, read_output,
-    JLD2OutputWriter, FieldOutput, FieldOutputs,
+    JLD2OutputWriter, NetCDFOutputWriter, FieldOutput, FieldOutputs,
     write_grid, NetCDFOutputWriter,
 
     # Model diagnostics

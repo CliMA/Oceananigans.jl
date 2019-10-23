@@ -6,7 +6,7 @@
 #   * to set boundary conditions;
 #   * to defined and insert a user-defined forcing function into a simulation.
 #   * to use the `TimeStepWizard` to manage and adapt the simulation time-step.
-# 
+#
 # To begin, we load Oceananigans, a plotting package, and a few miscellaneous useful packages.
 
 using Oceananigans, PyPlot, Random, Printf
@@ -14,12 +14,12 @@ using Oceananigans, PyPlot, Random, Printf
 # ## Parameters
 #
 # We choose a modest two-dimensional resolution of 128² in a 64² m² domain ,
-# implying a resolution of 0.5 m. Our fluid is initially stratified with 
+# implying a resolution of 0.5 m. Our fluid is initially stratified with
 # a squared buoyancy frequency
 #
 # $$ N\^2 = 10^{-5} \, \mathrm{s^{-2}} $$
 #
-# and a surface buoyancy flux 
+# and a surface buoyancy flux
 #
 # $$ Q_b2 = 10^{-8} \, \mathrm{m^3 \, s^{-2}} $$
 #
@@ -39,7 +39,7 @@ end_time = 1day
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb), 
+buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb),
                                        bottom = BoundaryCondition(Gradient, N²))
 
 # ## Define a forcing function
@@ -51,10 +51,10 @@ buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb),
 growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
 
 ## Instantiate the model
-model = Model(      
-                   grid = RegularCartesianGrid(N = (Nz, 1, Nz), L = (Lz, Lz, Lz)),
+model = Model(
+                   grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz)),
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
-               coriolis = FPlane(f=1e-4), 
+               coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
                 forcing = ModelForcing(plankton=growth_and_decay),

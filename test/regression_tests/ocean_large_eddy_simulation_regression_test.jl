@@ -1,36 +1,40 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
 
-interiordata(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx, 
-                                grid.Hy+1:grid.Ny+grid.Hy, 
-                                grid.Hz+1:grid.Nz+grid.Hz, 
+interiordata(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
+                                grid.Hy+1:grid.Ny+grid.Hy,
+                                grid.Hz+1:grid.Nz+grid.Hz,
                             )
+
+# Temporary until k index is reversed
+const Nx, Ny, Nz = 16, 16, 16
+const Hx, Hy, Hz = 1, 1, 1
 
 function get_fields_from_checkpoint(filename)
 
     file = jldopen(filename)
 
     solution = (
-        u = file["velocities/u"],
-        v = file["velocities/v"],
-        w = file["velocities/w"],
-        T = file["tracers/T"],
-        S = file["tracers/S"]
+        u = reverse(file["velocities/u"]; dims=3),
+        v = reverse(file["velocities/v"]; dims=3),
+        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["velocities/w"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
+        T = reverse(file["tracers/T"]; dims=3),
+        S = reverse(file["tracers/S"]; dims=3)
     )
 
     Gⁿ = (
-        u = file["timestepper/Gⁿ/Gu"],
-        v = file["timestepper/Gⁿ/Gv"],
-        w = file["timestepper/Gⁿ/Gw"],
-        T = file["timestepper/Gⁿ/GT"],
-        S = file["timestepper/Gⁿ/GS"]
+        u = reverse(file["timestepper/Gⁿ/Gu"]; dims=3),
+        v = reverse(file["timestepper/Gⁿ/Gv"]; dims=3),
+        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["timestepper/Gⁿ/Gw"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
+        T = reverse(file["timestepper/Gⁿ/GT"]; dims=3),
+        S = reverse(file["timestepper/Gⁿ/GS"]; dims=3)
     )
-    
+
     G⁻ = (
-        u = file["timestepper/G⁻/Gu"],
-        v = file["timestepper/G⁻/Gv"],
-        w = file["timestepper/G⁻/Gw"],
-        T = file["timestepper/G⁻/GT"],
-        S = file["timestepper/G⁻/GS"]
+        u = reverse(file["timestepper/G⁻/Gu"]; dims=3),
+        v = reverse(file["timestepper/G⁻/Gv"]; dims=3),
+        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["timestepper/G⁻/Gw"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
+        T = reverse(file["timestepper/G⁻/GT"]; dims=3),
+        S = reverse(file["timestepper/G⁻/GS"]; dims=3)
     )
 
     close(file)
@@ -54,12 +58,12 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     u_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Qᵘ)       )
     T_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Qᵀ),
                                      bottom = BoundaryCondition(Gradient, ∂T∂z) )
-    S_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, 5e-8)   )
+    S_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, 5e-8)     )
 
     # Model instantiation
     model = Model(
              architecture = arch,
-                     grid = RegularCartesianGrid(N=(16, 16, 16), L=(16, 16, 16)),
+                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
@@ -82,7 +86,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
                                                           prefix = name * "_",
                                                              dir = joinpath(dirname(@__FILE__), "data")
                                                       )
-                                                       
+
     time_step!(model, 2test_steps, Δt)
     pop!(model.output_writers, :checkpointer)
     =#
@@ -90,7 +94,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     initial_filename = joinpath(dirname(@__FILE__), "data", name * "_$spinup_steps.jld2")
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
-    
+
     model.velocities.u.data.parent .= ArrayType(solution₀.u)
     model.velocities.v.data.parent .= ArrayType(solution₀.v)
     model.velocities.w.data.parent .= ArrayType(solution₀.w)

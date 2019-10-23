@@ -258,7 +258,7 @@ Ensure that frequency and interval are not both `nothing`.
 """
 function validate_interval(frequency, interval)
     isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
-    return
+    return nothing
 end
 
 has_interval(obj) = :interval in propertynames(obj) && obj.interval != nothing
