@@ -1,3 +1,5 @@
+using GPUifyLoops: @loop
+
 ####
 #### Useful kernels for computing diagnostics
 ####

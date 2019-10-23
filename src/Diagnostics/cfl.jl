@@ -1,3 +1,6 @@
+using Oceananigans: cell_advection_timescale
+using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
+
 """
     CFL{D, S}
 

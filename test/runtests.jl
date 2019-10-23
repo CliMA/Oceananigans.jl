@@ -2,6 +2,7 @@ using
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures,
+    Oceananigans.Diagnostics,
     Test,
     Random,
     JLD2,
@@ -17,16 +18,14 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
-                    velocity_div!, compute_w_from_continuity!,
-                    launch_config, datatuples, device, with_tracers,
-                    parentdata, fill_halo_regions!, run_diagnostic,
-                    TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
-                    RoquetIdealizedNonlinearEquationOfState, required_tracers
-
 import Oceananigans: datatuple
 
-using Oceananigans.TurbulenceClosures
+using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
+                    compute_w_from_continuity!,
+                    launch_config, datatuples, device, with_tracers,
+                    parentdata, fill_halo_regions!,
+                    TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
+                    RoquetIdealizedNonlinearEquationOfState, required_tracers
 
 using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
                                        ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
@@ -34,8 +33,9 @@ using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_fa
                                        ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa,
                                        ▶z_aac, ▶z_aaf
 
-const seed = 420  # Random seed to use for all pseudorandom number generators.
+using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
+const seed = 420  # Random seed to use for all pseudorandom number generators.
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 

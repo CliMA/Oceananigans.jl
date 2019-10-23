@@ -1,3 +1,5 @@
+using Oceananigans: zero_halo_regions!, tupleit, parenttuple
+
 """
     HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
 
