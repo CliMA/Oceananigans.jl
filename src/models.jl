@@ -113,12 +113,11 @@ Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
-function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
-
-         grid = RegularCartesianGrid(float_type; size=N, length=L)
-      closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
-     coriolis = VerticalRotationAxis(float_type, f=1/Ro)
-     buoyancy = BuoyancyTracer()
+function NonDimensionalModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
+    buoyancy = BuoyancyTracer(),
+    coriolis = FPlane(float_type, f=1/Ro),
+     closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
+    kwargs...)
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
                    coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
