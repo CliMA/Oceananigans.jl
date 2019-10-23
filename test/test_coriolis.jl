@@ -4,8 +4,8 @@ function instantiate_fplane_1(T)
 end
 
 function instantiate_fplane_2(T)
-    coriolis = FPlane(T, rotation_rate=7.29e-5, latitude=45)
-    return coriolis.f == T(2rotation_rate*sind(latitude))
+    coriolis = FPlane(T, rotation_rate=2, latitude=30)
+    return coriolis.f == T(2)
 end
 
 function instantiate_betaplane_1(T)
@@ -24,9 +24,12 @@ end
     @testset "Coriolis" begin
         for T in float_types
             @test instantiate_fplane_1(T)
+            @test instantiate_fplane_2(T)
             @test instantiate_betaplane_1(T)
             @test instantiate_betaplane_2(T)
             # Test that FPlane throws an ArgumentError
+            @test_throws ArgumentError FPlane(T, rotation_rate=7e-5)
+            @test_throws ArgumentError FPlane(T, latitude=40)
             @test_throws ArgumentError FPlane(T, f=1, rotation_rate=7e-5)
             @test_throws ArgumentError FPlane(T, f=1, latitude=40)
             @test_throws ArgumentError FPlane(T, f=1, rotation_rate=7e-5, latitude=40)
