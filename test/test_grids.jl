@@ -6,16 +6,6 @@ function correct_grid_size(FT)
             grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
 end
 
-function correct_cell_volume(FT)
-    Nx, Ny, Nz = 19, 13, 7
-    Δx, Δy, Δz = 0.1, 0.2, 0.3
-    Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-
-    # Checking ≈ as the grid could be storing Float32 values.
-    return grid.V ≈ Δx*Δy*Δz
-end
-
 function faces_start_at_zero(FT)
     grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(2π, 2π, 2π))
     return grid.xF[1] == 0 && grid.yF[1] == 0 && grid.zF[end] == 0
@@ -50,7 +40,6 @@ end
         println("  Testing grid initialization...")
         for FT in float_types
             @test correct_grid_size(FT)
-            @test correct_cell_volume(FT)
             @test faces_start_at_zero(FT)
             @test end_faces_match_grid_length(FT)
             @test ranges_have_correct_length(FT)
