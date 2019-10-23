@@ -43,13 +43,19 @@ struct RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid
 end
 
 """
-    RegularCartesianGrid([T=Float64]; N, L)
+    RegularCartesianGrid([FT=Float64]; size, length, x, y, z)
 
-Creates a `RegularCartesianGrid` with `N = (Nx, Ny, Nz)` grid points and domain size
-`L = (Lx, Ly, Lz)`, where constants are stored using floating point values of type `T`.
+Creates a `RegularCartesianGrid` with `size = (Nx, Ny, Nz)` grid points.
 
-Additional properties
-=====================
+The physical length of the domain can be specified via `x`, `y`, and `z` keyword arguments
+indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` or via
+the `length` argument, e.g. `length=(Lx, Ly, Lz)` which specifies the length of each dimension
+in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
+
+Constants are stored using floating point values of type `FT`.
+
+Grid properties
+===============
 - `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
 - `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
 - `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
@@ -58,20 +64,20 @@ Additional properties
 Examples
 ========
 ```
-julia> grid = RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
+julia> grid = RegularCartesianGrid(size=(32, 32, 32), length=(1, 2, 3))
 RegularCartesianGrid{Float64}
+domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
   resolution (Nx, Ny, Nz) = (32, 32, 32)
    halo size (Hx, Hy, Hz) = (1, 1, 1)
-      domain (Lx, Ly, Lz) = (1.0, 1.0, 1.0)
-grid spacing (Δx, Δy, Δz) = (0.03125, 0.03125, 0.03125)
+grid spacing (Δx, Δy, Δz) = (0.03125, 0.0625, 0.09375)
 ```
 ```
-julia> grid = RegularCartesianGrid(Float32; N=(32, 32, 16), L=(8, 8, 2))
+julia> grid = RegularCartesianGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 RegularCartesianGrid{Float32}
+domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.141592653589793]
   resolution (Nx, Ny, Nz) = (32, 32, 16)
    halo size (Hx, Hy, Hz) = (1, 1, 1)
-      domain (Lx, Ly, Lz) = (8.0f0, 8.0f0, 2.0f0)
-grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
+grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
 function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=nothing, z=nothing)
