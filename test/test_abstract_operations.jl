@@ -353,7 +353,8 @@ end
             println("  Testing combined binary operations and derivatives...")
             for FT in float_types
                 println("    Testing computation of abstract operations [$FT, $(typeof(arch))]...")
-                model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, float_type=FT)
+                model = Model(architecture=arch, float_type=FT,
+                              grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1)))
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
                     println("      Testing compute! derivatives...")
