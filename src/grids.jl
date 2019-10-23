@@ -1,10 +1,10 @@
 """
-    RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
+    RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{FT}
 
 A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
 and cell faces.
 """
-struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{T}
+struct RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{FT}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -18,19 +18,19 @@ struct RegularCartesianGrid{T<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{
     Ty::Int
     Tz::Int
     # Domain size [m].
-    Lx::T
-    Ly::T
-    Lz::T
+    Lx::FT
+    Ly::FT
+    Lz::FT
     # Grid spacing [m].
-    Δx::T
-    Δy::T
-    Δz::T
+    Δx::FT
+    Δy::FT
+    Δz::FT
     # Cell face areas [m²].
-    Ax::T
-    Ay::T
-    Az::T
+    Ax::FT
+    Ay::FT
+    Az::FT
     # Volume of a cell [m³].
-    V::T
+    V::FT
     # Range of coordinates at the centers of the cells.
     xC::R
     yC::R
@@ -74,7 +74,7 @@ RegularCartesianGrid{Float32}
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.25f0, 0.125f0)
 ```
 """
-function RegularCartesianGrid(FT; size, length=nothing, x=nothing, y=nothing, z=nothing)
+function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=nothing, z=nothing)
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
     # use the `size` and `length` functions.
     sz, len = size, length
@@ -111,7 +111,7 @@ function RegularCartesianGrid(FT; size, length=nothing, x=nothing, y=nothing, z=
     x₁, x₂ = x[1], x[2]
     y₁, y₂ = y[1], y[2]
     z₁, z₂ = z[1], z[2]
-    Nx, Ny, Nz = N
+    Nx, Ny, Nz = sz
     Lx, Ly, Lz = x₂-x₁, y₂-y₁, z₂-z₁
 
     # Right now we only support periodic horizontal boundary conditions and
@@ -141,9 +141,9 @@ function RegularCartesianGrid(FT; size, length=nothing, x=nothing, y=nothing, z=
     yF = range(y₁, y₂; length=Ny+1)
     zF = range(z₁, z₂; length=Nz+1)
 
-    RegularCartesianGrid{T, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                        Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
-                                        xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
+                                         xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
