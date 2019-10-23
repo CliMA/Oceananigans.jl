@@ -10,6 +10,12 @@ struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
        ▶ :: I
     grid :: G
 
+    """
+        UnaryOperation{X, Y, Z}(op, arg, ▶, grid)
+
+    Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
+    and subsequent interpolation by `▶` on `grid`.
+    """
     function UnaryOperation{X, Y, Z}(op, arg, ▶, grid) where {X, Y, Z}
         return new{X, Y, Z, typeof(op), typeof(arg), typeof(▶), typeof(grid)}(op, arg, ▶, grid)
     end
@@ -17,7 +23,7 @@ end
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
-function _unary_operation(L, operator, arg, Larg, grid) where {X, Y, Z}
+function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
     return UnaryOperation{L[1], L[2], L[3]}(operator, data(arg), ▶, grid)
 end
