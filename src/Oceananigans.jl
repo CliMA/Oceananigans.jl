@@ -253,7 +253,7 @@ include("poisson_solvers.jl")
 include("forcing.jl")
 include("models.jl")
 
-include("output_writers.jl")
+include("OutputWriters/OutputWriters.jl")
 include("Diagnostics/Diagnostics.jl")
 
 include("time_steppers.jl")
