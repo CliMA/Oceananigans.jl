@@ -37,8 +37,8 @@ function compute_w_from_continuity(arch, FT)
     w = FaceFieldZ(FT, arch, grid)
     div_u = CellField(FT, arch, grid)
 
-    data(u) .= rand(FT, Nx, Ny, Nz)
-    data(v) .= rand(FT, Nx, Ny, Nz)
+    interior(u) .= rand(FT, Nx, Ny, Nz)
+    interior(v) .= rand(FT, Nx, Ny, Nz)
 
     fill_halo_regions!(u.data, bcs.u, arch, grid)
     fill_halo_regions!(v.data, bcs.v, arch, grid)
@@ -49,7 +49,7 @@ function compute_w_from_continuity(arch, FT)
 
     # Set div_u to zero at the top because the initial velocity field is not divergence-free
     # so we end up some divergence at the top if we don't do this.
-    data(div_u)[:, :, Nz] .= zero(FT)
+    interior(div_u)[:, :, Nz] .= zero(FT)
 
     min_div = minimum(interior(div_u))
     max_div = maximum(interior(div_u))
