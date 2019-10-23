@@ -1,6 +1,6 @@
 # Navier-Stokes and tracer conservation equations
 
-`Oceananigans.jl` solves the incompressible Navier-Stokes equations and an arbitrary 
+Oceananigans.jl solves the incompressible Navier-Stokes equations and an arbitrary 
 number of tracer conservation equations. 
 Physics associated with individual terms in the momentum and tracer conservation 
 equations --- the background rotation rate of the equation's reference frame, 
@@ -19,7 +19,7 @@ user.
 
 ## Coordinate system and notation
 
-`Oceananigans.jl` is formulated in a Cartesian coordinate system 
+Oceananigans.jl is formulated in a Cartesian coordinate system 
 $\bm{x} = (x, y, z)$ with unit vectors $\bm{\hat x}$, $\bm{\hat y}$, and $\bm{\hat z}$, 
 where $\bm{\hat x}$ points east, $\bm{\hat y}$ points north, and $\bm{\hat z}$ points 'upward', 
 opposite the direction of gravitational acceleration. 
@@ -31,7 +31,7 @@ such that $\bm{u} = u \bm{\hat x} + v \bm{\hat y} + w \bm{\hat z}$.
 
 ## The Boussinesq approximation
 
-In `Oceananigans.jl` the fluid density $\rho$ is, in general, decomposed into three 
+In Oceananigans.jl the fluid density $\rho$ is, in general, decomposed into three 
 components: 
 ```math
     \rho(\bm{x}, t) = \rho_0 + \rho_*(z) + \rho'(\bm{x}, t) \, ,
@@ -76,13 +76,13 @@ specified rate of rotation of the frame of reference.
 
 ## The tracer conservation equation
 
-The conservation law for tracers in `Oceananigans.jl` is
+The conservation law for tracers in Oceananigans.jl is
 ```math
     \partial_t c + \bm{u} \bm{\cdot} \bm{\nabla} c = - \bm{\nabla} \bm{\cdot} \bm{q}_c + F_c \, ,
     \tag{eq:tracer}
 ```
 where $\bm{q}_c$ is the diffusive flux of $c$ and $F_c$ is an arbitrary source term.
-`Oceananigans.jl` permits arbitrary tracers and thus an arbitrary number of tracer 
+Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer 
 equations to be solved simultaneously with the momentum equations.
 
 ## Buoyancy model and equations of state
@@ -130,7 +130,7 @@ Under an $f$-plane approximation[^3] the reference frame in which
 the momentum and tracer equations are are solved rotates at a constant rate around a 
 vertical axis, such that 
 ```math
-    \bm{f} \equiv f \bm{\hat z}
+    \bm{f} = f \bm{\hat z}
 ```
 where $f$ is constant and determined by the user. 
 
@@ -181,7 +181,7 @@ Each tracer may have a unique diffusivity $\kappa$.
 
 ### Constant anisotropic diffusivity
 
-In `Oceananigans.jl`, a constant anisotropic diffusivity implies a constant tensor 
+In Oceananigans.jl, a constant anisotropic diffusivity implies a constant tensor 
 diffusivity $\nu_{j k}$ and stress $\bm{\tau}_{ij} = \nu_{j k} u_{i, k}$ with non-zero 
 components $\nu_{11} = \nu_{22} = \nu_h$ and $\nu_{33} = \nu_v$.
 With this form the kinematic stress divergence becomes
@@ -243,7 +243,7 @@ Both $Pr$ and $\kappa$ may be set independently for each tracer.
 
 ### Anisotropic minimum dissipation (AMD) turbulence closure
 
-`Oceananigans.jl` uses the anisotropic minimum dissipation (AMD) model proposed by 
+Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by 
 Verstappen18 and described and tested by Vreugdenhil18. 
 The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
 In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms 
@@ -303,7 +303,7 @@ By default we use the model constants $C=1/12$ and $C_b=0$.
 
 ## Boundary conditions
 
-In `Oceananigans.jl` the user may impose \textit{no-penetration}, \textit{flux}, 
+In Oceananigans.jl the user may impose \textit{no-penetration}, \textit{flux}, 
 \textit{gradient} (Neumann), and \textit{value} (Dirichlet) boundary conditions in bounded, 
 non-periodic directions.
 Note that the only boundary condition available for a velocity field normal to the bounded 
