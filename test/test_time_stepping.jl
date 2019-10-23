@@ -1,8 +1,8 @@
 function time_stepping_works(arch, FT, Closure)
-    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       closure=Closure(FT))
+    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                  architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, 1)
-    return true # test that no errors/crashes happen when time stepping.
+    return true  # test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_beta_plane(arch, FT)
@@ -18,8 +18,8 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       forcing=ModelForcing(T=add_ones))
+    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                  architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
@@ -80,7 +80,7 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, float_type=FT)
+    model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)), architecture=arch, float_type=FT)
 
     grid = model.grid
     u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
