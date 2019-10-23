@@ -58,8 +58,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     # Model instantiation
     model = Model(
-             architecture = arch,  
-                     grid = RegularCartesianGrid(N=(16, 16, 16), L=(16, 16, 16)), 
+             architecture = arch,
+                     grid = RegularCartesianGrid(N=(16, 16, 16), L=(16, 16, 16)),
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
