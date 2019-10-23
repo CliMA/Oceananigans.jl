@@ -25,12 +25,6 @@ struct RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid
     Δx::FT
     Δy::FT
     Δz::FT
-    # Cell face areas [m²].
-    Ax::FT
-    Ay::FT
-    Az::FT
-    # Volume of a cell [m³].
-    V::FT
     # Range of coordinates at the centers of the cells.
     xC::R
     yC::R
@@ -156,8 +150,7 @@ function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=not
     zF = range(z₁, z₂; length=Nz+1)
 
     RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                         Lx, Ly, Lz, Δx, Δy, Δz, Ax, Ay, Az, V,
-                                         xC, yC, zC, xF, yF, zF)
+                                         Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
