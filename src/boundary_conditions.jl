@@ -140,20 +140,17 @@ const CBC = CoordinateBoundaryConditions
 PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
 
 # Here we overload setproperty! and getproperty to permit users to call
-# the 'right' and 'left' bcs in the z-direction 'bottom' and 'top'.
-#
-# Note that 'right' technically corresponds to face point N+1. Thus
-# the fact that right == bottom is associated with the reverse z-indexing
-# convention. With ordinary indexing, right == top.
+# the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'.
+# Note that 'right' technically corresponds to face point N+1.
 Base.setproperty!(cbc::CBC, side::Symbol, bc) = setbc!(cbc, Val(side), bc)
 setbc!(cbc::CBC, ::Val{S}, bc) where S = setfield!(cbc, S, bc)
-setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :right, bc)
-setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :left, bc)
+setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :left, bc)
+setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :right, bc)
 
 Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
 getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
-getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :right)
-getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :left)
+getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :left)
+getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :right)
 
 #####
 ##### Boundary conditions for Fields
@@ -198,7 +195,7 @@ function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
 
     x = PeriodicBCs()
     y = PeriodicBCs()
-    z = CoordinateBoundaryConditions(top, bottom)
+    z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
 end
@@ -223,7 +220,7 @@ function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
 
     x = PeriodicBCs()
     y = CoordinateBoundaryConditions(south, north)
-    z = CoordinateBoundaryConditions(top, bottom)
+    z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
 end
@@ -237,12 +234,12 @@ default_tracer_bcs(tracers, solution_bcs) = DefaultTracerBoundaryConditions(solu
 """
     SolutionBoundaryConditions(tracers, proposal_bcs)
 
-Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with 
-fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions 
-`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w` 
+Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with
+fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions
+`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w`
 and may contain some or all of the boundary conditions on `tracers`.
 """
-SolutionBoundaryConditions(tracers, proposal_bcs) = 
+SolutionBoundaryConditions(tracers, proposal_bcs) =
     with_tracers(tracers, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
 """
@@ -291,7 +288,7 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 #####
 ##### Tracer, tendency and pressure boundary condition "translators":
 #####
-#####   * Default boundary conditions on tracers are periodic or no flux and 
+#####   * Default boundary conditions on tracers are periodic or no flux and
 #####     can be derived from boundary conditions on any field
 #####
 #####   * Boundary conditions on tendency terms are
@@ -305,7 +302,7 @@ const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 DefaultTracerBC(::BC) = BoundaryCondition(Flux, nothing)
 DefaultTracerBC(::PBC) = PeriodicBC()
 
-DefaultTracerCoordinateBCs(bcs) = 
+DefaultTracerCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
 
 DefaultTracerBoundaryConditions(field_bcs) =
@@ -319,7 +316,7 @@ TendencyBC(::NPBC) = NoPenetrationBC()
 TendencyCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
 
-TendencyFieldBCs(field_bcs) = 
+TendencyFieldBCs(field_bcs) =
     FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
 
 TendenciesBoundaryConditions(solution_bcs) =
@@ -395,7 +392,7 @@ the source term `Gc` at the top and bottom.
 """
 function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
     @launch device(arch) config=launch_config(grid, 2) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
-    return
+    return nothing
 end
 
 # Fall back functions for boundary conditions that are not of type Flux.
@@ -420,7 +417,7 @@ If `top_bc.condition` is a function, the function must have the signature
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, 1] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
 
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
@@ -436,18 +433,18 @@ If `bottom_bc.condition` is a function, the function must have the signature
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, grid.Nz] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
 
 """
     _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
-function _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
             apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
         end
     end
 end

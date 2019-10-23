@@ -29,7 +29,7 @@ function compute_w_from_continuity(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 16, 16, 16
 
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     bcs = HorizontallyPeriodicSolutionBCs()
 
     u = FaceFieldX(FT, arch, grid)
@@ -47,12 +47,12 @@ function compute_w_from_continuity(arch, FT)
     fill_halo_regions!(w.data, bcs.w, arch, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
-    # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
-    # so we end up some divergence at the bottom if we don't do this.
-    data(div_u)[:, :, end] .= zero(FT)
+    # Set div_u to zero at the top because the initial velocity field is not divergence-free
+    # so we end up some divergence at the top if we don't do this.
+    data(div_u)[:, :, Nz] .= zero(FT)
 
     min_div = minimum(data(div_u))
-    max_div = minimum(data(div_u))
+    max_div = maximum(data(div_u))
     sum_div = sum(data(div_u))
     abs_sum_div = sum(abs.(data(div_u)))
     @info "Velocity divergence after recomputing w ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
@@ -114,7 +114,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νv, κv = α*νh, α*κh
 
     model = ChannelModel(architecture = arch, float_type = FT,
-                         grid = RegularCartesianGrid(N = (Nx, Ny, Nz), L = (Lx, Ly, Lz)),
+                         grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
                          closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
