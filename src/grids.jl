@@ -63,7 +63,7 @@ Grid properties
 
 Examples
 ========
-```
+```julia
 julia> grid = RegularCartesianGrid(size=(32, 32, 32), length=(1, 2, 3))
 RegularCartesianGrid{Float64}
 domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
@@ -71,7 +71,7 @@ domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
    halo size (Hx, Hy, Hz) = (1, 1, 1)
 grid spacing (Δx, Δy, Δz) = (0.03125, 0.0625, 0.09375)
 ```
-```
+```julia
 julia> grid = RegularCartesianGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 RegularCartesianGrid{Float32}
 domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.141592653589793]
@@ -85,6 +85,14 @@ function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=not
     # use the `size` and `length` functions.
     sz, len = size, length
     length = Base.length
+
+    if isnothing(len) && (isnothing(x) || isnothing(y) || isnothing(z))
+        throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
+    end
+
+    if !isnothing(len) && !isnothing(x) && !isnothing(y) && !isnothing(z)
+        throw(ArgumentError("Cannot specify both length and x, y, z keyword arguments."))
+    end
 
     length(sz) == 3        || throw(ArgumentError("length($sz) must be 3."))
     all(isa.(sz, Integer)) || throw(ArgumentError("size=$sz should contain integers."))
