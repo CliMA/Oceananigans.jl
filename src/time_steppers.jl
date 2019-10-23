@@ -59,7 +59,7 @@ function adams_bashforth_time_step!(model, U, C, P, K, Gⁿ, G⁻, Δt, χ)
     fill_halo_regions!(P.pHY′, model.boundary_conditions.pressure, arch, grid)
 
     # Calculate tendency terms (minus non-hydrostatic pressure, which is updated in a pressure correction step):
-    calculate_interior_source_terms!(Gⁿ, arch, grid, model.coriolis, model.closure, U, C, P.pHY′, K, model.forcing, 
+    calculate_interior_source_terms!(Gⁿ, arch, grid, model.coriolis, model.closure, U, C, P.pHY′, K, model.forcing,
                                      model.parameters, model.clock.time)
     calculate_boundary_source_terms!(Gⁿ, model.boundary_conditions.solution, arch, grid, bc_args...)
 
@@ -68,7 +68,7 @@ function adams_bashforth_time_step!(model, U, C, P, K, Gⁿ, G⁻, Δt, χ)
 
     # Start pressure correction substep with a pressure solve:
     fill_halo_regions!(Gⁿ[1:3], model.boundary_conditions.tendency[1:3], arch, grid)
-    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(model.poisson_solver.storage, arch, grid, 
+    @launch device(arch) config=launch_config(grid, 3) calculate_poisson_right_hand_side!(model.poisson_solver.storage, arch, grid,
                                                                                           model.poisson_solver.bcs, Δt, U, Gⁿ)
     solve_for_pressure!(P.pNHS, arch, grid, model.poisson_solver, model.poisson_solver.storage)
     fill_halo_regions!(P.pNHS, model.boundary_conditions.pressure, arch, grid)
@@ -156,22 +156,22 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.u, grid, coriolis, closure, U, C, K, F, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.u, grid, coriolis, closure, U, C, K, F,
                                                                             pHY′, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.v, grid, coriolis, closure, U, C, K, F, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.v, grid, coriolis, closure, U, C, K, F,
                                                                             pHY′, parameters, time)
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.w, grid, coriolis, closure, U, C, K, F, 
+    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.w, grid, coriolis, closure, U, C, K, F,
                                                                             parameters, time)
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
         @inbounds Fc = F[tracer_index+3]
         @inbounds  c = C[tracer_index]
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, Val(tracer_index), 
+        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, Val(tracer_index),
                                                                                 U, C, K, Fc, parameters, time)
-                                                                                
+
     end
 
     return nothing
@@ -182,12 +182,12 @@ function calculate_boundary_source_terms!(Gⁿ, bcs, arch, grid, args...)
 
     # Velocity fields
     for (i, ubcs) in enumerate(bcs[1:3])
-        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.left, ubcs.z.right, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top, args...)
     end
 
     # Tracer fields
     for (i, cbcs) in enumerate(bcs[4:end])
-        apply_z_bcs!(Gⁿ[i+3], arch, grid, cbcs.z.left, cbcs.z.right, args...)
+        apply_z_bcs!(Gⁿ[i+3], arch, grid, cbcs.z.bottom, cbcs.z.top, args...)
     end
 
     return nothing
@@ -201,14 +201,14 @@ end
 function solve_for_pressure!(pressure, ::CPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
     view(pressure, 1:grid.Nx, 1:grid.Ny, 1:grid.Nz) .= real.(ϕ)
-    return nothing 
+    return nothing
 end
 
 "Solve the Poisson equation for non-hydrostatic pressure on the GPU."
 function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
     @launch device(GPU()) config=launch_config(grid, 3) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
-    return nothing 
+    return nothing
 end
 
 """
@@ -220,10 +220,10 @@ the `buoyancy_perturbation` downwards:
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, 1] = - ▶z_aaf(i, j, 1, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
-            @unroll for k in 2:grid.Nz
-                @inbounds pHY′[i, j, k] = 
-                    pHY′[i, j, k-1] - ▶z_aaf(i, j, k, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
+            @inbounds pHY′[i, j, grid.Nz] = - ▶z_aaf(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
+            @unroll for k in grid.Nz-1 : -1 : 1
+                @inbounds pHY′[i, j, k] =
+                    pHY′[i, j, k+1] - ▶z_aaf(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
             end
         end
     end
@@ -454,7 +454,7 @@ function adams_bashforth_update_tracer_source_term!(Gcⁿ, grid::AbstractGrid{FT
 end
 
 """
-Evaluate the right-hand-side terms for velocity fields and tracer fields 
+Evaluate the right-hand-side terms for velocity fields and tracer fields
 at time step n+½ using a weighted 2nd-order Adams-Bashforth method.
 """
 function adams_bashforth_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
@@ -522,20 +522,19 @@ function update_solution!(U, C, arch, grid, G, pNHS, Δt)
 end
 
 """
-Compute the vertical velocity w by integrating the continuity equation downwards
+Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
 function compute_w_from_continuity!(U, grid)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds U.w[i, j, 1] = 0
+            # U.w[i, j, 0] = 0 is enforced via halo regions.
             @unroll for k in 2:grid.Nz
-                @inbounds U.w[i, j, k] = U.w[i, j, k-1] + grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
+                @inbounds U.w[i, j, k] = U.w[i, j, k-1] - grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
             end
         end
     end
 
     return nothing
 end
-

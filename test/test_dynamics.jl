@@ -147,23 +147,25 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
 end
 
 """
-Pearson vortex test
-See p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application" by Hesthaven & Warburton.
+Taylor-Green vortex test
+See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Green_vortex_solution
+     and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application" by Hesthaven & Warburton.
 """
-function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
+function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     Nx, Ny, Nz = N, N, 2
     Lx, Ly, Lz = 1, 1, 1
     ν = 1
 
-    # Choose a very small time step ~O(1/Δx²) as we are diffusion-limited in this test.
-    Δt = (Lx/Nx)^2 / (10π*ν)
+    # Choose a very small time step as we are diffusion-limited in this test: Δt ≤ Δx² / 2ν
+    Δx = Lx / Nx
+    Δt = (1/10π) * Δx^2 / ν
 
-    # Pearson vortex analytic solution.
+    # Taylor-Green vortex analytic solution.
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
     model = Model(architecture = arch,
-                          grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                          grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
                        closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
                        tracers = nothing,
                       buoyancy = nothing) # turn off buoyancy
@@ -189,7 +191,7 @@ function pearson_vortex_test(arch; FT=Float64, N=64, Nt=10)
     v_rel_err_avg = mean(v_rel_err)
     v_rel_err_max = maximum(v_rel_err)
 
-    @info "Pearson vortex test ($arch, $FT) with Nx=Ny=$N @ Nt=$Nt: " *
+    @info "Taylor-Green vortex test ($arch, $FT) with Nx=Ny=$N @ Nt=$Nt: " *
           @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)\n",
                    u_rel_err_avg, u_rel_err_max, v_rel_err_avg, v_rel_err_max)
 
@@ -234,8 +236,8 @@ end
         @test internal_wave_test()
     end
 
-    @testset "Pearson vortex" begin
-        println("  Testing Pearson vortex...")
-        @test pearson_vortex_test(CPU())
+    @testset "Taylor-Green vortex" begin
+        println("  Testing Taylor-Green vortex...")
+        @test taylor_green_vortex_test(CPU())
     end
 end

@@ -57,10 +57,10 @@ for arch in archs, test_case in test_cases
 
     bname =  benchmark_name(N, "$na active + $(lpad(np, 2)) passive", arch, FT)
     @printf("Running benchmark: %s...\n", bname)
-    
+
     model = Model(architecture = arch,
                     float_type = FT,
-                          grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                          grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
                       buoyancy = na2buoyancy(na),
                        tracers = tracers)
     time_step!(model, Ni, 1)
@@ -72,4 +72,3 @@ end
 
 print_timer(timer, title="Tracer benchmarks", sortby=:name)
 println("")
-
