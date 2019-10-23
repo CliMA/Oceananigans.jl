@@ -47,10 +47,9 @@ function FPlane(FT=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ▶xy_fca(i, j, k, grid, U.v)
-
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ▶xy_cfa(i, j, k, grid, U.u)
-
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
+
 #####
 ##### The Beta Plane
 #####
@@ -94,8 +93,6 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
 
     return BetaPlane{T}(f₀, β)
 end
-
-
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
     @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
