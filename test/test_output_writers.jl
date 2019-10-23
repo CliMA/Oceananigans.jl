@@ -17,22 +17,57 @@ function run_thermal_bubble_netcdf_tests(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    nc_writer = NetCDFOutputWriter(dir=".", prefix="test_", frequency=10, padding=1)
+    outputs = Dict("v"=>model.velocities.v,
+                   "u"=>model.velocities.u,
+                   "w"=>model.velocities.w,
+                   "T"=>model.tracers.T,
+                   "S"=>model.tracers.S)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename="dumptest.nc",
+                                   frequency=10)
     push!(model.output_writers, nc_writer)
+
+    xC_slice = 1:10
+    xF_slice = 2:11
+    yC_slice = 10:15
+    yF_slice = 1
+    zC_slice = 10
+    zF_slice = 9:11
+    nc_sliced_writer = NetCDFOutputWriter(model, outputs,
+                                          filename="dumptestsliced.nc",
+                                          frequency=10,
+                                          xC=xC_slice, xF=xF_slice, yC=yC_slice,
+                                          yF=yF_slice, zC=zC_slice, zF=zF_slice)
+    push!(model.output_writers, nc_sliced_writer)
 
     time_step!(model, 10, Δt)
 
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
+    close(nc_writer)
+    close(nc_sliced_writer)
+
+    u = read_output(nc_writer, "u")
+    v = read_output(nc_writer, "v")
+    w = read_output(nc_writer, "w")
+    T = read_output(nc_writer, "T")
+    S = read_output(nc_writer, "S")
 
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
     @test all(w .≈ Array(interiorparent(model.velocities.w)))
     @test all(T .≈ Array(interiorparent(model.tracers.T)))
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
+
+    u_sliced = read_output(nc_sliced_writer, "u")
+    v_sliced = read_output(nc_sliced_writer, "v")
+    w_sliced = read_output(nc_sliced_writer, "w")
+    T_sliced = read_output(nc_sliced_writer, "T")
+    S_sliced = read_output(nc_sliced_writer, "S")
+
+    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
+    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
+    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
+    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
+    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
 end
 
 function run_jld2_file_splitting_tests(arch)

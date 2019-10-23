@@ -47,14 +47,15 @@ function compute_w_from_continuity(arch, FT)
     fill_halo_regions!(w.data, bcs.w, arch, grid)
     velocity_div!(grid, u.data, v.data, w.data, div_u.data)
 
-    # Set div_u to zero at the bottom because the initial velocity field is not divergence-free
-    # so we end up some divergence at the bottom if we don't do this.
-    interior(div_u)[:, :, end] .= zero(FT)
+    # Set div_u to zero at the top because the initial velocity field is not divergence-free
+    # so we end up some divergence at the top if we don't do this.
+    interior(div_u)[:, :, Nz] .= zero(FT)
 
     min_div = minimum(interior(div_u))
-    max_div = minimum(interior(div_u))
+    max_div = maximum(interior(div_u))
     sum_div = sum(interior(div_u))
     abs_sum_div = sum(abs.(interior(div_u)))
+  
     @info "Velocity divergence after recomputing w ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     all(isapprox.(interior(div_u), 0; atol=5*eps(FT)))

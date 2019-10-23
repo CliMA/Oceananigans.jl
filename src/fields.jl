@@ -215,7 +215,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 
 Example
 =======
-
+```julia
 model = Model(grid=RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
@@ -229,6 +229,7 @@ T₀ = rand(size(model.grid)...)
 T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
+```
 """
 function set!(model::AbstractModel; kwargs...)
     for (fldname, value) in kwargs
