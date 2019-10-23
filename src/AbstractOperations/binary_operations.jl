@@ -1,3 +1,8 @@
+"""
+    BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
+
+An abstract representation of a binary operation on `AbstractField`s.
+"""
 struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
@@ -7,13 +12,22 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
      ▶op :: IΩ
     grid :: G
 
+    """
+        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
+    
+    Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`,
+    followed by interpolation by `▶op` to `(X, Y, Z)`, where `▶a` and `▶b` interpolate
+    `a` and `b` to a common location.
+    """
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
         return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
                    typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
     end
 end
 
-function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid) where {X, Y, Z}
+"""Create a binary operation for `op` actin on `a` and `b` with locations `La` and `Lb`.
+The operator acts at `Lab` and the result is interpolated to `Lc`."""
+function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
      ▶a = interpolation_operator(La, Lab)
      ▶b = interpolation_operator(Lb, Lab)
     ▶op = interpolation_operator(Lab, Lc)
