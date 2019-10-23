@@ -8,8 +8,8 @@
 @inline ∂y_aca(i, j, k, grid, v::AbstractArray) = @inbounds (v[i, j+1, k] - v[i, j, k]) / grid.Δy
 @inline ∂y_afa(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i, j-1, k]) / grid.Δy
 
-@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = @inbounds (w[i, j, k] - w[i, j, k+1]) / grid.Δz
-@inline ∂z_aaf(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k-1] - c[i, j, k]) / grid.Δz
+@inline ∂z_aac(i, j, k, grid, w::AbstractArray) = @inbounds (w[i, j, k+1] - w[i, j, k]) / grid.Δz
+@inline ∂z_aaf(i, j, k, grid, c::AbstractArray) = @inbounds (c[i, j, k] - c[i, j, k-1]) / grid.Δz
 
 #
 # Differentiation and interpolation operators for functions
@@ -108,7 +108,7 @@ Differentiate the function or callable object
 located at `aac` in `z`, across `aaf`.
 """
 @inline ∂z_aaf(i, j, k, grid::AbstractGrid, F::TF, args...) where TF<:Function =
-    (F(i, j, k-1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
+    (F(i, j, k, grid, args...) - F(i, j, k-1, grid, args...)) / grid.Δz
 
 """
     ∂z_aac(i, j, k, grid, F, args...)
@@ -120,7 +120,7 @@ Differentiate the function or callable object
 located at `aaf` in `z`, across `aac`.
 """
 @inline ∂z_aac(i, j, k, grid, F::TF, args...) where TF<:Function =
-    (F(i, j, k, grid, args...) - F(i, j, k+1, grid, args...)) / grid.Δz
+    (F(i, j, k+1, grid, args...) - F(i, j, k, grid, args...)) / grid.Δz
 
 #####
 ##### Double differentiation

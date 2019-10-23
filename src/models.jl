@@ -98,7 +98,7 @@ ChannelModel(; boundary_conditions=ChannelSolutionBCs(), kwargs...) =
 function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64,
                            boundary_conditions=ChannelSolutionBCs(), kwargs...)
 
-    grid = RegularCartesianGrid(float_type, N, L)
+    grid = RegularCartesianGrid(float_type; size=N, length=L)
     closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
@@ -114,7 +114,7 @@ precision `float_type`, and constant isotropic viscosity and diffusivity `ν`, a
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
 function BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
-    grid = RegularCartesianGrid(float_type, N, L)
+    grid = RegularCartesianGrid(float_type; size=N, length=L)
     closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
     return Model(; float_type=float_type, grid=grid, closure=closure, kwargs...)
 end
@@ -132,7 +132,7 @@ precision `float_type`, and the four non-dimensional numbers:
 for characteristic velocity scale `U`, length-scale `λ`, viscosity `ν`,
 tracer diffusivity `κ`, and Coriolis parameter `f`. Buoyancy is scaled
 with `λ U²`, so that the Richardson number is `Ri=B`, where `B` is a
-non-dimensional buoyancy scale set by the user via initial conditions or 
+non-dimensional buoyancy scale set by the user via initial conditions or
 forcing.
 
 Note that `N`, `L`, and `Re` are required.
@@ -141,7 +141,7 @@ Additional `kwargs` are passed to the regular `Model` constructor.
 """
 function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
-         grid = RegularCartesianGrid(float_type, N, L)
+         grid = RegularCartesianGrid(float_type; size=N, length=L)
       closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
      coriolis = VerticalRotationAxis(float_type, f=1/Ro)
      buoyancy = BuoyancyTracer()

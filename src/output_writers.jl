@@ -621,4 +621,3 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
 
     return model
 end
-
