@@ -1,3 +1,5 @@
+using .TurbulenceClosures: ▶xy_cfa, ▶xy_fca
+
 #####
 ##### Functions for non-rotating models
 #####
@@ -21,85 +23,82 @@ struct FPlane{FT} <: AbstractRotation
 end
 
 """
-    FPlane([FT=Float64;] f)
+    FPlane([FT=Float64;] f=nothing, rotation_rate=nothing, latitude=nothing)
 
 Returns a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
+If `f` is not specified, it is calculated from `rotation_rate` and
+`latitude` according to the relation `f = 2*rotation_rate*sind(latitude).
 
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(FT=Float64; f)
-    return FPlane{FT}(f)
+function FPlane(FT=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
+
+    if f==nothing && rotation_rate != nothing && latitude != nothing
+        return FPlane{FT}(2rotation_rate*sind(latitude))
+    elseif f != nothing && rotation_rate == nothing && latitude == nothing
+        return FPlane{FT}(f)
+    else
+        throw(ArgumentError("Either both keywords rotation_rate and
+                             latitude must be specified, *or* only f
+                             must be specified."))
+    end
 end
 
-"""
-    FPlane([FT=Float64;] Ω, latitude)
+@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ▶xy_fca(i, j, k, grid, U.v)
 
-Returns a parameter object for constant rotation at the angular frequency
-`Ωsin(latitude), and therefore with background vorticity `f = 2Ωsin(latitude),
-around a vertical axis.
+@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ▶xy_cfa(i, j, k, grid, U.u)
 
-Also called `FPlane`, after the "f-plane" approximation for the local effect of
-Earth's rotation in a planar coordinate system tangent to the Earth's surface.
-"""
-function FPlane(FT=Float64; Ω, latitude)
-    return FPlane{FT}(2*Ω*sind(latitude))
-end
-
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
+#####
+##### The Beta Plane
+#####
 
 """
-    BetaPlane{FT} <: AbstractRotation
+    BetaPlane{T} <: AbstractRotation
 
 A parameter object for meridionally increasing Coriolis
 parameter (`f = f₀ + βy`).
 """
-struct BetaPlane{FT} <: AbstractRotation
-    f₀ :: FT
-    β  :: FT
+struct BetaPlane{T} <: AbstractRotation
+    f₀ :: T
+     β :: T
 end
 
 """
-    BetaPlane([FT=Float64;] f₀, β)
+    BetaPlane([T=Float64;] f₀=nothing, β=nothing, 
+                           rotation_rate=nothing, latitude=nothing, radius=nothing)
 
-A parameter object for meridionally increasing Coriolis
-parameter (`f = f₀ + βy`).
+A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
+
+The user may specify both `f₀` and `β`, or the three parameters
+`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius 
+of a planet, and the central latitude at which the `β`-plane approximation is to be made.
 """
-function BetaPlane(FT=Float64; f₀, β)
-    return BetaPlane{FT}(f₀, β)
+function BetaPlane(T=Float64; f₀=nothing, β=nothing, 
+                              rotation_rate=nothing, latitude=nothing, radius=nothing)
+
+    f_and_β = f₀ != nothing && β != nothing
+    planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
+
+    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) || 
+    (planet_parameters && all(Tuple(p === nothing for p in (f₀, β)))) ||
+        throw(ArgumentError("Either both keywords f₀ and β must be specified, 
+                            *or* all of rotation_rate, latitude, and radius."))
+
+    if planet_parameters
+        f₀ = 2rotation_rate * sind(latitude)
+         β = 2rotation_rate * cosd(latitude) / radius
+     end
+
+    return BetaPlane{T}(f₀, β)
 end
 
-"""
-    BetaPlane([FT=Float64;] Ω, latitude, R)
 
-Returns a parameter object for meridionally increasing rotation at the
-angular frequency `Ωsin(latitude), and therefore with Coriolis parameter
- `f₀ = 2Ωsin(latitude), around a vertical axis.
-The Coriolis parameter increases meridionally as `f = f₀ + βy`, where
-`β = 2Ωcos(latitude)/R`, and `R` is the radius of the planet.
-"""
-function BetaPlane(FT=Float64; Ω, latitude, R)
-    f₀ = 2*Ω*sind(latitude)
-    β = 2*Ω*cosd(latitude)/R
-    return BetaPlane{FT}(f₀, β)
-end
 
-@inline fv(i, j, k, grid::RegularCartesianGrid{FT}, f, v) where FT =
-    FT(0.5) * f * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
-
-@inline fu(i, j, k, grid::RegularCartesianGrid{FT}, f, u) where FT =
-    FT(0.5) * f * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
-
-@inbounds @inline fv(i, j, k, grid::RegularCartesianGrid{FT}, f₀, β, v) where FT =
-     FT(0.5) * (f₀ + β * grid.yC[j]) * (avgy_f2c(grid, v, i-1,  j, k) + avgy_f2c(grid, v, i, j, k))
-
-@inbounds @inline fu(i, j, k, grid::RegularCartesianGrid{FT}, f₀, β, u) where FT =
-     FT(0.5) * (f₀ + β * grid.yF[j]) * (avgx_f2c(grid, u, i,  j-1, k) + avgx_f2c(grid, u, i, j, k))
-
-@inline x_f_cross_U(i, j, k, grid, rotation::FPlane, U) = -fv(i, j, k, grid, rotation.f, U.v)
-@inline y_f_cross_U(i, j, k, grid, rotation::FPlane, U) =  fu(i, j, k, grid, rotation.f, U.u)
-
-@inline x_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) = -fv(i, j, k, grid, rotation.f₀, rotation.β, U.v)
-@inline y_f_cross_U(i, j, k, grid, rotation::BetaPlane, U) =  fu(i, j, k, grid, rotation.f₀, rotation.β, U.u)
-
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Union{FPlane, BetaPlane}, U) where FT = zero(FT)
+@inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
+    @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
+@inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
+    @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, U.u)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
