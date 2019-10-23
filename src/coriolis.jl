@@ -35,7 +35,7 @@ Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
 function FPlane(FT=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
 
-    if f==nothing && rotation_rate != nothing && latitude != nothing
+    if f == nothing && rotation_rate != nothing && latitude != nothing
         return FPlane{FT}(2rotation_rate*sind(latitude))
     elseif f != nothing && rotation_rate == nothing && latitude == nothing
         return FPlane{FT}(f)
