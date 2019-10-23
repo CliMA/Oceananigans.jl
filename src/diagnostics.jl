@@ -139,7 +139,7 @@ A `Timeseries` `Diagnostic` that records a time series of `diagnostic(model)`.
 Example
 =======
 ```julia
-julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
+julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> max_u = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
 
@@ -175,7 +175,7 @@ A `Timeseries` `Diagnostic` that records a `NamedTuple` of time series of
 Example
 =======
 ```julia
-julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1)); Δt = 1.0;
+julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))); Δt = 1.0;
 
 julia> cfl = Timeseries((adv=AdvectiveCFL(Δt), diff=DiffusiveCFL(Δt)), model; frequency=1);
 
@@ -233,7 +233,7 @@ element-wise to `field`.
 Examples
 =======
 ```julia
-julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
+julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> max_abs_u = FieldMaximum(abs, model.velocities.u);
 
@@ -283,7 +283,7 @@ for advection across a cell.
 Example
 =======
 ```julia
-julia> model = BasicModel(N=(16, 16, 16), L=(8, 8, 8));
+julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(8, 8, 8)));
 
 julia> cfl = AdvectiveCFL(1.0);
 
@@ -305,7 +305,7 @@ for diffusion across a cell associated with `model.closure`.
 Example
 =======
 ```julia
-julia> model = BasicModel(N=(16, 16, 16), L=(1, 1, 1));
+julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> cfl = DiffusiveCFL(0.1);
 

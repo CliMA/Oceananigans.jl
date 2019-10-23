@@ -13,7 +13,7 @@ function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
 end
 
 function initial_conditions_correctly_set(arch, FT)
-    model = BasicModel(N=(16, 16, 8), L=(1, 2, 3), architecture=arch, float_type=FT)
+    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 8), length=(1, 2, 3)), architecture=arch, float_type=FT)
 
     # Set initial condition to some basic function we can easily check for.
     # We offset the functions by an integer so that we don't end up comparing
@@ -51,7 +51,7 @@ end
     @testset "Doubly periodic model" begin
         println("  Testing doubly periodic model construction...")
         for arch in archs, FT in float_types
-            model = BasicModel(N=(16, 16, 2), L=(1, 2, 3), architecture=arch, float_type=FT)
+            model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 2), length=(1, 2, 3)), architecture=arch, float_type=FT)
 
             # Just testing that a Model was constructed with no errors/crashes.
             @test true
@@ -61,9 +61,20 @@ end
     @testset "Reentrant channel model" begin
         println("  Testing reentrant channel model construction...")
         for arch in archs, FT in float_types
-            model = BasicChannelModel(N=(16, 16, 2), L=(3, 2, 1), architecture=arch, float_type=FT)
+            model = ChannelModel(grid=RegularCartesianGrid(FT; size=(16, 16, 2), length=(1, 2, 3)), architecture=arch, float_type=FT)
 
             # Just testing that a ChannelModel was constructed with no errors/crashes.
+            @test true
+        end
+    end
+
+    @testset "Non-dimensional model" begin
+        println("  Testing non-dimensional model construction...")
+        for arch in archs, FT in float_types
+            grid = RegularCartesianGrid(FT; size=(16, 16, 2), length=(3, 2, 1))
+            model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
+
+            # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
             @test true
         end
     end

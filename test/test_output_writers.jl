@@ -8,7 +8,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2)
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = Model(architecture=arch, grid=grid, closure=closure)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -50,7 +52,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     w = read_output(nc_writer, "w")
     T = read_output(nc_writer, "T")
     S = read_output(nc_writer, "S")
-
+  
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
     @test all(w .≈ Array(interiorparent(model.velocities.w)))
@@ -71,7 +73,7 @@ function run_thermal_bubble_netcdf_tests(arch)
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1))
+    model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
 
     u(model) = Array(model.velocities.u.data.parent)
     fields = Dict(:u => u)
@@ -118,7 +120,9 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    true_model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=4e-2, κ=4e-2, architecture=arch)
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    true_model = Model(architecture=arch, grid=grid, closure=closure)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
