@@ -8,7 +8,7 @@ Nx, Ny, Nz = 16, 16, 16       # No. of grid points in x, y, and z, respectively.
 Lx, Ly, Lz = 100, 100, 100    # Length of the domain in x, y, and z, respectively (m).
 tf = 5000                     # Length of the simulation (s)
 
-model = Model(grid=RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
               closure=ConstantIsotropicDiffusivity())
 
 # Add a cube-shaped warm temperature anomaly that takes up the middle 50%

@@ -108,7 +108,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
 
     model = Model(
        architecture = arch,
-               grid = RegularCartesianGrid(N = (Nxy, Nxy, Nz), L = (4π*h, 2π*h, 2h)),
+               grid = RegularCartesianGrid(size = (Nxy, Nxy, Nz), length = (4π*h, 2π*h, 2h)),
            buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
             closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
 boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
@@ -257,4 +257,3 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
                 wizard.Δt, prettytime(walltime / Ni))
     end
 end
-
