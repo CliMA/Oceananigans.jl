@@ -80,7 +80,7 @@ S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
 
 model = Model(
          architecture = CPU(),
-                 grid = RegularCartesianGrid(size=(Nz, Nz, Nz), grid=(Δz*Nz, Δz*Nz, Δz*Nz)),
+                 grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz)),
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
