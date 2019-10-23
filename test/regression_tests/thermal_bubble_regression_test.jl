@@ -3,8 +3,9 @@ function run_thermal_bubble_regression_test(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(architecture = arch, N = (Nx, Ny, Nz), L = (Lx, Ly, Lz),
-                       ν = 4e-2, κ = 4e-2, coriolis = FPlane(f = 1e-4))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = Model(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
