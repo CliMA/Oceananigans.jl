@@ -45,7 +45,7 @@ export
     Clock,
 
     # Models
-    Model, BasicModel, ChannelModel, BasicChannelModel,
+    Model, ChannelModel, NonDimensionalModel,
 
     # Model output writers
     Checkpointer, restore_from_checkpoint, read_output,

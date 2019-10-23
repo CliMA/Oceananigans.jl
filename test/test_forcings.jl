@@ -14,7 +14,8 @@ function time_step_with_forcing_functions(arch)
 
     forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=forcing)
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, 1)
     return true
 end
@@ -26,7 +27,8 @@ function time_step_with_forcing_functions_params(arch)
 
     forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=forcing, parameters=(τ=60,))
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, forcing=forcing, parameters=(τ=60,))
     time_step!(model, 1, 1)
     return true
 end
@@ -37,21 +39,24 @@ function time_step_with_forcing_functions_sin_exp(arch)
 
     forcing = ModelForcing(u=Fu, T=FT)
 
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=forcing)
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, 1)
     return true
 end
 
 function time_step_with_simple_forcing(arch)
     u_forcing = SimpleForcing((x, y, z, t) -> sin(x))
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=ModelForcing(u=u_forcing))
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, 1)
     return true
 end
 
 function time_step_with_simple_forcing_parameters(arch)
     u_forcing = SimpleForcing((x, y, z, t, p) -> sin(p.ω * x), parameters=(ω=π,))
-    model = BasicModel(N=(16, 16, 16), L=(1, 1, 1), architecture=arch, forcing=ModelForcing(u=u_forcing))
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, 1)
     return true
 end

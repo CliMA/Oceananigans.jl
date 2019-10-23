@@ -14,7 +14,9 @@ function relative_error(u_num, u, time)
 end
 
 function test_diffusion_simple(fieldname)
-    model = BasicModel(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
+    grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
+    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
+    model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     value = π
     interior(field) .= value
@@ -25,7 +27,9 @@ function test_diffusion_simple(fieldname)
 end
 
 function test_diffusion_budget_default(fieldname)
-    model = BasicModel(N=(1, 1, 16), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
+    grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
+    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
+    model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
     interior(field)[:, :,   1:half_Nz] .= -1
@@ -35,7 +39,9 @@ function test_diffusion_budget_default(fieldname)
 end
 
 function test_diffusion_budget_channel(fieldname)
-    model = BasicChannelModel(N=(1, 16, 4), L=(1, 1, 1), ν=1, κ=1, buoyancy=nothing)
+    grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1))
+    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
+    model = ChannelModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
@@ -52,7 +58,9 @@ end
 
 function test_diffusion_cosine(fieldname)
     Nz, Lz, κ, m = 128, π/2, 1, 2
-    model = BasicModel(N=(1, 1, Nz), L=(1, 1, Lz), ν=κ, κ=κ, buoyancy=nothing)
+    grid = RegularCartesianGrid(size=(1, 1, Nz), length=(1, 1, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
+    model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
 
     zC = model.grid.zC
@@ -103,8 +111,9 @@ function internal_wave_test(; N=128, Nt=10)
     b₀(x, y, z) = b(x, y, z, 0)
 
     # Create a model where temperature = buoyancy.
-    model = BasicModel(N=(N, 1, N), L=(L, L, L), ν=ν, κ=κ, buoyancy=BuoyancyTracer(), tracers=:b,
-                       coriolis=FPlane(f=f))
+    grid = RegularCartesianGrid(size=(N, 1, N), length=(L, L, L))
+    closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ)
+    model = Model(grid=grid, closure=closure, buoyancy=BuoyancyTracer(), tracers=:b, coriolis=FPlane(f=f))
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -125,7 +134,9 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     v₀(x, y, z) = V
     T₀(x, y, z) = T(x, y, z, 0)
 
-    model = BasicModel(N=(N, N, 2), L=(L, L, L), ν=κ, κ=κ)
+    grid = RegularCartesianGrid(size=(N, N, 2), length=(L, L, L))
+    closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
+    model = Model(grid=grid, closure=closure)
 
     set_ic!(model, u=u₀, v=v₀, T=T₀)
     time_step!(model, Nt, Δt)
