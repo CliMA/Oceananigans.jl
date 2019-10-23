@@ -50,7 +50,7 @@ function z_derivative(a)
 end
 
 function x_derivative_cell(FT, arch)
-    grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
     a = Field(Cell, Cell, Cell, arch, grid)
     dx_a = ∂x(a)
 
@@ -232,7 +232,7 @@ end
 
     for FT in float_types
         arch = CPU()
-        grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+        grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
         u, v, w = Oceananigans.VelocityFields(arch, grid)
         c = Field(Cell, Cell, Cell, arch, grid)
 
@@ -277,7 +277,7 @@ end
         for FT in float_types
             num1 = FT(π)
             num2 = FT(42)
-            grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
 
             u, v, w = Oceananigans.VelocityFields(arch, grid)
             T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
@@ -296,7 +296,7 @@ end
         arch = CPU()
         println("  Testing derivatives...")
         for FT in float_types
-            grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
 
             u, v, w = Oceananigans.VelocityFields(arch, grid)
             T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
@@ -314,8 +314,8 @@ end
         arch = CPU()
         Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
-            grid = RegularCartesianGrid(FT, (Nx, Nx, Nx), (Nx, Nx, Nx))
-            a, b = Tuple(Field(Cell, Cell, Cell, arch, grid) for i in 1:2)
+            grid = RegularCartesianGrid(FT, size=(Nx, Nx, Nx), length=(Nx, Nx, Nx))
+            a, b = (Field(Cell, Cell, Cell, arch, grid) for i in 1:2)
     
             set!(b, 2)
             set!(a, (x, y, z) -> x < 2 ? 3x : 6)
