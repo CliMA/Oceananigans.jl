@@ -23,7 +23,7 @@ using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
                     TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
                     RoquetIdealizedNonlinearEquationOfState, required_tracers
 
-import Oceananigans: datatuple
+import Oceananigans: interior, datatuple
 
 using Oceananigans.TurbulenceClosures
 
