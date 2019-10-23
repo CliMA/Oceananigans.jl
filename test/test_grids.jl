@@ -1,31 +1,46 @@
-function correct_grid_size(ft::DataType)
-    g = RegularCartesianGrid(ft, (4, 6, 8), (2π, 4π, 9π))
+function correct_grid_size(FT)
+    grid = RegularCartesianGrid(FT, (4, 6, 8), (2π, 4π, 9π))
 
     # Checking ≈ as the grid could be storing Float32 values.
-    (g.Nx ≈ 4  && g.Ny ≈ 6  && g.Nz ≈ 8 &&
-     g.Lx ≈ 2π && g.Ly ≈ 4π && g.Lz ≈ 9π)
+    return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
+            grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
 end
 
-function correct_cell_volume(ft::DataType)
+function correct_cell_volume(FT)
     Nx, Ny, Nz = 19, 13, 7
     Δx, Δy, Δz = 0.1, 0.2, 0.3
     Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
-    g = RegularCartesianGrid(ft, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
 
     # Checking ≈ as the grid could be storing Float32 values.
-    g.V ≈ Δx*Δy*Δz
+    return grid.V ≈ Δx*Δy*Δz
 end
 
-function faces_start_at_zero(ft::DataType)
-    g = RegularCartesianGrid(ft, (10, 10, 10), (2π, 2π, 2π))
-    g.xF[1] == 0 && g.yF[1] == 0 && g.zF[1] == 0
+function faces_start_at_zero(FT)
+    grid = RegularCartesianGrid(FT, (10, 10, 10), (2π, 2π, 2π))
+    return grid.xF[1] == 0 && grid.yF[1] == 0 && grid.zF[end] == 0
 end
 
-function end_faces_match_grid_length(ft::DataType)
-    g = RegularCartesianGrid(ft, (12, 13, 14), (π, π^2, π^3))
-    (g.xF[end] - g.xF[1] ≈ π   &&
-     g.yF[end] - g.yF[1] ≈ π^2 &&
-     g.zF[1] - g.zF[end] ≈ π^3)
+function end_faces_match_grid_length(FT)
+    grid = RegularCartesianGrid(FT, (12, 13, 14), (π, π^2, π^3))
+    return (grid.xF[end] - grid.xF[1] ≈ π   &&
+            grid.yF[end] - grid.yF[1] ≈ π^2 &&
+            grid.zF[end] - grid.zF[1] ≈ π^3)
+end
+
+function ranges_have_correct_length(FT)
+    Nx, Ny, Nz = 8, 9, 10
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, 1))
+    return (length(grid.xC) == Nx && length(grid.xF) == Nx+1 &&
+            length(grid.yC) == Ny && length(grid.yF) == Ny+1 &&
+            length(grid.zC) == Nz && length(grid.zF) == Nz+1)
+end
+
+# See: https://github.com/climate-machine/Oceananigans.jl/issues/480
+function no_roundoff_error_in_ranges(FT)
+    Nx, Ny, Nz = 1, 1, 64
+    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, π/2))
+    return length(grid.zC) == Nz
 end
 
 @testset "Grids" begin
@@ -38,6 +53,8 @@ end
             @test correct_cell_volume(FT)
             @test faces_start_at_zero(FT)
             @test end_faces_match_grid_length(FT)
+            @test ranges_have_correct_length(FT)
+            @test no_roundoff_error_in_ranges(FT)
         end
     end
 

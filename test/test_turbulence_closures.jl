@@ -93,8 +93,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     return (   ∇_κ_∇c(2, 1, 3, grid, C.T, Val(1), closure, nothing) == 8κh + 10κv &&
             ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U..., nothing) == 2νh + 4νv &&
             ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U..., nothing) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv
-            )
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv)
 end
 
 function test_function_interpolation(T=Float64)
@@ -136,9 +135,8 @@ function test_function_differentiation(T=Float64)
     ∂y_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
     ∂y_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
 
-    # Note reverse indexing here!
-    ∂z_ϕ_f = ϕ²[2, 2, 1] - ϕ²[2, 2, 2]
-    ∂z_ϕ_c = ϕ²[2, 2, 2] - ϕ²[2, 2, 3]
+    ∂z_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
+    ∂z_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
 
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 

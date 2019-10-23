@@ -1,3 +1,4 @@
+
 function run_rayleigh_benard_regression_test(arch)
 
     #####
@@ -26,14 +27,16 @@ function run_rayleigh_benard_regression_test(arch)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
     Fc(i, j, k, grid, time, U, C, params) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - C.c[i, j, k])
 
+    bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.0),
+                                   bottom = BoundaryCondition(Value, Δb))
+
     model = Model(
                architecture = arch,
                        grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
-                   buoyancy = BuoyancyTracer(), 
-        boundary_conditions = BoundaryConditions(b=HorizontallyPeriodicBCs(top=BoundaryCondition(Value, 0.0), 
-                                                                           bottom=BoundaryCondition(Value, Δb))),
+                   buoyancy = BuoyancyTracer(),
+        boundary_conditions = BoundaryConditions(b=bbcs),
                     forcing = ModelForcing(c=Fc)
     )
 
@@ -49,9 +52,8 @@ function run_rayleigh_benard_regression_test(arch)
     outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
 
     prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields; dir=joinpath(dirname(@__FILE__), "data"), 
+    outputwriter = JLD2OutputWriter(model, outputfields; dir=joinpath(dirname(@__FILE__), "data"),
                                     prefix=prefix, frequency=test_steps, including=[])
-                                   
 
     #####
     ##### Initial condition and spinup steps for creating regression test data
@@ -79,6 +81,22 @@ function run_rayleigh_benard_regression_test(arch)
     u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)
     T₀, S₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
     Gu, Gv, Gw, GT, GS = get_output_tuple(outputwriter, spinup_steps, :G)
+  
+    u₀ = reverse(u₀; dims=3)
+    v₀ = reverse(v₀; dims=3)
+    T₀ = reverse(T₀; dims=3)
+    S₀ = reverse(S₀; dims=3)
+
+    w₀ = reverse(w₀[:, :, 2:Nz]; dims=3)
+    w₀ = cat(zeros(Nx, Ny), w₀; dims=3)
+
+    Gu = reverse(Gu; dims=3)
+    Gv = reverse(Gv; dims=3)
+    GT = reverse(GT; dims=3)
+    GS = reverse(GS; dims=3)
+
+    Gw = reverse(Gw[:, :, 2:Nz]; dims=3)
+    Gw = cat(zeros(Nx, Ny), Gw; dims=3)
 
     interior(model.velocities.u) .= ArrayType(u₀)
     interior(model.velocities.v) .= ArrayType(v₀)
@@ -102,6 +120,14 @@ function run_rayleigh_benard_regression_test(arch)
     u₁, v₁, w₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :U)
     T₁, S₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
 
+    u₁ = reverse(u₁; dims=3)
+    v₁ = reverse(v₁; dims=3)
+    T₁ = reverse(T₁; dims=3)
+    S₁ = reverse(S₁; dims=3)
+
+    w₁ = reverse(w₁[:, :, 2:Nz]; dims=3)
+    w₁ = cat(zeros(Nx, Ny), w₁; dims=3)
+
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
     fields_gm = [u₁, v₁, w₁, T₁, S₁]
@@ -118,9 +144,8 @@ function run_rayleigh_benard_regression_test(arch)
     # Now test that the model state matches the regression output.
     @test all(Array(interior(model.velocities.u)) .≈ u₁)
     @test all(Array(interior(model.velocities.v)) .≈ v₁)
-    @test all(Array(interior(model.velocities.w)) .≈ w₁)
+    @test all(Array(interior(model.velocities.w))[:, :, 2:Nz] .≈ w₁[:, :, 2:Nz])
     @test all(Array(interior(model.tracers.b))    .≈ T₁)
     @test all(Array(interior(model.tracers.c))    .≈ S₁)
     return nothing
 end
-

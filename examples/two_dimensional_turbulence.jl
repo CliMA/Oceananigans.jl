@@ -32,7 +32,7 @@ model = Model(
 # zero mean for purely aesthetic reasons.
 
 u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀) 
+u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
 
@@ -73,3 +73,6 @@ for i = 1:10
     ax.axis("off")
     pause(0.1)
 end
+
+# We plot out the final vorticity field.
+gcf()

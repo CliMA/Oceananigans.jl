@@ -1,11 +1,10 @@
-
 function run_thermal_bubble_regression_test(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, ν=4e-2, κ=4e-2,
-                       coriolis=FPlane(f=1e-4))
+    model = BasicModel(architecture = arch, N = (Nx, Ny, Nz), L = (Lx, Ly, Lz),
+                       ν = 4e-2, κ = 4e-2, coriolis = FPlane(f = 1e-4))
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
@@ -15,22 +14,38 @@ function run_thermal_bubble_regression_test(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    model.tracers.T.data[i1:i2, j1:j2, k1+1:k2+1] .+= 0.01
 
-    nc_writer = NetCDFOutputWriter(dir=joinpath(dirname(@__FILE__), "data"),
-                                   prefix="thermal_bubble_regression_",
-                                   frequency=10, padding=2)
-
-    # Uncomment to include a NetCDF output writer that produces the regression.
+    # Uncomment to generate regression data.
+    # outputs = Dict("v" => model.velocities.v,
+    #                "u" => model.velocities.u,
+    #                "w" => model.velocities.w,
+    #                "T" => model.tracers.T,
+    #                "S" => model.tracers.S)
+    #
+    # nc_writer = NetCDFOutputWriter(model, outputs,
+    #                                filename="data/thermal_bubble_regression_10.nc",
+    #                                frequency=10)
     # push!(model.output_writers, nc_writer)
 
     time_step!(model, 10, Δt)
 
-    u = read_output(nc_writer, "u", 10)
-    v = read_output(nc_writer, "v", 10)
-    w = read_output(nc_writer, "w", 10)
-    T = read_output(nc_writer, "T", 10)
-    S = read_output(nc_writer, "S", 10)
+    regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression_10.nc")
+    ds = Dataset(regression_data_filepath, "r")
+
+    u = ds["u"][:]
+    v = ds["v"][:]
+    w = ds["w"][:]
+    T = ds["T"][:]
+    S = ds["S"][:]
+
+    u = reverse(u; dims=3)
+    v = reverse(v; dims=3)
+    T = reverse(T; dims=3)
+    S = reverse(S; dims=3)
+
+    w = reverse(w[:, :, 2:Nz]; dims=3)
+    w = cat(zeros(Nx, Ny), w; dims=3)
 
     field_names = ["u", "v", "w", "T", "S"]
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
@@ -48,9 +63,7 @@ function run_thermal_bubble_regression_test(arch)
     # Now test that the model state matches the regression output.
     @test all(Array(interior(model.velocities.u)) .≈ u)
     @test all(Array(interior(model.velocities.v)) .≈ v)
-    @test all(Array(interior(model.velocities.w)) .≈ w)
+    @test all(Array(interior(model.velocities.w))[:, :, 2:Nz] .≈ w[:, :, 2:Nz])
     @test all(Array(interior(model.tracers.T))    .≈ T)
     @test all(Array(interior(model.tracers.S))    .≈ S)
 end
-
-

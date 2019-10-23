@@ -32,6 +32,12 @@ git-tree-sha1 = "62847acab40e6855a9b5905ccb99c2b5cf6b3ebb"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.2.0"
 
+[[CFTime]]
+deps = ["Dates", "Printf"]
+git-tree-sha1 = "90eddf050a4d4b35520f87b9ba82302643706a1e"
+uuid = "179af706-886a-5703-950a-314cd64e0468"
+version = "0.0.3"
+
 [[CSTParser]]
 deps = ["Tokenize"]
 git-tree-sha1 = "c69698c3d4a7255bc1b4bc2afc09f59db910243b"
@@ -212,17 +218,17 @@ version = "0.4.3"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[NCDatasets]]
+deps = ["BinDeps", "CFTime", "Compat", "CondaBinDeps", "DataStructures", "Dates", "Libdl", "Missings", "Printf", "Random"]
+git-tree-sha1 = "21f833cf06f4e0128726b25aa2fc662b7d66d1bd"
+uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+version = "0.9.3"
+
 [[NNlib]]
 deps = ["Libdl", "LinearAlgebra", "Requires", "Statistics", "TimerOutputs"]
 git-tree-sha1 = "0c667371391fc6bb31f7f12f96a56a17098b3de8"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.6.0"
-
-[[NetCDF]]
-deps = ["BinDeps", "CondaBinDeps", "Formatting", "Libdl"]
-git-tree-sha1 = "fce0c7962fb14b8cf2f33ea77885f3b7c7e1485e"
-uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
-version = "0.8.0"
 
 [[OffsetArrays]]
 git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"
