@@ -153,7 +153,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
     model = Model(architecture = arch,
-                          grid = RegularCartesianGrid(FT; N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                          grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
                        closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
                        tracers = nothing,
                       buoyancy = nothing) # turn off buoyancy

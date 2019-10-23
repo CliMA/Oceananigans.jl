@@ -216,7 +216,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 Example
 =======
 ```julia
-model = Model(grid=RegularCartesianGrid(N=(32, 32, 32), L=(1, 1, 1))
+model = Model(grid=RegularCartesianGrid(size=(32, 32, 32), length=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,

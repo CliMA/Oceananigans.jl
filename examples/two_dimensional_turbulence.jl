@@ -22,8 +22,8 @@ using Oceananigans: Face, Cell
 # model with a simple isotropic diffusivity.
 
 model = Model(
-        grid = RegularCartesianGrid(N=(128, 128, 1), L=(2π, 2π, 2π)),
-    buoyancy = nothing, 
+        grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π)),
+    buoyancy = nothing,
      tracers = nothing,
      closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)
 )

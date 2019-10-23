@@ -33,7 +33,7 @@ end
     @testset "Field initialization" begin
         println("  Testing field initialization...")
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, N, L)
+            grid = RegularCartesianGrid(FT; size=N, length=L)
 
             for fieldtype in fieldtypes
                 @test correct_field_size(arch, grid, fieldtype)
@@ -52,7 +52,7 @@ end
         println("  Testing field setting...")
 
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, N, L)
+            grid = RegularCartesianGrid(FT; size=N, length=L)
 
             for fieldtype in fieldtypes, val in vals
                 @test correct_field_value_was_set(arch, grid, fieldtype, val)
