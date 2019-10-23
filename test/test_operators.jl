@@ -7,7 +7,7 @@
         Lx, Ly, Lz = 100, 100, 100
 
         arch = CPU()
-        grid = RegularCartesianGrid((Nx, Ny, Nz), (Lx, Ly, Lz))
+        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = grid.Tx, grid.Ty, grid.Tz
@@ -18,7 +18,7 @@
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
-        grid_yz = RegularCartesianGrid((1, Ny, Nz), (Lx, Ly, Lz))
+        grid_yz = RegularCartesianGrid(size=(1, Ny, Nz), length=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
@@ -27,7 +27,7 @@
 
         # An xz-slice with Ny==1.
         A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
-        grid_xz = RegularCartesianGrid((Nx, 1, Nz), (Lx, Ly, Lz))
+        grid_xz = RegularCartesianGrid(size=(Nx, 1, Nz), length=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]

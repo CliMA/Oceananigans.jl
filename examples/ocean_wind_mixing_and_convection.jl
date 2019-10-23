@@ -18,30 +18,30 @@ using Oceananigans, PyPlot, Random, Printf
 # Here we use an isotropic, cubic grid with `Nz` grid points and grid spacing
 # `Δz = 1` meter. We specify fluxes of heat, momentum, and salinity via
 #
-#   1. A temperature flux `Qᵀ` at the top of the domain, which is related to heat flux 
-#       by `Qᵀ = Qʰ / (ρ₀ * cᴾ)`, where `Qʰ` is the heat flux, `ρ₀` is a reference density, 
-#       and `cᴾ` is the heat capacity of seawater. With a reference density 
-#       `ρ₀ = 1026 kg m⁻³`and heat capacity `cᴾ = 3991`, our chosen temperature flux of 
-#       `Qᵀ = 5 × 10⁻⁵ K m⁻¹ s⁻¹` corresponds to a heat flux of `Qʰ = 204.7 W m⁻²`, a 
+#   1. A temperature flux `Qᵀ` at the top of the domain, which is related to heat flux
+#       by `Qᵀ = Qʰ / (ρ₀ * cᴾ)`, where `Qʰ` is the heat flux, `ρ₀` is a reference density,
+#       and `cᴾ` is the heat capacity of seawater. With a reference density
+#       `ρ₀ = 1026 kg m⁻³`and heat capacity `cᴾ = 3991`, our chosen temperature flux of
+#       `Qᵀ = 5 × 10⁻⁵ K m⁻¹ s⁻¹` corresponds to a heat flux of `Qʰ = 204.7 W m⁻²`, a
 #       relatively powerful cooling rate.
 #
 #   2. A velocity flux `Qᵘ` at the top of the domain, which is related
 #       to the `x` momentum flux `τˣ` via `τˣ = ρ₀ * Qᵘ`, where `ρ₀` is a reference density.
 #       Our chosen value of `Qᵘ = -2 × 10⁻⁵ m² s⁻²` roughly corresponds to atmospheric winds
-#       of `uᵃ = 2.9 m s⁻¹` in the positive `x`-direction, using the parameterization 
+#       of `uᵃ = 2.9 m s⁻¹` in the positive `x`-direction, using the parameterization
 #       `τ = 0.0025 * |uᵃ| * uᵃ`.
 #
-#   3. An evaporation rate `evaporation = 10⁻⁷ m s⁻¹`, or approximately 0.1 millimeter per 
+#   3. An evaporation rate `evaporation = 10⁻⁷ m s⁻¹`, or approximately 0.1 millimeter per
 #       hour.
 #
 # Finally, we use an initial temperature gradient of `∂T/∂z = 0.005 K m⁻¹`,
 # which implies an iniital buoyancy frequency `N² = α * g * ∂T/∂z = 9.8 × 10⁻⁶ s⁻²`
-# with a thermal expansion coefficient `α = 2 × 10⁻⁴ K⁻¹` and gravitational acceleration 
-# `g = 9.81 s⁻²`. Note that, by default, the `SeawaterBuoyancy` model uses a gravitational 
+# with a thermal expansion coefficient `α = 2 × 10⁻⁴ K⁻¹` and gravitational acceleration
+# `g = 9.81 s⁻²`. Note that, by default, the `SeawaterBuoyancy` model uses a gravitational
 # acceleration `gᴱᵃʳᵗʰ = 9.80665 s⁻²`.
 
          Nz = 48       # Number of grid points in x, y, z
-         Δz = 1.0      # Grid spacing in x, y, z (meters)         
+         Δz = 1.0      # Grid spacing in x, y, z (meters)
          Qᵀ = 5e-5     # Temperature flux at surface
          Qᵘ = -2e-5    # Velocity flux at surface
        ∂T∂z = 0.005    # Initial vertical temperature gradient
@@ -70,9 +70,9 @@ S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
 
 # ## Model instantiation
 #
-# We instantiate a horizontally-periodic `Model` on the CPU with on a `RegularCartesianGrid`, 
-# using a `FPlane` model for rotation (constant rotation rate), a linear equation 
-# of state for temperature and salinity, the Anisotropic Minimum Dissipation closure 
+# We instantiate a horizontally-periodic `Model` on the CPU with on a `RegularCartesianGrid`,
+# using a `FPlane` model for rotation (constant rotation rate), a linear equation
+# of state for temperature and salinity, the Anisotropic Minimum Dissipation closure
 # to model the effects of unresolved turbulence, and the previously defined boundary
 # conditions for `u`, `T`, and `S`. We also pass the evaporation rate to the container
 # model.parameters for use in the boundary condition function that calculates the salinity
@@ -80,7 +80,7 @@ S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
 
 model = Model(
          architecture = CPU(),
-                 grid = RegularCartesianGrid(N=(Nz, Nz, Nz), L=(Δz*Nz, Δz*Nz, Δz*Nz)),
+                 grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz)),
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
@@ -95,14 +95,14 @@ model = Model(
 # ```
 #
 # To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
-# 
+#
 # ```julia
 # architecture = GPU()
 # ```
 #
 # ## Initial conditions
 #
-# Out initial condition for temperature consists of a linear stratification superposed with 
+# Out initial condition for temperature consists of a linear stratification superposed with
 # random noise damped at the walls, while our initial condition for velocity consists
 # only of random noise.
 
@@ -120,24 +120,24 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 # ## Set up output
 #
 # We set up an output writer that saves all velocity fields, tracer fields, and the subgrid
-# turbulent diffusivity associated with `model.closure`. The `prefix` keyword argument 
-# to `JLD2OutputWriter` indicates that output will be saved in 
+# turbulent diffusivity associated with `model.closure`. The `prefix` keyword argument
+# to `JLD2OutputWriter` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
 
 ## Instantiate a JLD2OutputWriter to write fields.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4, 
+field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
                                 prefix="ocean_wind_mixing_and_convection", force=true)
-                                
+
 ## Add the output writer to the models `output_writers`.
 model.output_writers[:fields] = field_writer
 
 # ## Running the simulation
 #
 # To run the simulation, we instantiate a `TimeStepWizard` to ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 0.2. 
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
 wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=5.0)
 
@@ -153,11 +153,11 @@ fig, axs = subplots(ncols=3, figsize=(12, 5))
 """
     makeplot!(axs, model)
 
-Make a triptych of x-z slices of vertical velocity, temperature, and salinity 
+Make a triptych of x-z slices of vertical velocity, temperature, and salinity
 associated with `model` in `axs`.
 """
 function makeplot!(axs, model)
-    jhalf = floor(Int, model.grid.Nz/2) 
+    jhalf = floor(Int, model.grid.Nz/2)
 
     ## Coordinate arrays for plotting
     xC = repeat(model.grid.xC, 1, model.grid.Nz)
@@ -169,7 +169,7 @@ function makeplot!(axs, model)
     pcolormesh(xC, zF, interior(model.velocities.w)[:, jhalf, :])
     xlabel("\$ x \$ (m)"); ylabel("\$ z \$ (m)")
 
-    sca(axs[2]); cla() 
+    sca(axs[2]); cla()
     title("Temperature")
     pcolormesh(xC, zC, interior(model.tracers.T)[:, jhalf, :])
     xlabel("\$ x \$ (m)")
@@ -196,9 +196,9 @@ while model.clock.time < end_time
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
 
     ## Print a progress message
-    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n", 
-            model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt), 
-            wmax(model), prettytime(walltime))           
+    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
+            model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt),
+            wmax(model), prettytime(walltime))
 
     model.architecture == CPU() && makeplot!(axs, model)
 end

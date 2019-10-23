@@ -2,7 +2,7 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     # Just choose something anisotropic to catch Δx/Δy type errors.
     Lx, Ly, Lz = 10, 20, 30
 
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
 
     # Fill the interior with random numbers.
@@ -23,7 +23,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     # Just choose something anisotropic to catch Δx/Δy type errors.
     Lx, Ly, Lz = 100, 200, 300
 
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
     fbcs = HorizontallyPeriodicBCs()
 

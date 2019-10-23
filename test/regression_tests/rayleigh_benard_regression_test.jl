@@ -32,7 +32,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     model = Model(
                architecture = arch,
-                       grid = RegularCartesianGrid(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz)),
+                       grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
