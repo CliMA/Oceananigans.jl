@@ -26,7 +26,7 @@ using PyPlot, Printf
 # `Model` constructor:
 
 model = Model(
-    grid = RegularCartesianGrid(N = (1, 1, 128), L = (1, 1, 1)),
+    grid = RegularCartesianGrid(size = (1, 1, 128), length = (1, 1, 1)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
 
