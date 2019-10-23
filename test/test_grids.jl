@@ -1,5 +1,5 @@
 function correct_grid_size(FT)
-    grid = RegularCartesianGrid(FT, (4, 6, 8), (2π, 4π, 9π))
+    grid = RegularCartesianGrid(FT; size=(4, 6, 8), length=(2π, 4π, 9π))
 
     # Checking ≈ as the grid could be storing Float32 values.
     return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
@@ -10,19 +10,19 @@ function correct_cell_volume(FT)
     Nx, Ny, Nz = 19, 13, 7
     Δx, Δy, Δz = 0.1, 0.2, 0.3
     Lx, Ly, Lz = Nx*Δx, Ny*Δy, Nz*Δz
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
 
     # Checking ≈ as the grid could be storing Float32 values.
     return grid.V ≈ Δx*Δy*Δz
 end
 
 function faces_start_at_zero(FT)
-    grid = RegularCartesianGrid(FT, (10, 10, 10), (2π, 2π, 2π))
+    grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(2π, 2π, 2π))
     return grid.xF[1] == 0 && grid.yF[1] == 0 && grid.zF[end] == 0
 end
 
 function end_faces_match_grid_length(FT)
-    grid = RegularCartesianGrid(FT, (12, 13, 14), (π, π^2, π^3))
+    grid = RegularCartesianGrid(FT; size=(12, 13, 14), length=(π, π^2, π^3))
     return (grid.xF[end] - grid.xF[1] ≈ π   &&
             grid.yF[end] - grid.yF[1] ≈ π^2 &&
             grid.zF[end] - grid.zF[1] ≈ π^3)
@@ -30,7 +30,7 @@ end
 
 function ranges_have_correct_length(FT)
     Nx, Ny, Nz = 8, 9, 10
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, 1))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1, 1, 1))
     return (length(grid.xC) == Nx && length(grid.xF) == Nx+1 &&
             length(grid.yC) == Ny && length(grid.yF) == Ny+1 &&
             length(grid.zC) == Nz && length(grid.zF) == Nz+1)
@@ -39,7 +39,7 @@ end
 # See: https://github.com/climate-machine/Oceananigans.jl/issues/480
 function no_roundoff_error_in_ranges(FT)
     Nx, Ny, Nz = 1, 1, 64
-    grid = RegularCartesianGrid(FT, (Nx, Ny, Nz), (1, 1, π/2))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1, 1, π/2))
     return length(grid.zC) == Nz
 end
 
@@ -62,18 +62,18 @@ end
         println("  Testing grid dimensions...")
         L = (100, 100, 100)
         for FT in float_types
-            @test isbitstype(typeof(RegularCartesianGrid(FT, (16, 16, 16), (1, 1, 1))))
+            @test isbitstype(typeof(RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 1, 1))))
 
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32,), L)
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 64), L)
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32, 16), L)
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32,), length=L)
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 64), length=L)
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32, 16), length=L)
 
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32.0), (1, 1, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (20.1, 32, 32), (1, 1, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, nothing, 32), (1, 1, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, "32", 32), (1, 1, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, nothing, 1))
-            @test_throws ArgumentError RegularCartesianGrid(FT, (32, 32, 32), (1, "1", 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32.0), length=(1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(20.1, 32, 32), length=(1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, nothing, 32), length=(1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, "32", 32), length=(1, 1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, nothing, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, "1", 1))
         end
     end
 end

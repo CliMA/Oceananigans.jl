@@ -74,7 +74,7 @@ end
             N = (16, 16, 8)
             L = (2π, 3π, 5π)
 
-            grid = RegularCartesianGrid(FT, N, L)
+            grid = RegularCartesianGrid(FT; size=N, length=L)
             xF = reshape(grid.xF[1:end-1], N[1], 1, 1)
             yC = reshape(grid.yC, 1, N[2], 1)
             zC = reshape(grid.zC, 1, 1, N[3])

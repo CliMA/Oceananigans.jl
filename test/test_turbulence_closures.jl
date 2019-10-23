@@ -15,7 +15,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
       tracernames = (:b,)
           closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
           closure = with_tracers(tracernames, closure)
-             grid = RegularCartesianGrid(FT, (3, 3, 3), (3, 3, 3))
+             grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, tracernames, closure)
          buoyancy = BuoyancyTracer()
        velocities = Oceananigans.VelocityFields(arch, grid)
@@ -36,7 +36,7 @@ end
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
-          grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
+          grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
     velocities = Oceananigans.VelocityFields(arch, grid)
        tracers = Oceananigans.TracerFields(arch, grid, (:T, :S))
@@ -63,7 +63,7 @@ end
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
           arch = CPU()
        closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=(T=κh, S=κh), κv=(T=κv, S=κv))
-          grid = RegularCartesianGrid(FT, (3, 1, 4), (3, 1, 4))
+          grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
     velocities = Oceananigans.VelocityFields(arch, grid)
@@ -97,7 +97,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
 end
 
 function test_function_interpolation(T=Float64)
-    grid = RegularCartesianGrid(T, (3, 3, 3), (3, 3, 3))
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
@@ -125,7 +125,7 @@ function test_function_interpolation(T=Float64)
 end
 
 function test_function_differentiation(T=Float64)
-    grid = RegularCartesianGrid(T, (3, 3, 3), (3, 3, 3))
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
