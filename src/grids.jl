@@ -86,12 +86,12 @@ function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=not
     sz, len = size, length
     length = Base.length
 
-    length(sz) == 3        || throw(ArgumentError("size=$size must be a tuple of length 3."))
-    all(isa.(sz, Integer)) || throw(ArgumentError("size=$size should contain integers."))
-    all(sz .>= 1)          || throw(ArgumentError("size=$size must be nonzero and positive!"))
+    length(sz) == 3        || throw(ArgumentError("length($sz) must be 3."))
+    all(isa.(sz, Integer)) || throw(ArgumentError("size=$sz should contain integers."))
+    all(sz .>= 1)          || throw(ArgumentError("size=$sz must be nonzero and positive!"))
 
     if !isnothing(len)
-        length(len) == 3       || throw(ArgumentError("length=$len must be a tuple of length 3."))
+        length(len) == 3       || throw(ArgumentError("length($len) must be 3."))
         all(isa.(len, Number)) || throw(ArgumentError("length=$len should contain numbers."))
         all(len .>= 0)         || throw(ArgumentError("length=$len must be nonzero and positive!"))
 
@@ -109,7 +109,7 @@ function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=not
 
     for (i, c) in enumerate((x, y, z))
         name = coord2xyz(i)
-        length(c) == 2       || throw(ArgumentError("$name=$c must be a tuple of length 2."))
+        length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
         all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
         c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
     end

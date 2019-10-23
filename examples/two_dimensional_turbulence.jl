@@ -22,7 +22,7 @@ using Oceananigans.TurbulenceClosures: ∂x_faa, ∂y_afa
 # We instantiate the model with a simple isotropic diffusivity
 
 model = Model(
-        grid = RegularCartesianGrid(size=(128, 128, 1), grid=(2π, 2π, 2π)),
+        grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π)),
     buoyancy = nothing,
      tracers = nothing,
      closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)
