@@ -1,23 +1,23 @@
 function time_stepping_works(arch, FT, Closure)
-    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       closure=Closure(FT))
+    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                  architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, 1)
-    return true # test that no errors/crashes happen when time stepping.
+    return true  # test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = BasicModel(N=(16, 16, 16), L=(1, 2, 3), architecture=arch, float_type=FT,
-                       forcing=ModelForcing(T=add_ones))
+    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                  architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
-    @test all(data(model.timestepper.Gⁿ.u) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.v) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(data(model.timestepper.Gⁿ.T) .≈ 1.0)
-    @test all(data(model.timestepper.Gⁿ.S) .≈ 0)
-
+    @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
+    @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
+    @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
+    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
+    @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
+  
     return nothing
 end
 
@@ -37,8 +37,8 @@ function compute_w_from_continuity(arch, FT)
     w = FaceFieldZ(FT, arch, grid)
     div_u = CellField(FT, arch, grid)
 
-    data(u) .= rand(FT, Nx, Ny, Nz)
-    data(v) .= rand(FT, Nx, Ny, Nz)
+    interior(u) .= rand(FT, Nx, Ny, Nz)
+    interior(v) .= rand(FT, Nx, Ny, Nz)
 
     fill_halo_regions!(u.data, bcs.u, arch, grid)
     fill_halo_regions!(v.data, bcs.v, arch, grid)
@@ -49,15 +49,15 @@ function compute_w_from_continuity(arch, FT)
 
     # Set div_u to zero at the top because the initial velocity field is not divergence-free
     # so we end up some divergence at the top if we don't do this.
-    data(div_u)[:, :, Nz] .= zero(FT)
+    interior(div_u)[:, :, Nz] .= zero(FT)
 
-    min_div = minimum(data(div_u))
-    max_div = maximum(data(div_u))
-    sum_div = sum(data(div_u))
-    abs_sum_div = sum(abs.(data(div_u)))
+    min_div = minimum(interior(div_u))
+    max_div = maximum(interior(div_u))
+    sum_div = sum(interior(div_u))
+    abs_sum_div = sum(abs.(interior(div_u)))
     @info "Velocity divergence after recomputing w ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
-    all(isapprox.(data(div_u), 0; atol=5*eps(FT)))
+    return all(isapprox.(interior(div_u), 0; atol=5*eps(FT)))
 end
 
 """
@@ -69,7 +69,7 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), architecture=arch, float_type=FT)
+    model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)), architecture=arch, float_type=FT)
 
     grid = model.grid
     u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
@@ -83,10 +83,10 @@ function incompressible_in_time(arch, FT, Nt)
 
     velocity_div!(grid, u, v, w, div_u)
 
-    min_div = minimum(data(div_u))
-    max_div = minimum(data(div_u))
-    sum_div = sum(data(div_u))
-    abs_sum_div = sum(abs.(data(div_u)))
+    min_div = minimum(interior(div_u))
+    max_div = minimum(interior(div_u))
+    sum_div = sum(interior(div_u))
+    abs_sum_div = sum(abs.(interior(div_u)))
     @info "Velocity divergence after $Nt time steps ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
@@ -124,11 +124,11 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
     set_ic!(model, T=T₀)
 
-    Tavg0 = mean(data(model.tracers.T))
+    Tavg0 = mean(interior(model.tracers.T))
 
     time_step!(model; Nt=Nt, Δt=10*60)
 
-    Tavg = mean(data(model.tracers.T))
+    Tavg = mean(interior(model.tracers.T))
     @info "Tracer conservation after $Nt time steps ($arch, $FT): ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
     # Interestingly, it's very well conserved (almost to machine epsilon) for

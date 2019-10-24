@@ -1,9 +1,9 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
 
-interiordata(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
-                                grid.Hy+1:grid.Ny+grid.Hy,
-                                grid.Hz+1:grid.Nz+grid.Hz,
-                            )
+interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx, 
+                            grid.Hy+1:grid.Ny+grid.Hy, 
+                            grid.Hz+1:grid.Nz+grid.Hz, 
+                        )
 
 # Temporary until k index is reversed
 const Nx, Ny, Nz = 16, 16, 16
@@ -63,7 +63,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     # Model instantiation
     model = Model(
              architecture = arch,
-                     grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
+                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
@@ -143,11 +143,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
                        name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
     end
 
-    @test all(Array(interiordata(solution₁.u, model.grid)) .≈ Array(data(model.velocities.u)))
-    @test all(Array(interiordata(solution₁.v, model.grid)) .≈ Array(data(model.velocities.v)))
-    @test all(Array(interiordata(solution₁.w, model.grid)) .≈ Array(data(model.velocities.w)))
-    @test all(Array(interiordata(solution₁.T, model.grid)) .≈ Array(data(model.tracers.T)))
-    @test all(Array(interiordata(solution₁.S, model.grid)) .≈ Array(data(model.tracers.S)))
+    @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
+    @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))
+    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)))
+    @test all(Array(interior(solution₁.T, model.grid)) .≈ Array(interior(model.tracers.T)))
+    @test all(Array(interior(solution₁.S, model.grid)) .≈ Array(interior(model.tracers.S)))
 
     return nothing
 end

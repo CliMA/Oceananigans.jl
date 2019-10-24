@@ -10,16 +10,16 @@
 # For this example, we need `PyPlot` for plotting and `Statistics` for setting up
 # a random initial condition with zero mean velocity.
 
-using Oceananigans, PyPlot, Statistics
+using Oceananigans, Oceananigans.AbstractOperations, PyPlot, Statistics
 
 # In addition to importing plotting and statistics packages, we import
-# some types and functions from `Oceananigans` that will aid in the calculation
+# some types from `Oceananigans` that will aid in the calculation
 # and visualization of voriticty.
 
 using Oceananigans: Face, Cell
-using Oceananigans.TurbulenceClosures: ∂x_faa, ∂y_afa
 
-# We instantiate the model with a simple isotropic diffusivity
+# `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the 
+# model with a simple isotropic diffusivity.
 
 model = Model(
         grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π)),
@@ -36,34 +36,43 @@ u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
 
-# Next we define a function for calculating the vertical vorticity
-# associated with the velocity fields `u` and `v`.
+# Next we create an object called an `Operation` that represents a vorticity calculation. 
+# We'll use this object to calculate vorticity on-line as the simulation progresses.
 
-function vorticity!(ω, u, v)
-    for j = 1:u.grid.Ny, i = 1:u.grid.Nx
-        @inbounds ω.data[i, j, 1] = ∂x_faa(i, j, 1, u.grid, v.data) - ∂y_afa(i, j, 1, u.grid, u.data)
-    end
-    return nothing
-end
+u, v, w = model.velocities
 
-# Finally, we create the vorticity field for storing `u` and `v`, initialize a
-# figure, and run the model forward
+# Create an object that represents the 'operation' required to compute vorticity.
+vorticity_operation = ∂x(v) - ∂y(u)
+
+# The instance `vorticity_operation` is a binary subtraction between two derivative operations 
+# acting on `OffsetArrays` (the underyling representation of `u`, and `v`). In order to use 
+# `vorticity_operation` we create a field `ω` to store the result of the operation, and a 
+# `Computation` object for coordinate the computation of vorticity and storage in `ω`:
 
 ω = Field(Face, Face, Cell, model.architecture, model.grid)
 
-close("all")
+vorticity_computation = Computation(vorticity_operation, ω)
+
+# We ask for computation of vorticity by writing
+# 
+# `compute!(vorticity_computation)`,
+# 
+# as shown below.
+# 
+# Finally, we run the model.
+
 fig, ax = subplots()
 
 for i = 1:10
     time_step!(model, Nt=100, Δt=1e-1)
 
-    vorticity!(ω, model.velocities.u, model.velocities.v)
+    compute!(vorticity_computation)
 
     cla()
-    imshow(data(ω)[:, :, 1])
+    imshow(interior(ω)[:, :, 1])
     ax.axis("off")
     pause(0.1)
 end
 
-# We can plot out the final vorticity field.
+# We plot out the final vorticity field.
 gcf()

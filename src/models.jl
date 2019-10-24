@@ -42,25 +42,23 @@ Keyword arguments
 - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
 function Model(;
-                   grid, # model resolution and domain
-           architecture = CPU(), # model architecture
+                   grid,
+           architecture = CPU(),
              float_type = Float64,
                 tracers = (:T, :S),
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀), # diffusivity / turbulence closure
-                  clock = Clock{float_type}(0, 0), # clock for tracking iteration number and time-stepping
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                  clock = Clock{float_type}(0, 0),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
                 forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
-             parameters = nothing, # user-defined container for parameters in forcing and boundary conditions
-    # Velocity fields, tracer fields, pressure fields, and time-stepper initialization
+             parameters = nothing,
              velocities = VelocityFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
             timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, tracernames(tracers), 0.125),
-    # Solver for Poisson's equation
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
 
@@ -110,30 +108,6 @@ kwargs are passed to the regular `Model` constructor.
 ChannelModel(; boundary_conditions=ChannelSolutionBCs(), kwargs...) =
     Model(; boundary_conditions=boundary_conditions, kwargs...)
 
-function BasicChannelModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64,
-                           boundary_conditions=ChannelSolutionBCs(), kwargs...)
-
-    grid = RegularCartesianGrid(float_type; size=N, length=L)
-    closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
-
-    return Model(; float_type=float_type, grid=grid, closure=closure,
-                 boundary_conditions=boundary_conditions, kwargs...)
-end
-
-"""
-    BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
-
-Construct a "Basic" `Model` with resolution `N`, domain extent `L`,
-precision `float_type`, and constant isotropic viscosity and diffusivity `ν`, and `κ`.
-
-Additional `kwargs` are passed to the regular `Model` constructor.
-"""
-function BasicModel(; N, L, ν=ν₀, κ=κ₀, float_type=Float64, kwargs...)
-    grid = RegularCartesianGrid(float_type; size=N, length=L)
-    closure = ConstantIsotropicDiffusivity(float_type, ν=ν, κ=κ)
-    return Model(; float_type=float_type, grid=grid, closure=closure, kwargs...)
-end
-
 """
     NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
@@ -154,12 +128,11 @@ Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `Model` constructor.
 """
-function NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
-
-         grid = RegularCartesianGrid(float_type; size=N, length=L)
-      closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re))
-     coriolis = VerticalRotationAxis(float_type, f=1/Ro)
-     buoyancy = BuoyancyTracer()
+function NonDimensionalModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
+    buoyancy = BuoyancyTracer(),
+    coriolis = FPlane(float_type, f=1/Ro),
+     closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
+    kwargs...)
 
     return Model(; float_type=float_type, grid=grid, closure=closure,
                    coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
