@@ -82,13 +82,13 @@ while model.clock.time < end_time
     walltime = @elapsed time_step!(model, 10, wizard.Δt)
 
     sca(axs[1]); cla()
-    pcolormesh(xC, zF, data(model.velocities.w)[:, 1, :])
+    pcolormesh(xC, zF, interior(model.velocities.w)[:, 1, :])
     title("Vertical velocity")
     xlabel("\$ x \$ (m)")
     ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla()
-    pcolormesh(xC, zC, data(model.tracers.plankton)[:, 1, :])
+    pcolormesh(xC, zC, interior(model.tracers.plankton)[:, 1, :])
     title("Phytoplankton concentration")
     xlabel("\$ x \$ (m)")
     axs[2].tick_params(left=false, labelleft=false)

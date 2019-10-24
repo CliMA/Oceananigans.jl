@@ -9,7 +9,7 @@ function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
         ϕ = getproperty(model.tracers, fieldname)
     end
 
-    return data(ϕ) ≈ answer
+    return interior(ϕ) ≈ answer
 end
 
 function initial_conditions_correctly_set(arch, FT)

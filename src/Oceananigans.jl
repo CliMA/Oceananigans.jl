@@ -20,7 +20,7 @@ export
 
     # Fields
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    data, set!, set_ic!,
+    interior, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
 
     # Forcing functions
@@ -90,7 +90,7 @@ using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
-    +, -, *,
+    +, -, *, /,
     size, length, eltype,
     iterate, similar, show,
     getindex, lastindex, setindex!,
@@ -136,11 +136,12 @@ Abstract supertype for fields stored on an architecture `A` and defined on a gri
 abstract type AbstractField{A, G} end
 
 """
-    AbstractFaceField{A, G} <: AbstractField{A, G}
+    AbstractLocatedField{X, Y, Z, A, G}
 
-Abstract supertype for fields stored on an architecture `A` and defined the cell faces of a grid `G`.
+Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
+and defined on a grid `G`.
 """
-abstract type AbstractFaceField{A, G} <: AbstractField{A, G} end
+abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
 
 """
     AbstractEquationOfState
@@ -203,9 +204,6 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
 """
     @hascuda expr
 
@@ -225,6 +223,9 @@ end
         println(dev)
     end
 end
+
+device(::CPU) = GPUifyLoops.CPU()
+device(::GPU) = GPUifyLoops.CUDA()
 
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
@@ -256,5 +257,7 @@ include("time_steppers.jl")
 
 include("output_writers.jl")
 include("diagnostics.jl")
+
+include("AbstractOperations/AbstractOperations.jl")
 
 end # module
