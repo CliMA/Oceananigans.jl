@@ -1,6 +1,6 @@
 module AbstractOperations
 
-export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @polynary
+export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
 
 using Base: @propagate_inbounds
 
@@ -52,7 +52,7 @@ include("grid_validation.jl")
 
 include("unary_operations.jl")
 include("binary_operations.jl")
-include("polynary_operations.jl")
+include("multiary_operations.jl")
 include("derivatives.jl")
 
 include("computations.jl")
@@ -71,9 +71,9 @@ import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 @binary / 
 @binary ^
 
-@polynary + 
+@multiary + 
 
-# For unknown reasons, the operator definition macros @binary and @polynary fail to work 
+# For unknown reasons, the operator definition macros @binary and @multiary fail to work 
 # properly for :*. We thus manually define :* for fields.
 import Base: *
 
@@ -81,8 +81,8 @@ eval(define_binary_operator(:*))
 push!(operators, :*)
 push!(binary_operators, :*)
 
-eval(define_polynary_operator(:*))
+eval(define_multiary_operator(:*))
 push!(operators, :*)
-push!(polynary_operators, :*)
+push!(multiary_operators, :*)
 
 end # module
