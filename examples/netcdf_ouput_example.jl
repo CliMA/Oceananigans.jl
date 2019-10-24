@@ -43,8 +43,8 @@ globalattrib = Dict("f" => 1e-4, "name" => "Thermal bubble expt 1")
 # as their dimension. Ranges also can be specified (e.g. xC=2:10)
 subsetwriter = NetCDFOutputWriter(model, outputs;
                                   interval=10, filename="dump_subset.nc",
-                                  outputattrib=outputattrib,
-                                  globalattrib=globalattrib,
+                                  output_attributes=outputattrib,
+                                  global_attributes=globalattrib,
                                   xC=5, xF=6)
 push!(model.output_writers, subsetwriter)
 
@@ -74,5 +74,5 @@ while model.clock.time < tf
 end
 
 # Close the NetCDFOutputWriter
-OWClose(subsetwriter)
-OWClose(globalwriter)
+close(subsetwriter)
+close(globalwriter)
