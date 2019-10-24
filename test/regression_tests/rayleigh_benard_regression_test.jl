@@ -81,7 +81,7 @@ function run_rayleigh_benard_regression_test(arch)
     u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)
     T₀, S₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
     Gu, Gv, Gw, GT, GS = get_output_tuple(outputwriter, spinup_steps, :G)
-
+  
     u₀ = reverse(u₀; dims=3)
     v₀ = reverse(v₀; dims=3)
     T₀ = reverse(T₀; dims=3)
@@ -98,17 +98,17 @@ function run_rayleigh_benard_regression_test(arch)
     Gw = reverse(Gw[:, :, 2:Nz]; dims=3)
     Gw = cat(zeros(Nx, Ny), Gw; dims=3)
 
-    data(model.velocities.u) .= ArrayType(u₀)
-    data(model.velocities.v) .= ArrayType(v₀)
-    data(model.velocities.w) .= ArrayType(w₀)
-    data(model.tracers.b)    .= ArrayType(T₀)
-    data(model.tracers.c)    .= ArrayType(S₀)
+    interior(model.velocities.u) .= ArrayType(u₀)
+    interior(model.velocities.v) .= ArrayType(v₀)
+    interior(model.velocities.w) .= ArrayType(w₀)
+    interior(model.tracers.b)    .= ArrayType(T₀)
+    interior(model.tracers.c)    .= ArrayType(S₀)
 
-    data(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
-    data(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
-    data(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
-    data(model.timestepper.Gⁿ.b) .= ArrayType(GT)
-    data(model.timestepper.Gⁿ.c) .= ArrayType(GS)
+    interior(model.timestepper.Gⁿ.u) .= ArrayType(Gu)
+    interior(model.timestepper.Gⁿ.v) .= ArrayType(Gv)
+    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gw)
+    interior(model.timestepper.Gⁿ.b) .= ArrayType(GT)
+    interior(model.timestepper.Gⁿ.c) .= ArrayType(GS)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -132,20 +132,20 @@ function run_rayleigh_benard_regression_test(arch)
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
     fields_gm = [u₁, v₁, w₁, T₁, S₁]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ)) - φ_gm)
-        φ_max = maximum(Array(data(φ)) - φ_gm)
-        φ_mean = mean(Array(data(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
-        φ_std = std(Array(data(φ)) - φ_gm)
+        φ_min = minimum(Array(interior(φ)) - φ_gm)
+        φ_max = maximum(Array(interior(φ)) - φ_gm)
+        φ_mean = mean(Array(interior(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
+        φ_std = std(Array(interior(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u)) .≈ u₁)
-    @test all(Array(data(model.velocities.v)) .≈ v₁)
-    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w₁[:, :, 2:Nz])
-    @test all(Array(data(model.tracers.b))    .≈ T₁)
-    @test all(Array(data(model.tracers.c))    .≈ S₁)
+    @test all(Array(interior(model.velocities.u)) .≈ u₁)
+    @test all(Array(interior(model.velocities.v)) .≈ v₁)
+    @test all(Array(interior(model.velocities.w))[:, :, 2:Nz] .≈ w₁[:, :, 2:Nz])
+    @test all(Array(interior(model.tracers.b))    .≈ T₁)
+    @test all(Array(interior(model.tracers.c))    .≈ S₁)
     return nothing
 end

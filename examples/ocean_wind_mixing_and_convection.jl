@@ -166,17 +166,17 @@ function makeplot!(axs, model)
 
     sca(axs[1]); cla()
     title("Vertical velocity")
-    pcolormesh(xC, zF, data(model.velocities.w)[:, jhalf, :])
+    pcolormesh(xC, zF, interior(model.velocities.w)[:, jhalf, :])
     xlabel("\$ x \$ (m)"); ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla()
     title("Temperature")
-    pcolormesh(xC, zC, data(model.tracers.T)[:, jhalf, :])
+    pcolormesh(xC, zC, interior(model.tracers.T)[:, jhalf, :])
     xlabel("\$ x \$ (m)")
 
     sca(axs[3]); cla()
     title("Salinity")
-    pcolormesh(xC, zC, data(model.tracers.S)[:, jhalf, :])
+    pcolormesh(xC, zC, interior(model.tracers.S)[:, jhalf, :])
     xlabel("\$ x \$ (m)")
 
     [ax.set_aspect(1) for ax in axs]

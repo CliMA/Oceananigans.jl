@@ -23,7 +23,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
-julia = "^1.1"
 Adapt = "^1"
 CUDAapi = "^1.1"
 CUDAdrv = "^3.1"
@@ -37,6 +36,7 @@ OffsetArrays = "^0.11.1, ^1"
 OrderedCollections = "^1.1"
 StaticArrays = "^0.11, ^1"
 TimerOutputs = "^0.5, ^1"
+julia = "^1.1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
