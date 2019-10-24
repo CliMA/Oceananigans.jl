@@ -31,9 +31,9 @@ Perform a `computation`. The result is stored in `computation.result`.
 function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
-    @launch device(arch) config=launch_config(comp.grid, 3) _compute!(result_data,
-                                                                      computation.grid, 
-                                                                      computation.operation)
+    @launch device(arch) config=launch_config(computation.grid, 3) _compute!(result_data,
+                                                                             computation.grid, 
+                                                                             computation.operation)
     return nothing
 end
 
