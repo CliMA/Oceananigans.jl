@@ -12,7 +12,7 @@ export
     CPU, GPU,
 
     # Constants
-    FPlane,
+    FPlane, BetaPlane,
     second, minute, hour, day,
 
     # Grids
