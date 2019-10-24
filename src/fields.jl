@@ -48,31 +48,8 @@ Field(L::Tuple, arch::AbstractArchitecture, grid) =
 Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`, 
 where each of `X, Y, Z` is `Cell` or `Face`.
 """
-Field(X, Y, Z, arch::AbstractArchitecture, grid) = 
-    Field((X, Y, Z), arch, grid)
-    
-"""
-
-	FaceFieldX
-
-A field defined at the faces along the x-direction. Used for horizontal velocity u.
-"""
-const FaceFieldX = Field{Face, Cell, Cell}
-
-"""
-	FaceFieldY
-
-A field defined at the faces along the y-direction. Used for horizontal velocity v.
-"""
-const FaceFieldY = Field{Cell, Face, Cell}
-
-"""
-	FaceFieldZ
-
-A field defined at the faces along the z-direction. Used for vertical velocity w.
-"""
-const FaceFieldZ = Field{Cell, Cell, Face}
-
+Field(X, Y, Z, arch::AbstractArchitecture, grid) =  Field((X, Y, Z), arch, grid)
+   
 """
     CellField([T=eltype(grid)], arch, grid)
 
