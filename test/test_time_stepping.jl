@@ -5,6 +5,17 @@ function time_stepping_works(arch, FT, Closure)
     return true  # test that no errors/crashes happen when time stepping.
 end
 
+function time_stepping_works_with_beta_plane(arch, FT)
+    model = Model(
+                    float_type = FT,
+                  architecture = arch,
+                          grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3)),
+                      coriolis = BetaPlane(FT, f₀=1e-4, β=1e-11)
+                 )
+    time_step!(model, 1, 1)
+    return true # test that no errors/crashes happen when time stepping.
+end
+
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
     model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
@@ -149,6 +160,10 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 
     for arch in archs, FT in float_types, Closure in Closures
         @test time_stepping_works(arch, FT, Closure)
+    end
+
+    for arch in archs, FT in float_types
+        @test time_stepping_works_with_beta_plane(arch, FT)
     end
 
     @testset "2nd-order Adams-Bashforth" begin
