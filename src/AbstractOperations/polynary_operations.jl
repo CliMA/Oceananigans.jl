@@ -113,8 +113,8 @@ macro polynary(ops...)
         push!(expr.args, :($(esc(defexpr))))
 
         add_to_operator_lists = quote
-            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.polynary_operators, Symbol($op))
+            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
+            push!(Oceananigans.AbstractOperations.polynary_operators, Symbol($op))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))
@@ -123,7 +123,7 @@ macro polynary(ops...)
     return expr
 end
 
-const polynary_operators = []
+const polynary_operators = Set()
 
 "Adapt `PolynaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, polynary::PolynaryOperation{X, Y, Z}) where {X, Y, Z} =
