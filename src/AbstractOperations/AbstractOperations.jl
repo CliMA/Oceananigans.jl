@@ -31,6 +31,11 @@ using GPUifyLoops: @launch, @loop
 ##### Basic functionality
 #####
 
+"""
+    AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
+
+Represents an operation performed on grid of type `G` at locations `X`, `Y`, and `Z`.
+"""
 abstract type AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
 
 const ALF = AbstractLocatedField
@@ -38,20 +43,8 @@ const ALF = AbstractLocatedField
 data(op::AbstractOperation) = op
 Base.parent(op::AbstractOperation) = op
 
-"""
-    uniquepush!(collection, items...)
-
-Push each item in `items` into `collection` if it is not already there.
-"""
-function uniquepush!(collection, items...)
-    for item in items
-        !(item ∈ collection) && push!(collection, item)
-    end
-    return collection
-end
-
 # AbstractOperation macros add their associated functions to this list
-const operators = []
+const operators = Set()
 
 include("function_fields.jl")
 include("interpolation_utils.jl")

@@ -42,8 +42,8 @@ flip(::Type{Cell}) = Face
 """Return the z-derivative function acting at (`Any`, `Any`, `Z`)."""
 ∂z(Z::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂z_aa, interpolation_code(flip(Z))))
 
-const derivative_operators = [:∂x, :∂y, :∂z]
-append!(operators, derivative_operators)
+const derivative_operators = Set([:∂x, :∂y, :∂z])
+push!(operators, derivative_operators...)
 
 """
     ∂x(L::Tuple, a::Oceananigans.AbstractLocatedField)

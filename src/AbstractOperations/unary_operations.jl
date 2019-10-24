@@ -91,8 +91,8 @@ macro unary(ops...)
 
             $op(a::Oceananigans.AbstractLocatedField) = $op(Oceananigans.location(a), a)
 
-            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            Oceananigans.AbstractOperations.uniquepush!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
+            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
+            push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
         end
 
         push!(expr.args, :($(esc(define_unary_operator))))
@@ -101,7 +101,7 @@ macro unary(ops...)
     return expr
 end
 
-const unary_operators = []
+const unary_operators = Set()
 
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
