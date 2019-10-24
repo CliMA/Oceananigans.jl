@@ -58,7 +58,7 @@ function Model(;
              velocities = VelocityFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
-            timestepper = AdamsBashforthTimestepper(float_type, architecture, grid, tracernames(tracers), 0.125),
+            timestepper = :AdamsBashforth,
          poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
     )
 
@@ -68,6 +68,8 @@ function Model(;
             throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
         end
     end
+
+    timestepper = TimeStepper(timestepper, float_type, architecture, grid, tracernames(tracers))
 
     tracers = TracerFields(architecture, grid, tracers)
     validate_buoyancy(buoyancy, tracernames(tracers))
@@ -190,22 +192,4 @@ function Tendencies(arch, grid, tracernames)
     tracers = TracerFields(arch, grid, tracernames)
 
     return merge(velocities, tracers)
-end
-
-"""
-    AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
-
-Return an AdamsBashforthTimestepper object with tendency
-fields on `arch` and `grid` and AB2 parameter `χ`.
-"""
-struct AdamsBashforthTimestepper{T, TG}
-      Gⁿ :: TG
-      G⁻ :: TG
-       χ :: T
-end
-
-function AdamsBashforthTimestepper(float_type, arch, grid, tracers, χ)
-   Gⁿ = Tendencies(arch, grid, tracers)
-   G⁻ = Tendencies(arch, grid, tracers)
-   return AdamsBashforthTimestepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end
