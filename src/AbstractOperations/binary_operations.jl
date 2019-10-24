@@ -25,7 +25,7 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     end
 end
 
-"""Create a binary operation for `op` actin on `a` and `b` with locations `La` and `Lb`.
+"""Create a binary operation for `op` acting on `a` and `b` with locations `La` and `Lb`.
 The operator acts at `Lab` and the result is interpolated to `Lc`."""
 function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
      ▶a = interpolation_operator(La, Lab)
