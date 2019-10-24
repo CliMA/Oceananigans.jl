@@ -260,10 +260,10 @@ end
             end
         end
 
-        @testset "Polynary operations [$FT]" begin
+        @testset "Multiary operations [$FT]" begin
             generic_function(x, y, z) = x + y + z
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
-                for op_symbol in Oceananigans.AbstractOperations.polynary_operators
+                for op_symbol in Oceananigans.AbstractOperations.multiary_operators
                     op = eval(op_symbol)
                     @test typeof(op((Cell, Cell, Cell), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
@@ -377,8 +377,8 @@ end
                     @test compute_times(model)
                 end
 
-                @testset "Polynary computations [$FT, $(typeof(arch))]" begin
-                    println("      Testing compute! polynary operations...")
+                @testset "Multiary computations [$FT, $(typeof(arch))]" begin
+                    println("      Testing compute! multiary operations...")
                     @test compute_many_plus(model)
 
                     println("      Testing compute! kinetic energy...")
