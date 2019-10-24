@@ -123,8 +123,8 @@ function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMin
 
     for (tracer_index, κₑ) in enumerate(K.κₑ)
         @inbounds c = C[tracer_index]
-        @launch device(arch) config=launch_config(grid, 3) calculate_tracer_diffusivity!(κₑ, grid, closure, c, 
-                                                                                         Val(tracer_index), U) 
+        @launch device(arch) config=launch_config(grid, 3) calculate_tracer_diffusivity!(κₑ, grid, closure, c,
+                                                                                         Val(tracer_index), U)
     end
 
     return nothing

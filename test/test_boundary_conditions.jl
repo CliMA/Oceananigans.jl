@@ -1,11 +1,11 @@
-function test_z_boundary_condition_simple(arch, T, fldname, bctype, bc, Nx, Ny)
+function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
     bc = BoundaryCondition(bctype, bc)
     fieldbcs = HorizontallyPeriodicBCs(top=bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch,
-                       float_type=T, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     time_step!(model, 1, 1e-16)
 
@@ -19,8 +19,8 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(N, N, N), L=(0.1, 0.2, 0.3), architecture=arch,
-                       float_type=FT, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(N, N, N), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -42,8 +42,8 @@ function test_z_boundary_condition_array(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(Nx, Ny, Nz), L=(0.1, 0.2, 0.3), architecture=arch,
-                       float_type=FT, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -60,8 +60,10 @@ function test_flux_budget(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
     modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
 
-    model = BasicModel(N=(N, N, N), L=(1, 1, Lz), ν=κ, κ=κ, architecture=arch,
-                       float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
+    grid = RegularCartesianGrid(FT; size=(N, N, N), length=(1, 1, Lz))
+    closure = ConstantIsotropicDiffusivity(FT; ν=κ, κ=κ)
+    model = Model(grid=grid, closure=closure, architecture=arch,
+                  float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
 
     if fldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fldname)
@@ -72,7 +74,7 @@ function test_flux_budget(arch, FT, fldname)
     @. field.data = 0
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
-    mean_init = mean(data(field))
+    mean_init = mean(interior(field))
 
     τκ = Lz^2 / κ   # Diffusion time-scale
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
@@ -82,7 +84,7 @@ function test_flux_budget(arch, FT, fldname)
 
     # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz
-    isapprox(mean(data(field)) - mean_init, bottom_flux * model.clock.time / Lz)
+    isapprox(mean(interior(field)) - mean_init, bottom_flux * model.clock.time / Lz)
 end
 
 @testset "Boundary conditions" begin

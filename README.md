@@ -82,7 +82,7 @@ At this time, updating should be done with care, as Oceananigans is under rapid 
 Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
 ```julia
 using Oceananigans
-model = BasicModel(N=(100, 100, 50), L=(2000, 2000, 1000))
+model = Model(grid = RegularCartesianGrid(size=(100, 100, 50), length = (2000, 2000, 1000)))
 time_step!(model; Δt=60, Nt=10)
 ```
 You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
@@ -94,7 +94,9 @@ using Oceananigans
 
 # We'll set up a 2D model with an xz-slice so there's only 1 grid point in y
 # and use an artificially high viscosity ν and diffusivity κ.
-model = BasicModel(N=(128, 128, 128), L=(2000, 2000, 2000), architecture=CPU(), ν=4e-2, κ=4e-2)
+model = Model(architecture = CPU(),
+                      grid = RegularCartesianGrid(size=(128, 128, 128), length=(2000, 2000, 2000)),
+                   closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2))
 
 # Set a temperature perturbation with a Gaussian profile located at the center
 # of the vertical slice. This will create a buoyant thermal bubble that will

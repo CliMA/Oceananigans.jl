@@ -3,8 +3,9 @@ function run_thermal_bubble_regression_test(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    model = BasicModel(architecture = arch, N = (Nx, Ny, Nz), L = (Lx, Ly, Lz),
-                       ν = 4e-2, κ = 4e-2, coriolis = FPlane(f = 1e-4))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = Model(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
@@ -51,19 +52,19 @@ function run_thermal_bubble_regression_test(arch)
     fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
     fields_gm = [u, v, w, T, S]
     for (field_name, φ, φ_gm) in zip(field_names, fields, fields_gm)
-        φ_min = minimum(Array(data(φ)) - φ_gm)
-        φ_max = maximum(Array(data(φ)) - φ_gm)
-        φ_mean = mean(Array(data(φ)) - φ_gm)
-        φ_abs_mean = mean(abs.(Array(data(φ)) - φ_gm))
-        φ_std = std(Array(data(φ)) - φ_gm)
+        φ_min = minimum(Array(interior(φ)) - φ_gm)
+        φ_max = maximum(Array(interior(φ)) - φ_gm)
+        φ_mean = mean(Array(interior(φ)) - φ_gm)
+        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_gm))
+        φ_std = std(Array(interior(φ)) - φ_gm)
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
                        field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
     end
 
     # Now test that the model state matches the regression output.
-    @test all(Array(data(model.velocities.u)) .≈ u)
-    @test all(Array(data(model.velocities.v)) .≈ v)
-    @test all(Array(data(model.velocities.w))[:, :, 2:Nz] .≈ w[:, :, 2:Nz])
-    @test all(Array(data(model.tracers.T))    .≈ T)
-    @test all(Array(data(model.tracers.S))    .≈ S)
+    @test all(Array(interior(model.velocities.u)) .≈ u)
+    @test all(Array(interior(model.velocities.v)) .≈ v)
+    @test all(Array(interior(model.velocities.w))[:, :, 2:Nz] .≈ w[:, :, 2:Nz])
+    @test all(Array(interior(model.tracers.T))    .≈ T)
+    @test all(Array(interior(model.tracers.S))    .≈ S)
 end

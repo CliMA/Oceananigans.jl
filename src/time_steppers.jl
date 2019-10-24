@@ -171,7 +171,6 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C
         @inbounds  c = C[tracer_index]
         @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, Val(tracer_index),
                                                                                 U, C, K, Fc, parameters, time)
-
     end
 
     return nothing
@@ -418,7 +417,6 @@ end
 """
 Evaluate the right-hand-side terms at time step n+½ using a weighted 2nd-order
 Adams-Bashforth method
-
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
 function adams_bashforth_update_velocity_source_terms!(Gⁿ, grid::AbstractGrid{FT}, χ, G⁻) where FT
@@ -438,7 +436,6 @@ end
 """
 Evaluate the right-hand-side terms at time step n+½ using a weighted 2nd-order
 Adams-Bashforth method
-
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
 function adams_bashforth_update_tracer_source_term!(Gcⁿ, grid::AbstractGrid{FT}, χ, Gc⁻) where FT
@@ -473,9 +470,7 @@ end
 
 """
 Update the horizontal velocities u and v via
-
     `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
-
 Note that the vertical velocity is not explicitly time stepped.
 """
 function update_velocities!(U, grid, Δt, G, pNHS)
@@ -493,7 +488,6 @@ end
 
 """
 Update tracers via
-
     `c^{n+1} = c^n + Gc^{n+½} Δt`
 """
 function update_tracer!(c, grid, Δt, Gc)

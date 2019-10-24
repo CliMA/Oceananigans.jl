@@ -89,14 +89,14 @@ function makeplot!(axs, model)
 
     sca(axs[1]); cla()
     ## Calling the Array() constructor here allows plots to be made for GPU models:
-    pcolormesh(xC, zF, Array(data(model.velocities.w))[:, 1, :])
+    pcolormesh(xC, zF, Array(interior(model.velocities.w))[:, 1, :])
     title("Vertical velocity")
     xlabel("\$ x \$ (m)")
     ylabel("\$ z \$ (m)")
 
     sca(axs[2]); cla()
     ## Calling the Array() constructor here allows plots to be made for GPU models:
-    pcolormesh(xC, zC, Array(data(model.tracers.plankton))[:, 1, :])
+    pcolormesh(xC, zC, Array(interior(model.tracers.plankton))[:, 1, :])
     title("Phytoplankton concentration")
     xlabel("\$ x \$ (m)")
     axs[2].tick_params(left=false, labelleft=false)

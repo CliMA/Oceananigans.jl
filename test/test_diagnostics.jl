@@ -1,35 +1,20 @@
 function horizontal_average_is_correct(arch, FT)
-    model = BasicModel(N = (16, 16, 16), L = (100, 100, 100), architecture=arch, float_type=FT)
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(100, 100, 100))
+    model = Model(grid=grid, architecture=arch, float_type=FT)
 
-    # Set a linear stably stratified temperature profile.
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model, model.tracers.T; interval=0.5second)
-    push!(model.diagnostics, T̅)
+    T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
+    computed_profile = T̅(model)
+    correct_profile = @. 20 + 0.01 * model.grid.zC
 
-    time_step!(model, 1, 1)
-    correct_profile = @. 20 + 0.01 * collect(model.grid.zC)
-    all(Array(T̅.profile[:][2:end-1]) ≈ correct_profile)
-end
-
-function product_profile_is_correct(arch, FT)
-    model = BasicModel(N = (16, 16, 16), L = (100, 100, 100), architecture=arch, float_type=FT)
-
-    # Set a linear stably stratified temperature profile and a sinusoidal u(z) profile.
-    u₀(x, y, z) = sin(z)
-    T₀(x, y, z) = 20 + 0.01*z
-    set!(model; u=u₀, T=T₀)
-
-    uT = HorizontalAverage(model, [model.velocities.u, model.tracers.T]; interval=0.5second)
-    run_diagnostic(model, uT)
-
-    correct_profile = @. sin.(model.grid.zC) * (20 + 0.01 * model.grid.zC)
-    Array(uT.profile[:][2:end-1]) ≈ correct_profile
+    return all(computed_profile[:][2:end-1] .≈ correct_profile)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
-    model = BasicModel(N = (16, 16, 2), L = (1, 1, 1), architecture=arch, float_type=FT)
+    grid=RegularCartesianGrid(size=(16, 16, 2), length=(1, 1, 1))
+    model = Model(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
     nc = NaNChecker(model; frequency=1, fields=Dict(:w => model.velocities.w.data.parent))
@@ -40,12 +25,15 @@ function nan_checker_aborts_simulation(arch, FT)
     time_step!(model, 1, 1);
 end
 
-TestModel(::GPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(16, 16, 16), L=(16*Δx, 16*Δx, 16*Δx), 
-                                                 architecture=GPU(), float_type=FT, ν=ν, κ=ν)
+TestModel(::GPU, FT, ν=1.0, Δx=0.5) = Model(grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
+                                         closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+                                    architecture = GPU(),
+                                      float_type = FT)
 
-TestModel(::CPU, FT, ν=1.0, Δx=0.5) = BasicModel(N=(3, 3, 3), L=(3*Δx, 3*Δx, 3*Δx), 
-                                                 architecture=CPU(), float_type=FT, ν=ν, κ=ν)
-    
+TestModel(::CPU, FT, ν=1.0, Δx=0.5) = Model(grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
+                                         closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+                                    architecture = CPU(),
+                                      float_type = FT)
 
 function max_abs_field_diagnostic_is_correct(arch, FT)
     model = TestModel(arch, FT)
@@ -132,7 +120,6 @@ end
             println("  Testing horizontal average [$(typeof(arch))]")
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
-                @test product_profile_is_correct(arch, FT)
             end
         end
     end

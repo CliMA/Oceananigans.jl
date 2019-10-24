@@ -312,6 +312,7 @@ Keyword arguments
 """
 function write_grid(model; filename="./grid.nc", mode="c",
                     compression=0, attributes=Dict(), slice_kw...)
+
     dimensions = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
@@ -320,6 +321,7 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "yF" => collect(model.grid.yF)[1:end-1],
         "zF" => collect(model.grid.zF)[1:end-1]
     )
+
     dim_attrib = Dict(
         "xC" => ["longname" => "Locations of the cell centers in the x-direction.", "units" => "m"],
         "yC" => ["longname" => "Locations of the cell centers in the y-direction.", "units" => "m"],
@@ -343,6 +345,7 @@ function write_grid(model; filename="./grid.nc", mode="c",
                    compression=compression, attrib=dim_attrib[dimname])
         end
     end
+
     return nothing
 end
 
@@ -421,7 +424,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
 
     # Initiates empty Float32 arrays for fields from the user-supplied variable outputs
     for (fieldname, field) in outputs
-        dtype = eltype(parentdata(field))
+        dtype = eltype(interiorparent(field))
         defVar(dataset, fieldname, dtype, (netcdf_spatial_dimensions(field)...,"Time"),
                compression=compression, attrib=output_attributes[fieldname])
     end
@@ -471,7 +474,7 @@ function write_output(model, fw::NetCDFOutputWriter)
     fw.len_time_dimension += 1
     fw.dataset["Time"][fw.len_time_dimension] = model.clock.time
     for (fieldname, field) in fw.outputs
-        fw.dataset[fieldname][:,:,:,fw.len_time_dimension] = view(parentdata(field), fw.slices[fieldname]...)
+        fw.dataset[fieldname][:, :, :, fw.len_time_dimension] = view(interiorparent(field), fw.slices[fieldname]...)
     end
     sync(fw.dataset)
     return nothing
