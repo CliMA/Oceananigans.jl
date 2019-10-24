@@ -2,6 +2,8 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
 
+import Base: identity
+
 using Base: @propagate_inbounds
 
 using Oceananigans: @hascuda
@@ -40,6 +42,7 @@ abstract type AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Not
 
 const ALF = AbstractLocatedField
 
+# We (informally) require that all field-like objects define `data` and `parent`:
 data(op::AbstractOperation) = op
 Base.parent(op::AbstractOperation) = op
 
