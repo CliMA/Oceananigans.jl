@@ -13,9 +13,9 @@ end
 """
     Computation(operation, result; return_type=Array)
 
-Returns a `Computation` representing an `operation` performed over the elements of `operation.grid`
-and stored in `result`. `return_type` specifies the output type when the `Computation` instances
-is called as a function.
+Returns a `Computation` representing an `operation` performed over the elements of 
+`operation.grid` and stored in `result`. `return_type` specifies the output type when the 
+`Computation` instances is called as a function.
 """
 Computation(operation, result; return_type=Array) = 
     Computation(operation, result, operation.grid, return_type)
@@ -52,20 +52,16 @@ end
 """
     (computation::Computation)(args...)
 
-Performs the `compute(computation)` and returns the result converted to type `computationutation.return_type`.
+Performs the `compute(computation)` and returns the result if `isnothing(return_type)`, 
+or the result after being converted to `return_type`.
 """
 function (computation::Computation)(args...)
-    computationute!(computation)
+    compute!(computation)
     return computation.return_type(interior(computation.result))
 end
 
-"""
-    (computation::Computation{<:Nothing})(args...)
-
-Performs `compute!(computation)` and returns `computation.result`.
-"""
 function (computation::Computation{<:Nothing})(args...)
-    computationute!(computation)
+    compute!(computation)
     return computation.result
 end
 
@@ -88,7 +84,8 @@ end
     HorizontalAverage(op::AbstractOperation, model; kwargs...)
 
 Returns the representation of a `HorizontalAverage` over the operation `op`, using
-`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on `op.grid`.
+`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on 
+`op.grid`.
 """
 HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) = 
     HorizontalAverage(op, model.pressures.pHY′; kwargs...)
