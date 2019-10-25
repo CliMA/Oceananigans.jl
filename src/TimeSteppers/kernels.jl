@@ -4,61 +4,47 @@
 
 """ Calculate the right-hand-side of the u-momentum equation. """
 function calculate_Gu!(Gu, grid, coriolis, closure, U, C, K, F, pHY′, parameters, time)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gu[i, j, k] = (-u∇u(grid, U.u, U.v, U.w, i, j, k)
-                                            - x_f_cross_U(i, j, k, grid, coriolis, U)
-                                            - ∂x_p(i, j, k, grid, pHY′)
-                                            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.u(i, j, k, grid, time, U, C, parameters))
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gu[i, j, k] = (
+            -u∇u(grid, U.u, U.v, U.w, i, j, k)
+            - x_f_cross_U(i, j, k, grid, coriolis, U)
+            - ∂x_p(i, j, k, grid, pHY′)
+            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+            + F.u(i, j, k, grid, time, U, C, parameters)
+        )
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the v-momentum equation. """
 function calculate_Gv!(Gv, grid, coriolis, closure, U, C, K, F, pHY′, parameters, time)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gv[i, j, k] = (-u∇v(grid, U.u, U.v, U.w, i, j, k)
-                                            - y_f_cross_U(i, j, k, grid, coriolis, U)
-                                            - ∂y_p(i, j, k, grid, pHY′)
-                                            + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.v(i, j, k, grid, time, U, C, parameters))
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gv[i, j, k] = (-u∇v(grid, U.u, U.v, U.w, i, j, k)
+                                    - y_f_cross_U(i, j, k, grid, coriolis, U)
+                                    - ∂y_p(i, j, k, grid, pHY′)
+                                    + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                    + F.v(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the w-momentum equation. """
 function calculate_Gw!(Gw, grid, coriolis, closure, U, C, K, F, parameters, time)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gw[i, j, k] = (-u∇w(grid, U.u, U.v, U.w, i, j, k)
-                                            - z_f_cross_U(i, j, k, grid, coriolis, U)
-                                            + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
-                                            + F.w(i, j, k, grid, time, U, C, parameters))
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gw[i, j, k] = (-u∇w(grid, U.u, U.v, U.w, i, j, k)
+                                    - z_f_cross_U(i, j, k, grid, coriolis, U)
+                                    + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                    + F.w(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 function calculate_Gc!(Gc, grid, closure, c, tracer_index, U, C, K, Fc, parameters, time)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
-                                            + ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, K)
-                                            + Fc(i, j, k, grid, time, U, C, parameters))
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
+                                    + ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, K)
+                                    + Fc(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -149,14 +135,10 @@ pressure
     `∇²ϕ_{NH}^{n+1} = (∇·u^n)/Δt + ∇·(Gu, Gv, Gw)`
 """
 function calculate_poisson_right_hand_side!(RHS, ::CPU, grid, ::PoissonBCs, U, G, Δt)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-                @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                         div_f2c(grid, G.u, G.v, G.w, i, j, k)
-            end
-        end
+    @loop_xyz i j k grid begin
+            # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
+            @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
+                                     div_f2c(grid, G.u, G.v, G.w, i, j, k)
     end
 
     return nothing
@@ -172,21 +154,17 @@ in the z-direction which is required by the GPU fast cosine transform algorithm 
 horizontally periodic model configurations.
 """
 function calculate_poisson_right_hand_side!(RHS, ::GPU, grid, ::PPN, U, G, Δt)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if (k & 1) == 1  # isodd(k)
-                    k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
-                else
-                    k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
-                end
-                @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                          div_f2c(grid, G.u, G.v, G.w, i, j, k)
-            end
+    Nz = grid.Nz
+    @loop_xyz i j k grid begin
+        if (k & 1) == 1  # isodd(k)
+            k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
+        else
+            k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
         end
-    end
 
+        @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
+                                  div_f2c(grid, G.u, G.v, G.w, i, j, k)
+    end
     return nothing
 end
 
@@ -200,28 +178,23 @@ in the y- and z-directions which is required by the GPU fast cosine transform al
 reentrant channel model configurations.
 """
 function calculate_poisson_right_hand_side!(RHS, ::GPU, grid, ::PNN, U, G, Δt)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if (k & 1) == 1  # isodd(k)
-                    k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
-                else
-                    k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
-                end
-
-                if (j & 1) == 1  # isodd(j)
-                    j′ = convert(UInt32, CUDAnative.floor(j/2) + 1)
-                else
-                    j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
-                end
-
-                @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                           div_f2c(grid, G.u, G.v, G.w, i, j, k)
-            end
+    Ny, Nz = grid.Ny, grid.Nz
+    @loop_xyz i j k grid begin
+        if (k & 1) == 1  # isodd(k)
+            k′ = convert(UInt32, CUDAnative.floor(k/2) + 1)
+        else
+            k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
         end
-    end
 
+        if (j & 1) == 1  # isodd(j)
+            j′ = convert(UInt32, CUDAnative.floor(j/2) + 1)
+        else
+            j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
+        end
+
+        @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
+                                   div_f2c(grid, G.u, G.v, G.w, i, j, k)
+    end
     return nothing
 end
 
@@ -233,19 +206,14 @@ Copy the non-hydrostatic pressure into `pNHS` and undo the permutation
 along the z-direction.
 """
 function idct_permute!(pNHS, grid, ::PPN, ϕ)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= Nz/2
-                    @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
-                else
-                    @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
-                end
-            end
+    Nz = grid.Nz
+    @loop_xyz i j k grid begin
+        if k <= Nz/2
+            @inbounds pNHS[i, j, 2k-1] = real(ϕ[i, j, k])
+        else
+            @inbounds pNHS[i, j, 2(Nz-k+1)] = real(ϕ[i, j, k])
         end
     end
-
     return nothing
 end
 
@@ -257,27 +225,22 @@ Copy the non-hydrostatic pressure into `pNHS` and undo the permutation
 along the y- and z-direction.
 """
 function idct_permute!(pNHS, grid, ::PNN, ϕ)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                if k <= Nz/2
-                    k′ = 2k-1
-                else
-                    k′ = 2(Nz-k+1)
-                end
-
-                if j <= Ny/2
-                    j′ = 2j-1
-                else
-                    j′ = 2(Ny-j+1)
-                end
-
-                @inbounds pNHS[i, j′, k′] = real(ϕ[i, j, k])
-            end
+    Ny, Nz = grid.Ny, grid.Nz
+    @loop_xyz i j k grid begin
+        if k <= Nz/2
+            k′ = 2k-1
+        else
+            k′ = 2(Nz-k+1)
         end
-    end
 
+        if j <= Ny/2
+            j′ = 2j-1
+        else
+            j′ = 2(Ny-j+1)
+        end
+
+        @inbounds pNHS[i, j′, k′] = real(ϕ[i, j, k])
+    end
     return nothing
 end
 
@@ -289,15 +252,10 @@ Update the horizontal velocities u and v via
 Note that the vertical velocity is not explicitly time stepped.
 """
 function update_velocities!(U, grid, Δt, G, pNHS)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
-                @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
+        @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
     end
-
     return nothing
 end
 
@@ -309,15 +267,10 @@ Update the horizontal velocities u and v via
 Note that the vertical velocity is not explicitly time stepped.
 """
 function update_velocities!(U, grid, Δt, G, ::Nothing)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds U.u[i, j, k] += G.u[i, j, k] * Δt
-                @inbounds U.v[i, j, k] += G.v[i, j, k] * Δt
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds U.u[i, j, k] += G.u[i, j, k] * Δt
+        @inbounds U.v[i, j, k] += G.v[i, j, k] * Δt
     end
-
     return nothing
 end
 
@@ -327,14 +280,9 @@ Update tracers via
     `c^{n+1} = c^n + Gc^{n+½} Δt`
 """
 function update_tracer!(c, grid, Δt, Gc)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds c[i, j, k] += Gc[i, j, k] * Δt
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds c[i, j, k] += Gc[i, j, k] * Δt
     end
-
     return nothing
 end
 

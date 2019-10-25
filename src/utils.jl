@@ -7,6 +7,23 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 ####
+#### Convinient macro
+####
+
+macro loop_xyz(i, j, k, grid, expr)
+    return esc(
+        quote
+            @loop for $k in (1:$grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+                @loop for $j in (1:$grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                    @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                        $expr
+                    end
+                end
+            end
+        end)
+end
+        
+####
 #### Convinient definitions
 ####
 
