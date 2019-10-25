@@ -48,9 +48,8 @@ Field(L::Tuple, arch::AbstractArchitecture, grid) =
 Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`, 
 where each of `X, Y, Z` is `Cell` or `Face`.
 """
-Field(X, Y, Z, arch::AbstractArchitecture, grid) = 
-    Field((X, Y, Z), arch, grid)
-    
+Field(X, Y, Z, arch::AbstractArchitecture, grid) =  Field((X, Y, Z), arch, grid)
+   
 """
     CellField([T=eltype(grid)], arch, grid)
 
