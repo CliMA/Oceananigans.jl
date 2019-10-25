@@ -77,26 +77,18 @@ end
 
 """ Store previous source terms for `u`, `v`, and `w` before updating them. """
 function ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
-                @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
-                @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
+        @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
+        @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
     end
     return nothing
 end
 
 """ Store previous source terms for a tracer before updating them. """
 function ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
     end
     return nothing
 end
@@ -124,14 +116,10 @@ Adams-Bashforth method
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
 function ab2_update_velocity_source_terms!(Gⁿ, grid::AbstractGrid{FT}, χ, G⁻) where FT
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gⁿ.u[i, j, k] = (FT(1.5) + χ) * Gⁿ.u[i, j, k] - (FT(0.5) + χ) * G⁻.u[i, j, k]
-                @inbounds Gⁿ.v[i, j, k] = (FT(1.5) + χ) * Gⁿ.v[i, j, k] - (FT(0.5) + χ) * G⁻.v[i, j, k]
-                @inbounds Gⁿ.w[i, j, k] = (FT(1.5) + χ) * Gⁿ.w[i, j, k] - (FT(0.5) + χ) * G⁻.w[i, j, k]
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gⁿ.u[i, j, k] = (FT(1.5) + χ) * Gⁿ.u[i, j, k] - (FT(0.5) + χ) * G⁻.u[i, j, k]
+        @inbounds Gⁿ.v[i, j, k] = (FT(1.5) + χ) * Gⁿ.v[i, j, k] - (FT(0.5) + χ) * G⁻.v[i, j, k]
+        @inbounds Gⁿ.w[i, j, k] = (FT(1.5) + χ) * Gⁿ.w[i, j, k] - (FT(0.5) + χ) * G⁻.w[i, j, k]
     end
 
     return nothing
@@ -144,14 +132,9 @@ Adams-Bashforth method
     `G^{n+½} = (3/2 + χ)G^{n} - (1/2 + χ)G^{n-1}`
 """
 function ab2_update_tracer_source_term!(Gcⁿ, grid::AbstractGrid{FT}, χ, Gc⁻) where FT
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds Gcⁿ[i, j, k] = (FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k]
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds Gcⁿ[i, j, k] = (FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k]
     end
-
     return nothing
 end
 
