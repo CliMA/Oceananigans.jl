@@ -7,14 +7,13 @@ export
 
 using Oceananigans: device
 
-using CUDAnative
-
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
 using Oceananigans: AbstractGrid, Model, Tendencies, tracernames, 
-                    CPU, GPU, launch_config, datatuples, datatuple, 
+                    @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
+                    @loop_xyz,
 
                     buoyancy_perturbation,
                     x_f_cross_U, y_f_cross_U, z_f_cross_U,
@@ -22,6 +21,8 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     fill_halo_regions!, apply_z_bcs!, solve_poisson_3d!, PoissonBCs, PPN, PNN,
 
                     run_diagnostic, write_output, time_to_run
+
+@hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using ..Operators
 
