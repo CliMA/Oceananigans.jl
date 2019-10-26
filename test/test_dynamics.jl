@@ -7,22 +7,10 @@ function getmodelfield(fieldname, model)
     return field
 end
 
-function u_relative_error(model, u)
-    u_num = model.velocities.u
-    u_ans = FaceFieldX(u.(nodes(u_num)..., model.clock.time), model.grid)
-    return mean((data(u_num) .- u_ans.data).^2 ) / mean(u_ans.data.^2)
-end
-
-function w_relative_error(model, w)
-    w_num = model.velocities.w
-    w_ans = FaceFieldZ(w.(nodes(w_num)..., model.clock.time), model.grid)
-    return mean((data(w_num) .- w_ans.data).^2 ) / mean(w_ans.data.^2)
-end
-
-function T_relative_error(model, T)
-    T_num = model.tracers.T
-    T_ans = CellField(T.(nodes(T_num)..., model.clock.time), model.grid)
-    return mean((data(T_num) .- T_ans.data).^2 ) / mean(T_ans.data.^2)
+function relative_error(u_num, u, time)
+    u_ans = Field(location(u_num), architecture(u_num), u_num.grid)
+    set!(u_ans, (x, y, z) -> u(x, y, z, time))
+    return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
 function test_diffusion_simple(fieldname)
@@ -31,9 +19,9 @@ function test_diffusion_simple(fieldname)
     model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     value = π
-    data(field) .= value
+    interior(field) .= value
     time_step!(model, 10, 0.01)
-    field_data = data(field)
+    field_data = interior(field)
 
     return !any(@. !isapprox(value, field_data))
 end
@@ -44,8 +32,8 @@ function test_diffusion_budget_default(fieldname)
     model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
-    data(field)[:, :,   1:half_Nz] .= -1
-    data(field)[:, :, half_Nz:end] .=  1
+    interior(field)[:, :,   1:half_Nz] .= -1
+    interior(field)[:, :, half_Nz:end] .=  1
 
     return test_diffusion_budget(field, model, model.closure.ν, model.grid.Lz)
 end
@@ -56,16 +44,16 @@ function test_diffusion_budget_channel(fieldname)
     model = ChannelModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
-    data(field)[:, 1:half_Ny,   :] .= -1
-    data(field)[:, half_Ny:end, :] .=  1
+    interior(field)[:, 1:half_Ny,   :] .= -1
+    interior(field)[:, half_Ny:end, :] .=  1
 
     return test_diffusion_budget(field, model, model.closure.ν, model.grid.Ly)
 end
 
 function test_diffusion_budget(field, model, κ, L)
-    mean_init = mean(data(field))
+    mean_init = mean(interior(field))
     time_step!(model, 100, 1e-4 * L^2 / κ)
-    return isapprox(mean_init, mean(data(field)))
+    return isapprox(mean_init, mean(interior(field)))
 end
 
 function test_diffusion_cosine(fieldname)
@@ -76,12 +64,12 @@ function test_diffusion_cosine(fieldname)
     field = getmodelfield(fieldname, model)
 
     zC = model.grid.zC
-    data(field)[1, 1, :] .= cos.(m*zC)
+    interior(field)[1, 1, :] .= cos.(m*zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
     time_step!(model, 100, 1e-6 * Lz^2 / κ) # Use small time-step relative to diff. time-scale
-    field_numerical = dropdims(data(field), dims=(1, 2))
+    field_numerical = dropdims(interior(field), dims=(1, 2))
 
     return !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
 end
@@ -132,7 +120,7 @@ function internal_wave_test(; N=128, Nt=10)
     time_step!(model, Nt, Δt)
 
     # Tolerance was found by trial and error...
-    u_relative_error(model, u) < 1e-4
+    return relative_error(model.velocities.u, u, model.clock.time) < 1e-4
 end
 
 function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
@@ -154,7 +142,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     time_step!(model, Nt, Δt)
 
     # Error tolerance is a bit arbitrary
-    return T_relative_error(model, T) < 1e-4
+    return relative_error(model.tracers.T, T, model.clock.time) < 1e-4
 end
 
 """
@@ -194,11 +182,11 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     i = model.clock.iteration
 
     # Calculate relative error between model and analytic solutions for u and v.
-    u_rel_err = abs.((data(model.velocities.u) .- u.(xF, yC, zC, t)) ./ u.(xF, yC, zC, t))
+    u_rel_err = abs.((interior(model.velocities.u) .- u.(xF, yC, zC, t)) ./ u.(xF, yC, zC, t))
     u_rel_err_avg = mean(u_rel_err)
     u_rel_err_max = maximum(u_rel_err)
 
-    v_rel_err = abs.((data(model.velocities.v) .- v.(xC, yF, zC, t)) ./ v.(xC, yF, zC, t))
+    v_rel_err = abs.((interior(model.velocities.v) .- v.(xC, yF, zC, t)) ./ v.(xC, yF, zC, t))
     v_rel_err_avg = mean(v_rel_err)
     v_rel_err_max = maximum(v_rel_err)
 

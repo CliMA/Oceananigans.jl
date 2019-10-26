@@ -77,5 +77,5 @@ function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forc
 end
 
 default_tracer_forcing(args...) = zeroforcing
-ModelForcing(tracers, proposal_forcing) = with_tracers(tracers, proposal_forcing, default_tracer_forcing, 
+ModelForcing(tracers, proposal_forcing) = with_tracers(tracers, proposal_forcing, default_tracer_forcing,
                                                        with_velocities=true)
