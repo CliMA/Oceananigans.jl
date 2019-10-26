@@ -25,20 +25,25 @@
 @inline δz_aaf(i, j, k, grid, f::F, args...) where F<:Function = f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)
 
 ####
-#### Difference operators of the form δ(A*f) where A is an area and f is an array.
+#### Operators that calculate A*q where A is an area and q is some quantity.
+#### Useful for defining flux difference operators and other flux operators.
 ####
 
-@inline Ax_u(i, j, k, grid, u) = @inbounds AxC(i, j, k, grid) * u[i, j, k]
-@inline Ax_c(i, j, k, grid, c) = @inbounds AxF(i, j, k, grid) * c[i, j, k]
-@inline Ay_v(i, j, k, grid, v) = @inbounds AyC(i, j, k, grid) * v[i, j, k]
-@inline Ay_c(i, j, k, grid, c) = @inbounds AyF(i, j, k, grid) * c[i, j, k]
+@inline Ax_u(i, j, k, grid, u) = @inbounds AxF(i, j, k, grid) * u[i, j, k]
+@inline Ax_c(i, j, k, grid, c) = @inbounds AxC(i, j, k, grid) * c[i, j, k]
+@inline Ay_v(i, j, k, grid, v) = @inbounds AyF(i, j, k, grid) * v[i, j, k]
+@inline Ay_c(i, j, k, grid, c) = @inbounds AyC(i, j, k, grid) * c[i, j, k]
 @inline Az_w(i, j, k, grid, w) = @inbounds  Az(i, j, k, grid) * w[i, j, k]
 @inline Az_c(i, j, k, grid, c) = @inbounds  Az(i, j, k, grid) * c[i, j, k]
 
-@inline δxA_caa(i, j, k, grid, u) = δx_caa(i, j, k, grid, Ax_u, u)
-@inline δxA_faa(i, j, k, grid, c) = δx_faa(i, j, k, grid, Ax_c, c)
-@inline δyA_aca(i, j, k, grid, v) = δy_aca(i, j, k, grid, Ay_v, v)
-@inline δyA_afa(i, j, k, grid, c) = δy_afa(i, j, k, grid, Ay_c, c)
-@inline δzA_aac(i, j, k, grid, w) = δz_aac(i, j, k, grid, Az_w, w)
-@inline δzA_aaf(i, j, k, grid, c) = δz_aaf(i, j, k, grid, Az_c, c)
+####
+#### "Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
+####
+
+@inline δFx_caa(i, j, k, grid, u) = δx_caa(i, j, k, grid, Ax_u, u)
+@inline δFx_faa(i, j, k, grid, c) = δx_faa(i, j, k, grid, Ax_c, c)
+@inline δFy_aca(i, j, k, grid, v) = δy_aca(i, j, k, grid, Ay_v, v)
+@inline δFy_afa(i, j, k, grid, c) = δy_afa(i, j, k, grid, Ay_c, c)
+@inline δFz_aac(i, j, k, grid, w) = δz_aac(i, j, k, grid, Az_w, w)
+@inline δFz_aaf(i, j, k, grid, c) = δz_aaf(i, j, k, grid, Az_c, c)
 
