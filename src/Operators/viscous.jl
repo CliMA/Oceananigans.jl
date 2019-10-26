@@ -2,17 +2,17 @@
 #### Viscous fluxes
 ####
 
-@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑxA_caa(i, j, k, grid) * δx_caa(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑyA_afa(i, j, k, grid) * δy_afa(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑzA_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑFx_caa(i, j, k, grid) * δx_caa(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑFy_afa(i, j, k, grid) * δy_afa(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑFz_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑxA_faa(i, j, k, grid) * δx_faa(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑyA_aca(i, j, k, grid) * δy_aca(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑzA_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑFx_faa(i, j, k, grid) * δx_faa(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑFy_aca(i, j, k, grid) * δy_aca(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑFz_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑzA_faa(i, j, k, grid) * δx_faa(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑyA_afa(i, j, k, grid) * δy_afa(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑzA_aac(i, j, k, grid) * δz_aac(i, j, k, grid, w)
+@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑFz_faa(i, j, k, grid) * δx_faa(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑFy_afa(i, j, k, grid) * δy_afa(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑFz_aac(i, j, k, grid) * δz_aac(i, j, k, grid, w)
 
 ####
 #### Viscous dissipation operators
