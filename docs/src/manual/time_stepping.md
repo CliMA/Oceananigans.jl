@@ -1,38 +1,80 @@
-# Time stepping
+# Time-stepping and the fractional step method
 
-If we combine all the terms that must be evaluated at time step $n + \frac{1}{2}$ into a variable $G$, then we have
+The time-integral of the momentum equation with the pressure decomposition from time step $n$ at $t = t_n$ 
+to time step $n+1$ at $t_{n+1}$ is
 ```math
-\renewcommand{\div}[1] {\nabla \cdotp \left ( #1 \right )}
-\bm{G}_{\bm{u}}^n
-  = -\left[ \bm{u} \cdot \nabla \bm{u} \right]^n - 2\bm{\Omega}\times\bm{u}^n + \div{\nu\nabla\bm{u}^n} + \bm{F}^n
+    \tag{eq:momentum-time-integral}
+    \bm{u}^{n+1} - \bm{u}^n = 
+        \int_{t_n}^{t_{n+1}} \Big [ - \bm{\nabla} \phi_{\rm{non}} 
+                                    - \bm{\nabla}_{\! h} \phi_{\rm{hyd}} 
+                                    - \left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{u} 
+                                    - \bm{f} \times \bm{u} 
+                                    + \bm{\nabla} \bm{\cdot} \bm{\tau} 
+                                    + \bm{F}_{\bm{u}} \Big ] \, \rm{d} t \, ,
 ```
-where $\bm{G}_{\bm{u}} = (G_u, G_v, G_w)$. Together with \eqref{eq:projection-step} allows us to write the discretized
-momentum equation as
+where the superscript $n$ and $n+1$ imply evaluation at $t_n$ and $t_{n+1}$, 
+such that $\bm{u}^n \equiv \bm{u}(t=t_n)$.
+The crux of the fractional step method is to treat the pressure term 
+$\bm{\nabla} \phi_{\rm{non}}$ implicitly using the approximation
 ```math
-\frac{\bm{u}^{n+1} - \bm{u}^n}{\Delta t}
-  = \bm{G}_{\bm{u}}^{n+1/2} - \nabla (\phi_{HY}^\prime + \phi_{NH})^{n+1}
+\int_{t_n}^{t_{n+1}} \bm{\nabla} \phi_{\rm{non}} \, \rm{d} t \approx 
+    \Delta t \bm{\nabla} \phi_{\rm{non}}^{n+1} \, ,
 ```
-where we have brought back the hydrostatic pressure anomaly $\phi_{HY}^\prime$ and non-hydrostatic pressure $\phi_{NH}$.
+while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral} explicitly.
+The implicit treatment of pressure ensures that the velocity field obtained at time step $n+1$ is divergence-free.
 
-Doing the same for tracer quantities yields
+To effect such a fractional step method, we define an intermediate velocity field $\bm{u}^\star$ such that
 ```math
-\renewcommand{\div}[1] {\nabla \cdotp \left ( #1 \right )}
-G_c^n = \bm{u}^n \cdot \nabla c^n + \div{\kappa_c \nabla c^n} + F_c^n
+    \tag{eq:intermediate-velocity-field}
+    \bm{u}^\star - \bm{u}^n = \int_{t_n}^{t_{n+1}} \bm{G}_{\bm{u}} \, \rm{d} t \, ,
 ```
-and
+where
 ```math
-\frac{c^{n+1} - c^n}{\Delta t} = G_c^{n + \frac{1}{2}}
+\bm{G}_{\bm{u}} \equiv - \bm{\nabla}_h \phi_{\rm{hyd}} 
+                       - \left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{u} 
+                       - \bm{f} \times \bm{u} 
+                       + \bm{\nabla} \bm{\cdot} \bm{\tau} 
+                       + \bm{F}_{\bm{u}}
 ```
+collects all terms on the right side of the time-integral of the momentum equation except the contribution 
+of non-hydrostatic pressure $\bm{\nabla} \phi_n$.
+The integral on the right of the equation for $\bm{u}^\star$ may be approximated by a variety of 
+explicit methods: for example, a forward Euler method uses
+```math
+    \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx \Delta t G^n \, ,
+    \tag{eq:forward-euler}
+```
+for any time-dependent function $G(t)$, while a second-order Adams-Bashforth method uses the approximation
+```math
+    \tag{eq:adams-bashforth}
+    \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx 
+        \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n 
+        - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
+```
+where $\chi$ is a parameter. Ascher et al. (1995) claim that $\chi = \tfrac{1}{8}$ is optimal; 
+$\chi=-\tfrac{1}{2}$ yields the forward Euler scheme.
 
-We evaluate the $G^{n + \frac{1}{2}}$ terms explicitly using a weighted two-step Adams–Bashforth (AB2) method
+Combining the equations for $\bm{u}^\star$ and the time integral of the momnentum equation yields
 ```math
-    G^{n+\frac{1}{2}} = \left( \frac{3}{2} + \chi \right) G^n - \left( \frac{1}{2} + \chi \right) G^{n-1} .
+    \tag{eq:fractional-step}
+    \bm{u}^{n+1} - \bm{u}^\star = - \Delta t \bm{\nabla} \phi_{\rm{non}}^{n+1} \, \rm{d} t \, .
 ```
-AB2 has the advantage of being quasi-second-order accurate in time and yet does not have a computational mode (???).
-Furthermore, it can be implemented by evaluating the source terms $G$ only once and storing them for use on the next
-time step, thus using less memory than higher-order time stepping schemes.
+Taking the divergence of fractional step equation and requiring that 
+$\bm{\nabla} \bm{\cdot} \bm{u}^{n+1} = 0$ yields a Poisson equation for the potential 
+$\phi_{\rm{non}}$ at time-step $n+1$:
+```math
+    \bm{\nabla}^2 \phi_{\rm{non}}^{n+1} = \frac{\bm{\nabla} \bm{\cdot} \bm{u}^{\star}}{\Delta t} \, .
+```
+With $\bm{u}^\star$ and $\phi_{\rm{non}}$, $\bm{u}^{n+1}$ is then computed via the fractional step equation.
 
-It turns out that for a second-order accurate approximation of $G^{n+\frac{1}{2}}$ we require $\chi = \frac{1}{8}$
-\citep{Ascher95}. Note that $\chi = 0$ reproduces the unweighted Adams-Bashforth method which calculates a second-order
-accurate approximation of $G^{n+1}$. Also note that $\chi = -\frac{1}{2}$ reproduces the first-order accurate forward
-Euler method, useful for initializing the model when $G^{n-1}$ is not available, such as at the first time step.
+Tracers are stepped forward explicitly via
+```math
+    \tag{eq:tracer-timestep}
+    c^{n+1} - c^n = \int_{t_n}^{t_{n+1}} G_c \, \rm{d} t \, ,
+```
+where 
+```math
+    G_c \equiv - \bm{\nabla} \bm{\cdot} \left ( \bm{u} c \right ) - \bm{\nabla} \bm{\cdot} \bm{q}_c + F_c \, ,
+```
+and the same forward Euler or Adams-Bashforth scheme as for the explicit evaluation of the time-integral of
+$\bm{G}_u$ is used to evaluate the integral of $G_c$.

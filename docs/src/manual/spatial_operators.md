@@ -117,33 +117,25 @@ and differencing them back onto the faces. However, in the case of the the two o
 and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then
 differenced back onto the cell faces.
 
-## Viscous dissipation
+## Discretization of isotropic diffusion operators
 
-Viscous dissipation operators are discretized similarly to the momentum advection operators and so there is a different
-one for each direction. For example, the vertical diffusion operator is discretized as
+An isotropic viscosity operator acting on vertical momentum is discretized via
 ```math
-\renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
-\div{\nu \nabla w}
-= \frac{1}{V} \left[
-      \delta_x^{faa} \left( \nu_h \overline{A_x}^{caa} \delta_x^{caa} w \right)
-    + \delta_y^{afa} \left( \nu_h \overline{A_y}^{aca} \delta_y^{aca} w \right)
-    + \delta_z^{aaf} \left( \nu_v \overline{A_z}^{aac} \delta_z^{aac} w \right)
-\right]
+    \bm{\nabla} \left ( \nu_e \bm{\nabla} w \right )
+    = \frac{1}{V} \left[
+          \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \delta_x^{caa} w \right)
+        + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \delta_y^{aca} w \right)
+        + \delta_z^{aaf} \left( \nu_e \overline{A_z}^{aac} \delta_z^{aac} w \right)
+    \right ]
 ```
 where $\nu$ is the kinematic viscosity.
 
-
-# Laplacian diffusion
-
-Laplacian diffusion is discretized for tracer quantities as
+An isotropic diffusion operator acting on a tracer $c$, on the other hand, is discretized via
 ```math
-\renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
-\div{\kappa \nabla T}
-= \frac{1}{V} \left[
-    \delta_x^{caa} \left( \kappa_h A_x \delta_x^{faa} T \right)
-  + \delta_y^{aca} \left( \kappa_h A_y \delta_y^{afa} T \right)
-  + \delta_z^{aac} \left( \kappa_v A_z \delta_z^{aaf} T \right)
-\right]
+   \bm{\nabla} \bm{\cdot} \left ( \kappa_e \bm{\nabla} c \right ) =
+    = \frac{1}{V} \left[
+        \delta_x^{caa} \left( \kappa_e A_x \delta_x^{faa} c \right)
+      + \delta_y^{aca} \left( \kappa_e A_y \delta_y^{afa} c \right)
+      + \delta_z^{aac} \left( \kappa_e A_z \delta_z^{aaf} c \right)
+    \right]
 ```
-where $\kappa$ is the diffusivity, usually taken to be the eddy diffusivity, and different diffusivities may be taken
-for the horizontal and vertical directions to account for the differences between horizontal and vertical turbulence.

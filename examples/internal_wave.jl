@@ -15,7 +15,7 @@ Lx = 2π  # domain extent
 
 # We set up an internal wave with the pressure field
 #
-# $$ p(x, y, z, t) = a(x, z) cos(kx + mz - \omega t) $$ .
+# $ p(x, y, z, t) = a(x, z) cos(kx + mz - ω t) $.
 #
 # where `m` is the vertical wavenumber, `k` is the horizontal wavenumber,
 # `ω` is the wave frequncy, and `a(x, z)` is a Gaussian envelope.
@@ -84,8 +84,8 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
 zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
 
-function plot_field!(ax, w, t)
-    pcolormesh(xplot(w), zplot(w), data(model.velocities.w)[:, 1, :])
+function plot_field!(ax, w, t) 
+    pcolormesh(xplot(w), zplot(w), interior(model.velocities.w)[:, 1, :])
     xlabel(L"x")
     ylabel(L"z")
     title(@sprintf("\$ \\omega t / 2 \\pi = %.2f\$", t*ω/2π))
@@ -95,13 +95,15 @@ function plot_field!(ax, w, t)
 end
 
 close("all")
-fig, ax = subplots()
+fig, ax = subplots();
 
 # ## A wave packet on the loose
 #
-# Finally, we release the packet:
+# Finally, we release the packet and plot its trajectory:
 
 for i = 1:10
     time_step!(model, Nt = 200, Δt = 0.001 * 2π/ω)
     plot_field!(ax, model.velocities.w, model.clock.time)
 end
+
+gcf()

@@ -2,32 +2,14 @@ function horizontal_average_is_correct(arch, FT)
     grid = RegularCartesianGrid(size=(16, 16, 16), length=(100, 100, 100))
     model = Model(grid=grid, architecture=arch, float_type=FT)
 
-    # Set a linear stably stratified temperature profile.
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model, model.tracers.T; interval=0.5second)
-    push!(model.diagnostics, T̅)
+    T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
+    computed_profile = T̅(model)
+    correct_profile = @. 20 + 0.01 * model.grid.zC
 
-    time_step!(model, 1, 1)
-    correct_profile = @. 20 + 0.01 * collect(model.grid.zC)
-    all(Array(T̅.profile[:][2:end-1]) ≈ correct_profile)
-end
-
-function product_profile_is_correct(arch, FT)
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(100, 100, 100))
-    model = Model(grid=grid, architecture=arch, float_type=FT)
-
-    # Set a linear stably stratified temperature profile and a sinusoidal u(z) profile.
-    u₀(x, y, z) = sin(z)
-    T₀(x, y, z) = 20 + 0.01*z
-    set!(model; u=u₀, T=T₀)
-
-    uT = HorizontalAverage(model, [model.velocities.u, model.tracers.T]; interval=0.5second)
-    run_diagnostic(model, uT)
-
-    correct_profile = @. sin.(model.grid.zC) * (20 + 0.01 * model.grid.zC)
-    Array(uT.profile[:][2:end-1]) ≈ correct_profile
+    return all(computed_profile[:][2:end-1] .≈ correct_profile)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
@@ -138,7 +120,6 @@ end
             println("  Testing horizontal average [$(typeof(arch))]")
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
-                @test product_profile_is_correct(arch, FT)
             end
         end
     end

@@ -308,10 +308,10 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, diffusivities) =
-    (   ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_index, closure, diffusivities.νₑ)
-      + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_index, closure, diffusivities.νₑ)
-      + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
+@inline ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure::AbstractSmagorinsky, diffusivities) = (
+      ∂x_caa(i, j, k, grid, κ_∂x_c, c, tracer_index, closure, diffusivities.νₑ)
+    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, tracer_index, closure, diffusivities.νₑ)
+    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, tracer_index, closure, diffusivities.νₑ)
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
