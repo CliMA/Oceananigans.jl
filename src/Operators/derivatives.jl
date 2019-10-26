@@ -8,8 +8,8 @@
 @inline ∂y_aca(i, j, k, grid, v) = δy_aca(i, j, k, grid, u) / Δy(i, j, k, grid)
 @inline ∂y_afa(i, j, k, grid, c) = δy_afa(i, j, k, grid, c) / Δy(i, j, k, grid)
 
-@inline ∂z_aac(i, j, k, grid, w) = δx_aac(i, j, k, grid, w) / ΔzF(i, j, k, grid)
-@inline ∂z_aaf(i, j, k, grid, c) = δx_aaf(i, j, k, grid, c) / ΔzC(i, j, k, grid)
+@inline ∂z_aac(i, j, k, grid, w) = δz_aac(i, j, k, grid, w) / ΔzF(i, j, k, grid)
+@inline ∂z_aaf(i, j, k, grid, c) = δz_aaf(i, j, k, grid, c) / ΔzC(i, j, k, grid)
 
 ####
 #### Derivative operators acting on functions
