@@ -315,7 +315,7 @@ end
 function _compute_w_from_continuity!(U, grid)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            # U.w[i, j, 0] = 0 is enforced via halo regions.
+            # U.w[i, j, 1] = 0 is enforced via halo regions.
             @unroll for k in 2:grid.Nz
                 @inbounds U.w[i, j, k] = U.w[i, j, k-1] - grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
             end
