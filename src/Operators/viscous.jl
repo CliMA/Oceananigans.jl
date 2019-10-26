@@ -2,17 +2,17 @@
 #### Viscous fluxes
 ####
 
-@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑFx_caa(i, j, k, grid) * δx_caa(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑFy_afa(i, j, k, grid) * δy_afa(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑFz_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑx_caa(i, j, k, grid, AxC) * δx_caa(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑy_afa(i, j, k, grid, AyC) * δy_afa(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑz_aaf(i, j, k, grid, Az)  * δz_aaf(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑFx_faa(i, j, k, grid) * δx_faa(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑFy_aca(i, j, k, grid) * δy_aca(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑFz_aaf(i, j, k, grid) * δz_aaf(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑx_faa(i, j, k, grid, AxC) * δx_faa(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑy_aca(i, j, k, grid, AyC) * δy_aca(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑz_aaf(i, j, k, grid, Az)  * δz_aaf(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑFz_faa(i, j, k, grid) * δx_faa(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑFy_afa(i, j, k, grid) * δy_afa(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑFz_aac(i, j, k, grid) * δz_aac(i, j, k, grid, w)
+@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑx_faa(i, j, k, grid, AxC) * δx_faa(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑy_afa(i, j, k, grid, AyC) * δy_afa(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑz_aac(i, j, k, grid, Az)  * δz_aac(i, j, k, grid, w)
 
 ####
 #### Viscous dissipation operators

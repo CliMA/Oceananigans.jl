@@ -11,7 +11,7 @@
 @inline momentum_flux_vw(i, j, k, grid, v, w) = ℑy_afa(i, j, k, grid, Az_w, w) * ℑz_aaf(i, j, k, grid, v)
 
 @inline momentum_flux_wu(i, j, k, grid, u, w) = ℑz_aaf(i, j, k, grid, Ax_u, u) * ℑx_faa(i, j, k, grid, w)
-@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑz_afa(i, j, k, grid, Ay_v, v) * ℑy_afa(i, j, k, grid, w)
+@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑz_aaf(i, j, k, grid, Ay_v, v) * ℑy_afa(i, j, k, grid, w)
 @inline momentum_flux_ww(i, j, k, grid, w)    = ℑz_aac(i, j, k, grid, Az_w, w) * ℑz_aac(i, j, k, grid, w)
 
 ####
