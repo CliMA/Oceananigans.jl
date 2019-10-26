@@ -8,8 +8,8 @@ Calculates the Laplacian of c via
 which will end up at the location `ccc`.
 """
 @inline function ∇²(i, j, k, grid, c)
-    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, δxA_faa, c) +
-                          δy_aca(i, j, k, grid, δyA_afa, c) +
-                          δz_aac(i, j, k, grid, δzA_aaf, c))
+    1/VC(i, j, k, grid) * (δx_caa(i, j, k, grid, δFx_faa, c) +
+                           δy_aca(i, j, k, grid, δFy_afa, c) +
+                           δz_aac(i, j, k, grid, δFz_aaf, c))
 end
 

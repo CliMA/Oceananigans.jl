@@ -12,8 +12,8 @@ Calculates the horizontal divergence ∇ₕ·(u, v) of a 2D velocity field (u, v
 which will end up at the location `cca`.
 """
 @inline function div_cc(i, j, k, grid, u, v)
-    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, u) +
-                          δy_aca(i, j, k, grid, fy_v, v))
+    1/VC(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, u) +
+                           δy_aca(i, j, k, grid, fy_v, v))
 end
 
 """
@@ -26,8 +26,8 @@ Calculates the divergence ∇·U of a vector field U = (u, v, w),
 which will end up at the cell centers `ccc`.
 """
 @inline function div_ccc(i, j, k, grid, u, v, w)
-    1/V(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, fx) +
-                          δy_aca(i, j, k, grid, Ay_v, fy) +
-                          δz_aac(i, j, k, grid, Az_w, fz))
+    1/VC(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, fx) +
+                           δy_aca(i, j, k, grid, Ay_v, fy) +
+                           δz_aac(i, j, k, grid, Az_w, fz))
 end
 

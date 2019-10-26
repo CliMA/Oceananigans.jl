@@ -23,6 +23,11 @@
 
 @inline Az(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
+const AxC = Ax_aac
+const AxF = Ax_aaf
+const AyC = Ay_aac
+const AyF = Ay_aaf
+
 ####
 #### Volumes
 ####
@@ -30,6 +35,8 @@
 @inline V_aac(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline V_aaf(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
 
+const VC = V_aac
+const VF = V_aaf
 const Vᵘ = V_aac
 const Vᵛ = V_aac
 const Vʷ = V_aaf
