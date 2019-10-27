@@ -2,6 +2,7 @@ using
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.Grids,
+    Oceananigans.Solvers,
     Oceananigans.Diagnostics,
     Oceananigans.OutputWriters,
     Oceananigans.TurbulenceClosures,
@@ -20,14 +21,14 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
-                    architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
+using Oceananigans: architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
                     interiorparent, interior, fill_halo_regions!, location,
                     TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
                     RoquetIdealizedNonlinearEquationOfState, required_tracers
 
 import Oceananigans: interior, datatuple
 
+using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
 using Oceananigans.TurbulenceClosures

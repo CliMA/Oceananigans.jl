@@ -253,7 +253,7 @@ include("coriolis.jl")
 include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
-include("poisson_solvers.jl")
+include("Solvers/Solvers.jl")
 include("forcing.jl")
 include("models.jl")
 

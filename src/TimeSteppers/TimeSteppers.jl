@@ -24,10 +24,12 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
 
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
-using ..Operators
+using Oceananigans.Operators
+using Oceananigans.Solvers
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 
+using Oceananigans.Solvers: PPN, PNN
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
