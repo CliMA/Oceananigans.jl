@@ -18,10 +18,11 @@ export
     # Grids
     RegularCartesianGrid,
 
-    # Fields
+    # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
     interior, set!, set_ic!,
     nodes, xnodes, ynodes, znodes,
+    compute_w_from_continuity!,
 
     # Forcing functions
     ModelForcing, SimpleForcing,
@@ -234,6 +235,9 @@ architecture(::Array) = CPU()
 function buoyancy_perturbation end
 function buoyancy_frequency_squared end
 function TracerFields end
+function TimeStepper end
+function run_diagnostic end
+function write_output end
 
 include("utils.jl")
 
@@ -242,6 +246,9 @@ include("grids.jl")
 include("fields.jl")
 
 include("Operators/Operators.jl")
+
+using .Operators: div_f2c # used in diagnostics.jl
+
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
 using .TurbulenceClosures
@@ -253,7 +260,10 @@ include("halo_regions.jl")
 include("poisson_solvers.jl")
 include("forcing.jl")
 include("models.jl")
-include("time_steppers.jl")
+
+include("TimeSteppers/TimeSteppers.jl")
+
+using .TimeSteppers
 
 include("output_writers.jl")
 include("diagnostics.jl")

@@ -32,7 +32,7 @@ end
 # Special savepropety! for AB2 time stepper struct used by the checkpointer so
 # it only saves the fields and not the tendency BCs or χ value (as they can be
 # constructed by the `Model` constructor).
-function saveproperty!(file, location, ts::AdamsBashforthTimestepper)
+function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
     saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
     saveproperty!(file, location * "/G⁻", ts.G⁻)
 end
