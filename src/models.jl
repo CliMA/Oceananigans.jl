@@ -1,27 +1,36 @@
 using Oceananigans
 
-mutable struct CompressibleModel{A, FT, G, M, E, ρ, T, MR, F, R, P} <: AbstractModel
-    architecture     :: A
-    grid             :: G
-    surface_pressure :: FT
-    momenta          :: M
-    entropy          :: E
-    densities        :: ρ
-    mixing_ratios    :: MR
-    slow_forcings    :: F
-    fast_forcings    :: R
-    perturbations    :: P
+mutable struct CompressibleModel{A, FT, G, BS, M, D, E, MR, F, R, P} <: AbstractModel
+             architecture :: A
+                     grid :: G
+         surface_pressure :: FT
+               base_state :: BS
+                  momenta :: M
+                densities :: D
+                  entropy :: E
+            mixing_ratios :: MR
+            slow_forcings :: F
+            fast_forcings :: R
+    acoustic_time_stepper :: P
 end
 
-function CompressibleModel(; architecture=CPU(), grid, surface_pressure = 100000)
-    Ũ = MomentumFields(arch, grid)
-    S = CellField(arch, grid)
-    ρ = DensityFields(arch, grid)
-    Q = MixingRatioFields(arch, grid)
-    F = SlowForcingFields(arch, grid)
-    R = FastForcingFields(arch, grid)
-    P = PerturbationFields(arch, grid)
-    return CompressibleModel(architecture, grid, surface_pressure, Ũ, S, ρ, Q, F, R, P)
+function CompressibleModel(;
+                     grid,
+             architecture = CPU(),
+         surface_pressure = 100000,
+               base_state = nothing,
+                  momenta = MomentumFields(arch, grid),
+                densities = DensityFields(arch, grid),
+                  entropy = CellField(arch, grid),
+            mixing_ratios = MixingRatioFields(arch, grid),
+            slow_forcings = SlowForcingFields(arch, grid),
+            fast_forcings = FastForcingFields(arch, grid),
+    acoustic_time_stepper = nothing
+    )
+
+    return CompressibleModel(architecture, grid, surface_pressure, base_state,
+                             momenta, densities, entropy, mixing_ratios, slow_forcings,
+                             fast_forcings, acoustic_perturbation, acoustic_time_stepper)
 end
 
 function MomentumFields(arch, grid)
@@ -67,7 +76,7 @@ function FastForcingFields(arch, grid)
     return (U=U, V=V, W=W, ρd=ρd, S=S, Qv=Qv, Ql=Ql, Qi=Qi)
 end
 
-function PerturbationFields(arch, grid)
+function AcousticPerturbationFields(arch, grid)
     U″ = FaceFieldX(arch, grid)
     V″ = FaceFieldY(arch, grid)
     W″ = FaceFieldZ(arch, grid)
