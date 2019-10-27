@@ -1,5 +1,9 @@
 using Oceananigans
 
+####
+#### Definition of a compressible model
+####
+
 mutable struct CompressibleModel{A, FT, G, BS, M, D, E, MR, F, R, P} <: AbstractModel
              architecture :: A
                      grid :: G
@@ -7,12 +11,15 @@ mutable struct CompressibleModel{A, FT, G, BS, M, D, E, MR, F, R, P} <: Abstract
                base_state :: BS
                   momenta :: M
                 densities :: D
-                  entropy :: E
-            mixing_ratios :: MR
+                  tracers :: T
             slow_forcings :: F
             fast_forcings :: R
     acoustic_time_stepper :: P
 end
+
+####
+#### Constructor for compressible models
+####
 
 function CompressibleModel(;
                      grid,
@@ -21,17 +28,22 @@ function CompressibleModel(;
                base_state = nothing,
                   momenta = MomentumFields(arch, grid),
                 densities = DensityFields(arch, grid),
-                  entropy = CellField(arch, grid),
-            mixing_ratios = MixingRatioFields(arch, grid),
-            slow_forcings = SlowForcingFields(arch, grid),
-            fast_forcings = FastForcingFields(arch, grid),
+                  tracers = (:S, :Qv, :Ql, :Qi),
+            slow_forcings = ForcingFields(arch, grid, tracernames(tracers)),
+            fast_forcings = ForcingFields(arch, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
     )
 
+    tracers = TracerFields(architecture, grid, tracers)
+
     return CompressibleModel(architecture, grid, surface_pressure, base_state,
-                             momenta, densities, entropy, mixing_ratios, slow_forcings,
-                             fast_forcings, acoustic_perturbation, acoustic_time_stepper)
+                             momenta, densities, tracers, slow_forcings, fast_forcings,
+                             acoustic_time_stepper)
 end
+
+####
+#### Utilities for constructing compressible models
+####
 
 function MomentumFields(arch, grid)
     U = FaceFieldX(arch, grid)
@@ -46,41 +58,23 @@ function DensityFields(arch, grid)
     return (d=ρd, m=ρm)
 end
 
-function MixingRatioFields(arch, grid)
-    Qv = CellField(arch, grid)
-    Ql = CellField(arch, grid)
-    Qi = CellField(arch, grid)
-    return (Qv=Qv, Ql=Ql, Qi=Qi)
+tracernames(::Nothing) = ()
+tracernames(name::Symbol) = tuple(name)
+tracernames(::NamedTuple{names}) where names = tracernames(names)
+
+function TracerFields(arch, grid, tracernames)
+    tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
+    return NamedTuple{tracernames}(tracerfields)
 end
 
-function SlowForcingFields(arch, grid)
+function ForcingFields(arch, grid, tracernames)
     U = FaceFieldX(arch, grid)
     V = FaceFieldY(arch, grid)
     W = FaceFieldZ(arch, grid)
-    S = CellField(arch, grid)
-    Qv = CellField(arch, grid)
-    Ql = CellField(arch, grid)
-    Qi = CellField(arch, grid)
-    return (U=U, V=V, W=W, S=S, Qv=Qv, Ql=Ql, Qi=Qi)
+    momenta = (U=U, V=V, W=W)
+
+    tracers = TracerFields(arch, grid, tracernames)
+
+    return merge(momenta, tracers)
 end
 
-function FastForcingFields(arch, grid)
-    U = FaceFieldX(arch, grid)
-    V = FaceFieldY(arch, grid)
-    W = FaceFieldZ(arch, grid)
-    S = CellField(arch, grid)
-    ρd = CellField(arch, grid)
-    Qv = CellField(arch, grid)
-    Ql = CellField(arch, grid)
-    Qi = CellField(arch, grid)
-    return (U=U, V=V, W=W, ρd=ρd, S=S, Qv=Qv, Ql=Ql, Qi=Qi)
-end
-
-function AcousticPerturbationFields(arch, grid)
-    U″ = FaceFieldX(arch, grid)
-    V″ = FaceFieldY(arch, grid)
-    W″ = FaceFieldZ(arch, grid)
-    S″ = CellField(arch, grid)
-    ρ″ = CellField(arch, grid)
-    return (U=U″, V=V″, W=W″, S=S″, ρ=ρ″)
-end
