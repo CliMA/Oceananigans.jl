@@ -3,6 +3,9 @@ uuid = "216628ba-da5e-11e9-0e9d-731cbc3ee0ea"
 authors = ["Tristan Abbott", "Ali Ramadhan", "Raphael Rousseau-Rizzi"]
 version = "0.1.0"
 
+[deps]
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+
 [compat]
 julia = "1.1"
 
