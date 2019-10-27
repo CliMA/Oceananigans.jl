@@ -1,10 +1,12 @@
 using Oceananigans
 
+using Oceananigans: AbstractModel
+
 ####
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, BS, M, D, E, MR, F, R, P} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, BS, M, D, T, F, R, P} <: AbstractModel
              architecture :: A
                      grid :: G
          surface_pressure :: FT
@@ -26,11 +28,11 @@ function CompressibleModel(;
              architecture = CPU(),
          surface_pressure = 100000,
                base_state = nothing,
-                  momenta = MomentumFields(arch, grid),
-                densities = DensityFields(arch, grid),
+                  momenta = MomentumFields(architecture, grid),
+                densities = DensityFields(architecture, grid),
                   tracers = (:S, :Qv, :Ql, :Qi),
-            slow_forcings = ForcingFields(arch, grid, tracernames(tracers)),
-            fast_forcings = ForcingFields(arch, grid, tracernames(tracers)),
+            slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
+            fast_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
     )
 
@@ -60,6 +62,7 @@ end
 
 tracernames(::Nothing) = ()
 tracernames(name::Symbol) = tuple(name)
+tracernames(names::NTuple{N, Symbol}) where N = names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 function TracerFields(arch, grid, tracernames)
