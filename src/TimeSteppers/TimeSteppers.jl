@@ -54,6 +54,10 @@ TimeStepper(stepper, args...) = stepper
 boundary_condition_function_arguments(model) = (model.clock.time, model.clock.iteration, datatuple(model.velocities), 
                                                 datatuple(model.tracers), model.parameters)
 
+####
+#### Time-stepping kernels/function that are independent of the TimeStepper
+####
+
 """
     time_step!(model; Nt, Δt, kwargs...)
 
