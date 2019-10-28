@@ -15,23 +15,18 @@
 #### Areas
 ####
 
-@inline Ax_aac(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Ax_aaf(i, j, k, grid) = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
+@inline Axᵃᵃᶜ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
+@inline Axᵃᵃᶠ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
 
-@inline Ay_aac(i, j, k, grid) = Δx(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Ay_aaf(i, j, k, grid) = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
+@inline Ayᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * ΔzF(i, j, k, grid)
+@inline Ayᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
 
-@inline Az_aaa(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
 ####
 #### Volumes
 ####
 
-@inline V_aac(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline V_aaf(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
+@inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
 
-const VC = V_aac
-const VF = V_aaf
-const Vᵘ = V_aac
-const Vᵛ = V_aac
-const Vʷ = V_aaf

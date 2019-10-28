@@ -28,9 +28,9 @@ Calculate the advection of momentum in the x-direction U·∇u
 which will end up at the location `fcc`.
 """
 @inline function u∇u(i, j, k, grid, u, v, w)
-    return 1/Vᵘ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_uu, u)    +
-                                  δyᵃᶜᵃ(i, j, k, grid, momentum_flux_uv, u, v) +
-                                  δzᵃᵃᶜ(i, j, k, grid, momentum_flux_uw, u, w))
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_uu, u)    +
+                                    δyᵃᶜᵃ(i, j, k, grid, momentum_flux_uv, u, v) +
+                                    δzᵃᵃᶜ(i, j, k, grid, momentum_flux_uw, u, w))
 end
 
 """
@@ -43,9 +43,9 @@ Calculates the advection of momentum in the y-direction U·∇v
 which will end up at the location `cfc`.
 """
 @inline function u∇v(i, j, k, grid, u, v, w)
-    return 1/Vᵛ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_vu, u, v) +
-                                  δyᵃᶠᵃ(i, j, k, grid, momentum_flux_vv, v)    +
-                                  δzᵃᵃᶜ(i, j, k, grid, momentum_flux_vw, v, w))
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_vu, u, v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, momentum_flux_vv, v)    +
+                                    δzᵃᵃᶜ(i, j, k, grid, momentum_flux_vw, v, w))
 end
 
 """
@@ -58,7 +58,7 @@ Calculates the advection of momentum in the z-direction U·∇w
 which will end up at the location `ccf`.
 """
 @inline function u∇w(i, j, k, grid, u, v, w)
-    return 1/Vʷ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_wu, u, w) +
-                                  δyᵃᶜᵃ(i, j, k, grid, momentum_flux_wv, v, w) +
-                                  δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ww, w))
+    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_wu, u, w) +
+                                    δyᵃᶜᵃ(i, j, k, grid, momentum_flux_wv, v, w) +
+                                    δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ww, w))
 end

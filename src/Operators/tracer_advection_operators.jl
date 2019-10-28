@@ -15,8 +15,8 @@ a velocity field U = (u, v, w), ∇·(Uc),
 which will end up at the location `ccc`.
 """
 @inline function div_flux(i, j, k, grid, u, v, w, c)
-    1/VC(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, tracer_flux_x, u, c) +
-                           δyᵃᶜᵃ(i, j, k, grid, tracer_flux_y, v, c) +
-                           δzᵃᵃᶜ(i, j, k, grid, tracer_flux_z, w, c))
+    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, tracer_flux_x, u, c) +
+                             δyᵃᶜᵃ(i, j, k, grid, tracer_flux_y, v, c) +
+                             δzᵃᵃᶜ(i, j, k, grid, tracer_flux_z, w, c))
 end
 
