@@ -2,9 +2,15 @@
 #### Utilities for acoustic time stepping
 ####
 
+function rk3_time_step(rk3_iter, Δt)
+    rk3_iter == 1 && return Δt/3
+    rk3_iter == 2 && return Δt/2
+    rk3_iter == 3 && return Δt
+end
+
 function acoustic_time_steps(rk3_iter, nₛ, Δt)
     rk3_iter == 1 && return 1,         Δt/3
-    rk3_iter == 2 && return Int(nₛ/2), (Δt/2)/(nₛ/2)
+    rk3_iter == 2 && return Int(nₛ/2), Δt/nₛ
     rk3_iter == 3 && return nₛ,        Δt/nₛ
 end
 
@@ -26,6 +32,8 @@ function time_step!(model; Δt, nₛ)
     C = model.tracers
     S = model.tracers.S
 
+    # Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ...)
+
     # TODO: Fill halo regions for U, V, W, C
     compute_slow_forcings!(F, Ũ, ρ, C)
 
@@ -34,10 +42,11 @@ function time_step!(model; Δt, nₛ)
         # TODO: Fill halo regions for U, V, W, ρ, C
         compute_fast_forcings!(R, Ũ, ρ, F)
 
-        n, Δτ = acoustic_time_steps(rk3_iter)
-        acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
+        # n, Δτ = acoustic_time_steps(rk3_iter)
+        # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
 
-        scalar_transport!(C, Ũ, args...)
+        I = rk3_iter == 3 ? Φ⁺ : model.intermediate_vars
+        advance_variables!(I, Ũ, C, ρ, R; Δt=rk3_time_step(rk3_iter))
     end
 
     return nothing
@@ -97,6 +106,30 @@ function compute_fast_forcings!(R, Ũ, ρ, F)
         @inbounds R.Qv[i, j, k] = RC(i, j, k, Ũ, C.Qv)
         @inbounds R.Ql[i, j, k] = RC(i, j, k, Ũ, C.Ql)
         @inbounds R.Qi[i, j, k] = RC(i, j, k, Ũ, C.Qi)
+    end
+end
+
+####
+#### Advancing variables
+####
+
+"""
+Updates variables according to the RK3 time step:
+    1. Φ*      = Φᵗ + Δt/3 * R(Φᵗ)
+    2. Φ**     = Φᵗ + Δt/2 * R(Φ*)
+    3. Φ(t+Δt) = Φᵗ + Δt   * R(Φ**)
+"""
+function advance_variables!(IV, Ũᵗ, Cᵗ, ρᵗ, R; Δt)
+    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+        I.U[i, j, k] = Ũᵗ.U[i, j, k] + Δt * R.U[i, j, k]
+        I.V[i, j, k] = Ũᵗ.V[i, j, k] + Δt * R.V[i, j, k]
+        I.W[i, j, k] = Ũᵗ.W[i, j, k] + Δt * R.W[i, j, k]
+        I.ρ[i, j, k] = ρᵗ.d[i, j, k] + Δt * R.ρd[i, j, k]
+        I.S[i, j, k] = Cᵗ.S[i, j, k] + Δt * R.S[i, j, k]
+
+        I.Qv[i, j, k] = Cᵗ.Qv[i, j, k] + Δt * R.Qv[i, j, k]
+        I.Ql[i, j, k] = Cᵗ.Ql[i, j, k] + Δt * R.Ql[i, j, k]
+        I.Qi[i, j, k] = Cᵗ.Qi[i, j, k] + Δt * R.Qi[i, j, k]
     end
 end
 

@@ -6,7 +6,7 @@ using Oceananigans: AbstractModel
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, B, C, BS, M, D, T, SF, FF, P} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, B, C, BS, M, D, T, SF, FF, IV, P} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -19,6 +19,7 @@ mutable struct CompressibleModel{A, FT, G, B, C, BS, M, D, T, SF, FF, P} <: Abst
                   tracers :: T
             slow_forcings :: SF
             fast_forcings :: FF
+        intermediate_vars :: IV
     acoustic_time_stepper :: P
 end
 
@@ -40,6 +41,7 @@ function CompressibleModel(;
                   tracers = (:S, :Qv, :Ql, :Qi),
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
             fast_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
+        intermediate_vars = IntermediateFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
     )
 
@@ -89,3 +91,14 @@ function ForcingFields(arch, grid, tracernames)
     return merge(momenta, tracers)
 end
 
+function IntermediateFields(architecture, grid, tracernames(tracers))
+    U = FaceFieldX(arch, grid)
+    V = FaceFieldY(arch, grid)
+    W = FaceFieldZ(arch, grid)
+    ρ =  CellField(arch, grid)
+    momenta_and_density = (U=U, V=V, W=W, ρ=ρ)
+
+    tracers = TracerFields(arch, grid, tracernames)
+
+    return merge(momenta_and_density, tracers)
+end
