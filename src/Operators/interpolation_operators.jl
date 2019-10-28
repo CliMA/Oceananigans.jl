@@ -1,3 +1,5 @@
+using Oceananigans: AbstractGrid
+
 ####
 #### Convinient aliases
 ####

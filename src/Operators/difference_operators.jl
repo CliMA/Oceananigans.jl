@@ -29,12 +29,12 @@
 #### Useful for defining flux difference operators and other flux operators.
 ####
 
-@inline Ax_u(i, j, k, grid, u) = @inbounds AxF(i, j, k, grid) * u[i, j, k]
-@inline Ax_c(i, j, k, grid, c) = @inbounds AxC(i, j, k, grid) * c[i, j, k]
-@inline Ay_v(i, j, k, grid, v) = @inbounds AyF(i, j, k, grid) * v[i, j, k]
-@inline Ay_c(i, j, k, grid, c) = @inbounds AyC(i, j, k, grid) * c[i, j, k]
-@inline Az_w(i, j, k, grid, w) = @inbounds  Az(i, j, k, grid) * w[i, j, k]
-@inline Az_c(i, j, k, grid, c) = @inbounds  Az(i, j, k, grid) * c[i, j, k]
+@inline Ax_u(i, j, k, grid, u) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k]
+@inline Ax_c(i, j, k, grid, c) = @inbounds Axᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
+@inline Ay_v(i, j, k, grid, v) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * v[i, j, k]
+@inline Ay_c(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
+@inline Az_w(i, j, k, grid, w) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * w[i, j, k]
+@inline Az_c(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
 
 ####
 #### "Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
