@@ -19,7 +19,7 @@ Calculates diffusion for a tracer c via
 
 which will end up at the location `ccc`.
 """
-@inline function ∇κ∇c(i, j, k, grid, c, κ)
+@inline function ∇κ∇c(i, j, k, grid, κ, c)
     1/VC(i, j, k, grid) * (δx_caa(i, j, k, grid, diffusive_flux_x, c, κ) +
                            δy_aca(i, j, k, grid, diffusive_flux_y, c, κ) +
                            δz_aac(i, j, k, grid, diffusive_flux_z, c, κ))

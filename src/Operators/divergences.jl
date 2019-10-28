@@ -11,7 +11,7 @@ Calculates the horizontal divergence ∇ₕ·(u, v) of a 2D velocity field (u, v
 
 which will end up at the location `cca`.
 """
-@inline function div_cc(i, j, k, grid, u, v)
+@inline function hdiv_cca(i, j, k, grid, u, v)
     1/VC(i, j, k, grid) * (δx_caa(i, j, k, grid, Ax_u, u) +
                            δy_aca(i, j, k, grid, Ay_v, v))
 end

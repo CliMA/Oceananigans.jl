@@ -12,9 +12,9 @@ face   cell   face   cell   face
  i-1            i            i+1
 
 Difference operators are denoted by a `δ` (`\delta`). Calculating the difference
-of a cell-centered quantity ϕ at cell i will return the difference at face i
+of a cell-centered quantity c at cell i will return the difference at face i
 
-    δϕᵢ = ϕᵢ - ϕᵢ₋₁
+    δcᵢ = cᵢ - cᵢ₋₁
 
 and so this operation, if applied along the x-dimension, is denoted by `δx_faa`.
 
@@ -31,10 +31,10 @@ positions in the y- and z-dimensions. Thus we further identify this operator by 
 where the `a` stands for "any" as the location is unchanged by the operator and is
 determined by the input.
 
-As a result the interpolation of a quantity ϕ from a cell i to face i
+As a result the interpolation of a quantity c from a cell i to face i
 (this operation is denoted "ℑx_faa" in the code below) is
 
-    ℑx_faa(ϕ)ᵢ = (ϕᵢ + ϕᵢ₋₁) / 2
+    ℑx_faa(c)ᵢ = (cᵢ + cᵢ₋₁) / 2
 
 Conversely, the interpolation of a quantity u from a face i to cell i is given by
 
