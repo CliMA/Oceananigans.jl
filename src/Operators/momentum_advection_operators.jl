@@ -2,17 +2,17 @@
 #### Momentum fluxes
 ####
 
-@inline momentum_flux_uu(i, j, k, grid, u)    = ℑx_caa(i, j, k, grid, Ax_u, u) * ℑx_caa(i, j, k, grid, u)
-@inline momentum_flux_uv(i, j, k, grid, u, v) = ℑx_faa(i, j, k, grid, Ay_v, v) * ℑy_afa(i, j, k, grid, u)
-@inline momentum_flux_uw(i, j, k, grid, u, w) = ℑx_faa(i, j, k, grid, Az_w, w) * ℑz_aaf(i, j, k, grid, u)
+@inline momentum_flux_uu(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_u, u) * ℑxᶜᵃᵃ(i, j, k, grid, u)
+@inline momentum_flux_uv(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_v, v) * ℑyᵃᶠᵃ(i, j, k, grid, u)
+@inline momentum_flux_uw(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶠ(i, j, k, grid, u)
 
-@inline momentum_flux_vu(i, j, k, grid, u, v) = ℑy_afa(i, j, k, grid, Ax_u, u) * ℑx_faa(i, j, k, grid, v)
-@inline momentum_flux_vv(i, j, k, grid, v)    = ℑy_aca(i, j, k, grid, Ay_v, v) * ℑy_aca(i, j, k, grid, v)
-@inline momentum_flux_vw(i, j, k, grid, v, w) = ℑy_afa(i, j, k, grid, Az_w, w) * ℑz_aaf(i, j, k, grid, v)
+@inline momentum_flux_vu(i, j, k, grid, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_u, u) * ℑxᶠᵃᵃ(i, j, k, grid, v)
+@inline momentum_flux_vv(i, j, k, grid, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_v, v) * ℑyᵃᶜᵃ(i, j, k, grid, v)
+@inline momentum_flux_vw(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶠ(i, j, k, grid, v)
 
-@inline momentum_flux_wu(i, j, k, grid, u, w) = ℑz_aaf(i, j, k, grid, Ax_u, u) * ℑx_faa(i, j, k, grid, w)
-@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑz_aaf(i, j, k, grid, Ay_v, v) * ℑy_afa(i, j, k, grid, w)
-@inline momentum_flux_ww(i, j, k, grid, w)    = ℑz_aac(i, j, k, grid, Az_w, w) * ℑz_aac(i, j, k, grid, w)
+@inline momentum_flux_wu(i, j, k, grid, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_u, u) * ℑxᶠᵃᵃ(i, j, k, grid, w)
+@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_v, v) * ℑyᵃᶠᵃ(i, j, k, grid, w)
+@inline momentum_flux_ww(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶜ(i, j, k, grid, w)
 
 ####
 #### Momentum advection operators
@@ -23,14 +23,14 @@
 
 Calculate the advection of momentum in the x-direction U·∇u
 
-    1/Vᵘ * [δx_faa(ℑx_caa(Ax * u) * ℑx_caa(u)) + δy_fca(ℑx_faa(Ay * v) * ℑy_afa(u)) + δz_fac(ℑx_faa(Az * w) * ℑz_aaf(u))]
+    1/Vᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u)) + δz_fac(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(u))]
 
 which will end up at the location `fcc`.
 """
 @inline function u∇u(i, j, k, grid, u, v, w)
-    1/Vᵘ(i, j, k, grid) * (δx_faa(i, j, k, grid, momentum_flux_uu, u)    +
-                           δy_aca(i, j, k, grid, momentum_flux_uv, u, v) +
-                           δz_aac(i, j, k, grid, momentum_flux_uw, u, w))
+    return 1/Vᵘ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_uu, u)    +
+                                  δyᵃᶜᵃ(i, j, k, grid, momentum_flux_uv, u, v) +
+                                  δzᵃᵃᶜ(i, j, k, grid, momentum_flux_uw, u, w))
 end
 
 """
@@ -38,14 +38,14 @@ end
 
 Calculates the advection of momentum in the y-direction U·∇v
 
-    1/Vʸ * [δx_cfa(ℑy_afa(Ax * u) * ℑx_faa(v)) + δy_afa(ℑy_aca(Ay * v) * ℑy_aca(v)) + δz_afc(ℑx_faa(Az * w) * ℑz_aaf(w))]
+    1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(w))]
 
 which will end up at the location `cfc`.
 """
 @inline function u∇v(i, j, k, grid, u, v, w)
-    1/Vᵛ(i, j, k, grid) * (δx_caa(i, j, k, grid, momentum_flux_vu, u, v) +
-                           δy_afa(i, j, k, grid, momentum_flux_vv, v)    +
-                           δz_aac(i, j, k, grid, momentum_flux_vw, v, w))
+    return 1/Vᵛ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_vu, u, v) +
+                                  δyᵃᶠᵃ(i, j, k, grid, momentum_flux_vv, v)    +
+                                  δzᵃᵃᶜ(i, j, k, grid, momentum_flux_vw, v, w))
 end
 
 """
@@ -53,12 +53,12 @@ end
 
 Calculates the advection of momentum in the z-direction U·∇w
 
-    1/Vʷ * [δx_caf(ℑz_aaf(Ax * u) * ℑx_faa(w)) + δy_acf(ℑz_aaf(Ay * v) * ℑy_afa(w)) + δz_aaf(ℑz_aac(Az * w) * ℑz_aac(w))]
+    1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
 
 which will end up at the location `ccf`.
 """
 @inline function u∇w(i, j, k, grid, u, v, w)
-    1/Vʷ(i, j, k, grid) * (δx_caa(i, j, k, grid, momentum_flux_wu, u, w) +
-                           δy_aca(i, j, k, grid, momentum_flux_wv, v, w) +
-                           δz_aaf(i, j, k, grid, momentum_flux_ww, w))
+    return 1/Vʷ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_wu, u, w) +
+                                  δyᵃᶜᵃ(i, j, k, grid, momentum_flux_wv, v, w) +
+                                  δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ww, w))
 end
