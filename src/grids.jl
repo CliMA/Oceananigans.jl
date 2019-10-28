@@ -74,62 +74,74 @@ domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.1415
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
-function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=nothing, z=nothing)
+function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
+                              length=nothing, x=nothing, y=nothing, z=nothing)
+
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
-    # use the `size` and `length` functions.
+    # use the `length` function.
     sz, len = size, length
     length = Base.length
 
-    if isnothing(len) && (isnothing(x) || isnothing(y) || isnothing(z))
-        throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
+    #####
+    ##### Input validation
+    #####
+
+    """Validate that an argument tuple is the right length and has elements of type `argtype`."""
+    function validate_tupled_argument(arg, argtype, argname)
+        length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))
+        all(isa.(arg, argtype)) || throw(ArgumentError("$argname=$arg must contain $argtype s."))
+        all(arg .> 0)           || throw(ArgumentError("Elements of $argname=$arg must be > 0!"))
+        return nothing
     end
 
-    if !isnothing(len) && !isnothing(x) && !isnothing(y) && !isnothing(z)
-        throw(ArgumentError("Cannot specify both length and x, y, z keyword arguments."))
-    end
+    # Validate 'size' and 'halo' keyword arguments
+    validate_tupled_argument(sz, Integer, "size")
+    validate_tupled_argument(halo, Integer, "halo")
 
-    length(sz) == 3        || throw(ArgumentError("length($sz) must be 3."))
-    all(isa.(sz, Integer)) || throw(ArgumentError("size=$sz should contain integers."))
-    all(sz .>= 1)          || throw(ArgumentError("size=$sz must be nonzero and positive!"))
+    # Find domain endpoints or domain length, depending on user input:
+    if !isnothing(len) # the user has specified a length!
 
-    if !isnothing(len)
-        length(len) == 3       || throw(ArgumentError("length($len) must be 3."))
-        all(isa.(len, Number)) || throw(ArgumentError("length=$len should contain numbers."))
-        all(len .>= 0)         || throw(ArgumentError("length=$len must be nonzero and positive!"))
+        (!isnothing(x) || !isnothing(y) || !isnothing(z)) &&
+            throw(ArgumentError("Cannot specify both length and x, y, z keyword arguments."))
+
+        validate_tupled_argument(len, Number, "length")
 
         Lx, Ly, Lz = len
+
+        # An "oceanic" default domain:
         x = (0, Lx)
         y = (0, Ly)
         z = (-Lz, 0)
+
+    else # isnothing(length) === true: user has not specified a length
+
+        (isnothing(x) || isnothing(y) || isnothing(z)) &&
+            throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
+
+        coord2xyz(c) = c == 1 ? "x" : c == 2 ? "y" : "z"
+
+        for (i, c) in enumerate((x, y, z))
+            name = coord2xyz(i)
+            length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
+            all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
+            c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
+        end
+
+        Lx = x[2] - x[1]
+        Ly = y[2] - y[1]
+        Lz = z[2] - z[1]
     end
 
-    function coord2xyz(c)
-        c == 1 && return "x"
-        c == 2 && return "y"
-        c == 3 && return "z"
-    end
+    #####
+    ##### Validation complete: let's build the grid.
+    #####
 
-    for (i, c) in enumerate((x, y, z))
-        name = coord2xyz(i)
-        length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
-        all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
-        c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
-    end
-
-    x₁, x₂ = x[1], x[2]
-    y₁, y₂ = y[1], y[2]
-    z₁, z₂ = z[1], z[2]
     Nx, Ny, Nz = sz
-    Lx, Ly, Lz = x₂-x₁, y₂-y₁, z₂-z₁
+    Hx, Hy, Hz = halo
 
-    # Right now we only support periodic horizontal boundary conditions and
-    # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
-    # just what we need.
-    Hx, Hy, Hz = 1, 1, 1
-
-    Tx = Nx + 2*Hx
-    Ty = Ny + 2*Hy
-    Tz = Nz + 2*Hz
+    Tx = Nx + 2Hx
+    Ty = Ny + 2Hy
+    Tz = Nz + 2Hz
 
     Δx = Lx / Nx
     Δy = Ly / Ny
@@ -140,6 +152,10 @@ function RegularCartesianGrid(FT=Float64; size, length=nothing, x=nothing, y=not
     Az = Δx*Δy
 
     V = Δx*Δy*Δz
+
+    x₁, x₂ = x[1], x[2]
+    y₁, y₂ = y[1], y[2]
+    z₁, z₂ = z[1], z[2]
 
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)

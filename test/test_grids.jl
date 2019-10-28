@@ -6,6 +6,11 @@ function correct_grid_size(FT)
             grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
 end
 
+function correct_halo_size(FT)
+    grid = RegularCartesianGrid(FT; size=(4, 6, 8), length=(2π, 4π, 9π), halo=(1, 2, 3))
+    return (grid.Hx == 1  && grid.Hy == 2  && grid.Hz == 3)
+end
+
 function faces_start_at_zero(FT)
     grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(2π, 2π, 2π))
     return grid.xF[1] == 0 && grid.yF[1] == 0 && grid.zF[end] == 0
@@ -40,6 +45,7 @@ end
         println("  Testing grid initialization...")
         for FT in float_types
             @test correct_grid_size(FT)
+            @test correct_halo_size(FT)
             @test faces_start_at_zero(FT)
             @test end_faces_match_grid_length(FT)
             @test ranges_have_correct_length(FT)
@@ -63,6 +69,8 @@ end
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, "32", 32), length=(1, 1, 1))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, nothing, 1))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, "1", 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, 1, 1), halo=(1, 1))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, 1, 1), halo=(1.0, 1, 1))
 
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=2)
@@ -75,6 +83,7 @@ end
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+            @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1))
             @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
         end
     end
