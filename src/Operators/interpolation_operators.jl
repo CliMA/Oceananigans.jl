@@ -9,71 +9,71 @@ const RCG = RegularCartesianGrid
 #### Base interpolation operators
 ####
 
-@inline ℑx_caa(i, j, k, grid::AG{FT}, u) where FT = @inbounds FT(0.5) * (u[i,   j, k] + u[i+1, j, k])
-@inline ℑx_faa(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i-1, j, k] + c[i,   j, k])
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, u) where FT = @inbounds FT(0.5) * (u[i,   j, k] + u[i+1, j, k])
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i-1, j, k] + c[i,   j, k])
 
-@inline ℑy_aca(i, j, k, grid::AG{FT}, v) where FT = @inbounds FT(0.5) * (v[i, j,   k] + v[i,  j+1, k])
-@inline ℑy_afa(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j-1, k] + c[i,  j,   k])
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, v) where FT = @inbounds FT(0.5) * (v[i, j,   k] + v[i,  j+1, k])
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j-1, k] + c[i,  j,   k])
 
-@inline ℑz_aac(i, j, k, grid::AG{FT}, w) where FT = @inbounds FT(0.5) * (w[i, j,   k] + w[i, j, k+1])
-@inline ℑz_aaf(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j,   k])
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, w) where FT = @inbounds FT(0.5) * (w[i, j,   k] + w[i, j, k+1])
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j,   k])
 
 ####
 #### Interpolation operators acting on functions
 ####
 
-@inline ℑx_caa(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i,   j, k, grid, args...) + f(i+1, j, k, grid, args...))
-@inline ℑx_faa(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i-1, j, k, grid, args...) + f(i,   j, k, grid, args...))
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i,   j, k, grid, args...) + f(i+1, j, k, grid, args...))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i-1, j, k, grid, args...) + f(i,   j, k, grid, args...))
 
-@inline ℑy_aca(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,   k, grid, args...) + f(i, j+1, k, grid, args...))
-@inline ℑy_afa(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-1, k, grid, args...) + f(i, j,   k, grid, args...))
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,   k, grid, args...) + f(i, j+1, k, grid, args...))
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-1, k, grid, args...) + f(i, j,   k, grid, args...))
 
-@inline ℑz_aac(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,   grid, args...) + f(i, j, k+1, grid, args...))
-@inline ℑz_aaf(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,   grid, args...) + f(i, j, k+1, grid, args...))
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
 
 ####
 #### "Flux interpolation" operators of the form ℑ(A*f) where A is an area and f is an array.
 ####
 
-@inline ℑFx_caa(i, j, k, grid, u) = ℑx_caa(i, j, k, grid, Ax_u, u)
-@inline ℑFx_faa(i, j, k, grid, c) = ℑx_faa(i, j, k, grid, Ax_c, c)
-@inline ℑFy_aca(i, j, k, grid, v) = ℑy_aca(i, j, k, grid, Ay_v, v)
-@inline ℑFy_afa(i, j, k, grid, c) = ℑy_afa(i, j, k, grid, Ay_c, c)
-@inline ℑFz_aac(i, j, k, grid, w) = ℑz_aac(i, j, k, grid, Az_w, w)
-@inline ℑFz_aaf(i, j, k, grid, c) = ℑz_aaf(i, j, k, grid, Az_c, c)
+@inline ℑᴶxᶜᵃᵃ(i, j, k, grid, u) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_u, u)
+@inline ℑᴶxᶠᵃᵃ(i, j, k, grid, c) = ℑxᶠᵃᵃ(i, j, k, grid, Ax_c, c)
+@inline ℑᴶyᵃᶜᵃ(i, j, k, grid, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_v, v)
+@inline ℑᴶyᵃᶠᵃ(i, j, k, grid, c) = ℑyᵃᶠᵃ(i, j, k, grid, Ay_c, c)
+@inline ℑᴶzᵃᵃᶜ(i, j, k, grid, w) = ℑzᵃᵃᶜ(i, j, k, grid, Az_w, w)
+@inline ℑᴶzᵃᵃᶠ(i, j, k, grid, c) = ℑzᵃᵃᶠ(i, j, k, grid, Az_c, c)
 
 ####
 #### Convenience operators for "interpolating constants"
 ####
 
-@inline ℑx_faa(i, j, k, grid, f::Number, args...) = f
-@inline ℑx_caa(i, j, k, grid, f::Number, args...) = f
-@inline ℑy_afa(i, j, k, grid, f::Number, args...) = f
-@inline ℑy_aca(i, j, k, grid, f::Number, args...) = f
-@inline ℑz_aaf(i, j, k, grid, f::Number, args...) = f
-@inline ℑz_aac(i, j, k, grid, f::Number, args...) = f
+@inline ℑxᶠᵃᵃ(i, j, k, grid, f::Number, args...) = f
+@inline ℑxᶜᵃᵃ(i, j, k, grid, f::Number, args...) = f
+@inline ℑyᵃᶠᵃ(i, j, k, grid, f::Number, args...) = f
+@inline ℑyᵃᶜᵃ(i, j, k, grid, f::Number, args...) = f
+@inline ℑzᵃᵃᶠ(i, j, k, grid, f::Number, args...) = f
+@inline ℑzᵃᵃᶜ(i, j, k, grid, f::Number, args...) = f
 
 ####
 #### Double interpolation
 ####
 
-@inline ℑxy_cca(i, j, k, grid, f, args...) = ℑy_aca(i, j, k, grid, ℑx_caa, f, args...)
-@inline ℑxy_fca(i, j, k, grid, f, args...) = ℑy_aca(i, j, k, grid, ℑx_faa, f, args...)
-@inline ℑxy_ffa(i, j, k, grid, f, args...) = ℑy_afa(i, j, k, grid, ℑx_faa, f, args...)
-@inline ℑxy_cfa(i, j, k, grid, f, args...) = ℑy_afa(i, j, k, grid, ℑx_caa, f, args...)
-@inline ℑxz_cac(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑx_caa, f, args...)
-@inline ℑxz_fac(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑx_faa, f, args...)
-@inline ℑxz_faf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑx_faa, f, args...)
-@inline ℑxz_caf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑx_caa, f, args...)
-@inline ℑyz_acc(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑy_aca, f, args...)
-@inline ℑyz_afc(i, j, k, grid, f, args...) = ℑz_aac(i, j, k, grid, ℑy_afa, f, args...)
-@inline ℑyz_aff(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑy_afa, f, args...)
-@inline ℑyz_acf(i, j, k, grid, f, args...) = ℑz_aaf(i, j, k, grid, ℑy_aca, f, args...)
+@inline ℑxyᶜᶜᵃ(i, j, k, grid, f, args...) = ℑyᵃᶜᵃ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
+@inline ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) = ℑyᵃᶜᵃ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
+@inline ℑxyᶠᶠᵃ(i, j, k, grid, f, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
+@inline ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
+@inline ℑxzᶜᵃᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
+@inline ℑxzᶠᵃᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
+@inline ℑxzᶠᵃᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
+@inline ℑxzᶜᵃᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
+@inline ℑyzᵃᶜᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶜᵃ, f, args...)
+@inline ℑyzᵃᶠᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶠᵃ, f, args...)
+@inline ℑyzᵃᶠᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶠᵃ, f, args...)
+@inline ℑyzᵃᶜᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, f, args...)
 
 ####
 #### Triple interpolation
 ####
 
-@inline ℑxyz_ffc(i, j, k, grid, f, args...) = ℑx_faa(i, j, k, grid, ℑy_afa, ℑz_aac, f, args...)
-@inline ℑxyz_ccf(i, j, k, grid, f, args...) = ℑx_caa(i, j, k, grid, ℑy_aca, ℑz_aaf, f, args...)
+@inline ℑxyzᶠᶠᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
+@inline ℑxyzᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
 
