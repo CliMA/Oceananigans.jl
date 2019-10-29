@@ -48,11 +48,6 @@ export
     # Models
     Model, ChannelModel, NonDimensionalModel,
 
-    # Model output writers
-    Checkpointer, restore_from_checkpoint, read_output,
-    JLD2OutputWriter, NetCDFOutputWriter, FieldOutput, FieldOutputs,
-    write_grid, NetCDFOutputWriter,
-
     # Package utilities
     prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
 
@@ -239,6 +234,9 @@ include("utils.jl")
 
 include("clock.jl")
 include("Grids/Grids.jl")
+
+using .Grids
+
 include("fields.jl")
 
 include("Operators/Operators.jl")
@@ -254,11 +252,14 @@ include("buoyancy.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("Solvers/Solvers.jl")
+
+using .Solvers
+
 include("forcing.jl")
 include("models.jl")
 
 include("Diagnostics/Diagnostics.jl")
- include("OutputWriters/OutputWriters.jl")
+include("OutputWriters/OutputWriters.jl")
 
 include("TimeSteppers/TimeSteppers.jl")
 
