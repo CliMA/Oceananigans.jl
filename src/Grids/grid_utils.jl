@@ -6,7 +6,7 @@ function validate_tupled_argument(arg, argtype, argname)
     return nothing
 end
 
-function validate_grid_size_and_length(sz, len, x, y, z)
+function validate_grid_size_and_length(sz, len, halo, x, y, z)
     validate_tupled_argument(sz, Integer, "size")
     validate_tupled_argument(halo, Integer, "halo")
 

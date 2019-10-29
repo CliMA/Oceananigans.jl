@@ -86,7 +86,7 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     sz, len = size, length
     length = Base.length
 
-    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, x, y, z)
+    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
 
     Nx, Ny, Nz = sz
     Hx, Hy, Hz = halo

@@ -1,6 +1,7 @@
 using
     Oceananigans,
     Oceananigans.Operators,
+    Oceananigans.Grids,
     Oceananigans.Diagnostics,
     Oceananigans.OutputWriters,
     Oceananigans.TurbulenceClosures,
