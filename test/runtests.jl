@@ -1,6 +1,7 @@
 using
     Oceananigans,
     Oceananigans.Operators,
+    Oceananigans.Diagnostics,
     Oceananigans.TurbulenceClosures,
     Test,
     Random,
@@ -18,13 +19,14 @@ using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
 using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!,
-                    velocity_div!,
                     architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
-                    interiorparent, interior, fill_halo_regions!, run_diagnostic, location,
+                    interiorparent, interior, fill_halo_regions!, location,
                     TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
                     RoquetIdealizedNonlinearEquationOfState, required_tracers
 
 import Oceananigans: interior, datatuple
+
+using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
 using Oceananigans.TurbulenceClosures
 

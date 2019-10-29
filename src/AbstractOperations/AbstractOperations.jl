@@ -12,17 +12,20 @@ using Oceananigans: @hascuda
 
 using Oceananigans, Adapt
 
-using Oceananigans: AbstractModel, AbstractGrid, AbstractField, AbstractLocatedField, Face, Cell, 
+using Oceananigans: AbstractModel, AbstractGrid, AbstractField, AbstractLocatedField, Face, Cell,
                     xnode, ynode, znode, location, show_location, show_domain, short_show,
-                    device, launch_config, architecture, 
-                    HorizontalAverage, zero_halo_regions!, normalize_horizontal_sum!
+                    device, launch_config, architecture, zero_halo_regions!
 
-import Oceananigans: run_diagnostic, data, architecture
+import Oceananigans: data, architecture
 
-using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, ∂z_aac, ∂z_aaf, 
+using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
+
+import Oceananigans.Diagnostics: run_diagnostic
+
+using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂y_aca, ∂y_afa, ∂z_aac, ∂z_aaf,
                                        ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa, ▶z_aac, ▶z_aaf,
-                                       ▶xy_cca, ▶xy_ffa, ▶xy_cfa, ▶xy_fca, 
-                                       ▶xz_cac, ▶xz_faf, ▶xz_caf, ▶xz_fac, 
+                                       ▶xy_cca, ▶xy_ffa, ▶xy_cfa, ▶xy_fca,
+                                       ▶xz_cac, ▶xz_faf, ▶xz_caf, ▶xz_fac,
                                        ▶yz_acc, ▶yz_aff, ▶yz_acf, ▶yz_afc,
                                        ▶xyz_ccc, ▶xyz_fcc, ▶xyz_cfc, ▶xyz_ccf,
                                        ▶xyz_fff, ▶xyz_ffc, ▶xyz_fcf, ▶xyz_cff
@@ -69,14 +72,14 @@ import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 @unary sqrt sin cos exp tanh
 @unary -
 
-@binary + 
-@binary - 
-@binary / 
+@binary +
+@binary -
+@binary /
 @binary ^
 
-@multiary + 
+@multiary +
 
-# For unknown reasons, the operator definition macros @binary and @multiary fail to work 
+# For unknown reasons, the operator definition macros @binary and @multiary fail to work
 # properly for :*. We thus manually define :* for fields.
 import Base: *
 

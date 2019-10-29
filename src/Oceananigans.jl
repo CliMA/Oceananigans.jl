@@ -53,10 +53,6 @@ export
     JLD2OutputWriter, NetCDFOutputWriter, FieldOutput, FieldOutputs,
     write_grid, NetCDFOutputWriter,
 
-    # Model diagnostics
-    HorizontalAverage, NaNChecker,
-    Timeseries, CFL, AdvectiveCFL, DiffusiveCFL, FieldMaximum,
-
     # Package utilities
     prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
 
@@ -261,12 +257,13 @@ include("poisson_solvers.jl")
 include("forcing.jl")
 include("models.jl")
 
+include("Diagnostics/Diagnostics.jl")
+
 include("TimeSteppers/TimeSteppers.jl")
 
 using .TimeSteppers
 
 include("output_writers.jl")
-include("diagnostics.jl")
 
 include("AbstractOperations/AbstractOperations.jl")
 
