@@ -20,13 +20,16 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
 
                     fill_halo_regions!, apply_z_bcs!, solve_poisson_3d!, PoissonBCs, PPN, PNN,
 
-                    write_output, time_to_run
+                    time_to_run
 
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using ..Operators
 using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+
 using Oceananigans.Diagnostics: run_diagnostic
+using Oceananigans.OutputWriters: write_output
 
 using ..TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c,
                             calculate_diffusivities!, ▶z_aaf

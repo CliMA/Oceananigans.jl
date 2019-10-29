@@ -1,3 +1,5 @@
+import Oceananigans.OutputWriters: saveproperty!
+
 """
     AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ)
 
@@ -16,6 +18,14 @@ function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125)
    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end
 
+# Special savepropety! for AB2 time stepper struct used by the checkpointer so
+# it only saves the fields and not the tendency BCs or χ value (as they can be
+# constructed by the `Model` constructor).
+function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
+    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
+    saveproperty!(file, location * "/G⁻", ts.G⁻)
+end
+
 #####
 ##### Time steppping
 #####
@@ -23,7 +33,7 @@ end
 """
     time_step!(model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
 
-Step forward `model` `Nt` time steps with step size `Δt` with an Adams-Bashforth 
+Step forward `model` `Nt` time steps with step size `Δt` with an Adams-Bashforth
 timestepping method.
 """
 function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
@@ -51,8 +61,8 @@ function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
-    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ = 
-        datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities, 
+    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ =
+        datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
                    model.timestepper.Gⁿ, model.timestepper.G⁻)
 
     ab2_store_previous_source_terms!(G⁻, model.architecture, model.grid, Gⁿ)
@@ -155,4 +165,3 @@ function ab2_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
 
     return nothing
 end
-
