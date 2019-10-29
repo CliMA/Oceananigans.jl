@@ -1,3 +1,20 @@
+"""
+Notes on generalization:
+
+The operators in this file have been defined with the intent of implementing a vertically
+stretched Cartesian grid. To generalize these operators to more general grids, numerous
+new grid spacing operators will have to be defined which can be combined in a combinatorial
+fashion to define new area and volume operators.
+
+Generalizing to the somewhat simple case of non-uniform spacing in the x, y, and z involves
+defining two grid spacings per dimensions, e.g. Δxᶜᵃᵃ for the distance between adjacent cell
+faces and Δxᶠᵃᵃ for the distance between adjacent cell centers.
+
+Generalizing to the more complex case of locally orthogonal grids such as the cubed sphere
+may involve defining more grid spacing operators, potentially up to eight per dimension,
+although not all may be used in practice.
+"""
+
 ####
 #### Grid spacings
 ####
