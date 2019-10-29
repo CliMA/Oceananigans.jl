@@ -18,7 +18,7 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     buoyancy_perturbation,
                     x_f_cross_U, y_f_cross_U, z_f_cross_U,
 
-                    fill_halo_regions!, apply_z_bcs!, solve_poisson_3d!, PoissonBCs, PPN, PNN,
+                    fill_halo_regions!, apply_z_bcs!,
 
                     time_to_run
 
@@ -29,7 +29,7 @@ using Oceananigans.Solvers
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 
-using Oceananigans.Solvers: PPN, PNN
+using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
