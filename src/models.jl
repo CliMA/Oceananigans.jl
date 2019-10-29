@@ -1,6 +1,6 @@
 using .TurbulenceClosures: ν₀, κ₀
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -8,6 +8,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, U, C, Φ, F,
                   clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
                buoyancy :: B         # Set of parameters for buoyancy model
                coriolis :: R         # Set of parameters for the background rotation rate of `Model`
+          surface_waves :: SW        # Set of parameters for the background rotation rate of `Model`
              velocities :: U         # Container for velocity fields `u`, `v`, and `w`
                 tracers :: C         # Container for tracer fields
               pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -50,6 +51,7 @@ function Model(;
                   clock = Clock{float_type}(0, 0),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
+          surface_waves = nothing,
                 forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
@@ -79,7 +81,7 @@ function Model(;
     boundary_conditions = ModelBoundaryConditions(tracernames(tracers), boundary_conditions)
     closure = with_tracers(tracernames(tracers), closure)
 
-    return Model(architecture, grid, clock, buoyancy, coriolis, velocities, tracers,
+    return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
                  poisson_solver, diffusivities, output_writers, diagnostics, parameters)
 end

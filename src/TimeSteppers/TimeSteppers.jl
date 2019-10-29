@@ -22,6 +22,9 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
 
                     run_diagnostic, write_output, time_to_run
 
+using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U, 
+                                 ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
+
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using ..Operators
@@ -115,8 +118,8 @@ contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
-    calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.closure, 
-                                     velocities, tracers, pressures.pHY′, diffusivities, model.forcing,
+    calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.surface_waves,
+                                     model.closure, velocities, tracers, pressures.pHY′, diffusivities, model.forcing,
                                      model.parameters, model.clock.time)
 
     calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture, model.grid, 
