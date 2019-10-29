@@ -29,21 +29,24 @@
 #### Useful for defining flux difference operators and other flux operators.
 ####
 
-@inline Ax_u(i, j, k, grid, u) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k]
-@inline Ax_c(i, j, k, grid, c) = @inbounds Axᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
-@inline Ay_v(i, j, k, grid, v) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * v[i, j, k]
-@inline Ay_c(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
-@inline Az_w(i, j, k, grid, w) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * w[i, j, k]
-@inline Az_c(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
+@inline Ax_ψᵃᵃᶠ(i, j, k, grid, u) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k]
+@inline Ax_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Axᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
+@inline Ay_ψᵃᵃᶠ(i, j, k, grid, v) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * v[i, j, k]
+@inline Ay_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
+@inline Az_ψᵃᵃᵃ(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
 
 ####
 #### "Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
 ####
 
-@inline δᴶxᶜᵃᵃ(i, j, k, grid, u) = δxᶜᵃᵃ(i, j, k, grid, Ax_u, u)
-@inline δᴶxᶠᵃᵃ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, Ax_c, c)
-@inline δᴶyᵃᶜᵃ(i, j, k, grid, v) = δyᵃᶜᵃ(i, j, k, grid, Ay_v, v)
-@inline δᴶyᵃᶠᵃ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, Ay_c, c)
-@inline δᴶzᵃᵃᶜ(i, j, k, grid, w) = δzᵃᵃᶜ(i, j, k, grid, Az_w, w)
-@inline δᴶzᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, Az_c, c)
+@inline δᴶxᶜᵃᶜ(i, j, k, grid, c) = δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, c)
+@inline δᴶxᶜᵃᶠ(i, j, k, grid, c) = δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, c)
+@inline δᴶxᶠᵃᶜ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, c)
+@inline δᴶxᶠᵃᶠ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, c)
+@inline δᴶyᵃᶜᶜ(i, j, k, grid, c) = δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, c)
+@inline δᴶyᵃᶜᶠ(i, j, k, grid, c) = δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, c)
+@inline δᴶyᵃᶠᶜ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, c)
+@inline δᴶyᵃᶠᶠ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, c)
+@inline δᴶzᵃᵃᶜ(i, j, k, grid, c) = δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
+@inline δᴶzᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
 
