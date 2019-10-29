@@ -1,3 +1,5 @@
+ using Oceananigans: AbstractField
+
 ####
 #### Output writer utilities
 ####
@@ -27,14 +29,6 @@ function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
             file["boundary_conditions/$field/$coord/$endpoint/condition"] = endpoint_bc.condition
         end
     end
-end
-
-# Special savepropety! for AB2 time stepper struct used by the checkpointer so
-# it only saves the fields and not the tendency BCs or χ value (as they can be
-# constructed by the `Model` constructor).
-function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
-    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    saveproperty!(file, location * "/G⁻", ts.G⁻)
 end
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]

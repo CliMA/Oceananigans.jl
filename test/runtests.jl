@@ -2,6 +2,7 @@ using
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.Diagnostics,
+    Oceananigans.OutputWriters,
     Oceananigans.TurbulenceClosures,
     Test,
     Random,
