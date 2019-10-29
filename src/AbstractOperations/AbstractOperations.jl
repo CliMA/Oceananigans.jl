@@ -10,13 +10,15 @@ using Oceananigans: @hascuda
 
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
-using Oceananigans, Adapt
+using Oceananigans, Oceananigans.Grids, Adapt
 
 using Oceananigans: AbstractModel, AbstractGrid, AbstractField, AbstractLocatedField, Face, Cell,
-                    xnode, ynode, znode, location, show_location, show_domain, short_show,
+                    xnode, ynode, znode, location, show_location, short_show,
                     device, launch_config, architecture, zero_halo_regions!
 
 import Oceananigans: data, architecture
+
+using Oceananigans.Grids: show_domain
 
 using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
 

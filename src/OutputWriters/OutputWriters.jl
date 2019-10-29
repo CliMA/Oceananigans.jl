@@ -6,7 +6,8 @@ export
     NetCDFOutputWriter, write_grid,
     Checkpointer, restore_from_checkpoint
 
-using Oceananigans
+using Oceananigans, Oceananigans.Grids
+
 using Oceananigans: AbstractOutputWriter
 
 include("output_writer_utils.jl")

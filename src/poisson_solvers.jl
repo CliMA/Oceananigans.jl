@@ -1,3 +1,5 @@
+ using Oceananigans.Grids
+
 abstract type PoissonBCs end
 
 # PoissonBCs are named XYZ, where each of X, Y, and Z is either

@@ -238,7 +238,7 @@ function write_output end
 include("utils.jl")
 
 include("clock.jl")
-include("grids.jl")
+include("Grids/Grids.jl")
 include("fields.jl")
 
 include("Operators/Operators.jl")
