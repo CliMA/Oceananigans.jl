@@ -40,17 +40,18 @@ function calculate_Gw!(Gw, grid, coriolis, closure, U, C, K, F, parameters, time
 end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-function calculate_Gc!(Gc, grid, closure, c, tracer_index, U, C, K, Fc, parameters, time)
+function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
     @loop_xyz i j k grid begin
         @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
-                                    + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K)
+                                    + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
                                     + Fc(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C, pHY′, K, F, parameters, time)
+function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, closure, 
+                                          U, C, pHY′, K, F, parameters, time)
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
@@ -69,7 +70,8 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, closure, U, C
         @inbounds  c = C[tracer_index]
 
         @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz), 
-                calculate_Gc!(Gc, grid, closure, c, Val(tracer_index), U, C, K, Fc, parameters, time))
+                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, 
+                              U, C, K, Fc, parameters, time))
     end
 
     return nothing
