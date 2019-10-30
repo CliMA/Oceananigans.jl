@@ -17,8 +17,9 @@ end
     ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
 
 Returns parameters for a constant anisotropic diffusivity closure with constant horizontal
-and vertical viscosities `νh`, `νv` and constant horizontal and vertical thermal 
-diffusivities `κh`, `κv`. 
+and vertical viscosities `νh`, `νv` and constant horizontal and vertical tracer
+diffusivities `κh`, `κv`. `κh` and `κv` may be `NamedTuple`s with fields corresponding
+to each tracer, or a single number to be a applied to all tracers.
 
 By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal 
 and vertical viscosity, and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used
