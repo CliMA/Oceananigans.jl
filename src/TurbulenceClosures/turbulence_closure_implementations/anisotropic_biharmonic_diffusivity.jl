@@ -31,23 +31,23 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, u, v, w, K) = (
-    - closure.νh * ∇h⁴_fca(i, j, k, grid, u)
-    - closure.νv * ∂z⁴_aac(i, j, k, grid, u)
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, K) = (
+    - closure.νh * ∇h⁴_fca(i, j, k, grid, U.u)
+    - closure.νv * ∂z⁴_aac(i, j, k, grid, U.u)
     )
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, u, v, w, K) = (
-    - closure.νh * ∇h⁴_cfa(i, j, k, grid, v)
-    - closure.νv * ∂z⁴_aac(i, j, k, grid, v)
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, K) = (
+    - closure.νh * ∇h⁴_cfa(i, j, k, grid, U.v)
+    - closure.νv * ∂z⁴_aac(i, j, k, grid, U.v)
     )
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, u, v, w, K) = (
-    - closure.νh * ∇h⁴_cca(i, j, k, grid, w)
-    - closure.νv * ∂z⁴_aaf(i, j, k, grid, w)
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, K) = (
+    - closure.νh * ∇h⁴_cca(i, j, k, grid, U.w)
+    - closure.νv * ∂z⁴_aaf(i, j, k, grid, U.w)
     )
 
-@inline function ∇_κ_∇c(i, j, k, grid, c, ::Val{tracer_index}, 
-                        closure::AnisotropicBiharmonicDiffusivity, args...) where tracer_index
+@inline function ∇_κ_∇c(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity,
+                        c, ::Val{tracer_index}, args...) where tracer_index
 
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
