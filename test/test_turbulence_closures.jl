@@ -54,10 +54,10 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
     U, C = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, C), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, C.T, Val(1), closure) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U...) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U...) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U...) == 6ν )
+    return (   ∇_κ_∇c(2, 1, 3, grid, closure, C.T, Val(1)) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U) == 6ν )
 end
 
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
@@ -90,10 +90,10 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
     U, C = datatuples(velocities, tracers)
     fill_halo_regions!(merge(U, C), bcs, arch, grid)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, C.T, Val(1), closure, nothing) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U..., nothing) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U..., nothing) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U..., nothing) == 6νh + 8νv)
+    return (   ∇_κ_∇c(2, 1, 3, grid, closure, C.T, Val(1)) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U) == 6νh + 8νv)
 end
 
 function test_function_interpolation(T=Float64)
