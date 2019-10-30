@@ -8,7 +8,9 @@ export
 
 using Oceananigans, Oceananigans.Grids
 
-using Oceananigans: AbstractOutputWriter
+using Oceananigans: AbstractOutputWriter, @hascuda
+
+@hascuda using CUDAnative, CuArrays
 
 include("output_writer_utils.jl")
 include("jld2_output_writer.jl")
