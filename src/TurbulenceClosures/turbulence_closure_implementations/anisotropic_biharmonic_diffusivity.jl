@@ -20,7 +20,7 @@ Returns parameters for a anisotropic biharmonic diffusivity closure with constan
 and vertical biharmonic viscosities `νh`, `νv` and constant horizontal and vertical thermal 
 biharmonic diffusivities `κh`, `κv`. 
 """
-AnisotropicBiharmonicDiffusivity(FT=Float64; νh, νv, κh, κv) =
+AnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, νv=0, κh=0, κv=0) =
     AnisotropicBiharmonicDiffusivity{FT}(νh, νv, κh, κv)
 
 function with_tracers(tracers, closure::AnisotropicBiharmonicDiffusivity{FT}) where FT
