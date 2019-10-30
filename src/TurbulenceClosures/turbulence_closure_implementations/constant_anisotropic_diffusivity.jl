@@ -39,20 +39,17 @@ end
 calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_faa(i, j, k, grid, U.u)
-    + closure.νh * ∂y²_aca(i, j, k, grid, U.u)
+      closure.νh * ∇h²_fca(i, j, k, grid, U.u)
     + closure.νv * ∂z²_aac(i, j, k, grid, U.u)
     )
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_caa(i, j, k, grid, U.v)
-    + closure.νh * ∂y²_afa(i, j, k, grid, U.v)
+      closure.νh * ∇h²_cfa(i, j, k, grid, U.u)
     + closure.νv * ∂z²_aac(i, j, k, grid, U.v)
     )
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_caa(i, j, k, grid, U.w)
-    + closure.νh * ∂y²_aca(i, j, k, grid, U.w)
+      closure.νh * ∇h²_cca(i, j, k, grid, U.u)
     + closure.νv * ∂z²_aaf(i, j, k, grid, U.w)
     )
 
@@ -62,8 +59,7 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity,
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
 
-    return (  κh * ∂x²_caa(i, j, k, grid, c)
-            + κh * ∂y²_aca(i, j, k, grid, c)
+    return (  κh * ∇h²_cca(i, j, k, grid, c)
             + κv * ∂z²_aac(i, j, k, grid, c)
            )
 end
