@@ -4,6 +4,7 @@ export
   IsotropicDiffusivity,
   ConstantIsotropicDiffusivity,
   ConstantAnisotropicDiffusivity,
+  AnisotropicBiharmonicDiffusivity,
   ConstantSmagorinsky,
   SmagorinskyLilly,
   BlasiusSmagorinsky,
@@ -155,6 +156,7 @@ include("velocity_tracer_gradients.jl")
 
 include("turbulence_closure_implementations/constant_isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/constant_anisotropic_diffusivity.jl")
+include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/blasius_smagorinsky.jl")
 include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")
