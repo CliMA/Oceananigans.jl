@@ -5,13 +5,11 @@
 """ Calculate the right-hand-side of the u-momentum equation. """
 function calculate_Gu!(Gu, grid, coriolis, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gu[i, j, k] = (
-            -u∇u(grid, U.u, U.v, U.w, i, j, k)
-            - x_f_cross_U(i, j, k, grid, coriolis, U)
-            - ∂x_p(i, j, k, grid, pHY′)
-            + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
-            + F.u(i, j, k, grid, time, U, C, parameters)
-        )
+        @inbounds Gu[i, j, k] = (- u∇u(grid, U.u, U.v, U.w, i, j, k)
+                                 - x_f_cross_U(i, j, k, grid, coriolis, U)
+                                 - ∂x_p(i, j, k, grid, pHY′)
+                                 + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
+                                 + F.u(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -19,11 +17,11 @@ end
 """ Calculate the right-hand-side of the v-momentum equation. """
 function calculate_Gv!(Gv, grid, coriolis, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gv[i, j, k] = (-u∇v(grid, U.u, U.v, U.w, i, j, k)
-                                    - y_f_cross_U(i, j, k, grid, coriolis, U)
-                                    - ∂y_p(i, j, k, grid, pHY′)
-                                    + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
-                                    + F.v(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gv[i, j, k] = (- u∇v(grid, U.u, U.v, U.w, i, j, k)
+                                 - y_f_cross_U(i, j, k, grid, coriolis, U)
+                                 - ∂y_p(i, j, k, grid, pHY′)
+                                 + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
+                                 + F.v(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -31,10 +29,10 @@ end
 """ Calculate the right-hand-side of the w-momentum equation. """
 function calculate_Gw!(Gw, grid, coriolis, closure, U, C, K, F, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gw[i, j, k] = (-u∇w(grid, U.u, U.v, U.w, i, j, k)
-                                    - z_f_cross_U(i, j, k, grid, coriolis, U)
-                                    + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
-                                    + F.w(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gw[i, j, k] = (- u∇w(grid, U.u, U.v, U.w, i, j, k)
+                                 - z_f_cross_U(i, j, k, grid, coriolis, U)
+                                 + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
+                                 + F.w(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -42,9 +40,9 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
-                                    + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
-                                    + Fc(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gc[i, j, k] = (- div_flux(grid, U.u, U.v, U.w, c, i, j, k)
+                                 + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
+                                 + Fc(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
