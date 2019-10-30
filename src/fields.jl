@@ -105,6 +105,9 @@ architecture(o::OffsetArray) = architecture(o.parent)
 @inline data(a) = a
 @inline data(f::Field) = f.data
 
+# Endpoint for recursive `datatuple` function:
+@inline datatuple(obj::AbstractField) = data(obj)
+
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::Field) = f.data.parent
 
