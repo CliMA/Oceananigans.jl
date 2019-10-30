@@ -96,13 +96,19 @@ abstract type AbstractAnisotropicMinimumDissipation{FT} <: IsotropicDiffusivity{
 ####
 
 for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
+    stress_div_tuple = Symbol(stress_div, :_tuple)
     @eval begin
-        @inline function $stress_div(i, j, k, grid::AbstractGrid{FT}, closure_tuple::Tuple, U, 
-                                     K_tuple, args...) where FT
+        @inline function $stress_div(i, j, k, grid, closure_tuple::Tuple, U, K_tuple::Tuple, args...)
+            nclosures = Val(nfields(closure_tuple))
+            return $stress_div_tuple(i, j, k, grid, nclosures, closure_tuple, U, K_tuple, args...)
+        end
+
+        @inline function $stress_div_tuple(i, j, k, grid::AbstractGrid{FT}, nclosures, closure_tuple::Tuple, 
+                                           U, K_tuple::Tuple, args...) where FT
 
             stress_div_ijk = zero(FT)
 
-            ntuple(Val(length(closure_tuple))) do α
+            ntuple(nclosures) do α
                 @inbounds closure = closure_tuple[α]
                 @inbounds K = K_tuple[α]
                 stress_div_ijk += $stress_div(i, j, k, grid, closure, U, K, args...)
