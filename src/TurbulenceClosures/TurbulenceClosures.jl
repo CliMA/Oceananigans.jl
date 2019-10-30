@@ -29,12 +29,13 @@ using Oceananigans: @hascuda
 
 using
   Oceananigans,
+  Oceananigans.Grids,
   Oceananigans.Operators,
   GPUifyLoops
 
 import Oceananigans: with_tracers
 
-using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared, 
+using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared,
                     TracerFields, device, launch_config
 
 ####
