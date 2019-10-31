@@ -62,7 +62,7 @@ const USD = UniformStokesDrift
 
 @inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = sw.∂t_uˢ(znode(Cell, k, grid), time)
 @inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(Cell, k, grid), time)
-@inline ∂t_wˢ(i, j, k, grid, sw::USD, time) = sw.∂t_wˢ(znode(Face, k, grid), time)
+@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
 
 x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds U.w[i, j, k] * sw.∂z_uˢ(znode(Cell, k, grid), time)
 y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds U.w[i, j, k] * sw.∂z_vˢ(znode(Cell, k, grid), time)
