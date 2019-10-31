@@ -1,3 +1,5 @@
+using Oceananigans.Grids: show_domain	
+
 """
     Cell
 
@@ -28,7 +30,7 @@ end
 """
 	Field(L::Tuple, data::AbstractArray, grid)
 
-Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L` 
+Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L`
 of length 3 whose elements are `Cell` or `Face`.
 """
 Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3]}(data, grid)
@@ -39,17 +41,17 @@ Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3]}(data, grid)
 Construct a `Field` on architecture `arch` and `grid` at location `L`,
 where `L` is a tuple of `Cell` or `Face` types.
 """
-Field(L::Tuple, arch::AbstractArchitecture, grid) = 
+Field(L::Tuple, arch::AbstractArchitecture, grid) =
     Field{L[1], L[2], L[3]}(zeros(arch, grid), grid)
 
 """
     Field(X, Y, Z, arch::AbstractArchitecture, grid)
 
-Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`, 
+Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`,
 where each of `X, Y, Z` is `Cell` or `Face`.
 """
 Field(X, Y, Z, arch::AbstractArchitecture, grid) =  Field((X, Y, Z), arch, grid)
-   
+
 """
     CellField([T=eltype(grid)], arch, grid)
 
@@ -142,15 +144,15 @@ znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, 
 nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
 # Niceties
-const AbstractCPUField = 
+const AbstractCPUField =
     AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
 
-@hascuda const AbstractGPUField = 
+@hascuda const AbstractGPUField =
     AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 set!(u::Field, v::Number) = @. u.data = v
 
-set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} = 
+set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} =
     @. u.data.parent = v.data.parent
 
 "Set the CPU field `u` to the array `v`."
@@ -193,7 +195,7 @@ end
 @hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
-set!(u::Field, f::Function) = interior(u) .= f.(nodes(u)...)
+set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u)...)
 
 # Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)
@@ -265,9 +267,9 @@ show_location(field::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = show_locat
 
 short_show(a) = string(typeof(a))
 shortname(a::Array) = string(typeof(a).name.wrapper)
-                                                                            
+
 show(io::IO, field::Field) =
-    print(io, 
+    print(io,
           short_show(field), '\n',
           "├── data: ", typeof(field.data), '\n',
           "└── grid: ", typeof(field.grid), '\n',
