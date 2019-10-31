@@ -195,7 +195,7 @@ end
 @hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
-set!(u::Field, f::Function) = interior(u) .= f.(nodes(u)...)
+set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u)...)
 
 # Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)
