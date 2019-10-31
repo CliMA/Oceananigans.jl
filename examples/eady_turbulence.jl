@@ -3,12 +3,9 @@
 # In this example, we initialize a random velocity field and observe its viscous,
 # turbulent decay in a two-dimensional domain. This example demonstrates:
 #
-#   * How to run a model with no buoyancy equation or tracers;
-#   * How to create user-defined fields
-#   * How to use differentiation functions
-#
-# For this example, we need `PyPlot` for plotting and `Statistics` for setting up
-# a random initial condition with zero mean velocity.
+#   * How to use a tuple of turbulence closures
+#   * How to use biharmonic diffusivity
+#   * How to implement a background flow (a background geostrophic shear)
 
 using Oceananigans, Random, Printf, Oceananigans.AbstractOperations
 
@@ -32,6 +29,7 @@ Lz = 1000                # [meters] vertical domain extent
  f = 1e-4               # [s⁻¹] Coriolis parameter
 N² = 1e-6               # [s⁻²] Initial buoyancy gradient 
  α = 1e-2               # [s⁻¹] background shear
+ μ = 1/30day            # [s⁻¹] background shear
 
   τ = 0.25day           # [s] damping time-scale
 κ₄ₕ = Δh^4 / τ          # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
@@ -60,9 +58,8 @@ bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
 # α is the geostrophic shear and horizontal buoyancy gradient.
 forcing_parameters = (α=α, f=f)
 
-Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (
-    - p.α * ▶xz_fac(i, j, k, grid, U.w)
-    - p.α * (grid.zC[k] + grid.Lz) * ∂x_faa(i, j, k, grid, ▶x_caa, U.u))
+Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ▶xz_fac(i, j, k, grid, U.w)
+                                                   - p.α * (grid.zC[k] + grid.Lz) * ∂x_faa(i, j, k, grid, ▶x_caa, U.u))
 
 # Fv = - α (z + H) ∂ₓv is applied at location (c, f, c).  
 Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + grid.Lz) * ∂x_caa(i, j, k, grid, ▶x_faa, U.v)
@@ -74,7 +71,7 @@ Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + grid.Lz)
 Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + grid.Lz) * ∂x_caa(i, j, k, grid, ▶x_faa, C.b)
                                                    + p.f * p.α * ▶y_aca(i, j, k, grid, U.v))
 
-# Turbulence closure: 
+# Turbulence closures: 
 closure = (AnisotropicBiharmonicDiffusivity(νh=κ₄ₕ, κh=κ₄ₕ),
            ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ))
 
