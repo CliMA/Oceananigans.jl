@@ -208,8 +208,8 @@ end
         end
     end
 
-    @testset "Tuple closures" begin
-        println("  Testing tupled closures...")
+    @testset "Closure tuples" begin
+        println("  Testing time-stepping with a tuple of closures...")
         for arch in archs
             for FT in float_types
                 @test time_step_with_tupled_closure(FT, arch)
