@@ -6,7 +6,6 @@
 #   * How to use a tuple of turbulence closures
 #   * How to use biharmonic diffusivity
 #   * How to implement a background flow (a background geostrophic shear)
-#   * How to implement a background flow (a background geostrophic shear)
 
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
       Oceananigans.AbstractOperations, Random, Printf
@@ -183,20 +182,23 @@ function makeplot!(axs, model)
     
     sca(axs[1]); cla()
     pcolormesh(xF_xy/1e3, yF_xy/1e3, Array(interior(ζ)[:, :, Nz]))
-    xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)") 
+    title("Surface vertical vorticity (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)") 
     ax1.set_aspect(1)
     
     sca(axs[2]); cla()
     pcolormesh(xC_xy/1e3, yC_xy/1e3, Array(interior(δ)[:, :, Nz]))
-    xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)")
+    title("Surface divergence (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)")
     ax2.set_aspect(1)
     
     sca(axs[3]); cla()
     pcolormesh(xF_xz/1e3, zC_xz, Array(interior(ζ)[:, Int(Nh/2), :]))
+    title("Vertical vorticity (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ z \$ (m)")
     
     sca(axs[4]); cla()
     pcolormesh(xC_xz/1e3, zF_xz, Array(interior(w)[:, Int(Nh/2), :]))
+    title("Vertical velocity (m/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ z \$ (m)")
 
+    tight_layout()
     pause(0.1)
 
     return nothing
