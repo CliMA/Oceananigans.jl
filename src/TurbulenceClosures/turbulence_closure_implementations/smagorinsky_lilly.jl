@@ -179,18 +179,8 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
-    @launch device(arch) config=launch_config(grid, 3) calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C)
-    return nothing
-end
-
-function calculate_viscosity!(νₑ, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
-            end
-        end
-    end
+    @launch(device(arch), config=launch_config(grid, 3), 
+            calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
     return nothing
 end
 

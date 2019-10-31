@@ -1,5 +1,6 @@
-using .TurbulenceClosures: ∂z_aaf, ▶z_aaf
+using .TurbulenceClosures: ∂x_faa, ▶x_faa, ∂y_afa, ▶y_afa, ∂z_aaf, ▶z_aaf
 
+# https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)
 const g_Earth = 9.80665
 
 #=
@@ -28,10 +29,15 @@ required_tracers(args...) = ()
 #####
 
 @inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-@inline buoyancy_frequency_squared(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+
+@inline ∂x_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline ∂y_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline ∂z_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+
+@inline buoyancy_frequency_squared(args...) = ∂z_b(args...)
 
 #####
-##### Seawater buoyancy for buoyancy determined by temperature and salinity
+##### Buoyancy as a tracer
 #####
 
 """
@@ -44,7 +50,10 @@ struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 required_tracers(::BuoyancyTracer) = (:b,)
 
 @inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
-@inline buoyancy_frequency_squared(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.b)
+
+@inline ∂x_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂x_faa(i, j, k, grid, C.b)
+@inline ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂y_afa(i, j, k, grid, C.b)
+@inline ∂z_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂z_aaf(i, j, k, grid, C.b)
 
 """
     SeawaterBuoyancy{G, EOS} <: AbstractBuoyancy{EOS}
@@ -74,23 +83,77 @@ end
 required_tracers(::SeawaterBuoyancy) = (:T, :S)
 
 """ 
-    buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C)
+    ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
-Returns the buoyancy frequency squared for temperature and salt-stratified water,
+Returns the x-derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
-N^2 = g \\left ( \\alpha \\partial_z T - \\beta \\partial_z S \\right ) \\, ,
+∂_x b = g ( α ∂_x Θ - β ∂_x Sᴬ ) ,
 ```
 
-where ``\$ g \$`` is gravitational acceleration, ``\$ \\alpha \$`` is the thermal expansion
-coefficient, ``\$ \\beta \$`` is the haline contraction coefficient, ``\$ T \$`` is
-temperature or conservative temperature, where applicable, and ``\$ S \$`` is the
-salinity or absolute salinity, where applicable.
+where `g` is gravitational acceleration, `α` is the thermal expansion
+coefficient, `β` is the haline contraction coefficient, `Θ` is
+conservative temperature, and `Sᴬ` is absolute salinity.
+
+Note: In Oceananigans, `model.tracers.T` is conservative temperature and
+`model.tracers.S` is absolute salinity.
+
+Note that `∂x_Θ`, `∂x_S`, `α`, and `β` are all evaluated at cell interfaces in `x`
+and cell centers in `y` and `z`.
 """
-@inline buoyancy_frequency_squared(i, j, k, grid, b::SeawaterBuoyancy, C) =
+@inline ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
     b.gravitational_acceleration * (
-           thermal_expansion(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.T)
-        - haline_contraction(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.S) )
+           thermal_expansion_fcc(i, j, k, grid, b.equation_of_state, C) * ∂x_faa(i, j, k, grid, C.T)
+        - haline_contraction_fcc(i, j, k, grid, b.equation_of_state, C) * ∂x_faa(i, j, k, grid, C.S) )
+
+""" 
+    ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+
+Returns the y-derivative of buoyancy for temperature and salt-stratified water,
+
+```math
+∂_y b = g ( α ∂_y Θ - β ∂_y Sᴬ ) ,
+```
+
+where `g` is gravitational acceleration, `α` is the thermal expansion
+coefficient, `β` is the haline contraction coefficient, `Θ` is
+conservative temperature, and `Sᴬ` is absolute salinity.
+
+Note: In Oceananigans, `model.tracers.T` is conservative temperature and
+`model.tracers.S` is absolute salinity.
+
+Note that `∂y_Θ`, `∂y_S`, `α`, and `β` are all evaluated at cell interfaces in `y` 
+and cell centers in `x` and `z`.
+"""
+@inline ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
+    b.gravitational_acceleration * (
+           thermal_expansion_cfc(i, j, k, grid, b.equation_of_state, C) * ∂y_afa(i, j, k, grid, C.T)
+        - haline_contraction_cfc(i, j, k, grid, b.equation_of_state, C) * ∂y_afa(i, j, k, grid, C.S) )
+
+
+""" 
+    ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+
+Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
+
+```math
+∂_z b = N^2 = g ( α ∂_z Θ - β ∂_z Sᴬ ) ,
+```
+
+where `g` is gravitational acceleration, `α` is the thermal expansion
+coefficient, `β` is the haline contraction coefficient, `Θ` is
+conservative temperature, and `Sᴬ` is absolute salinity.
+
+Note: In Oceananigans, `model.tracers.T` is conservative temperature and
+`model.tracers.S` is absolute salinity.
+
+Note that `∂z_Θ`, `∂z_Sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `z`
+and cell centers in `x` and `y`.
+"""
+@inline ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
+    b.gravitational_acceleration * (
+           thermal_expansion_ccf(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.T)
+        - haline_contraction_ccf(i, j, k, grid, b.equation_of_state, C) * ∂z_aaf(i, j, k, grid, C.S) )
 
 #####
 ##### Linear equation of state
@@ -114,7 +177,7 @@ thermal expansion coefficient `α` [K⁻¹] and haline contraction coefficient
 `β` [ppt⁻¹]. The buoyancy perturbation associated with a linear equation of state is
 
 ```math
-    b = g (αT - βS)
+    b = g (α T - β S)
 ```
 
 Default constants are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid
@@ -129,12 +192,42 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
     return @inbounds b.gravitational_acceleration * (   b.equation_of_state.α * C.T[i, j, k]
                                                       - b.equation_of_state.β * C.S[i, j, k] )
 
-@inline  thermal_expansion(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
-@inline haline_contraction(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline  thermal_expansion(Θ, Sᴬ, D, eos::LinearEquationOfState) = eos.α
+@inline haline_contraction(Θ, Sᴬ, D, eos::LinearEquationOfState) = eos.β
+
+# Shortcuts
+@inline  thermal_expansion_ccc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansion_fcc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansion_cfc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansion_ccf(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+
+@inline haline_contraction_ccc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contraction_fcc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contraction_cfc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contraction_ccf(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 
 #####
 ##### Nonlinear equations of state
 #####
+
+""" Return the geopotential depth at `i, j, k` at cell centers. """
+@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
+
+""" Return the geopotential depth at `i, j, k` at cell z-interfaces. """
+@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
+
+# Basic functionality
+@inline ρ′(i, j, k, grid, eos, C) = @inbounds ρ′(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
+
+@inline thermal_expansion_ccc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
+@inline thermal_expansion_fcc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(▶x_faa(i, j, k, grid, C.T), ▶x_faa(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
+@inline thermal_expansion_cfc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(▶y_afa(i, j, k, grid, C.T), ▶y_afa(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
+@inline thermal_expansion_ccf(i, j, k, grid, eos, C) = @inbounds thermal_expansion(▶z_aaf(i, j, k, grid, C.T), ▶z_aaf(i, j, k, grid, C.S), D_aaf(i, j, k, grid), eos)
+
+@inline haline_contraction_ccc(i, j, k, grid, eos, C) = @inbounds haline_contraction(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
+@inline haline_contraction_fcc(i, j, k, grid, eos, C) = @inbounds haline_contraction(▶x_faa(i, j, k, grid, C.T), ▶x_faa(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
+@inline haline_contraction_cfc(i, j, k, grid, eos, C) = @inbounds haline_contraction(▶y_afa(i, j, k, grid, C.T), ▶y_afa(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
+@inline haline_contraction_ccf(i, j, k, grid, eos, C) = @inbounds haline_contraction(▶z_aaf(i, j, k, grid, C.T), ▶z_aaf(i, j, k, grid, C.S), D_aaf(i, j, k, grid), eos)
 
 @inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) =
     - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
@@ -237,30 +330,23 @@ end
 RoquetIdealizedNonlinearEquationOfState(flavor::Symbol=:cabbeling_thermobaricity; kwargs...) =
     RoquetIdealizedNonlinearEquationOfState(Float64, flavor; kwargs...)
 
-""" Return the geopotential depth at `i, j, k` at cell centers. """
-@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
-const D = D_aac
+@inline ρ′(Θ, Sᴬ, D, eos::RoquetIdealizedNonlinearEquationOfState) = 
+    @inbounds (   eos.polynomial_coeffs.R₁₀₀ * Sᴬ
+                + eos.polynomial_coeffs.R₀₁₀ * Θ
+                + eos.polynomial_coeffs.R₀₂₀ * Θ^2
+                + eos.polynomial_coeffs.R₀₁₁ * Θ * D
+                + eos.polynomial_coeffs.R₂₀₀ * Sᴬ^2
+                + eos.polynomial_coeffs.R₁₀₁ * Sᴬ * D
+                + eos.polynomial_coeffs.R₁₁₀ * Sᴬ * Θ )
 
-""" Return the geopotential depth at `i, j, k` at cell z-interfaces. """
-@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
+@inline thermal_expansion(Θ, Sᴬ, D, eos::RoquetIdealizedNonlinearEquationOfState) = 
+    @inbounds (       eos.polynomial_coeffs.R₀₁₀
+                + 2 * eos.polynomial_coeffs.R₀₂₀ * Θ
+                +     eos.polynomial_coeffs.R₀₁₁ * D
+                +     eos.polynomial_coeffs.R₁₁₀ * Sᴬ )
 
-@inline ρ′(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) =
-    @inbounds (   eos.polynomial_coeffs.R₁₀₀ * C.S[i, j, k]
-                + eos.polynomial_coeffs.R₀₁₀ * C.T[i, j, k]
-                + eos.polynomial_coeffs.R₀₂₀ * C.T[i, j, k]^2
-                + eos.polynomial_coeffs.R₀₁₁ * C.T[i, j, k] * D(i, j, k, grid)
-                + eos.polynomial_coeffs.R₂₀₀ * C.S[i, j, k]^2
-                + eos.polynomial_coeffs.R₁₀₁ * C.S[i, j, k] * D(i, j, k, grid)
-                + eos.polynomial_coeffs.R₁₁₀ * C.S[i, j, k] * C.T[i, j, k] )
-
-@inline thermal_expansion(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) =
-    @inbounds (   eos.polynomial_coeffs.R₀₁₀
-                + 2 * eos.polynomial_coeffs.R₀₂₀ * ▶z_aaf(i, j, k, grid, C.T)
-                + eos.polynomial_coeffs.R₀₁₁ * D_aaf(i, j, k, grid)
-                + eos.polynomial_coeffs.R₁₁₀ * ▶z_aaf(i, j, k, grid, C.T) )
-
-@inline haline_contraction(i, j, k, grid, eos::RoquetIdealizedNonlinearEquationOfState, C) =
-    @inbounds (   eos.polynomial_coeffs.R₁₀₀
-                + 2 * eos.polynomial_coeffs.R₂₀₀ * ▶z_aaf(i, j, k, grid, C.S)
-                + eos.polynomial_coeffs.R₁₀₁ * D_aaf(i, j, k, grid)
-                + eos.polynomial_coeffs.R₁₁₀ * ▶z_aaf(i, j, k, grid, C.S) )
+@inline haline_contraction(Θ, Sᴬ, D, eos::RoquetIdealizedNonlinearEquationOfState) =
+    @inbounds (       eos.polynomial_coeffs.R₁₀₀
+                + 2 * eos.polynomial_coeffs.R₂₀₀ * Sᴬ
+                    + eos.polynomial_coeffs.R₁₀₁ * D
+                    + eos.polynomial_coeffs.R₁₁₀ * Θ )

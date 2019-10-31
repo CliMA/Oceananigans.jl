@@ -1,7 +1,7 @@
 """
     AnisotropicBiharmonicDiffusivity{FT, KH, KV}
 
-Parameters for constant anisotropic diffusivity models.
+Parameters for anisotropic biharmonic diffusivity models.
 """
 struct AnisotropicBiharmonicDiffusivity{FT, KH, KV} <: TensorDiffusivity{FT}
     νh :: FT
@@ -16,9 +16,17 @@ end
 """
     AnisotropicBiharmonicDiffusivity(; νh, νv, κh, κv)
 
-Returns parameters for a anisotropic biharmonic diffusivity closure with constant horizontal
-and vertical biharmonic viscosities `νh`, `νv` and constant horizontal and vertical thermal 
-biharmonic diffusivities `κh`, `κv`. 
+Returns parameters for a fourth-order, anisotropic biharmonic diffusivity closure with 
+constant horizontal and vertical biharmonic viscosities `νh`, `νv` and constant horizontal 
+and vertical tracer biharmonic diffusivities `κh`, `κv`. 
+`κh` and `κv` may be `NamedTuple`s with fields corresponding
+to each tracer, or a single number to be a applied to all tracers.
+The tracer flux divergence associated with an anisotropic biharmonic diffusivity is, for example
+
+```math
+    ∂ᵢ κᵢⱼ ∂ⱼc = (κh ∇h⁴ + κv ∂z⁴) c
+```
+
 """
 AnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, νv=0, κh=0, κv=0) =
     AnisotropicBiharmonicDiffusivity{FT}(νh, νv, κh, κv)
