@@ -87,7 +87,7 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 
 # Model instantiation
 model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2), x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0)),
-       architecture = GPU(),
+       architecture = CPU(),
            coriolis = FPlane(f=f),
            buoyancy = BuoyancyTracer(), tracers = :b,
             forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
