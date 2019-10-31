@@ -1,8 +1,8 @@
 module TimeSteppers
 
-export 
+export
     AdamsBashforthTimeStepper,
-    time_step!, 
+    time_step!,
     compute_w_from_continuity!
 
 using Oceananigans: device
@@ -11,23 +11,30 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid, Model, Tendencies, tracernames, 
+using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
                     @loop_xyz,
 
                     buoyancy_perturbation,
                     x_f_cross_U, y_f_cross_U, z_f_cross_U,
 
-                    fill_halo_regions!, apply_z_bcs!, solve_poisson_3d!, PoissonBCs, PPN, PNN,
+                    fill_halo_regions!, apply_z_bcs!,
 
-                    run_diagnostic, write_output, time_to_run
+                    time_to_run
 
 using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U, 
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
 
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
-using ..Operators
+using Oceananigans.Operators
+using Oceananigans.Solvers
+using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+
+using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
+using Oceananigans.Diagnostics: run_diagnostic
+using Oceananigans.OutputWriters: write_output
 
 using ..TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c,
                             calculate_diffusivities!, ▶z_aaf
@@ -54,7 +61,7 @@ end
 TimeStepper(stepper, args...) = stepper
 
 """Returns the arguments passed to boundary conditions functions."""
-boundary_condition_function_arguments(model) = (model.clock.time, model.clock.iteration, datatuple(model.velocities), 
+boundary_condition_function_arguments(model) = (model.clock.time, model.clock.iteration, datatuple(model.velocities),
                                                 datatuple(model.tracers), model.parameters)
 
 ####
@@ -94,15 +101,15 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
-    fill_halo_regions!(merge(velocities, tracers), model.boundary_conditions.solution, model.architecture, model.grid, 
+    fill_halo_regions!(merge(velocities, tracers), model.boundary_conditions.solution, model.architecture, model.grid,
                        boundary_condition_function_arguments(model)...)
 
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure, model.buoyancy, velocities, tracers)
 
     # Diffusivities share bcs with pressure:
-    fill_halo_regions!(diffusivities, model.boundary_conditions.pressure, model.architecture, model.grid) 
+    fill_halo_regions!(diffusivities, model.boundary_conditions.pressure, model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, 2), 
+    @launch(device(model.architecture), config=launch_config(model.grid, 2),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
 
     fill_halo_regions!(pressures.pHY′, model.boundary_conditions.pressure, model.architecture, model.grid)
@@ -113,7 +120,7 @@ end
 """
     calculate_tendencies!(diffusivities, pressures, velocities, tracers, model)
 
-Calculate the interior and boundary contributions to tendency terms without the 
+Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
@@ -122,7 +129,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
                                      model.closure, velocities, tracers, pressures.pHY′, diffusivities, model.forcing,
                                      model.parameters, model.clock.time)
 
-    calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture, model.grid, 
+    calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture, model.grid,
                                      boundary_condition_function_arguments(model)...)
 
     return nothing
@@ -136,13 +143,13 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
     velocity_tendencies = (u=tendencies.u, v=tendencies.v, w=tendencies.w)
 
-    velocity_tendency_boundary_conditions = (u=model.boundary_conditions.tendency.u, 
-                                             v=model.boundary_conditions.tendency.v, 
+    velocity_tendency_boundary_conditions = (u=model.boundary_conditions.tendency.u,
+                                             v=model.boundary_conditions.tendency.v,
                                              w=model.boundary_conditions.tendency.w)
 
     fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions, model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, 3), 
+    @launch(device(model.architecture), config=launch_config(model.grid, 3),
             calculate_poisson_right_hand_side!(model.poisson_solver.storage, model.architecture, model.grid,
                                                model.poisson_solver.bcs, velocities, tendencies, Δt))
 
@@ -175,12 +182,12 @@ the velocity and tracer fields.
 function complete_pressure_correction_step!(velocities, Δt, tracers, pressures, tendencies, model)
     update_solution!(velocities, tracers, model.architecture, model.grid, Δt, tendencies, pressures.pNHS)
 
-    velocity_boundary_conditions = (u=model.boundary_conditions.solution.u, 
-                                    v=model.boundary_conditions.solution.v, 
+    velocity_boundary_conditions = (u=model.boundary_conditions.solution.u,
+                                    v=model.boundary_conditions.solution.v,
                                     w=model.boundary_conditions.solution.w)
 
     # Recompute vertical velocity w from continuity equation to ensure incompressibility
-    fill_halo_regions!(velocities, velocity_boundary_conditions, model.architecture, model.grid, 
+    fill_halo_regions!(velocities, velocity_boundary_conditions, model.architecture, model.grid,
                        boundary_condition_function_arguments(model)...)
 
     compute_w_from_continuity!(model)
