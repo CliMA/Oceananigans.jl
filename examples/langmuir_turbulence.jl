@@ -10,7 +10,7 @@
 # In addition to `Oceananigans.jl` we need `PyPlot` for plotting, `Random` for
 # generating random initial conditions, and `Printf` for printing progress messages.
 
-using Oceananigans, Random, Printf
+using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters, Random, Printf
 using Oceananigans: g_Earth
 using Oceananigans.SurfaceWaves: UniformStokesDrift
 
@@ -29,24 +29,42 @@ using Oceananigans.SurfaceWaves: UniformStokesDrift
 # We also choose the wavenumber and amplitude of the surface wave field, and use an
 # initial buoyancy gradient of `N² = 1.936e-5`.
 
-      Nh = 48       # Number of grid points in x, y, z
+      Nh = 32       # Number of grid points in x, y, z
       Nz = 48       # Number of grid points in x, y, z
-      Δh = 4.0      # Grid spacing in x, y, z (meters)
-      Δz = 2.0      # Grid spacing in x, y, z (meters)
+      Δh = 4.0      # [m] Grid spacing in x, y, z (meters)
+      Δz = 2.0      # [m] Grid spacing in x, y, z (meters)
       Qᵘ = -3.72e-5 # [m² s⁻²] Velocity flux / stress at surface
       Qᵇ = 2.307e-9 # [m³ s⁻²] Buoyancy flux at surface
       N² = 1.936e-5 # [s⁻²] Initial buoyancy gradient
        f = 1e-4     # [s⁻¹] Coriolis parameter
-     kˢʷ = 0.105    # [m⁻¹] Surface wave wavenumber
-     aˢʷ = 0.8      # [m] Surface wave amplitude
-end_time = 1day     # End time for the simulation
+end_time = 2hour    # [s] End time for the simulation
 
-# Surface wave stokes drift profile
+# Surface wave stokes drift profile: 
+#
+# $ uˢ(z) = Uˢ exp(2kˢʷ z) $
+#
+# and
+#
+# $ ∂_z uˢ(z) = 2 kˢʷ Uˢ exp(2kˢʷ z) $
+#
+# Notes:
+#
+#  * We use `const`s so Stokes drift functions compile on GPU.
+#
+#  * The `Oceananigans.jl` implementation of Craik-Leibovich uses the Lagrangian-mean
+#    formulation, which means that the vertical derivative or 'Stokes shear' is specified.
+#    If the surface wave field Stokes drift changes in time, the time-derivative of the
+#    Stokes drift profile must be provided as well.
+
+const kˢʷ = 0.105    # [m⁻¹] Surface wave wavenumber
+const aˢʷ = 0.8      # [m] Surface wave amplitude
 const Uˢ = aˢʷ^2 * kˢʷ * sqrt(g_Earth * kˢʷ)
-∂z_uˢ(z, t) = 2kˢʷ * Uˢ * exp(2kˢʷ * z)
 
-# For the initial condition:
-uˢ(z) = aˢʷ^2 * kˢʷ * sqrt(g_Earth * kˢʷ) * exp(2kˢʷ * z)
+## Oceananigans
+∂z_uˢ(z, t) = 2kˢʷ * Uˢ * exp(2kˢʷ * z) 
+
+# We use the Stokes drift profile for the initial condition
+uˢ(z) = Uˢ * exp(2kˢʷ * z)
 
 # ## Boundary conditions
 #
@@ -94,7 +112,6 @@ b₀(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
 u₀(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
 # Finally, we introduce noise into the vertical velocity:
-
 w₀(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
 set!(model, u=u₀, w=w₀, b=b₀)
