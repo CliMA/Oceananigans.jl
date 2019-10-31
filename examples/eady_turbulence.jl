@@ -10,6 +10,8 @@
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
       Random, Printf, Oceananigans.AbstractOperations
 
+using Oceananigans.TurbulenceClosures: ∂x_faa, ∂x_caa, ▶x_faa, ▶y_aca, ▶x_caa, ▶xz_fac
+
 using Oceananigans: Face, Cell
 
 #####
@@ -129,6 +131,7 @@ output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
 # desired value.
 wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=10minute)
 
+u, v, w = model.velocities
 ζ = Field(Face, Face, Cell, model.architecture, model.grid)
 vertical_vorticity = Computation(∂x(v) - ∂y(u), ζ)
 
@@ -158,10 +161,10 @@ while model.clock.time < end_time
         compute!(vertical_vorticity)
 
         sca(axs[1]); cla()
-        imshow(interior(ζ)[:, :, 1])
+        imshow(interior(Array(ζ.data.parent))[:, :, 2])
 
         sca(axs[2]); cla()
-        imshow(interior(w)[:, 64, :])
+        imshow(interior(Array(w.data.parent))[:, 64, :])
 
         pause(0.1)
     end
