@@ -25,8 +25,8 @@ Nz = 32                              # vertical resolution
 Lh = 1000e3                          # [meters] horizontal domain extent
 Lz = 2000                            # [meters] vertical domain extent
 
-deformation_radius = Lh/10 
-baroclinic_growth_rate = 4day # α = N / (f * growth_rate)
+deformation_radius = Lh/5
+baroclinic_growth_rate = 0.1day # α = N / (f * growth_rate)
 
 # Physical parameters
  f = 1e-4                            # [s⁻¹] Coriolis parameter
@@ -39,9 +39,8 @@ baroclinic_growth_rate = 4day # α = N / (f * growth_rate)
 Δh = Lh / Nh                         # [meters] horizontal grid spacing for diffusivity calculations
 Δz = Lz / Nz                         # [meters] vertical grid spacing for diffusivity calculations
 
-  τ = 0.25day                        # [s] damping time-scale
-κ₄ₕ = Δh^4 / τ                       # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
- κᵥ = Δz / τ                         # [m² s⁻¹] Laplacian vertical diffusivity
+κ₄ₕ = Δh^4 / 1day                    # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
+ κᵥ = Δz^2 / 10day                   # [m² s⁻¹] Laplacian vertical diffusivity
 
 end_time = 60day # Simulation end time
 
@@ -57,15 +56,16 @@ bc_parameters = (μ=μ, H=Lz)
 @inline τ₁₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.u[i, j, 1]
 @inline τ₂₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.v[i, j, 1]
 
-ubcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
-vbcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
+ubcs = HorizontallyPeriodicBCs() #bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
+vbcs = HorizontallyPeriodicBCs() #bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
 bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0), 
-                               bottom = BoundaryCondition(Value, N² * Lz))
+                               bottom = BoundaryCondition(Value, -N² * Lz))
 
-# Get forcing functions and parameters for a linear geostrophic flow ψ = -α y z, where
+# Forcing functions and parameters for a linear geostrophic flow ψ = - α y z, where
 # α is the geostrophic shear and horizontal buoyancy gradient.
 forcing_parameters = (α=α, f=f)
 
+# Fu = - α w - α (z + H) ∂ₓu is applied at location (f, c, c).  
 Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ▶xz_fac(i, j, k, grid, U.w)
                                                    - p.α * (grid.zC[k] + grid.Lz) * ∂x_faa(i, j, k, grid, ▶x_caa, U.u))
 
@@ -75,14 +75,15 @@ Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + grid.Lz)
 # Fw = - α (z + H) ∂ₓw is applied at location (c, c, f).  
 Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + grid.Lz) * ∂x_caa(i, j, k, grid, ▶x_faa, U.w)
 
-# Fb = - α z ∂ₓb + α f v
+# Fb = - α (z + H) ∂ₓb + α f v
 Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + grid.Lz) * ∂x_caa(i, j, k, grid, ▶x_faa, C.b)
                                                    + p.f * p.α * ▶y_aca(i, j, k, grid, U.v))
 
 # Turbulence closures: 
-closure = (AnisotropicBiharmonicDiffusivity(νh=κ₄ₕ, κh=κ₄ₕ),
-           ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ))
-
+closure = (ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ),
+           AnisotropicBiharmonicDiffusivity(νh=κ₄ₕ, κh=κ₄ₕ))
+           #TwoDimensionalLeith())
+           
 # Form a prefix from chosen resolution, boundary condition, and closure name
 output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 
@@ -116,6 +117,8 @@ u₀(x, y, z) = 1e-9 * Ξ(z) * α * model.grid.Lz
 
 set!(model, u=u₀, v=u₀, b=b₀)
 
+Oceananigans.compute_w_from_continuity!(model)
+
 #####
 ##### Set up diagnostics and output
 #####
@@ -134,7 +137,7 @@ output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
 
 # The TimeStepWizard manages the time-step adaptively, keeping the CFL close to a
 # desired value.
-wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=2minute)
+wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=5minute)
 
 u, v, w = model.velocities
 ζ = Field(Face, Face, Cell, model.architecture, model.grid)
@@ -151,7 +154,7 @@ using PyPlot, PyCall
 
 GridSpec = pyimport("matplotlib.gridspec").GridSpec
 
-fig = figure(figsize=(24, 48)
+fig = figure(figsize=(24, 48))
 
 gs = GridSpec(2, 2, height_ratios=[2, 1])
 
