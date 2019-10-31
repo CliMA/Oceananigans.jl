@@ -161,10 +161,10 @@ while model.clock.time < end_time
         compute!(vertical_vorticity)
 
         sca(axs[1]); cla()
-        imshow(interior(Array(ζ.data.parent))[:, :, 2])
+        imshow(Array(interior(ζ)[:, :, 2]))
 
         sca(axs[2]); cla()
-        imshow(interior(Array(w.data.parent))[:, 64, :])
+        imshow(Array(interior(w)[:, 64, :]))
 
         pause(0.1)
     end
