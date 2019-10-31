@@ -7,7 +7,8 @@
 #   * How to use biharmonic diffusivity
 #   * How to implement a background flow (a background geostrophic shear)
 
-using Oceananigans, Random, Printf, Oceananigans.AbstractOperations
+using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
+      Random, Printf, Oceananigans.AbstractOperations
 
 using Oceananigans: Face, Cell
 
