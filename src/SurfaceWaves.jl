@@ -22,13 +22,13 @@ abstract type AbstractStokesDrift end
 ##### Functions for "no surface waves"
 #####
 
-@inline ∂t_uˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
-@inline ∂t_vˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
-@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
+@inline ∂t_uˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
+@inline ∂t_vˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
+@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) where FT = zero(FT)
+@inline x_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
 
 #####
 ##### Uniform surface waves
@@ -64,10 +64,10 @@ const USD = UniformStokesDrift
 @inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(Cell, k, grid), time)
 @inline ∂t_wˢ(i, j, k, grid, sw::USD, time) = sw.∂t_wˢ(znode(Face, k, grid), time)
 
-x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U) = @inbounds U.w[i, j, k] * sw.∂z_uˢ(znode(Cell, k, grid), time)
-y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U) = @inbounds U.w[i, j, k] * sw.∂z_vˢ(znode(Cell, k, grid), time)
+x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds U.w[i, j, k] * sw.∂z_uˢ(znode(Cell, k, grid), time)
+y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds U.w[i, j, k] * sw.∂z_vˢ(znode(Cell, k, grid), time)
 
-z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U) = @inbounds begin (
+z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds begin (
     - U.u[i, j, k] * sw.∂z_uˢ(znode(Face, k, grid), time)
     - U.v[i, j, k] * sw.∂z_vˢ(znode(Face, k, grid), time) )
 end
