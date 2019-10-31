@@ -6,9 +6,10 @@
 #   * How to use a tuple of turbulence closures
 #   * How to use biharmonic diffusivity
 #   * How to implement a background flow (a background geostrophic shear)
+#   * How to implement a background flow (a background geostrophic shear)
 
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
-      Random, Printf, Oceananigans.AbstractOperations
+      Oceananigans.AbstractOperations, Random, Printf
 
 using Oceananigans.TurbulenceClosures: ∂x_faa, ∂x_caa, ▶x_faa, ▶y_aca, ▶x_caa, ▶xz_fac
 
@@ -18,15 +19,15 @@ using Oceananigans: Face, Cell
 ##### Parameters
 #####
 
- Nh = 64          # horizontal resolution
- Nz = 32          # vertical resolution
- Lh = 2e6         # [meters] horizontal domain extent
- Lz = 4e3         # [meters] vertical domain extent
- Rᵈ = Lh / 10     # [m] Deformation radius
- σᵇ = 7.0day      # [s] Growth rate for baroclinic instability
- τᵏ = 1.0day      # [s] biharmonic / viscous damping timescale
-  μ = 1/30day     # [s⁻¹] linear drag decay scale
-  f = 1e-4        # [s⁻¹] Coriolis parameter
+Nh = 64           # horizontal resolution
+Nz = 32           # vertical resolution
+Lh = 2e6          # [meters] horizontal domain extent
+Lz = 1e3          # [meters] vertical domain extent
+Rᵈ = Lh / 10      # [m] Deformation radius
+σᵇ = 0.1day       # [s] Growth rate for baroclinic instability
+τᵏ = 1.0day       # [s] biharmonic / viscous damping timescale
+ μ = 1/30day      # [s⁻¹] linear drag decay scale
+ f = 1e-4         # [s⁻¹] Coriolis parameter
 
  Δh = Lh / Nh     # [meters] horizontal grid spacing for diffusivity calculations
  Δz = Lz / Nz     # [meters] vertical grid spacing for diffusivity calculations
@@ -36,7 +37,7 @@ using Oceananigans: Face, Cell
 @show N² = (Rᵈ * f / Lz)^2      # [s⁻²] Initial buoyancy gradient 
 @show  α = sqrt(N²) / (f * σᵇ)  # [s⁻¹] background shear
 
-end_time = 60day # Simulation end time
+end_time = 3day # Simulation end time
 
 # These functions define various physical boundary conditions, 
 # and are defined in the file eady_utils.jl
@@ -50,8 +51,8 @@ bc_parameters = (μ=μ, H=Lz)
 @inline τ₁₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.u[i, j, 1]
 @inline τ₂₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.v[i, j, 1]
 
-ubcs = HorizontallyPeriodicBCs() #bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
-vbcs = HorizontallyPeriodicBCs() #bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
+ubcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
+vbcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
 bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0), 
                                bottom = BoundaryCondition(Value, -N² * Lz))
 
@@ -146,6 +147,8 @@ vertical_vorticity = Computation(∂x(v) - ∂y(u), ζ)
 ##### Time step the model forward
 #####
 
+makeplot = false
+
 using PyPlot, PyCall
 
 GridSpec = pyimport("matplotlib.gridspec").GridSpec
@@ -154,18 +157,50 @@ fig = figure(figsize=(12, 8))
 
 gs = GridSpec(2, 2, height_ratios=[2, 1])
 
-ax1 = fig.add_subplot(get(gs, 0))
-ax2 = fig.add_subplot(get(gs, 1))
-ax3 = fig.add_subplot(get(gs, 2))
-ax4 = fig.add_subplot(get(gs, 3))
+axs = ntuple(4) do i 
+    fig.add_subplot(get(gs, i-1))
+end
 
-nx, ny, nz = size(model.grid)
+function makeplot!(axs, model)
+    nx, ny, nz = size(model.grid)
 
-xC_xy = repeat(reshape(model.grid.xC, nx, 1), 1, ny)
-xF_xy = repeat(reshape(model.grid.xF[1:end-1], nx, 1), 1, ny)
+    xC_xy = repeat(reshape(model.grid.xC, nx, 1), 1, ny)
+    xF_xy = repeat(reshape(model.grid.xF[1:end-1], nx, 1), 1, ny)
 
-yC_xy = repeat(reshape(model.grid.yC, 1, ny), nx, 1)
-yF_xy = repeat(reshape(model.grid.yF[1:end-1], 1, ny), nx, 1)
+    yC_xy = repeat(reshape(model.grid.yC, 1, ny), nx, 1)
+    yF_xy = repeat(reshape(model.grid.yF[1:end-1], 1, ny), nx, 1)
+
+    xC_xz = repeat(reshape(model.grid.xC, nx, 1), 1, nz)
+    xF_xz = repeat(reshape(model.grid.xF[1:end-1], nx, 1), 1, nz)
+
+    zC_xz = repeat(reshape(model.grid.zC, 1, nz), nx, 1)
+    zF_xz = repeat(reshape(model.grid.zF[1:end-1], 1, nz), nx, 1)
+
+    compute!(vertical_vorticity)
+    compute!(divergence)
+    
+    @printf("\nmax ζ/f: %.2e, max δ/f: %.2e\n\n", ζmax()/f, δmax()/f)
+    
+    sca(axs[1]); cla()
+    pcolormesh(xF_xy/1e3, yF_xy/1e3, Array(interior(ζ)[:, :, Nz]))
+    xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)") 
+    ax1.set_aspect(1)
+    
+    sca(axs[2]); cla()
+    pcolormesh(xC_xy/1e3, yC_xy/1e3, Array(interior(δ)[:, :, Nz]))
+    xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)")
+    ax2.set_aspect(1)
+    
+    sca(axs[3]); cla()
+    pcolormesh(xF_xz/1e3, zC_xz, Array(interior(ζ)[:, Int(Nh/2), :]))
+    
+    sca(axs[4]); cla()
+    pcolormesh(xC_xz/1e3, zF_xz, Array(interior(w)[:, Int(Nh/2), :]))
+
+    pause(0.1)
+
+    return nothing
+end
 
 # This time-stepping loop runs until end_time is reached. It prints a progress statement
 # every 100 iterations.
@@ -182,24 +217,12 @@ while model.clock.time < end_time
             model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt),
             umax(), vmax(), wmax(), prettytime(walltime))
 
-    if model.clock.iteration % 100 == 0
-        compute!(vertical_vorticity)
-        compute!(divergence)
-
-        @printf("\n\nmax ζ/f: %.2e, max δ/f: %.2e\n\n", ζmax()/f, δmax()/f)
-
-        sca(ax1); cla()
-        pcolormesh(xF_xy, yF_xy, Array(interior(ζ)[:, :, Nz]))
-
-        sca(ax2); cla()
-        pcolormesh(xC_xy, yC_xy, Array(interior(ζ)[:, :, Nz]))
-
-        sca(ax3); cla()
-        imshow(rotl90(Array(interior(ζ)[:, Int(Nh/2), :])))
-
-        sca(ax4); cla()
-        imshow(rotl90(Array(interior(w)[:, Int(Nh/2), :])))
-
-        pause(0.1)
+    if model.clock.iteration % 100 == 0 && makeplot
+        makeplot!(axs, model)
     end
 end
+
+# Make a plot at the end
+
+makeplot!(axs, model)
+gcf()
