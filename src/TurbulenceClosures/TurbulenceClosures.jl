@@ -2,7 +2,7 @@ module TurbulenceClosures
 
 export
   IsotropicViscosity,
-  ConstantIsotropicViscosity,
+  ConstantIsotropicDiffusivity,
   ConstantAnisotropicDiffusivity,
   AnisotropicBiharmonicDiffusivity,
   ConstantSmagorinsky,
