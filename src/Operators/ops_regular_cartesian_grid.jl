@@ -1,4 +1,5 @@
-using Oceananigans: AbstractGrid, RegularCartesianGrid
+using Oceananigans: AbstractGrid
+using Oceananigans.Grids: RegularCartesianGrid
 
 @inline δx_c2f(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i,   j, k] - f[i-1, j, k]
 @inline δx_f2c(g::RegularCartesianGrid, f, i, j, k) = @inbounds f[i+1, j, k] - f[i,   j, k]
