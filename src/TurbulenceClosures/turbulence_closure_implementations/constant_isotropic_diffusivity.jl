@@ -7,7 +7,7 @@
 
 Parameters for constant isotropic diffusivity models.
 """
-struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicDiffusivity{FT}
+struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicViscosity{FT}
     ν :: FT
     κ :: K
     function ConstantIsotropicDiffusivity{FT}(ν, κ) where FT
