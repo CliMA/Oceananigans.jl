@@ -19,24 +19,29 @@ using Oceananigans: Face, Cell
 #####
 
 # Resolution
-Nh = 96                  # horizontal resolution
-Nz = 16                  # vertical resolution
+Nh = 256                             # horizontal resolution
+Nz = 32                              # vertical resolution
 
-# Domain size            
-Lh = 1000e3              # [meters] horizontal domain extent
-Lz = 1000                # [meters] vertical domain extent
-Δh = Lh / Nh             # [meters] horizontal grid spacing for diffusivity calculations
-Δz = Lz / Nz             # [meters] vertical grid spacing for diffusivity calculations
+Lh = 1000e3                          # [meters] horizontal domain extent
+Lz = 2000                            # [meters] vertical domain extent
+
+deformation_radius = Lh/10 
+baroclinic_growth_rate = 4day # α = N / (f * growth_rate)
 
 # Physical parameters
- f = 1e-4               # [s⁻¹] Coriolis parameter
-N² = 1e-6               # [s⁻²] Initial buoyancy gradient 
- α = 1e-2               # [s⁻¹] background shear
- μ = 1/30day            # [s⁻¹] background shear
+ f = 1e-4                            # [s⁻¹] Coriolis parameter
+ μ = 1/30day                         # [s⁻¹] background shear
 
-  τ = 0.25day           # [s] damping time-scale
-κ₄ₕ = Δh^4 / τ          # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
- κᵥ = Δz / τ            # [m² s⁻¹] Laplacian vertical diffusivity
+@show N² = (deformation_radius * f / Lz)^2         # [s⁻²] Initial buoyancy gradient 
+@show  α = sqrt(N²) / (f * baroclinic_growth_rate) # [s⁻¹] background shear
+
+# Diffusivity
+Δh = Lh / Nh                         # [meters] horizontal grid spacing for diffusivity calculations
+Δz = Lz / Nz                         # [meters] vertical grid spacing for diffusivity calculations
+
+  τ = 0.25day                        # [s] damping time-scale
+κ₄ₕ = Δh^4 / τ                       # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
+ κᵥ = Δz / τ                         # [m² s⁻¹] Laplacian vertical diffusivity
 
 end_time = 60day # Simulation end time
 
@@ -87,7 +92,7 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 
 # Model instantiation
 model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2), x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0)),
-       architecture = CPU(),
+       architecture = GPU(),
            coriolis = FPlane(f=f),
            buoyancy = BuoyancyTracer(), tracers = :b,
             forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
@@ -129,18 +134,31 @@ output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
 
 # The TimeStepWizard manages the time-step adaptively, keeping the CFL close to a
 # desired value.
-wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=10minute)
+wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=2minute)
 
 u, v, w = model.velocities
 ζ = Field(Face, Face, Cell, model.architecture, model.grid)
+wz = Field(Cell, Cell, Face, model.architecture, model.grid)
+
 vertical_vorticity = Computation(∂x(v) - ∂y(u), ζ)
+divergence = Computation(∂z(w), wz)
 
 #####
 ##### Time step the model forward
 #####
 
-using PyPlot
-fig, axs = subplots(ncols=2)
+using PyPlot, PyCall
+
+GridSpec = pyimport("matplotlib.gridspec").GridSpec
+
+fig = figure(figsize=(24, 48)
+
+gs = GridSpec(2, 2, height_ratios=[2, 1])
+
+ax1 = fig.add_subplot(get(gs, 0))
+ax2 = fig.add_subplot(get(gs, 1))
+ax3 = fig.add_subplot(get(gs, 2))
+ax4 = fig.add_subplot(get(gs, 3))
 
 # This time-stepping loop runs until end_time is reached. It prints a progress statement
 # every 100 iterations.
@@ -159,12 +177,19 @@ while model.clock.time < end_time
 
     if model.clock.iteration % 100 == 0
         compute!(vertical_vorticity)
+        compute!(divergence)
 
-        sca(axs[1]); cla()
+        sca(ax1); cla()
         imshow(Array(interior(ζ)[:, :, 2]))
 
-        sca(axs[2]); cla()
-        imshow(Array(interior(w)[:, 64, :]))
+        sca(ax2); cla()
+        imshow(Array(interior(wz)[:, :, 4]))
+
+        sca(ax3); cla()
+        imshow(rotr90(Array(interior(ζ)[:, 64, :])))
+
+        sca(ax4); cla()
+        imshow(rotr90(Array(interior(w)[:, 64, :])))
 
         pause(0.1)
     end
