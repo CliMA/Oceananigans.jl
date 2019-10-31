@@ -58,14 +58,9 @@ end
 TimeStepper(stepper, args...) = stepper
 
 """Returns the arguments passed to boundary conditions functions."""
-<<<<<<< HEAD
 boundary_condition_function_arguments(model) = 
     (model.clock.time, model.clock.iteration, datatuple(model.velocities), 
      datatuple(model.tracers), model.parameters)
-=======
-boundary_condition_function_arguments(model) = (model.clock.time, model.clock.iteration, datatuple(model.velocities),
-                                                datatuple(model.tracers), model.parameters)
->>>>>>> master
 
 ####
 #### Time-stepping kernels/function that are independent of the TimeStepper
