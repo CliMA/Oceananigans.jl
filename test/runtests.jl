@@ -21,9 +21,18 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
-                    interiorparent, interior, fill_halo_regions!, location,
-                    TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
+using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!, velocity_div!,
+                    architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
+                    interiorparent, interior, fill_halo_regions!, run_diagnostic, location,
+                    TracerFields, buoyancy_frequency_squared, ρ′, ∂x_b, ∂y_b,
+                     thermal_expansion_ccc, 
+                     thermal_expansion_fcc, 
+                     thermal_expansion_cfc, 
+                     thermal_expansion_ccf, 
+                    haline_contraction_ccc, 
+                    haline_contraction_fcc, 
+                    haline_contraction_cfc, 
+                    haline_contraction_ccf, 
                     RoquetIdealizedNonlinearEquationOfState, required_tracers
 
 import Oceananigans: interior, datatuple
@@ -65,6 +74,7 @@ archs = (CPU(),)
 closures = (
             :ConstantIsotropicDiffusivity,
             :ConstantAnisotropicDiffusivity,
+            :AnisotropicBiharmonicDiffusivity,
             :SmagorinskyLilly,
             :BlasiusSmagorinsky,
             :RozemaAnisotropicMinimumDissipation,

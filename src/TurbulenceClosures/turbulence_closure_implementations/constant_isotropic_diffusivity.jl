@@ -7,7 +7,7 @@
 
 Parameters for constant isotropic diffusivity models.
 """
-struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicDiffusivity{FT}
+struct ConstantIsotropicDiffusivity{FT, K} <: IsotropicViscosity{FT}
     ν :: FT
     κ :: K
     function ConstantIsotropicDiffusivity{FT}(ν, κ) where FT
@@ -22,7 +22,9 @@ Returns parameters for a constant isotropic diffusivity model with constant visc
 and constant thermal diffusivities `κ` for each tracer field in `tracers` 
 `ν` and the fields of `κ` may represent molecular diffusivities in cases that all flow 
 features are explicitly resovled, or turbulent eddy diffusivities that model the effect of 
-unresolved, subgrid-scale turbulence.
+unresolved, subgrid-scale turbulence. 
+`κ` may be a `NamedTuple` with fields corresponding
+to each tracer, or a single number to be a applied to all tracers.
 
 By default, a molecular viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ and a molecular thermal
 diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are 
