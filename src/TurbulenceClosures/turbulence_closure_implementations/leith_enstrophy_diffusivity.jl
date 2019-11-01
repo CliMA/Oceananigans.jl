@@ -14,7 +14,7 @@ struct TwoDimensionalLeith{FT, CR, GM} <: AbstractLeith{FT}
          C :: FT
     C_Redi :: CR
       C_GM :: GM
-    function TwoDimensionalLeigth{FT}(C, C_Redi, C_GM)
+    function TwoDimensionalLeith{FT}(C, C_Redi, C_GM) where FT
         C_Redi = convert_diffusivity(FT, C_Redi)
         C_GM = convert_diffusivity(FT, C_GM)
         return new{FT, typeof(C_Redi), typeof(C_GM)}(C, C_Redi, C_GM)
@@ -32,7 +32,7 @@ Leith (1965) and Kemper and Menemenlis (2008) which has an eddy viscosity of the
 and an eddy diffusivity of the form...
 
 where `Δᶠ` is the filter width, `ζ² = (∂x v - ∂y u)²` is the squared vertical vorticity,
-and `C` is a model constant
+and `C` is a model constant.
 
 Keyword arguments
 =================
@@ -69,13 +69,13 @@ end
 @inline ψ²(i, j, k, grid, ψ, args...) = ψ(i, j, k, grid, args...)^2
 
 function abs²_∇h_wz(i, j, k, grid, w)
-    wxz² = ▶x_caa(i, j, k, grid, ϕ², ∂x_faa, ∂z_aac, w)
-    wyz² = ▶y_aca(i, j, k, grid, ϕ², ∂y_afa, ∂z_aac, w)
+    wxz² = ▶x_caa(i, j, k, grid, ψ², ∂x_faa, ∂z_aac, w)
+    wyz² = ▶y_aca(i, j, k, grid, ψ², ∂y_afa, ∂z_aac, w)
     return wxz² + wyz²
 end
 
 @inline ν_ccc(i, j, k, grid, clo::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
-    (clo.C * Δᶠ(i, j, k, grid, clo))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, C) 
+    (clo.C * Δᶠ(i, j, k, grid, clo))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U) 
                                               + abs²_∇h_wz(i, j, k, grid, U.w))
 
 #####
@@ -112,7 +112,7 @@ end
     bx = ▶xz_caf(i, j, k, grid, ∂x_b, buoyancy, C)
     by = ▶yz_acf(i, j, k, grid, ∂y_b, buoyancy, C)
     bz = ∂z_b(i, j, k, grid, buoyancy, C) 
-    return ifelse(by == 0 && && bx == 0 && bz == 0, zero(FT), (bx^2 + by^2) / bz^2)
+    return ifelse(by == 0 && bx == 0 && bz == 0, zero(FT), (bx^2 + by^2) / bz^2)
 end
 
 # Diffusive fluxes for Leith diffusivities
