@@ -1,3 +1,8 @@
+using Oceananigans: thermal_expansion_ccc, thermal_expansion_fcc, thermal_expansion_ccf, thermal_expansion_cfc, 
+                    haline_contraction_ccc, haline_contraction_fcc, haline_contraction_cfc, 
+                    haline_contraction_ccf, RoquetIdealizedNonlinearEquationOfState, required_tracers,
+                    buoyancy_frequency_squared, ρ′, ∂x_b, ∂y_b
+
 function instantiate_linear_equation_of_state(FT, α, β)
     eos = LinearEquationOfState(FT, α=α, β=β)
     return eos.α == FT(α) && eos.β == FT(β)
@@ -61,6 +66,8 @@ function haline_contraction_works(arch, FT, eos)
     β = haline_contraction_ccf(2, 2, 2, grid, eos, C)
     return true
 end
+
+EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
 
 @testset "Buoyancy" begin
     println("Testing buoyancy...")
