@@ -37,8 +37,9 @@ using
 
 import Oceananigans: with_tracers
 
-using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared,
-                    TracerFields, device, launch_config
+using Oceananigans: AbstractArchitecture, AbstractGrid,
+                    TracerFields, device, launch_config,
+                    buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
 
 ####
 #### Molecular viscosity and thermal diffusivity definitions

@@ -52,7 +52,8 @@ export
 
     # Turbulence closures
     ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity, ConstantSmagorinsky, AnisotropicMinimumDissipation
+    AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
+    ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
 using
@@ -221,9 +222,12 @@ device(::GPU) = GPUifyLoops.CUDA()
 architecture(::Array) = CPU()
 @hascuda architecture(::CuArray) = GPU()
 
-# Place-holder functions for use in TurbulenceClosures module
+# Place-holder functions
 function buoyancy_perturbation end
 function buoyancy_frequency_squared end
+function ∂x_b end
+function ∂y_b end
+function ∂z_b end
 function TracerFields end
 function TimeStepper end
 function run_diagnostic end
