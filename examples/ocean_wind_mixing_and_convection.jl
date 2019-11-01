@@ -10,8 +10,11 @@
 #
 # In addition to `Oceananigans.jl` we need `PyPlot` for plotting, `Random` for
 # generating random initial conditions, and `Printf` for printing progress messages.
+# We also need `Oceananigans.OutputWriters` and `Oceananigans.Diagnostics` to access
+# some nice features for writing output data to disk.
 
-using Oceananigans, PyPlot, Random, Printf
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics
+using PyPlot, Random, Printf
 
 # ## Model parameters
 #
