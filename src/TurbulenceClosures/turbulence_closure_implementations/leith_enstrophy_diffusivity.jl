@@ -129,15 +129,15 @@ Return `K₁₁ ∂x c + K₁₃ ∂z c` for a Leith diffusivity.
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑ = ▶x_faa(i, j, k, grid, νₑ, closure)
+    νₑⁱʲᵏ = ▶x_faa(i, j, k, grid, νₑ)
 
     ∂x_c = ∂x_faa(i, j, k, grid, c)
     ∂z_c = ▶xz_fac(i, j, k, grid, ∂z_aaf, c)
 
     R₁₃ = Redi_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
 
-    return νₑ * (                 C_Redi * ∂x_c 
-                 + (C_Redi - C_GM) * R₁₃ * ∂z_c)
+    return νₑⁱʲᵏ * (                 C_Redi * ∂x_c
+                    + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
 """
@@ -151,14 +151,14 @@ Return `K₂₂ ∂y c + K₂₃ ∂z c` for a Leith diffusivity.
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑ = ▶y_afa(i, j, k, grid, νₑ, closure)
+    νₑⁱʲᵏ = ▶y_afa(i, j, k, grid, νₑ)
 
     ∂y_c = ∂y_afa(i, j, k, grid, c)
     ∂z_c = ▶yz_afc(i, j, k, grid, ∂z_aaf, c)
 
     R₂₃ = Redi_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
-    return νₑ * (                 C_Redi * ∂y_c 
-                 + (C_Redi - C_GM) * R₂₃ * ∂z_c)
+    return νₑⁱʲᵏ * (                  C_Redi * ∂y_c
+                     + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
 """
@@ -172,7 +172,7 @@ Return `K₃₁ ∂x c + K₃₂ ∂y c + K₃₃ ∂z c` for a Leith diffusivit
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑ = ▶z_aaf(i, j, k, grid, νₑ, closure)
+    νₑⁱʲᵏ = ▶z_aaf(i, j, k, grid, νₑ)
 
     ∂x_c = ▶xz_caf(i, j, k, grid, ∂x_faa, c)
     ∂y_c = ▶yz_acf(i, j, k, grid, ∂y_afa, c)
@@ -182,7 +182,7 @@ Return `K₃₁ ∂x c + K₃₂ ∂y c + K₃₃ ∂z c` for a Leith diffusivit
     R₃₂ = Redi_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
     R₃₃ = Redi_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
 
-    return νₑ * (
+    return νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c 
         + (C_Redi + C_GM) * R₃₂ * ∂y_c 
                  + C_Redi * R₃₃ * ∂z_c)
