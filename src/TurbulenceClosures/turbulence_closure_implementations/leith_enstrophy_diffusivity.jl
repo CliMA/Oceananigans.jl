@@ -49,7 +49,7 @@ References
 Pearson, B. et al., "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
 rich model." Ocean Modelling (2017)
 """
-TwoDimensionalLeith(FT=Float64; C=0.23, C_Redi=1, C_GM=1) = TwoDimensionalLeith{FT}(C, C_Redi, C_GM)
+TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1) = TwoDimensionalLeith{FT}(C, C_Redi, C_GM)
 
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
@@ -66,7 +66,8 @@ function abs²_∇h_ζ(i, j, k, grid, U)
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
 
-@inline ψ²(i, j, k, grid, ψ, args...) = ψ(i, j, k, grid, args...)^2
+@inline ψ²(i, j, k, grid, ψ::Function, args...) = ψ(i, j, k, grid, args...)^2
+@inline ψ²(i, j, k, grid, ψ::AbstractArray, args...) = ψ(i, j, k, grid, args...)^2
 
 function abs²_∇h_wz(i, j, k, grid, w)
     wxz² = ▶x_caa(i, j, k, grid, ψ², ∂x_faa, ∂z_aac, w)
