@@ -8,12 +8,13 @@ TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, 
 """
     TwoDimensionalLeith{FT} <: AbstractLeith{FT}
 
-Parameters for the Smagorinsky-Lilly turbulence closure.
+Parameters for the 2D Leith turbulence closure.
 """
 struct TwoDimensionalLeith{FT, CR, GM} <: AbstractLeith{FT}
          C :: FT
     C_Redi :: CR
       C_GM :: GM
+
     function TwoDimensionalLeith{FT}(C, C_Redi, C_GM) where FT
         C_Redi = convert_diffusivity(FT, C_Redi)
         C_GM = convert_diffusivity(FT, C_GM)
@@ -25,7 +26,7 @@ end
     TwoDimensionalLeith([FT=Float64;] C=0.3, C_Redi=1, C_GM=1)
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
-Leith (1965) and Kemper and Menemenlis (2008) which has an eddy viscosity of the form
+Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
 
     `νₑ = (C * Δᶠ)³ * √(ζ² + (∇h ∂z w)²)`
 
@@ -46,8 +47,15 @@ Keyword arguments
 
 References
 ==========
-Pearson, B. et al., "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
-rich model." Ocean Modelling (2017)
+Leith, C. E. (1968). "Diffusion Approximation for Two‐Dimensional Turbulence", The Physics of
+    Fluids 11, 671. doi: 10.1063/1.1691968
+
+Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques improve mesoscale rich
+    ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., vol. 177, pp. 319–337.
+    doi:10.1029/177GM19
+
+Pearson, B. et al. (2017) , "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
+    rich model", Ocean Modelling 115, 42-58. doi: 10.1016/j.ocemod.2017.05.007
 """
 TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1) = TwoDimensionalLeith{FT}(C, C_Redi, C_GM)
 
