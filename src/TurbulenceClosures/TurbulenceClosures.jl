@@ -103,11 +103,12 @@ include("turbulence_closure_utils.jl")
 include("closure_operators.jl")
 include("velocity_tracer_gradients.jl")
 
-include("constant_isotropic_diffusivity.jl")
-include("constant_anisotropic_diffusivity.jl")
-include("smagorinsky.jl")
-include("verstappen_anisotropic_minimum_dissipation.jl")
-include("rozema_anisotropic_minimum_dissipation.jl")
+include("turbulence_closure_implementations/constant_isotropic_diffusivity.jl")
+include("turbulence_closure_implementations/constant_anisotropic_diffusivity.jl")
+include("turbulence_closure_implementations/smagorinsky_lilly.jl")
+include("turbulence_closure_implementations/blasius_smagorinsky.jl")
+include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")
+include("turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl")
 
 include("turbulence_closure_diagnostics.jl")
 

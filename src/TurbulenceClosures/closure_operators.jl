@@ -374,6 +374,7 @@ in `y` and `z`, from `afc` to `acf`.
 """
 @inline ▶yz_acf(i, j, k, grid, F, args...) = ▶z_aaf(i, j, k, grid, ▶y_aca, F, args...)
 
+# Interpolation in three-dimensions:
 @inline ▶xyz_ccc(i, j, k, grid, F, args...) = ▶x_caa(i, j, k, grid, ▶y_aca, ▶z_aac, F, args...)
 @inline ▶xyz_fff(i, j, k, grid, F, args...) = ▶x_faa(i, j, k, grid, ▶y_afa, ▶z_aaf, F, args...)
 
@@ -387,121 +388,91 @@ in `y` and `z`, from `afc` to `acf`.
 
 
 """
-    ν_Σᵢⱼ(i, j, k, grid, ν, Σᵢⱼ, closure, buoyancy, u, v, w, T, S)
+    ν_σᶜᶜᶜ(i, j, k, grid, ν, σᶜᶜᶜ, u, v, w)
 
-Multiply the viscosity function
+Multiply the array `ν` located at `ᶜᶜᶜ` by a function 
 
-    `ν(i, j, k, grid, closure, buoyancy, u, v, w, T, S)`
+    `σᶜᶜᶜ(i, j, k, grid, u, v, w)`
 
-with the strain tensor component function
-
-    `Σᵢⱼ(i, j, k, grid, u, v, w)`
-
-at index `i, j, k`.
+at index `i, j, k` and location `ᶜᶜᶜ`.
 """
-@inline ν_Σᵢⱼ(i, j, k, grid, ν::TN, Σᵢⱼ::TS, closure, buoyancy, u, v, w, T, S) where {TN, TS} =
-    ν(i, j, k, grid, closure, buoyancy, u, v, w, T, S) * Σᵢⱼ(i, j, k, grid, u, v, w)
+@inline ν_σᶜᶜᶜ(i, j, k, grid, ν::TN, σᶜᶜᶜ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ν[i, j, k] * σᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-@inline ν_Σᵢⱼ_ccc(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
-    @inbounds ν[i, j, k] * Σᵢⱼ(i, j, k, grid, u, v, w)
+"""
+    ν_σᶠᶠᶜ(i, j, k, grid, ν, σᶠᶠᶜ, u, v, w)
 
-@inline ν_Σᵢⱼ_ffc(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
-    @inbounds ▶xy_ffa(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+Multiply the array `ν` located at `ᶜᶜᶜ` by a function 
 
-@inline ν_Σᵢⱼ_fcf(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
-    @inbounds ▶xz_faf(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+    `σᶠᶠᶜ(i, j, k, grid, u, v, w)`
 
-@inline ν_Σᵢⱼ_cff(i, j, k, grid, ν::TN, Σᵢⱼ::TS, u, v, w) where {TN<:AbstractArray, TS} =
-    @inbounds ▶yz_aff(i, j, k, grid, ν) * Σᵢⱼ(i, j, k, grid, u, v, w)
+at index `i, j, k` and location `ᶠᶠᶜ`.
+"""
+@inline ν_σᶠᶠᶜ(i, j, k, grid, ν::TN, σᶠᶠᶜ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶xy_ffa(i, j, k, grid, ν) * σᶠᶠᶜ(i, j, k, grid, u, v, w)
+
+# These functions are analogous to the two above, but for different locations:
+@inline ν_σᶠᶜᶠ(i, j, k, grid, ν::TN, σᶠᶜᶠ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶xz_faf(i, j, k, grid, ν) * σᶠᶜᶠ(i, j, k, grid, u, v, w)
+
+@inline ν_σᶜᶠᶠ(i, j, k, grid, ν::TN, σᶜᶠᶠ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+    @inbounds ▶yz_aff(i, j, k, grid, ν) * σᶜᶠᶠ(i, j, k, grid, u, v, w)
 
 #####
 ##### Stress divergences
 #####
 
 # At fcc
-@inline ∂x_2ν_Σ₁₁(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂x_faa(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₁₁, u, v, w)
+@inline ∂x_2ν_Σ₁₁(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂x_faa(i, j, k, grid, ν_σᶜᶜᶜ, diffusivities.νₑ, Σ₁₁, U.u, U.v, U.w)
 
-@inline ∂y_2ν_Σ₁₂(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ_ffc, diffusivities.νₑ, Σ₁₂, u, v, w)
+@inline ∂y_2ν_Σ₁₂(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂y_aca(i, j, k, grid, ν_σᶠᶠᶜ, diffusivities.νₑ, Σ₁₂, U.u, U.v, U.w)
 
-@inline ∂z_2ν_Σ₁₃(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ_fcf, diffusivities.νₑ, Σ₁₃, u, v, w)
-
-# At cfc
-@inline ∂x_2ν_Σ₂₁(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ_ffc, diffusivities.νₑ, Σ₂₁, u, v, w)
-
-@inline ∂y_2ν_Σ₂₂(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂y_afa(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₂₂, u, v, w)
-
-@inline ∂z_2ν_Σ₂₃(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ_cff, diffusivities.νₑ, Σ₂₃, u, v, w)
-
-# At ccf
-@inline ∂x_2ν_Σ₃₁(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ_fcf, diffusivities.νₑ, Σ₃₁, u, v, w)
-
-@inline ∂y_2ν_Σ₃₂(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ_cff, diffusivities.νₑ, Σ₃₂, u, v, w)
-
-@inline ∂z_2ν_Σ₃₃(i, j, k, grid, closure, u, v, w, diffusivities) =
-    2 * ∂z_aaf(i, j, k, grid, ν_Σᵢⱼ_ccc, diffusivities.νₑ, Σ₃₃, u, v, w)
-
-#
-# Without precomputed diffusivities
-#
-
-@inline ∂x_2ν_Σ₁₁(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂x_faa(i, j, k, grid, ν_Σᵢⱼ, ν_ccc, Σ₁₁, closure, buoyancy, u, v, w, T, S)
-
-@inline ∂y_2ν_Σ₁₂(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ, ν_ffc, Σ₁₂, closure, buoyancy, u, v, w, T, S)
-
-@inline ∂z_2ν_Σ₁₃(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ, ν_fcf, Σ₁₃, closure, buoyancy, u, v, w, T, S)
+@inline ∂z_2ν_Σ₁₃(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂z_aac(i, j, k, grid, ν_σᶠᶜᶠ, diffusivities.νₑ, Σ₁₃, U.u, U.v, U.w)
 
 # At cfc
-@inline ∂x_2ν_Σ₂₁(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ, ν_ffc, Σ₂₁, closure, buoyancy, u, v, w, T, S)
+@inline ∂x_2ν_Σ₂₁(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂x_caa(i, j, k, grid, ν_σᶠᶠᶜ, diffusivities.νₑ, Σ₂₁, U.u, U.v, U.w)
 
-@inline ∂y_2ν_Σ₂₂(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂y_afa(i, j, k, grid, ν_Σᵢⱼ, ν_ccc, Σ₂₂, closure, buoyancy, u, v, w, T, S)
+@inline ∂y_2ν_Σ₂₂(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂y_afa(i, j, k, grid, ν_σᶜᶜᶜ, diffusivities.νₑ, Σ₂₂, U.u, U.v, U.w)
 
-@inline ∂z_2ν_Σ₂₃(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂z_aac(i, j, k, grid, ν_Σᵢⱼ, ν_cff, Σ₂₃, closure, buoyancy, u, v, w, T, S)
+@inline ∂z_2ν_Σ₂₃(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂z_aac(i, j, k, grid, ν_σᶜᶠᶠ, diffusivities.νₑ, Σ₂₃, U.u, U.v, U.w)
 
 # At ccf
-@inline ∂x_2ν_Σ₃₁(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂x_caa(i, j, k, grid, ν_Σᵢⱼ, ν_fcf, Σ₃₁, closure, buoyancy, u, v, w, T, S)
+@inline ∂x_2ν_Σ₃₁(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂x_caa(i, j, k, grid, ν_σᶠᶜᶠ, diffusivities.νₑ, Σ₃₁, U.u, U.v, U.w)
 
-@inline ∂y_2ν_Σ₃₂(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂y_aca(i, j, k, grid, ν_Σᵢⱼ, ν_cff, Σ₃₂, closure, buoyancy, u, v, w, T, S)
+@inline ∂y_2ν_Σ₃₂(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂y_aca(i, j, k, grid, ν_σᶜᶠᶠ, diffusivities.νₑ, Σ₃₂, U.u, U.v, U.w)
 
-@inline ∂z_2ν_Σ₃₃(i, j, k, grid, closure, buoyancy, u, v, w, T, S) =
-    2 * ∂z_aaf(i, j, k, grid, ν_Σᵢⱼ, ν_ccc, Σ₃₃, closure, buoyancy, u, v, w, T, S)
+@inline ∂z_2ν_Σ₃₃(i, j, k, grid, closure, U, diffusivities) =
+    2 * ∂z_aaf(i, j, k, grid, ν_σᶜᶜᶜ, diffusivities.νₑ, Σ₃₃, U.u, U.v, U.w)
 
 """
-    κ_∂x_c(i, j, k, grid, c, κ, closure, buoyancy, u, v, w, T, S)
+    κ_∂x_c(i, j, k, grid, c, κ, closure, args...)
 
-Return `κ ∂x c`, where `κ` is a function that computes
+Return `κ ∂x c`, where `κ` is an array or function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_c(i, j, k, grid, c, κ, closure, args...)
+@inline function κ_∂x_c(i, j, k, grid, κ, c, closure, args...)
     κ = ▶x_faa(i, j, k, grid, κ, closure, args...)
     ∂x_c = ∂x_faa(i, j, k, grid, c)
     return κ * ∂x_c
 end
 
 """
-    κ_∂y_c(i, j, k, grid, c, κ, closure, buoyancy, u, v, w, T, S)
+    κ_∂y_c(i, j, k, grid, c, κ, closure, args...)
 
-Return `κ ∂y c`, where `κ` is a function that computes
+Return `κ ∂y c`, where `κ` is an array or function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_c(i, j, k, grid, c, κ, closure, args...)
+@inline function κ_∂y_c(i, j, k, grid, κ, c, closure, args...)
     κ = ▶y_afa(i, j, k, grid, κ, closure, args...)
     ∂y_c = ∂y_afa(i, j, k, grid, c)
     return κ * ∂y_c
@@ -510,42 +481,18 @@ end
 """
     κ_∂z_c(i, j, k, grid, c, κ, closure, buoyancy, u, v, w, T, S)
 
-Return `κ ∂z c`, where `κ` is a function that computes
+Return `κ ∂z c`, where `κ` is an array or function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_c(i, j, k, grid, c, κ, closure, args...)
+@inline function κ_∂z_c(i, j, k, grid, κ, c, closure, args...)
     κ = ▶z_aaf(i, j, k, grid, κ, closure, args...)
     ∂z_c = ∂z_aaf(i, j, k, grid, c)
     return κ * ∂z_c
 end
 
 """
-    ∇_κ_∇_c(i, j, k, grid, c, closure, buoyancy, u, v, w, T, S)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇c(i, j, k, grid, c, closure::IsotropicDiffusivity, buoyancy, u, v, w, T, S) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, c, κ_ccc, closure, buoyancy, u, v, w, T, S)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, κ_ccc, closure, buoyancy, u, v, w, T, S)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, κ_ccc, closure, buoyancy, u, v, w, T, S)
-    )
-
-"""
-    ∇_κ_∇_c(i, j, k, grid, c, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇c(i, j, k, grid, c, closure::IsotropicDiffusivity, diffusivities) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, c, diffusivities.κₑ, closure)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, c, diffusivities.κₑ, closure)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, c, diffusivities.κₑ, closure)
-)
-
-"""
-    ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, u, v, w, diffusivities)
+    ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, diffusivities)
 
 Return the ``x``-component of the turbulent diffusive flux divergence:
 
@@ -553,14 +500,14 @@ Return the ``x``-component of the turbulent diffusive flux divergence:
 
 at the location `fcc`.
 """
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
-      ∂x_2ν_Σ₁₁(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, u, v, w, diffusivities)
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, U, diffusivities) = (
+      ∂x_2ν_Σ₁₁(i, j, k, grid, closure, U, diffusivities)
+    + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, U, diffusivities)
+    + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, U, diffusivities)
 )
 
 """
-    ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, u, v, w, diffusivities)
+    ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, diffusivities)
 
 Return the ``y``-component of the turbulent diffusive flux divergence:
 
@@ -568,10 +515,10 @@ Return the ``y``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
-      ∂x_2ν_Σ₂₁(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, u, v, w, diffusivities)
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, U, diffusivities) = (
+      ∂x_2ν_Σ₂₁(i, j, k, grid, closure, U, diffusivities)
+    + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, U, diffusivities)
+    + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, U, diffusivities)
 )
 
 """
@@ -583,8 +530,8 @@ Return the ``z``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, u, v, w, diffusivities) = (
-      ∂x_2ν_Σ₃₁(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, u, v, w, diffusivities)
-    + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, u, v, w, diffusivities)
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, U, diffusivities) = (
+      ∂x_2ν_Σ₃₁(i, j, k, grid, closure, U, diffusivities)
+    + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, U, diffusivities)
+    + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, U, diffusivities)
 )
