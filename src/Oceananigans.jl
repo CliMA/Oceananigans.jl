@@ -52,7 +52,7 @@ export
 
     # Turbulence closures
     ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
+    AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
