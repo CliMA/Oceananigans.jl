@@ -152,6 +152,15 @@ function test_function_differentiation(T=Float64)
         )
 end
 
+function time_step_with_tupled_closure(FT, arch)
+    closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
+
+    model = Model(architecture=arch, float_type=FT, closure=closure_tuple,
+                  grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3))) 
+
+    time_step!(model, 1, 1)
+    return true
+end
 
 @testset "Turbulence closures" begin
     println("Testing turbulence closures...")
@@ -196,6 +205,15 @@ end
         for T in float_types
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Closure tuples" begin
+        println("  Testing time-stepping with a tuple of closures...")
+        for arch in archs
+            for FT in float_types
+                @test time_step_with_tupled_closure(FT, arch)
+            end
         end
     end
 end

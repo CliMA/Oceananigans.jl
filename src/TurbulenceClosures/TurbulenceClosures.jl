@@ -103,6 +103,8 @@ include("turbulence_closure_utils.jl")
 include("closure_operators.jl")
 include("velocity_tracer_gradients.jl")
 
+include("closure_tuples.jl")
+
 include("turbulence_closure_implementations/constant_isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/constant_anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
