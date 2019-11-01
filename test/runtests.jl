@@ -21,28 +21,18 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: PoissonSolver, PPN, PNN, solve_poisson_3d!, velocity_div!,
-                    architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
-                    interiorparent, interior, fill_halo_regions!, run_diagnostic, location,
-                    TracerFields, buoyancy_frequency_squared, ρ′, ∂x_b, ∂y_b,
-                     thermal_expansion_ccc, 
-                     thermal_expansion_fcc, 
-                     thermal_expansion_cfc, 
-                     thermal_expansion_ccf, 
-                    haline_contraction_ccc, 
-                    haline_contraction_fcc, 
-                    haline_contraction_cfc, 
-                    haline_contraction_ccf, 
-                    RoquetIdealizedNonlinearEquationOfState, required_tracers
+using Oceananigans: architecture, device, launch_config, datatuples, with_tracers,
+                    Face, Cell, interiorparent, location, TracerFields, fill_halo_regions!
 
 import Oceananigans: interior, datatuple
 
 using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
+
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
-using Oceananigans.TurbulenceClosures
-
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
+
+using Oceananigans.TurbulenceClosures
 
 using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
                                        ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
@@ -80,8 +70,6 @@ closures = (
             :RozemaAnisotropicMinimumDissipation,
             :VerstappenAnisotropicMinimumDissipation
            )
-
-EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
 
 @testset "Oceananigans" begin
     include("test_grids.jl")
