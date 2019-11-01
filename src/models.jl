@@ -8,7 +8,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F
                   clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
                buoyancy :: B         # Set of parameters for buoyancy model
                coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-          surface_waves :: SW        # Set of parameters for the background rotation rate of `Model`
+          surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
              velocities :: U         # Container for velocity fields `u`, `v`, and `w`
                 tracers :: C         # Container for tracer fields
               pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
