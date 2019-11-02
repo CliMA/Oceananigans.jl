@@ -34,7 +34,7 @@
 @inline advective_tracer_flux_y(i, j, k, grid, V, C, ρᵈ) = Ay_ψᵃᶠᵃ(i, j, k, grid, V) * ℑyᵃᶠᵃ(i, j, k, grid, C) / ℑyᵃᶠᵃ(i, j, k, grid, ρᵈ)
 @inline advective_tracer_flux_z(i, j, k, grid, W, C, ρᵈ) = Az_ψᵃᵃᵃ(i, j, k, grid, W) * ℑzᵃᵃᶠ(i, j, k, grid, C) / ℑzᵃᵃᶠ(i, j, k, grid, ρᵈ)
 
-@inline function div_flux(i, j, k, grid, U, V, W, C, ρᵈ)
+@inline function div_flux(i, j, k, grid, ρᵈ, U, V, W, C)
     1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, U, C, ρᵈ) +
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, V, C, ρᵈ) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, W, C, ρᵈ))
@@ -139,3 +139,13 @@ end
 
 @inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
 
+####
+#### Right hand side terms
+####
+
+@inline RU(i, j, k, Ũ, ρ, S, FU) = -div_ρuũ(i, j, k, grid, ρᵈ, Ũ) - ∂x_pressure(i, j, k, S, ρ) + FU[i, j, k]
+@inline RV(i, j, k, Ũ, ρ, S, FV) = -div_ρvũ(i, j, k, grid, ρᵈ, Ũ) - ∂y_pressure(i, j, k, S, ρ) + FV[i, j, k]
+@inline RW(i, j, k, Ũ, ρ, S, FW) = -div_ρwũ(i, j, k, grid, ρᵈ, Ũ) - ∂z_pressure(i, j, k, S, ρ) + buoyancy_perturbation(i, j, k, B, args...) + FW[i, j, k]
+
+@inline Rρ(i, j, k, grid, Ũ) = -divᶜᶜᶜ(i, j, k, grid, Ũ.U, Ũ.V, Ũ.W)
+@inline RC(i, j, k, grid, ρᵈ, Ũ, C) = -div_flux(i, j, k, grid, ρᵈ, Ũ.U, Ũ.V, Ũ.W, C)
