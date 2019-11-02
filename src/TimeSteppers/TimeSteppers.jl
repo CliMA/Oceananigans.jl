@@ -22,6 +22,9 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
 
                     time_to_run
 
+using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
+                                 ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
+
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using Oceananigans.Operators
@@ -58,8 +61,8 @@ end
 TimeStepper(stepper, args...) = stepper
 
 """Returns the arguments passed to boundary conditions functions."""
-boundary_condition_function_arguments(model) = 
-    (model.clock.time, model.clock.iteration, datatuple(model.velocities), 
+boundary_condition_function_arguments(model) =
+    (model.clock.time, model.clock.iteration, datatuple(model.velocities),
      datatuple(model.tracers), model.parameters)
 
 ####
@@ -99,10 +102,10 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
-    fill_halo_regions!(merge(velocities, tracers), model.boundary_conditions.solution, model.architecture, 
+    fill_halo_regions!(merge(velocities, tracers), model.boundary_conditions.solution, model.architecture,
                        model.grid, boundary_condition_function_arguments(model)...)
 
-    calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure, model.buoyancy, 
+    calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure, model.buoyancy,
                              velocities, tracers)
 
     # Diffusivities share bcs with pressure:
@@ -125,12 +128,12 @@ contribution from non-hydrostatic pressure.
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
     calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
-                                     model.closure, velocities, tracers, pressures.pHY′, diffusivities,
-                                     model.forcing, model.parameters, model.clock.time)
+                                     model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
+                                     diffusivities, model.forcing, model.parameters, model.clock.time)
 
-    calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture, 
+    calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture,
                                      model.grid, boundary_condition_function_arguments(model)...)
-                                     
+
     return nothing
 end
 
@@ -152,7 +155,7 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies
             calculate_poisson_right_hand_side!(model.poisson_solver.storage, model.architecture, model.grid,
                                                model.poisson_solver.bcs, velocities, tendencies, Δt))
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.architecture, model.grid, model.poisson_solver, 
+    solve_for_pressure!(nonhydrostatic_pressure, model.architecture, model.grid, model.poisson_solver,
                         model.poisson_solver.storage)
 
     fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure, model.architecture, model.grid)
