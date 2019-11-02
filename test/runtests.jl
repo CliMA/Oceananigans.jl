@@ -78,6 +78,7 @@ closures = (
     include("test_operators.jl")
     include("test_poisson_solvers.jl")
     include("test_coriolis.jl")
+    include("test_surface_waves.jl")
     include("test_buoyancy.jl")
     include("test_models.jl")
     include("test_time_stepping.jl")
