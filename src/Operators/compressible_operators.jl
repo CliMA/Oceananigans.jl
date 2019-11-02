@@ -1,10 +1,24 @@
 ####
-#### Coriolis
+#### Moist density
+####
+
+@inline ρᵐ(i, j, k, grid, ρᵈ, C) = @inbounds ρᵈ[i, j, k] # * (1 + ...)
+
+####
+#### Coriolis terms
 ####
 
 @inline x_f_cross_U(i, j, k, grid, f, Ũ) = - f * ℑxyᶠᶜᵃ(i, j, k, grid, Ũ.V)
 @inline y_f_cross_U(i, j, k, grid, f, Ũ) =   f * ℑxyᶜᶠᵃ(i, j, k, grid, Ũ.U)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, f, Ũ) where FT = zero(FT)
+
+####
+#### Pressure gradient terms
+####
+
+@inline ∂x_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂xᶠᵃᵃ(i, j, k, grid, Θᵐ)
+@inline ∂y_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂yᵃᶠᵃ(i, j, k, grid, Θᵐ)
+@inline ∂z_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂xᵃᵃᶠ(i, j, k, grid, Θᵐ)
 
 ####
 #### Tracer advection
