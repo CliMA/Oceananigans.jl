@@ -2,7 +2,7 @@
 #### Moist density
 ####
 
-@inline ρᵐ(i, j, k, grid, ρᵈ, C) = @inbounds ρᵈ[i, j, k] # * (1 + ...)
+@inline ρᵐ(i, j, k, grid, ρᵈ) = @inbounds ρᵈ[i, j, k] # * (1 + ...)
 
 ####
 #### Coriolis terms
@@ -21,6 +21,12 @@
 @inline ∂z_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂xᵃᵃᶠ(i, j, k, grid, Θᵐ)
 
 ####
+#### Buoyancy term
+####
+
+@inline buoyancy_perturbation(i, j, k, grid, ρᵈ, g) = g * ρᵐ(i, j, k, grid, ρᵈ)
+
+####
 #### Tracer advection
 ####
 
@@ -33,5 +39,9 @@
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, V, C, ρᵈ) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, W, C, ρᵈ))
 end
+
+####
+#### Momentum advection
+####
 
 
