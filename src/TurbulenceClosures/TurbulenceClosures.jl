@@ -1,10 +1,11 @@
 module TurbulenceClosures
 
 export
-  IsotropicDiffusivity,
+  IsotropicViscosity,
   ConstantIsotropicDiffusivity,
   ConstantAnisotropicDiffusivity,
   AnisotropicBiharmonicDiffusivity,
+  TwoDimensionalLeith,
   ConstantSmagorinsky,
   SmagorinskyLilly,
   BlasiusSmagorinsky,
@@ -36,8 +37,9 @@ using
 
 import Oceananigans: with_tracers
 
-using Oceananigans: AbstractArchitecture, AbstractGrid, buoyancy_perturbation, buoyancy_frequency_squared,
-                    TracerFields, device, launch_config
+using Oceananigans: AbstractArchitecture, AbstractGrid,
+                    TracerFields, device, launch_config,
+                    buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
 
 ####
 #### Molecular viscosity and thermal diffusivity definitions
@@ -62,12 +64,12 @@ type `FT`.
 abstract type TurbulenceClosure{FT} end
 
 """
-    IsotropicDiffusivity{FT} <: TurbulenceClosure{FT}
+    IsotropicViscosity{FT} <: TurbulenceClosure{FT}
 
 Abstract supertype for turbulence closures that are defined by an isotropic viscosity
 and isotropic diffusivities with model parameters stored as properties of type `FT`.
 """
-abstract type IsotropicDiffusivity{FT} <: TurbulenceClosure{FT} end
+abstract type IsotropicViscosity{FT} <: TurbulenceClosure{FT} end
 
 """
     TensorDiffusivity{FT} <: TurbulenceClosure{FT}
@@ -83,7 +85,7 @@ abstract type TensorDiffusivity{FT} <: TurbulenceClosure{FT} end
 Abstract supertype for large eddy simulation models based off the model described
 by Smagorinsky with model parameters stored as properties of type `FT`.
 """
-abstract type AbstractSmagorinsky{FT} <: IsotropicDiffusivity{FT} end
+abstract type AbstractSmagorinsky{FT} <: IsotropicViscosity{FT} end
 
 """
     AbstractAnisotropicMinimumDissipation{FT}
@@ -91,7 +93,15 @@ abstract type AbstractSmagorinsky{FT} <: IsotropicDiffusivity{FT} end
 Abstract supertype for large eddy simulation models based on the anisotropic minimum
 dissipation principle with model parameters stored as properties of type `FT`.
 """
-abstract type AbstractAnisotropicMinimumDissipation{FT} <: IsotropicDiffusivity{FT} end
+abstract type AbstractAnisotropicMinimumDissipation{FT} <: IsotropicViscosity{FT} end
+
+"""
+    AbstractLeith{FT}
+
+Abstract supertype for large eddy simulation models based on the Leith viscosity
+principle with model parameters stored as properties of type `FT`.
+"""
+abstract type AbstractLeith{FT} <: IsotropicViscosity{FT} end
 
 ####
 #### 'Tupled closure' implementation
@@ -160,6 +170,7 @@ include("closure_tuples.jl")
 include("turbulence_closure_implementations/constant_isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/constant_anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
+include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/blasius_smagorinsky.jl")
 include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")

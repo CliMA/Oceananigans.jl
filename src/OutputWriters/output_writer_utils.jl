@@ -13,6 +13,9 @@ saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
 saveproperty!(file, location, p::AbstractField) = file[location] = Array(p.data.parent)
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
+
+saveproperty!(file, location, p::Tuple) = [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
+
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp))
                                         for subp in propertynames(p)]
 

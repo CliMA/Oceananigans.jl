@@ -21,19 +21,18 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: architecture, device, launch_config, datatuples, Face, Cell, with_tracers,
-                    interiorparent, interior, fill_halo_regions!, location,
-                    TracerFields, buoyancy_frequency_squared, thermal_expansion, haline_contraction, ρ′,
-                    RoquetIdealizedNonlinearEquationOfState, required_tracers
+using Oceananigans: architecture, device, launch_config, datatuples, with_tracers,
+                    Face, Cell, interiorparent, location, TracerFields, fill_halo_regions!
 
 import Oceananigans: interior, datatuple
 
 using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
+
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
-using Oceananigans.TurbulenceClosures
-
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
+
+using Oceananigans.TurbulenceClosures
 
 using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
                                        ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
@@ -65,13 +64,12 @@ archs = (CPU(),)
 closures = (
             :ConstantIsotropicDiffusivity,
             :ConstantAnisotropicDiffusivity,
+            :AnisotropicBiharmonicDiffusivity,
             :SmagorinskyLilly,
             :BlasiusSmagorinsky,
             :RozemaAnisotropicMinimumDissipation,
             :VerstappenAnisotropicMinimumDissipation
            )
-
-EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
 
 @testset "Oceananigans" begin
     include("test_grids.jl")
