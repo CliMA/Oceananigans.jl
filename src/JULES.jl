@@ -1,10 +1,9 @@
 module JULES
 
-export
-    RK3
+using Oceananigans
 
-abstract type AbstractGrid{T} end
-
-include("time_steppers.jl")
+include("Operators/Operators.jl")
+include("buoyancy.jl")
+include("time_stepping.jl")
 
 end # module

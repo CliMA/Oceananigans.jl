@@ -1,5 +1,7 @@
 module Operators
 
+using Oceananigans
+
 include("areas_and_volumes.jl")
 include("difference_operators.jl")
 include("derivative_operators.jl")
