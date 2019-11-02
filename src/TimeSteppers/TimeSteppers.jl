@@ -127,9 +127,9 @@ contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
-    calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.surface_waves,
-                                     model.closure, velocities, tracers, pressures.pHY′, diffusivities, model.forcing,
-                                     model.parameters, model.clock.time)
+    calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
+                                     model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
+                                     diffusivities, model.forcing, model.parameters, model.clock.time)
 
     calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture,
                                      model.grid, boundary_condition_function_arguments(model)...)

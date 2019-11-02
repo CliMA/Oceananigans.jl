@@ -55,7 +55,7 @@ function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_source_terms!(G, arch, grid, coriolis, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
+function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
