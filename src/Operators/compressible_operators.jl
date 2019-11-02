@@ -41,6 +41,22 @@
 end
 
 ####
+#### Diffusion
+####
+
+@inline C_over_ρ(i, j, k, grid, C, ρ) = @inbounds C[i, j, k] / ρ[i, j, k]
+
+@inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρᵈ, C) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρᵈ)
+@inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρᵈ, C) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρᵈ)
+@inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρᵈ, C) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * δzᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρᵈ)
+
+@inline function div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, ρᵈ, C) +
+                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κ, ρᵈ, C) +
+                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κ, ρᵈ, C))
+end
+
+####
 #### Momentum advection
 ####
 
@@ -107,9 +123,19 @@ end
                                     δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, μ, ρᵈ, V))
 end
 
-@inline function div_μ∇W(i, j, k, grid, μ, ρᵈ, W)
+@inline function div_μ∇u(i, j, k, grid, μ, ρᵈ, W)
     return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, μ, ρᵈ, W) +
                                     δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, μ, ρᵈ, W) +
                                     δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, μ, ρᵈ, W))
 end
+
+####
+#### "Slow forcing" terms
+####
+
+@inline FU(i, j, k, grid, f, μ, ρᵈ, Ũ) = -x_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇u(i, j, k, grid, μ, ρᵈ, U)
+@inline FV(i, j, k, grid, f, μ, ρᵈ, Ũ) = -y_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇v(i, j, k, grid, μ, ρᵈ, V)
+@inline FW(i, j, k, grid, f, μ, ρᵈ, Ũ) = -z_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇w(i, j, k, grid, μ, ρᵈ, W)
+
+@inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
 
