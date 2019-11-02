@@ -6,21 +6,22 @@ using Oceananigans: AbstractModel
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, B, C, BS, M, D, T, SF, FF, IV, P} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, BS, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
+                  momenta :: M
+                  density :: D
+   prognostic_temperature :: T
+                  tracers :: TS
                  buoyancy :: B
                  coriolis :: C
          surface_pressure :: FT
                base_state :: BS
-                  momenta :: M
-                densities :: D
-                  tracers :: T
             slow_forcings :: SF
-            fast_forcings :: FF
+         right_hand_sides :: RHS
         intermediate_vars :: IV
-    acoustic_time_stepper :: P
+    acoustic_time_stepper :: ATS
 end
 
 ####
@@ -32,18 +33,19 @@ function CompressibleModel(;
              architecture = CPU(),
                float_type = Float64,
                     clock = Clock{float_type}(0, 0),
+                  momenta = MomentumFields(architecture, grid),
+                densities = DensityFields(architecture, grid),
+   prognostic_temperature = ModifiedPotentialTemperature(),
+                  tracers = (:S, :Qv, :Ql, :Qi),
                  buoyancy = DryIdealGas(float_type),
                  coriolis = nothing,
          surface_pressure = 100000,
                base_state = nothing,
-                  momenta = MomentumFields(architecture, grid),
-                densities = DensityFields(architecture, grid),
-                  tracers = (:S, :Qv, :Ql, :Qi),
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
-            fast_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
+         right_hand_sides = ForcingFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = IntermediateFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
-    )
+   )
 
     surface_pressure = float_type(surface_pressure)
     tracers = TracerFields(architecture, grid, tracers)
