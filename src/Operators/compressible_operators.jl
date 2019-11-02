@@ -44,4 +44,33 @@ end
 #### Momentum advection
 ####
 
+@inline momentum_flux_ρuu(i, j, k, grid, ρᵈ, U)    = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, Ax_Ψᶠᵃᵃ, U) * ℑxᶜᵃᵃ(i, j, k, grid, U) / ρᵈ[i, j, k]
+@inline momentum_flux_ρuv(i, j, k, grid, ρᵈ, U, V) =           ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᶠᵃ, V) * ℑyᵃᶠᵃ(i, j, k, grid, U) / ℑxyᶠᶠᵃ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρuw(i, j, k, grid, ρᵈ, U, W) =           ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶠ(i, j, k, grid, U) / ℑxzᶠᵃᶠ(i, j, k, grid, ρᵈ)
 
+@inline momentum_flux_ρvu(i, j, k, grid, ρᵈ, U, V) =           ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᶠᵃᵃ, U) * ℑxᶠᵃᵃ(i, j, k, grid, V) / ℑxyᶠᶠᵃ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρvv(i, j, k, grid, ρᵈ, V)    = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᶠᵃ, V) * ℑyᵃᶜᵃ(i, j, k, grid, V) / ρᵈ[i, j, k]
+@inline momentum_flux_ρvw(i, j, k, grid, ρᵈ, V, W) =           ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶠ(i, j, k, grid, V) / ℑyzᵃᶠᶠ(i, j, k, grid, ρᵈ)
+
+@inline momentum_flux_ρwu(i, j, k, grid, ρᵈ, U, W) =           ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᶠᵃᵃ, U) * ℑxᶠᵃᵃ(i, j, k, grid, W) / ℑxzᶠᵃᶠ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρwv(i, j, k, grid, ρᵈ, V, W) =           ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᶠᵃ, V) * ℑyᵃᶠᵃ(i, j, k, grid, W) / ℑyzᵃᶠᶠ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρww(i, j, k, grid, ρᵈ, W)    = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶜ(i, j, k, grid, W) / ρᵈ[i, j, k]
+
+
+@inline function div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_ρuu, ρᵈ, Ũ.U)    +
+                                    δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρuv, ρᵈ, Ũ.U, Ũ.V) +
+                                    δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρuw, ρᵈ, Ũ.U, Ũ.W))
+end
+
+@inline function div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρvu, ρᵈ, Ũ.U, Ũ.V) +
+                                    δyᵃᶠᵃ(i, j, k, grid, momentum_flux_ρvv, ρᵈ, Ũ.V)    +
+                                    δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρvw, ρᵈ, Ũ.V, Ũ.W))
+end
+
+@inline function div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
+    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρwu, ρᵈ, Ũ.U, Ũ.V) +
+                                    δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, ρᵈ, Ũ.V, Ũ.W) +
+                                    δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, ρᵈ, Ũ.W))
+end
