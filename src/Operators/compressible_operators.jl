@@ -74,3 +74,42 @@ end
                                     δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, ρᵈ, Ũ.V, Ũ.W) +
                                     δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, ρᵈ, Ũ.W))
 end
+
+####
+#### Viscous dissipation
+####
+
+@inline U_over_ρ(i, j, k, grid, U, ρᵈ) = @inbounds U[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, ρᵈ)
+@inline V_over_ρ(i, j, k, grid, V, ρᵈ) = @inbounds V[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, ρᵈ)
+@inline W_over_ρ(i, j, k, grid, W, ρᵈ) = @inbounds W[i, j, k] / ℑzᵃᵃᶠ(i, j, k, grid, ρᵈ)
+
+@inline viscous_flux_ux(i, j, k, grid, μ_ccc, ρᵈ, U) = μ_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶜᵃᵃ(i, j, k, grid, U_over_ρ, U, ρᵈ)
+@inline viscous_flux_uy(i, j, k, grid, μ_ffc, ρᵈ, U) = μ_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρᵈ)
+@inline viscous_flux_uz(i, j, k, grid, μ_fcf, ρᵈ, U) = μ_fcf * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρᵈ)
+
+@inline viscous_flux_vx(i, j, k, grid, μ_ffc, ρᵈ, V) = μ_ffc * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρᵈ)
+@inline viscous_flux_vy(i, j, k, grid, μ_ccc, ρᵈ, V) = μ_ccc * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶜᵃ(i, j, k, grid, V_over_ρ, V, ρᵈ)
+@inline viscous_flux_vz(i, j, k, grid, μ_cff, ρᵈ, V) = μ_cff * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρᵈ)
+
+@inline viscous_flux_wx(i, j, k, grid, μᶠᶜᶠ, ρᵈ, W) = μᶠᶜᶠ * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρᵈ)
+@inline viscous_flux_wy(i, j, k, grid, μᶜᶠᶠ, ρᵈ, W) = μᶜᶠᶠ * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρᵈ)
+@inline viscous_flux_wz(i, j, k, grid, μᶜᶜᶜ, ρᵈ, W) = μᶜᶜᶜ * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶜ(i, j, k, grid, W_over_ρ, W, ρᵈ)
+
+@inline function div_μ∇u(i, j, k, grid, μ, ρᵈ, U)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, μ, ρᵈ, U) +
+                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, μ, ρᵈ, U) +
+                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, μ, ρᵈ, U))
+end
+
+@inline function div_μ∇v(i, j, k, grid, μ, ρᵈ, V)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, μ, ρᵈ, V) +
+                                    δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, μ, ρᵈ, V) +
+                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, μ, ρᵈ, V))
+end
+
+@inline function div_μ∇W(i, j, k, grid, μ, ρᵈ, W)
+    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, μ, ρᵈ, W) +
+                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, μ, ρᵈ, W) +
+                                    δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, μ, ρᵈ, W))
+end
+
