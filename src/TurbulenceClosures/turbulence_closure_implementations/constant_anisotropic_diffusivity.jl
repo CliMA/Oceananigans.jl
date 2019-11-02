@@ -17,8 +17,9 @@ end
     ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
 
 Returns parameters for a constant anisotropic diffusivity closure with constant horizontal
-and vertical viscosities `νh`, `νv` and constant horizontal and vertical thermal 
-diffusivities `κh`, `κv`. 
+and vertical viscosities `νh`, `νv` and constant horizontal and vertical tracer
+diffusivities `κh`, `κv`. `κh` and `κv` may be `NamedTuple`s with fields corresponding
+to each tracer, or a single number to be a applied to all tracers.
 
 By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal 
 and vertical viscosity, and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used
@@ -39,20 +40,17 @@ end
 calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_faa(i, j, k, grid, U.u)
-    + closure.νh * ∂y²_aca(i, j, k, grid, U.u)
+      closure.νh * ∇h²_fca(i, j, k, grid, U.u)
     + closure.νv * ∂z²_aac(i, j, k, grid, U.u)
     )
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_caa(i, j, k, grid, U.v)
-    + closure.νh * ∂y²_afa(i, j, k, grid, U.v)
+      closure.νh * ∇h²_cfa(i, j, k, grid, U.v)
     + closure.νv * ∂z²_aac(i, j, k, grid, U.v)
     )
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∂x²_caa(i, j, k, grid, U.w)
-    + closure.νh * ∂y²_aca(i, j, k, grid, U.w)
+      closure.νh * ∇h²_cca(i, j, k, grid, U.w)
     + closure.νv * ∂z²_aaf(i, j, k, grid, U.w)
     )
 
@@ -62,8 +60,7 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity,
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
 
-    return (  κh * ∂x²_caa(i, j, k, grid, c)
-            + κh * ∂y²_aca(i, j, k, grid, c)
+    return (  κh * ∇h²_cca(i, j, k, grid, c)
             + κv * ∂z²_aac(i, j, k, grid, c)
            )
 end
