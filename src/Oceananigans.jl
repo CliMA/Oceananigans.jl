@@ -12,7 +12,6 @@ export
     CPU, GPU,
 
     # Constants
-    FPlane, BetaPlane,
     second, minute, hour, day,
 
     # Grids
@@ -27,8 +26,14 @@ export
     # Forcing functions
     ModelForcing, SimpleForcing,
 
-    # Equation of state
+    # Coriolis forces
+    FPlane, BetaPlane,
+
+    # Buoyancy and equations of state
     BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
+
+    # Surface waves via Craik-Leibovich equations
+    SurfaceWaves,
 
     # Boundary conditions
     BoundaryCondition,
@@ -252,6 +257,7 @@ using .TurbulenceClosures
 
 include("coriolis.jl")
 include("buoyancy.jl")
+include("SurfaceWaves.jl")
 include("boundary_conditions.jl")
 include("halo_regions.jl")
 include("Solvers/Solvers.jl")
@@ -269,5 +275,7 @@ include("TimeSteppers/TimeSteppers.jl")
 using .TimeSteppers
 
 include("AbstractOperations/AbstractOperations.jl")
+
+using .SurfaceWaves
 
 end # module
