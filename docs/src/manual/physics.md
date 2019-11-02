@@ -198,6 +198,25 @@ in terms of the horizontal viscosities and diffusivities $\nu_h$ and $\kappa_{h}
 vertical viscosity and diffusivities $\nu_v$ and $\kappa_{v}$.
 Each tracer may have a unique diffusivity components $\kappa_h$ and $\kappa_v$.
 
+### Constant anisotropic biharmonic diffusivity
+
+In Oceananigans.jl, a constant anisotropic biharmonic diffusivity implies a constant tensor 
+diffusivity $\nu_{j k}$ and stress $\bm{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i$ with non-zero 
+components $\nu_{11} = \nu_{22} = \nu_h$ and $\nu_{33} = \nu_v$.
+With this form the kinematic stress divergence becomes
+```math
+\bm{\nabla} \bm{\cdot} \bm{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2 
+                                    + \nu_v \partial_z^4 \right ] \bm{u} \, ,
+```
+and diffusive flux divergence
+```math
+\bm{\nabla} \bm{\cdot} \bm{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2 
+                                    + \kappa_{v} \partial_z^4 \right ] c \, .
+```
+in terms of the horizontal biharmonic viscosities and diffusivities $\nu_h$ and $\kappa_{h}$ and the 
+vertical biharmonic viscosity and diffusivities $\nu_v$ and $\kappa_{v}$.
+Each tracer may have a unique diffusivity components $\kappa_h$ and $\kappa_v$.
+
 ### Smagorinsky-Lilly turbulence closure
 
 In the turbulence closure proposed by Lilly (1962) and Smagorinsky (1963), 
