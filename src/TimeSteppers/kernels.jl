@@ -8,7 +8,7 @@ function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, p
         @inbounds Gu[i, j, k] = ( - u∇u(grid, U.u, U.v, U.w, i, j, k)
                                   - x_f_cross_U(i, j, k, grid, coriolis, U)
                                   - ∂x_p(i, j, k, grid, pHY′)
-                                  + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                  + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
                                   + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_uˢ(i, j, k, grid, surface_waves, time)
                                   + F.u(i, j, k, grid, time, U, C, parameters)
@@ -23,7 +23,7 @@ function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, p
         @inbounds Gv[i, j, k] = ( - u∇v(grid, U.u, U.v, U.w, i, j, k)
                                   - y_f_cross_U(i, j, k, grid, coriolis, U)
                                   - ∂y_p(i, j, k, grid, pHY′)
-                                  + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                  + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
                                   + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_vˢ(i, j, k, grid, surface_waves, time)
                                   + F.v(i, j, k, grid, time, U, C, parameters))
@@ -36,7 +36,7 @@ function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, p
     @loop_xyz i j k grid begin
         @inbounds Gw[i, j, k] = ( - u∇w(grid, U.u, U.v, U.w, i, j, k)
                                   - z_f_cross_U(i, j, k, grid, coriolis, U)
-                                  + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U.u, U.v, U.w, K)
+                                  + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
                                   + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_wˢ(i, j, k, grid, surface_waves, time)
                                    + F.w(i, j, k, grid, time, U, C, parameters))
@@ -45,11 +45,11 @@ function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, p
 end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-function calculate_Gc!(Gc, grid, closure, c, tracer_index, U, C, K, Fc, parameters, time)
+function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gc[i, j, k] = (-div_flux(grid, U.u, U.v, U.w, c, i, j, k)
-                                    + ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, K)
-                                    + Fc(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gc[i, j, k] = (- div_flux(grid, U.u, U.v, U.w, c, i, j, k)
+                                 + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
+                                 + Fc(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -59,22 +59,22 @@ function calculate_interior_source_terms!(G, arch, grid, coriolis, surface_waves
 
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F,
-                                                                            pHY′, parameters, time)
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F,
-                                                                            pHY′, parameters, time)
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
 
-    @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F,
-                                                                            parameters, time)
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time))
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
         @inbounds Fc = F[tracer_index+3]
         @inbounds  c = C[tracer_index]
-        @launch device(arch) threads=(Tx, Ty) blocks=(Bx, By, Bz) calculate_Gc!(Gc, grid, closure, c, Val(tracer_index),
-                                                                                U, C, K, Fc, parameters, time)
 
+        @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, parameters, time))
     end
 
     return nothing

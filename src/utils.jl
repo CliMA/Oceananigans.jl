@@ -198,7 +198,7 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
-@inline datatuple(obj::AbstractField) = obj.data
+@inline datatuple(obj::Tuple) = Tuple(datatuple(o) for o in obj)
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
@@ -320,7 +320,7 @@ fields `u`, `v`, and `w`, and may have some fields corresponding to
 the names in `tracers`. `tracer_default` is a function that produces
 a default tuple value for each tracer if not included in `initial_tuple`.
 """
-function with_tracers(tracers, initial_tuple, tracer_default; with_velocities=false)
+function with_tracers(tracers, initial_tuple::NamedTuple, tracer_default; with_velocities=false)
     solution_values = [] # Array{Any, 1}
     solution_names = []
 
