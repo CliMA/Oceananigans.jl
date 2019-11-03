@@ -14,14 +14,6 @@
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
 
 ####
-#### Pressure gradient terms
-####
-
-@inline ∂x_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂xᶠᵃᵃ(i, j, k, grid, C.Θᵐ)
-@inline ∂y_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂yᵃᶠᵃ(i, j, k, grid, C.Θᵐ)
-@inline ∂z_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂xᵃᵃᶠ(i, j, k, grid, C.Θᵐ)
-
-####
 #### Buoyancy term
 ####
 
