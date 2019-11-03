@@ -23,7 +23,6 @@ const hpbcs = HorizontallyPeriodicBCs()
 
 @inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
 
-
 @inline function RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
@@ -50,7 +49,7 @@ end
 end
 
 @inline Rρ(i, j, k, grid, Ũ) = -divᶜᶜᶜ(i, j, k, grid, Ũ.U, Ũ.V, Ũ.W)
-@inline RC(i, j, k, grid, ρᵈ, Ũ, C) = -div_flux(i, j, k, grid, ρᵈ, Ũ.U, Ũ.V, Ũ.W, C)
+@inline RC(i, j, k, grid, ρᵈ, Ũ, C, FC) = @inbounds -div_flux(i, j, k, grid, ρᵈ, Ũ.U, Ũ.V, Ũ.W, C) + FC[i, j, k]
 
 ####
 #### Utilities for time stepping
@@ -82,7 +81,8 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     C = model.tracers
     F = model.slow_forcings
     R = model.right_hand_sides
-    
+    IV = model.intermediate_vars
+
     ρᵈ = model.density
     Θᵐ = model.tracers.Θᵐ
 
@@ -96,20 +96,30 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
-    for rk3_iter in 1:3
+    for rk3_iter in 1:1
         @info "RK3 step #$rk3_iter..."
 
-        @info "Computing right hand sides..."
-        fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
-        fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
-        compute_right_hand_sides!(R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
-        
+        @info "  Computing right hand sides..."
+        if rk3_iter == 1
+            compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
+            fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
+            fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
+        else
+            IV_Ũ = (U=IV.U, V=IV.V, W=IV.W)
+            IV_C = (Θᵐ=IV.Θᵐ, Qv=IV.Qv, Ql=IV.Ql, Qi=IV.Qi)
+            compute_rhs_args = (R, grid, IV.ρ, IV_Ũ, model.prognostic_temperature, model.buoyancy, p₀, IV_C, F)
+            fill_halo_regions!(IV.ρ.data, hpbcs, arch, grid)
+            fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C)), hpbcs, arch, grid)
+        end
+
+        compute_right_hand_sides!(compute_rhs_args...)
+
         # n, Δτ = acoustic_time_steps(rk3_iter)
         # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
 
-        I = rk3_iter == 3 ? Φ⁺ : model.intermediate_vars
-        @info "Advancing variables..."
-        advance_variables!(I, grid, Ũ, C, ρᵈ, R; Δt=rk3_time_step(rk3_iter, Δt))
+        @info "  Advancing variables..."
+        LHS = rk3_iter == 3 ? Φ⁺ : IV
+        advance_variables!(LHS, grid, Ũ, C, ρᵈ, R; Δt=rk3_time_step(rk3_iter, Δt))
     end
 
     return nothing
@@ -135,17 +145,19 @@ end
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
 function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, p₀, C, F)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.U)
-        @inbounds R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.V)
-        @inbounds R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.W)
-       
-        @inbounds R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
+    @inbounds begin
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.U)
+            R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.V)
+            R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.W)
 
-        @inbounds R.Θᵐ[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Θᵐ)
-        @inbounds R.Qv[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Qv)
-        @inbounds R.Ql[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Ql)
-        @inbounds R.Qi[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Qi)
+            R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
+
+            R.Θᵐ[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Θᵐ, F.Θᵐ)
+            R.Qv[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Qv, F.Qv)
+            R.Ql[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Ql, F.Ql)
+            R.Qi[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C.Qi, F.Qi)
+        end
     end
 end
 
@@ -160,16 +172,18 @@ Updates variables according to the RK3 time step:
     3. Φ(t+Δt) = Φᵗ + Δt   * R(Φ**)
 """
 function advance_variables!(I, grid, Ũᵗ, Cᵗ, ρᵗ, R; Δt)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        I.U[i, j, k] = Ũᵗ.U[i, j, k] + Δt * R.U[i, j, k]
-        I.V[i, j, k] = Ũᵗ.V[i, j, k] + Δt * R.V[i, j, k]
-        I.W[i, j, k] = Ũᵗ.W[i, j, k] + Δt * R.W[i, j, k]
-        I.ρ[i, j, k] =   ρᵗ[i, j, k] + Δt * R.ρ[i, j, k]
-        
-        I.Θᵐ[i, j, k] = Cᵗ.Θᵐ[i, j, k] + Δt * R.Θᵐ[i, j, k]
-        I.Qv[i, j, k] = Cᵗ.Qv[i, j, k] + Δt * R.Qv[i, j, k]
-        I.Ql[i, j, k] = Cᵗ.Ql[i, j, k] + Δt * R.Ql[i, j, k]
-        I.Qi[i, j, k] = Cᵗ.Qi[i, j, k] + Δt * R.Qi[i, j, k]
+    @inbounds begin
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            I.U[i, j, k] = Ũᵗ.U[i, j, k] + Δt * R.U[i, j, k]
+            I.V[i, j, k] = Ũᵗ.V[i, j, k] + Δt * R.V[i, j, k]
+            I.W[i, j, k] = Ũᵗ.W[i, j, k] + Δt * R.W[i, j, k]
+            I.ρ[i, j, k] =   ρᵗ[i, j, k] + Δt * R.ρ[i, j, k]
+
+            I.Θᵐ[i, j, k] = Cᵗ.Θᵐ[i, j, k] + Δt * R.Θᵐ[i, j, k]
+            I.Qv[i, j, k] = Cᵗ.Qv[i, j, k] + Δt * R.Qv[i, j, k]
+            I.Ql[i, j, k] = Cᵗ.Ql[i, j, k] + Δt * R.Ql[i, j, k]
+            I.Qi[i, j, k] = Cᵗ.Qi[i, j, k] + Δt * R.Qi[i, j, k]
+        end
     end
 end
 
