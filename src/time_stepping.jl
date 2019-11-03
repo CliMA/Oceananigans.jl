@@ -1,5 +1,6 @@
 using JULES.Operators
 
+using Oceananigans: fill_halo_regions!, datatuple
 import Oceananigans: time_step!
 
 ####
@@ -91,7 +92,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
 
     @info "Computing slow forcings..."
-    fill_halo_regions!(merge(Ũ, C), hpbcs, arch, grid)
+    fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
@@ -99,8 +100,8 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
         @info "RK3 step #$rk3_iter..."
 
         @info "Computing right hand sides..."
-        fill_halo_regions!(ρᵈ, hpbcs, arch, grid)
-        fill_halo_regions!(merge(Ũ, C), hpbcs, arch, grid)
+        fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
+        fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
         compute_right_hand_sides!(R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
         
         # n, Δτ = acoustic_time_steps(rk3_iter)
