@@ -1,5 +1,5 @@
 ####
-#### Utilities for acoustic time stepping
+#### Utilities for time stepping
 ####
 
 function rk3_time_step(rk3_iter, Δt)
@@ -52,16 +52,6 @@ function time_step!(model; Δt, nₛ)
     return nothing
 end
 
-####
-#### Calculation of "slow" forcings
-####
-
-@inline FU(i, j, k, ρ, Ũ) = @inbounds -(ρ.d[i, j, k] / ρ.m[i, j, k]) * x_f_cross_U(i, j, k, grid, rotation, Ũ) + μ∇²u(i, j, k, Ũ.U)
-@inline FV(i, j, k, ρ, Ũ) = @inbounds -(ρ.d[i, j, k] / ρ.m[i, j, k]) * y_f_cross_U(i, j, k, grid, rotation, Ũ) + μ∇²v(i, j, k, Ũ.V)
-@inline FW(i, j, k, ρ, Ũ) = @inbounds -(ρ.d[i, j, k] / ρ.m[i, j, k]) * z_f_cross_U(i, j, k, grid, rotation, Ũ) + μ∇²w(i, j, k, Ũ.W)
-
-@inline FC(i, j, k, C) = κ∇²(i, j, k, C)
-
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
@@ -77,20 +67,6 @@ function compute_slow_forcings!(F, Ũ, ρ, C)
         @inbounds F.Qi[i, j, k] = FC(i, j, k, C.Qi)
     end
 end
-
-####
-#### Calculation of "fast" forcings
-####
-
-@inline buoyancy_perturbation(i, j, k, buoyancy::DryIdealGas, args...) = nothing
-
-@inline RU(i, j, k, Ũ, ρ, S, FU) = @inbounds -∇ρũu(i, j, k, Ũ) - (ρ.d[i, j, k]/ρ.m[i, j, k]) * ∂x_p′(i, j, k, S, ρ) + FU[i, j, k]
-@inline RV(i, j, k, Ũ, ρ, S, FU) = @inbounds -∇ρũv(i, j, k, Ũ) - (ρ.d[i, j, k]/ρ.m[i, j, k]) * ∂y_p′(i, j, k, S, ρ) + FV[i, j, k]
-@inline RW(i, j, k, Ũ, ρ, S, FU) = @inbounds -∇ρũw(i, j, k, Ũ) - (ρ.d[i, j, k]/ρ.m[i, j, k]) * (∂z_p′(i, j, k, S, ρ) + buoyancy_perturbation(i, j, k, B, args...)) + FW[i, j, k]
-
-@inline Rρd(i, j, k, Ũ) = -div(i, j, k, Ũ)
-
-@inline RC(i, j, k, Ũ, C) = -div_flux(i, j, k, Ũ, C)
 
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.

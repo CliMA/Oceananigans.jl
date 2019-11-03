@@ -8,9 +8,10 @@
 #### Coriolis terms
 ####
 
-@inline x_f_cross_U(i, j, k, grid, f, Ũ) = - f * ℑxyᶠᶜᵃ(i, j, k, grid, Ũ.V)
-@inline y_f_cross_U(i, j, k, grid, f, Ũ) =   f * ℑxyᶜᶠᵃ(i, j, k, grid, Ũ.U)
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, f, Ũ) where FT = zero(FT)
+
+@inline x_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
+@inline y_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
+@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
 
 ####
 #### Pressure gradient terms
@@ -149,3 +150,4 @@ end
 
 @inline Rρ(i, j, k, grid, Ũ) = -divᶜᶜᶜ(i, j, k, grid, Ũ.U, Ũ.V, Ũ.W)
 @inline RC(i, j, k, grid, ρᵈ, Ũ, C) = -div_flux(i, j, k, grid, ρᵈ, Ũ.U, Ũ.V, Ũ.W, C)
+
