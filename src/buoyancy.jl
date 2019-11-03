@@ -34,5 +34,5 @@ struct IdealGas{FT} <: AbstractEquationOfState
     γ  :: FT
 end
 
-IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = DryIdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
+IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
 

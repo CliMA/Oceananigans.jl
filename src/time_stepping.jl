@@ -61,7 +61,7 @@ function compute_slow_forcings!(F, Ũ, ρ, C)
         @inbounds F.V[i, j, k] = FV(i, j, k, ρ, Ũ)
         @inbounds F.W[i, j, k] = FW(i, j, k, ρ, Ũ)
 
-        @inbounds F.S[i, j, k]  = FC(i, j, k, C.S)
+        @inbounds F.Θᵐ[i, j, k] = FC(i, j, k, C.Θᵐ)
         @inbounds F.Qv[i, j, k] = FC(i, j, k, C.Qv)
         @inbounds F.Ql[i, j, k] = FC(i, j, k, C.Ql)
         @inbounds F.Qi[i, j, k] = FC(i, j, k, C.Qi)

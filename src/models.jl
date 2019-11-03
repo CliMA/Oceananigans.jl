@@ -37,7 +37,7 @@ function CompressibleModel(;
               dry_density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
                   tracers = (:Θᵐ, :Qv, :Ql, :Qi),
-                 buoyancy = DryIdealGas(float_type),
+                 buoyancy = IdealGas(float_type),
                  coriolis = nothing,
          surface_pressure = 100000,
                base_state = nothing,
@@ -89,7 +89,7 @@ function ForcingFields(arch, grid, tracernames)
     return merge(momenta, tracers)
 end
 
-function IntermediateFields(architecture, grid, tracernames)
+function IntermediateFields(arch, grid, tracernames)
     U = FaceFieldX(arch, grid)
     V = FaceFieldY(arch, grid)
     W = FaceFieldZ(arch, grid)
