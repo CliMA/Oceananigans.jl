@@ -46,6 +46,8 @@ function CompressibleModel(;
         intermediate_vars = IntermediateFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
    )
+    
+    validate_prognostic_temperature(prognostic_temperature, tracers)
 
     surface_pressure = float_type(surface_pressure)
     tracers = TracerFields(architecture, grid, tracers)
@@ -87,7 +89,7 @@ function ForcingFields(arch, grid, tracernames)
     return merge(momenta, tracers)
 end
 
-function IntermediateFields(architecture, grid, tracernames(tracers))
+function IntermediateFields(architecture, grid, tracernames)
     U = FaceFieldX(arch, grid)
     V = FaceFieldY(arch, grid)
     W = FaceFieldZ(arch, grid)
