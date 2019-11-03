@@ -8,6 +8,7 @@ using Oceananigans: AbstractBuoyancy, AbstractEquationOfState
 # https://en.wikipedia.org/wiki/Gas_constant
 # https://en.wikipedia.org/wiki/U.S._Standard_Atmosphere
 # https://en.wikipedia.org/wiki/Heat_capacity_ratio#Real-gas_relations
+
 const gas_constant = 8.31446261815324  # Universal gas constant [J/mol/K]
 const molar_mass_dry_air = 28.97e-3    # Molar mass of dry air [kg/mol]
 const molar_mass_moist_air = 18.015e-3 # Molar mass of moist air [kg/mol]
@@ -24,13 +25,14 @@ const Rᵛ_air = gas_constant / molar_mass_moist_air  # Specific gas constant fo
 #### Dry ideal gas
 ####
 
-struct DryIdealGas{FT} <: AbstractEquationOfState
-    R  :: FT
+struct IdealGas{FT} <: AbstractEquationOfState
+    Rᵈ :: FT
+    Rᵛ :: FT
     cₚ :: FT
     cᵥ :: FT
     κ  :: FT
     γ  :: FT
 end
 
-DryIdealGas(FT; R=Rᵈ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = DryIdealGas{FT}(R, cₚ, cᵥ, κ, γ)
+IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = DryIdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
 
