@@ -34,9 +34,9 @@ function CompressibleModel(;
                float_type = Float64,
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
-                densities = DensityFields(architecture, grid),
+              dry_density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
-                  tracers = (:S, :Qv, :Ql, :Qi),
+                  tracers = (:Θᵐ, :Qv, :Ql, :Qi),
                  buoyancy = DryIdealGas(float_type),
                  coriolis = nothing,
          surface_pressure = 100000,
@@ -50,9 +50,9 @@ function CompressibleModel(;
     surface_pressure = float_type(surface_pressure)
     tracers = TracerFields(architecture, grid, tracers)
 
-    return CompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_pressure,
-                             base_state, momenta, densities, tracers, slow_forcings,
-                             fast_forcings, acoustic_time_stepper)
+    return CompressibleModel(architecture, grid, clock, momenta, dry_density, prognostic_temperature,
+                             tracers, buoyancy, coriolis, surface_pressure, base_state, slow_forcings,
+                             right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
 ####
@@ -64,12 +64,6 @@ function MomentumFields(arch, grid)
     V = FaceFieldY(arch, grid)
     W = FaceFieldZ(arch, grid)
     return (U=U, V=V, W=W)
-end
-
-function DensityFields(arch, grid)
-    ρd = CellField(arch, grid)
-    ρm = CellField(arch, grid)
-    return (d=ρd, m=ρm)
 end
 
 tracernames(::Nothing) = ()
