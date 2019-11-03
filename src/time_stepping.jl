@@ -96,7 +96,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
-    for rk3_iter in 1:1
+    for rk3_iter in 1:3
         @info "RK3 step #$rk3_iter..."
 
         @info "  Computing right hand sides..."
@@ -129,15 +129,17 @@ end
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
 function compute_slow_forcings!(F, grid, coriolis, Ũ, ρᵈ, C)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
-        @inbounds F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
-        @inbounds F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+    @inbounds begin
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+            F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+            F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
 
-        @inbounds F.Θᵐ[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Θᵐ)
-        @inbounds F.Qv[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qv)
-        @inbounds F.Ql[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Ql)
-        @inbounds F.Qi[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qi)
+            F.Θᵐ[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Θᵐ)
+            F.Qv[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qv)
+            F.Ql[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Ql)
+            F.Qi[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qi)
+        end
     end
 end
 
