@@ -1,3 +1,5 @@
+using JULES.Operators
+
 using Oceananigans: AbstractBuoyancy, AbstractEquationOfState
 
 ####
@@ -35,4 +37,10 @@ struct IdealGas{FT} <: AbstractEquationOfState
 end
 
 IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
+
+####
+#### Buoyancy term
+####
+
+@inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C) = grav * ρᵐ(i, j, k, grid, ρᵈ, C)
 

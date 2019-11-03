@@ -42,8 +42,8 @@ function CompressibleModel(;
          surface_pressure = 100000,
                base_state = nothing,
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
-         right_hand_sides = ForcingFields(architecture, grid, tracernames(tracers)),
-        intermediate_vars = IntermediateFields(architecture, grid, tracernames(tracers)),
+         right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
+        intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
    )
     
@@ -89,7 +89,7 @@ function ForcingFields(arch, grid, tracernames)
     return merge(momenta, tracers)
 end
 
-function IntermediateFields(arch, grid, tracernames)
+function RightHandSideFields(arch, grid, tracernames)
     U = FaceFieldX(arch, grid)
     V = FaceFieldY(arch, grid)
     W = FaceFieldZ(arch, grid)

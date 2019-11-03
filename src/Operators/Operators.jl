@@ -3,8 +3,13 @@ module Operators
 using Oceananigans
 
 export
-    FU, FV, FW, FC,
-    RU, RV, RW, Rρ, RC
+    ρᵐ, ρᵈ_over_ρᵐ,
+    x_f_cross_U, y_f_cross_U, z_f_cross_U,
+    hdivᶜᶜᵃ, divᶜᶜᶜ, ∇²,
+    div_flux, div_κ∇c,
+    div_ρuũ, div_ρvũ, div_ρwũ,
+    div_μ∇u, div_μ∇v, div_μ∇w
+
 
 include("areas_and_volumes.jl")
 include("difference_operators.jl")
