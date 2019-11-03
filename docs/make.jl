@@ -92,5 +92,6 @@ leftovers = filter(x -> occursin(".jld2", x), readdir(GENERATED_DIR))
 for fname in leftovers
     fpath = joinpath(GENERATED_DIR, fname)
     rm(fpath, force=true)
+    @info "Deleted: $fpath"
 end
 
