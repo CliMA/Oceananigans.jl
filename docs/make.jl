@@ -79,3 +79,18 @@ makedocs(
 )
 
 deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
+
+####
+#### Delete leftover JLD2 files.
+#### See: https://github.com/climate-machine/Oceananigans.jl/issues/509
+####
+
+const GENERATED_DIR = joinpath(@__DIR__, "build/generated")
+
+@info "Deleting leftover JLD2 files..."
+leftovers = filter(x -> occursin(".jld2", x), readdir(GENERATED_DIR))
+for fname in leftovers
+    fpath = joinpath(GENERATED_DIR, fname)
+    rm(fpath, force=true)
+end
+
