@@ -1,3 +1,7 @@
+using JULES.Operators
+
+import Oceananigans: time_step!
+
 ####
 #### Utilities for time stepping
 ####
@@ -20,65 +24,69 @@ acoustic_time_stepping!(args...) = nothing
 #### Time-stepping algorithm
 ####
 
-function time_step!(model; Δt, nₛ)
-    arch = model.arch
+function time_step!(model::CompressibleModel; Δt, nₛ)
+    arch = model.architecture
     grid = model.grid
 
     Ũ = model.momenta
-    ρ = model.densities
-    F = model.slow_forcings
-    R = model.fast_forcings
-
     C = model.tracers
-    S = model.tracers.S
+    F = model.slow_forcings
+    R = model.right_hand_sides
+    
+    ρᵈ = model.density
+    Θᵐ = model.tracers.Θᵐ
 
-    # Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ...)
+    # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
+    Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
 
     # TODO: Fill halo regions for U, V, W, C
-    compute_slow_forcings!(F, Ũ, ρ, C)
+    compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
     for rk3_iter in 1:3
         # TODO: Fill halo regions for U, V, W, ρ, C
-        compute_fast_forcings!(R, Ũ, ρ, F)
+        compute_right_hand_sides!(R, grid, Ũ, ρᵈ, F)
 
         # n, Δτ = acoustic_time_steps(rk3_iter)
         # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
 
         I = rk3_iter == 3 ? Φ⁺ : model.intermediate_vars
-        advance_variables!(I, Ũ, C, ρ, R; Δt=rk3_time_step(rk3_iter))
+        advance_variables!(I, grid, Ũ, C, ρᵈ, R; Δt=rk3_time_step(rk3_iter))
     end
 
     return nothing
 end
 
+const μ = 1e2
+const κ = 1e-2
+
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F, Ũ, ρ, C)
+function compute_slow_forcings!(F, grid, coriolis, Ũ, ρᵈ, C)
     for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds F.U[i, j, k] = FU(i, j, k, ρ, Ũ)
-        @inbounds F.V[i, j, k] = FV(i, j, k, ρ, Ũ)
-        @inbounds F.W[i, j, k] = FW(i, j, k, ρ, Ũ)
+        @inbounds F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+        @inbounds F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+        @inbounds F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
 
-        @inbounds F.Θᵐ[i, j, k] = FC(i, j, k, C.Θᵐ)
-        @inbounds F.Qv[i, j, k] = FC(i, j, k, C.Qv)
-        @inbounds F.Ql[i, j, k] = FC(i, j, k, C.Ql)
-        @inbounds F.Qi[i, j, k] = FC(i, j, k, C.Qi)
+        @inbounds F.Θᵐ[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Θᵐ)
+        @inbounds F.Qv[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qv)
+        @inbounds F.Ql[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Ql)
+        @inbounds F.Qi[i, j, k] = FC(i, j, k, grid, κ, ρᵈ, C.Qi)
     end
 end
 
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_fast_forcings!(R, Ũ, ρ, F)
+function compute_right_hand_sides!(R, grid, Ũ, ρ, F)
     for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
         @inbounds R.U[i, j, k] = RU(i, j, k, ρ, Ũ)
         @inbounds R.V[i, j, k] = RV(i, j, k, ρ, Ũ)
         @inbounds R.W[i, j, k] = RW(i, j, k, ρ, Ũ)
         @inbounds R.ρd[i, j, k] = Rρd(i, j, k, Ũ)
 
-        @inbounds R.S[i, j, k]  = RC(i, j, k, Ũ, C.S)
+        @inbounds R.Θᵐ[i, j, k]  = RC(i, j, k, Ũ, C.Θᵐ)
         @inbounds R.Qv[i, j, k] = RC(i, j, k, Ũ, C.Qv)
         @inbounds R.Ql[i, j, k] = RC(i, j, k, Ũ, C.Ql)
         @inbounds R.Qi[i, j, k] = RC(i, j, k, Ũ, C.Qi)
@@ -95,7 +103,7 @@ Updates variables according to the RK3 time step:
     2. Φ**     = Φᵗ + Δt/2 * R(Φ*)
     3. Φ(t+Δt) = Φᵗ + Δt   * R(Φ**)
 """
-function advance_variables!(IV, Ũᵗ, Cᵗ, ρᵗ, R; Δt)
+function advance_variables!(IV, grid, Ũᵗ, Cᵗ, ρᵗ, R; Δt)
     for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
         I.U[i, j, k] = Ũᵗ.U[i, j, k] + Δt * R.U[i, j, k]
         I.V[i, j, k] = Ũᵗ.V[i, j, k] + Δt * R.V[i, j, k]

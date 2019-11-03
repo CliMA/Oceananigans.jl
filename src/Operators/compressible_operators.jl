@@ -17,9 +17,9 @@
 #### Pressure gradient terms
 ####
 
-@inline ∂x_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂xᶠᵃᵃ(i, j, k, grid, Θᵐ)
-@inline ∂y_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂yᵃᶠᵃ(i, j, k, grid, Θᵐ)
-@inline ∂z_pressure(i, j, k, grid, gas, Θᵐ) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, Θᵐ) * ∂xᵃᵃᶠ(i, j, k, grid, Θᵐ)
+@inline ∂x_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂xᶠᵃᵃ(i, j, k, grid, C.Θᵐ)
+@inline ∂y_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂yᵃᶠᵃ(i, j, k, grid, C.Θᵐ)
+@inline ∂z_pressure(i, j, k, grid, ::ModifiedPotentialTemperature, gas::IdealGas, C) = gas.γ * gas.Rᵈ * Π(i, j, k, grid, gas, C.Θᵐ) * ∂xᵃᵃᶠ(i, j, k, grid, C.Θᵐ)
 
 ####
 #### Buoyancy term
@@ -134,9 +134,9 @@ end
 #### "Slow forcing" terms
 ####
 
-@inline FU(i, j, k, grid, f, μ, ρᵈ, Ũ) = -x_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇u(i, j, k, grid, μ, ρᵈ, U)
-@inline FV(i, j, k, grid, f, μ, ρᵈ, Ũ) = -y_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇v(i, j, k, grid, μ, ρᵈ, V)
-@inline FW(i, j, k, grid, f, μ, ρᵈ, Ũ) = -z_f_cross_U(i, j, k, grid, f, Ũ) + div_μ∇w(i, j, k, grid, μ, ρᵈ, W)
+@inline FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -x_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇u(i, j, k, grid, μ, ρᵈ, U)
+@inline FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -y_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇v(i, j, k, grid, μ, ρᵈ, V)
+@inline FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -z_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇w(i, j, k, grid, μ, ρᵈ, W)
 
 @inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
 
