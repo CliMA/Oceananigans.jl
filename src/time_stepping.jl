@@ -2,7 +2,15 @@ using JULES.Operators
 
 import Oceananigans: time_step!
 
+####
+#### Dirty hacks!
+####
+
 const grav = 9.81
+const μ = 1e2
+const κ = 1e-2
+
+const hpbcs = HorizontallyPeriodicBCs()
 
 ####
 #### Element-wise forcing and right-hand-side calculations
@@ -82,16 +90,17 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
     Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
 
-    # TODO: Fill halo regions for U, V, W, C
     @info "Computing slow forcings..."
+    fill_halo_regions!(merge(Ũ, C), hpbcs, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
     for rk3_iter in 1:3
         @info "RK3 step #$rk3_iter..."
 
-        # TODO: Fill halo regions for U, V, W, ρ, C
         @info "Computing right hand sides..."
+        fill_halo_regions!(ρᵈ, hpbcs, arch, grid)
+        fill_halo_regions!(merge(Ũ, C), hpbcs, arch, grid)
         compute_right_hand_sides!(R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
         
         # n, Δτ = acoustic_time_steps(rk3_iter)
@@ -104,9 +113,6 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
 
     return nothing
 end
-
-const μ = 1e2
-const κ = 1e-2
 
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
