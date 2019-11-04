@@ -10,6 +10,18 @@ function summarize_regression_test(field_names, fields, fields_correct)
     end
 end
 
+function summarize_regression_test_parent(field_names, fields, fields_correct)
+    for (field_name, φ, φ_c) in zip(field_names, fields, fields_correct)
+        φ_min = minimum(Array(φ.data.parent) .- φ_c.parent)
+        φ_max = maximum(Array(φ.data.parent) .- φ_c.parent)
+        φ_mean = mean(Array(φ.data.parent) .- φ_c.parent)
+        φ_abs_mean = mean(abs.(Array(φ.data.parent) .- φ_c.parent))
+        φ_std = std(Array(φ.data.parent) .- φ_c.parent)
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+end
+
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")

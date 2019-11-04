@@ -19,15 +19,26 @@ function run_thermal_bubble_regression_test(arch)
 
     regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
 
-    # Uncomment to generate regression data.
-    # outputs = Dict("v" => model.velocities.v,
-    #                "u" => model.velocities.u,
-    #                "w" => model.velocities.w,
-    #                "T" => model.tracers.T,
-    #                "S" => model.tracers.S)
-    #
-    # nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
-    # push!(model.output_writers, nc_writer)
+    ####
+    #### Uncomment to generate regression data.
+    ####
+
+    #=
+    @warn ("Generating new data for the thermal bubble regression test.")
+
+    outputs = Dict("v" => model.velocities.v,
+                   "u" => model.velocities.u,
+                   "w" => model.velocities.w,
+                   "T" => model.tracers.T,
+                   "S" => model.tracers.S)
+
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
+    push!(model.output_writers, nc_writer)
+    =#
+
+    ####
+    #### Regression test
+    ####
 
     time_step!(model, 10, Δt)
 
