@@ -1,40 +1,34 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
 
-interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx, 
-                            grid.Hy+1:grid.Ny+grid.Hy, 
-                            grid.Hz+1:grid.Nz+grid.Hz, 
-                        )
-
-# Temporary until k index is reversed
-const Nx, Ny, Nz = 16, 16, 16
-const Hx, Hy, Hz = 1, 1, 1
+interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
+                            grid.Hy+1:grid.Ny+grid.Hy,
+                            grid.Hz+1:grid.Nz+grid.Hz)
 
 function get_fields_from_checkpoint(filename)
-
     file = jldopen(filename)
 
     solution = (
-        u = reverse(file["velocities/u"]; dims=3),
-        v = reverse(file["velocities/v"]; dims=3),
-        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["velocities/w"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
-        T = reverse(file["tracers/T"]; dims=3),
-        S = reverse(file["tracers/S"]; dims=3)
+        u = file["velocities/u"],
+        v = file["velocities/v"],
+        w = file["velocities/w"],
+        T = file["tracers/T"],
+        S = file["tracers/S"]
     )
 
     Gⁿ = (
-        u = reverse(file["timestepper/Gⁿ/Gu"]; dims=3),
-        v = reverse(file["timestepper/Gⁿ/Gv"]; dims=3),
-        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["timestepper/Gⁿ/Gw"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
-        T = reverse(file["timestepper/Gⁿ/GT"]; dims=3),
-        S = reverse(file["timestepper/Gⁿ/GS"]; dims=3)
+        u = file["timestepper/Gⁿ/u"],
+        v = file["timestepper/Gⁿ/v"],
+        w = file["timestepper/Gⁿ/w"],
+        T = file["timestepper/Gⁿ/T"],
+        S = file["timestepper/Gⁿ/S"]
     )
 
     G⁻ = (
-        u = reverse(file["timestepper/G⁻/Gu"]; dims=3),
-        v = reverse(file["timestepper/G⁻/Gv"]; dims=3),
-        w = cat(zeros(Nx+2Hx, Ny+2Hy), reverse(file["timestepper/G⁻/Gw"][:, :, 2:Nz+2Hz]; dims=3); dims=3),
-        T = reverse(file["timestepper/G⁻/GT"]; dims=3),
-        S = reverse(file["timestepper/G⁻/GS"]; dims=3)
+        u = file["timestepper/G⁻/u"],
+        v = file["timestepper/G⁻/v"],
+        w = file["timestepper/G⁻/w"],
+        T = file["timestepper/G⁻/T"],
+        S = file["timestepper/G⁻/S"]
     )
 
     close(file)
@@ -70,9 +64,16 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
       boundary_conditions = BoundaryConditions(u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
-    ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
+    # The type of the underlying data, not the offset array.
+    ArrayType = typeof(model.velocities.u.data.parent)
+
+    ####
+    #### Uncomment the block below to generate regression data.
+    ####
 
     #=
+    @warn ("You are generating new data for the ocean LES regression test.")
+
     # Initialize model: random noise damped at top and bottom
     Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
     T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-2 * Ξ(z)
@@ -81,15 +82,17 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     time_step!(model, spinup_steps-test_steps, Δt)
 
-    model.output_writers[:checkpointer] = Checkpointer(model;
-                                                       frequency = test_steps,
-                                                          prefix = name * "_",
-                                                             dir = joinpath(dirname(@__FILE__), "data")
-                                                      )
+    checkpointer = Checkpointer(model; frequency = test_steps, prefix = name * "_",
+                                       dir = joinpath(dirname(@__FILE__), "data"))
+    model.output_writers[:checkpointer] = checkpointer
 
     time_step!(model, 2test_steps, Δt)
     pop!(model.output_writers, :checkpointer)
     =#
+
+    ####
+    #### Regression test
+    ####
 
     initial_filename = joinpath(dirname(@__FILE__), "data", name * "_$spinup_steps.jld2")
 

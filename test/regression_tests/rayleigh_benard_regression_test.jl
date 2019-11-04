@@ -39,7 +39,9 @@ function run_rayleigh_benard_regression_test(arch)
                     forcing = ModelForcing(c=Fc)
     )
 
-    ArrayType = typeof(model.velocities.u.data.parent)  # The type of the underlying data, not the offset array.
+    # The type of the underlying data, not the offset array.
+    ArrayType = typeof(model.velocities.u.data.parent)
+    
     Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
 
     spinup_steps = 1000

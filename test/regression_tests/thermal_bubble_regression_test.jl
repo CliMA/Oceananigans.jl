@@ -20,11 +20,11 @@ function run_thermal_bubble_regression_test(arch)
     regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
 
     ####
-    #### Uncomment to generate regression data.
+    #### Uncomment the block below to generate regression data.
     ####
 
     #=
-    @warn ("Generating new data for the thermal bubble regression test.")
+    @warn ("You are generating new data for the thermal bubble regression test.")
 
     outputs = Dict("v" => model.velocities.v,
                    "u" => model.velocities.u,
