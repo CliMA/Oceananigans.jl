@@ -42,7 +42,10 @@ IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κ�
 #### Buoyancy term
 ####
 
-@inline ρref(i, j, k, grid) = 1.2 * (1 -  (grid.zC[k] - grid.zF[1]) / 10grid.Lz)
+const p₀_hack = 100000
+const Rᵈ_hack = 287.0025066673538
+@inline Θ₀(x, y, z, grid) = 300 + 0.01 * exp(- (x^2 + z^2) / grid.Lz)
+@inline ρref(i, j, k, grid, Θᵐ) = p₀_hack / (Rᵈ_hack * Θ₀(grid.xC[i], grid.yC[j], grid.zC[k], grid))
 
-@inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C) = grav * (ρᵐ(i, j, k, grid, ρᵈ, C) - ρref(i, j, k, grid))
+@inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C) = grav * (ρᵐ(i, j, k, grid, ρᵈ, C) - ρref(i, j, k, grid, C.Θᵐ))
 
