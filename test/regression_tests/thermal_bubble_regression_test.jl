@@ -44,21 +44,24 @@ function run_thermal_bubble_regression_test(arch)
 
     ds = Dataset(regression_data_filepath, "r")
 
-    u = ds["u"][:, :, :, end]
-    v = ds["v"][:, :, :, end]
-    w = ds["w"][:, :, :, end]
-    T = ds["T"][:, :, :, end]
-    S = ds["S"][:, :, :, end]
+    uᶜ = ds["u"][:, :, :, end]
+    vᶜ = ds["v"][:, :, :, end]
+    wᶜ = ds["w"][:, :, :, end]
+    Tᶜ = ds["T"][:, :, :, end]
+    Sᶜ = ds["S"][:, :, :, end]
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.T, model.tracers.S]
-    fields_correct = [u, v, w, T, S]
+    fields = [interior(model.velocities.u), interior(model.velocities.v), interior(model.velocities.w),
+              interior(model.tracers.T), interior(model.tracers.S)]
+    fields_correct = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]
     summarize_regression_test(field_names, fields, fields_correct)
 
     # Now test that the model state matches the regression output.
-    @test all(Array(interior(model.velocities.u)) .≈ u)
-    @test all(Array(interior(model.velocities.v)) .≈ v)
-    @test all(Array(interior(model.velocities.w)) .≈ w)
-    @test all(Array(interior(model.tracers.T))    .≈ T)
-    @test all(Array(interior(model.tracers.S))    .≈ S)
+    @test all(Array(interior(model.velocities.u)) .≈ uᶜ)
+    @test all(Array(interior(model.velocities.v)) .≈ vᶜ)
+    @test all(Array(interior(model.velocities.w)) .≈ wᶜ)
+    @test all(Array(interior(model.tracers.T))    .≈ Tᶜ)
+    @test all(Array(interior(model.tracers.S))    .≈ Sᶜ)
+
+    return nothing
 end

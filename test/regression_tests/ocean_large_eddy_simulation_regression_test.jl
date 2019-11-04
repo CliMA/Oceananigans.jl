@@ -125,26 +125,13 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    for name in (:u, :v, :w, :T, :S)
-        if name ∈ (:u, :v, :w)
-            test_field = getproperty(model.velocities, name)
-        else
-            test_field = getproperty(model.tracers, name)
-        end
-
-        correct_field = getproperty(solution₁, name)
-
-        Δ = Array(test_field.data.parent) .- correct_field
-
-        Δ_min      = minimum(Δ)
-        Δ_max      = maximum(Δ)
-        Δ_mean     = mean(Δ)
-        Δ_abs_mean = mean(abs, Δ)
-        Δ_std      = std(Δ)
-
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
-    end
+    field_names = ["u", "v", "w", "T", "S"]
+    fields = [model.velocities.u.data.parent, model.velocities.v.data.parent,
+              model.velocities.w.data.parent, model.tracers.T.data.parent,
+              model.tracers.S.data.parent]
+    fields_correct = [solution₁.u, solution₁.v, solution₁.w,
+                      solution₁.T, solution₁.S]
+    summarize_regression_test(field_names, fields, fields_correct)
 
     @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
     @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))

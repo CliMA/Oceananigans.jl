@@ -41,7 +41,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
-    
+
     Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
 
     spinup_steps = 1000
@@ -107,9 +107,12 @@ function run_rayleigh_benard_regression_test(arch)
     b₁, c₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
 
     field_names = ["u", "v", "w", "b", "c"]
-    fields = [model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.b, model.tracers.c]
-    fields_correct = [u₁, v₁, w₁, b₁, c₁]
-    summarize_regression_test_parent(field_names, fields, fields_correct)
+    fields = [model.velocities.u.data.parent, model.velocities.v.data.parent,
+              model.velocities.w.data.parent, model.tracers.b.data.parent,
+              model.tracers.c.data.parent]
+    fields_correct = [u₁.parent, v₁.parent, w₁.parent,
+                      b₁.parent, c₁.parent]
+    summarize_regression_test(field_names, fields, fields_correct)
 
     # Now test that the model state matches the regression output.
     @test all(Array(model.velocities.u.data.parent) .≈ u₁.parent)

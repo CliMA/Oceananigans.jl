@@ -1,24 +1,15 @@
-function summarize_regression_test(field_names, fields, fields_correct)
-    for (field_name, φ, φ_c) in zip(field_names, fields, fields_correct)
-        φ_min = minimum(Array(interior(φ)) - φ_c)
-        φ_max = maximum(Array(interior(φ)) - φ_c)
-        φ_mean = mean(Array(interior(φ)) - φ_c)
-        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_c))
-        φ_std = std(Array(interior(φ)) - φ_c)
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
-    end
-end
+function summarize_regression_test(field_names, fields, correct_fields)
+    for (field_name, φ, φ_c) in zip(field_names, fields, correct_fields)
+        Δ = Array(φ) .- φ_c
 
-function summarize_regression_test_parent(field_names, fields, fields_correct)
-    for (field_name, φ, φ_c) in zip(field_names, fields, fields_correct)
-        φ_min = minimum(Array(φ.data.parent) .- φ_c.parent)
-        φ_max = maximum(Array(φ.data.parent) .- φ_c.parent)
-        φ_mean = mean(Array(φ.data.parent) .- φ_c.parent)
-        φ_abs_mean = mean(abs.(Array(φ.data.parent) .- φ_c.parent))
-        φ_std = std(Array(φ.data.parent) .- φ_c.parent)
+        Δ_min      = minimum(Δ)
+        Δ_max      = maximum(Δ)
+        Δ_mean     = mean(Δ)
+        Δ_abs_mean = mean(abs, Δ)
+        Δ_std      = std(Δ)
+
         @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
-                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
     end
 end
 
