@@ -13,6 +13,7 @@ const MPT = ModifiedPotentialTemperature
 ####
 
 @inline Π(i, j, k, grid, pt::MPT, gas::IG, p₀, Θᵐ) = @inbounds (gas.Rᵈ * Θᵐ[i, j, k] / p₀)^(gas.Rᵈ/gas.cᵥ)
+
 ####
 #### Pressure gradient terms
 ####

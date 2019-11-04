@@ -92,6 +92,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
 
     @info "Computing slow forcings..."
+    fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
     fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
