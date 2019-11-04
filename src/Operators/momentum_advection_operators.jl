@@ -27,7 +27,7 @@ Calculate the advection of momentum in the x-direction U·∇u
 
 which will end up at the location `fcc`.
 """
-@inline function u∇u(i, j, k, grid, u, v, w)
+@inline function div_ũu(i, j, k, grid, u, v, w)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_uu, u)    +
                                     δyᵃᶜᵃ(i, j, k, grid, momentum_flux_uv, u, v) +
                                     δzᵃᵃᶜ(i, j, k, grid, momentum_flux_uw, u, w))

@@ -27,7 +27,7 @@ Calculates viscous dissipation for the u-velocity via
 
 which will end up at the location `fcc`.
 """
-@inline function ∇ν∇u(i, j, k, grid, ν, u)
+@inline function div_ν∇u(i, j, k, grid, ν, u)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, u, ν) +
                                     δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, u, ν) +
                                     δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, u, ν))
@@ -42,7 +42,7 @@ Calculates viscous dissipation for the v-velocity via
 
 which will end up at the location `cfc`.
 """
-@inline function ∇ν∇v(i, j, k, grid, ν, v)
+@inline function div_ν∇v(i, j, k, grid, ν, v)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, v, ν) +
                                     δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, v, ν) +
                                     δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, v, ν))
@@ -57,9 +57,8 @@ Calculates viscous dissipation for the w-velocity via
 
 which will end up at the location `ccf`.
 """
-@inline function ∇ν∇w(i, j, k, grid, ν, w)
+@inline function div_ν∇w(i, j, k, grid, ν, w)
     return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, w, ν) +
                                     δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, w, ν) +
                                     δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, w, ν))
 end
-

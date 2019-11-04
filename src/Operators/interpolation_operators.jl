@@ -78,4 +78,3 @@ const RCG = RegularCartesianGrid
 
 @inline ℑxyzᶠᶠᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
 @inline ℑxyzᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
-

@@ -26,8 +26,8 @@ Calculates the divergence ∇·U of a vector field U = (u, v, w),
 which will end up at the cell centers `ccc`.
 """
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_u, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_v, v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_w, w))
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w))
 end
 
