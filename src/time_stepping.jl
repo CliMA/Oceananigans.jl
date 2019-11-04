@@ -8,7 +8,7 @@ import Oceananigans: time_step!
 ####
 
 const grav = 9.81
-const μ = 1
+const μ = 1e-2
 const κ = 1e-2
 
 const hpbcs = HorizontallyPeriodicBCs()
@@ -91,16 +91,16 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
     Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
 
-    @info "Computing slow forcings..."
+    @debug "Computing slow forcings..."
     fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
     fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
     for rk3_iter in 1:3
-        @info "RK3 step #$rk3_iter..."
+        @debug "RK3 step #$rk3_iter..."
 
-        @info "  Computing right hand sides..."
+        @debug "  Computing right hand sides..."
         if rk3_iter == 1
             compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
             fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
@@ -118,10 +118,13 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
         # n, Δτ = acoustic_time_steps(rk3_iter)
         # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
 
-        @info "  Advancing variables..."
+        @debug "  Advancing variables..."
         LHS = rk3_iter == 3 ? Φ⁺ : IV
         advance_variables!(LHS, grid, Ũ, C, ρᵈ, R; Δt=rk3_time_step(rk3_iter, Δt))
     end
+
+    model.clock.iteration += 1
+    model.clock.time += Δt
 
     return nothing
 end
