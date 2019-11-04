@@ -1,3 +1,14 @@
+function summarize_regression_test(field_names, fields, fields_correct)
+    for (field_name, φ, φ_c) in zip(field_names, fields, fields_correct)
+        φ_min = minimum(Array(interior(φ)) - φ_c)
+        φ_max = maximum(Array(interior(φ)) - φ_c)
+        φ_mean = mean(Array(interior(φ)) - φ_c)
+        φ_abs_mean = mean(abs.(Array(interior(φ)) - φ_c))
+        φ_std = std(Array(interior(φ)) - φ_c)
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+                       field_name, φ_min, φ_max, φ_mean, φ_abs_mean, φ_std))
+    end
+end
 
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
