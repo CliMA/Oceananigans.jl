@@ -21,7 +21,8 @@ set!(model.tracers.Θᵐ, Θ₀)
 Δtp = 1e-3
 time_step!(model; Δt=Δtp, nₛ=1)
 
-for i=1:100
+anim = @animate for i=1:100
+    @show i
     time_step!(model; Δt=Δtp, nₛ=1)
 
     t = @sprintf("%.3f s", model.clock.time)
@@ -42,3 +43,4 @@ for i=1:100
     display(plot(pU, pW, pρ, pΘ, title=["U (m/s), t=$t" "W (m/s)" "rho_prime (kg/m^3)" "Theta_m_prime (K)"], show=true))
 end
 
+gif(anim, "sad_thermal_bubble.gif", fps=10)

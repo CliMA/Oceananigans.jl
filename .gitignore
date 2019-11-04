@@ -23,3 +23,6 @@ docs/site
 notes/*.aux
 notes/*.log
 notes/*.gz
+
+# Various output
+*.gif
