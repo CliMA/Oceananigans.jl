@@ -8,7 +8,7 @@ import Oceananigans: time_step!
 ####
 
 const grav = 9.81
-const μ = 1e2
+const μ = 1
 const κ = 1e-2
 
 const hpbcs = HorizontallyPeriodicBCs()
