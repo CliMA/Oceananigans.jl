@@ -114,7 +114,7 @@ Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) *
 #
 # We use a horizontal biharmonic diffusivity and a Laplacian vertical diffusivity
 # to dissipate energy in the Eady problem.
-# Two use both of these closures at the same time, we set the keyword argument
+# To use both of these closures at the same time, we set the keyword argument
 # `closure` a tuple of two closures. Note that the "2D Leith" parameterization may
 # also be a sensible choice to pair with a Laplacian vertical diffusivity for this problem.
 
@@ -147,10 +147,10 @@ boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs, b=bbcs),
 # For initial conditions we impose a linear stratifificaiton with some
 # random noise.
 
-## A noise function, damped at the boundaries
+# # A noise function, damped at the boundaries
 Ξ(z) = rand() * z/Lz * (z/Lz + 1)
 
-## Buoyancy: linear stratification plus noise
+# # Buoyancy: linear stratification plus noise
 b₀(x, y, z) = N² * z + 1e-2 * Ξ(z) * (N² * Lz + α * f * Lh)
 u₀(x, y, z) = 1e-2 * α * Lz
 
