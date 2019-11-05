@@ -1,8 +1,8 @@
 # Calculate the flux of a tracer quantity c through the faces of a cell.
 # In this case, the fluxes are given by u*Ax*T̅ˣ, v*Ay*T̅ʸ, and w*Az*T̅ᶻ.
-@inline advective_tracer_flux_x(i, j, k, grid, u, c) = Ax_u(i, j, k, grid, u) * ℑxᶠᵃᵃ(i, j, k, grid, c)
-@inline advective_tracer_flux_y(i, j, k, grid, v, c) = Ay_v(i, j, k, grid, v) * ℑyᵃᶠᵃ(i, j, k, grid, c)
-@inline advective_tracer_flux_z(i, j, k, grid, w, c) = Az_w(i, j, k, grid, w) * ℑzᵃᵃᶠ(i, j, k, grid, c)
+@inline advective_tracer_flux_x(i, j, k, grid, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * ℑxᶠᵃᵃ(i, j, k, grid, c)
+@inline advective_tracer_flux_y(i, j, k, grid, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * ℑyᵃᶠᵃ(i, j, k, grid, c)
+@inline advective_tracer_flux_z(i, j, k, grid, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * ℑzᵃᵃᶠ(i, j, k, grid, c)
 
 """
     div_flux(i, j, k, grid, U, c)

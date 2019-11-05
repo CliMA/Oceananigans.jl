@@ -2,17 +2,17 @@
 #### Momentum fluxes
 ####
 
-@inline momentum_flux_uu(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_u, u) * ℑxᶜᵃᵃ(i, j, k, grid, u)
-@inline momentum_flux_uv(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_v, v) * ℑyᵃᶠᵃ(i, j, k, grid, u)
-@inline momentum_flux_uw(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶠ(i, j, k, grid, u)
+@inline momentum_flux_uu(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * ℑxᶜᵃᵃ(i, j, k, grid, u)
+@inline momentum_flux_uv(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * ℑyᵃᶠᵃ(i, j, k, grid, u)
+@inline momentum_flux_uw(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * ℑzᵃᵃᶠ(i, j, k, grid, u)
 
-@inline momentum_flux_vu(i, j, k, grid, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_u, u) * ℑxᶠᵃᵃ(i, j, k, grid, v)
-@inline momentum_flux_vv(i, j, k, grid, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_v, v) * ℑyᵃᶜᵃ(i, j, k, grid, v)
-@inline momentum_flux_vw(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶠ(i, j, k, grid, v)
+@inline momentum_flux_vu(i, j, k, grid, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * ℑxᶠᵃᵃ(i, j, k, grid, v)
+@inline momentum_flux_vv(i, j, k, grid, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * ℑyᵃᶜᵃ(i, j, k, grid, v)
+@inline momentum_flux_vw(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * ℑzᵃᵃᶠ(i, j, k, grid, v)
 
-@inline momentum_flux_wu(i, j, k, grid, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_u, u) * ℑxᶠᵃᵃ(i, j, k, grid, w)
-@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_v, v) * ℑyᵃᶠᵃ(i, j, k, grid, w)
-@inline momentum_flux_ww(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_w, w) * ℑzᵃᵃᶜ(i, j, k, grid, w)
+@inline momentum_flux_wu(i, j, k, grid, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * ℑxᶠᵃᵃ(i, j, k, grid, w)
+@inline momentum_flux_wv(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * ℑyᵃᶠᵃ(i, j, k, grid, w)
+@inline momentum_flux_ww(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * ℑzᵃᵃᶜ(i, j, k, grid, w)
 
 ####
 #### Momentum advection operators

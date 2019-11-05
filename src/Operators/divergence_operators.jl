@@ -12,8 +12,8 @@ Calculates the horizontal divergence ∇ₕ·(u, v) of a 2D velocity field (u, v
 which will end up at the location `cca`.
 """
 @inline function hdivᶜᶜᵃ(i, j, k, grid, u, v)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_u, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_v, v))
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v))
 end
 
 """
@@ -30,4 +30,3 @@ which will end up at the cell centers `ccc`.
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w))
 end
-
