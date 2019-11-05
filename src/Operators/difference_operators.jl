@@ -49,3 +49,11 @@
 @inline δᴶyᵃᶠᶠ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, c)
 @inline δᴶzᵃᵃᶜ(i, j, k, grid, c) = δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
 @inline δᴶzᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
+
+####
+#### Operators of the form A*δ(q) where A is an area and q is some quantity.
+####
+
+@inline Ax_∂xᶠᵃᵃ(i, j, k, grid, c) = Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, c)
+@inline Ay_∂yᵃᶠᵃ(i, j, k, grid, c) = Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, c)
+@inline Az_∂zᵃᵃᶠ(i, j, k, grid, c) = Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
