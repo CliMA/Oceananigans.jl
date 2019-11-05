@@ -1,3 +1,5 @@
+using Oceananigans.Operators: ΔzC
+
 #####
 ##### The basic idea: boundary condition types and data.
 #####
@@ -46,7 +48,7 @@ struct Value <: BCType end
 
 A type specifying a no-penetration boundary condition for a velocity component that is normal to a wall.
 
-Thus `NoPenetration` can only be applied to `u` along x, `v` along y, or `w` along z. 
+Thus `NoPenetration` can only be applied to `u` along x, `v` along y, or `w` along z.
 For all other cases --- fields located at (Cell, Cell, Cell), or `u`, `v`,
 and `w` in (y, z), (x, z), and (x, y), respectively, either `Value`,
 `Gradient`, or `Flux` conditions must be used.
@@ -207,10 +209,10 @@ applied to a field along x, y, and z.
 """
 const FieldBoundaryConditions = NamedTuple{(:x, :y, :z)}
 
-show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") = 
+show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
     string("Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions", '\n',
-           padding, "├── x: ", typeof(bcs.x), '\n', 
-           padding, "├── y: ", typeof(bcs.y), '\n', 
+           padding, "├── x: ", typeof(bcs.x), '\n',
+           padding, "├── y: ", typeof(bcs.y), '\n',
            padding, "└── z: ", typeof(bcs.z))
 
 Base.show(io::IO, fieldbcs::FieldBoundaryConditions) = print(io, show_field_boundary_conditions(fieldbcs))
@@ -460,7 +462,7 @@ If `top_bc.condition` is a function, the function must have the signature
     `top_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / ΔzF(i, j, grid.Nz, grid)
 
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
@@ -476,7 +478,7 @@ If `bottom_bc.condition` is a function, the function must have the signature
     `bottom_bc.condition(i, j, grid, boundary_condition_args...)`
 """
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
-    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / grid.Δz
+    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / ΔzF(i, j, 1, grid)
 
 """
     _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
