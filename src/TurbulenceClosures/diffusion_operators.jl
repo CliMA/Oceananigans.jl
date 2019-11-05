@@ -11,16 +11,18 @@
 ####
 
 """
-    ∇κ∇c(i, j, k, grid, κ, c)
+    ∇κ∇c(i, j, k, grid, κˣ, κʸ, κᶻ, c)
 
 Calculates diffusion for a tracer c via
 
-    1/V * [δxᶜᵃᵃ(κ * Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(κ * Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(κ * Az * ∂zᵃᵃᶠ(c))]
+    1/V * [δxᶜᵃᵃ(κˣ * Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(κʸ * Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(κᶻ * Az * ∂zᵃᵃᶠ(c))]
 
 which will end up at the location `ccc`.
 """
-@inline function div_κ∇c(i, j, k, grid, κ, c)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, c) +
-                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κ, c) +
-                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κ, c))
+@inline function div_κ∇c(i, j, k, grid, κˣ, κʸ, κᶻ, c)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κˣ, c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κʸ, c) +
+                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κᶻ, c))
 end
+
+@inline div_κ∇c(i, j, k, grid, κ, c) = div_κ∇c(i, j, k, grid, κ, κ, κ, c)

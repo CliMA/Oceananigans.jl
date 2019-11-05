@@ -2,63 +2,71 @@
 #### Viscous fluxes
 ####
 
-@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, ν_ccc, u) = ν_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, ν_ffc, u) = ν_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, ν_fcf, u) = ν_fcf * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶜᵃ(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, ν_ffc, v) = ν_ffc * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, ν_ccc, v) = ν_ccc * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶜᵃ(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, ν_cff, v) = ν_cff * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
+@inline viscous_flux_wx(i, j, k, grid, ν_fcf, w) = ν_fcf * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, ν_cff, w) = ν_cff * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, ν_ccc, w) = ν_ccc * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
 ####
 #### Viscous dissipation operators
 ####
 
 """
-    ∇ν∇u(i, j, k, grid::Grid, u::AbstractArray, ν::AbstractFloat)
+    ∇ν∇u(i, j, k, grid, νˣ, νʸ, νᶻ, u)
 
 Calculates viscous dissipation for the u-velocity via
 
-    1/V * [δxᶠᵃᵃ(ν * ℑxᶜᵃᵃ(Ax) * δxᶜᵃᵃ(u)) + δyᵃᶜᵃ(ν * ℑyᵃᶠᵃ(Ay) * δyᵃᶠᵃ(u)) + δzᵃᵃᶜ(ν * ℑzᵃᵃᶠ(Az) * δzᵃᵃᶠ(u))]
+    1/V * [δxᶠᵃᵃ(νˣ * ℑxᶜᵃᵃ(Ax) * δxᶜᵃᵃ(u)) + δyᵃᶜᵃ(νʸ * ℑyᵃᶠᵃ(Ay) * δyᵃᶠᵃ(u)) + δzᵃᵃᶜ(νᶻ * ℑzᵃᵃᶠ(Az) * δzᵃᵃᶠ(u))]
 
 which will end up at the location `fcc`.
 """
-@inline function div_ν∇u(i, j, k, grid, ν, u)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, u, ν) +
-                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, u, ν) +
-                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, u, ν))
+@inline function div_ν∇u(i, j, k, grid, νˣ, νʸ, νᶻ, u)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, νˣ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, νʸ, u) +
+                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, νᶻ, u))
 end
 
 """
-    ∇ν∇v(i, j, k, grid::Grid, v::AbstractArray, ν::AbstractFloat)
+    ∇ν∇v(i, j, k, grid, νˣ, νʸ, νᶻ, v)
 
 Calculates viscous dissipation for the v-velocity via
 
-    1/Vᵛ * [δxᶜᵃᵃ(ν * ℑxᶠᵃᵃ(Ax) * δxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ν * ℑyᵃᶜᵃ(Ay) * δyᵃᶜᵃ(v)) + δzᵃᵃᶜ(ν * ℑzᵃᵃᶠ(Az) * δzᵃᵃᶠ(v))]
+    1/Vᵛ * [δxᶜᵃᵃ(νˣ * ℑxᶠᵃᵃ(Ax) * δxᶠᵃᵃ(v)) + δyᵃᶠᵃ(νʸ * ℑyᵃᶜᵃ(Ay) * δyᵃᶜᵃ(v)) + δzᵃᵃᶜ(νᶻ * ℑzᵃᵃᶠ(Az) * δzᵃᵃᶠ(v))]
 
 which will end up at the location `cfc`.
 """
-@inline function div_ν∇v(i, j, k, grid, ν, v)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, v, ν) +
-                                    δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, v, ν) +
-                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, v, ν))
+@inline function div_ν∇v(i, j, k, grid, νˣ, νʸ, νᶻ, v)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, νˣ, v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, νʸ, v) +
+                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, νᶻ, v))
 end
 
 """
-    ∇ν∇w(i, j, k, grid::Grid, w::AbstractArray, ν::AbstractFloat)
+    ∇ν∇w(i, j, k, grid::Grid, νˣ, νʸ, νᶻ, w)
 
 Calculates viscous dissipation for the w-velocity via
 
-    1/Vʷ * [δxᶜᵃᵃ(ν * ℑxᶠᵃᵃ(Ax) * δxᶠᵃᵃ(w)) + δyᵃᶜᵃ(ν * ℑyᵃᶠᵃ(Ay) * δyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ν * ℑzᵃᵃᶜ(Az) * δzᵃᵃᶜ(w))]
+    1/Vʷ * [δxᶜᵃᵃ(νˣ * ℑxᶠᵃᵃ(Ax) * δxᶠᵃᵃ(w)) + δyᵃᶜᵃ(νʸ * ℑyᵃᶠᵃ(Ay) * δyᵃᶠᵃ(w)) + δzᵃᵃᶠ(νᶻ * ℑzᵃᵃᶜ(Az) * δzᵃᵃᶜ(w))]
 
 which will end up at the location `ccf`.
 """
-@inline function div_ν∇w(i, j, k, grid, ν, w)
-    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, w, ν) +
-                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, w, ν) +
-                                    δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, w, ν))
+@inline function div_ν∇w(i, j, k, grid, νˣ, νʸ, νᶻ, w)
+    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, νˣ, w) +
+                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, νʸ, w) +
+                                    δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, νᶻ, w))
 end
+
+####
+#### Viscous dissipation for isotropic viscosity
+####
+
+@inline div_ν∇u(i, j, k, grid, ν, u) = div_ν∇u(i, j, k, grid, ν, ν, ν, u)
+@inline div_ν∇v(i, j, k, grid, ν, v) = div_ν∇v(i, j, k, grid, ν, ν, ν, v)
+@inline div_ν∇w(i, j, k, grid, ν, w) = div_ν∇w(i, j, k, grid, ν, ν, ν, w)
