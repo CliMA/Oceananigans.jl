@@ -14,7 +14,6 @@ export
     ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜ,
     ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ,
     hdivᶜᶜᵃ, divᶜᶜᶜ, ∇²,
-    div_κ∇c, div_ν∇u, div_ν∇v, div_ν∇w,
     div_uc, div_ũu, div_ũv, div_ũw
 
 include("areas_and_volumes.jl")
@@ -24,8 +23,6 @@ include("interpolation_operators.jl")
 include("divergence_operators.jl")
 include("laplacian_operators.jl")
 
-include("diffusion_operators.jl")
-include("viscous_dissipation_operators.jl")
 include("tracer_advection_operators.jl")
 include("momentum_advection_operators.jl")
 
