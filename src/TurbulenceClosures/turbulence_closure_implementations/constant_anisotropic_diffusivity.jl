@@ -21,11 +21,11 @@ and vertical viscosities `νh`, `νv` and constant horizontal and vertical trace
 diffusivities `κh`, `κv`. `κh` and `κv` may be `NamedTuple`s with fields corresponding
 to each tracer, or a single number to be a applied to all tracers.
 
-By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal 
+By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal
 and vertical viscosity, and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used
 for the horizontal and vertical diffusivities applied to every tracer.
-These values are the approximate viscosity and thermal diffusivity for seawater at 20°C 
-and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review 
+These values are the approximate viscosity and thermal diffusivity for seawater at 20°C
+and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review
 of existing correlations and data" (2010).
 """
 ConstantAnisotropicDiffusivity(FT=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=κ₀) =
@@ -39,20 +39,14 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∇h²_fca(i, j, k, grid, U.u)
-    + closure.νv * ∂z²_aac(i, j, k, grid, U.u)
-    )
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
+    div_ν∇u(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.u)
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∇h²_cfa(i, j, k, grid, U.v)
-    + closure.νv * ∂z²_aac(i, j, k, grid, U.v)
-    )
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
+    div_ν∇v(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.v)
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) = (
-      closure.νh * ∇h²_cca(i, j, k, grid, U.w)
-    + closure.νv * ∂z²_aaf(i, j, k, grid, U.w)
-    )
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
+    div_ν∇w(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.w)
 
 @inline function ∇_κ_∇c(i, j, k, grid, closure::ConstantAnisotropicDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
@@ -60,7 +54,5 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity,
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
 
-    return (  κh * ∇h²_cca(i, j, k, grid, c)
-            + κv * ∂z²_aac(i, j, k, grid, c)
-           )
+    return div_κ∇c(i, j, k, grid, κh, κh, κv, c)
 end
