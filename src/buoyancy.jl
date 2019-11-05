@@ -103,8 +103,8 @@ and cell centers in `y` and `z`.
 """
 @inline ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
     b.gravitational_acceleration * (
-           thermal_expansion_fcc(i, j, k, grid, b.equation_of_state, C) * ∂xᶠᵃᵃ(i, j, k, grid, C.T)
-        - haline_contraction_fcc(i, j, k, grid, b.equation_of_state, C) * ∂xᶠᵃᵃ(i, j, k, grid, C.S) )
+           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, C) * ∂xᶠᵃᵃ(i, j, k, grid, C.T)
+        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, C) * ∂xᶠᵃᵃ(i, j, k, grid, C.S) )
 
 """
     ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
@@ -127,8 +127,8 @@ and cell centers in `x` and `z`.
 """
 @inline ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
     b.gravitational_acceleration * (
-           thermal_expansion_cfc(i, j, k, grid, b.equation_of_state, C) * ∂yᵃᶠᵃ(i, j, k, grid, C.T)
-        - haline_contraction_cfc(i, j, k, grid, b.equation_of_state, C) * ∂yᵃᶠᵃ(i, j, k, grid, C.S) )
+           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, C) * ∂yᵃᶠᵃ(i, j, k, grid, C.T)
+        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, C) * ∂yᵃᶠᵃ(i, j, k, grid, C.S) )
 
 
 """
@@ -152,8 +152,8 @@ and cell centers in `x` and `y`.
 """
 @inline ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C) =
     b.gravitational_acceleration * (
-           thermal_expansion_ccf(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.T)
-        - haline_contraction_ccf(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.S) )
+           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.T)
+        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.S) )
 
 #####
 ##### Linear equation of state
@@ -196,38 +196,38 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 @inline haline_contraction(Θ, Sᴬ, D, eos::LinearEquationOfState) = eos.β
 
 # Shortcuts
-@inline  thermal_expansion_ccc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
-@inline  thermal_expansion_fcc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
-@inline  thermal_expansion_cfc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
-@inline  thermal_expansion_ccf(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansionᶜᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansionᶠᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
+@inline  thermal_expansionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
 
-@inline haline_contraction_ccc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
-@inline haline_contraction_fcc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
-@inline haline_contraction_cfc(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
-@inline haline_contraction_ccf(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contractionᶜᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contractionᶠᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+@inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 
 #####
 ##### Nonlinear equations of state
 #####
 
 """ Return the geopotential depth at `i, j, k` at cell centers. """
-@inline D_aac(i, j, k, grid) = @inbounds -grid.zC[k]
+@inline Dᵃᵃᶜ(i, j, k, grid) = @inbounds -grid.zC[k]
 
 """ Return the geopotential depth at `i, j, k` at cell z-interfaces. """
-@inline D_aaf(i, j, k, grid) = @inbounds -grid.zF[k]
+@inline Dᵃᵃᶠ(i, j, k, grid) = @inbounds -grid.zF[k]
 
 # Basic functionality
-@inline ρ′(i, j, k, grid, eos, C) = @inbounds ρ′(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
+@inline ρ′(i, j, k, grid, eos, C) = @inbounds ρ′(C.T[i, j, k], C.S[i, j, k], Dᵃᵃᶜ(i, j, k, grid), eos)
 
-@inline thermal_expansion_ccc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
-@inline thermal_expansion_fcc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑxᶠᵃᵃ(i, j, k, grid, C.T), ℑxᶠᵃᵃ(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
-@inline thermal_expansion_cfc(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑyᵃᶠᵃ(i, j, k, grid, C.T), ℑyᵃᶠᵃ(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
-@inline thermal_expansion_ccf(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑzᵃᵃᶠ(i, j, k, grid, C.T), ℑzᵃᵃᶠ(i, j, k, grid, C.S), D_aaf(i, j, k, grid), eos)
+@inline thermal_expansionᶜᶜᶜ(i, j, k, grid, eos, C) = @inbounds thermal_expansion(C.T[i, j, k], C.S[i, j, k], Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline thermal_expansionᶠᶜᶜ(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑxᶠᵃᵃ(i, j, k, grid, C.T), ℑxᶠᵃᵃ(i, j, k, grid, C.S), Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline thermal_expansionᶜᶠᶜ(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑyᵃᶠᵃ(i, j, k, grid, C.T), ℑyᵃᶠᵃ(i, j, k, grid, C.S), Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline thermal_expansionᶜᶜᶠ(i, j, k, grid, eos, C) = @inbounds thermal_expansion(ℑzᵃᵃᶠ(i, j, k, grid, C.T), ℑzᵃᵃᶠ(i, j, k, grid, C.S), Dᵃᵃᶠ(i, j, k, grid), eos)
 
-@inline haline_contraction_ccc(i, j, k, grid, eos, C) = @inbounds haline_contraction(C.T[i, j, k], C.S[i, j, k], D_aac(i, j, k, grid), eos)
-@inline haline_contraction_fcc(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑxᶠᵃᵃ(i, j, k, grid, C.T), ℑxᶠᵃᵃ(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
-@inline haline_contraction_cfc(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑyᵃᶠᵃ(i, j, k, grid, C.T), ℑyᵃᶠᵃ(i, j, k, grid, C.S), D_aac(i, j, k, grid), eos)
-@inline haline_contraction_ccf(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑzᵃᵃᶠ(i, j, k, grid, C.T), ℑzᵃᵃᶠ(i, j, k, grid, C.S), D_aaf(i, j, k, grid), eos)
+@inline haline_contractionᶜᶜᶜ(i, j, k, grid, eos, C) = @inbounds haline_contraction(C.T[i, j, k], C.S[i, j, k], Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline haline_contractionᶠᶜᶜ(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑxᶠᵃᵃ(i, j, k, grid, C.T), ℑxᶠᵃᵃ(i, j, k, grid, C.S), Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑyᵃᶠᵃ(i, j, k, grid, C.T), ℑyᵃᶠᵃ(i, j, k, grid, C.S), Dᵃᵃᶜ(i, j, k, grid), eos)
+@inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑzᵃᵃᶠ(i, j, k, grid, C.T), ℑzᵃᵃᶠ(i, j, k, grid, C.S), Dᵃᵃᶠ(i, j, k, grid), eos)
 
 @inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) =
     - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
