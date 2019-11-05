@@ -2,17 +2,17 @@
 #### Viscous fluxes
 ####
 
-@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶜᵃᵃ(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ)  * δzᵃᵃᶠ(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, u, ν_ccc) = ν_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, u, ν_ffc) = ν_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, u, ν_fcf) = ν_fcf * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶜᵃ(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ)  * δzᵃᵃᶠ(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, v, ν_ffc) = ν_ffc * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, v, ν_ccc) = ν_ccc * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶜᵃ(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, v, ν_cff) = ν_cff * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ)  * δzᵃᵃᶜ(i, j, k, grid, w)
+@inline viscous_flux_wx(i, j, k, grid, w, ν_fcf) = ν_fcf * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, w, ν_cff) = ν_cff * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, w, ν_ccc) = ν_ccc * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
 ####
 #### Viscous dissipation operators
