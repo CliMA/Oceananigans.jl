@@ -147,10 +147,10 @@ boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs, b=bbcs),
 # For initial conditions we impose a linear stratifificaiton with some
 # random noise.
 
-# # A noise function, damped at the boundaries
+## A noise function, damped at the boundaries
 Ξ(z) = rand() * z/Lz * (z/Lz + 1)
 
-# # Buoyancy: linear stratification plus noise
+## Buoyancy: linear stratification plus noise
 b₀(x, y, z) = N² * z + 1e-2 * Ξ(z) * (N² * Lz + α * f * Lh)
 u₀(x, y, z) = 1e-2 * α * Lz
 
