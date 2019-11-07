@@ -54,7 +54,7 @@ for any time-dependent function $G(t)$, while a second-order Adams-Bashforth met
 where $\chi$ is a parameter. Ascher et al. (1995) claim that $\chi = \tfrac{1}{8}$ is optimal; 
 $\chi=-\tfrac{1}{2}$ yields the forward Euler scheme.
 
-Combining the equations for $\bm{u}^\star$ and the time integral of the momnentum equation yields
+Combining the equations for $\bm{u}^\star$ and the time integral of the momentum equation yields
 ```math
     \tag{eq:fractional-step}
     \bm{u}^{n+1} - \bm{u}^\star = - \Delta t \bm{\nabla} \phi_{\rm{non}}^{n+1} \, \rm{d} t \, .
