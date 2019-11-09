@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 
 [compat]
 julia = "1.1"
