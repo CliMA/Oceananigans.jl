@@ -23,18 +23,18 @@ const hpbcs = HorizontallyPeriodicBCs()
 
 @inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
 
-@inline function RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FU)
+@inline function RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FU, base_state)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂x(i, j, k, grid, pt, b, p₀, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p′∂x(i, j, k, grid, pt, b, p₀, C, base_state)
                 + FU[i, j, k])
     end
 end
 
-@inline function RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FV)
+@inline function RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FV, base_state)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂y(i, j, k, grid, pt, b, p₀, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p′∂y(i, j, k, grid, pt, b, p₀, C, base_state)
                 + FV[i, j, k])
     end
 end
@@ -42,7 +42,7 @@ end
 @inline function RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FW, base_state)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * (  ∂p∂z(i, j, k, grid, pt, b, p₀, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * (  ∂p′∂z(i, j, k, grid, pt, b, p₀, C, base_state)
                                                       + buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C, base_state))
                 + FW[i, j, k])
     end
@@ -154,8 +154,8 @@ Fast forcings include advection, pressure gradient, and buoyancy terms.
 function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, p₀, C, F, base_state)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.U)
-            R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.V)
+            R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.U, base_state)
+            R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.V, base_state)
             R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.W, base_state)
 
             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
