@@ -5,15 +5,19 @@ Nx = Nz = 32
 Ny = 8
 L = 100
 
-grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(-L/2, L/2), y=(-L/2, L/2), z=(-L/2, L/2))
-model = CompressibleModel(grid=grid)
-
-p₀ = model.surface_pressure
-Rᵈ = model.buoyancy.Rᵈ
+pₛ = 100000
+buoyancy = IdealGas()
+Rᵈ = buoyancy.Rᵈ
+γ  = buoyancy.γ
 
 # ρ₀(x, y, z) = 1.2 * (1 -  (z - L/2) / 10L)
 Θ₀(x, y, z) = 300 + 0.01 * exp(- (x^2 + z^2) / L)
-ρ₀(x, y, z) = p₀ / (Rᵈ * Θ₀(x, y, z))
+p₀(x, y, z) = pₛ * (Rᵈ * Θ₀(x, y, z) / pₛ)^γ
+ρ₀(x, y, z) = p₀(x, y, z) / (Rᵈ * Θ₀(x, y, z))
+
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(-L/2, L/2), y=(-L/2, L/2), z=(-L/2, L/2))
+base_state = BaseState(p=p₀, ρ=ρ₀, θ=Θ₀)
+model = CompressibleModel(grid=grid, buoyancy=buoyancy, surface_pressure=pₛ, base_state=base_state)
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
@@ -21,7 +25,8 @@ set!(model.tracers.Θᵐ, Θ₀)
 Δtp = 1e-3
 time_step!(model; Δt=Δtp, nₛ=1)
 
-anim = @animate for i=1:100
+#anim = @animate for i=1:10
+for i = 1:10
     @show i
     time_step!(model; Δt=Δtp, nₛ=1)
 
@@ -43,4 +48,4 @@ anim = @animate for i=1:100
     display(plot(pU, pW, pρ, pΘ, title=["U (m/s), t=$t" "W (m/s)" "rho_prime (kg/m^3)" "Theta_m_prime (K)"], show=true))
 end
 
-gif(anim, "sad_thermal_bubble.gif", fps=10)
+# gif(anim, "sad_thermal_bubble.gif", fps=10)
