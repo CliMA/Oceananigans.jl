@@ -36,16 +36,11 @@ struct IdealGas{FT} <: AbstractEquationOfState
     γ  :: FT
 end
 
-IdealGas(FT; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
+IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
 
 ####
 #### Buoyancy term
 ####
 
-const p₀_hack = 100000
-const Rᵈ_hack = 287.0025066673538
-@inline Θ₀(x, y, z, grid) = 300 + 0.01 * exp(- (x^2 + z^2) / grid.Lz)
-@inline ρref(i, j, k, grid, Θᵐ) = p₀_hack / (Rᵈ_hack * Θ₀(grid.xC[i], grid.yC[j], grid.zC[k], grid))
-
-@inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C) = grav * (ρᵐ(i, j, k, grid, ρᵈ, C) - ρref(i, j, k, grid, C.Θᵐ))
+@inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C, base_state) = grav * (ρᵐ(i, j, k, grid, ρᵈ, C) - base_density(i, j, k, grid, base_state))
 

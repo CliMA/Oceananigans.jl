@@ -39,11 +39,11 @@ end
     end
 end
 
-@inline function RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FW)
+@inline function RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, FW, base_state)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
                 - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * (  ∂p∂z(i, j, k, grid, pt, b, p₀, C)
-                                                      + buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C))
+                                                      + buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C, base_state))
                 + FW[i, j, k])
     end
 end
@@ -87,6 +87,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     Θᵐ = model.tracers.Θᵐ
 
     p₀ = model.surface_pressure
+    BS = model.base_state
 
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
     Φ⁺ = (U=Ũ.U, V=Ũ.V, W=Ũ.W, ρ=ρᵈ, Θᵐ=Θᵐ, Qv=C.Qv, Ql=C.Ql, Qi=C.Qi)
@@ -102,13 +103,13 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
 
         @debug "  Computing right hand sides..."
         if rk3_iter == 1
-            compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F)
+            compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F, BS)
             fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
             fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
         else
             IV_Ũ = (U=IV.U, V=IV.V, W=IV.W)
             IV_C = (Θᵐ=IV.Θᵐ, Qv=IV.Qv, Ql=IV.Ql, Qi=IV.Qi)
-            compute_rhs_args = (R, grid, IV.ρ, IV_Ũ, model.prognostic_temperature, model.buoyancy, p₀, IV_C, F)
+            compute_rhs_args = (R, grid, IV.ρ, IV_Ũ, model.prognostic_temperature, model.buoyancy, p₀, IV_C, F, BS)
             fill_halo_regions!(IV.ρ.data, hpbcs, arch, grid)
             fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C)), hpbcs, arch, grid)
         end
@@ -150,12 +151,12 @@ end
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, p₀, C, F)
+function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, p₀, C, F, base_state)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
             R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.U)
             R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.V)
-            R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.W)
+            R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, p₀, C, F.W, base_state)
 
             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
 

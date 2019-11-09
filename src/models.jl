@@ -40,7 +40,7 @@ function CompressibleModel(;
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
          surface_pressure = 100000,
-               base_state = nothing,
+               base_state = BaseState(FT=float_type),
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
