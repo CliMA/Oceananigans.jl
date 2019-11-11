@@ -10,8 +10,8 @@ tracer_diffusivities(tracers, κ::Number) = with_tracers(tracers, NamedTuple(), 
 
 function tracer_diffusivities(tracers, κ::NamedTuple)
 
-    all(name ∈ propertynames(κ) for name in tracers) || 
-        throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants 
+    all(name ∈ propertynames(κ) for name in tracers) ||
+        throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants
                             or a `NamedTuple` with a value for every tracer!"))
 
     return κ
@@ -26,10 +26,9 @@ function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, U, C)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds νₑ[i, j, k] = ν_ccc(i, j, k, grid, closure, buoyancy, U, C)
+                @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
             end
         end
     end
     return nothing
 end
-
