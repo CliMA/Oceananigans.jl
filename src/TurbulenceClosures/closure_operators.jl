@@ -1,3 +1,5 @@
+using Oceananigans.Operators
+
 """
     ν_σᶜᶜᶜ(i, j, k, grid, ν, σᶜᶜᶜ, u, v, w)
 
