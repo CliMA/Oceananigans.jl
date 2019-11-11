@@ -6,6 +6,7 @@ using
     Oceananigans.Diagnostics,
     Oceananigans.OutputWriters,
     Oceananigans.TurbulenceClosures,
+    Oceananigans.AbstractOperations,
     Test,
     Random,
     JLD2,
