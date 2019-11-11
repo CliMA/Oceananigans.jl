@@ -3,6 +3,7 @@
 
     @testset "2D operators" begin
         println("  Testing 2D operators...")
+        
         Nx, Ny, Nz = 32, 16, 8
         Lx, Ly, Lz = 100, 100, 100
 

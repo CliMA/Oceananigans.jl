@@ -32,20 +32,7 @@ using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
-using Oceananigans.TurbulenceClosures
-
-using Oceananigans.TurbulenceClosures: ∂x_caa, ∂x_faa, ∂x²_caa, ∂x²_faa,
-                                       ∂y_aca, ∂y_afa, ∂y²_aca, ∂y²_afa,
-                                       ∂z_aac, ∂z_aaf, ∂z²_aac, ∂z²_aaf,
-                                       ▶x_caa, ▶x_faa, ▶y_aca, ▶y_afa,
-                                       ▶z_aac, ▶z_aaf
-
-using Oceananigans.AbstractOperations
-
 using Oceananigans.AbstractOperations: Computation, compute!
-
-const seed = 420  # Random seed to use for all pseudorandom number generators.
-
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
