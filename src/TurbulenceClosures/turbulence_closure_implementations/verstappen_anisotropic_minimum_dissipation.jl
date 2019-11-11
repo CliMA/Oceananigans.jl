@@ -247,13 +247,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂x_faa, buoyancy_perturbation, buoyancy, C))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, buoyancy_perturbation, buoyancy, C))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂y_afa, buoyancy_perturbation, buoyancy, C))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, buoyancy_perturbation, buoyancy, C))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, buoyancy_perturbation, buoyancy, C))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, buoyancy_perturbation, buoyancy, C))
 
     return wx_bx + wy_by + wz_bz
 end
