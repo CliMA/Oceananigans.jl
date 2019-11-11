@@ -129,29 +129,29 @@ const norm_∂z_w = ∂z_w
 
 # ffc
 @inline norm_∂x_v(i, j, k, grid, v) =
-    Δᶠx_ffc(i, j, k, grid) / Δᶠy_ffc(i, j, k, grid) * ∂x_faa(i, j, k, grid, v)
+    Δᶠx_ffc(i, j, k, grid) / Δᶠy_ffc(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, v)
 
 @inline norm_∂y_u(i, j, k, grid, u) =
-    Δᶠy_ffc(i, j, k, grid) / Δᶠx_ffc(i, j, k, grid) * ∂y_afa(i, j, k, grid, u)
+    Δᶠy_ffc(i, j, k, grid) / Δᶠx_ffc(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, u)
 
 # fcf
 @inline norm_∂x_w(i, j, k, grid, w) =
-    Δᶠx_fcf(i, j, k, grid) / Δᶠz_fcf(i, j, k, grid) * ∂x_faa(i, j, k, grid, w)
+    Δᶠx_fcf(i, j, k, grid) / Δᶠz_fcf(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, w)
 
 @inline norm_∂z_u(i, j, k, grid, u) =
-    Δᶠz_fcf(i, j, k, grid) / Δᶠx_fcf(i, j, k, grid) * ∂z_aaf(i, j, k, grid, u)
+    Δᶠz_fcf(i, j, k, grid) / Δᶠx_fcf(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, u)
 
 # cff
 @inline norm_∂y_w(i, j, k, grid, w) =
-    Δᶠy_cff(i, j, k, grid) / Δᶠz_cff(i, j, k, grid) * ∂y_afa(i, j, k, grid, w)
+    Δᶠy_cff(i, j, k, grid) / Δᶠz_cff(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, w)
 
 @inline norm_∂z_v(i, j, k, grid, v) =
-    Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂z_aaf(i, j, k, grid, v)
+    Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, v)
 
 # tracers
-@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂x_faa(i, j, k, grid, c)
-@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂y_afa(i, j, k, grid, c)
-@inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂z_aaf(i, j, k, grid, c)
+@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, c)
+@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, c)
+@inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
 
 #####
 ##### Strain operators
