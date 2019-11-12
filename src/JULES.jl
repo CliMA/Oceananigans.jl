@@ -3,7 +3,7 @@ module JULES
 using Oceananigans
 
 export
-    ModifiedPotentialTemperature, Entropy,
+    Temperature, ModifiedPotentialTemperature, Entropy,
     IdealGas,
     BaseState,
     CompressibleModel,

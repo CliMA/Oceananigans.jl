@@ -7,7 +7,7 @@ import Oceananigans: time_step!
 #### Dirty hacks!
 ####
 
-const grav = 9.81
+const grav = 9.80665
 const μ = 1e-2
 const κ = 1e-2
 
