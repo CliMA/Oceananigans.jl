@@ -12,6 +12,7 @@ const μ = 1e-2
 const κ = 1e-2
 
 const hpbcs = HorizontallyPeriodicBCs()
+const hpbcs_np = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())
 
 ####
 #### Element-wise forcing and right-hand-side calculations
@@ -95,6 +96,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     @debug "Computing slow forcings..."
     fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
     fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
+    fill_halo_regions!(Ũ.W, hpbcs_np, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
 
     # RK3 time-stepping
@@ -106,12 +108,14 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
             compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, p₀, C, F, BS)
             fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
             fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
+            fill_halo_regions!(Ũ.W, hpbcs_np, arch, grid)
         else
             IV_Ũ = (U=IV.U, V=IV.V, W=IV.W)
             IV_C = (Θᵐ=IV.Θᵐ, Qv=IV.Qv, Ql=IV.Ql, Qi=IV.Qi)
             compute_rhs_args = (R, grid, IV.ρ, IV_Ũ, model.prognostic_temperature, model.buoyancy, p₀, IV_C, F, BS)
             fill_halo_regions!(IV.ρ.data, hpbcs, arch, grid)
             fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C)), hpbcs, arch, grid)
+            fill_halo_regions!(IV_Ũ.W, hpbcs_np, arch, grid)
         end
 
         compute_right_hand_sides!(compute_rhs_args...)

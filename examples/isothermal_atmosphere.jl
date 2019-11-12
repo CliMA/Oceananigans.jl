@@ -22,7 +22,7 @@ model = CompressibleModel(grid=grid, buoyancy=buoyancy, surface_pressure=pₛ,
 # Isothermal atmosphere
 p₀(x, y, z) = pₛ * exp(- g*z / (Rᵈ*Tₐ))
 ρ₀(x, y, z) = ρₛ * exp(- g*z / (Rᵈ*Tₐ))
-T₀(x, y, z) = p₀(x, y, z) / Rᵈ
+T₀(x, y, z) = ρ₀(x, y, z) * Tₐ
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, T₀)
