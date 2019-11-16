@@ -25,7 +25,7 @@ p₀(x, y, z) = pₛ * exp(-z/H)
 θ₀(x, y, z) = Tₐ * exp(z/H * Rᵈ/cₚ)
 Θ₀(x, y, z) = ρ₀(x, y, z) * θ₀(x, y, z)
 
-model = CompressibleModel(grid=grid, buoyancy=buoyancy, surface_pressure=pₛ)
+model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ)
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)

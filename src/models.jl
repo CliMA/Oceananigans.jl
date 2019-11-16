@@ -16,7 +16,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, SF, RHS, IV, ATS} 
                   tracers :: TS
                  buoyancy :: B
                  coriolis :: C
-         surface_pressure :: FT
+       reference_pressure :: FT
             slow_forcings :: SF
          right_hand_sides :: RHS
         intermediate_vars :: IV
@@ -38,7 +38,7 @@ function CompressibleModel(;
                   tracers = (:Θᵐ, :Qv, :Ql, :Qi),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
-         surface_pressure = 100000,
+       reference_pressure = 100000,
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
@@ -47,11 +47,11 @@ function CompressibleModel(;
     
     validate_prognostic_temperature(prognostic_temperature, tracers)
 
-    surface_pressure = float_type(surface_pressure)
+    reference_pressure = float_type(reference_pressure)
     tracers = TracerFields(architecture, grid, tracers)
 
     return CompressibleModel(architecture, grid, clock, momenta, dry_density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, surface_pressure, slow_forcings,
+                             tracers, buoyancy, coriolis, reference_pressure, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
