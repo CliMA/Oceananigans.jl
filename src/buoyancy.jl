@@ -45,4 +45,3 @@ IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry,
 ####
 
 @inline buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C) = grav * ρᵐ(i, j, k, grid, ρᵈ, C)
-
