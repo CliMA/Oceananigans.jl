@@ -1,12 +1,12 @@
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F, grid, coriolis, Ũ, ρᵈ, C̃)
+function compute_slow_forcings!(F, grid, coriolis, Ũ, ρᵈ, C̃, forcing, time, params)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
-            F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
-            F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ)
+            F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
+            F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
+            F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
         end
 
         for C_name in propertynames(C̃)

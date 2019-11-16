@@ -33,6 +33,9 @@ end
 function time_step!(model::CompressibleModel; Δt, Nt=1)
     arch = model.architecture
     grid = model.grid
+    time = model.clock.time
+    forcing = model.forcing
+    params = model.parameters
 
     Ũ = model.momenta
     C̃ = model.tracers
@@ -48,6 +51,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
     Φ⁺ = merge(Ũ, C̃, (ρ=ρᵈ,))
 
+    # On the first and second RK3 steps we can to update intermediate Ũ and C̃.
     Ũ_names = propertynames(Ũ)
     IV_Ũ_vals = [getproperty(IV, U) for U in Ũ_names]
     IV_Ũ = NamedTuple{Ũ_names}(IV_Ũ_vals)
@@ -61,7 +65,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
         fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.W.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C̃)
+        compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C̃, forcing, time, params)
         fill_halo_regions!(F.W.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping

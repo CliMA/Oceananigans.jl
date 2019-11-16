@@ -1,12 +1,12 @@
 using Oceananigans
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, zeroforcing
 
 ####
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, F, P, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -16,6 +16,8 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, SF, RHS, IV, ATS} 
                   tracers :: TS
                  buoyancy :: B
                  coriolis :: C
+                  forcing :: F
+               parameters :: P
        reference_pressure :: FT
             slow_forcings :: SF
          right_hand_sides :: RHS
@@ -38,21 +40,25 @@ function CompressibleModel(;
                   tracers = (:Θᵐ, :Qv, :Ql, :Qi),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
+                  forcing = ModelForcing(),
+               parameters = nothing,
        reference_pressure = 100000,
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
     acoustic_time_stepper = nothing
    )
-    
+
     validate_prognostic_temperature(prognostic_temperature, tracers)
 
     reference_pressure = float_type(reference_pressure)
     tracers = TracerFields(architecture, grid, tracers)
 
+    forcing = ModelForcing(tracernames(tracers), forcing)
+
     return CompressibleModel(architecture, grid, clock, momenta, dry_density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, reference_pressure, slow_forcings,
-                             right_hand_sides, intermediate_vars, acoustic_time_stepper)
+                             tracers, buoyancy, coriolis, forcing, parameters, reference_pressure,
+                             slow_forcings, right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
 ####
