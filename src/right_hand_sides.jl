@@ -3,7 +3,7 @@
 ####
 
 const grav = 9.80665
-const μ = 1
+const μ = 1e-2
 const κ = 1e-2
 
 ####

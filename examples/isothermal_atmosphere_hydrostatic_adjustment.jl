@@ -1,6 +1,6 @@
 using JULES, Oceananigans
-using Plots, Printf
-using OffsetArrays
+using Plots
+using Printf
 
 Nx = Ny = 1
 Nz = 32
@@ -13,31 +13,57 @@ Tₐ = 293.15
 g  = 9.80665
 
 buoyancy = IdealGas()
-Rᵈ = buoyancy.Rᵈ
-cₚ = buoyancy.cₚ
-ρₛ = pₛ / (Rᵈ*Tₐ)
+Rᵈ, cₚ = buoyancy.Rᵈ, buoyancy.cₚ
 
-# Isothermal atmosphere
-H = Rᵈ * Tₐ / g
+####
+#### Isothermal atmosphere
+####
+
+H = Rᵈ * Tₐ / g    # Scale height [m]
+ρₛ = pₛ / (Rᵈ*Tₐ)  # Surface density [kg/m³]
+
 p₀(x, y, z) = pₛ * exp(-z/H)
 ρ₀(x, y, z) = ρₛ * exp(-z/H)
 
 θ₀(x, y, z) = Tₐ * exp(z/H * Rᵈ/cₚ)
 Θ₀(x, y, z) = ρ₀(x, y, z) * θ₀(x, y, z)
 
+####
+#### Sponge layer forcing to damp vertically propagating acoustic waves at the top.
+####
+
+const τ⁻¹ = 1    # Damping/relaxation time scale [s⁻¹].
+const Δμ = 0.1L  # Sponge layer width [m] set to 10% of the domain height.
+@inline μ(z, Lz) = τ⁻¹ * exp(-(Lz-z) / Δμ)
+
+@inline Fw(i, j, k, grid, t, Ũ, C̃, p) = @inbounds -μ(grid.zF[k], grid.Lz) * Ũ.W[i, j, k]
+forcing = ModelForcing(w=Fw)
+
+####
+#### Create model
+####
+
 model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
-                          prognostic_temperature=ModifiedPotentialTemperature(), tracers=(:Θᵐ,))
+                          prognostic_temperature=ModifiedPotentialTemperature(),
+                          tracers=(:Θᵐ,), forcing=forcing)
+
+####
+#### Set initial conditions
+####
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
 
-Δtp = 0.5
 Θ₀_prof = model.tracers.Θᵐ[1, 1, 1:Nz]
 ρ₀_prof = model.density[1, 1, 1:Nz]
 
-for i = 1:100
-    time_step!(model; Δt=Δtp, Nt=10)
- 
+####
+#### Time step and keep plotting vertical profiles of ρθ′, ρw, and ρ′.
+####
+
+for i = 1:500
+    time_step!(model; Δt=0.5, Nt=10)
+
     Θ_prof = model.tracers.Θᵐ[1, 1, 1:Nz] .- Θ₀_prof
     W_prof = model.momenta.W[1, 1, 1:Nz+1]
     ρ_prof = model.density[1, 1, 1:Nz] .- ρ₀_prof
@@ -52,4 +78,3 @@ for i = 1:100
     # CFL = maximum(abs, model.momenta.W.data) * Δtp / grid.Δz
     # @show CFL
 end
-
