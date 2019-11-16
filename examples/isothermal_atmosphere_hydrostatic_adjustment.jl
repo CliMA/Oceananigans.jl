@@ -25,7 +25,8 @@ p₀(x, y, z) = pₛ * exp(-z/H)
 θ₀(x, y, z) = Tₐ * exp(z/H * Rᵈ/cₚ)
 Θ₀(x, y, z) = ρ₀(x, y, z) * θ₀(x, y, z)
 
-model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ)
+model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
+                          prognostic_temperature=ModifiedPotentialTemperature(), tracers=(:Θᵐ,))
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
@@ -34,10 +35,8 @@ set!(model.tracers.Θᵐ, Θ₀)
 Θ₀_prof = model.tracers.Θᵐ[1, 1, 1:Nz]
 ρ₀_prof = model.density[1, 1, 1:Nz]
 
-for i = 1:10
-    for _ in 1:10
-        time_step!(model; Δt=Δtp, nₛ=1)
-    end
+for i = 1:100
+    time_step!(model; Δt=Δtp, Nt=10)
  
     Θ_prof = model.tracers.Θᵐ[1, 1, 1:Nz] .- Θ₀_prof
     W_prof = model.momenta.W[1, 1, 1:Nz+1]
@@ -50,7 +49,7 @@ for i = 1:10
     t_str = @sprintf("t = %d s", model.clock.time)
     display(plot(Θ_plot, W_plot, ρ_plot, title=["Theta_prime" "W" "rho, $t_str"], layout=(1, 3), show=true))
 
-    CFL = maximum(abs, model.momenta.W.data) * Δtp / grid.Δz
-    @show CFL
+    # CFL = maximum(abs, model.momenta.W.data) * Δtp / grid.Δz
+    # @show CFL
 end
 
