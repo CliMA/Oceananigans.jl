@@ -34,7 +34,7 @@ set!(model.tracers.Θᵐ, Θ₀)
 Θ₀_prof = model.tracers.Θᵐ[1, 1, 1:Nz]
 ρ₀_prof = model.density[1, 1, 1:Nz]
 
-for i = 1:1000
+for i = 1:10
     for _ in 1:10
         time_step!(model; Δt=Δtp, nₛ=1)
     end
@@ -48,7 +48,7 @@ for i = 1:1000
     ρ_plot = plot(ρ_prof, grid.zC, xlim=(-0.01, 0.01), label="")
 
     t_str = @sprintf("t = %d s", model.clock.time)
-    display(plot(Θ_plot, W_plot, ρ_plot, title=["Theta_prime" "W" "rho $t_str"], layout=(1, 3), show=true))
+    display(plot(Θ_plot, W_plot, ρ_plot, title=["Theta_prime" "W" "rho, $t_str"], layout=(1, 3), show=true))
 
     CFL = maximum(abs, model.momenta.W.data) * Δtp / grid.Δz
     @show CFL

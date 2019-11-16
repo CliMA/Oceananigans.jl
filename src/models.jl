@@ -6,7 +6,7 @@ using Oceananigans: AbstractModel
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, BS, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -17,7 +17,6 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, BS, SF, RHS, IV, A
                  buoyancy :: B
                  coriolis :: C
          surface_pressure :: FT
-               base_state :: BS
             slow_forcings :: SF
          right_hand_sides :: RHS
         intermediate_vars :: IV
@@ -40,7 +39,6 @@ function CompressibleModel(;
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
          surface_pressure = 100000,
-               base_state = BaseState(FT=float_type),
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
@@ -53,7 +51,7 @@ function CompressibleModel(;
     tracers = TracerFields(architecture, grid, tracers)
 
     return CompressibleModel(architecture, grid, clock, momenta, dry_density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, surface_pressure, base_state, slow_forcings,
+                             tracers, buoyancy, coriolis, surface_pressure, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
