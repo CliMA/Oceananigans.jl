@@ -98,6 +98,7 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
     fill_halo_regions!(datatuple(merge(Ũ, C)), hpbcs, arch, grid)
     fill_halo_regions!(Ũ.W.data, hpbcs_np, arch, grid)
     compute_slow_forcings!(F, grid, model.coriolis, Ũ, ρᵈ, C)
+    fill_halo_regions!(F.W.data, hpbcs_np, arch, grid)
 
     # RK3 time-stepping
     for rk3_iter in 1:3
@@ -119,6 +120,8 @@ function time_step!(model::CompressibleModel; Δt, nₛ)
         end
 
         compute_right_hand_sides!(compute_rhs_args...)
+
+        fill_halo_regions!(R.W.data, hpbcs_np, arch, grid)
 
         # n, Δτ = acoustic_time_steps(rk3_iter)
         # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
