@@ -66,9 +66,11 @@ times = [model.clock.time]
 #### Time step and keep plotting vertical profiles of ρθ′, ρw, and ρ′.
 ####
 
-while model.clock.time < 500
+anim = @animate while model.clock.time < 500
+# while model.clock.time < 500
     time_step!(model; Δt=0.5, Nt=10)
 
+    @show model.clock.time
     Θ_prof = model.tracers.Θᵐ[1, 1, 1:Nz] .- Θ₀_prof
     W_prof = model.momenta.W[1, 1, 1:Nz+1]
     ρ_prof = model.density[1, 1, 1:Nz] .- ρ₀_prof
@@ -96,7 +98,7 @@ end
 θ_plot = plot(θ₀_prof, grid.zC, xlabel="theta (K)", ylabel="z (m)", label="initial", legend=:topleft)
 plot!(θ_plot, θ∞_prof, grid.zC, label="balanced")
 
-ρ_plot = plot(ρ₀_prof, grid.zC, xlabel="ρ (kg/m³)", ylabel="z (m)", label="initial")
+ρ_plot = plot(ρ₀_prof, grid.zC, xlabel="rho (kg/m³)", ylabel="z (m)", label="initial")
 plot!(ρ_plot, ρ∞_prof, grid.zC, label="balanced")
 
 display(plot(θ_plot, ρ_plot, show=true))
