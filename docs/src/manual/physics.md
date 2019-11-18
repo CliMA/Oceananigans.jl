@@ -163,7 +163,7 @@ $\bm{\nabla} \bm{\cdot} \bm{q}_c$ in the momentum and tracer conservation equati
 
 ### Constant isotropic diffusivity
 
-In a constant isotropic diffusivity model, the kinematic stress tensor is defned
+In a constant isotropic diffusivity model, the kinematic stress tensor is defined
 ```math
 \tau_{ij} = - \nu \Sigma_{ij} \, ,
 ```

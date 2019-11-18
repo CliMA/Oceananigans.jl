@@ -114,7 +114,7 @@ Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) *
 #
 # We use a horizontal biharmonic diffusivity and a Laplacian vertical diffusivity
 # to dissipate energy in the Eady problem.
-# Two use both of these closures at the same time, we set the keyword argument
+# To use both of these closures at the same time, we set the keyword argument
 # `closure` a tuple of two closures. Note that the "2D Leith" parameterization may
 # also be a sensible choice to pair with a Laplacian vertical diffusivity for this problem.
 

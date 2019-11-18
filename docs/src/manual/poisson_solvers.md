@@ -19,7 +19,7 @@ tridiagonal form. This allows for the matrix to be decomposed and solved efficie
 eigenvectors of the blocks are known \citep[\S2]{Buzbee70}. In the case of Poisson's equation on a rectangle,
 \citet{Hockney65} has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
 multiplication steps resulting in an even more efficient method. \citet{Schumann88} describe the implementation of such
-an algorithm for Poisson's equation on a staggered grid with Dirchlet, Neumann, and periodic boundary conditions.
+an algorithm for Poisson's equation on a staggered grid with Dirichlet, Neumann, and periodic boundary conditions.
 
 The method can be explained easily by taking the Fourier transform of both sides of \eqref{eq:poisson-pressure} to yield
 ```math
@@ -170,4 +170,4 @@ permutation of \eqref{eq:permutation} must be applied.
 
 Due to the extra steps involved in calculating the cosine transform in 2D, running with two wall-bounded dimensions
 typically slows the model down by a factor of 2. Switching to the FACR algorithm may help here as a 2D cosine transform
-won't be neccessary anymore.
+won't be necessary anymore.
