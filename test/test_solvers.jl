@@ -189,10 +189,31 @@ function can_solve_single_tridiagonal_system(N)
 
     ϕ = reshape(zeros(N), (1, 1, N))
 
-    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=d, f=f, size=(1, 1, N))
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, size=(1, 1, N))
     solve_batched_tridiagonal_system!(ϕ, btsolver)
 
     return ϕ[:] ≈ ϕ_correct
+end
+
+function can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
+    a = rand(Nz-1)
+    b = 2 .+ rand(Nz)  # Ensure diagonal dominance.
+    c = rand(Nz-1)
+    f = rand(Nx, Ny, Nz)
+
+    M = Tridiagonal(a, b, c)
+    ϕ_correct = zeros(Nx, Ny, Nz)
+
+    for i = 1:Nx, j = 1:Ny
+        ϕ_correct[i, j, :] .= M \ f[i, j, :]
+    end
+
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, size=(Nx, Ny, Nz))
+
+    ϕ = zeros(Nx, Ny, Nz)
+    solve_batched_tridiagonal_system!(ϕ, btsolver)
+
+    return ϕ ≈ ϕ_correct
 end
 
 @testset "Solvers" begin
@@ -263,6 +284,10 @@ end
     @testset "Batched tridiagonal solver" begin
         for Nz in [8, 11, 18]
             @test can_solve_single_tridiagonal_system(Nz)
+        end
+
+        for Nx in [8, 11], Ny in [7, 16], Nz in [8, 11, 18]
+            @test can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
         end
     end
 end
