@@ -178,55 +178,68 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     isapprox(ϕ, Ψ.(xC, yC, zC); rtol=5e-2)
 end
 
-function can_solve_single_tridiagonal_system(N)
-    a = rand(N-1)
-    b = 3 .+ rand(N)  # Ensure diagonal dominance.
-    c = rand(N-1)
-    f = rand(N)
+array_type(::CPU) = Array
+@hascuda array_type(::GPU) = CuArray
+
+function can_solve_single_tridiagonal_system(arch, N)
+    ArrayType = array_type(arch)
+
+    a = rand(N-1) |> ArrayType
+    b = 3 .+ rand(N) |> ArrayType  # +3 to ensure diagonal dominance.
+    c = rand(N-1) |> ArrayType
+    f = rand(N) |> ArrayType
 
     M = Tridiagonal(a, b, c)
-    ϕ_correct = M \ f
+    ϕ_correct = M \ f  # This solve probably invokes scalar CuArray operations on the GPU!
 
-    ϕ = reshape(zeros(N), (1, 1, N))
+    ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
     grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+
+    @launch(device(arch), threads=(1, 1, 1), blocks=(1, 1, 1),
+            solve_batched_tridiagonal_system!(ϕ, btsolver))
 
     return ϕ[:] ≈ ϕ_correct
 end
 
-function can_solve_single_tridiagonal_system_with_functions(N)
+function can_solve_single_tridiagonal_system_with_functions(arch, N)
+    ArrayType = array_type(arch)
+
     grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
 
-    a = rand(N-1)
-    c = rand(N-1)
+    a = rand(N-1) |> ArrayType
+    c = rand(N-1) |> ArrayType
 
-    @inline b(i, j, k, grid, p) = 3 .+ cos(2π*grid.zC[k])
+    @inline b(i, j, k, grid, p) = 3 .+ cos(2π*grid.zC[k])  # +3 to ensure diagonal dominance.
     @inline f(i, j, k, grid, p) = sin(2π*grid.zC[k])
 
-    bₐ = [b(1, 1, k, grid, nothing) for k in 1:N]
-    fₐ = [f(1, 1, k, grid, nothing) for k in 1:N]
+    bₐ = [b(1, 1, k, grid, nothing) for k in 1:N] |> ArrayType
+    fₐ = [f(1, 1, k, grid, nothing) for k in 1:N] |> ArrayType
 
     M = Tridiagonal(a, bₐ, c)
-    ϕ_correct = M \ fₐ
+    ϕ_correct = M \ fₐ  # This solve probably invokes scalar CuArray operations on the GPU!
 
-    ϕ = reshape(zeros(N), (1, 1, N))
+    ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+
+    @launch(device(arch), threads=(1, 1, 1), blocks=(1, 1, 1),
+            solve_batched_tridiagonal_system!(ϕ, btsolver))
 
     return ϕ[:] ≈ ϕ_correct
 end
 
-function can_solve_batched_tridiagonal_system_with_3D_RHS(Nx, Ny, Nz)
-    a = rand(Nz-1)
-    b = 2 .+ rand(Nz)  # Ensure diagonal dominance.
-    c = rand(Nz-1)
-    f = rand(Nx, Ny, Nz)
+function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+    ArrayType = array_type(arch)
+
+    a = rand(Nz-1) |> ArrayType
+    b = 3 .+ rand(Nz) |> ArrayType  # +3 to ensure diagonal dominance.
+    c = rand(Nz-1) |> ArrayType
+    f = rand(Nx, Ny, Nz) |> ArrayType
 
     M = Tridiagonal(a, b, c)
-    ϕ_correct = zeros(Nx, Ny, Nz)
+    ϕ_correct = zeros(Nx, Ny, Nz) |> ArrayType
 
     for i = 1:Nx, j = 1:Ny
         ϕ_correct[i, j, :] .= M \ f[i, j, :]
@@ -235,17 +248,21 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(Nx, Ny, Nz)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
-    ϕ = zeros(Nx, Ny, Nz)
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
+
+    @launch(device(arch), threads=(Nx, Ny, 1), blocks=(1, 1, 1),
+            solve_batched_tridiagonal_system!(ϕ, btsolver))
 
     return ϕ ≈ ϕ_correct
 end
 
-function can_solve_batched_tridiagonal_system_with_3D_functions(Nx, Ny, Nz)
+function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+    ArrayType = array_type(arch)
+
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
 
-    a = rand(Nz-1)
-    c = rand(Nz-1)
+    a = rand(Nz-1) |> ArrayType
+    c = rand(Nz-1) |> ArrayType
 
     @inline b(i, j, k, grid, p) = 3 .+ grid.xC[i]* grid.yC[j] * cos(2π*grid.zC[k])
     @inline f(i, j, k, grid, p) = (grid.xC[i] + grid.yC[j]) * sin(2π*grid.zC[k])
@@ -253,17 +270,18 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(Nx, Ny, Nz)
     ϕ_correct = zeros(Nx, Ny, Nz)
 
     for i = 1:Nx, j = 1:Ny
-        bₐ = [b(i, j, k, grid, nothing) for k in 1:Nz]
+        bₐ = [b(i, j, k, grid, nothing) for k in 1:Nz] |> ArrayType
         M = Tridiagonal(a, bₐ, c)
 
-        fₐ = [f(i, j, k, grid, nothing) for k in 1:Nz]
+        fₐ = [f(i, j, k, grid, nothing) for k in 1:Nz] |> ArrayType
         ϕ_correct[i, j, :] .= M \ fₐ
     end
 
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
-    ϕ = zeros(Nx, Ny, Nz)
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
+    @launch(device(arch), threads=(Nx, Ny, 1), blocks=(1, 1, 1),
+            solve_batched_tridiagonal_system!(ϕ, btsolver))
 
     return ϕ ≈ ϕ_correct
 end
@@ -333,15 +351,17 @@ end
     #     end
     # end
 
-    @testset "Batched tridiagonal solver" begin
-        for Nz in [8, 11, 18]
-            @test can_solve_single_tridiagonal_system(Nz)
-            @test can_solve_single_tridiagonal_system_with_functions(Nz)
-        end
+    for arch in archs
+        @testset "Batched tridiagonal solver [$arch]" begin
+            for Nz in [8, 11, 18]
+                @test can_solve_single_tridiagonal_system(arch, Nz)
+                @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
+            end
 
-        for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11, 18]
-            @test can_solve_batched_tridiagonal_system_with_3D_RHS(Nx, Ny, Nz)
-            @test can_solve_batched_tridiagonal_system_with_3D_functions(Nx, Ny, Nz)
+            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11, 18]
+                @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+                @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+            end
         end
     end
 end
