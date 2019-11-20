@@ -189,7 +189,8 @@ function can_solve_single_tridiagonal_system(N)
 
     ϕ = reshape(zeros(N), (1, 1, N))
 
-    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, size=(1, 1, N))
+    grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
     solve_batched_tridiagonal_system!(ϕ, btsolver)
 
     return ϕ[:] ≈ ϕ_correct
@@ -208,7 +209,8 @@ function can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
         ϕ_correct[i, j, :] .= M \ f[i, j, :]
     end
 
-    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, size=(Nx, Ny, Nz))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
     ϕ = zeros(Nx, Ny, Nz)
     solve_batched_tridiagonal_system!(ϕ, btsolver)
