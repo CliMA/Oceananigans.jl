@@ -196,7 +196,30 @@ function can_solve_single_tridiagonal_system(N)
     return ϕ[:] ≈ ϕ_correct
 end
 
-function can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
+function can_solve_single_tridiagonal_system_with_functions(N)
+    grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
+
+    a = rand(N-1)
+    c = rand(N-1)
+
+    @inline b(i, j, k, grid, p) = 3 .+ cos(2π*grid.zC[k])
+    @inline f(i, j, k, grid, p) = sin(2π*grid.zC[k])
+
+    bₐ = [b(1, 1, k, grid, nothing) for k in 1:N]
+    fₐ = [f(1, 1, k, grid, nothing) for k in 1:N]
+
+    M = Tridiagonal(a, bₐ, c)
+    ϕ_correct = M \ fₐ
+
+    ϕ = reshape(zeros(N), (1, 1, N))
+
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
+    solve_batched_tridiagonal_system!(ϕ, btsolver)
+
+    return ϕ[:] ≈ ϕ_correct
+end
+
+function can_solve_batched_tridiagonal_system_with_3D_RHS(Nx, Ny, Nz)
     a = rand(Nz-1)
     b = 2 .+ rand(Nz)  # Ensure diagonal dominance.
     c = rand(Nz-1)
@@ -210,6 +233,33 @@ function can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
     end
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
+
+    ϕ = zeros(Nx, Ny, Nz)
+    solve_batched_tridiagonal_system!(ϕ, btsolver)
+
+    return ϕ ≈ ϕ_correct
+end
+
+function can_solve_batched_tridiagonal_system_with_3D_functions(Nx, Ny, Nz)
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
+
+    a = rand(Nz-1)
+    c = rand(Nz-1)
+
+    @inline b(i, j, k, grid, p) = 3 .+ grid.xC[i]* grid.yC[j] * cos(2π*grid.zC[k])
+    @inline f(i, j, k, grid, p) = (grid.xC[i] + grid.yC[j]) * sin(2π*grid.zC[k])
+
+    ϕ_correct = zeros(Nx, Ny, Nz)
+
+    for i = 1:Nx, j = 1:Ny
+        bₐ = [b(i, j, k, grid, nothing) for k in 1:Nz]
+        M = Tridiagonal(a, bₐ, c)
+
+        fₐ = [f(i, j, k, grid, nothing) for k in 1:Nz]
+        ϕ_correct[i, j, :] .= M \ fₐ
+    end
+
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
     ϕ = zeros(Nx, Ny, Nz)
@@ -286,10 +336,12 @@ end
     @testset "Batched tridiagonal solver" begin
         for Nz in [8, 11, 18]
             @test can_solve_single_tridiagonal_system(Nz)
+            @test can_solve_single_tridiagonal_system_with_functions(Nz)
         end
 
-        for Nx in [8, 11], Ny in [7, 16], Nz in [8, 11, 18]
-            @test can_solve_batched_tridiagonal_system_with_3D_f(Nx, Ny, Nz)
+        for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11, 18]
+            @test can_solve_batched_tridiagonal_system_with_3D_RHS(Nx, Ny, Nz)
+            @test can_solve_batched_tridiagonal_system_with_3D_functions(Nx, Ny, Nz)
         end
     end
 end
