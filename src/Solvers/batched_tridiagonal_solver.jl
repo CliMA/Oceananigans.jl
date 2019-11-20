@@ -9,6 +9,12 @@ struct BatchedTridiagonalSolver{A, B, C, F, T}
     Nz :: Int
 end
 
+function BatchedTridiagonalSolver(; dl, d, du, f, size)
+    Nx, Ny, Nz = size
+    t = zeros(Nz)
+    return BatchedTridiagonalSolver(dl, d, du, f, t, Nx, Ny, Nz)
+end
+
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k) where {T} = @inbounds a[i, j, k]
 @inline get_coefficient(a::Function, i, j, k) = a(i, j, k)

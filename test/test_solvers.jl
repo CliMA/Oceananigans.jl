@@ -189,7 +189,7 @@ function can_solve_single_tridiagonal_system(N)
 
     ϕ = reshape(zeros(N), (1, 1, N))
 
-    btsolver = BatchedTridiagonalSolver(a, b, c, f, similar(f), 1, 1, N)
+    btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=d, f=f, size=(1, 1, N))
     solve_batched_tridiagonal_system!(ϕ, btsolver)
 
     return ϕ[:] ≈ ϕ_correct
