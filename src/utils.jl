@@ -7,7 +7,7 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 ####
-#### Convinient macro
+#### Convinient macros
 ####
 
 macro loop_xyz(i, j, k, grid, expr)
@@ -22,7 +22,18 @@ macro loop_xyz(i, j, k, grid, expr)
             end
         end)
 end
-        
+
+macro loop_xy(i, j, grid, expr)
+    return esc(
+        quote
+            @loop for $j in (1:$grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    $expr
+                end
+            end
+        end)
+end
+
 ####
 #### Convinient definitions
 ####
@@ -294,7 +305,7 @@ end
 ##### Utils for models
 #####
 
-function ordered_dict_show(dict, padchar) 
+function ordered_dict_show(dict, padchar)
     if length(dict) == 0
         return string(typeof(dict), " with no entries")
     elseif length(dict) == 1
@@ -302,8 +313,8 @@ function ordered_dict_show(dict, padchar)
                       padchar, "   └── ", dict.keys[1], " => ", typeof(dict.vals[1]))
     else
         return string(typeof(dict), " with $(length(dict)) entries:", '\n',
-                      Tuple(string(padchar, 
-                                   "   ├── ", name, " => ", typeof(dict[name]), '\n') 
+                      Tuple(string(padchar,
+                                   "   ├── ", name, " => ", typeof(dict[name]), '\n')
                             for name in dict.keys[1:end-1]
                            )...,
                            padchar, "   └── ", dict.keys[end], " => ", typeof(dict.vals[end])
@@ -314,7 +325,7 @@ end
 """
     with_tracers(tracers, initial_tuple, tracer_default)
 
-Create a tuple corresponding to the solution variables `u`, `v`, `w`, 
+Create a tuple corresponding to the solution variables `u`, `v`, `w`,
 and `tracers`. `initial_tuple` is a `NamedTuple` that at least has
 fields `u`, `v`, and `w`, and may have some fields corresponding to
 the names in `tracers`. `tracer_default` is a function that produces

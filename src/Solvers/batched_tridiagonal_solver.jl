@@ -1,3 +1,8 @@
+@hascuda using CUDAnative
+using GPUifyLoops: @launch, @loop, @unroll
+
+using Oceananigans: @loop_xy
+
 struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
        a :: A
        b :: B
@@ -20,7 +25,7 @@ end
 """
 Solve the tridiagonal system of linear equations described by the tridiagonal
 matrix `M` with right-hand-side `f` assuming one of the eigenvalues is zero
-(which results in a singular matrix so the general Thomas algorithm has been
+(which results in a singular matrix so the general TDMA algorithm has been
 modified slightly).
 
 Reference CPU implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
@@ -30,13 +35,13 @@ function solve_batched_tridiagonal_system!(ϕ, solver)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     a, b, c, f, t, p = solver.a, solver.b, solver.c, solver.f, solver.t, solver.params
 
-    @inbounds begin
-        for i = 1:Nx, j = 1:Ny
+    @loop_xy i j grid begin
+        @inbounds begin
             β  = get_coefficient(b, i, j, 1, grid, p)
             f₁ = get_coefficient(f, i, j, 1, grid, p)
             ϕ[i, j, 1] = f₁ / β
 
-            for k = 2:Nz
+            @unroll for k = 2:Nz
                 cₖ₋₁ = get_coefficient(c, i, j, k-1, grid, p)
                 bₖ   = get_coefficient(b, i, j, k,   grid, p)
                 aₖ₋₁ = get_coefficient(a, i, j, k-1, grid, p)
@@ -53,7 +58,7 @@ function solve_batched_tridiagonal_system!(ϕ, solver)
                 ϕ[i, j, k] = (fₖ - aₖ₋₁ * ϕ[i, j, k-1]) / β
             end
 
-            for k = Nz-1:-1:1
+            @unroll for k = Nz-1:-1:1
                 ϕ[i, j, k] = ϕ[i, j, k] - t[k+1] * ϕ[i, j, k+1]
             end
         end
