@@ -55,7 +55,8 @@ function f!(F, x)
     end
 end
 
-sol = nlsolve(f!, [p₀_prof; ρ₀_prof], show_trace=true)
+guess = [p₀_prof; ρ₀_prof]
+sol = nlsolve(f!, guess, show_trace=true)
 
 ####
 #### Plot difference between initial condition and solution.
@@ -88,7 +89,7 @@ set!(model.tracers.Θᵐ, reshape(Θ∞_prof, (Nx, Ny, Nz)))
 times = [model.clock.time]
 ρw_ts = [model.momenta.W[1, 1, Int(Nz/2)]]
 
-while model.clock.time < 500
+while model.clock.time < 50
     time_step!(model; Δt=0.5, Nt=10)
 
     @show model.clock.time
