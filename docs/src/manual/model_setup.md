@@ -21,6 +21,9 @@ rough edges. Generally the CPU wants `Array` objects while the GPU wants `CuArra
 Passing `float_type=Float64` or `float_type=Float32` to the `Model` constructor causes the model to store all numbers
 with 64-bit or 32-bit floating point precision.
 
+<!-- !!! note "Avoiding mixed-precision operations"
+     -->
+
 !!! warning "Effect of floating point precision on simulation accuracy"
     While we run many tests with both `Float32` and `Float64` it is not clear whether `Float32` is precise enough to
     provide similar accuracy in all use cases. If accuracy is a concern, stick to `Float64`.
@@ -115,8 +118,8 @@ coriolis = FPlane(rotation_rate=7.292115e-5, latitude=45)
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
 
 ### $\beta$-plane
-To set up a $\beta$-plane the background rotation rate $f\_0$ and the $\beta$ parameter must be specified. For example,
-a $\beta$-plane with $f\_0 = 10^{-4} \text{s}^{-1}$ and $\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}$ can be
+To set up a $\beta$-plane the background rotation rate $f_0$ and the $\beta$ parameter must be specified. For example,
+a $\beta$-plane with $f_0 = 10^{-4} \text{s}^{-1}$ and $\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}$ can be
 set up with
 ```@example
 coriolis = BetaPlane(f₀=1e-4, β=1.5e-11)
@@ -128,9 +131,125 @@ which has a rotation rate of $\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}$ an
 ```@example
 coriolis = BetaPlane(rotation_rate=7.292115e-5, latitude=-10, radius=6371e3)
 ```
-in which case $f\_0 = 2\Omega\sin\varphi$ and $\beta = 2\Omega\cos\varphi / R$.
+in which case $f_0 = 2\Omega\sin\varphi$ and $\beta = 2\Omega\cos\varphi / R$.
 
-## Model
+## Tracers
+
+The tracers to be advected around can be specified via a list of symbols. By default the model evolves temperature and
+salinity
+```@example
+tracers = (:T, :S)
+```
+but any number of arbitrary tracers can be appended to this list. For example, to evolve quantities $C_1$, CO₂, and
+nitrogen as passive tracers you could set them up as
+```@example
+tracers = (:T, :S, :C₁, :CO₂, :nitrogen)
+```
+
+!!! info "Active vs. passive tracers"
+    An active tracer typically denotes a tracer quantity that affects the fluid dynamics through buoyancy. In the ocean
+    temperature and salinity are active tracers. Passive tracers, on the other hand, typically do not affect the fluid
+    dynamics are are _passively_ advected around by the flow field.
+
+## Buoyancy and equation of state
+The buoyancy option selects how buoyancy is treated. There are currently three options:
+1. No buoyancy (and no gravity).
+2. Evolve buoyancy as a tracer.
+3. _Seawater buoyancy_: evolve temperature $T$ and salinity $S$ as tracers with a value for the gravitational
+   acceleration $g$ and an appropriate equation of state.
+
+### No buoyancy
+To turn off buoyancy (and gravity) simply pass
+```@example
+buoyancy = nothing
+```
+to the `Model` constructor. In this case, you will probably also want to explicitly specify which tracers to evolve.
+In particular, you probably will not want to evolve temperature and salinity, which are included by default. To specify
+no tracers, also pass
+```@example
+tracers = ()
+```
+to the `Model` constructor.
+
+### Buoyancy as a tracer
+To directly evolve buoyancy as a tracer simply pass
+```@example
+buoyancy = BuoyancyTracer()
+```
+to the `Model` constructor. Buoyancy `:b` must be included as a tracer, for example, by also passing
+```@example
+tracers = (:b)
+```
+
+### Seawater buoyancy
+To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pass
+```@example
+buoyancy = SeawaterBuoyancy()
+```
+which is also the default. Without any options specified, a value of $g = 9.80665 \; \text{m/s}^2$ is used for the
+gravitational acceleration (corresponding to [standard gravity](https://en.wikipedia.org/wiki/Standard_gravity)) along
+with a linear equation of state with thermal expansion and haline contraction coefficients suitable for water.
+
+If, for example, you wanted to simulate fluids on another planet such as Europa where $g = 1.3 \; \text{m/s}^2$, then
+use
+```@example
+buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
+```
+
+#### Linear equation of state
+To use non-default thermal expansion and haline contraction coefficients, say
+$\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10{-4} \text{ppt}^{-1}$ corresponding to some other
+fluid, then use
+
+```@example
+buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(α=1.67e-4, β=7.80e-4))
+```
+
+#### Idealized nonlinear equation of state
+Instead of a linear equation of state, an idealized equation of state as described by Roquet et al. (2015) may be
+specified. See [`RoquetIdealizedNonlinearEquationOfState`](@ref RoquetIdealizedNonlinearEquationOfState).
+
+
+## Boundary conditions
+A boundary condition is applied to each field, dimension, and endpoint. There are left and right (or bottom and top)
+boundary conditions for each of the x, y, and z dimensions so each field is associated with 6 boundary conditions. Each
+of these boundary conditions may be specified individually. Each boundary condition can be specified via a constant
+value, an array, or a function.
+
+!!! warning "Consistent boundary conditions"
+    Be careful to ensure that you don't set up a model with inconsistent boundary conditions. For example, periodic
+    boundary conditions should remain imposed on all fields and endpoints for periodic dimensions, and velocities
+    normal to a wall (e.g. vertical velocity w with walls at the top and bottom) must have no-penetration boundary
+    conditions.
+
+### Boundary condition structures
+
+### Types of boundary conditions
+1. Periodic
+2. Flux
+3. Value (or Dirchlet)
+4. Gradient (or Neumann)
+5. No-penetration
+
+### Specifying boundary conditions with functions
+
+#### Using functions of _(x, y, z, t)_
+
+## Forcing functions
+
+## Parameters
+
+## Turbulent diffusivity closures and large eddy simulation models
+
+## Diagnostics
+
+## Output writers
+
+## Setting initial conditions
+Initial conditions are imposed after model construction. This can be easily done using the the `set!` function, which
+allows the setting of initial conditions using constant values, arrays, or functions.
+
+<!-- ## Model construction
 
 !!! info "Units"
-    By default the model assumes SI units. To set up a model with dimensionless units, see `NonDimensionalModel`.
+    By default the model assumes SI units. To set up a model with dimensionless units, see `NonDimensionalModel`. -->
