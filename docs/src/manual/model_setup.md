@@ -196,6 +196,11 @@ use
 buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 ```
 
+When using `SeawaterBuoyancy` temperature `:T` and salinity `:S` tracers must be specified
+```@example
+tracers = (:T, :S)
+```
+
 #### Linear equation of state
 To use non-default thermal expansion and haline contraction coefficients, say
 $\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10{-4} \text{ppt}^{-1}$ corresponding to some other
@@ -226,8 +231,8 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 ### Types of boundary conditions
 1. [`Periodic`](@ref Periodic)
 2. [`Flux`](@ref Flux)
-3. [`Value`](@ref Value) (Dirchlet)
-4. [`Gradient`](@ref Gradient) (Neumann)
+3. [`Value`](@ref Value) ([`Dirchlet`](@ref))
+4. [`Gradient`](@ref Gradient) ([`Neumann`](@ref))
 5. [`No-penetration`](@ref NoPenetration)
 
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
@@ -289,11 +294,26 @@ white_noise_T_bc = BoundaryCondition(Flux, Q)
 
 4. A spatially varying and time-dependent heating representing perhaps a localized source of heating modulated by a
    diurnal cycle.
+```@example
+Q(i, j, grid, t, U, C, params) = exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
+Q(x, y, t) = exp(-(x^2+y^2)) * sin(2π*t)
+localized_heating_bc = BoundaryCondition(Flux, Q)
+```
 
 ### Specifying boundary conditions on a field
 To, for example, create a set of horizontally periodic field boundary conditions
+```@example
+T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
+                                bottom = BoundaryCondition(Gradient, 0.01))
+```
+which will create a [`FieldBoundaryConditions`](@ref) object.
 
 ### Specifying model boundary conditions
+```@example
+T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
+                                bottom = BoundaryCondition(Gradient, 0.01))
+model_bcs = HorizontallyPeriodicSolutionBCs(T=T_bcs)
+```
 
 ### Specifying boundary conditions with functions
 #### Using functions of _(x, y, z, t)_
@@ -303,12 +323,30 @@ Can be used to implement anything you wish, as long as it can be expressed as ex
 tracer evolution equations. Some examples include sponge layers, internal heating sources,
 
 ## Parameters
+Should fossil fuel companies be blamed for the climate crisis by pulling carbon out of the ground or just the greenwashing
+part? They're just satisfying demand and aren't going to regulate themselves.
 
 ## Turbulent diffusivity closures and large eddy simulation models
+See [turbulence closures](@ref numerical_closures) and [large eddy simulation](@ref numerical_les) for more details
+on turbulent diffusivity closures.
+
 ### Constant isotropic diffusivity
+```@example
+closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2)
+```
 ### Constant anisotropic diffusivity
+```@example
+closure = ConstantAnisotropicDiffusivity(νh=1e-3, νv=5e-2, κh=2e-3, κv=1e-1)
+```
 ### Smagorinsky-Lilly
+```@example
+closure = SmagorinskyLilly()
+```
 ### Anisotropic minimum dissipation
+```@example
+closure = AnisotropicMinimumDissipation()
+```
+### Using multiple closures at once
 
 ## Diagnostics
 ### Horizontal averages
@@ -327,6 +365,17 @@ tracer evolution equations. Some examples include sponge layers, internal heatin
 ## Setting initial conditions
 Initial conditions are imposed after model construction. This can be easily done using the the `set!` function, which
 allows the setting of initial conditions using constant values, arrays, or functions.
+
+```@example
+set!(model.velocities.u, 0.1)
+```
+
+```@example
+∂T∂z = 0.01
+ϵ(σ) = σ * randn()
+T₀(x, y, z) = ∂T∂z * z + ϵ(1e-8)
+set!(model.tracers.T, T₀)
+```
 
 <!-- ## Model construction
 
