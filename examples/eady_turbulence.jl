@@ -13,14 +13,14 @@ using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
 # These imports from Oceananigans's `TurbuleneClosures` module are needed for imposing
 # a background flow as a user-defined forcing.
 
-using Oceananigans.TurbulenceClosures: ∂x_faa, ∂x_caa, ▶x_faa, ▶y_aca, ▶x_caa, ▶xz_fac
+using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂xᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ
 
 using Oceananigans: Face, Cell
 
 # # Parameters
 #
 # Here we define numerical and physical parameters for an Eady problem.
-# We use a very fast baroclinic growth rate for the sake of this coarse 3D 
+# We use a very fast baroclinic growth rate for the sake of this coarse 3D
 # example.
 
 Nh = 64           # horizontal resolution
@@ -38,7 +38,7 @@ Rᵈ = Lh / 10      # [m] Deformation radius
 κ₄h = Δh^4 / τᵏ   # [m⁴ s⁻¹] Biharmonic horizontal diffusivity
  κᵥ = Δz^2 / 20τᵏ # [m² s⁻¹] Laplacian vertical diffusivity
 
-@show N² = (Rᵈ * f / Lz)^2      # [s⁻²] Initial buoyancy gradient 
+@show N² = (Rᵈ * f / Lz)^2      # [s⁻²] Initial buoyancy gradient
 @show  α = sqrt(N²) / (f * σᵇ)  # [s⁻¹] background shear
 
 end_time = 3day # Simulation end time
@@ -56,13 +56,13 @@ bc_parameters = (μ=μ, H=Lz)
 
 ubcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
 vbcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
-bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0), 
+bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
                                bottom = BoundaryCondition(Value, -N² * Lz))
 
-# # Forcing functions 
+# # Forcing functions
 #
-# The Eady problem is non-linearized around a geostrophic flow 
-# 
+# The Eady problem is non-linearized around a geostrophic flow
+#
 # $ ψ = - α y (z + H) $,
 #
 # where α is the geostrophic shear and horizontal buoyancy gradient.
@@ -76,30 +76,30 @@ bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
 
 forcing_parameters = (α=α, f=f, H=Lz)
 
-# The $x$-momentum forcing 
+# The $x$-momentum forcing
 #
 # $ F_u = - α w - α (z + H) ∂ₓu $
 #
 # is applied at location `(f, c, c)`.
 
-Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ▶xz_fac(i, j, k, grid, U.w)
-                                                   - p.α * (grid.zC[k] + p.H) * ∂x_faa(i, j, k, grid, ▶x_caa, U.u))
+Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
+                                                   - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, U.u))
 
-# The $y$-momentum forcing 
+# The $y$-momentum forcing
 #
-# $ F_v = - α (z + H) ∂ₓv 
+# $ F_v = - α (z + H) ∂ₓv
 #
 # is applied at location `(c, f, c)`.
 
-Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + p.H) * ∂x_caa(i, j, k, grid, ▶x_faa, U.v)
+Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, U.v)
 
-# The $z$-momentum forcing 
+# The $z$-momentum forcing
 #
-# $ F_w = - α (z + H) ∂ₓw 
+# $ F_w = - α (z + H) ∂ₓw
 #
 # is applied at location `(c, c, f)`.
 
-Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + p.H) * ∂x_caa(i, j, k, grid, ▶x_faa, U.w)
+Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, U.w)
 
 # The buoyancy forcing
 #
@@ -107,8 +107,8 @@ Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + p.H) * �
 #
 # is applied at location `(c, c, c)`.
 
-Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) * ∂x_caa(i, j, k, grid, ▶x_faa, C.b)
-                                                   + p.f * p.α * ▶y_aca(i, j, k, grid, U.v))
+Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, C.b)
+                                                   + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 
 # # Turbulence closures
 #
@@ -121,7 +121,7 @@ Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) *
 closure = (ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ),
            AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h))
            #TwoDimensionalLeith())
-           
+
 # Form a prefix from chosen resolution, boundary condition, and closure name
 
 output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
@@ -131,7 +131,7 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 # Our use of biharmonic diffusivity means we must instantiate the model grid
 # with halos of size `(2, 2, 2)` in `(x, y, z)`.
 
-model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2), 
+model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
                                            x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0)),
        architecture = CPU(),
            coriolis = FPlane(f=f),
@@ -157,7 +157,7 @@ u₀(x, y, z) = 1e-2 * α * Lz
 set!(model, u=u₀, v=u₀, b=b₀)
 
 # # Diagnostics and output
-# 
+#
 # Diagnostics that return the maximum absolute value of `u, v, w` by calling
 # `umax(model), vmax(model), wmax(model)`:
 
@@ -167,7 +167,7 @@ wmax = FieldMaximum(abs, model.velocities.w)
 
 # Set up output. Here we output the velocity and buoyancy fields at intervals of one day.
 fields_to_output = merge(model.velocities, (b=model.tracers.b,))
-output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); 
+output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
                                  interval=day, prefix=output_filename_prefix,
                                  force=true, max_filesize=10GiB)
 
@@ -207,7 +207,7 @@ fig = figure(figsize=(12, 8))
 
 gs = GridSpec(2, 2, height_ratios=[2, 1])
 
-axs = ntuple(4) do i 
+axs = ntuple(4) do i
     fig.add_subplot(get(gs, i-1))
 end
 
@@ -228,23 +228,23 @@ function makeplot!(axs, model)
 
     compute!(vertical_vorticity)
     compute!(divergence)
-    
+
     @printf("\nmax ζ/f: %.2e, max δ/f: %.2e\n\n", ζmax()/f, δmax()/f)
-    
+
     sca(axs[1]); cla()
     pcolormesh(xF_xy/1e3, yF_xy/1e3, Array(interior(ζ)[:, :, Nz]))
-    title("Surface vertical vorticity (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)") 
+    title("Surface vertical vorticity (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)")
     axs[1].set_aspect(1)
-    
+
     sca(axs[2]); cla()
     pcolormesh(xC_xy/1e3, yC_xy/1e3, Array(interior(δ)[:, :, Nz]))
     title("Surface divergence (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ y \$ (km)")
     axs[2].set_aspect(1)
-    
+
     sca(axs[3]); cla()
     pcolormesh(xF_xz/1e3, zC_xz, Array(interior(ζ)[:, Int(Nh/2), :]))
     title("Vertical vorticity (1/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ z \$ (m)")
-    
+
     sca(axs[4]); cla()
     pcolormesh(xC_xz/1e3, zF_xz, Array(interior(w)[:, Int(Nh/2), :]))
     title("Vertical velocity (m/s)"); xlabel("\$ x \$ (km)"); ylabel("\$ z \$ (m)")

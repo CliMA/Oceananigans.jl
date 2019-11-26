@@ -90,4 +90,14 @@ end
         @test_skip run_example(replace_strings, "two_dimensional_turbulence")
     end
 
+    @testset "Eady turbulence" begin
+        println("  Testing Eady turbulence example")
+
+        replace_strings = [ ("Nh = 64", "Nh = 16"),
+                            ("Nz = 32", "Nz = 16"),
+                            ("end_time = 3day", "end_time = 1")
+                          ]
+
+        @test run_example(replace_strings, "eady_turbulence")
+    end
 end
