@@ -1,9 +1,75 @@
+function test_function_differentiation(T=Float64)
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
+    ϕ² = ϕ.^2
+
+    ∂x_ϕ_f = ϕ²[2, 2, 2] - ϕ²[1, 2, 2]
+    ∂x_ϕ_c = ϕ²[3, 2, 2] - ϕ²[2, 2, 2]
+
+    ∂y_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
+    ∂y_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
+
+    ∂z_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
+    ∂z_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
+
+    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+    return (
+        ∂xᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c &&
+        ∂xᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f &&
+
+        ∂yᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c &&
+        ∂yᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f &&
+
+        ∂zᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c &&
+        ∂zᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f
+    )
+end
+
+function test_function_interpolation(T=Float64)
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
+    ϕ² = ϕ.^2
+
+    ℑx_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[1, 2, 2]) / 2
+    ℑx_ϕ_c = (ϕ²[3, 2, 2] + ϕ²[2, 2, 2]) / 2
+
+    ℑy_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[2, 1, 2]) / 2
+    ℑy_ϕ_c = (ϕ²[2, 3, 2] + ϕ²[2, 2, 2]) / 2
+
+    ℑz_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[2, 2, 1]) / 2
+    ℑz_ϕ_c = (ϕ²[2, 2, 3] + ϕ²[2, 2, 2]) / 2
+
+    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+    return (
+        ℑxᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_c &&
+        ℑxᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_f &&
+
+        ℑyᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_c &&
+        ℑyᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_f &&
+
+        ℑzᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_c &&
+        ℑzᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_f
+    )
+end
+
 @testset "Operators" begin
     println("Testing operators...")
 
+    @testset "Function differentiation" begin
+        println("  Testing function differentiation...")
+        @test test_function_differentiation()
+    end
+
+    @testset "Function interpolation" begin
+        println("  Testing function interpolation...")
+        @test test_function_interpolation()
+    end
+
     @testset "2D operators" begin
         println("  Testing 2D operators...")
-        
+
         Nx, Ny, Nz = 32, 16, 8
         Lx, Ly, Lz = 100, 100, 100
 
