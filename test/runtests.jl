@@ -53,6 +53,7 @@ closures = (
             :ConstantIsotropicDiffusivity,
             :ConstantAnisotropicDiffusivity,
             :AnisotropicBiharmonicDiffusivity,
+            :TwoDimensionalLeith,
             :SmagorinskyLilly,
             :BlasiusSmagorinsky,
             :RozemaAnisotropicMinimumDissipation,
