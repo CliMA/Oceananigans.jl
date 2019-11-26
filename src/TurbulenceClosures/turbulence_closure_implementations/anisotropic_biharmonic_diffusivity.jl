@@ -16,15 +16,15 @@ end
 """
     AnisotropicBiharmonicDiffusivity(; νh, νv, κh, κv)
 
-Returns parameters for a fourth-order, anisotropic biharmonic diffusivity closure with 
-constant horizontal and vertical biharmonic viscosities `νh`, `νv` and constant horizontal 
-and vertical tracer biharmonic diffusivities `κh`, `κv`. 
+Returns parameters for a fourth-order, anisotropic biharmonic diffusivity closure with
+constant horizontal and vertical biharmonic viscosities `νh`, `νv` and constant horizontal
+and vertical tracer biharmonic diffusivities `κh`, `κv`.
 `κh` and `κv` may be `NamedTuple`s with fields corresponding
 to each tracer, or a single number to be a applied to all tracers.
 The tracer flux divergence associated with an anisotropic biharmonic diffusivity is, for example
 
 ```math
-    ∂ᵢ κᵢⱼ ∂ⱼc = (κh ∇h⁴ + κv ∂z⁴) c
+    ∂ᵢ κᵢⱼ ∂ⱼc = (κh ∇⁴h + κv ∂⁴z) c
 ```
 
 """
@@ -40,18 +40,18 @@ end
 calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νh * ∇h⁴_fca(i, j, k, grid, U.u)
-    - closure.νv * ∂z⁴_aac(i, j, k, grid, U.u)
+    - closure.νh * ∇⁴hᶠᶜᵃ(i, j, k, grid, U.u)
+    - closure.νv * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.u)
     )
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νh * ∇h⁴_cfa(i, j, k, grid, U.v)
-    - closure.νv * ∂z⁴_aac(i, j, k, grid, U.v)
+    - closure.νh * ∇⁴hᶜᶠᵃ(i, j, k, grid, U.v)
+    - closure.νv * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.v)
     )
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νh * ∇h⁴_cca(i, j, k, grid, U.w)
-    - closure.νv * ∂z⁴_aaf(i, j, k, grid, U.w)
+    - closure.νh * ∇⁴hᶜᶜᵃ(i, j, k, grid, U.w)
+    - closure.νv * ∂⁴zᵃᵃᶠ(i, j, k, grid, U.w)
     )
 
 @inline function ∇_κ_∇c(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity,
@@ -60,7 +60,7 @@ calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivit
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
 
-    return (- κh * ∇h⁴_cca(i, j, k, grid, c)
-            - κv * ∂z⁴_aac(i, j, k, grid, c)
+    return (- κh * ∇⁴hᶜᶜᵃ(i, j, k, grid, c)
+            - κv * ∂⁴zᵃᵃᶜ(i, j, k, grid, c)
            )
 end
