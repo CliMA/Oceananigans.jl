@@ -3,7 +3,7 @@
 ####
 
 """
-    hdiv_cca(i, j, k, grid, u, v)
+    hdivᶜᶜᵃ(i, j, k, grid, u, v)
 
 Calculates the horizontal divergence ∇ₕ·(u, v) of a 2D velocity field (u, v) via
 
@@ -17,7 +17,7 @@ which will end up at the location `cca`.
 end
 
 """
-    div_ccc(i, j, k, grid, u, v, w)
+    divᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 Calculates the divergence ∇·U of a vector field U = (u, v, w),
 

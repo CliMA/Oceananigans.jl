@@ -161,14 +161,14 @@ end
     Δy = Δyᶜᶜᶜ(ijk..., closure)
     Δz = Δzᶜᶜᶜ(ijk..., closure)
 
-    Δx²_wx_bx = Δx^2 * (ℑxzᶜᵃᶜ(ijk..., ∂x_faa, w)
-                        * ℑxᶜᵃᵃ(ijk..., ∂x_faa, buoyancy_perturbation, buoyancy, C))
+    Δx²_wx_bx = Δx^2 * (ℑxzᶜᵃᶜ(ijk..., ∂xᶠᵃᵃ, w)
+                        * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, buoyancy_perturbation, buoyancy, C))
 
-    Δy²_wy_by = Δy^2 * (ℑyzᵃᶜᶜ(ijk..., ∂y_afa, w)
-                        * ℑyᵃᶜᵃ(ijk..., ∂y_afa, buoyancy_perturbation, buoyancy, C))
+    Δy²_wy_by = Δy^2 * (ℑyzᵃᶜᶜ(ijk..., ∂yᵃᶠᵃ, w)
+                        * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, buoyancy_perturbation, buoyancy, C))
 
     Δz²_wz_bz = Δz^2 * (∂zᵃᵃᶜ(ijk..., w)
-                        * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, buoyancy_perturbation, buoyancy, C))
+                        * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, buoyancy_perturbation, buoyancy, C))
 
     return Δx²_wx_bx + Δy²_wy_by + Δz²_wz_bz
 end
@@ -182,19 +182,19 @@ end
 
     Δx²_cx_ux = Δx^2 * (
                  ∂xᶜᵃᵃ(ijk..., u) * ℑxᶜᵃᵃ(ijk..., ∂x_c², c)
-        + ℑxyᶜᶜᵃ(ijk..., ∂x_v, v) * ℑxᶜᵃᵃ(ijk..., ∂x_faa, c) * ℑyᵃᶜᵃ(ijk..., ∂y_afa, c)
-        + ℑxzᶜᵃᶜ(ijk..., ∂x_w, w) * ℑxᶜᵃᵃ(ijk..., ∂x_faa, c) * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, c)
+        + ℑxyᶜᶜᵃ(ijk..., ∂x_v, v) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, c) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, c)
+        + ℑxzᶜᵃᶜ(ijk..., ∂x_w, w) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, c) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, c)
     )
 
     Δy²_cy_uy = Δy^2 * (
-          ℑxyᶜᶜᵃ(ijk..., ∂y_u, u) * ℑyᵃᶜᵃ(ijk..., ∂y_afa, c) * ℑxᶜᵃᵃ(ijk..., ∂x_faa, c)
+          ℑxyᶜᶜᵃ(ijk..., ∂y_u, u) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, c) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, c)
         +        ∂yᵃᶜᵃ(ijk..., v) * ℑyᵃᶜᵃ(ijk..., ∂y_c², c)
-        + ℑxzᶜᵃᶜ(ijk..., ∂y_w, w) * ℑyᵃᶜᵃ(ijk..., ∂y_afa, c) * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, c)
+        + ℑxzᶜᵃᶜ(ijk..., ∂y_w, w) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, c) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, c)
     )
 
     Δz²_cz_uz = Δz^2 * (
-          ℑxzᶜᵃᶜ(ijk..., ∂z_u, u) * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, c) * ℑxᶜᵃᵃ(ijk..., ∂x_faa, c)
-        + ℑyzᵃᶜᶜ(ijk..., ∂z_v, v) * ℑzᵃᵃᶜ(ijk..., ∂z_aaf, c) * ℑyᵃᶜᵃ(ijk..., ∂y_afa, c)
+          ℑxzᶜᵃᶜ(ijk..., ∂z_u, u) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, c) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, c)
+        + ℑyzᵃᶜᶜ(ijk..., ∂z_v, v) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, c) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, c)
         +        ∂zᵃᵃᶜ(ijk..., w) * ℑzᵃᵃᶜ(ijk..., ∂z_c², c)
     )
 
