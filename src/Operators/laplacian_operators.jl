@@ -17,6 +17,10 @@ end
                                     δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᵃᶜᵃ, u))
 end
 
+@inline ∇²hᶜᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
+@inline ∇²hᶠᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶠᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
+@inline ∇²hᶜᶠᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶠᵃ(i, j, k, grid, F, args...)
+
 ####
 #### 3D Laplacian
 ####
@@ -40,6 +44,6 @@ end
 #### Horizontal biharmonic operators
 ####
 
-@inline ∇h⁴_cca(i, j, k, grid, c::AbstractArray) = ∇h²_cca(i, j, k, grid, ∇h²_cca, c)
-@inline ∇h⁴_fca(i, j, k, grid, c::AbstractArray) = ∇h²_fca(i, j, k, grid, ∇h²_fca, c)
-@inline ∇h⁴_cfa(i, j, k, grid, c::AbstractArray) = ∇h²_cfa(i, j, k, grid, ∇h²_cfa, c)
+@inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
+@inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)
+@inline ∇⁴hᶜᶠᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᵃ, c)
