@@ -98,6 +98,6 @@ end
                             ("end_time = 3day", "end_time = 1")
                           ]
 
-        @test run_example(replace_strings, "eady_turbulence")
+        @test_skip run_example(replace_strings, "eady_turbulence")
     end
 end
