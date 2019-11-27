@@ -1,4 +1,4 @@
-using .TurbulenceClosures: ▶xy_cfa, ▶xy_fca
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 
 #####
 ##### Functions for non-rotating models
@@ -46,8 +46,8 @@ function FPlane(FT=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
     end
 end
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ▶xy_fca(i, j, k, grid, U.v)
-@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ▶xy_cfa(i, j, k, grid, U.u)
+@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
+@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
 
 #####
@@ -66,24 +66,24 @@ struct BetaPlane{T} <: AbstractRotation
 end
 
 """
-    BetaPlane([T=Float64;] f₀=nothing, β=nothing, 
+    BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=nothing, latitude=nothing, radius=nothing)
 
 A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
 
 The user may specify both `f₀` and `β`, or the three parameters
-`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius 
+`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius
 of a planet, and the central latitude at which the `β`-plane approximation is to be made.
 """
-function BetaPlane(T=Float64; f₀=nothing, β=nothing, 
+function BetaPlane(T=Float64; f₀=nothing, β=nothing,
                               rotation_rate=nothing, latitude=nothing, radius=nothing)
 
     f_and_β = f₀ != nothing && β != nothing
     planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
 
-    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) || 
+    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) ||
     (planet_parameters && all(Tuple(p === nothing for p in (f₀, β)))) ||
-        throw(ArgumentError("Either both keywords f₀ and β must be specified, 
+        throw(ArgumentError("Either both keywords f₀ and β must be specified,
                             *or* all of rotation_rate, latitude, and radius."))
 
     if planet_parameters
@@ -95,7 +95,7 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ▶xy_fca(i, j, k, grid, U.v)
+    @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ▶xy_cfa(i, j, k, grid, U.u)
+    @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)

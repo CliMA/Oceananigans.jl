@@ -51,7 +51,7 @@ end
         println("  Testing ocean convection with plankton example")
 
         replace_strings = [ ("Nz = 128", "Nz = 16"),
-                           ("end_time = 1day", "end_time=1.0"),
+                           ("end_time = day / 2", "end_time=1.0"),
                            ("time_step!(model, 10", "time_step!(model, 1")
                           ]
 
@@ -90,4 +90,14 @@ end
         @test_skip run_example(replace_strings, "two_dimensional_turbulence")
     end
 
+    @testset "Eady turbulence" begin
+        println("  Testing Eady turbulence example")
+
+        replace_strings = [ ("Nh = 64", "Nh = 16"),
+                            ("Nz = 32", "Nz = 16"),
+                            ("end_time = 3day", "end_time = 1")
+                          ]
+
+        @test_skip run_example(replace_strings, "eady_turbulence")
+    end
 end
