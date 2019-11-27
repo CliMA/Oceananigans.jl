@@ -66,10 +66,10 @@ end
 ####
 
 function MomentumFields(arch, grid)
-    U = FaceFieldX(arch, grid)
-    V = FaceFieldY(arch, grid)
-    W = FaceFieldZ(arch, grid)
-    return (U=U, V=V, W=W)
+    ρu = FaceFieldX(arch, grid)
+    ρv = FaceFieldY(arch, grid)
+    ρw = FaceFieldZ(arch, grid)
+    return (ρu=ρu, ρv=ρv, ρw=ρw)
 end
 
 tracernames(::Nothing) = ()
@@ -83,10 +83,10 @@ function TracerFields(arch, grid, tracernames)
 end
 
 function ForcingFields(arch, grid, tracernames)
-    U = FaceFieldX(arch, grid)
-    V = FaceFieldY(arch, grid)
-    W = FaceFieldZ(arch, grid)
-    momenta = (U=U, V=V, W=W)
+    ρu = FaceFieldX(arch, grid)
+    ρv = FaceFieldY(arch, grid)
+    ρw = FaceFieldZ(arch, grid)
+    momenta = (ρu=ρu, ρv=ρv, ρw=ρw)
 
     tracers = TracerFields(arch, grid, tracernames)
 
@@ -94,11 +94,11 @@ function ForcingFields(arch, grid, tracernames)
 end
 
 function RightHandSideFields(arch, grid, tracernames)
-    U = FaceFieldX(arch, grid)
-    V = FaceFieldY(arch, grid)
-    W = FaceFieldZ(arch, grid)
+    ρu = FaceFieldX(arch, grid)
+    ρv = FaceFieldY(arch, grid)
+    ρw = FaceFieldZ(arch, grid)
     ρ =  CellField(arch, grid)
-    momenta_and_density = (U=U, V=V, W=W, ρ=ρ)
+    momenta_and_density = (ρu=ρu, ρv=ρv, ρw=ρw, ρ=ρ)
 
     tracers = TracerFields(arch, grid, tracernames)
 

@@ -4,9 +4,9 @@ Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 function compute_slow_forcings!(F, grid, coriolis, Ũ, ρᵈ, C̃, forcing, time, params)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.U[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
-            F.V[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
-            F.W[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
+            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
+            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
+            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
         end
 
         for C_name in propertynames(C̃)
@@ -26,9 +26,9 @@ Fast forcings include advection, pressure gradient, and buoyancy terms.
 function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.U[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.U)
-            R.V[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.V)
-            R.W[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.W)
+            R.ρu[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρu)
+            R.ρv[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρv)
+            R.ρw[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρw)
 
             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
         end
@@ -54,10 +54,10 @@ Updates variables according to the RK3 time step:
 function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, ρᵗ, R; Δt)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            I.U[i, j, k] = Ũᵗ.U[i, j, k] + Δt * R.U[i, j, k]
-            I.V[i, j, k] = Ũᵗ.V[i, j, k] + Δt * R.V[i, j, k]
-            I.W[i, j, k] = Ũᵗ.W[i, j, k] + Δt * R.W[i, j, k]
-            I.ρ[i, j, k] =   ρᵗ[i, j, k] + Δt * R.ρ[i, j, k]
+            I.ρu[i, j, k] = Ũᵗ.ρu[i, j, k] + Δt * R.ρu[i, j, k]
+            I.ρv[i, j, k] = Ũᵗ.ρv[i, j, k] + Δt * R.ρv[i, j, k]
+            I.ρw[i, j, k] = Ũᵗ.ρw[i, j, k] + Δt * R.ρw[i, j, k]
+            I.ρ[i, j, k] =     ρᵗ[i, j, k] + Δt *  R.ρ[i, j, k]
         end
 
         for C_name in propertynames(C̃ᵗ)
