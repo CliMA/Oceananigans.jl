@@ -11,7 +11,7 @@
 ####
 
 """
-    ∇κ∇c(i, j, k, grid, κˣ, κʸ, κᶻ, c)
+    ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κˣ, κʸ, κᶻ, c)
 
 Calculates diffusion for a tracer c via
 
@@ -19,10 +19,10 @@ Calculates diffusion for a tracer c via
 
 which will end up at the location `ccc`.
 """
-@inline function div_κ∇c(i, j, k, grid, κˣ, κʸ, κᶻ, c)
+@inline function ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κˣ, κʸ, κᶻ, c)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κˣ, c) +
                                     δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κʸ, c) +
                                     δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κᶻ, c))
 end
 
-@inline div_κ∇c(i, j, k, grid, κ, c) = div_κ∇c(i, j, k, grid, κ, κ, κ, c)
+@inline ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, c) = ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, κ, κ, c)

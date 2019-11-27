@@ -19,7 +19,7 @@
 ####
 
 """
-    ∇ν∇u(i, j, k, grid, νˣ, νʸ, νᶻ, u)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, νˣ, νʸ, νᶻ, u)
 
 Calculates viscous dissipation for the u-velocity via
 
@@ -27,14 +27,14 @@ Calculates viscous dissipation for the u-velocity via
 
 which will end up at the location `fcc`.
 """
-@inline function div_ν∇u(i, j, k, grid, νˣ, νʸ, νᶻ, u)
+@inline function ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, νˣ, νʸ, νᶻ, u)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, νˣ, u) +
                                     δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, νʸ, u) +
                                     δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, νᶻ, u))
 end
 
 """
-    ∇ν∇v(i, j, k, grid, νˣ, νʸ, νᶻ, v)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, νˣ, νʸ, νᶻ, v)
 
 Calculates viscous dissipation for the v-velocity via
 
@@ -42,14 +42,14 @@ Calculates viscous dissipation for the v-velocity via
 
 which will end up at the location `cfc`.
 """
-@inline function div_ν∇v(i, j, k, grid, νˣ, νʸ, νᶻ, v)
+@inline function ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, νˣ, νʸ, νᶻ, v)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, νˣ, v) +
                                     δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, νʸ, v) +
                                     δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, νᶻ, v))
 end
 
 """
-    ∇ν∇w(i, j, k, grid::Grid, νˣ, νʸ, νᶻ, w)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid::Grid, νˣ, νʸ, νᶻ, w)
 
 Calculates viscous dissipation for the w-velocity via
 
@@ -57,7 +57,7 @@ Calculates viscous dissipation for the w-velocity via
 
 which will end up at the location `ccf`.
 """
-@inline function div_ν∇w(i, j, k, grid, νˣ, νʸ, νᶻ, w)
+@inline function ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, νˣ, νʸ, νᶻ, w)
     return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, νˣ, w) +
                                     δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, νʸ, w) +
                                     δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, νᶻ, w))
@@ -67,6 +67,6 @@ end
 #### Viscous dissipation for isotropic viscosity
 ####
 
-@inline div_ν∇u(i, j, k, grid, ν, u) = div_ν∇u(i, j, k, grid, ν, ν, ν, u)
-@inline div_ν∇v(i, j, k, grid, ν, v) = div_ν∇v(i, j, k, grid, ν, ν, ν, v)
-@inline div_ν∇w(i, j, k, grid, ν, w) = div_ν∇w(i, j, k, grid, ν, ν, ν, w)
+@inline ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, u) = ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, ν, ν, u)
+@inline ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, v) = ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, ν, ν, v)
+@inline ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, ν, w) = ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, ν, ν, ν, w)

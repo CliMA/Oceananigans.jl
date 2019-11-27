@@ -40,13 +40,13 @@ end
 calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
-    div_ν∇u(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.u)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.u)
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
-    div_ν∇v(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.v)
+    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.v)
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantAnisotropicDiffusivity, U, args...) =
-    div_ν∇w(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.w)
+    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, closure.νh, closure.νh, closure.νv, U.w)
 
 @inline function ∇_κ_∇c(i, j, k, grid, closure::ConstantAnisotropicDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
@@ -54,5 +54,5 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantAnisotropicDiffusivity,
     @inbounds κh = closure.κh[tracer_index]
     @inbounds κv = closure.κv[tracer_index]
 
-    return div_κ∇c(i, j, k, grid, κh, κh, κv, c)
+    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κh, κh, κv, c)
 end

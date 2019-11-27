@@ -46,14 +46,14 @@ calculate_diffusivities!(K, arch, grid, closure::ConstantIsotropicDiffusivity, a
 
     @inbounds κ = closure.κ[tracer_index]
 
-    return div_κ∇c(i, j, k, grid, κ, c)
+    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, c)
 end
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
-    div_ν∇u(i, j, k, grid, closure.ν, U.u)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, closure.ν, U.u)
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
-    div_ν∇v(i, j, k, grid, closure.ν, U.v)
+    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, closure.ν, U.v)
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
-    div_ν∇w(i, j, k, grid, closure.ν, U.w)
+    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, closure.ν, U.w)
