@@ -33,13 +33,12 @@ If `f` is not specified, it is calculated from `rotation_rate` and
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(; f=nothing, rotation_rate=nothing, latitude=nothing)
+function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
 
     if f == nothing && rotation_rate != nothing && latitude != nothing
-        f₀ = 2rotation_rate*sind(latitude)
-        return FPlane{typeof(f₀)}(f₀)
+        return FPlane{FT}(2rotation_rate*sind(latitude))
     elseif f != nothing && rotation_rate == nothing && latitude == nothing
-        return FPlane{typeof(f)}(f)
+        return FPlane{FT}(f)
     else
         throw(ArgumentError("Either both keywords rotation_rate and
                              latitude must be specified, *or* only f
