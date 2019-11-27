@@ -33,12 +33,13 @@ If `f` is not specified, it is calculated from `rotation_rate` and
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(FT=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
+function FPlane(; f=nothing, rotation_rate=nothing, latitude=nothing)
 
     if f == nothing && rotation_rate != nothing && latitude != nothing
-        return FPlane{FT}(2rotation_rate*sind(latitude))
+        f₀ = 2rotation_rate*sind(latitude)
+        return FPlane{typeof(f₀)}(f₀)
     elseif f != nothing && rotation_rate == nothing && latitude == nothing
-        return FPlane{FT}(f)
+        return FPlane{typeof(f)}(f)
     else
         throw(ArgumentError("Either both keywords rotation_rate and
                              latitude must be specified, *or* only f
@@ -66,24 +67,24 @@ struct BetaPlane{T} <: AbstractRotation
 end
 
 """
-    BetaPlane([T=Float64;] f₀=nothing, β=nothing, 
+    BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=nothing, latitude=nothing, radius=nothing)
 
 A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
 
 The user may specify both `f₀` and `β`, or the three parameters
-`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius 
+`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius
 of a planet, and the central latitude at which the `β`-plane approximation is to be made.
 """
-function BetaPlane(T=Float64; f₀=nothing, β=nothing, 
+function BetaPlane(T=Float64; f₀=nothing, β=nothing,
                               rotation_rate=nothing, latitude=nothing, radius=nothing)
 
     f_and_β = f₀ != nothing && β != nothing
     planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
 
-    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) || 
+    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) ||
     (planet_parameters && all(Tuple(p === nothing for p in (f₀, β)))) ||
-        throw(ArgumentError("Either both keywords f₀ and β must be specified, 
+        throw(ArgumentError("Either both keywords f₀ and β must be specified,
                             *or* all of rotation_rate, latitude, and radius."))
 
     if planet_parameters
