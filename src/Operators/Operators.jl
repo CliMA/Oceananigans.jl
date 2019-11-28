@@ -10,14 +10,6 @@ export
     div_ρuũ, div_ρvũ, div_ρwũ,
     div_μ∇u, div_μ∇v, div_μ∇w
 
-
-include("areas_and_volumes.jl")
-include("difference_operators.jl")
-include("derivative_operators.jl")
-include("interpolation_operators.jl")
-include("divergence_operators.jl")
-include("laplacian_operators.jl")
-
 include("compressible_operators.jl")
 
 end

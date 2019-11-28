@@ -1,3 +1,7 @@
+using Oceananigans.Operators
+
+using Oceananigans: AbstractGrid
+
 ####
 #### Moist density
 ####
