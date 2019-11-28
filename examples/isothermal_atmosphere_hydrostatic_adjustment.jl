@@ -66,8 +66,8 @@ times = [model.clock.time]
 #### Time step and keep plotting vertical profiles of ρθ′, ρw, and ρ′.
 ####
 
-anim = @animate for _ in 1:100
-# while model.clock.time < 500
+# @animate for i=1:100
+while model.clock.time < 500
     time_step!(model; Δt=0.5, Nt=10)
 
     @show model.clock.time
