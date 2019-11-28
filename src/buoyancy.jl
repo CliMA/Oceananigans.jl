@@ -43,9 +43,10 @@ struct IdealGas{FT} <: AbstractEquationOfState
     T₀ :: FT
     p₀ :: FT
     ρ₀ :: FT
+    s₀ :: FT
 end
 
-IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ, T₀=T₀_air, p₀=p₀_air, ρ₀=ρ₀_air) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ, T₀, p₀, ρ₀)
+IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ, T₀=T₀_air, p₀=p₀_air, ρ₀=ρ₀_air, s₀=0) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ, T₀, p₀, ρ₀, s₀)
 
 ####
 #### Buoyancy term
