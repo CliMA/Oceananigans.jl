@@ -29,6 +29,10 @@ const cᵥ_dry = cₚ_dry - Rᵈ_air  # Isochoric specific heat for dry air [J/k
 #### Dry ideal gas
 ####
 
+const T₀_air = 273.16  # Reference temperature [K]
+const p₀_air = 1e5     # Reference pressure [Pa]
+const ρ₀_air = p₀_air / (Rᵈ_air * T₀_air)  # Reference density [kg/m³]
+
 struct IdealGas{FT} <: AbstractEquationOfState
     Rᵈ :: FT
     Rᵛ :: FT
@@ -36,9 +40,12 @@ struct IdealGas{FT} <: AbstractEquationOfState
     cᵥ :: FT
     κ  :: FT
     γ  :: FT
+    T₀ :: FT
+    p₀ :: FT
+    ρ₀ :: FT
 end
 
-IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ)
+IdealGas(FT=Float64; Rᵈ=Rᵈ_air, Rᵛ=Rᵛ_air, cₚ=cₚ_dry, cᵥ=cᵥ_dry, κ=κᵈ, γ=γᵈ, T₀=T₀_air, p₀=p₀_air, ρ₀=ρ₀_air) = IdealGas{FT}(Rᵈ, Rᵛ, cₚ, cᵥ, κ, γ, T₀, p₀, ρ₀)
 
 ####
 #### Buoyancy term
