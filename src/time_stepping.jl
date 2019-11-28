@@ -37,14 +37,12 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     forcing = model.forcing
     params = model.parameters
 
-    Ũ = model.momenta
-    C̃ = model.tracers
-    F = model.slow_forcings
-    R = model.right_hand_sides
-    IV = model.intermediate_vars
-
+    Ũ  = model.momenta
     ρᵈ = model.density
-    Θᵐ = model.tracers.Θᵐ
+    C̃  = model.tracers
+    F  = model.slow_forcings
+    R  = model.right_hand_sides
+    IV = model.intermediate_vars
 
     pₛ = model.reference_pressure
 
