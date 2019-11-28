@@ -19,7 +19,7 @@ const κ = 1e-2
 @inline function RU(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂x(i, j, k, grid, pt, b, pₛ, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂x(i, j, k, grid, pt, b, ρᵈ, C)
                 + FU[i, j, k])
     end
 end
@@ -27,7 +27,7 @@ end
 @inline function RV(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂y(i, j, k, grid, pt, b, pₛ, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * ∂p∂y(i, j, k, grid, pt, b, ρᵈ, C)
                 + FV[i, j, k])
     end
 end
@@ -35,7 +35,7 @@ end
 @inline function RW(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * (  ∂p∂z(i, j, k, grid, pt, b, pₛ, C)
+                - ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) * (  ∂p∂z(i, j, k, grid, pt, b, ρᵈ, C)
                                                       + buoyancy_perturbation(i, j, k, grid, grav, ρᵈ, C))
                 + FW[i, j, k])
     end
