@@ -5,7 +5,7 @@ struct ModifiedPotentialTemperature <: AbstractPrognosticTemperature end
 struct Entropy <: AbstractPrognosticTemperature end
 
 function validate_prognostic_temperature(::Temperature, tracers)
-    if :Θᵐ ∉ tracers
+    if :T ∉ tracers
         throw(ArgumentError("Must specify a T tracer to use Temperature as a prognostic variable."))
     end
     return nothing
