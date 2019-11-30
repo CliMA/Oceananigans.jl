@@ -31,7 +31,7 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-1, 1), z=(0,
 xᶜ, xʳ = 0, 4km
 zᶜ, zʳ = 3km, 2km
 
-function Δθ(x, y, z)
+function ΔT(x, y, z)
     L = √( ((x-xᶜ)/xʳ)^2 + ((z-zᶜ)/zʳ)^2 )
     L > 1 && return 0
     L ≤ 1 && return -15 * (1 + cos(π*L)) / 2
@@ -61,7 +61,7 @@ const τ⁻¹ = 1     # Damping/relaxation time scale [s⁻¹]. This is very str
 const Δμ = 0.1Lz  # Sponge layer width [m] set to 10% of the domain height.
 @inline μ(z, Lz) = τ⁻¹ * exp(-(Lz-z) / Δμ)
 
-@inline Fw(i, j, k, grid, t, Ũ, C̃, p) = @inbounds -μ(grid.zF[k], grid.Lz) * Ũ.W[i, j, k]
+@inline Fw(i, j, k, grid, t, Ũ, C̃, p) = @inbounds -μ(grid.zF[k], grid.Lz) * Ũ.ρw[i, j, k]
 forcing = ModelForcing(w=Fw)
 
 model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
@@ -83,17 +83,19 @@ end
 ρ_hd = model.density.data[1:Nx, 1, 1:Nz]
 Θ_hd = model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz]
 
+Δρ(x, y, z) = 
+
 xC, zC = grid.xC, grid.zC
 ρ, Θ = model.density, model.tracers.Θᵐ
 for k in 1:Nz, i in 1:Nx
-    Θ[i, 1, k] += ρ[i, 1, k] * Δθ(xC[i], 0, zC[k])
+    ρ[i, 1, k] += 0.005 * ΔT(grid.xC[i], 0, grid.zC[k])
 end
 
 ####
 #### Watch the density current evolve!
 ####
 
-for i = 1:100
+for i = 1:1000
     @show model.clock.time
     time_step!(model; Δt=0.1)
 
@@ -102,8 +104,8 @@ for i = 1:100
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
     j = 1
-    U_slice = rotr90(model.momenta.U.data[1:Nx, j, 1:Nz])
-    W_slice = rotr90(model.momenta.W.data[1:Nx, j, 1:Nz])
+    U_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz])
+    W_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz])
     ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρ_hd)
     Θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] .- Θ_hd)
 
