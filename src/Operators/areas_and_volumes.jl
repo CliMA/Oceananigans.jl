@@ -25,10 +25,10 @@ using Oceananigans.Grids
 @inline Δy(i, j, k, grid) = grid.Δy
 
 @inline ΔzC(i, j, k, grid::RegularCartesianGrid) = grid.Δz
-# @inline ΔzC(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzC[k]
+@inline ΔzC(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzC[k]
 
 @inline ΔzF(i, j, k, grid::RegularCartesianGrid) = grid.Δz
-# @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
+@inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
 ####
 #### Areas
