@@ -35,14 +35,25 @@ end
 function no_roundoff_error_in_ranges_regular(FT)
     Nx, Ny, Nz = 1, 1, 64
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1, 1, π/2))
-    return length(grid.zC) == Nz
+    return length(grid.zC) == Nz && length(grid.zF) == Nz+1
+end
+
+function grid_properties_are_same_type_regular(FT)
+    grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(1, 1//7, 2π))
+    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy, grid.Δz], FT)) &&
+           all(eltype.([grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
 function correct_constant_grid_spacings(FT)
-    Nx, Ny, Nz = 16, 16, 16
-    zF = collect(0:16)
-    grid = VerticallyStretchedCartesianGrid(FT; size=(Nx, Ny, Nz), x=(0,1), y=(0,1), z=(0,16), zF=zF)
+    grid = VerticallyStretchedCartesianGrid(FT; size=(16, 16, 16), x=(0,1), y=(0,1), z=(0,16), zF=collect(0:16))
     return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
+end
+
+function grid_properties_are_same_type_stretched(FT)
+    Nx, Ny, Nz = 16, 16, 16
+    grid = VerticallyStretchedCartesianGrid(FT; size=(16, 16, 16), x=(0,1), y=(0,1), z=(0.0,16.0), zF=collect(0:16))
+    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
+           all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
 @testset "Grids" begin
@@ -61,6 +72,7 @@ end
                 @test end_faces_match_grid_length_regular(FT)
                 @test ranges_have_correct_length_regular(FT)
                 @test no_roundoff_error_in_ranges_regular(FT)
+                @test grid_properties_are_same_type_regular(FT)
             end
         end
 
@@ -108,6 +120,7 @@ end
 
             for FT in float_types
                 @test correct_constant_grid_spacings(FT)
+                @test grid_properties_are_same_type_stretched(FT)
             end
         end
     end
