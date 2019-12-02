@@ -8,7 +8,7 @@ using Oceananigans: AbstractGrid
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces.
 """
-struct VerticallyStretchedCartesianGrid{FT, R, A} <: AbstractGrid{FT}
+struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:AbstractArray} <: AbstractGrid{FT}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -42,33 +42,17 @@ struct VerticallyStretchedCartesianGrid{FT, R, A} <: AbstractGrid{FT}
 end
 
 function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-        size, length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
+        size, halo=(1, 1, 1), length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
     # use the `size` and `length` functions.
     sz, len = size, length
     length = Base.length
 
-    validate_grid_size_and_length(sz, len, x, y, z)
-
-    if !isnothing(len)
-        Lx, Ly, Lz = len
-        x = (0, Lx)
-        y = (0, Ly)
-        z = (-Lz, 0)
-    end
-
-    x₁, x₂ = x[1], x[2]
-    y₁, y₂ = y[1], y[2]
-    z₁, z₂ = z[1], z[2]
+    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
 
     Nx, Ny, Nz = sz
-    Lx, Ly, Lz = x₂-x₁, y₂-y₁, z₂-z₁
-
-    # Right now we only support periodic horizontal boundary conditions and
-    # usually use second-order advection schemes so halos of size Hx, Hy = 1 are
-    # just what we need.
-    Hx, Hy, Hz = 1, 1, 1
+    Hx, Hy, Hz = halo
 
     Tx = Nx + 2*Hx
     Ty = Ny + 2*Hy
@@ -77,31 +61,18 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Δx = Lx / Nx
     Δy = Ly / Ny
 
+    x₁, x₂ = x[1], x[2]
+    y₁, y₂ = y[1], y[2]
+    z₁, z₂ = z[1], z[2]
+
     xF = range(x₁, x₂; length=Nx+1)
     yF = range(y₁, y₂; length=Ny+1)
 
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
 
-    zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(zF, Nz, z₁, z₂)
+    zFa, zCa, ΔzFa, ΔzCa = validate_and_generate_variable_grid_spacing(zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                                     Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
+    VerticallyStretchedCartesianGrid(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz, Lx, Ly, Lz,
+                                     Δx, Δy, ΔzFa, ΔzCa, xC, yC, zCa, xF, yF, zFa)
 end
-
-size(grid::VerticallyStretchedCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
-length(grid::VerticallyStretchedCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
-eltype(grid::VerticallyStretchedCartesianGrid{FT}) where FT = FT
-
-short_show(grid::VerticallyStretchedCartesianGrid{FT}) where FT = "VerticallyStretchedCartesianGrid{$FT}"
-
-show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
-                           "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ",
-                           "z ∈ [", grid.zF[1], ", ", grid.zF[end], "]")
-
-show(io::IO, g::VerticallyStretchedCartesianGrid) =
-    print(io, "VerticallyStretchedCartesianGrid{$(eltype(g))}\n",
-              "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[end]), $(g.zF[1])]", '\n',
-              "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δx, Δy)     = ", (g.Δx, g.Δy))

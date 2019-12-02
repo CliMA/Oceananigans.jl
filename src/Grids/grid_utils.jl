@@ -50,7 +50,7 @@ function validate_grid_size_and_length(sz, len, halo, x, y, z)
 end
 
 @inline get_grid_spacing(z::Function, k) = z(k)
-@inline get_grid_spacing(z::AbstractArray{T,1}) where T = @inbounds z[k]
+@inline get_grid_spacing(z::AbstractArray{T,1}, k) where T = z[k]
 
 function generate_variable_grid_spacings_from_zF(zF_source, Nz)
     zF  = zeros(Nz+1)
