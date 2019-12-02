@@ -90,7 +90,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
 
-    validate_vertical_grid_spacing(zF, ΔzF, zC, ΔzC z₁, z₂)
+    validate_variable_grid_spacing(zF, ΔzF, zC, ΔzC, z₁, z₂)
     zF, zC = generate_vertical_grid_spacing(zF, ΔzF, zC, ΔzC)
 
     RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
