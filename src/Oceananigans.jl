@@ -15,7 +15,7 @@ export
     second, minute, hour, day,
 
     # Grids
-    RegularCartesianGrid,
+    RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
