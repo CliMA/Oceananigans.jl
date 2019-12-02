@@ -25,8 +25,8 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
 Adapt = "^1"
-CUDAapi = "^1.1"
-CUDAdrv = "^3.1"
+CUDAapi = "^1.1, ^2"
+CUDAdrv = "^3.1, ^4"
 CUDAnative = "^2.3"
 CuArrays = "^1.2"
 FFTW = "^1"
@@ -41,6 +41,3 @@ julia = "^1.1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Test"]

@@ -40,23 +40,21 @@ version = "0.0.3"
 
 [[CUDAapi]]
 deps = ["Libdl", "Logging"]
-git-tree-sha1 = "9b2b4b71d6b7f946c9689bb4dea03ff92e3c7091"
+git-tree-sha1 = "6eee47385c81ed3b3f716b745697869c712c2df3"
 uuid = "3895d2a7-ec45-59b8-82bb-cfc6a382f9b3"
-version = "1.1.0"
+version = "2.0.0"
 
 [[CUDAdrv]]
-deps = ["CUDAapi", "Libdl", "Printf"]
-git-tree-sha1 = "c8a19eca4d63b0feb9b4ad6a701be3bc719f9a53"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaGPU/CUDAdrv.jl.git"
+deps = ["CEnum", "CUDAapi", "Printf"]
+git-tree-sha1 = "0f39fddace3324707469ace7fbcbc7b28d5cf921"
 uuid = "c5f51814-7f29-56b8-a69c-e4d8f6be1fde"
-version = "3.1.0"
+version = "4.0.4"
 
 [[CUDAnative]]
-deps = ["Adapt", "CUDAapi", "CUDAdrv", "DataStructures", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Printf", "TimerOutputs"]
-git-tree-sha1 = "52ae1ce10ebfa686e227655c47b19add89308623"
+deps = ["Adapt", "CEnum", "CUDAapi", "CUDAdrv", "DataStructures", "InteractiveUtils", "LLVM", "Libdl", "Printf", "TimerOutputs"]
+git-tree-sha1 = "a67b38619d1fa131027bac1c4a81f0012254d1fd"
 uuid = "be33ccc6-a3ff-5ff2-a52e-74243cff1e17"
-version = "2.3.1"
+version = "2.6.0"
 
 [[Cassette]]
 git-tree-sha1 = "ad9d2ab6452a15840483741ebf10ffae4688cf28"
@@ -95,10 +93,10 @@ uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 version = "4.0.1"
 
 [[CuArrays]]
-deps = ["AbstractFFTs", "Adapt", "CUDAapi", "CUDAdrv", "CUDAnative", "GPUArrays", "LinearAlgebra", "MacroTools", "NNlib", "Printf", "Random", "Requires", "SparseArrays", "TimerOutputs"]
-git-tree-sha1 = "46b48742a84bb839e74215b7e468a4a1c6ba30f9"
+deps = ["AbstractFFTs", "Adapt", "CEnum", "CUDAapi", "CUDAdrv", "CUDAnative", "DataStructures", "GPUArrays", "Libdl", "LinearAlgebra", "MacroTools", "NNlib", "Printf", "Random", "Requires", "SparseArrays", "TimerOutputs"]
+git-tree-sha1 = "e99db1397ce85975203a9d736ab37534730996ca"
 uuid = "3a865a2d-5b23-5a0f-bc46-62713ec82fae"
-version = "1.2.1"
+version = "1.5.0"
 
 [[DataAPI]]
 git-tree-sha1 = "674b67f344687a88310213ddfa8a2b3c76cc4252"
@@ -135,23 +133,17 @@ git-tree-sha1 = "6c976460b85527d22d979682222d36767d95e27f"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.1.0"
 
-[[FillArrays]]
-deps = ["LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "de38b0253ade98340fabaf220f368f6144541938"
-uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.7.4"
-
 [[GPUArrays]]
-deps = ["Adapt", "FFTW", "FillArrays", "LinearAlgebra", "Printf", "Random", "Serialization", "Test"]
-git-tree-sha1 = "8d74ced24448c52b539a23d107bd2424ee139c0f"
+deps = ["AbstractFFTs", "Adapt", "LinearAlgebra", "Printf", "Random", "Serialization"]
+git-tree-sha1 = "a0a3b927b1a06e63fb8b91950cc7df340b7d912c"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "1.0.4"
+version = "2.0.0"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "d71c32197caf7dadab270dc10b0f7dce20c9947b"
+git-tree-sha1 = "671b3b85510f3833c05f3846b3019edc131ab03d"
 uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.8"
+version = "0.2.9"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
