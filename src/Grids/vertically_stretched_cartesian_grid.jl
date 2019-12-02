@@ -58,12 +58,12 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Ty = Ny + 2*Hy
     Tz = Nz + 2*Hz
 
-    Δx = Lx / Nx
-    Δy = Ly / Ny
+    Δx = convert(FT, Lx / Nx)
+    Δy = convert(FT, Ly / Ny)
 
-    x₁, x₂ = x[1], x[2]
-    y₁, y₂ = y[1], y[2]
-    z₁, z₂ = z[1], z[2]
+    x₁, x₂ = convert.(FT, [x[1], x[2]])
+    y₁, y₂ = convert.(FT, [y[1], y[2]])
+    z₁, z₂ = convert.(FT, [z[1], z[2]])
 
     xF = range(x₁, x₂; length=Nx+1)
     yF = range(y₁, y₂; length=Ny+1)
