@@ -1,7 +1,7 @@
 @hascuda using CUDAnative
 using GPUifyLoops: @launch, @loop, @unroll
 
-using Oceananigans: @loop_xy, array_type
+using Oceananigans: @loop_xy, device, array_type, launch_config
 
 """
     BatchedTridiagonalSolver
@@ -59,10 +59,17 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve_batched_tridiagonal_system!(ϕ, solver)
-    grid = solver.grid
+function solve_batched_tridiagonal_system!(ϕ, arch, solver)
+    a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
+
+    @launch(device(arch), config=launch_config(grid, 2),
+            solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, params))
+
+    return nothing
+end
+
+function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    a, b, c, f, t, p = solver.a, solver.b, solver.c, solver.f, solver.t, solver.params
 
     @loop_xy i j grid begin
         @inbounds begin

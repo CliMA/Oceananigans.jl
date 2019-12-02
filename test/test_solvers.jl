@@ -195,8 +195,7 @@ function can_solve_single_tridiagonal_system(arch, N)
     grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
-    @launch(device(arch), threads=(1, 1, 1), blocks=(1, 1, 1),
-            solve_batched_tridiagonal_system!(ϕ, btsolver))
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
 
     return ϕ[:] ≈ ϕ_correct
 end
@@ -222,8 +221,7 @@ function can_solve_single_tridiagonal_system_with_functions(arch, N)
 
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
-    @launch(device(arch), threads=(1, 1, 1), blocks=(1, 1, 1),
-            solve_batched_tridiagonal_system!(ϕ, btsolver))
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
 
     return ϕ[:] ≈ ϕ_correct
 end
@@ -248,8 +246,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
 
     ϕ = zeros(Nx, Ny, Nz) |> ArrayType
 
-    @launch(device(arch), threads=(Nx, Ny, 1), blocks=(1, 1, 1),
-            solve_batched_tridiagonal_system!(ϕ, btsolver))
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
 
     return ϕ ≈ ϕ_correct
 end
@@ -278,8 +275,7 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     btsolver = BatchedTridiagonalSolver(dl=a, d=b, du=c, f=f, grid=grid)
 
     ϕ = zeros(Nx, Ny, Nz) |> ArrayType
-    @launch(device(arch), threads=(Nx, Ny, 1), blocks=(1, 1, 1),
-            solve_batched_tridiagonal_system!(ϕ, btsolver))
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
 
     return ϕ ≈ ϕ_correct
 end
