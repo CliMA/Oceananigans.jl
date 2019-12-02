@@ -3,6 +3,11 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 using Oceananigans: @loop_xy
 
+"""
+    BatchedTridiagonalSolver
+
+A solver for batched tridiagonal systems.
+"""
 struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
        a :: A
        b :: B
@@ -13,6 +18,27 @@ struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
   params :: P
 end
 
+"""
+    BatchedTridiagonalSolver(; dl, d, du, f, grid, params=nothing)
+
+Construct a solver for batched tridiagonal systems of the form
+
+                               b(i, j, 1)ϕ(i, j, 1) + c(i, j,   2)ϕ(i, j,   2) = f(i, j, 1),  k = 1
+    a(i, j, k-1)ϕ(i, j, k-1) + b(i, j, k)ϕ(i, j, k) + c(i, j, k+1)ϕ(i, j, k+1) = f(i, j, k),  k = 2, ..., N-1
+    a(i, j, N-1)ϕ(i, j, N-1) + b(i, j, N)ϕ(i, j, N)                            = f(i, j, N),  k = N
+
+where `dl` stores the lower diagonal coefficients `a(i, j, k)`, `d` stores the diagonal coefficients `b(i, j, k)`,
+`du` stores the upper diagonal coefficients `c(i, j, k)`, and `f` stores the right-hand-side terms `f(i, j, k)`. A
+`grid` must be passed in.
+
+`dl`, `d`, `du`, and `f` can be specified in three ways to describe different batched systems:
+1. A 1D array indicates that the coefficients only depend on `k` and are the same for all the tridiagonal systems, i.e.
+   `a(i, j, k) = a(k)`.
+2. A 3D array indicates that the coefficients are different for each tridiagonal systems and depend on `(i, j, k)`.
+3. A function with the signature `b(i, j, k, grid, params)` that returns the coefficient `b(i, j, k)`.
+
+`params` is an optional named tuple of parameters that is accessible to functions.
+"""
 function BatchedTridiagonalSolver(; dl, d, du, f, grid, params=nothing)
     t = zeros(grid.Nz)
     return BatchedTridiagonalSolver(dl, d, du, f, t, grid, params)
@@ -23,12 +49,13 @@ end
 @inline get_coefficient(a::Function, i, j, k, grid, p) = a(i, j, k, grid, p)
 
 """
-Solve the tridiagonal system of linear equations described by the tridiagonal
-matrix `M` with right-hand-side `f` assuming one of the eigenvalues is zero
-(which results in a singular matrix so the general TDMA algorithm has been
-modified slightly).
+Solve the batched tridiagonal system of linear equations described by the
+`BatchedTridiagonalSolver` `solver` using a modified TriDiagonal Matrix Algorithm (TDMA)
+that is still capable of solving singular systems with a zero eigenvalue.
 
-Reference CPU implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
+The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
+
+Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
 function solve_batched_tridiagonal_system!(ϕ, solver)
     grid = solver.grid
