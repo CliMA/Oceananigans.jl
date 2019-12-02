@@ -45,10 +45,60 @@ function validate_grid_size_and_length(sz, len, halo, x, y, z)
         Ly = y[2] - y[1]
         Lz = z[2] - z[1]
     end
+    
     return Lx, Ly, Lz, x, y, z
 end
 
-function validate_variable_grid_spacing(zF, zC, z₁, z₂)
+@inline get_grid_spacing(z::Function, k) = z(k)
+@inline get_grid_spacing(z::AbstractArray{T,1}) where T = @inbounds z[k]
+
+function generate_variable_grid_spacings_from_zF(zF_source, Nz)
+    zF  = zeros(Nz+1)
+    zC  = zeros(Nz)
+    ΔzF = zeros(Nz)
+    ΔzC = zeros(Nz-1)
+
+    for k in 1:Nz+1
+        zF[k] = get_grid_spacing(zF_source, k)
+    end
+
+    for k in 1:Nz
+        zC[k] = (zF[k] + zF[k+1]) / 2
+        ΔzF[k] = zF[k+1] - zF[k]
+    end
+
+    for k in 1:Nz-1
+        ΔzC[k] = zC[k+1] - zC[k]
+    end
+
+    return zF, zC, ΔzF, ΔzC
+end
+
+function generate_variable_grid_spacings_from_zC(zC_source, Nz)
+    zF  = zeros(Nz+1)
+    zC  = zeros(Nz)
+    ΔzF = zeros(Nz)
+    ΔzC = zeros(Nz-1)
+
+    for k in 1:Nz
+        zC[k] = get_grid_spacing(zC_source, k)
+    end
+
+    for k in 1:Nz-1
+        ΔzC[k] = zC[k+1] - zC[k]
+        zF[k] = zC[k] - ΔzC[k]/2
+    end
+    zF[Nz] = zC[k] + ΔzC[k]/2
+
+    for k in 1:Nz
+        ΔzF[k] = zF[k+1] - zF[k]
+    end
+    zF[Nz+1] = zF[Nz] + ΔzF[Nz]
+
+    return zF, zC, ΔzF, ΔzC
+end
+
+function validate_and_generate_variable_grid_spacing(zF, zC, z₁, z₂)
     if (isnothing(zF) && isnothing(zC)) || sum(isnothing.([zF, zC])) > 1
         throw(ArgumentError("Must supply a variable vertical grid spacing using " *
                             "only one of the zF or zC keyword arguments."))
@@ -58,4 +108,6 @@ function validate_variable_grid_spacing(zF, zC, z₁, z₂)
         !isapprox(zF[1],   z₁) && throw(ArgumentError("First face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
         !isapprox(zF[end], z₂) && throw(ArgumentError("Last face zF[end]=$(zF[end]) must equal top endpoint z₂=$z₂"))
     end
+
+    return zF_array, zC_array, ΔzF_array, ΔzC_array
 end
