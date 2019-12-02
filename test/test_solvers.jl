@@ -178,9 +178,6 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     isapprox(ϕ, Ψ.(xC, yC, zC); rtol=5e-2)
 end
 
-array_type(::CPU) = Array
-@hascuda array_type(::GPU) = CuArray
-
 function can_solve_single_tridiagonal_system(arch, N)
     ArrayType = array_type(arch)
 
