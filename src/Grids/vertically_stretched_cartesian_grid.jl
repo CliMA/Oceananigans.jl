@@ -42,7 +42,7 @@ struct VerticallyStretchedCartesianGrid{FT, R, A} <: AbstractGrid{FT}
 end
 
 function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-        size, length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing, zC=nothing)
+        size, length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
     # use the `size` and `length` functions.
@@ -61,6 +61,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     x₁, x₂ = x[1], x[2]
     y₁, y₂ = y[1], y[2]
     z₁, z₂ = z[1], z[2]
+
     Nx, Ny, Nz = sz
     Lx, Ly, Lz = x₂-x₁, y₂-y₁, z₂-z₁
 
@@ -75,13 +76,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     Δx = Lx / Nx
     Δy = Ly / Ny
-    Δz = Lz / Nz
-
-    Ax = Δy*Δz
-    Ay = Δx*Δz
-    Az = Δx*Δy
-
-    V = Δx*Δy*Δz
 
     xF = range(x₁, x₂; length=Nx+1)
     yF = range(y₁, y₂; length=Ny+1)
@@ -89,25 +83,25 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
 
-    zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(zF, zC, z₁, z₂)
+    zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(zF, Nz, z₁, z₂)
 
     VerticallyStretchedCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                                     Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
+                                                     Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
 
-size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
-length(grid::RegularCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
-eltype(grid::RegularCartesianGrid{FT}) where FT = FT
+size(grid::VerticallyStretchedCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
+length(grid::VerticallyStretchedCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
+eltype(grid::VerticallyStretchedCartesianGrid{FT}) where FT = FT
 
-short_show(grid::RegularCartesianGrid{T}) where T = "RegularCartesianGrid{$T}"
+short_show(grid::VerticallyStretchedCartesianGrid{FT}) where FT = "VerticallyStretchedCartesianGrid{$FT}"
 
 show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
                            "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ",
                            "z ∈ [", grid.zF[1], ", ", grid.zF[end], "]")
 
-show(io::IO, g::RegularCartesianGrid) =
-    print(io, "RegularCartesianGrid{$(eltype(g))}\n",
+show(io::IO, g::VerticallyStretchedCartesianGrid) =
+    print(io, "VerticallyStretchedCartesianGrid{$(eltype(g))}\n",
               "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[end]), $(g.zF[1])]", '\n',
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
+              "grid spacing (Δx, Δy)     = ", (g.Δx, g.Δy))
