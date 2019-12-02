@@ -99,12 +99,6 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     Δy = Ly / Ny
     Δz = Lz / Nz
 
-    Ax = Δy*Δz
-    Ay = Δx*Δz
-    Az = Δx*Δy
-
-    V = Δx*Δy*Δz
-
     x₁, x₂ = x[1], x[2]
     y₁, y₂ = y[1], y[2]
     z₁, z₂ = z[1], z[2]
@@ -117,8 +111,8 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     yF = range(y₁, y₂; length=Ny+1)
     zF = range(z₁, z₂; length=Nz+1)
 
-    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                         Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+                         Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
