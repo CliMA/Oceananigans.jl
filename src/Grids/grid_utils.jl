@@ -48,18 +48,14 @@ function validate_grid_size_and_length(sz, len, halo, x, y, z)
     return Lx, Ly, Lz, x, y, z
 end
 
-function validate_variable_grid_spacing(zF, ΔzF, zC, ΔzC, z₁, z₂)
-    if isnothing(zF) && isnothing(ΔzF) && isnothing(zC) && isnothing(ΔzC)
+function validate_variable_grid_spacing(zF, zC, z₁, z₂)
+    if (isnothing(zF) && isnothing(zC)) || sum(isnothing.([zF, zC])) > 1
         throw(ArgumentError("Must supply a variable vertical grid spacing using " *
-                            "one of the zF, ΔzF, zC, or ΔzC keyword arguments."))
-    end
-
-    if sum(isnothing.([zF, ΔzF, zC, ΔzC])) > 1
-        throw(ArgumentError("Must only specify one of zF, ΔzF, zC, or ΔzC."))
+                            "only one of the zF or zC keyword arguments."))
     end
 
     if !isnothing(zF)
-        zF[1]   != z₁ && throw(ArgumentError("First face zF[1]=$(zF[1]) must equal left endpoint z₁=$z₁"))
-        zF[end] != z₂ && throw(ArgumentError("Last face zF[1]=$(zF[1]) must equal right endpoint z₁=$z₁"))
+        !isapprox(zF[1],   z₁) && throw(ArgumentError("First face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
+        !isapprox(zF[end], z₂) && throw(ArgumentError("Last face zF[end]=$(zF[end]) must equal top endpoint z₂=$z₂"))
     end
 end

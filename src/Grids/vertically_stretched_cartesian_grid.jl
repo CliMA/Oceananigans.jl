@@ -42,8 +42,7 @@ struct VerticallyStretchedCartesianGrid{FT, R, A} <: AbstractGrid{FT}
 end
 
 function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-        size, length=nothing, x=nothing, y=nothing, z=nothing,
-        zF=nothing, ΔzF=nothing, zC=nothing, ΔzC=nothing)
+        size, length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing, zC=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
     # use the `size` and `length` functions.
@@ -90,11 +89,11 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
 
-    validate_variable_grid_spacing(zF, ΔzF, zC, ΔzC, z₁, z₂)
-    zF, zC = generate_vertical_grid_spacing(zF, ΔzF, zC, ΔzC)
+    validate_variable_grid_spacing(zF, zC, z₁, z₂)
+    zF_arr, zC_arr = generate_vertical_grid_spacing(zF, zC)
 
-    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                         Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
+    VerticallyStretchedCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
+                                                     Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
