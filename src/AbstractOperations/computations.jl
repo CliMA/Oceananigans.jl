@@ -13,11 +13,11 @@ end
 """
     Computation(operation, result; return_type=Array)
 
-Returns a `Computation` representing an `operation` performed over the elements of 
-`operation.grid` and stored in `result`. `return_type` specifies the output type when the 
+Returns a `Computation` representing an `operation` performed over the elements of
+`operation.grid` and stored in `result`. `return_type` specifies the output type when the
 `Computation` instances is called as a function.
 """
-Computation(operation, result; return_type=Array) = 
+Computation(operation, result; return_type=Array) =
     Computation(operation, result, operation.grid, return_type)
 
 architecture(comp::Computation) = architecture(comp.result)
@@ -32,7 +32,7 @@ function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
     @launch device(arch) config=launch_config(computation.grid, 3) _compute!(result_data,
-                                                                             computation.grid, 
+                                                                             computation.grid,
                                                                              computation.operation)
     return nothing
 end
@@ -52,7 +52,7 @@ end
 """
     (computation::Computation)(args...)
 
-Performs the `compute(computation)` and returns the result if `isnothing(return_type)`, 
+Performs the `compute(computation)` and returns the result if `isnothing(return_type)`,
 or the result after being converted to `return_type`.
 """
 function (computation::Computation)(args...)
@@ -84,10 +84,10 @@ end
     HorizontalAverage(op::AbstractOperation, model; kwargs...)
 
 Returns the representation of a `HorizontalAverage` over the operation `op`, using
-`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on 
+`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on
 `op.grid`.
 """
-HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) = 
+HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) =
     HorizontalAverage(op, model.pressures.pHY′; kwargs...)
 
 """Compute the horizontal average of a computation."""

@@ -15,6 +15,8 @@ may involve defining more grid spacing operators, potentially up to eight per di
 although not all may be used in practice.
 """
 
+using Oceananigans.Grids
+
 ####
 #### Grid spacings
 ####
@@ -46,4 +48,3 @@ although not all may be used in practice.
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
-
