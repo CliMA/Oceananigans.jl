@@ -75,6 +75,8 @@ function generate_variable_grid_spacings_from_zF(zF_source, Nz)
 end
 
 function validate_and_generate_variable_grid_spacing(zF_source, Nz, z₁, z₂)
+    isnothing(zF_source) && throw(ArgumentError("Must pass zF to VerticallyStretchedCartesianGrid"))
+
     zF, zC, ΔzF, ΔzC = generate_variable_grid_spacings_from_zF(zF_source, Nz)
 
     !isapprox(zF[1],   z₁) && throw(ArgumentError("Bottom face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
