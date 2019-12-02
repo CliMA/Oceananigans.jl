@@ -52,11 +52,11 @@ end
 @inline get_grid_spacing(z::Function, k) = z(k)
 @inline get_grid_spacing(z::AbstractArray{T,1}, k) where T = z[k]
 
-function generate_variable_grid_spacings_from_zF(zF_source, Nz)
-    zF  = zeros(Nz+1)
-    zC  = zeros(Nz)
-    ΔzF = zeros(Nz)
-    ΔzC = zeros(Nz-1)
+function generate_variable_grid_spacings_from_zF(FT, zF_source, Nz)
+    zF  = zeros(FT, Nz+1)
+    zC  = zeros(FT, Nz)
+    ΔzF = zeros(FT, Nz)
+    ΔzC = zeros(FT, Nz-1)
 
     for k in 1:Nz+1
         zF[k] = get_grid_spacing(zF_source, k)
@@ -74,10 +74,10 @@ function generate_variable_grid_spacings_from_zF(zF_source, Nz)
     return zF, zC, ΔzF, ΔzC
 end
 
-function validate_and_generate_variable_grid_spacing(zF_source, Nz, z₁, z₂)
+function validate_and_generate_variable_grid_spacing(FT, zF_source, Nz, z₁, z₂)
     isnothing(zF_source) && throw(ArgumentError("Must pass zF to VerticallyStretchedCartesianGrid"))
 
-    zF, zC, ΔzF, ΔzC = generate_variable_grid_spacings_from_zF(zF_source, Nz)
+    zF, zC, ΔzF, ΔzC = generate_variable_grid_spacings_from_zF(FT, zF_source, Nz)
 
     !isapprox(zF[1],   z₁) && throw(ArgumentError("Bottom face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
     !isapprox(zF[end], z₂) && throw(ArgumentError("Top face zF[end]=$(zF[end]) must equal top endpoint z₂=$z₂"))
