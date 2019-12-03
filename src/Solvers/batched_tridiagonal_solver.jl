@@ -41,7 +41,7 @@ where `dl` stores the lower diagonal coefficients `a(i, j, k)`, `d` stores the d
 """
 function BatchedTridiagonalSolver(arch=CPU(); dl, d, du, f, grid, params=nothing)
     ArrayType = array_type(arch)
-    t = zeros(grid.Nz) |> ArrayType
+    t = zeros(grid.Nx, grid.Ny, grid.Nz) |> ArrayType
 
     return BatchedTridiagonalSolver(dl, d, du, f, t, grid, params)
 end
@@ -82,8 +82,8 @@ function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
                 bₖ   = get_coefficient(b, i, j, k,   grid, p)
                 aₖ₋₁ = get_coefficient(a, i, j, k-1, grid, p)
 
-                t[k] = cₖ₋₁ / β
-                β    = bₖ - aₖ₋₁ * t[k]
+                t[i, j, k] = cₖ₋₁ / β
+                β    = bₖ - aₖ₋₁ * t[i, j, k]
 
                 # This should only happen on last element of forward pass for problems
                 # with zero eigenvalue. In that case the algorithmn is still stable.
@@ -95,7 +95,7 @@ function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
             end
 
             @unroll for k = Nz-1:-1:1
-                ϕ[i, j, k] = ϕ[i, j, k] - t[k+1] * ϕ[i, j, k+1]
+                ϕ[i, j, k] = ϕ[i, j, k] - t[i, j, k+1] * ϕ[i, j, k+1]
             end
         end
     end
