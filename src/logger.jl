@@ -4,15 +4,20 @@ export ModelLogger, shouldlog, min_enabled_level, catch_exceptions, handle_messa
 
 # -------------------------------------------------------------------------------------
 # Custom LogLevels
+_custom_log_level_docs = """
+    Severity Order:
+    Debug < Diagnostic < Info < Setup < Warn < Error
+
+    Usage:
+    @logmsg Logging.LogLevel "Log Message"
+    
+    @logmsg comes from Base/Logging
+    LogLevel can be any Base/Logging.LogLevel
+    Log Message can be any expression that evaluates to a string (preferably human readable!)
+"""
 
 const Diagnostic = Logging.LogLevel(-500)  # Sits between Debug and Info
 const Setup = Logging.LogLevel(500)
-
-# -------------------------------------------------------------------------------------
-# Custom Logging Macros
-
-macro diagnostic( msg ) @Logging.logmsg Diagnostic msg end
-macro setup( msg ) @Logging.logmsg Setup msg end
 
 # ------------------------------------------------------------------------------------
 # ModelLogger
@@ -24,7 +29,7 @@ Based on Logging.SimpleLogger it tries to log all messages in the following form
 
     message --- [dd/mm/yyyy HH:MM:SS] log_level source_file:line_number
 
-The logger will handle any message from @debug up.
+The logger will handle any message from Diagnostic up by default.
 """
 struct ModelLogger <: Logging.AbstractLogger
     stream::IO
