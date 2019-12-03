@@ -5,7 +5,7 @@ function ∇²!(grid, f, ∇²f)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
         @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
             @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds ∇²f[i, j, k] = ∇²(grid, f, i, j, k)
+                @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
             end
         end
     end
