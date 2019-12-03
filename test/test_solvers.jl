@@ -345,29 +345,17 @@ end
         end
     end
 
-    @testset "Batched tridiagonal solver [CPU]" begin
-        arch = CPU()
-        for Nz in [8, 11, 18]
-            @test can_solve_single_tridiagonal_system(arch, Nz)
-            @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
-        end
+    for arch in archs
+        @testset "Batched tridiagonal solver [$arch]" begin
+            for Nz in [8, 11, 18]
+                @test can_solve_single_tridiagonal_system(arch, Nz)
+                @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
+            end
 
-        for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11, 18]
-            @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
-            @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
-        end
-    end
-
-    @testset "Batched tridiagonal solver [GPU]" begin
-        arch = GPU()
-        for Nz in [8, 11, 18]
-            @test can_solve_single_tridiagonal_system(arch, Nz)
-            @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
-        end
-
-        for Nx in [16, 32], Ny in [16, 32], Nz in [11, 16]
-            @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
-            @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
+                @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+                @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+            end
         end
     end
 end
