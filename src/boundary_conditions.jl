@@ -436,14 +436,33 @@ apply_y_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
-    @launch device(arch) config=launch_config(grid, :xy) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+function apply_z_bcs!(Gc, arch, grid, bottom_bc, top_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
     return nothing
 end
 
-function apply_y_bcs!(Gc, arch, grid, right_bc, left_bc, args...)
-    @launch device(arch) config=launch_config(grid, :xz) _apply_y_bcs!(Gc, grid, right_bc, left_bc, args...)
+function apply_y_bcs!(Gc, arch, grid, left_bc, right_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xz) _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
     return nothing
+end
+
+"""
+    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+
+Apply a top and/or bottom boundary condition to variable `c`.
+"""
+function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
+    @loop_xy i j grid begin
+        apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+           apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
+    end
+end
+
+function _apply_z_bcs!(Gc, grid, left_bc, right_bc, args...)
+    @loop_xz i k grid begin
+         apply_y_left_bc!(Gc, left_bc,  i, k, grid, args...)
+        apply_y_right_bc!(Gc, right_bc, i, k, grid, args...)
+    end
 end
 
 # Fall back functions for boundary conditions that are not of type Flux.
@@ -497,22 +516,3 @@ If `bottom_bc.condition` is a function, the function must have the signature
 
 @inline apply_z_left_bc!(Gc, bottom_flux::BC{<:Flux}, i, k, grid, args...) =
     @inbounds Gc[i, 1, k] += getbc(left_flux, i, k, grid, args...) / Δy(i, 1, k, grid)
-
-"""
-    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
-
-Apply a top and/or bottom boundary condition to variable `c`.
-"""
-function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
-    @loop_xy i j grid begin
-        apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
-           apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
-    end
-end
-
-function _apply_z_bcs!(Gc, grid, left_bc, right_bc, args...)
-    @loop_xz i k grid begin
-         apply_y_left_bc!(Gc, left_bc,  i, k, grid, args...)
-        apply_y_right_bc!(Gc, right_bc, i, k, grid, args...)
-    end
-end

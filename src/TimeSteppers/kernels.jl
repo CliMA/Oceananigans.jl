@@ -88,13 +88,15 @@ function calculate_boundary_source_terms!(Gⁿ, bcs, arch, grid, args...)
     # Velocity fields
     for i in 1:3
         ubcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top,   args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, ubcs.y.left,   ubcs.y.right, args...)
     end
 
     # Tracer fields
     for i in 4:length(bcs)
         cbcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, cbcs.z.bottom, cbcs.z.top, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, cbcs.z.bottom, cbcs.z.top,   args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, cbcs.y.left,   cbcs.y.right, args...)
     end
 
     return nothing
