@@ -1,6 +1,13 @@
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 
 #####
+##### Physical constants
+#####
+
+const Ω_Earth = 7.2921e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+const R_Earth = 6371e3    # [m] https://en.wikipedia.org/wiki/Earth
+
+#####
 ##### Functions for non-rotating models
 #####
 
@@ -33,7 +40,7 @@ If `f` is not specified, it is calculated from `rotation_rate` and
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
-function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=nothing, latitude=nothing)
+function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
     if f == nothing && rotation_rate != nothing && latitude != nothing
         return FPlane{FT}(2rotation_rate*sind(latitude))
@@ -76,7 +83,7 @@ The user may specify both `f₀` and `β`, or the three parameters
 of a planet, and the central latitude at which the `β`-plane approximation is to be made.
 """
 function BetaPlane(T=Float64; f₀=nothing, β=nothing,
-                              rotation_rate=nothing, latitude=nothing, radius=nothing)
+                              rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
     f_and_β = f₀ != nothing && β != nothing
     planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
