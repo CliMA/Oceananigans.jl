@@ -50,9 +50,9 @@ for (x, side) in zip(coords, sides)
     end
 end
 
-####
-#### Halo filling for value and gradient boundary conditions
-####
+#####
+#####Halo filling for value and gradient boundary conditions
+#####
 
 @inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
 
@@ -98,9 +98,9 @@ function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, g
     return nothing
 end
 
-####
-#### General halo filling functions
-####
+#####
+#####General halo filling functions
+#####
 
 "Fill halo regions in x, y, and z for a given field."
 function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
@@ -144,9 +144,9 @@ end
 
 fill_halo_regions!(::Nothing, args...) = nothing
 
-####
-#### Halo zeroing functions
-####
+#####
+#####Halo zeroing functions
+#####
 
   zero_west_halo!(c, H, N) = @views @. c[1:H, :, :] = 0
  zero_south_halo!(c, H, N) = @views @. c[:, 1:H, :] = 0

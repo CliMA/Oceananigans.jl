@@ -1,6 +1,6 @@
-####
-#### Divergence operators
-####
+#####
+#####Divergence operators
+#####
 
 """
     hdivᶜᶜᵃ(i, j, k, grid, u, v)

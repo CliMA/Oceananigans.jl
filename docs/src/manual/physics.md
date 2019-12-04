@@ -108,7 +108,7 @@ The function $\rho'(\theta, S, d)$ in the seawater buoyancy relationship that li
 salinity, and depth to the density perturbation is called the *equation of state*.
 Both $\theta$ and $S$ obey the tracer conservation equation.
 
-#### Linear equation of state
+#####Linear equation of state
 
 Buoyancy is determined from a linear equation of state via
 ```math
@@ -117,7 +117,7 @@ Buoyancy is determined from a linear equation of state via
 where $g$ is gravitational acceleration, $\alpha_\theta$ is the thermal expansion coefficient, 
 and $\beta_S$ is the haline contraction coefficient.
 
-#### Nonlinear equation of state 
+#####Nonlinear equation of state 
 
 Buoyancy is determined by the simplified equations of state introduced by Roquet et al (2015).
 

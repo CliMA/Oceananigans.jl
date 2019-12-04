@@ -1,8 +1,8 @@
  using Oceananigans: AbstractField
 
-####
-#### Output writer utilities
-####
+#####
+#####Output writer utilities
+#####
 
 ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 

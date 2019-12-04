@@ -1,8 +1,8 @@
  using GPUifyLoops: @loop
 
-####
-#### Useful kernels for doing diagnostics
-####
+#####
+#####Useful kernels for doing diagnostics
+#####
 
 function velocity_div!(grid, u, v, w, div)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)

@@ -7,9 +7,9 @@ using
     Oceananigans.Operators,
     Oceananigans.TurbulenceClosures
 
-####
-#### Generate examples
-####
+#####
+#####Generate examples
+#####
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
@@ -27,9 +27,9 @@ for example in examples
     Literate.markdown(example_filepath, OUTPUT_DIR, documenter=true)
 end
 
-####
-#### Build docs
-####
+#####
+#####Build docs
+#####
 
 makedocs(
    modules = [Oceananigans, Oceananigans.Operators, Oceananigans.TurbulenceClosures],
@@ -80,10 +80,10 @@ makedocs(
 
 deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
 
-####
-#### Delete leftover JLD2 files.
-#### See: https://github.com/climate-machine/Oceananigans.jl/issues/509
-####
+#####
+#####Delete leftover JLD2 files.
+#####See: https://github.com/climate-machine/Oceananigans.jl/issues/509
+#####
 
 const GENERATED_DIR = joinpath(@__DIR__, "build/generated")
 

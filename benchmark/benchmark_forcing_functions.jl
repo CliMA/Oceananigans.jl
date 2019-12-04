@@ -5,9 +5,9 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-####
-#### Benchmark parameters
-####
+#####
+#####Benchmark parameters
+#####
 
 Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
@@ -18,9 +18,9 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
          archs = [CPU()]    # Architectures to benchmark on.
 @hascuda archs = [GPU()]    # Benchmark GPU on systems with CUDA-enabled GPUs.
 
-####
-#### Forcing function definitions
-####
+#####
+#####Forcing function definitions
+#####
 
 @inline function Fu_params(i, j, k, grid, time, U, C, params)
     if k == 1
@@ -48,9 +48,9 @@ end
 const λ = 1e-4
 @inline FT_consts(i, j, k, grid, time, U, C, params) = @inbounds ifelse(k == 1, -λ * (C.T[i, j, 1] - 0), 0)
 
-####
-#### Run benchmarks
-####
+#####
+#####Run benchmarks
+#####
 
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N

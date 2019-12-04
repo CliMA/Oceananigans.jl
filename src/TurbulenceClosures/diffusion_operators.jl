@@ -1,14 +1,14 @@
-####
-#### Diffusive fluxes
-####
+#####
+#####Diffusive fluxes
+#####
 
 @inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, c) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, c)
 @inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, c) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, c)
 @inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, c) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
 
-####
-#### Laplacian diffusion operator
-####
+#####
+#####Laplacian diffusion operator
+#####
 
 """
     ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κˣ, κʸ, κᶻ, c)

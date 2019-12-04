@@ -8,9 +8,9 @@ width, height = 12, 6.75
 
 c = Dict(0 => "tab:blue", 0.01 => "tab:orange", 0.04 => "tab:green")
 
-####
-#### Load data from JLD2
-####
+#####
+#####Load data from JLD2
+#####
 
 statistic_files = Dict()
 statistic_iters = Dict()
@@ -39,9 +39,9 @@ for Ri in Ris
     field_iters[Ri] = keys(field_files[Ri]["timeseries/t"])
 end
 
-####
-#### Plot Re and Nu timeseries
-####
+#####
+#####Plot Re and Nu timeseries
+#####
 
 fig, (ax1, ax2) = subplots(nrows=2, ncols=1, figsize=(width, height))
 
@@ -96,9 +96,9 @@ png_filepath = "stratified_couette_flow_Re_Nu_timeseries.png"
 savefig(png_filepath, dpi=200)
 close(fig)
 
-####
-#### Re and Nu scatter plot
-####
+#####
+#####Re and Nu scatter plot
+#####
 
 # Re and Nu values reported in runs 3-5 of Table 1, Vreugdenhil & Taylor (2018).
 Reτ_VT18 = Dict(0 => 223,  0.01 => 212, 0.04 => 183)
@@ -131,9 +131,9 @@ png_filepath = "stratified_couette_flow_Re_Nu_scatter.png"
 savefig(png_filepath, dpi=200)
 close(fig)
 
-####
-#### Plot velocity and temperature profiles
-####
+#####
+#####Plot velocity and temperature profiles
+#####
 
 fig, (ax1, ax2) = subplots(nrows=1, ncols=2, figsize=(0.8width, 0.7height))
 
@@ -170,9 +170,9 @@ png_filepath = "stratified_couette_flow_velocity_temperature_profiles.png"
 savefig(png_filepath, dpi=200)
 close(fig)
 
-####
-#### Plot LES model viscosity and diffusivity profiles
-####
+#####
+#####Plot LES model viscosity and diffusivity profiles
+#####
 
 fig, (ax1, ax2, ax3) = subplots(nrows=1, ncols=3, figsize=(width, height))
 
@@ -218,9 +218,9 @@ png_filepath = "stratified_couette_flow_LES_profiles.png"
 savefig(png_filepath, dpi=200)
 close(fig)
 
-####
-#### Plot horizontal slices of velocity and temperature.
-####
+#####
+#####Plot horizontal slices of velocity and temperature.
+#####
 
 fig, axes = subplots(nrows=3, ncols=2, figsize=(width, 1.5*height))
 

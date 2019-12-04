@@ -41,19 +41,19 @@ using Oceananigans: AbstractArchitecture, AbstractGrid,
                     TracerFields, device, launch_config,
                     buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
 
-####
-#### Molecular viscosity and thermal diffusivity definitions
-#### Approximate viscosities and thermal diffusivities for seawater at 20ᵒC and 35 psu,
-#### according to Sharqawy et al., "Thermophysical properties of seawater: A review of
-#### existing correlations and data" (2010).
-####
+#####
+#####Molecular viscosity and thermal diffusivity definitions
+#####Approximate viscosities and thermal diffusivities for seawater at 20ᵒC and 35 psu,
+#####according to Sharqawy et al., "Thermophysical properties of seawater: A review of
+#####existing correlations and data" (2010).
+#####
 
 const ν₀ = 1.05e-6
 const κ₀ = 1.46e-7
 
-####
-#### Abstract types
-####
+#####
+#####Abstract types
+#####
 
 """
     TurbulenceClosure{FT}
@@ -103,9 +103,9 @@ principle with model parameters stored as properties of type `FT`.
 """
 abstract type AbstractLeith{FT} <: IsotropicViscosity{FT} end
 
-####
-#### 'Tupled closure' implementation
-####
+#####
+#####'Tupled closure' implementation
+#####
 
 for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
     @eval begin
@@ -154,9 +154,9 @@ TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, 
 with_tracers(tracers, closure_tuple::Tuple) =
     Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
-####
-#### Include module code
-####
+#####
+#####Include module code
+#####
 
 # Fallback constructor for diffusivity types without precomputed diffusivities:
 TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
@@ -180,9 +180,9 @@ include("turbulence_closure_implementations/rozema_anisotropic_minimum_dissipati
 
 include("turbulence_closure_diagnostics.jl")
 
-####
-#### Some value judgements here
-####
+#####
+#####Some value judgements here
+#####
 
 """
     AnisotropicMinimumDissipation

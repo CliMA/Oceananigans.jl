@@ -1,8 +1,8 @@
 using Oceananigans, Printf
 
-####
-#### Model set-up
-####
+#####
+#####Model set-up
+#####
 
 Nx, Ny, Nz = 16, 16, 16       # No. of grid points in x, y, and z, respectively.
 Lx, Ly, Lz = 100, 100, 100    # Length of the domain in x, y, and z, respectively (m).
@@ -18,9 +18,9 @@ j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
 k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
 model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-####
-#### Set up output
-####
+#####
+#####Set up output
+#####
 
 write_grid(model)
 
@@ -53,9 +53,9 @@ globalwriter = NetCDFOutputWriter(model, outputs, interval=10,
                                   filename="dump_global.nc")
 push!(model.output_writers, globalwriter)
 
-####
-#### Run the simulation
-####
+#####
+#####Run the simulation
+#####
 
 function terse_message(model, walltime, Δt)
     cfl = Δt / Oceananigans.cell_advection_timescale(model)

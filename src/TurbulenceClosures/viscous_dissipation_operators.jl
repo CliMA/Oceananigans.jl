@@ -1,6 +1,6 @@
-####
-#### Viscous fluxes
-####
+#####
+#####Viscous fluxes
+#####
 
 @inline viscous_flux_ux(i, j, k, grid, ν_ccc, u) = ν_ccc * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
 @inline viscous_flux_uy(i, j, k, grid, ν_ffc, u) = ν_ffc * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
@@ -14,9 +14,9 @@
 @inline viscous_flux_wy(i, j, k, grid, ν_cff, w) = ν_cff * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
 @inline viscous_flux_wz(i, j, k, grid, ν_ccc, w) = ν_ccc * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
-####
-#### Viscous dissipation operators
-####
+#####
+#####Viscous dissipation operators
+#####
 
 """
     ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, νˣ, νʸ, νᶻ, u)
@@ -63,9 +63,9 @@ which will end up at the location `ccf`.
                                     δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, νᶻ, w))
 end
 
-####
-#### Viscous dissipation for isotropic viscosity
-####
+#####
+#####Viscous dissipation for isotropic viscosity
+#####
 
 @inline ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, u) = ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, ν, ν, u)
 @inline ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, v) = ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, ν, ν, v)

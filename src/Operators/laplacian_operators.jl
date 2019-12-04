@@ -1,6 +1,6 @@
-####
-#### Horizontal Laplacians
-####
+#####
+#####Horizontal Laplacians
+#####
 
 @inline function ∇²hᶜᶜᵃ(i, j, k, grid, c)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᵃᵃ, c) +
@@ -21,9 +21,9 @@ end
 @inline ∇²hᶠᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶠᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
 @inline ∇²hᶜᶠᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶠᵃ(i, j, k, grid, F, args...)
 
-####
-#### 3D Laplacian
-####
+#####
+#####3D Laplacian
+#####
 
 """
     ∇²(i, j, k, grid, c)
@@ -40,9 +40,9 @@ which will end up at the location `ccc`.
                                     δzᵃᵃᶜ(i, j, k, grid, Az_∂zᵃᵃᶠ, c))
 end
 
-####
-#### Horizontal biharmonic operators
-####
+#####
+#####Horizontal biharmonic operators
+#####
 
 @inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
 @inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)

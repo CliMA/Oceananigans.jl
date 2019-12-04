@@ -17,9 +17,9 @@ although not all may be used in practice.
 
 using Oceananigans.Grids
 
-####
-#### Grid spacings
-####
+#####
+#####Grid spacings
+#####
 
 @inline Δx(i, j, k, grid) = grid.Δx
 @inline Δy(i, j, k, grid) = grid.Δy
@@ -30,9 +30,9 @@ using Oceananigans.Grids
 @inline ΔzF(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 # @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
-####
-#### Areas
-####
+#####
+#####Areas
+#####
 
 @inline Axᵃᵃᶜ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Axᵃᵃᶠ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
@@ -42,9 +42,9 @@ using Oceananigans.Grids
 
 @inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
-####
-#### Volumes
-####
+#####
+#####Volumes
+#####
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)

@@ -1,6 +1,6 @@
-####
-#### Base difference operators
-####
+#####
+#####Base difference operators
+#####
 
 @inline δxᶜᵃᵃ(i, j, k, grid, u) = @inbounds u[i+1, j, k] - u[i,   j, k]
 @inline δxᶠᵃᵃ(i, j, k, grid, c) = @inbounds c[i,   j, k] - c[i-1, j, k]
@@ -11,9 +11,9 @@
 @inline δzᵃᵃᶜ(i, j, k, grid, w) = @inbounds w[i, j, k+1] - w[i, j,   k]
 @inline δzᵃᵃᶠ(i, j, k, grid, c) = @inbounds c[i, j,   k] - c[i, j, k-1]
 
-####
-#### Difference operators acting on functions
-####
+#####
+#####Difference operators acting on functions
+#####
 
 @inline δxᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = f(i+1, j, k, grid, args...) - f(i,   j, k, grid, args...)
 @inline δxᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = f(i,   j, k, grid, args...) - f(i-1, j, k, grid, args...)
@@ -24,10 +24,10 @@
 @inline δzᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = f(i, j, k+1, grid, args...) - f(i, j, k,   grid, args...)
 @inline δzᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)
 
-####
-#### Operators that calculate A*q where A is an area and q is some quantity.
-#### Useful for defining flux difference operators and other flux operators.
-####
+#####
+#####Operators that calculate A*q where A is an area and q is some quantity.
+#####Useful for defining flux difference operators and other flux operators.
+#####
 
 @inline Ax_ψᵃᵃᶠ(i, j, k, grid, u) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k]
 @inline Ax_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Axᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
@@ -35,9 +35,9 @@
 @inline Ay_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
 @inline Az_ψᵃᵃᵃ(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
 
-####
-#### "Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
-####
+#####
+#####"Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
+#####
 
 @inline δᴶxᶜᵃᶜ(i, j, k, grid, c) = δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, c)
 @inline δᴶxᶜᵃᶠ(i, j, k, grid, c) = δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, c)

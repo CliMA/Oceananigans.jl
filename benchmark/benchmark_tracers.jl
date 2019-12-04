@@ -5,9 +5,9 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-####
-#### Benchmark parameters
-####
+#####
+#####Benchmark parameters
+#####
 
 Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
@@ -19,9 +19,9 @@ FT = Float64
 Nxyz(::CPU) = (32, 32, 32)
 Nxyz(::GPU) = (256, 256, 256)
 
-####
-#### Utility functions for generating tracer lists
-####
+#####
+#####Utility functions for generating tracer lists
+#####
 
 function active_tracers(n)
     n == 0 && return []
@@ -41,9 +41,9 @@ function na2buoyancy(n)
     throw(ArgumentError("Can't have more than 2 active tracers!"))
 end
 
-####
-#### Run benchmarks.
-####
+#####
+#####Run benchmarks.
+#####
 
 test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
 

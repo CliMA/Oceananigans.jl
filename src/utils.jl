@@ -6,9 +6,9 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
-####
-#### Convinient macro
-####
+#####
+#####Convinient macro
+#####
 
 macro loop_xyz(i, j, k, grid, expr)
     return esc(
@@ -23,9 +23,9 @@ macro loop_xyz(i, j, k, grid, expr)
         end)
 end
         
-####
-#### Convinient definitions
-####
+#####
+#####Convinient definitions
+#####
 
 const second = 1.0
 const minute = 60.0
@@ -34,9 +34,9 @@ const day    = 24hour
 
 KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
 
-####
-#### Pretty printing
-####
+#####
+#####Pretty printing
+#####
 
 """
     prettytime(t)
@@ -84,9 +84,9 @@ function pretty_filesize(s, suffix="B")
     return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
 
-####
-#### Creating fields by dispatching on architecture
-####
+#####
+#####Creating fields by dispatching on architecture
+#####
 
 function OffsetArray(underlying_data, grid::AbstractGrid)
     # Starting and ending indices for the offset array.
@@ -115,9 +115,9 @@ Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
 Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
-####
-#### Courant–Friedrichs–Lewy (CFL) condition number calculation
-####
+#####
+#####Courant–Friedrichs–Lewy (CFL) condition number calculation
+#####
 
 # Note: these functions will have to be refactored to work on non-uniform grids.
 
@@ -140,9 +140,9 @@ cell_advection_timescale(model) =
                              model.velocities.w.data.parent,
                              model.grid)
 
-####
-#### Adaptive time stepping
-####
+#####
+#####Adaptive time stepping
+#####
 
 """
     TimeStepWizard{T}
@@ -202,9 +202,9 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-####
-#### Dynamic launch configuration
-####
+#####
+#####Dynamic launch configuration
+#####
 
 function launch_config(grid, dims)
     return function (kernel)
@@ -228,9 +228,9 @@ function launch_config(grid, dims)
     end
 end
 
-####
-#### Utilities shared between diagnostics and output writers
-####
+#####
+#####Utilities shared between diagnostics and output writers
+#####
 
 defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
 defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)

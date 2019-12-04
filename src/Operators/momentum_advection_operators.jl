@@ -1,6 +1,6 @@
-####
-#### Momentum fluxes
-####
+#####
+#####Momentum fluxes
+#####
 
 @inline momentum_flux_uu(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * ℑxᶜᵃᵃ(i, j, k, grid, u)
 @inline momentum_flux_uv(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * ℑyᵃᶠᵃ(i, j, k, grid, u)
@@ -14,9 +14,9 @@
 @inline momentum_flux_wv(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * ℑyᵃᶠᵃ(i, j, k, grid, w)
 @inline momentum_flux_ww(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * ℑzᵃᵃᶜ(i, j, k, grid, w)
 
-####
-#### Momentum advection operators
-####
+#####
+#####Momentum advection operators
+#####
 
 """
     u∇u(i, j, k, grid, U)
