@@ -1,12 +1,13 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.15.0"
+version = "0.16.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDAapi = "3895d2a7-ec45-59b8-82bb-cfc6a382f9b3"
 CUDAdrv = "c5f51814-7f29-56b8-a69c-e4d8f6be1fde"
 CUDAnative = "be33ccc6-a3ff-5ff2-a52e-74243cff1e17"
+Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
 CuArrays = "3a865a2d-5b23-5a0f-bc46-62713ec82fae"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -26,6 +27,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
 Adapt = "^1"
+Cassette = "^0.2, ^1"
 CUDAapi = "^1.1"
 CUDAdrv = "^3.1"
 CUDAnative = "^2.3"

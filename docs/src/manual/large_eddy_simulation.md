@@ -59,7 +59,7 @@ theory, \citet{Lilly66} was able to derive a value of
 C_s = \left( \frac{3}{2}C_K\pi^\frac{4}{3} \right)^{-\frac{3}{4}} \approx 0.16
 ```
 using an empirical value of $C_K \approx 1.6$ for the Kolmogorov constant. This seems reasonable for isotropic
-turbulence if the grid spacing $\Delta$ falls in the intertial range. In practice, $C_s$ is a tunable parameter.
+turbulence if the grid spacing $\Delta$ falls in the inertial range. In practice, $C_s$ is a tunable parameter.
 
 Due to the presence of the constant $C_s$, the model is sometimes referred to as the \emph{constant Smagorinsky} model
 in contrast to \emph{dynamic Smagorinsky} models that dynamically compute $C_s$ to account for effects such as buoyant

@@ -11,7 +11,7 @@ struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
 
     """
         Derivative{X, Y, Z}(∂, arg, ▶, grid)
-    
+
     Returns an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
@@ -34,13 +34,13 @@ flip(::Type{Face}) = Cell
 flip(::Type{Cell}) = Face
 
 """Return the x-derivative function acting at (`X`, `Any`, `Any`)."""
-∂x(X::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂x_, interpolation_code(flip(X)), :aa))
+∂x(X::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂x, interpolation_code(flip(X)), :ᵃᵃ))
 
 """Return the y-derivative function acting at (`Any`, `Y`, `Any`)."""
-∂y(Y::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂y_a, interpolation_code(flip(Y)), :a))
+∂y(Y::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂yᵃ, interpolation_code(flip(Y)), :ᵃ))
 
 """Return the z-derivative function acting at (`Any`, `Any`, `Z`)."""
-∂z(Z::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂z_aa, interpolation_code(flip(Z))))
+∂z(Z::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂zᵃᵃ, interpolation_code(flip(Z))))
 
 const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)
@@ -51,7 +51,7 @@ push!(operators, derivative_operators...)
 Return an abstract representation of an x-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂x(X), arg, (flip(X), Y, Z), arg.grid)
 
 """
@@ -60,7 +60,7 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 Return an abstract representation of a y-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂y(Y), arg, (X, flip(Y), Z), arg.grid)
 
 """
@@ -69,9 +69,9 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 Return an abstract representation of a z-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} = 
+∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂z(Z), arg, (X, Y, flip(Z)), arg.grid)
-    
+
 
 # Defaults
 """
@@ -96,5 +96,5 @@ Return an abstract representation of a z-derivative acting on `a`.
 
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
-    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg), 
+    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg),
                         adapt(to, deriv.▶), deriv.grid)

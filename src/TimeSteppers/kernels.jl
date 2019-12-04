@@ -5,9 +5,9 @@
 """ Calculate the right-hand-side of the u-momentum equation. """
 function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gu[i, j, k] = ( - u∇u(grid, U.u, U.v, U.w, i, j, k)
+        @inbounds Gu[i, j, k] = ( - div_ũu(i, j, k, grid, U)
                                   - x_f_cross_U(i, j, k, grid, coriolis, U)
-                                  - ∂x_p(i, j, k, grid, pHY′)
+                                  - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
                                   + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_uˢ(i, j, k, grid, surface_waves, time)
@@ -20,9 +20,9 @@ end
 """ Calculate the right-hand-side of the v-momentum equation. """
 function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gv[i, j, k] = ( - u∇v(grid, U.u, U.v, U.w, i, j, k)
+        @inbounds Gv[i, j, k] = ( - div_ũv(i, j, k, grid, U)
                                   - y_f_cross_U(i, j, k, grid, coriolis, U)
-                                  - ∂y_p(i, j, k, grid, pHY′)
+                                  - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
                                   + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_vˢ(i, j, k, grid, surface_waves, time)
@@ -34,12 +34,12 @@ end
 """ Calculate the right-hand-side of the w-momentum equation. """
 function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gw[i, j, k] = ( - u∇w(grid, U.u, U.v, U.w, i, j, k)
+        @inbounds Gw[i, j, k] = ( - div_ũw(i, j, k, grid, U)
                                   - z_f_cross_U(i, j, k, grid, coriolis, U)
                                   + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
                                   + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   - ∂t_wˢ(i, j, k, grid, surface_waves, time)
-                                   + F.w(i, j, k, grid, time, U, C, parameters))
+                                  + F.w(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
@@ -47,7 +47,7 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gc[i, j, k] = (- div_flux(grid, U.u, U.v, U.w, c, i, j, k)
+        @inbounds Gc[i, j, k] = (- div_uc(i, j, k, grid, U, c)
                                  + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
                                  + Fc(i, j, k, grid, time, U, C, parameters))
     end
@@ -125,10 +125,10 @@ the `buoyancy_perturbation` downwards:
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, grid.Nz] = - ▶z_aaf(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
+            @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
             @unroll for k in grid.Nz-1 : -1 : 1
                 @inbounds pHY′[i, j, k] =
-                    pHY′[i, j, k+1] - ▶z_aaf(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * grid.Δz
+                    pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
             end
         end
     end
@@ -143,9 +143,8 @@ pressure
 """
 function calculate_poisson_right_hand_side!(RHS, ::CPU, grid, ::PoissonBCs, U, G, Δt)
     @loop_xyz i j k grid begin
-            # Calculate divergence of the RHS source terms (Gu, Gv, Gw).
-            @inbounds RHS[i, j, k] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                     div_f2c(grid, G.u, G.v, G.w, i, j, k)
+            @inbounds RHS[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w) / Δt +
+                                     divᶜᶜᶜ(i, j, k, grid, G.u, G.v, G.w)
     end
 
     return nothing
@@ -169,8 +168,8 @@ function calculate_poisson_right_hand_side!(RHS, ::GPU, grid, ::PPN, U, G, Δt)
             k′ = convert(UInt32, Nz - CUDAnative.floor((k-1)/2))
         end
 
-        @inbounds RHS[i, j, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                  div_f2c(grid, G.u, G.v, G.w, i, j, k)
+        @inbounds RHS[i, j, k′] = divᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w) / Δt +
+                                  divᶜᶜᶜ(i, j, k, grid, G.u, G.v, G.w)
     end
     return nothing
 end
@@ -199,8 +198,8 @@ function calculate_poisson_right_hand_side!(RHS, ::GPU, grid, ::PNN, U, G, Δt)
             j′ = convert(UInt32, Ny - CUDAnative.floor((j-1)/2))
         end
 
-        @inbounds RHS[i, j′, k′] = div_f2c(grid, U.u, U.v, U.w, i, j, k) / Δt +
-                                   div_f2c(grid, G.u, G.v, G.w, i, j, k)
+        @inbounds RHS[i, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w) / Δt +
+                                   divᶜᶜᶜ(i, j, k, grid, G.u, G.v, G.w)
     end
     return nothing
 end
@@ -260,8 +259,8 @@ Note that the vertical velocity is not explicitly time stepped.
 """
 function update_velocities!(U, grid, Δt, G, pNHS)
     @loop_xyz i j k grid begin
-        @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂x_p(i, j, k, grid, pNHS)) * Δt
-        @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂y_p(i, j, k, grid, pNHS)) * Δt
+        @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂xᶠᵃᵃ(i, j, k, grid, pNHS)) * Δt
+        @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂yᵃᶠᵃ(i, j, k, grid, pNHS)) * Δt
     end
     return nothing
 end
@@ -322,7 +321,7 @@ function _compute_w_from_continuity!(U, grid)
         @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
             # U.w[i, j, 1] = 0 is enforced via halo regions.
             @unroll for k in 2:grid.Nz
-                @inbounds U.w[i, j, k] = U.w[i, j, k-1] - grid.Δz * ∇h_u(i, j, k-1, grid, U.u, U.v)
+                @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * hdivᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
             end
         end
     end

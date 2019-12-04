@@ -32,7 +32,7 @@ The staggered grid was first introduced by \citet{Harlow65} with their \emph{mar
 and oceanography, the staggered grid is usually referred to as the Arakawa C-grid after \citet{Arakawa77}, who
 investigated four different staggered grids and the unstaggered A-grid for use in an atmospheric model.
 
-\citet{Arakawa77} investigated the dispersion relation of intertia-gravity waves[^2] travelling in the $x$-direction
+\citet{Arakawa77} investigated the dispersion relation of inertia-gravity waves[^2] traveling in the $x$-direction
 ```math
   \omega^2 = f^2 + gHk^2
 ```
@@ -49,7 +49,7 @@ wavelength of the shortest resolvable wave is $2\Delta$ with corresponding waven
 sufficient to evaluate the dispersion relation over the range $0 < k\Delta < \pi$. The frequency is monotonically
 increasing for $\lambda/\Delta > \frac{1}{2}$ and monotonically decreasing for $\lambda/\Delta < \frac{1}{2}$. For the
 fourth smallest wave $\lambda/\Delta = \frac{1}{2}$ we get $\omega^2 = f^2$ which matches the $k = 0$ wave. Furthermore,
-the group velocity is zero for all $k$. On the other grids, waves with $k\Delta = \pi$ can behave like pure intertial
+the group velocity is zero for all $k$. On the other grids, waves with $k\Delta = \pi$ can behave like pure inertial
 oscillations or stationary waves, which is bad.
 
 The B and C-grids are less oscillatory than the others and quite faithfully simulate geostrophic adjustment. However,

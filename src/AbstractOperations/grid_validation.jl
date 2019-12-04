@@ -20,9 +20,9 @@ validate_grid(a, b) = nothing
 """
     validate_grid(a, b, c...)
 
-Confirm that the grids associated with the 3+ long list `a, b, c...` are 
-consistent by checking each member against `a`. 
-This function is only correct when `a` is an `AbstractField`, though the 
+Confirm that the grids associated with the 3+ long list `a, b, c...` are
+consistent by checking each member against `a`.
+This function is only correct when `a` is an `AbstractField`, though the
 subsequent members `b, c...` may be anything.
 """
 function validate_grid(a, b, c...)

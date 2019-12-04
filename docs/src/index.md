@@ -4,7 +4,7 @@
 Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3
 dimensions on CPUs and GPUs. It simulates the rotating Boussinesq equations in rectangular domains with some 
 special features for fluids stratified by both temperature and salinity (oceans!) --- but can also be used without
-rotation, stratification, with aribtrary tracers, and arbitrary user-defined forcing functions.
+rotation, stratification, with arbitrary tracers, and arbitrary user-defined forcing functions.
 
 We strive for a user interface that makes `Oceananigans.jl` as friendly and intuitive to use as possible, 
 allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm
@@ -14,7 +14,7 @@ as possible is shared between the CPU and GPU algorithms.
 
 ## Installation instructions
 You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the
-Julia command prompt) to add the package and instantiate/build all depdendencies
+Julia command prompt) to add the package and instantiate/build all dependencies
 ```julia
 julia>]
 (v1.1) pkg> add Oceananigans

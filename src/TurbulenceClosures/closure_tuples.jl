@@ -31,8 +31,3 @@ function calculate_diffusivities!(Ks, arch, grid, closures::Tuple, args...)
     end
     return nothing
 end
-
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, closures::Tuple) =
-    Tuple(TurbulentDiffusivities(arch, grid, tracers, closure) for closure in closures)
-
-with_tracers(tracers, closures::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closures)
