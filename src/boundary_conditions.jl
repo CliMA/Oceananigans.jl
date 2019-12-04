@@ -463,7 +463,7 @@ function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
     end
 end
 
-function _apply_z_bcs!(Gc, grid, left_bc, right_bc, args...)
+function _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
     @loop_xz i k grid begin
          apply_y_left_bc!(Gc, left_bc,  i, k, grid, args...)
         apply_y_right_bc!(Gc, right_bc, i, k, grid, args...)

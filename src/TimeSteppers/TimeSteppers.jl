@@ -18,7 +18,7 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     buoyancy_perturbation,
                     x_f_cross_U, y_f_cross_U, z_f_cross_U,
 
-                    fill_halo_regions!, apply_z_bcs!,
+                    fill_halo_regions!, apply_z_bcs!, apply_y_bcs!,
 
                     time_to_run
 

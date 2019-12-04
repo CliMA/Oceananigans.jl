@@ -1,3 +1,7 @@
+####
+#### Adapting structures to be able to pass them to GPU CUDA kernels.
+####
+
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
@@ -7,7 +11,14 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
 ####
-#### Convinient macro
+#### Utilities that make it easier to juggle around Arrays and CuArrays.
+####
+
+         array_type(::CPU) = Array
+@hascuda array_type(::GPU) = CuArray
+
+####
+#### Convinient macros
 ####
 
 macro loop_xyz(i, j, k, grid, expr)
