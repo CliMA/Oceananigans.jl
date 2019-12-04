@@ -210,7 +210,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, 3),
+    @launch(device(arch), config=launch_config(grid, :xyz),
             calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
 end
 

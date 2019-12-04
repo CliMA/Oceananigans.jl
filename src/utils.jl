@@ -22,7 +22,7 @@ macro loop_xyz(i, j, k, grid, expr)
             end
         end)
 end
-        
+
 ####
 #### Convinient definitions
 ####
@@ -211,17 +211,17 @@ function launch_config(grid, dims)
         fun = kernel.fun
         config = launch_configuration(fun)
 
-        # adapt the suggested config from 1D to the requested grid dimensions
-        if dims == 3
+        # Adapt the suggested config from 1D to the requested grid dimensions
+        if dims == :xyz
             threads = floor(Int, cbrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
             threads = [threads, threads, threads]
-        elseif dims == 2
+        elseif dims == :xy
             threads = floor(Int, sqrt(config.threads))
             blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
             threads = [threads, threads]
         else
-            error("unsupported launch configuration")
+            error("Unsupported launch configuration: $dims")
         end
 
         return (threads=Tuple(threads), blocks=Tuple(blocks))
@@ -294,7 +294,7 @@ end
 ##### Utils for models
 #####
 
-function ordered_dict_show(dict, padchar) 
+function ordered_dict_show(dict, padchar)
     if length(dict) == 0
         return string(typeof(dict), " with no entries")
     elseif length(dict) == 1
@@ -302,8 +302,8 @@ function ordered_dict_show(dict, padchar)
                       padchar, "   └── ", dict.keys[1], " => ", typeof(dict.vals[1]))
     else
         return string(typeof(dict), " with $(length(dict)) entries:", '\n',
-                      Tuple(string(padchar, 
-                                   "   ├── ", name, " => ", typeof(dict[name]), '\n') 
+                      Tuple(string(padchar,
+                                   "   ├── ", name, " => ", typeof(dict[name]), '\n')
                             for name in dict.keys[1:end-1]
                            )...,
                            padchar, "   └── ", dict.keys[end], " => ", typeof(dict.vals[end])
@@ -314,7 +314,7 @@ end
 """
     with_tracers(tracers, initial_tuple, tracer_default)
 
-Create a tuple corresponding to the solution variables `u`, `v`, `w`, 
+Create a tuple corresponding to the solution variables `u`, `v`, `w`,
 and `tracers`. `initial_tuple` is a `NamedTuple` that at least has
 fields `u`, `v`, and `w`, and may have some fields corresponding to
 the names in `tracers`. `tracer_default` is a function that produces

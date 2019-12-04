@@ -89,12 +89,12 @@ function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
 end
 
 function fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...)
-    @launch device(arch) config=launch_config(grid, 2) _fill_top_halo!(c, bc, grid, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _fill_top_halo!(c, bc, grid, args...)
     return nothing
 end
 
 function fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...)
-    @launch device(arch) config=launch_config(grid, 2) _fill_bottom_halo!(c, bc, grid, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(c, bc, grid, args...)
     return nothing
 end
 

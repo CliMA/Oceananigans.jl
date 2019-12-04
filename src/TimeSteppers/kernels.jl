@@ -114,7 +114,7 @@ end
 "Solve the Poisson equation for non-hydrostatic pressure on the GPU."
 function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
-    @launch device(GPU()) config=launch_config(grid, 3) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
+    @launch device(GPU()) config=launch_config(grid, :xyz) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
     return nothing
 end
 
@@ -296,12 +296,12 @@ end
 
 "Update the solution variables (velocities and tracers)."
 function update_solution!(U, C, arch, grid, Δt, G, pNHS)
-    @launch device(arch) config=launch_config(grid, 3) update_velocities!(U, grid, Δt, G, pNHS)
+    @launch device(arch) config=launch_config(grid, :xyz) update_velocities!(U, grid, Δt, G, pNHS)
 
     for i in 1:length(C)
         @inbounds c = C[i]
         @inbounds Gc = G[i+3]
-        @launch device(arch) config=launch_config(grid, 3) update_tracer!(c, grid, Δt, Gc)
+        @launch device(arch) config=launch_config(grid, :xyz) update_tracer!(c, grid, Δt, Gc)
     end
 
     return nothing

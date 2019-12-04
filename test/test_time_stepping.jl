@@ -43,7 +43,7 @@ function compute_w_from_continuity(arch, FT)
     fill_halo_regions!(u.data, bcs.u, arch, grid)
     fill_halo_regions!(v.data, bcs.v, arch, grid)
 
-    @launch(device(arch), config=launch_config(grid, 2),
+    @launch(device(arch), config=launch_config(grid, :xy),
             _compute_w_from_continuity!((u=u.data, v=v.data, w=w.data), grid))
 
     fill_halo_regions!(w.data, bcs.w, arch, grid)
