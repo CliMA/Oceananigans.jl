@@ -1,12 +1,12 @@
-import Logging, Dates
-export ModelLogger, shouldlog, min_enabled_level, catch_exceptions, handle_message
+using Logging, Dates
 
 
-# -------------------------------------------------------------------------------------
-# Custom LogLevels
+####
+#### Custom LogLevels
+####
 _custom_log_level_docs = """
     Severity Order:
-    Debug < Diagnostic < Info < Setup < Warn < Error
+    Debug < Diagnostic < Simulation < Setup < Info
 
     Usage:
     @logmsg Logging.LogLevel "Log Message"
@@ -17,10 +17,13 @@ _custom_log_level_docs = """
 """
 
 const Diagnostic = Logging.LogLevel(-500)  # Sits between Debug and Info
-const Setup = Logging.LogLevel(500)
+const Simulation = Logging.LogLevel(-250)
+const Setup = Logging.LogLevel(-125)
 
-# ------------------------------------------------------------------------------------
-# ModelLogger
+
+####
+#### ModelLogger
+####
 _model_logger_docs = """
 
     ModelLogger(stream::IO, level::LogLevel)
@@ -45,10 +48,14 @@ Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
 Logging.catch_exceptions(logger::ModelLogger) = false
 
 function level_to_string(level::Logging.LogLevel)
-    if level == Diagnostic "Diagnostic"
-    elseif level == Setup "Setup"
-    elseif level == Logging.Warn "Warning"
-    else string(level)
+    if level == Diagnostic
+         "Diagnostic"
+    elseif level == Setup
+         "Setup"
+    elseif level == Logging.Warn 
+        "Warning"
+    else 
+        string(level)
     end
 end
 
@@ -68,5 +75,5 @@ function Logging.handle_message(logger::ModelLogger, level, message, _module, gr
     formatted_message = "$message --- $msg_timestamp $level_name $file_name:$line_number"
     println(iob, formatted_message)
     write(logger.stream, take!(buf))
-    nothing
+    return nothing
 end
