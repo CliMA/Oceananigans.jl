@@ -1,8 +1,11 @@
 function time_stepping_works(arch, FT, Closure)
-    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
-                  architecture=arch, float_type=FT, closure=Closure(FT))
+    # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
+    grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
+
+    model = Model(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, 1)
-    return true  # test that no errors/crashes happen when time stepping.
+
+    return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
@@ -144,7 +147,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 end
 
 Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
-            ConstantSmagorinsky, AnisotropicMinimumDissipation)
+            AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
+            ConstantSmagorinsky, SmagorinskyLilly,
+            AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
 @testset "Time stepping" begin
     println("Testing time stepping...")
