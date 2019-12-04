@@ -56,7 +56,9 @@ end
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
-
+    # Manually choose thread-block layout here as it's ~20% faster.
+    # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
+    Tx, Ty = 16, 16 # CUDA threads per block
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
