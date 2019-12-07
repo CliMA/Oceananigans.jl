@@ -81,9 +81,9 @@ number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 statement and updating the time step.
 """
 function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, Re=4250, Pr=0.7, Ri, Ni=10, end_time=1000)
-    ####
-    #### Computed parameters
-    ####
+    #####
+    ##### Computed parameters
+    #####
 
          ν = U_wall * h / Re    # From Re = U_wall h / ν
     Θ_wall = Ri * U_wall^2 / h  # From Ri = L Θ_wall / U_wall²
@@ -91,9 +91,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
 
     parameters = (U_wall=U_wall, Θ_wall=Θ_wall, Re=Re, Pr=Pr, Ri=Ri)
 
-    ####
-    #### Impose boundary conditions
-    ####
+    #####
+    ##### Impose boundary conditions
+    #####
 
     Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Θ_wall),
                                     bottom = BoundaryCondition(Value, -Θ_wall))
@@ -104,9 +104,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
     vbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
                                     bottom = BoundaryCondition(Value, 0))
 
-    ####
-    #### Non-dimensional model setup
-    ####
+    #####
+    ##### Non-dimensional model setup
+    #####
 
     model = Model(
        architecture = arch,
@@ -117,9 +117,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
          parameters = parameters
     )
 
-    ####
-    #### Set initial conditions
-    ####
+    #####
+    ##### Set initial conditions
+    #####
 
     # Add a bit of surface-concentrated noise to the initial condition
     ε(σ, z) = σ * randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
@@ -132,9 +132,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
 
     set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
-    ####
-    #### Print simulation banner
-    ####
+    #####
+    ##### Print simulation banner
+    #####
 
     @printf(
         """
@@ -154,9 +154,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
              model.grid.Lx, model.grid.Ly, model.grid.Lz,
              Re, Ri, Pr, ν, κ, U_wall, Θ_wall)
 
-    ####
-    #### Set up field output writer
-    ####
+    #####
+    ##### Set up field output writer
+    #####
 
     base_dir = @sprintf("stratified_couette_flow_data_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
     prefix = @sprintf("stratified_couette_flow_Nxy%d_Nz%d_Ri%.2f", Nxy, Nz, Ri)
@@ -185,9 +185,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
 
     push!(model.output_writers, field_writer)
 
-    ####
-    #### Set up profile output writer
-    ####
+    #####
+    ##### Set up profile output writer
+    #####
 
     Uavg = HorizontalAverage(model.velocities.u;       return_type=Array)
     Vavg = HorizontalAverage(model.velocities.v;       return_type=Array)
@@ -209,9 +209,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
 
     push!(model.output_writers, profile_writer)
 
-    ####
-    #### Set up statistic output writer
-    ####
+    #####
+    ##### Set up statistic output writer
+    #####
 
     Reτ = FrictionReynoldsNumber(Uavg)
      Nu = NusseltNumber(Tavg)
@@ -225,9 +225,9 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
 
     push!(model.output_writers, statistics_writer)
 
-    ####
-    #### Time stepping
-    ####
+    #####
+    ##### Time stepping
+    #####
 
     wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
 
