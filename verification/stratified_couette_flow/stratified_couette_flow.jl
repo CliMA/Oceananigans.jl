@@ -2,6 +2,8 @@ using Statistics, Printf
 
 using Oceananigans
 using Oceananigans.TurbulenceClosures
+using Oceananigans.OutputWriters
+using Oceananigans.Diagnostics
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg)
