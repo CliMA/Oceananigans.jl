@@ -35,7 +35,9 @@ using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 using Oceananigans.AbstractOperations: Computation, compute!
 
-# On CI servers select the GPU with the most available memory.
+# On CI servers select the GPU with the most available memory or with the
+# highest capability if testing needs to be thorough).
+# Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
 @hascuda begin
     gpu_candidates = [(dev=dev, cap=capability(dev),
                        mem=CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in devices()]
