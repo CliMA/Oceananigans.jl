@@ -107,9 +107,9 @@ end
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
                                    clobber=true, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
 
-Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which can be a
-`Dict` or `NamedTuple`) to a NC file, where `label` is a symbol that labels the output and
-`field` is a field from the model (e.g. `model.velocities.u`).
+Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which should
+be a `Dict`) to a NC file, where `label` is a symbol that labels the output and `field` is
+a field from the model (e.g. `model.velocities.u`).
 
 Keyword arguments
 =================
