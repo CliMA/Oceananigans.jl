@@ -42,12 +42,12 @@ using Oceananigans.AbstractOperations: Computation, compute!
 
     thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
     if thorough
-        sort!(candidates, by=x->(x.cap, x.mem))
+        sort!(gpu_candidates, by=x->(x.cap, x.mem))
     else
-        sort!(candidates, by=x->x.mem)
+        sort!(gpu_candidates, by=x->x.mem)
     end
 
-    pick = last(candidates)
+    pick = last(gpu_candidates)
     device!(pick.dev)
 end
 
