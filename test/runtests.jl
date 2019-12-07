@@ -15,7 +15,7 @@ using
     OffsetArrays,
     FFTW
 
-@hascuda using CuArrays
+@hascuda using CUDAdrv, CUDAnative, CuArrays
 
 using Statistics: mean
 using LinearAlgebra: norm
@@ -34,6 +34,22 @@ using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 using Oceananigans.AbstractOperations: Computation, compute!
+
+# On CI servers select the GPU with the most available memory.
+@hascuda begin
+    gpu_candidates = [(dev=dev, cap=capability(dev),
+                       mem=CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in devices()]
+
+    thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
+    if thorough
+        sort!(candidates, by=x->(x.cap, x.mem))
+    else
+        sort!(candidates, by=x->x.mem)
+    end
+
+    pick = last(candidates)
+    device!(pick.dev)
+end
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
