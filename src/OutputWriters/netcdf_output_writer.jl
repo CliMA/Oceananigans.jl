@@ -105,7 +105,7 @@ end
 
 """
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                                   clobber=true, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
+                                   clobber=false, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
 
 Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which should
 be a `Dict`) to a NC file, where `label` is a symbol that labels the output and `field` is
@@ -132,7 +132,7 @@ Keyword arguments
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                        clobber=true, global_attributes=Dict(), output_attributes=nothing, compression=0, slice_kw...)
+                        clobber=false, global_attributes=Dict(), output_attributes=nothing, compression=0, slice_kw...)
 
     validate_interval(interval, frequency)
 
