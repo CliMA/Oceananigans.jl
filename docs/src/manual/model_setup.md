@@ -211,8 +211,8 @@ buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(α=1.67e-4
 ```
 
 #### Idealized nonlinear equation of state
-Instead of a linear equation of state, an idealized equation of state as described by Roquet et al. (2015) may be
-specified. See [`RoquetIdealizedNonlinearEquationOfState`](@ref RoquetIdealizedNonlinearEquationOfState).
+Instead of a linear equation of state, five idealized nonlinear equation of state as described by Roquet et al. (2015)
+may be specified. See [`RoquetIdealizedNonlinearEquationOfState`](@ref RoquetIdealizedNonlinearEquationOfState).
 
 ## Boundary conditions
 A boundary condition is applied to each field, dimension, and endpoint. There are left and right (or bottom and top)
@@ -292,13 +292,28 @@ Q  = randn(Nx, Ny) ./ (ρ₀ * cₚ)
 white_noise_T_bc = BoundaryCondition(Flux, Q)
 ```
 
+### Specifying boundary conditions with functions
+You can also specify the boundary condition via a function. For z boundary conditions the function will be called with
+the signature
+```
+f(i, j, grid, t, U, C, params)
+```
+where `i, j` is the grid index, `grid` is `model.grid`, `t` is the `model.clock.time`, `U` is the named tuple
+`model.velocities`, `C` is the named tuple `C.tracers`, and `params` is the user-defined `model.parameters`. The
+signature is similar for x and y boundary conditions expect that `i, j` is replaced with `j, k` and `i, k` respectively.
+
+We can add a fourth example now:
 4. A spatially varying and time-dependent heating representing perhaps a localized source of heating modulated by a
    diurnal cycle.
 ```@example
-Q(i, j, grid, t, U, C, params) = exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
-Q(x, y, t) = exp(-(x^2+y^2)) * sin(2π*t)
+@inline Q(i, j, grid, t, U, C, params) = @inbounds exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
 localized_heating_bc = BoundaryCondition(Flux, Q)
 ```
+
+!!! info "Performance of functions in boundary conditions"
+    For performance reasons, you should define all functions used in boundary conditions as inline functions via the
+    `@inline` macro. If any arrays are accessed within the function, disabling bounds-checking with `@inbounds` can
+    also speed things up.
 
 ### Specifying boundary conditions on a field
 To, for example, create a set of horizontally periodic field boundary conditions
@@ -306,21 +321,45 @@ To, for example, create a set of horizontally periodic field boundary conditions
 T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
                                 bottom = BoundaryCondition(Gradient, 0.01))
 ```
-which will create a [`FieldBoundaryConditions`](@ref) object.
+which will create a [`FieldBoundaryConditions`](@ref) object for temperature T appropriate for horizontally periodic
+model configurations where the x and y boundary conditions are all periodic.
 
 ### Specifying model boundary conditions
+A named tuple of [`FieldBoundaryConditions`](@ref) objects must be passed to the Model constructor specifying boundary
+conditions on all fields. To, for example, impose non-default boundary conditions on the u-velocity and temperature
 ```@example
+u_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.1),
+                                bottom = BoundaryCondition(Value, -0.1))
 T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
                                 bottom = BoundaryCondition(Gradient, 0.01))
-model_bcs = HorizontallyPeriodicSolutionBCs(T=T_bcs)
-```
 
-### Specifying boundary conditions with functions
-#### Using functions of _(x, y, z, t)_
+model_bcs = HorizontallyPeriodicSolutionBCs(u=u_bc, T=T_bcs)
+
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+              boundary_conditions=model_bcs)
+```
 
 ## Forcing functions
 Can be used to implement anything you wish, as long as it can be expressed as extra terms in the momentum equation or
-tracer evolution equations. Some examples include sponge layers, internal heating sources,
+tracer evolution equations.
+
+Forcing functions will be called with the signature
+```
+f(i, j, k, grid, t, U, C, params)
+```
+where `i, j, k` is the grid index, `grid` is `model.grid`, `t` is the `model.clock.time`, `U` is the named tuple
+`model.velocities`, `C` is the named tuple `C.tracers`, and `params` is the user-defined `model.parameters`.
+
+Some examples:
+
+1.
+```@example
+Fu(x, y, z, t) = a * exp(z) * cos(t)
+u_forcing = SimpleForcing(fun_forcing)
+```
+
+
+include sponge layers, internal heating sources,
 
 ## Parameters
 Should fossil fuel companies be blamed for the climate crisis by pulling carbon out of the ground or just the greenwashing
