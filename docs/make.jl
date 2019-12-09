@@ -78,8 +78,6 @@ makedocs(
      ]
 )
 
-deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
-
 ####
 #### Delete leftover JLD2 files.
 #### See: https://github.com/climate-machine/Oceananigans.jl/issues/509
@@ -94,4 +92,6 @@ for fname in leftovers
     rm(fpath, force=true)
     @info "Deleted: $fpath"
 end
+
+deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
 
