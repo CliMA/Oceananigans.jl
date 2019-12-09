@@ -4,8 +4,8 @@ using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 ##### Physical constants
 #####
 
-const Ω_Earth = 7.2921e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
-const R_Earth = 6371e3    # [m] https://en.wikipedia.org/wiki/Earth
+const Ω_Earth = 7.292115e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
 
 #####
 ##### Functions for non-rotating models
