@@ -212,6 +212,3 @@ end
 
 makeplot!(axs, model)
 gcf()
-
-# Delete the output file
-rm("ocean_wind_mixing_and_convection.jld2", force=true)
