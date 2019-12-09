@@ -540,6 +540,8 @@ model.output_writers[:surface_slice_writer] = NetCDFOutputWriter(model, fields; 
                                                                  zC=Nz, zF=Nz)
 ```
 
+See [`NetCDFOutputWriter`](@ref) for more details and options.
+
 ### JLD2 output writer
 JLD2 is a an HDF5 compatible file format written in pure Julia and is generally pretty fast. JLD2 files can be opened in
 Python with the [h5py](https://www.h5py.org/) package.
@@ -551,7 +553,7 @@ of T every 1 hour of simulation time to a file called `some_data.jld2`
 ```@example
 model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
 
-function init_save_parameters(file, model)
+function init_save_some_metadata(file, model)
     file["author"] = "Chim Riggles"
     file["parameters/coriolis_parameter"] = 1e-4
     file["parameters/density"] = 1027
@@ -565,7 +567,7 @@ outputs = Dict(
     :T_avg => model -> T_avg(model)
 )
 
-jld2_writer = JLD2OutputWriter(model, outputs; init=init_save_parameters_and_bcs, interval=1hour, prefix="some_data")
+jld2_writer = JLD2OutputWriter(model, outputs; init=init_save_some_metadata, interval=1hour, prefix="some_data")
 
 push!(model.output_writers, jld2_writer)
 ```
@@ -573,11 +575,39 @@ push!(model.output_writers, jld2_writer)
 See [`JLD2OutputWriter`](@ref) for more details and options.
 
 ### Checkpointer
+A checkpointer can be used to serialize the entire model state to a file from which the model can be restored at any
+time. This is useful if you'd like to periodically checkpoint when running long simulations in case of crashes or
+cluster time limits, but also if you'd like to restore from a checkpoint and try out multiple scenarios.
+
+For example, to periodically checkpoint the model state to disk every 1,000,000 seconds of simulation time to files of
+the form `model_checkpoint_xxx.jld2` where `xxx` is the iteration number (automatically filled in)
+```@example
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model.output_writers[:checkpointer] = Checkpointer(model; interval=1e6, prefix="model_checkpoint")
+```
+
+The default options should provide checkpoint files that are easy to restore from in most cases. For more advanced
+options and features, see [`Checkpointer`](@ref).
+
 #### Restoring from a checkpoint file
+To restore the model from a checkpoint file, for example `model_checkpoint_12345.jld2`, simply call
+```
+model = restore_from_checkpoint("model_checkpoint_12345.jld2")
+```
+which will create a new model object that is identical to the one that was serialized to disk. You can continue time
+stepping after restoring from a checkpoint.
+
+You can pass additional parameters to the `Model` constructor. See [`restore_from_checkpoint`](@ref) for more
+information.
+
 #### Restoring with functions
+JLD2 cannot serialize functions to disk. so if you used forcing functions, boundary conditions containing functions, or
+the model included references to functions then they will not be serialized to the checkpoint file. When restoring from
+a checkpoint file, any model property that contained functions must be manually restored via keyword arguments to
+[`restore_from_checkpoint`](@ref).
 
 ## Time stepping
-Once you're ready to time-step simply call
+Once you're ready to time step the model simply call
 ```
 time_step!(model; Δt=10)
 ```
