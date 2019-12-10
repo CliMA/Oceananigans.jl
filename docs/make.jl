@@ -43,7 +43,7 @@ makedocs(
      pages = [
          "Home"   => "index.md",
          "Manual" => [
-             #"Model setup" => "manual/model_setup.md",
+             "Model setup" => "manual/model_setup.md",
              "Examples" => [
                  "One-dimensional diffusion"        => "generated/simple_diffusion.md",
                  "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
@@ -95,3 +95,4 @@ for fname in leftovers
     @info "Deleted: $fpath"
 end
 
+deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")

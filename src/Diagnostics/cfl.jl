@@ -17,7 +17,7 @@ end
 Returns an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step or `TimeStepWizard` `Δt` and `timescale`.
 
-See also `AdvectiveCFL` and `DiffusiveCFL`
+See also `AdvectiveCFL` and `DiffusiveCFL`.
 """
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
@@ -49,18 +49,21 @@ AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 """
     DiffusiveCFL(Δt)
 
-Returns an object for computing the Courant-Freidrichs-Lewy (CFL) number
-associated with time step or `TimeStepWizard` `Δt` and the time scale
-for diffusion across a cell associated with `model.closure`.
+Returns an object for computing the diffusive Courant-Freidrichs-Lewy (CFL) number
+associated with time step or `TimeStepWizard` `Δt` and the time scale for diffusion
+across a cell associated with `model.closure`.
+
+The maximum diffusive CFL number among viscosity and all tracer diffusivities is
+returned.
 
 Example
 =======
 ```julia
 julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
-julia> cfl = DiffusiveCFL(0.1);
+julia> dcfl = DiffusiveCFL(0.1);
 
-julia> cfl(model)
+julia> dcfl(model)
 2.688e-5
 ```
 """
