@@ -249,8 +249,6 @@ include("fields.jl")
 
 include("Operators/Operators.jl")
 
-using .Operators: div_f2c # used in diagnostics.jl
-
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
 using .TurbulenceClosures

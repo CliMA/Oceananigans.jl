@@ -33,8 +33,8 @@ end
 """
     @unary op1 op2 op3...
 
-Turn each unary function in the list `(op1, op2, op3...)` 
-into a unary operator on `Oceananigans.Fields` for use in `AbstractOperations`. 
+Turn each unary function in the list `(op1, op2, op3...)`
+into a unary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a unary function is a function with one argument: for example, `sin(x)` is a unary function.
 
@@ -105,5 +105,5 @@ const unary_operators = Set()
 
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
-    UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.arg), 
+    UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.arg),
                             adapt(to, unary.▶), unary.grid)

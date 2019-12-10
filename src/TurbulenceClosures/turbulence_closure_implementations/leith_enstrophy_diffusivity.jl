@@ -39,10 +39,10 @@ Keyword arguments
 =================
     - `C`      : Model constant
     - `C_Redi` : Coefficient for down-gradient tracer diffusivity for each tracer. i
-                 Either a constant applied to every 
+                 Either a constant applied to every
                  tracer, or a `NamedTuple` with fields for each tracer individually.
     - `C_GM`   : Coefficient for down-gradient tracer diffusivity for each tracer. i
-                 Either a constant applied to every 
+                 Either a constant applied to every
                  tracer, or a `NamedTuple` with fields for each tracer individually.
 
 References
@@ -66,10 +66,10 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
 end
 
 function abs²_∇h_ζ(i, j, k, grid, U)
-    vxx = ▶y_aca(i, j, k, grid, ∂x²_caa, U.v)
-    uyy = ▶x_caa(i, j, k, grid, ∂y²_aca, U.u)
-    uxy = ▶y_aca(i, j, k, grid, ∂x_caa, ∂y_afa, U.u)
-    vxy = ▶x_caa(i, j, k, grid, ∂x_faa, ∂y_aca, U.v)
+    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, U.v)
+    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, U.u)
+    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᵃᵃ, ∂yᵃᶠᵃ, U.u)
+    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, U.v)
 
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
@@ -78,13 +78,13 @@ end
 @inline ψ²(i, j, k, grid, ψ::AbstractArray, args...) = ψ(i, j, k, grid, args...)^2
 
 function abs²_∇h_wz(i, j, k, grid, w)
-    wxz² = ▶x_caa(i, j, k, grid, ψ², ∂x_faa, ∂z_aac, w)
-    wyz² = ▶y_aca(i, j, k, grid, ψ², ∂y_afa, ∂z_aac, w)
+    wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᵃᵃ, ∂zᵃᵃᶜ, w)
+    wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, w)
     return wxz² + wyz²
 end
 
-@inline ν_ccc(i, j, k, grid, clo::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
-    (clo.C * Δᶠ(i, j, k, grid, clo))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U) 
+@inline νᶜᶜᶜ(i, j, k, grid, clo::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
+    (clo.C * Δᶠ(i, j, k, grid, clo))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U)
                                               + abs²_∇h_wz(i, j, k, grid, U.w))
 
 #####
@@ -94,33 +94,33 @@ end
 # Components of the Redi rotation tensor
 
 @inline function Redi_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ∂x_b(i, j, k, grid, buoyancy, C) 
-    bz = ▶xz_fac(i, j, k, grid, ∂z_b, buoyancy, C)
+    bx = ∂x_b(i, j, k, grid, buoyancy, C)
+    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C)
     return ifelse(bx == 0 && bz == 0, zero(FT), - bx / bz)
 end
 
 @inline function Redi_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ▶xz_caf(i, j, k, grid, ∂x_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C) 
+    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, C)
+    bz = ∂z_b(i, j, k, grid, buoyancy, C)
     return ifelse(bx == 0 && bz == 0, zero(FT), - bx / bz)
 end
 
 @inline function Redi_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    by = ∂y_b(i, j, k, grid, buoyancy, C) 
-    bz = ▶yz_afc(i, j, k, grid, ∂z_b, buoyancy, C)
+    by = ∂y_b(i, j, k, grid, buoyancy, C)
+    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, C)
     return ifelse(by == 0 && bz == 0, zero(FT), - by / bz)
 end
 
 @inline function Redi_tensor_yz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    by = ▶yz_acf(i, j, k, grid, ∂y_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C) 
+    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, C)
+    bz = ∂z_b(i, j, k, grid, buoyancy, C)
     return ifelse(by == 0 && bz == 0, zero(FT), - by / bz)
 end
 
 @inline function Redi_tensor_zz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ▶xz_caf(i, j, k, grid, ∂x_b, buoyancy, C)
-    by = ▶yz_acf(i, j, k, grid, ∂y_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C) 
+    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, C)
+    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, C)
+    bz = ∂z_b(i, j, k, grid, buoyancy, C)
     return ifelse(by == 0 && bx == 0 && bz == 0, zero(FT), (bx^2 + by^2) / bz^2)
 end
 
@@ -131,16 +131,16 @@ end
 
 Return `K₁₁ ∂x c + K₁₃ ∂z c` for a Leith diffusivity.
 """
-@inline function K₁ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith, 
+@inline function K₁ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith,
                           c, ::Val{tracer_index}, νₑ, C, buoyancy) where tracer_index
 
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ▶x_faa(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
 
-    ∂x_c = ∂x_faa(i, j, k, grid, c)
-    ∂z_c = ▶xz_fac(i, j, k, grid, ∂z_aaf, c)
+    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
+    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
     R₁₃ = Redi_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
 
@@ -153,16 +153,16 @@ end
 
 Return `K₂₂ ∂y c + K₂₃ ∂z c` for a Leith diffusivity.
 """
-@inline function K₂ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith, 
+@inline function K₂ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith,
                           c, ::Val{tracer_index}, νₑ, C, buoyancy) where tracer_index
 
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ▶y_afa(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
 
-    ∂y_c = ∂y_afa(i, j, k, grid, c)
-    ∂z_c = ▶yz_afc(i, j, k, grid, ∂z_aaf, c)
+    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
+    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
     R₂₃ = Redi_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
     return νₑⁱʲᵏ * (                  C_Redi * ∂y_c
@@ -174,25 +174,25 @@ end
 
 Return `K₃₁ ∂x c + K₃₂ ∂y c + K₃₃ ∂z c` for a Leith diffusivity.
 """
-@inline function K₃ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith, 
+@inline function K₃ⱼ_∂ⱼ_c(i, j, k, grid, closure::AbstractLeith,
                           c, ::Val{tracer_index}, νₑ, C, buoyancy) where tracer_index
 
     @inbounds C_Redi = closure.C_Redi[tracer_index]
     @inbounds C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ▶z_aaf(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ▶xz_caf(i, j, k, grid, ∂x_faa, c)
-    ∂y_c = ▶yz_acf(i, j, k, grid, ∂y_afa, c)
-    ∂z_c = ∂z_aaf(i, j, k, grid, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᵃᵃ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
+    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
 
     R₃₁ = Redi_tensor_xz_ccf(i, j, k, grid, buoyancy, C)
     R₃₂ = Redi_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
     R₃₃ = Redi_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
 
     return νₑⁱʲᵏ * (
-          (C_Redi + C_GM) * R₃₁ * ∂x_c 
-        + (C_Redi + C_GM) * R₃₂ * ∂y_c 
+          (C_Redi + C_GM) * R₃₁ * ∂x_c
+        + (C_Redi + C_GM) * R₃₂ * ∂y_c
                  + C_Redi * R₃₃ * ∂z_c)
 end
 
@@ -202,15 +202,15 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractLeith, c, tracer_index, 
+@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractLeith, c, tracer_index,
                diffusivities, C, buoyancy) = (
-      ∂x_caa(i, j, k, grid, K₁ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
-    + ∂y_aca(i, j, k, grid, K₂ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
-    + ∂z_aac(i, j, k, grid, K₃ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
+      ∂xᶜᵃᵃ(i, j, k, grid, K₁ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
+    + ∂yᵃᶜᵃ(i, j, k, grid, K₂ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
+    + ∂zᵃᵃᶜ(i, j, k, grid, K₃ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, 3), 
+    @launch(device(arch), config=launch_config(grid, 3),
             calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
 end
 

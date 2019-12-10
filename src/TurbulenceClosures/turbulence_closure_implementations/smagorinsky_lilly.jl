@@ -14,6 +14,7 @@ struct SmagorinskyLilly{FT, P, K} <: AbstractSmagorinsky{FT}
     Pr :: P
      ν :: FT
      κ :: K
+
     function SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ) where FT
         Pr = convert_diffusivity(FT, Pr)
          κ = convert_diffusivity(FT, κ)
@@ -34,30 +35,30 @@ and an eddy diffusivity of the form
     `κₑ = (νₑ - ν) / Pr + κ`
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
-the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is 
+the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
 the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson number
 modification to the eddy viscosity.
 
 Keyword arguments
 =================
     - `C`  : Model constant
-    - `Cb` : Buoyancy term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on. 
+    - `Cb` : Buoyancy term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
              Typically `Cb=1/Pr`.)
-    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every 
+    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
              tracer, or a `NamedTuple` with fields for each tracer individually.
     - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number 
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each 
+    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
+             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
              tracer.
 
 References
 ==========
-Smagorinsky, J. "On the numerical integration of the primitive equations of motion for 
+Smagorinsky, J. "On the numerical integration of the primitive equations of motion for
     baroclinic flow in a closed region." Monthly Weather Review (1958)
 
 Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 
-Smagorinsky, J. "General circulation experiments with the primitive equations: I. 
+Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
 """
 SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=ν₀, κ=κ₀) =
@@ -92,9 +93,9 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_ccc(i, j, k, grid, clo::SmagorinskyLilly{FT}, buoyancy, U, C) where FT
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
-    N² = max(zero(FT), ▶z_aac(i, j, k, grid, buoyancy_frequency_squared, buoyancy, C))
+@inline function νᶜᶜᶜ(i, j, k, grid, clo::SmagorinskyLilly{FT}, buoyancy, U, C) where FT
+    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
+    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_frequency_squared, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
@@ -115,15 +116,15 @@ Return `κ ∂x c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_c(i, j, k, grid, closure::AbstractSmagorinsky, 
+@inline function κ_∂x_c(i, j, k, grid, closure::AbstractSmagorinsky,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
-    νₑ = ▶x_faa(i, j, k, grid, νₑ, closure)
+    νₑ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂x_c = ∂x_faa(i, j, k, grid, c)
+    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
     return κₑ * ∂x_c
 end
 
@@ -134,15 +135,15 @@ Return `κ ∂y c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_c(i, j, k, grid, closure::AbstractSmagorinsky, 
+@inline function κ_∂y_c(i, j, k, grid, closure::AbstractSmagorinsky,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
-    νₑ = ▶y_afa(i, j, k, grid, νₑ, closure)
+    νₑ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂y_c = ∂y_afa(i, j, k, grid, c)
+    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     return κₑ * ∂y_c
 end
 
@@ -153,15 +154,15 @@ Return `κ ∂z c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_c(i, j, k, grid, closure::AbstractSmagorinsky, 
+@inline function κ_∂z_c(i, j, k, grid, closure::AbstractSmagorinsky,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
-    νₑ = ▶z_aaf(i, j, k, grid, νₑ, closure)
+    νₑ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂z_c = ∂z_aaf(i, j, k, grid, c)
+    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
     return κₑ * ∂z_c
 end
 
@@ -171,15 +172,15 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractSmagorinsky, c, tracer_index, 
+@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractSmagorinsky, c, tracer_index,
                diffusivities, args...) = (
-      ∂x_caa(i, j, k, grid, κ_∂x_c, closure, c, tracer_index, diffusivities.νₑ)
-    + ∂y_aca(i, j, k, grid, κ_∂y_c, closure, c, tracer_index, diffusivities.νₑ)
-    + ∂z_aac(i, j, k, grid, κ_∂z_c, closure, c, tracer_index, diffusivities.νₑ)
+      ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, tracer_index, diffusivities.νₑ)
+    + ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, closure, c, tracer_index, diffusivities.νₑ)
+    + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, closure, c, tracer_index, diffusivities.νₑ)
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, 3), 
+    @launch(device(arch), config=launch_config(grid, 3),
             calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
     return nothing
 end
@@ -204,50 +205,50 @@ const Δᶠ_cff = Δᶠ
 #   Σ₂₃ : cff
 
 "Return the double dot product of strain at `ccc`."
-@inline function ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     return (
                     tr_Σ²(i, j, k, grid, u, v, w)
-            + 2 * ▶xy_cca(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ▶xz_cac(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ▶yz_acc(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `ffc`."
-@inline function ΣᵢⱼΣᵢⱼ_ffc(i, j, k, grid, u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
     return (
-                  ▶xy_ffa(i, j, k, grid, tr_Σ², u, v, w)
+                  ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 *    Σ₁₂²(i, j, k, grid, u, v, w)
-            + 2 * ▶yz_afc(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ▶xz_fac(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `fcf`."
-@inline function ΣᵢⱼΣᵢⱼ_fcf(i, j, k, grid, u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)
     return (
-                  ▶xz_faf(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶yz_acf(i, j, k, grid, Σ₁₂², u, v, w)
+                  ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 *    Σ₁₃²(i, j, k, grid, u, v, w)
-            + 2 * ▶xy_fca(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `cff`."
-@inline function ΣᵢⱼΣᵢⱼ_cff(i, j, k, grid, u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)
     return (
-                  ▶yz_aff(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶xz_caf(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ▶xy_cfa(i, j, k, grid, Σ₁₃², u, v, w)
+                  ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
 
-@inline function ΣᵢⱼΣᵢⱼ_ccf(i, j, k, grid, u, v, w)
+@inline function ΣᵢⱼΣᵢⱼᶜᶜᶠ(i, j, k, grid, u, v, w)
     return (
-                    ▶z_aaf(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ▶xyz_ccf(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 *   ▶x_caa(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 *   ▶y_aca(i, j, k, grid, Σ₂₃², u, v, w)
+                    ℑzᵃᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ℑxyzᶜᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 *   ℑxᶜᵃᵃ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 *   ℑyᵃᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end

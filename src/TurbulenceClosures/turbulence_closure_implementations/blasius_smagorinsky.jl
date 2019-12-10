@@ -29,16 +29,16 @@ Returns a `BlasiusSmagorinsky` closure object of type `FT`.
 
 Keyword arguments
 =================
-    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every 
+    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
              tracer, or a `NamedTuple` with fields for each tracer individually.
     - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number 
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each 
+    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
+             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
              tracer.
 
 References
 ==========
-Polton, J. A., and Belcher, S. E. (2007), "Langmuir turbulence and deeply penetrating jets 
+Polton, J. A., and Belcher, S. E. (2007), "Langmuir turbulence and deeply penetrating jets
     in an unstratified mixed layer." Journal of Geophysical Research: Oceans.
 """
 BlasiusSmagorinsky(FT=Float64; Pr=1.0, ν=ν₀, κ=κ₀, mixing_length=nothing) =
@@ -131,11 +131,10 @@ frequency `N²`.
 """
 @inline νₑ_blasius(Lm², Σ², N²::FT) where FT = Lm² * sqrt(Σ²/2 * buoyancy_factor(Σ², N²))
 
-@inline function ν_ccc(i, j, k, grid, clo::BlasiusSmagorinsky{ML, FT}, buoyancy, U, C) where {ML, FT}
-    Σ² = ΣᵢⱼΣᵢⱼ_ccc(i, j, k, grid, U.u, U.v, U.w)
-    N² = max(zero(FT), ▶z_aac(i, j, k, grid, buoyancy_frequency_squared, buoyancy, C))
+@inline function νᶜᶜᶜ(i, j, k, grid, clo::BlasiusSmagorinsky{ML, FT}, buoyancy, U, C) where {ML, FT}
+    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
+    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_frequency_squared, buoyancy, C))
     Lm_sq = Lm²(i, j, k, grid, clo, Σ², N²)
 
     return νₑ_blasius(Lm_sq, Σ², N²) + clo.ν
 end
-

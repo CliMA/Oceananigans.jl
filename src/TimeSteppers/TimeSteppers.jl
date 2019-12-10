@@ -36,8 +36,7 @@ using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
-using ..TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c,
-                            calculate_diffusivities!, ▶z_aaf
+using ..TurbulenceClosures: calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 const Tx = 16 # CUDA threads per x-block
 const Ty = 16 # CUDA threads per y-block

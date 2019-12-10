@@ -14,13 +14,13 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
 
     """
         BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
-    
+
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`,
     followed by interpolation by `▶op` to `(X, Y, Z)`, where `▶a` and `▶b` interpolate
     `a` and `b` to a common location.
     """
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b), 
+        return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b),
                    typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
     end
 end
@@ -65,7 +65,7 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::Number, b) = $op(Lc, location(b), a, b)
         $op(Lc::Tuple, a, b::Number) = $op(Lc, location(a), a, b)
         $op(Lc::Tuple, a::ALF{X, Y, Z}, b::ALF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
-            
+
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple, a::Function, b::Oceananigans.AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
         $op(Lc::Tuple, a::Oceananigans.AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
@@ -83,8 +83,8 @@ end
 """
     @binary op1 op2 op3...
 
-Turn each binary function in the list `(op1, op2, op3...)` 
-into a binary operator on `Oceananigans.Fields` for use in `AbstractOperations`. 
+Turn each binary function in the list `(op1, op2, op3...)`
+into a binary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note: a binary function is a function with two arguments: for example, `+(x, y)` is a binary function.
 
@@ -141,6 +141,6 @@ const binary_operators = Set()
 
 "Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
-    BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b), 
-                             adapt(to, binary.▶a), adapt(to, binary.▶b), adapt(to, binary.▶op),  
+    BinaryOperation{X, Y, Z}(adapt(to, binary.op), adapt(to, binary.a), adapt(to, binary.b),
+                             adapt(to, binary.▶a), adapt(to, binary.▶b), adapt(to, binary.▶op),
                              binary.grid)

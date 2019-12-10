@@ -49,8 +49,8 @@ end
 """
     @multiary op1 op2 op3...
 
-Turn each multiary operator in the list `(op1, op2, op3...)` 
-into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations`. 
+Turn each multiary operator in the list `(op1, op2, op3...)`
+into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note that a multiary operator:
     * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
@@ -98,7 +98,7 @@ MultiaryOperation at (Cell, Cell, Cell)
 ├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
 │   ├── size: (1, 1, 16)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
-└── tree: 
+└── tree:
 
 harmonic_plus at (Cell, Cell, Cell)
 ├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
@@ -127,5 +127,5 @@ const multiary_operators = Set()
 
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
-    MultiaryOperation{X, Y, Z}(adapt(to, multiary.op), adapt(to, multiary.args), 
+    MultiaryOperation{X, Y, Z}(adapt(to, multiary.op), adapt(to, multiary.args),
                                adapt(to, multiary.▶), multiary.grid)

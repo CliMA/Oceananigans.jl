@@ -109,7 +109,7 @@ abstract type AbstractLeith{FT} <: IsotropicViscosity{FT} end
 
 for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
     @eval begin
-        @inline function $stress_div(i, j, k, grid::AbstractGrid{FT}, closure_tuple::Tuple, U, 
+        @inline function $stress_div(i, j, k, grid::AbstractGrid{FT}, closure_tuple::Tuple, U,
                                      K_tuple, args...) where FT
 
             stress_div_ijk = zero(FT)
@@ -125,7 +125,7 @@ for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃
     end
 end
 
-@inline function ∇_κ_∇c(i, j, k, grid::AbstractGrid{FT}, closure_tuple::Tuple, 
+@inline function ∇_κ_∇c(i, j, k, grid::AbstractGrid{FT}, closure_tuple::Tuple,
                         c, tracer_index, K_tuple, args...) where FT
     flux_div_ijk = zero(FT)
 
@@ -163,6 +163,8 @@ TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) 
 
 include("turbulence_closure_utils.jl")
 include("closure_operators.jl")
+include("diffusion_operators.jl")
+include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
 
 include("closure_tuples.jl")

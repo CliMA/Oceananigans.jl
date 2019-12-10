@@ -96,67 +96,11 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U) == 6νh + 8νv)
 end
 
-function test_function_interpolation(T=Float64)
-    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
-    ϕ = rand(T, 3, 3, 3)
-    ϕ² = ϕ.^2
-
-    ▶x_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[1, 2, 2]) / 2
-    ▶x_ϕ_c = (ϕ²[3, 2, 2] + ϕ²[2, 2, 2]) / 2
-
-    ▶y_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[2, 1, 2]) / 2
-    ▶y_ϕ_c = (ϕ²[2, 3, 2] + ϕ²[2, 2, 2]) / 2
-
-    ▶z_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[2, 2, 1]) / 2
-    ▶z_ϕ_c = (ϕ²[2, 2, 3] + ϕ²[2, 2, 2]) / 2
-
-    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
-
-    return (
-        ▶x_caa(2, 2, 2, grid, f, ϕ) == ▶x_ϕ_c &&
-        ▶x_faa(2, 2, 2, grid, f, ϕ) == ▶x_ϕ_f &&
-
-        ▶y_aca(2, 2, 2, grid, f, ϕ) == ▶y_ϕ_c &&
-        ▶y_afa(2, 2, 2, grid, f, ϕ) == ▶y_ϕ_f &&
-
-        ▶z_aac(2, 2, 2, grid, f, ϕ) == ▶z_ϕ_c &&
-        ▶z_aaf(2, 2, 2, grid, f, ϕ) == ▶z_ϕ_f
-        )
-end
-
-function test_function_differentiation(T=Float64)
-    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
-    ϕ = rand(T, 3, 3, 3)
-    ϕ² = ϕ.^2
-
-    ∂x_ϕ_f = ϕ²[2, 2, 2] - ϕ²[1, 2, 2]
-    ∂x_ϕ_c = ϕ²[3, 2, 2] - ϕ²[2, 2, 2]
-
-    ∂y_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
-    ∂y_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
-
-    ∂z_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
-    ∂z_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
-
-    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
-
-    return (
-        ∂x_caa(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c &&
-        ∂x_faa(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f &&
-
-        ∂y_aca(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c &&
-        ∂y_afa(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f &&
-
-        ∂z_aac(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c &&
-        ∂z_aaf(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f
-        )
-end
-
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
 
     model = Model(architecture=arch, float_type=FT, closure=closure_tuple,
-                  grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3))) 
+                  grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)))
 
     time_step!(model, 1, 1)
     return true
@@ -164,12 +108,6 @@ end
 
 @testset "Turbulence closures" begin
     println("Testing turbulence closures...")
-
-    @testset "Closure operators" begin
-        println("  Testing closure operators...")
-        @test test_function_interpolation()
-        @test test_function_differentiation()
-    end
 
     @testset "Closure instantiation" begin
         println("  Testing closure instantiation...")
@@ -185,7 +123,7 @@ end
         for T in float_types
             for arch in archs
                 for closure in closures
-                    println("    Calculating diffusivities for $closure ($T, $arch)")
+                    println("    Calculating diffusivities for $closure [$T, $arch]")
                     @test test_calculate_diffusivities(arch, closure, T)
                 end
             end

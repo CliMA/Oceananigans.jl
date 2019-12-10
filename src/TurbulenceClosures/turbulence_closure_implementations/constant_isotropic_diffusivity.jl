@@ -19,17 +19,17 @@ end
     ConstantIsotropicDiffusivity([FT=Float64;] ν, κ)
 
 Returns parameters for a constant isotropic diffusivity model with constant viscosity `ν`
-and constant thermal diffusivities `κ` for each tracer field in `tracers` 
-`ν` and the fields of `κ` may represent molecular diffusivities in cases that all flow 
-features are explicitly resovled, or turbulent eddy diffusivities that model the effect of 
-unresolved, subgrid-scale turbulence. 
+and constant thermal diffusivities `κ` for each tracer field in `tracers`
+`ν` and the fields of `κ` may represent molecular diffusivities in cases that all flow
+features are explicitly resovled, or turbulent eddy diffusivities that model the effect of
+unresolved, subgrid-scale turbulence.
 `κ` may be a `NamedTuple` with fields corresponding
 to each tracer, or a single number to be a applied to all tracers.
 
 By default, a molecular viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ and a molecular thermal
-diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are 
-the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 psu, 
-according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing 
+diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are
+the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 psu,
+according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing
 correlations and data" (2010).
 """
 ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀) = ConstantIsotropicDiffusivity{FT}(ν, κ)
@@ -41,31 +41,19 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::ConstantIsotropicDiffusivity, args...) = nothing
 
-@inline function ∇_κ_∇c(i, j, k, grid, closure::ConstantIsotropicDiffusivity, 
+@inline function ∇_κ_∇c(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
 
     @inbounds κ = closure.κ[tracer_index]
 
-    return (  κ / grid.Δx^2 * δx²_c2f2c(grid, c, i, j, k)
-            + κ / grid.Δy^2 * δy²_c2f2c(grid, c, i, j, k)
-            + κ / grid.Δz^2 * δz²_c2f2c(grid, c, i, j, k)
-           )
+    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, c)
 end
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) = (
-      closure.ν / grid.Δx^2 * δx²_f2c2f(grid, U.u, i, j, k)
-    + closure.ν / grid.Δy^2 * δy²_f2e2f(grid, U.u, i, j, k)
-    + closure.ν / grid.Δz^2 * δz²_f2e2f(grid, U.u, i, j, k)
-)
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, closure.ν, U.u)
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) = (
-      closure.ν / grid.Δx^2 * δx²_f2e2f(grid, U.v, i, j, k)
-    + closure.ν / grid.Δy^2 * δy²_f2c2f(grid, U.v, i, j, k)
-    + closure.ν / grid.Δz^2 * δz²_f2e2f(grid, U.v, i, j, k)
-)
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
+    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, closure.ν, U.v)
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) = (
-      closure.ν / grid.Δx^2 * δx²_f2e2f(grid, U.w, i, j, k)
-    + closure.ν / grid.Δy^2 * δy²_f2e2f(grid, U.w, i, j, k)
-    + closure.ν / grid.Δz^2 * δz²_f2c2f(grid, U.w, i, j, k)
-)
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, U, args...) =
+    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, closure.ν, U.w)

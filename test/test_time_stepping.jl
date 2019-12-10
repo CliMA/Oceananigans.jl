@@ -1,8 +1,11 @@
 function time_stepping_works(arch, FT, Closure)
-    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
-                  architecture=arch, float_type=FT, closure=Closure(FT))
+    # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
+    grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
+
+    model = Model(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, 1)
-    return true  # test that no errors/crashes happen when time stepping.
+
+    return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
@@ -17,7 +20,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
-  
+
     return nothing
 end
 
@@ -57,7 +60,7 @@ function compute_w_from_continuity(arch, FT)
     max_div = maximum(interior(div_u))
     sum_div = sum(interior(div_u))
     abs_sum_div = sum(abs.(interior(div_u)))
-    @info "Velocity divergence after recomputing w ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+    @info "Velocity divergence after recomputing w [$arch, $FT]: min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     return all(isapprox.(interior(div_u), 0; atol=5*eps(FT)))
 end
@@ -89,7 +92,7 @@ function incompressible_in_time(arch, FT, Nt)
     max_div = minimum(interior(div_u))
     sum_div = sum(interior(div_u))
     abs_sum_div = sum(abs.(interior(div_u)))
-    @info "Velocity divergence after $Nt time steps ($arch, $FT): min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+    @info "Velocity divergence after $Nt time steps [$arch, $FT]: min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
@@ -131,7 +134,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     time_step!(model; Nt=Nt, Δt=10*60)
 
     Tavg = mean(interior(model.tracers.T))
-    @info "Tracer conservation after $Nt time steps ($arch, $FT): ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
+    @info "Tracer conservation after $Nt time steps [$arch, $FT]: ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
     # Interestingly, it's very well conserved (almost to machine epsilon) for
     # Float64, but not as close for Float32... But it does seem constant in time
@@ -144,12 +147,15 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 end
 
 Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
-            ConstantSmagorinsky, AnisotropicMinimumDissipation)
+            AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
+            ConstantSmagorinsky, SmagorinskyLilly,
+            AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
 @testset "Time stepping" begin
     println("Testing time stepping...")
 
     for arch in archs, FT in float_types, Closure in Closures
+        println("  Testing that time stepping works [$arch, $FT, $Closure]...")
         @test time_stepping_works(arch, FT, Closure)
     end
 

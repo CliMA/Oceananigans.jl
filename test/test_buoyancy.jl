@@ -1,6 +1,6 @@
-using Oceananigans: thermal_expansion_ccc, thermal_expansion_fcc, thermal_expansion_ccf, thermal_expansion_cfc, 
-                    haline_contraction_ccc, haline_contraction_fcc, haline_contraction_cfc, 
-                    haline_contraction_ccf, RoquetIdealizedNonlinearEquationOfState, required_tracers,
+using Oceananigans: thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶜᶠ, thermal_expansionᶜᶠᶜ,
+                    haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶜᶠ, haline_contractionᶜᶠᶜ,
+                    RoquetIdealizedNonlinearEquationOfState, required_tracers,
                     buoyancy_frequency_squared, ρ′, ∂x_b, ∂y_b
 
 function instantiate_linear_equation_of_state(FT, α, β)
@@ -50,20 +50,20 @@ end
 function thermal_expansion_works(arch, FT, eos)
     grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, (:T, :S)))
-    α = thermal_expansion_ccc(2, 2, 2, grid, eos, C)
-    α = thermal_expansion_fcc(2, 2, 2, grid, eos, C)
-    α = thermal_expansion_cfc(2, 2, 2, grid, eos, C)
-    α = thermal_expansion_ccf(2, 2, 2, grid, eos, C)
+    α = thermal_expansionᶜᶜᶜ(2, 2, 2, grid, eos, C)
+    α = thermal_expansionᶠᶜᶜ(2, 2, 2, grid, eos, C)
+    α = thermal_expansionᶜᶠᶜ(2, 2, 2, grid, eos, C)
+    α = thermal_expansionᶜᶜᶠ(2, 2, 2, grid, eos, C)
     return true
 end
 
 function haline_contraction_works(arch, FT, eos)
     grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, (:T, :S)))
-    β = haline_contraction_ccc(2, 2, 2, grid, eos, C)
-    β = haline_contraction_fcc(2, 2, 2, grid, eos, C)
-    β = haline_contraction_cfc(2, 2, 2, grid, eos, C)
-    β = haline_contraction_ccf(2, 2, 2, grid, eos, C)
+    β = haline_contractionᶜᶜᶜ(2, 2, 2, grid, eos, C)
+    β = haline_contractionᶠᶜᶜ(2, 2, 2, grid, eos, C)
+    β = haline_contractionᶜᶠᶜ(2, 2, 2, grid, eos, C)
+    β = haline_contractionᶜᶜᶠ(2, 2, 2, grid, eos, C)
     return true
 end
 
@@ -96,7 +96,7 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
                     @test buoyancy_frequency_squared_works(arch, FT, buoyancy)
                 end
 
-                for buoyancy in (BuoyancyTracer(), nothing, SeawaterBuoyancy(FT), 
+                for buoyancy in (BuoyancyTracer(), nothing, SeawaterBuoyancy(FT),
                                  SeawaterBuoyancy(FT, equation_of_state=RoquetIdealizedNonlinearEquationOfState(FT)))
 
                     @test ∂x_b_works(arch, FT, buoyancy)

@@ -5,14 +5,14 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
-Base.show(io::IO, operation::AbstractOperation) = 
-    print(io, 
+Base.show(io::IO, operation::AbstractOperation) =
+    print(io,
           operation_name(operation), " at ", show_location(operation), '\n',
           "├── grid: ", typeof(operation.grid), '\n',
           "│   ├── size: ", size(operation.grid), '\n',
           "│   └── domain: ", show_domain(operation.grid), '\n',
           "└── tree: ", "\n"^2, tree_show(operation, 0, 0))
-          
+
 "Return a representaion of number or function leaf within a tree visualization of an `AbstractOperation`."
 tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
 
