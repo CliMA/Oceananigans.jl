@@ -29,7 +29,7 @@ noinit(args...) = nothing
 """
     JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
                      prefix="", init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
-                     part=1, max_filesize=Inf, force=false, async=false, verbose=false)
+                     part=1, max_filesize=Inf, force=false, async=false, verbose=false, jld2_kw=Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`)
 to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)`
