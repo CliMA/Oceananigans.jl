@@ -15,11 +15,11 @@ Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Run benchmark across these parameters.
-            Ns = [(32, 32, 32), (64, 64, 64)]
+            Ns = [(32, 32, 32), (128, 128, 128)]
       closures = [ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity, ConstantSmagorinsky]
-   float_types = [Float32, Float64]     # Float types to benchmark.
-         archs = [CPU()]                # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]         # Benchmark GPU on systems with CUDA-enabled GPUs.
+   float_types = [Float64]       # Float types to benchmark.
+         archs = [CPU()]         # Architectures to benchmark on.
+@hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
 
 #####
 ##### Run benchmarks
@@ -30,12 +30,12 @@ for arch in archs, FT in float_types, N in Ns, Closure in closures
     Lx, Ly, Lz = 1, 1, 1
 
     model = Model(architecture = arch, float_type = FT,
-                  grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                  grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
 		  closure = Closure(FT))
     
     time_step!(model, Ni, 1)
 
-    bn =  benchmark_name(N, string(Closure), arch, FT; npad=2)
+    bn =  benchmark_name(N, string(Closure), arch, FT; npad=3)
     @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
         @timeit timer bn time_step!(model, 1, 1)
@@ -46,6 +46,7 @@ end
 ##### Print benchmark results
 #####
 
+println()
 print_benchmark_info()
-print_timer(timer, title="Turbulence closure benchmarks")
+print_timer(timer, title="Turbulence closure benchmarks", sortby=:name)
 println()
