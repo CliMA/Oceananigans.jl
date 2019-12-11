@@ -26,7 +26,9 @@ for arch in archs, FT in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 250e3, 250e3, 1000
 
-    model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-2, κ=1e-2, arch=arch, float_type=FT)
+    model = ChannelModel(architecture = arch, float_type = FT,
+			 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Lx, Lz)),
+			 closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2))
 
     # Eddying channel model setup.
     Ty = 4e-5  # Meridional temperature gradient [K/m].
