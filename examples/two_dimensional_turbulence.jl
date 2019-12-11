@@ -6,7 +6,9 @@
 #   * How to run a model with no buoyancy equation or tracers;
 #   * How to create user-defined fields
 #   * How to use differentiation functions
-#
+
+# ## Model setup
+
 # For this example, we need `Plots` for plotting and `Statistics` for setting up
 # a random initial condition with zero mean velocity.
 
@@ -30,6 +32,8 @@ model = Model(
 )
 nothing # hide
 
+# ## Setting initial conditions
+
 # Our initial condition randomizes `u` and `v`. We also ensure that both have
 # zero mean for purely aesthetic reasons.
 
@@ -37,6 +41,8 @@ u₀ = rand(size(model.grid)...)
 u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
+
+# ## Calculating vorticity
 
 # Next we create an object called an `Operation` that represents a vorticity calculation.
 # We'll use this object to calculate vorticity on-line as the simulation progresses.
@@ -60,7 +66,9 @@ nothing # hide
 
 # We ask for computation of vorticity by writing `compute!(vorticity_computation)`
 # as shown below.
-#
+
+# ## Visualizing the simulation
+
 # Finally, we run the model and animate the vorticity field.
 
 anim = @animate for i=1:100
