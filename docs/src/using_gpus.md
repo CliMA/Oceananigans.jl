@@ -1,16 +1,44 @@
 # Using GPUs
 
-A big feature of Oceananigans is being able to run on graphical processing units (GPUs).
+A big feature of Oceananigans is being able to run on graphical processing units (GPUs)
+for increased performance. Depending on your CPU and GPU combination, speedups of >150x
+are possible, for example on Google Cloud where running on GPUs is more cost-effective.
+See the [performance benchmarks](@ref) for more details.
 
-You need
-1. A CUDA compatible Nvidia GPU.
-2. CUDA library
-3.
+See [Architecture](@ref) for instructions on setting up a model on a GPU.
 
-You'll want a GPU with good 64-bit floating point performance although Oceananigans can be used with 32-bit floating point numbers.
+Oceananigans does not yet support distributed parallelism (multi-CPU or multi-GPU).
+
+!!! tip "Running on GPUs"
+    If you are having issues with running Oceananigans on a GPU, please
+    [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) and we'll do our best to help out.
+
+## When to use a GPU
+
+GPUs are very useful for running large simulations. If your simulation uses over
+1,000,000 grid points, you will probably benefit significantly from running your
+simulation on a GPU.
 
 ## Getting access to GPUs
-1. Local cluster
-2. Cloud computing providers
-3. Buy a GPU (might not be worth it)
-4. CodeOcean
+
+If you don't have a GPU there are a few resources you can try to acquire a GPU from.
+
+In general, to get good performance you'll want a GPU with good 64-bit floating point
+performance although Oceananigans can be used with 32-bit floats. Most recent gaming GPUs
+should work but might have poor 64-bit float performance.
+
+If you have access to any supercomputer clusters, check to see if they have any GPUs.
+See also this Stack Overflow post:
+[Where can I get access to GPU cluster for educational purpose?](https://scicomp.stackexchange.com/questions/8508/where-can-i-get-access-to-gpu-cluster-for-educational-purpose)
+
+Cloud computing providers such as Google Cloud and Amazon EC2 allow you to rent GPUs per
+hour. Sometimes they offer free trials or credits that can be used towards GPUs although
+they seem to be getting less common.
+
+See the [Julia on Google Colab: Free GPU-Accelerated Shareable Notebooks](https://discourse.julialang.org/t/julia-on-google-colab-free-gpu-accelerated-shareable-notebooks/15319)
+post on the Julia Discourse.
+
+[Code Ocean](https://codeocean.com/) also has
+[GPU support](https://help.codeocean.com/en/articles/1053107-gpu-support) and allows you
+to spin up capsules with pretty decent Tesla K80 GPUs for free (for now) if you want to
+play around with them. They may not be powerful enough for huge simulations.
