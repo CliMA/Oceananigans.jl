@@ -42,10 +42,13 @@ From here the friction Reynolds number and the Nusselt number can be defined
 ```
 which can be computed and compared.
 
-## Results
-
-![LES profiles](plots_stratified_couette_flow_stratified_couette_flow_LES_profiles.png)
-![Re and Nu comparison plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_scatter.png)
-![Re and Nu time series plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_timeseries.png)
+## Velocity and temperature
 ![Velocity and temperature profiles](plots_stratified_couette_flow_stratified_couette_flow_velocity_temperature_profiles.png)
 ![Velocity and temperature horizontal slices](plots_stratified_couette_flow_stratified_couette_flow_velocity_temperature_slices.png)
+
+## ``\mathrm{Re}_\tau`` and ``\mathrm{Nu}`` values
+![Re and Nu comparison plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_scatter.png)
+![Re and Nu time series plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_timeseries.png)
+
+## LES viscosity and diffusivity
+![LES profiles](plots_stratified_couette_flow_stratified_couette_flow_LES_profiles.png)

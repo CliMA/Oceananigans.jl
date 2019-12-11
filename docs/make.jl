@@ -28,7 +28,7 @@ for example in examples
 end
 
 #####
-##### Build docs
+##### Build and deploy docs
 #####
 
 makedocs(
@@ -75,20 +75,5 @@ makedocs(
          "Index"      => "subject_index.md"
      ]
 )
-
-#####
-##### Delete leftover JLD2 files.
-##### See: https://github.com/climate-machine/Oceananigans.jl/issues/509
-#####
-
-const GENERATED_DIR = joinpath(@__DIR__, "build/generated")
-
-@info "Deleting leftover JLD2 files..."
-leftovers = filter(x -> occursin(".jld2", x), readdir(GENERATED_DIR))
-for fname in leftovers
-    fpath = joinpath(GENERATED_DIR, fname)
-    rm(fpath, force=true)
-    @info "Deleted: $fpath"
-end
 
 deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
