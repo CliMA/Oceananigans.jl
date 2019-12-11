@@ -1,6 +1,6 @@
-####
-#### Adapting structures to be able to pass them to GPU CUDA kernels.
-####
+#####
+##### Adapting structures to be able to pass them to GPU CUDA kernels.
+#####
 
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
@@ -10,16 +10,16 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
-####
-#### Utilities that make it easier to juggle around Arrays and CuArrays.
-####
+#####
+##### Utilities that make it easier to juggle around Arrays and CuArrays.
+#####
 
          array_type(::CPU) = Array
 @hascuda array_type(::GPU) = CuArray
 
-####
-#### Convinient macros
-####
+#####
+##### Convenient macros
+#####
 
 macro loop_xyz(i, j, k, grid, expr)
     return esc(
@@ -44,21 +44,84 @@ macro loop_xy(i, j, grid, expr)
             end
         end)
 end
+        
+#####
+##### Convenient definitions
+#####
 
-####
-#### Convinient definitions
-####
+"""
+    second
 
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Δt = 1second`.
+"""
 const second = 1.0
-const minute = 60.0
+
+"""
+    minute
+
+A `Float64` constant equal to 60`second`. Useful for increasing the clarity of scripts, e.g. `Δt = 15minute`.
+"""
+const minute = 60second
+
+"""
+    hour
+
+A `Float64` constant equal to 60`minute`. Useful for increasing the clarity of scripts, e.g. `Δt = 3hour`.
+"""
 const hour   = 60minute
+
+"""
+    day
+
+A `Float64` constant equal to 24`hour`. Useful for increasing the clarity of scripts, e.g. `Δt = 0.5day`.
+"""
 const day    = 24hour
 
-KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+"""
+    meter
 
-####
-#### Pretty printing
-####
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 100meter`.
+"""
+const meter = 1.0
+
+"""
+    kilometer
+
+A `Float64` constant equal to 1000`meter`. Useful for increasing the clarity of scripts, e.g. `Lx = 250kilometer`.
+"""
+const kilometer = 1000meter
+
+"""
+    KiB
+
+A `Float64` constant equal to 1024.0. Useful for increasing the clarity of scripts, e.g. `max_filesize = 250KiB`.
+"""
+const KiB = 1024.0
+
+"""
+    MiB
+
+A `Float64` constant equal to 1024`KiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 100MiB`.
+"""
+const MiB = 1024KiB
+
+"""
+    GiB
+
+A `Float64` constant equal to 1024`MiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 50GiB`.
+"""
+const GiB = 1024MiB
+
+"""
+    TiB
+
+A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 2TiB`.
+"""
+const TiB = 1024GiB
+
+#####
+##### Pretty printing
+#####
 
 """
     prettytime(t)
@@ -106,9 +169,9 @@ function pretty_filesize(s, suffix="B")
     return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
 
-####
-#### Creating fields by dispatching on architecture
-####
+#####
+##### Creating fields by dispatching on architecture
+#####
 
 function OffsetArray(underlying_data, grid::AbstractGrid)
     # Starting and ending indices for the offset array.
@@ -137,9 +200,9 @@ Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
 Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
-####
-#### Courant–Friedrichs–Lewy (CFL) condition number calculation
-####
+#####
+##### Courant–Friedrichs–Lewy (CFL) condition number calculation
+#####
 
 # Note: these functions will have to be refactored to work on non-uniform grids.
 
@@ -162,9 +225,9 @@ cell_advection_timescale(model) =
                              model.velocities.w.data.parent,
                              model.grid)
 
-####
-#### Adaptive time stepping
-####
+#####
+##### Adaptive time stepping
+#####
 
 """
     TimeStepWizard{T}
@@ -224,9 +287,9 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-####
-#### Dynamic launch configuration
-####
+#####
+##### Dynamic launch configuration
+#####
 
 function launch_config(grid, dims)
     return function (kernel)
@@ -250,9 +313,9 @@ function launch_config(grid, dims)
     end
 end
 
-####
-#### Utilities shared between diagnostics and output writers
-####
+#####
+##### Utilities shared between diagnostics and output writers
+#####
 
 defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
 defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
