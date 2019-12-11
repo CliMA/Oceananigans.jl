@@ -53,6 +53,7 @@ evaporation = 1e-7     # Mass-specific evaporation rate [m s⁻¹]
           f = 1e-4     # Coriolis parameter
           α = 2e-4     # Thermal expansion coefficient
           β = 8e-4     # Haline contraction coefficient
+nothing # hide
 
 # ## Boundary conditions
 #
@@ -70,6 +71,7 @@ T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qᵀ),
 @inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
 
 S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
+nothing # hide
 
 # ## Model instantiation
 #
@@ -90,6 +92,7 @@ model = Model(
   boundary_conditions = BoundaryConditions(u=u_bcs, T=T_bcs, S=S_bcs),
            parameters = (evaporation = evaporation,)
 )
+nothing # hide
 
 # Notes:
 #
@@ -103,6 +106,7 @@ model = Model(
 # as the simulation runs.
 
 makeplot = false
+nothing # hide
 
 #
 # ## Initial conditions
@@ -137,7 +141,8 @@ field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 ## Add the output writer to the models `output_writers`.
-model.output_writers[:fields] = field_writer;
+model.output_writers[:fields] = field_writer
+nothing # hide
 
 # ## Running the simulation
 #
@@ -145,11 +150,13 @@ model.output_writers[:fields] = field_writer;
 # with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
 wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=5.0)
+nothing # hide
 
 # A diagnostic that returns the maximum absolute value of `w` by calling
 # `wmax(model)`:
 
-wmax = FieldMaximum(abs, model.velocities.w);
+wmax = FieldMaximum(abs, model.velocities.w)
+nothing # hide
 
 # We also create a figure and define a plotting function for live plotting of results.
 
@@ -189,6 +196,7 @@ function makeplot!(axs, model)
 
     return nothing
 end
+nothing # hide
 
 # Finally, we run the the model in a `while` loop.
 

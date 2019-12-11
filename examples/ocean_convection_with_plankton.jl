@@ -33,6 +33,7 @@ Lz = 64.0
 N² = 1e-5
 Qb = 1e-8
 end_time = day / 2
+nothing # hide
 
 # ## Creating boundary conditions
 #
@@ -41,6 +42,7 @@ end_time = day / 2
 
 buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb),
                                        bottom = BoundaryCondition(Gradient, N²))
+nothing # hide
 
 # ## Define a forcing function
 #
@@ -60,6 +62,7 @@ model = Model(
                 forcing = ModelForcing(plankton=growth_and_decay),
     boundary_conditions = BoundaryConditions(b=buoyancy_bcs)
 )
+nothing # hide
 
 # Set makeplot = true to live-update a plot of vertical velocity, temperature, and salinity
 # as the simulation runs.
@@ -107,6 +110,7 @@ function makeplot!(axs, model)
     gcf()
     return nothing
 end
+nothing # hide
 
 # Run the model:
 
@@ -115,8 +119,8 @@ while model.clock.time < end_time
     walltime = @elapsed time_step!(model, 100, wizard.Δt)
 
     ## Print a progress message
-    @printf("progress: %.1f %%, i: %04d, t: %s, Δt: %s, wall time: %s\n", 
-            model.clock.time / end_time * 100, model.clock.iteration, 
+    @printf("progress: %.1f %%, i: %04d, t: %s, Δt: %s, wall time: %s\n",
+            model.clock.time / end_time * 100, model.clock.iteration,
             prettytime(model.clock.time), prettytime(wizard.Δt), prettytime(walltime))
 
     makeplot && makeplot!(axs, model)
