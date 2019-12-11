@@ -78,11 +78,14 @@ p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
 T = model.tracers.T
 plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
 
-# Interesting! Running the model even longer diffuses the Gaussian even more.
+# Interesting! We can keep running the model and animate the tracer
+# concentration to see the Gaussian diffusing.
 
-for i = 1:3
-    time_step!(model, Nt = 1000, Δt = 0.1 * cell_diffusion_time_scale)
-    plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
+anim = @animate for i=1:100
+    time_step!(model, Nt = 100, Δt = 0.1 * cell_diffusion_time_scale)
+
+    plot(interior(T)[1, 1, :], zC, linewidth=2, title=tracer_label(model),
+         label="", xlabel="Tracer concentration", ylabel="z", xlims=(0, 1))
 end
 
-p # hide
+gif(anim, "1d_diffusion.gif", fps = 15) # hide
