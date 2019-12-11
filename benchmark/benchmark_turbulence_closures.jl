@@ -25,14 +25,17 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
 ##### Run benchmarks
 #####
 
-for arch in archs, float_type in float_types, N in Ns, Closure in closures
+for arch in archs, FT in float_types, N in Ns, Closure in closures
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
 
-    model = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type, closure=Closure(float_type))
+    model = Model(architecture = arch, float_type = FT,
+                  grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+		  closure = Closure(FT))
+    
     time_step!(model, Ni, 1)
 
-    bn =  benchmark_name(N, string(Closure), arch, float_type; npad=2)
+    bn =  benchmark_name(N, string(Closure), arch, FT; npad=2)
     @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
         @timeit timer bn time_step!(model, 1, 1)
