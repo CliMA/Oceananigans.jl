@@ -40,9 +40,10 @@ end
 ##### Print benchmark results
 #####
 
+println()
 print_benchmark_info()
 
-print_timer(timer, title="Static ocean benchmarks")
+print_timer(timer, title="Static ocean benchmarks", sortby=:name)
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns

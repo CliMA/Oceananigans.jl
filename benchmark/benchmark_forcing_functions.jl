@@ -96,6 +96,7 @@ end
 ##### Print benchmark results
 #####
 
+println()
 print_benchmark_info()
 print_timer(timer, title="Forcing function benchmarks")
 println()

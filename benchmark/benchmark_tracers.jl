@@ -13,7 +13,7 @@ Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
          archs = [CPU()]             # Architectures to benchmark on.
-@hascuda archs = [GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
+@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
 FT = Float64
 Nxyz(::CPU) = (32, 32, 32)
@@ -74,6 +74,7 @@ end
 ##### Print benchmark results
 #####
 
+println()
 print_benchmark_info()
 print_timer(timer, title="Tracer benchmarks", sortby=:name)
 println()
