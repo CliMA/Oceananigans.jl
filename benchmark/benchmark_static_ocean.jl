@@ -4,7 +4,7 @@ using Oceananigans
 include("benchmark_utils.jl")
 
 #####
-##### Benchmark setup
+##### Benchmark setup and parameters
 #####
 
 const timer = TimerOutput()

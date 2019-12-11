@@ -3,11 +3,11 @@ using Oceananigans
 
 include("benchmark_utils.jl")
 
-const timer = TimerOutput()
+#####
+##### Benchmark setup and parameters
+#####
 
-#####
-##### Benchmark parameters
-#####
+const timer = TimerOutput()
 
 Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
@@ -55,7 +55,7 @@ const λ = 1e-4
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
-    
+
     forced_model_params = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type,
                                 forcing=Forcing(Fu=Fu_params, FT=FT_params), parameters=(K=0.1, λ=1e-4))
     time_step!(forced_model_params, Ni, 1)  # First 1-2 iterations usually slower.
@@ -65,7 +65,7 @@ for arch in archs, float_type in float_types, N in Ns
     for i in 1:Nt
         @timeit timer bn time_step!(forced_model_params, 1, 1)
     end
-    
+
     forced_model_consts = Model(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), arch=arch, float_type=float_type,
                                 forcing=Forcing(Fu=Fu_consts, FT=FT_consts))
     time_step!(forced_model_consts, Ni, 1)  # First 1-2 iterations usually slower.
@@ -86,6 +86,10 @@ for arch in archs, float_type in float_types, N in Ns
     end
 end
 
-print_timer(timer, title="Forcing function benchmarks")
-println("")
+#####
+##### Print benchmark results
+#####
 
+print_benchmark_info()
+print_timer(timer, title="Forcing function benchmarks")
+println()
