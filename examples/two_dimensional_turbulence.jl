@@ -81,4 +81,4 @@ anim = @animate for i=1:100
             c=:balance, clims=(-0.1, 0.1))
 end
 
-gif(anim, "2d_turbulence_vorticity.gif", fps = 15) # hide
+mp4(anim, "2d_turbulence_vorticity.mp4", fps = 15) # hide

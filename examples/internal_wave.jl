@@ -96,4 +96,4 @@ anim = @animate for i=1:100
             xlabel="x", ylabel="z", c=:balance, clims=(-1e-8, 1e-8))
 end
 
-gif(anim, "internal_wave.gif", fps = 15) # hide
+mp4(anim, "internal_wave.mp4", fps = 15) # hide

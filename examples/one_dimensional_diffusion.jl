@@ -88,4 +88,4 @@ anim = @animate for i=1:100
          label="", xlabel="Tracer concentration", ylabel="z", xlims=(0, 1))
 end
 
-gif(anim, "1d_diffusion.gif", fps = 15) # hide
+mp4(anim, "1d_diffusion.mp4", fps = 15) # hide
