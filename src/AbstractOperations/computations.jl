@@ -32,7 +32,7 @@ function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
     @launch(device(arch), config=launch_config(computation.grid, :xyz),
-            _compute!(result_data, computation.grid, 1computation.operation)
+            _compute!(result_data, computation.grid, 1computation.operation))
     return nothing
 end
 
