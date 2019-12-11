@@ -3,6 +3,10 @@ using Oceananigans
 
 include("benchmark_utils.jl")
 
+#####
+##### Benchmark setup
+#####
+
 const timer = TimerOutput()
 
 Ni = 2   # Number of iterations before benchmarking starts.
@@ -14,7 +18,10 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
          archs = [CPU()]             # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
-# Run benchmarks.
+#####
+##### Run benchmarks
+#####
+
 for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
@@ -28,6 +35,12 @@ for arch in archs, float_type in float_types, N in Ns
         @timeit timer bname time_step!(model, 1, 1)
     end
 end
+
+#####
+##### Print benchmark results
+#####
+
+print_benchmark_info()
 
 print_timer(timer, title="Static ocean benchmarks")
 
