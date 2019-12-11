@@ -55,7 +55,7 @@ macro loop_xz(i, k, grid, expr)
             end
         end)
 end
-        
+
 #####
 ##### Convenient definitions
 #####
@@ -144,6 +144,8 @@ milliseconds (ms), seconds (s), minutes (min), hours (hr), or days (day).
 """
 function prettytime(t)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
+    iszero(t) && return "0.000 s"
+    
     if t < 1e-6
         value, units = t * 1e9, "ns"
     elseif t < 1e-3
