@@ -15,7 +15,10 @@ using
     OffsetArrays,
     FFTW
 
-@hascuda using CUDAdrv, CUDAnative, CuArrays
+@hascuda begin
+    import CUDAdrv
+    using CUDAnative, CuArrays
+end
 
 using Statistics: mean
 using LinearAlgebra: norm
@@ -39,8 +42,8 @@ using Oceananigans.AbstractOperations: Computation, compute!
 # highest capability if testing needs to be thorough).
 # Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
 @hascuda begin
-    gpu_candidates = [(dev=dev, cap=capability(dev),
-                       mem=CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in devices()]
+    gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
+                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in CUDAdrv.devices()]
 
     thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
     if thorough
