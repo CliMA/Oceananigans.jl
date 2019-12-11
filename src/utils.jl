@@ -44,6 +44,17 @@ macro loop_xy(i, j, grid, expr)
             end
         end)
 end
+
+macro loop_xz(i, k, grid, expr)
+    return esc(
+        quote
+            @loop for $k in (1:$grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    $expr
+                end
+            end
+        end)
+end
         
 #####
 ##### Convenient definitions
@@ -296,17 +307,21 @@ function launch_config(grid, dims)
         fun = kernel.fun
         config = launch_configuration(fun)
 
-        # adapt the suggested config from 1D to the requested grid dimensions
-        if dims == 3
-            threads = floor(Int, cbrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
-            threads = [threads, threads, threads]
-        elseif dims == 2
-            threads = floor(Int, sqrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
-            threads = [threads, threads]
+        # Adapt the suggested config from 1D to the requested grid dimensions
+        if dims == :xyz
+            t = floor(Int, cbrt(config.threads))
+            threads = [t, t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ t)
+        elseif dims == :xy
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ t)
+        elseif dims == :xz
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Nz] ./ t)
         else
-            error("unsupported launch configuration")
+            error("Unsupported launch configuration: $dims")
         end
 
         return (threads=Tuple(threads), blocks=Tuple(blocks))

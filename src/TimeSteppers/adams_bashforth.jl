@@ -107,13 +107,13 @@ end
 function ab2_store_previous_source_terms!(G⁻, arch, grid, Gⁿ)
 
     # Velocity fields
-    @launch device(arch) config=launch_config(grid, 3) ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ)
+    @launch device(arch) config=launch_config(grid, :xyz) ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ)
 
     # Tracer fields
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
-        @launch device(arch) config=launch_config(grid, 3) ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ)
+        @launch device(arch) config=launch_config(grid, :xyz) ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ)
     end
 
     return nothing
@@ -154,13 +154,13 @@ at time step n+½ using a weighted 2nd-order Adams-Bashforth method.
 """
 function ab2_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
     # Velocity fields
-    @launch device(arch) config=launch_config(grid, 3) ab2_update_velocity_source_terms!(Gⁿ, grid, χ, G⁻)
+    @launch device(arch) config=launch_config(grid, :xyz) ab2_update_velocity_source_terms!(Gⁿ, grid, χ, G⁻)
 
     # Tracer fields
     for i in 4:length(Gⁿ)
         @inbounds Gcⁿ = Gⁿ[i]
         @inbounds Gc⁻ = G⁻[i]
-        @launch device(arch) config=launch_config(grid, 3) ab2_update_tracer_source_term!(Gcⁿ, grid, χ, Gc⁻)
+        @launch device(arch) config=launch_config(grid, :xyz) ab2_update_tracer_source_term!(Gcⁿ, grid, χ, Gc⁻)
     end
 
     return nothing
