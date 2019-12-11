@@ -107,9 +107,9 @@ end
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
                                    clobber=true, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
 
-Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which can be a
-`Dict` or `NamedTuple`) to a NC file, where `label` is a symbol that labels the output and
-`field` is a field from the model (e.g. `model.velocities.u`).
+Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which should
+be a `Dict`) to a NC file, where `label` is a symbol that labels the output and `field` is
+a field from the model (e.g. `model.velocities.u`).
 
 Keyword arguments
 =================
@@ -117,7 +117,7 @@ Keyword arguments
     - `filename::String`         : Directory to save output to. Default: "." (current working directory).
     - `frequency::Int`           : Save output every `n` model iterations.
     - `interval::Int`            : Save output every `t` units of model clock time.
-    - `clobber::Bool`            : Remove existing files if their filenames conflict. Default: `false`.
+    - `clobber::Bool`            : Remove existing files if their filenames conflict. Default: `true`.
     - `compression::Int`         : Determines the compression level of data (0-9, default 0)
     - `global_attributes::Dict`  : Dict of model properties to save with every file (deafult: Dict())
     - `output_attributes::Dict`  : Dict of attributes to be saved with each field variable (reasonable
@@ -139,8 +139,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     mode = clobber ? "c" : "a"
 
     # Initiates the output file with dimensions
-    write_grid(model; filename=filename, mode=mode,
-               compression=compression, attrib=global_attributes, slice_kw...)
+    write_grid(model; filename=filename, compression=compression, attrib=global_attributes, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
