@@ -72,9 +72,7 @@ tracer_label(model) = @sprintf("t = %.3f", model.clock.time)
 ## Plot initial condition
 zC = model.grid.zC
 p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
-         title="Diffusion of a Gaussian",
-         xlabel="Tracer concentration",
-         ylabel="z")
+         xlabel="Tracer concentration", ylabel="z")
 
 ## Plot current solution
 T = model.tracers.T
