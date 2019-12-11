@@ -1,9 +1,9 @@
 # # Internal wave example
 #
 # In this example, we initialize an internal wave packet in two-dimensions
-# and watch is propagate.
+# and watch it propagate.
 
-using Oceananigans, PyPlot, Printf
+using Oceananigans, Plots, Printf
 
 # ## Numerical, domain, and internal wave parameters
 #
@@ -12,6 +12,7 @@ using Oceananigans, PyPlot, Printf
 
 Nx = 128 # resolution
 Lx = 2π  # domain extent
+nothing # hide
 
 # We set up an internal wave with the pressure field
 #
@@ -25,6 +26,7 @@ m = 16      # vertical wavenumber
 k = 1       # horizontal wavenumber
 N = 1       # buoyancy frequency
 f = 0.2     # inertial frequency
+nothing # hide
 
 # ## A Gaussian wavepacket
 #
@@ -35,6 +37,7 @@ f = 0.2     # inertial frequency
 
 ## and thus
 ω = sqrt(ω²)
+nothing # hide
 
 # The internal wave polarization relations follow from the linearized
 # Boussinesq equations,
@@ -43,6 +46,7 @@ U = k * ω   / (ω^2 - f^2)
 V = k * f   / (ω^2 - f^2)
 W = m * ω   / (ω^2 - N^2)
 B = m * N^2 / (ω^2 - N^2)
+nothing # hide
 
 # Finally, we set-up a small-amplitude, Gaussian envelope for the wave packet
 
@@ -51,12 +55,14 @@ A, x₀, z₀, δ = 1e-9, Lx/2, -Lx/2, Lx/15
 
 ## A Gaussian envelope
 a(x, z) = A * exp( -( (x - x₀)^2 + (z - z₀)^2 ) / 2δ^2 )
+nothing # hide
 
 # Create initial condition functions
 u₀(x, y, z) = a(x, z) * U * cos(k*x + m*z)
 v₀(x, y, z) = a(x, z) * V * sin(k*x + m*z)
 w₀(x, y, z) = a(x, z) * W * cos(k*x + m*z)
 b₀(x, y, z) = a(x, z) * B * sin(k*x + m*z) + N^2 * z
+nothing # hide
 
 # We are now ready to instantiate our model on a uniform grid.
 # We give the model a constant rotation rate with background vorticity `f`,
@@ -70,40 +76,24 @@ model = Model(
      tracers = :b,
     buoyancy = BuoyancyTracer()
 )
+nothing # hide
 
 # We initialize the velocity and buoyancy fields
 # with our internal wave initial condition.
 
 set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
-# ## Some plotting utilities
-#
-# To watch the wave packet propagate interactively as the model runs,
-# we build some plotting utilities.
-
-xplot(u) = repeat(dropdims(xnodes(u), dims=2), 1, u.grid.Nz)
-zplot(u) = repeat(dropdims(znodes(u), dims=2), u.grid.Nx, 1)
-
-function plot_field!(ax, w, t) 
-    pcolormesh(xplot(w), zplot(w), interior(model.velocities.w)[:, 1, :])
-    xlabel(L"x")
-    ylabel(L"z")
-    title(@sprintf("\$ \\omega t / 2 \\pi = %.2f\$", t*ω/2π))
-    ax.set_aspect(1)
-    pause(0.1)
-    return nothing
-end
-
-close("all")
-fig, ax = subplots();
-
 # ## A wave packet on the loose
 #
-# Finally, we release the packet and plot its trajectory:
+# Finally, we release the packet and watch it go!
 
-for i = 1:10
-    time_step!(model, Nt = 200, Δt = 0.001 * 2π/ω)
-    plot_field!(ax, model.velocities.w, model.clock.time)
+anim = @animate for i=1:100
+    time_step!(model, Nt = 20, Δt = 0.001 * 2π/ω)
+
+    x, z = model.grid.xC, model.grid.zF
+    w = model.velocities.w
+    heatmap(x, z, w.data[1:Nx, 1, 1:Nx+1]', title=@sprintf("t = %.2f", model.clock.time),
+            xlabel="x", ylabel="z", c=:balance, clims=(-1e-8, 1e-8))
 end
 
-gcf()
+gif(anim, "internal_wave.gif", fps = 15) # hide
