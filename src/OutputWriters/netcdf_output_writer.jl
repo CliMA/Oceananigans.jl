@@ -105,7 +105,7 @@ end
 
 """
     NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                                   clobber=false, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
+                                   clobber=true, global_attributes=Dict(), output_attributes=nothing, slice_kw...)
 
 Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which should
 be a `Dict`) to a NC file, where `label` is a symbol that labels the output and `field` is
@@ -117,7 +117,7 @@ Keyword arguments
     - `filename::String`         : Directory to save output to. Default: "." (current working directory).
     - `frequency::Int`           : Save output every `n` model iterations.
     - `interval::Int`            : Save output every `t` units of model clock time.
-    - `clobber::Bool`            : Remove existing files if their filenames conflict. Default: `false`.
+    - `clobber::Bool`            : Remove existing files if their filenames conflict. Default: `true`.
     - `compression::Int`         : Determines the compression level of data (0-9, default 0)
     - `global_attributes::Dict`  : Dict of model properties to save with every file (deafult: Dict())
     - `output_attributes::Dict`  : Dict of attributes to be saved with each field variable (reasonable
@@ -132,7 +132,7 @@ Keyword arguments
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                        clobber=false, global_attributes=Dict(), output_attributes=nothing, compression=0, slice_kw...)
+                        clobber=true, global_attributes=Dict(), output_attributes=nothing, compression=0, slice_kw...)
 
     validate_interval(interval, frequency)
 
