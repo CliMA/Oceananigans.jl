@@ -315,7 +315,7 @@ Compute the vertical velocity w by integrating the continuity equation from the 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
 function compute_w_from_continuity!(model)
-    @launch(device(model.architecture), config=launch_config(model.grid, 2),
+    @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             _compute_w_from_continuity!(datatuple(model.velocities), model.grid))
     return nothing
 end

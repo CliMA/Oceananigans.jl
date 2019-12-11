@@ -107,7 +107,7 @@ function time_step_precomputations!(diffusivities, pressures, velocities, tracer
     # Diffusivities share bcs with pressure:
     fill_halo_regions!(diffusivities, model.boundary_conditions.pressure, model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, 2),
+    @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
 
     fill_halo_regions!(pressures.pHY′, model.boundary_conditions.pressure, model.architecture, model.grid)
@@ -147,7 +147,7 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies
 
     fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions, model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, 3),
+    @launch(device(model.architecture), config=launch_config(model.grid, :xyz),
             calculate_poisson_right_hand_side!(model.poisson_solver.storage, model.architecture, model.grid,
                                                model.poisson_solver.bcs, velocities, tendencies, Δt))
 
