@@ -1,3 +1,7 @@
+#####
+##### Adapting structures to be able to pass them to GPU CUDA kernels.
+#####
+
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
@@ -5,6 +9,13 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 # See: https://github.com/JuliaGPU/Adapt.jl/issues/16
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
+
+#####
+##### Utilities that make it easier to juggle around Arrays and CuArrays.
+#####
+
+         array_type(::CPU) = Array
+@hascuda array_type(::GPU) = CuArray
 
 #####
 ##### Convenient macros
@@ -18,6 +29,17 @@ macro loop_xyz(i, j, k, grid, expr)
                     @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
                         $expr
                     end
+                end
+            end
+        end)
+end
+
+macro loop_xy(i, j, grid, expr)
+    return esc(
+        quote
+            @loop for $j in (1:$grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    $expr
                 end
             end
         end)
