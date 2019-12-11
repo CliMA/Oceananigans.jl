@@ -1,11 +1,11 @@
-## Buoyancy and equation of state
+# Buoyancy and equation of state
 The buoyancy option selects how buoyancy is treated. There are currently three options:
 1. No buoyancy (and no gravity).
 2. Evolve buoyancy as a tracer.
 3. _Seawater buoyancy_: evolve temperature $T$ and salinity $S$ as tracers with a value for the gravitational
    acceleration $g$ and an appropriate equation of state.
 
-### No buoyancy
+## No buoyancy
 To turn off buoyancy (and gravity) simply pass
 ```@example
 buoyancy = nothing
@@ -18,7 +18,7 @@ tracers = ()
 ```
 to the `Model` constructor.
 
-### Buoyancy as a tracer
+## Buoyancy as a tracer
 To directly evolve buoyancy as a tracer simply pass
 ```@example
 buoyancy = BuoyancyTracer()
@@ -28,7 +28,7 @@ to the `Model` constructor. Buoyancy `:b` must be included as a tracer, for exam
 tracers = (:b)
 ```
 
-### Seawater buoyancy
+## Seawater buoyancy
 To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pass
 ```@example
 buoyancy = SeawaterBuoyancy()
@@ -48,7 +48,7 @@ When using `SeawaterBuoyancy` temperature `:T` and salinity `:S` tracers must be
 tracers = (:T, :S)
 ```
 
-#### Linear equation of state
+### Linear equation of state
 To use non-default thermal expansion and haline contraction coefficients, say
 $\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10{-4} \text{ppt}^{-1}$ corresponding to some other
 fluid, then use
@@ -57,6 +57,6 @@ fluid, then use
 buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(α=1.67e-4, β=7.80e-4))
 ```
 
-#### Idealized nonlinear equation of state
+### Idealized nonlinear equation of state
 Instead of a linear equation of state, five idealized nonlinear equation of state as described by Roquet et al. (2015)
 may be specified. See [`RoquetIdealizedNonlinearEquationOfState`](@ref RoquetIdealizedNonlinearEquationOfState).

@@ -1,4 +1,4 @@
-## Forcing functions
+# Forcing functions
 Can be used to implement anything you wish, as long as it can be expressed as extra terms in the momentum equation or
 tracer evolution equations.
 

@@ -1,4 +1,4 @@
-## Output writers
+# Output writers
 Saving model data to disk can be done in a flexible manner using output writers. The two main output writers currently
 implemented are a NetCDF output writer (relying on [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl))
 and a JLD2 output writer (relying on [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)).
@@ -7,7 +7,7 @@ Output writers are stored as a list of output writers in `model.output_writers`.
 model creation time or be specified at any later time and appended (or assigned with a key value pair) to
 `model.output_writers`.
 
-### NetCDF output writer
+## NetCDF output writer
 Model data can be saved to NetCDF files along with associated metadata. The NetCDF output writer is generally used by
 passing it a dictionary of (label, field) pairs and any indices for slicing if you don't want to save the full 3D field.
 
@@ -37,7 +37,7 @@ model.output_writers[:surface_slice_writer] = NetCDFOutputWriter(model, fields; 
 
 See [`NetCDFOutputWriter`](@ref) for more details and options.
 
-### JLD2 output writer
+## JLD2 output writer
 JLD2 is a an HDF5 compatible file format written in pure Julia and is generally pretty fast. JLD2 files can be opened in
 Python with the [h5py](https://www.h5py.org/) package.
 
@@ -69,7 +69,7 @@ push!(model.output_writers, jld2_writer)
 
 See [`JLD2OutputWriter`](@ref) for more details and options.
 
-### Checkpointer
+## Checkpointer
 A checkpointer can be used to serialize the entire model state to a file from which the model can be restored at any
 time. This is useful if you'd like to periodically checkpoint when running long simulations in case of crashes or
 cluster time limits, but also if you'd like to restore from a checkpoint and try out multiple scenarios.
@@ -84,7 +84,7 @@ model.output_writers[:checkpointer] = Checkpointer(model; interval=1e6, prefix="
 The default options should provide checkpoint files that are easy to restore from in most cases. For more advanced
 options and features, see [`Checkpointer`](@ref).
 
-#### Restoring from a checkpoint file
+### Restoring from a checkpoint file
 To restore the model from a checkpoint file, for example `model_checkpoint_12345.jld2`, simply call
 ```
 model = restore_from_checkpoint("model_checkpoint_12345.jld2")
@@ -95,7 +95,7 @@ stepping after restoring from a checkpoint.
 You can pass additional parameters to the `Model` constructor. See [`restore_from_checkpoint`](@ref) for more
 information.
 
-#### Restoring with functions
+### Restoring with functions
 JLD2 cannot serialize functions to disk. so if you used forcing functions, boundary conditions containing functions, or
 the model included references to functions then they will not be serialized to the checkpoint file. When restoring from
 a checkpoint file, any model property that contained functions must be manually restored via keyword arguments to

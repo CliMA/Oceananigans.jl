@@ -1,4 +1,4 @@
-## Time stepping
+# Time stepping
 Once you're ready to time step the model simply call
 ```
 time_step!(model; Δt=10)
@@ -16,7 +16,7 @@ time_step!(model; Δt=10)
 time_step!(model; Δt=10, Nt=50, init_with_euler=false)
 ```
 
-### Adaptive time stepping
+## Adaptive time stepping
 Adaptive time stepping can be acomplished using the [`TimeStepWizard`](@ref). It can be used to compute time steps based
 on capping the CFL number at some value. You must remember to update the time step every so often. For example, to cap
 the CFL number at 0.3 and update the time step every 50 time steps:

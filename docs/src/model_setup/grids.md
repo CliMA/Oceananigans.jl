@@ -1,4 +1,4 @@
-## Grids
+# Grids
 Currently only a regular Cartesian grid with constant grid spacings is supported. The spacing can be different for each
 dimension.
 
@@ -14,14 +14,14 @@ grid = RegularCartesianGrid(size=(64, 32, 16), length=(200, 100, 100))
 !!! info "Default domain"
     By default $x \in [0, L_x]$, $y \in [0, L_y]$, and $z \in [-L_z, 0]$ which is common for oceanographic applications.
 
-### Specifying the domain
+## Specifying the domain
 To specify a different domain, the `x`, `y`, and `z` keyword arguments can be used instead of `length`. For example,
 to use the domain $x \in [-100, 100]$ meters, $y \in [-50, 50]$ meters, and $z \in [0, 100]$ meters
 ```@example
 grid = RegularCartesianGrid(size=(64, 32, 16), x=(-100, 100), y=(-50, 50), z=(0, 100))
 ```
 
-### Two-dimensional grids
+## Two-dimensional grids
 Two-dimensional grids can be constructed by setting the number of grid points along the flat dimension to be 1. A
 two-dimensional grid in the $xz$-plane can be constructed using
 ```@example
@@ -32,7 +32,7 @@ In this case the length of the $y$ dimension must be specified but does not matt
 
 2D grids can be used to simulate $xy$, $xz$, and $yz$ planes.
 
-### One-dimensional grids
+## One-dimensional grids
 One-dimensional grids can be constructed in a similar manner, most commonly used to set up vertical column models. For
 example, to set up a 1D model with $N_z$ grid points
 ```@example

@@ -1,4 +1,4 @@
-## Diagnostics
+# Diagnostics
 Diagnostics are a set of general utilities that can be called on-demand during time-stepping to compute quantities of
 interest you may want to save to disk, such as the horizontal average of the temperature, the maximum velocity, or to
 produce a time series of salinity. They also include utilities for diagnosing model health, such as the CFL number or
@@ -14,7 +14,7 @@ Most diagnostics can be run at specified frequencies (e.g. every 25 time steps) 
 We describe the `HorizontalAverage` diagnostic in detail below but see the API documentation for other diagnostics such
 as [`Timeseries`](@ref), [`FieldMaximum`](@ref), [`CFL`](@ref), and [`NaNChecker`](@ref).
 
-### Horizontal averages
+## Horizontal averages
 You can create a `HorizontalAverage` diagnostic by passing a field to the constructor, e.g.
 ```@example
 model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))

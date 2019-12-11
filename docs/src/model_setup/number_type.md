@@ -1,4 +1,4 @@
-## Number type
+# Number type
 Passing `float_type=Float64` or `float_type=Float32` to the `Model` constructor causes the model to store all numbers
 with 64-bit or 32-bit floating point precision.
 

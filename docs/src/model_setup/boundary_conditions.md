@@ -1,4 +1,4 @@
-## Boundary conditions
+# Boundary conditions
 A boundary condition is applied to each field, dimension, and endpoint. There are left and right (or bottom and top)
 boundary conditions for each of the x, y, and z dimensions so each field is associated with 6 boundary conditions. Each
 of these boundary conditions may be specified individually. Each boundary condition can be specified via a constant
@@ -12,7 +12,7 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
     normal to a wall (e.g. vertical velocity w with walls at the top and bottom) must have no-penetration boundary
     conditions.
 
-### Types of boundary conditions
+## Types of boundary conditions
 1. [`Periodic`](@ref Periodic)
 2. [`Flux`](@ref Flux)
 3. [`Value`](@ref Value) ([`Dirchlet`](@ref))
@@ -22,11 +22,11 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
 conditions defined by a function or array.
 
-### Default boundary conditions
+## Default boundary conditions
 By default, periodic boundary conditions are applied on all fields along periodic dimensions. All other boundary
 conditions are no-flux, except for velocities normal to a wall which get no-penetration boundary conditions.
 
-### Boundary condition structures
+## Boundary condition structures
 Oceananigans uses a hierarchical structure to expressing boundary conditions.
 1. A [`BoundaryCondition`](@ref) is associated with every field, dimension, and endpoint.
 2. Boundary conditions specifying the condition at the left and right endpoints (or top and bottom endpoints) are
@@ -47,7 +47,7 @@ Also see [`ChannelBCs`](@ref) and [`ChannelSolutionBCs`](@ref).
 See the sections below for more details. The examples and verification experiments also provide examples for setting up
 many difference kinds of boundary conditions.
 
-### Creating individual boundary conditions
+## Creating individual boundary conditions
 Some examples of creating individual boundary conditions:
 
 1. A constant Value (Dirchlet) boundary condition, perhaps representing a constant temperature at some boundary.
@@ -76,7 +76,7 @@ Q  = randn(Nx, Ny) ./ (ρ₀ * cₚ)
 white_noise_T_bc = BoundaryCondition(Flux, Q)
 ```
 
-### Specifying boundary conditions with functions
+## Specifying boundary conditions with functions
 You can also specify the boundary condition via a function. For z boundary conditions the function will be called with
 the signature
 ```
@@ -99,7 +99,7 @@ localized_heating_bc = BoundaryCondition(Flux, Q)
     `@inline` macro. If any arrays are accessed within the function, disabling bounds-checking with `@inbounds` can
     also speed things up.
 
-### Specifying boundary conditions on a field
+## Specifying boundary conditions on a field
 To, for example, create a set of horizontally periodic field boundary conditions
 ```@example
 T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
@@ -108,7 +108,7 @@ T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
 which will create a [`FieldBoundaryConditions`](@ref) object for temperature T appropriate for horizontally periodic
 model configurations where the x and y boundary conditions are all periodic.
 
-### Specifying model boundary conditions
+## Specifying model boundary conditions
 A named tuple of [`FieldBoundaryConditions`](@ref) objects must be passed to the Model constructor specifying boundary
 conditions on all fields. To, for example, impose non-default boundary conditions on the u-velocity and temperature
 ```@example

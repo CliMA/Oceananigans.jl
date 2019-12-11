@@ -1,4 +1,4 @@
-## Clock
+# Clock
 The clock holds the current iteration number and time. By default the model starts at iteration number 0 and time 0
 ```@example
 clock = Clock(0, 0)

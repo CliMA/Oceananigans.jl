@@ -1,4 +1,4 @@
-## Coriolis
+# Coriolis
 The Coriolis option determines whether the fluid experiences the effect of the Coriolis force, or rotation. Currently
 three options are available: no rotation, $f$-plane, and $\beta$-plane.
 
@@ -12,7 +12,7 @@ To use no rotation, pass
 coriolis = nothing
 ```
 
-### $f$-plane
+## $f$-plane
 
 To set up an $f$-plane with, for example, rotation rate $f = 10^{-4} \text{s}^{-1}$
 ```@example
@@ -27,7 +27,7 @@ coriolis = FPlane(rotation_rate=7.292115e-5, latitude=45)
 ```
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
 
-### $\beta$-plane
+## $\beta$-plane
 To set up a $\beta$-plane the background rotation rate $f_0$ and the $\beta$ parameter must be specified. For example,
 a $\beta$-plane with $f_0 = 10^{-4} \text{s}^{-1}$ and $\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}$ can be
 set up with
