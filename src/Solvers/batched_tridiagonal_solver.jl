@@ -6,7 +6,7 @@ using Oceananigans: @loop_xy, device, array_type, launch_config
 """
     BatchedTridiagonalSolver
 
-A solver for batched tridiagonal systems.
+A batched solver for large numbers of triadiagonal systems.
 """
 struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
        a :: A
