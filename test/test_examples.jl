@@ -31,6 +31,25 @@ end
 @testset "Examples" begin
     println("Testing examples...")
 
+    @testset "One-dimensional diffusion" begin
+        println("  Testing one-dimensional diffusion example")
+
+        replace_strings = [ ("N = (1, 1, 128)", "N = (1, 1, 16)"),
+                            ("Nt = 1000", "Nt = 2") ]
+
+        @test run_example(replace_strings, "one_dimensional_diffusion")
+    end
+
+    @testset "Two-dimensional turbulence example" begin
+        println("  Testing two-dimensional turbulence example")
+
+        replace_strings = [ ("N=(128, 128, 1)", "N=(16, 16, 1)"),
+                            ("i = 1:10", "i = 1:1"),
+                            ("Nt = 100", "Nt = 2")]
+
+        @test run_example(replace_strings, "two_dimensional_turbulence")
+    end
+
     for arch in archs
         @testset "Wind and convection mixing example [$(typeof(arch))]" begin
             println("  Testing wind and convection-driving mixing example [$(typeof(arch))]")
@@ -58,36 +77,14 @@ end
         @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
     end
 
-    @testset "Simple diffusion example" begin
-        println("  Testing simple diffusion example")
-
-        replace_strings = [ ("N = (1, 1, 128)", "N = (1, 1, 16)"),
-                            ("Nt = 1000", "Nt = 2")
-                          ]
-
-        @test_skip run_example(replace_strings, "simple_diffusion")
-    end
-
     @testset "Internal wave example" begin
         println("  Testing internal wave example")
 
         replace_strings = [ ("Nx = 128", "Nx = 16"),
                             ("i = 1:10", "i = 1:1"),
-                            ("Nt = 200", "Nt = 2"),
-                          ]
+                            ("Nt = 200", "Nt = 2")]
 
-        @test_skip run_example(replace_strings, "internal_wave")
-    end
-
-    @testset "Two-dimensional turbulence example" begin
-        println("  Testing two-dimensional turbulence example")
-
-        replace_strings = [ ("N=(128, 128, 1)", "N=(16, 16, 1)"),
-                            ("i = 1:10", "i = 1:1"),
-                            ("Nt = 100", "Nt = 2")
-                          ]
-
-        @test_skip run_example(replace_strings, "two_dimensional_turbulence")
+        @test run_example(replace_strings, "internal_wave")
     end
 
     @testset "Eady turbulence" begin
