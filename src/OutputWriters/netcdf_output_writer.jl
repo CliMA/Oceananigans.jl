@@ -139,8 +139,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     mode = clobber ? "c" : "a"
 
     # Initiates the output file with dimensions
-    write_grid(model; filename=filename, mode=mode,
-               compression=compression, attrib=global_attributes, slice_kw...)
+    write_grid(model; filename=filename, compression=compression, attrib=global_attributes, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
