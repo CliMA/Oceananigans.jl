@@ -41,7 +41,7 @@ makedocs(
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
-         "Home"   => "index.md",
+         "Home"   => "home.md",
          "Examples" => [
              "One-dimensional diffusion"        => "generated/simple_diffusion.md",
              "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
@@ -72,7 +72,7 @@ makedocs(
              "Staggered grid"         => "appendix/staggered_grid.md",
              "Fractional step method" => "appendix/fractional_step.md",
          ],
-         "Index"      => "subject_index.md"
+         "Index"      => "index.md"
      ]
 )
 
