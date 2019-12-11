@@ -54,8 +54,8 @@ for Ri in Ris
     t   = [statistic_files[Ri]["timeseries/t/"      * i]    for i in statistic_iters[Ri]]
     ReT = [statistic_files[Ri]["timeseries/Re_tau/" * i][1] for i in statistic_iters[Ri]]
     ReB = [statistic_files[Ri]["timeseries/Re_tau/" * i][2] for i in statistic_iters[Ri]]
-    NuT = [statistic_files[Ri]["timeseries/Nu_tau/" * i][1] for i in statistic_iters[Ri]]
-    NuB = [statistic_files[Ri]["timeseries/Nu_tau/" * i][2] for i in statistic_iters[Ri]]
+    NuT = [statistic_files[Ri]["timeseries/Nu/"     * i][1] for i in statistic_iters[Ri]]
+    NuB = [statistic_files[Ri]["timeseries/Nu/"     * i][2] for i in statistic_iters[Ri]]
 
     ax1.plot(t, ReT, color=c[Ri], linestyle="-",  label="Ri = $Ri (top wall)")
     ax1.plot(t, ReB, color=c[Ri], linestyle="--", label="Ri = $Ri (bottom wall)")
