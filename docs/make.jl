@@ -87,7 +87,6 @@ makedocs(
         ],
 
          "Numerical implementation" => [
-             # "Overview"               => "manual/overview.md",
              "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
              "Time stepping"          => "numerical_implementation/time_stepping.md",
              "Finite volume method"   => "numerical_implementation/finite_volume.md",
