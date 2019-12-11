@@ -10,8 +10,9 @@ See [Architecture](@ref) for instructions on setting up a model on a GPU.
 Oceananigans does not yet support distributed parallelism (multi-CPU or multi-GPU).
 
 !!! tip "Running on GPUs"
-    If you are having issues with running Oceananigans on a GPU, please
-    [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) and we'll do our best to help out.
+    If you are having issues with running Oceananigans on a GPU or setting things up,
+    please [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new)
+    and we'll do our best to help out!
 
 ## When to use a GPU
 
@@ -41,4 +42,22 @@ post on the Julia Discourse.
 [Code Ocean](https://codeocean.com/) also has
 [GPU support](https://help.codeocean.com/en/articles/1053107-gpu-support) and allows you
 to spin up capsules with pretty decent Tesla K80 GPUs for free (for now) if you want to
-play around with them. They may not be powerful enough for huge simulations.
+play around with them. They may not be powerful enough for huge simulations though. You'll
+want to use their "Ubuntu Linux with GPU support (18.04.3)" with the ability to compile
+CUDA code. Then you'll have to install Julia manually.
+
+## I have a GPU. Now what?
+
+Make sure you have an Nvidia GPU that is CUDA compatible:
+[https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus). Most
+recent GPUs should be but older GPUs and many laptop GPUs may not be.
+
+Then download and install the CUDA Toolkit:
+[https://developer.nvidia.com/cuda-downloads](https://developer.nvidia.com/cuda-downloads)
+
+Once the CUDA Toolkit is installed, you might have to build Oceananigans again
+```
+julia>]
+(v1.1) pkg> build Oceananigans
+```
+The [Ocean wind mixing and convection](@ref) is a good example to test out on the GPU.
