@@ -2,12 +2,14 @@ import Pkg
 
 using Oceananigans: @hascuda, AbstractArchitecture
 
+@hascuda using CUDAdrv
+
 function print_benchmark_info()
-    print(versioninfo())
+    versioninfo()
     @hascuda begin
         dev = device(CuCurrentContext()) |> string
         gpu_name = split(dev, ":")[end] |> strip
-        println("GPU: $gpu_name")
+        println("  GPU: $gpu_name")
     end
     println()
 end
