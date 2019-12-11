@@ -26,7 +26,7 @@ using PyPlot, Printf
 # `Model` constructor:
 
 model = Model(
-    grid = RegularCartesianGrid(size = (1, 1, 128), length = (1, 1, 1)),
+    grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
 
@@ -41,7 +41,7 @@ model = Model(
 
 ## Build a Gaussian initial condition function with width `δ`:
 δ = 0.1
-Tᵢ(x, y, z) = exp( -(z + 0.5)^2 / (2δ^2) )
+Tᵢ(x, y, z) = exp( -z^2 / (2δ^2) )
 
 ## Set `model.tracers.T` to the function `Tᵢ`:
 set!(model, T=Tᵢ)
