@@ -41,7 +41,8 @@ makedocs(
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
-         "Home"   => "home.md",
+         "Home"       => "home.md",
+         "Using GPUs" => "using_gpus.md",
 
          "Examples" => [
              "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
