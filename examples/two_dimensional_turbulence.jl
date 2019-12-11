@@ -61,14 +61,16 @@ nothing # hide
 # We ask for computation of vorticity by writing `compute!(vorticity_computation)`
 # as shown below.
 #
-# Finally, we run the model for a while.
+# Finally, we run the model and animate the vorticity field.
 
-time_step!(model, Nt=1000, Δt=0.1)
+anim = @animate for i=1:100
+    time_step!(model, Nt=10, Δt=0.1)
 
-# Let's plot the vorticity field.
+    compute!(vorticity_computation)
 
-compute!(vorticity_computation)
+    x, y = model.grid.xF, model.grid.yF
+    heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
+            c=:balance, clims=(-0.1, 0.1))
+end
 
-x, y = model.grid.xF, model.grid.yF
-heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
-        c=:balance, clims=(-0.05, 0.05))
+gif(anim, "2d_turbulence_vorticity.gif", fps = 15) # hide
