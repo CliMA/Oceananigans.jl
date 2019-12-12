@@ -20,6 +20,11 @@ GPUs are very useful for running large simulations. If your simulation uses over
 1,000,000 grid points, you will probably benefit significantly from running your
 simulation on a GPU.
 
+GPU simulations tend to be memory-limited. That is, you'll probably fill the GPU's
+memory long before the model becomes unbearably slow. High-end GPUs such as the
+Nvidia Tesla V100 only come with up to 32 GB of memory. On a GPU with 16 GB of memory,
+you can run a simulation (with 2 tracers) with up to ~50 million grid points.
+
 ## Getting access to GPUs
 
 If you don't have a GPU there are a few resources you can try to acquire a GPU from.
