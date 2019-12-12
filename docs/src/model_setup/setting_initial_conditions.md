@@ -12,3 +12,9 @@ set!(model.velocities.u, 0.1)
 T₀(x, y, z) = ∂T∂z * z + ϵ(1e-8)
 set!(model.tracers.T, T₀)
 ```
+
+!!! tip "Divergence-free velocity fields"
+    Note that as part of the time-stepping algorithm, the velocity field is made
+    divergence-free at every time step. So if a model is not initialized with a
+    divergence-free velocity field, it may change on the first time step. As a result
+    tracers may not be conserved up to machine precision at the first time step.
