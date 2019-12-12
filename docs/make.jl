@@ -103,9 +103,10 @@ makedocs(
              "Stratified Couette flow" => "verification/stratified_couette_flow.md"
          ],
 
-         "Gallery"    => "gallery.md",
+                        "Gallery" => "gallery.md",
          "Performance benchmarks" => "benchmarks.md",
-         "Library"    => "library.md",
+            "Contributor's guide" => "contributing.md",
+                        "Library" => "library.md",
 
          "Appendix" => [
              "Staggered grid"         => "appendix/staggered_grid.md",
