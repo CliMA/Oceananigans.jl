@@ -62,7 +62,7 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 function solve_batched_tridiagonal_system!(ϕ, arch, solver)
     a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
 
-    @launch(device(arch), config=launch_config(grid, 2),
+    @launch(device(arch), config=launch_config(grid, :xy),
             solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, params))
 
     return nothing
