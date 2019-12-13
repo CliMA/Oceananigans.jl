@@ -2,6 +2,12 @@ using Oceananigans
 using Plots, Printf
 
 using Oceananigans: NoPenetrationBC
+using Oceananigans.Diagnostics: AdvectiveCFL
+
+# Workaround for plotting many frames.
+# See: https://github.com/JuliaPlots/Plots.jl/issues/1723
+# import GR
+# GR.inline("png")
 
 ####
 #### Data from tables 1 and 2 of Ghia et al. (1982).
@@ -37,20 +43,24 @@ bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 Re = 400
 
 model = NonDimensionalModel(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                            Re=Re, Pr=Inf, Ro=Inf, tracers=nothing, buoyancy=nothing, boundary_conditions=bcs)
+                            Re=Re, Pr=Inf, Ro=Inf,
+                            coriolis=nothing, tracers=nothing, buoyancy=nothing, boundary_conditions=bcs)
 
 Δ = max(model.grid.Δy, model.grid.Δz)
 
 y = collect(model.grid.yC)
 z = collect(model.grid.zC)
-# p = heatmap(y, z, zeros(Ny, Nz), color=:viridis, clims=(1e-3, 1), show=true)
+# p = heatmap(y, z, zeros(Ny, Nz), color=:viridis, show=true)
 
-Δt = 0.1e-4
+# Δt = 0.5e-4
 
-# wizard = TimeStepWizard(cfl=0.2, Δt=0.5e-4, max_change=1.1, max_Δt=5.0)
+wizard = TimeStepWizard(cfl=0.2, Δt=1e-5, max_change=1.1, max_Δt=1e-2)
+cfl = AdvectiveCFL(wizard)
 
-while model.clock.time < 1e-2
-    time_step!(model; Δt=Δt, Nt=1, init_with_euler=model.clock.time == 0 ? true : false)
+while model.clock.time < 5e-3
+    update_Δt!(wizard, model)
+
+    time_step!(model; Δt=wizard.Δt, Nt=1, init_with_euler=model.clock.time == 0 ? true : false)
 
     v = model.velocities.v.data[1, :, :]
     w = model.velocities.w.data[1, :, :]
@@ -59,14 +69,16 @@ while model.clock.time < 1e-2
     dvdz = (v[1:Ny, 2:Nz+1] - v[1:Ny, 1:Nz]) / Δz
     dwdy = (w[2:Ny+1, 1:Nz] - w[1:Ny, 1:Nz]) / Δy
     ζ = dwdy - dvdz
-    ζ = reverse(log10.(abs.(ζ)), dims=1)
-
-    # heatmap!(p, y, z, ζ, color=:viridis, clims=(-3, 1), show=true)
+    ζ = log10.(abs.(ζ))
 
     u, v, w = model.velocities
-    u_max = max(maximum(v.data), maximum(w.data))
-    CFL = u_max * Δt / Δ
-    dCFL = (1/Re) * Δt / Δ^2
-    @printf("Time: %.4f, CFL: %.3g, dCFL: %.3g, max (v, w, ζ): %.2g, %.2g, %.2g\n",
-            model.clock.time, CFL, dCFL, maximum(v.data.parent), maximum(w.data.parent), maximum(ζ))
+
+    # heatmap!(p, y, z, ζ, color=:viridis, show=true)
+    # heatmap!(p, y, z, interior(v)[1, :, :], color=:viridis, show=true)
+
+    u_max = max(maximum(interior(v)), maximum(interior(w)))
+    CFL = cfl(model)
+    dCFL = (1/Re) * wizard.Δt / Δ^2
+    @printf("Time: %.4g, Δt: %.4g CFL: %.3g, dCFL: %.3g, max (v, w, ζ): %.2g, %.2g, %.2g\n",
+            model.clock.time, wizard.Δt, CFL, dCFL, maximum(v.data.parent), maximum(w.data.parent), 10^maximum(ζ))
 end
