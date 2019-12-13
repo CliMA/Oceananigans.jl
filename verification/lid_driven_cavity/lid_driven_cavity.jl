@@ -1,5 +1,7 @@
-using Oceananigans, PyPlot, Printf
-using Oceananigans: NoPenetrationBC, NonDimensionalModel
+using Oceananigans
+using Plots, Printf
+
+using Oceananigans: NoPenetrationBC
 
 ####
 #### Data from tables 1 and 2 of Ghia et al. (1982).
@@ -33,43 +35,38 @@ wbcs = ChannelBCs(top    = NoPenetrationBC(),
 bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 
 Re = 400
-model = NonDimensionalModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), Re=Re, Ri=0, Pr=Inf, Ro=Inf, boundary_conditions=bcs)
 
-nan_checker = NaNChecker(model; frequency=10, fields=Dict(:w => model.velocities.w))
-push!(model.diagnostics, nan_checker)
+model = NonDimensionalModel(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                            Re=Re, Pr=Inf, Ro=Inf, tracers=nothing, buoyancy=nothing, boundary_conditions=bcs)
 
-fig, ax = subplots(nrows=1, ncols=1, figsize=(10, 10))
-
-Δt = 0.5e-4
 Δ = max(model.grid.Δy, model.grid.Δz)
-CFL = Δt / Δ
-dCFL = (1/Re) * Δt / Δ^2
-@show CFL
-@show dCFL
 
-while model.clock.time < 5
-    # Δt = model.clock.time < 0.3 ? 0.5e-4 : 5e-4
-    time_step!(model; Δt=Δt, Nt=100, init_with_euler=model.clock.time == 0 ? true : false)
-    @printf("Time: %.4f\n", model.clock.time)
+y = collect(model.grid.yC)
+z = collect(model.grid.zC)
+# p = heatmap(y, z, zeros(Ny, Nz), color=:viridis, clims=(1e-3, 1), show=true)
 
-    y = collect(model.grid.yC)
-    z = collect(model.grid.zC)
+Δt = 0.1e-4
+
+# wizard = TimeStepWizard(cfl=0.2, Δt=0.5e-4, max_change=1.1, max_Δt=5.0)
+
+while model.clock.time < 1e-2
+    time_step!(model; Δt=Δt, Nt=1, init_with_euler=model.clock.time == 0 ? true : false)
+
     v = model.velocities.v.data[1, :, :]
     w = model.velocities.w.data[1, :, :]
 
     Δy, Δz = model.grid.Δy, model.grid.Δz
-    dvdz = (v[1:Ny, 2:Nz+1] - v[1:Ny, 1:Nz])/ Δz
-    dwdy = (w[1:Ny, 1:Nz] - w[2:Ny+1, 1:Nz])/ Δy
+    dvdz = (v[1:Ny, 2:Nz+1] - v[1:Ny, 1:Nz]) / Δz
+    dwdy = (w[2:Ny+1, 1:Nz] - w[1:Ny, 1:Nz]) / Δy
     ζ = dwdy - dvdz
     ζ = reverse(log10.(abs.(ζ)), dims=1)
 
-    # ax.streamplot(y, z, v, w)
-    pcolormesh(y, z, ζ, vmin=1e-3, cmap="viridis")
-    # fig.colorbar(im, ax=ax)
+    # heatmap!(p, y, z, ζ, color=:viridis, clims=(-3, 1), show=true)
 
-    ax.set_title(@sprintf("Lid-driven cavity vorticity log₁₀(ζ): Re=%d, t=%.4f", Re, model.clock.time))
-    ax.set_xlabel("\$y\$"); ax.set_ylabel("\$z\$");
-    ax.set_xlim([0, 1]); ax.set_ylim([-1, 0]);
-    ax.set_aspect(1)
-    gcf();
+    u, v, w = model.velocities
+    u_max = max(maximum(v.data), maximum(w.data))
+    CFL = u_max * Δt / Δ
+    dCFL = (1/Re) * Δt / Δ^2
+    @printf("Time: %.4f, CFL: %.3g, dCFL: %.3g, max (v, w, ζ): %.2g, %.2g, %.2g\n",
+            model.clock.time, CFL, dCFL, maximum(v.data.parent), maximum(w.data.parent), maximum(ζ))
 end
