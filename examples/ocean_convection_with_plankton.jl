@@ -50,7 +50,7 @@ nothing # hide
 # (with a penetration depth of 16 meters here), and death due to natural mortality
 # at a rate of 1 phytoplankton unit per second.
 
-growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
+growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16))
 
 ## Instantiate the model
 model = Model(
