@@ -111,7 +111,7 @@ nothing # hide
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
 ## Temperature initial condition: a stable density tradient with random noise superposed.
-T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-1 * Ξ(z)
+T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
 u₀(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
@@ -179,7 +179,7 @@ anim = @animate for i in 1:200
     S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline, clims=(34.99, 35.01))
 
     ## Arrange the plots side-by-side.
-    plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1800, 450),
+    plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1600, 400),
          title=["vertical velocity (m/s)" "temperature (C)" "salinity (g/kg)"])
 end
 
