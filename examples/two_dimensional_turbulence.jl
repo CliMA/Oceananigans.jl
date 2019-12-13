@@ -78,7 +78,7 @@ anim = @animate for i=1:100
 
     x, y = model.grid.xF, model.grid.yF
     heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
-            c=:balance, clims=(-0.1, 0.1))
+            color=:balance, clims=(-0.1, 0.1))
 end
 
 mp4(anim, "2d_turbulence_vorticity.mp4", fps = 15) # hide
