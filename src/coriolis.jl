@@ -30,15 +30,17 @@ struct FPlane{FT} <: AbstractRotation
 end
 
 """
-    FPlane([FT=Float64;] f=nothing, rotation_rate=nothing, latitude=nothing)
+    FPlane([FT=Float64;] f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
 Returns a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
 If `f` is not specified, it is calculated from `rotation_rate` and
 `latitude` according to the relation `f = 2*rotation_rate*sind(latitude).
 
+By default, `rotation_rate` is assumed to be Earth's.
+
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
-Earth's rotation in a planar coordinate system tangent to the Earth's surface.
+a planet's rotation in a planar coordinate system tangent to the planet's surface.
 """
 function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
@@ -68,8 +70,7 @@ end
 """
     BetaPlane{T} <: AbstractRotation
 
-A parameter object for meridionally increasing Coriolis
-parameter (`f = f₀ + βy`).
+A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
 """
 struct BetaPlane{T} <: AbstractRotation
     f₀ :: T
@@ -78,13 +79,15 @@ end
 
 """
     BetaPlane([T=Float64;] f₀=nothing, β=nothing,
-                           rotation_rate=nothing, latitude=nothing, radius=nothing)
+                           rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
 A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
 
-The user may specify both `f₀` and `β`, or the three parameters
-`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and radius
-of a planet, and the central latitude at which the `β`-plane approximation is to be made.
+The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`,
+`latitude`, and `radius` that specify the rotation rate and radius of a planet, and
+the central latitude at which the `β`-plane approximation is to be made.
+
+By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """
 function BetaPlane(T=Float64; f₀=nothing, β=nothing,
                               rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
