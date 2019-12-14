@@ -40,12 +40,28 @@ wbcs = ChannelBCs(top    = NoPenetrationBC(),
 
 bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 
+@inline function Fv(i, j, k, grid, time, U, C, p)
+    if k == Nz
+        @inbounds return - 2*1e-5/grid.Δz^2 * (U.v[i, j, Nz] - 1)
+    else
+        return 0
+    end
+end
+
+# @inline Fv(i, j, k, grid, time, U, C, p) =
+#     @inbounds ifelse(k == 1, - 2/grid.Δz^2 * U.v[i, j, 1], 0)
+
+@inline Fw(i, j, k, grid, time, U, C, p) =
+    @inbounds ifelse(j == 1 || j == Nz, - 2/grid.Δy^2 * U.w[i, j, 1], 0)
+
+forcing = ModelForcing(v=Fv)
+
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
 
 Re = 100
 model = NonDimensionalModel(grid=grid, Re=Re, Pr=Inf, Ro=Inf,
                             coriolis=nothing, tracers=nothing, buoyancy=nothing,
-                            boundary_conditions=bcs)
+                            boundary_conditions=bcs, forcing=forcing)
 
 nan_checker = NaNChecker(model; frequency=10, fields=Dict(:w => model.velocities.w))
 push!(model.diagnostics, nan_checker)
