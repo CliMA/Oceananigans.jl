@@ -42,13 +42,18 @@ Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
 function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
-    if isnothing(f) && !isnothing(latitude)
-        return FPlane{FT}(2rotation_rate*sind(latitude))
-    elseif !isnothing(f) && isnothing(latitude)
-        return FPlane{FT}(f)
-    else
+    use_f = !isnothing(f)
+    use_planet_parameters = !isnothing(latitude)
+
+    if !xor(use_f, use_planet_parameters)
         throw(ArgumentError("Either both keywords rotation_rate and latitude must be " *
                             "specified, *or* only f must be specified."))
+    end
+
+    if use_f
+        return FPlane{FT}(f)
+    elseif use_planet_parameters
+        return FPlane{FT}(2rotation_rate*sind(latitude))
     end
 end
 
@@ -87,7 +92,7 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
     use_f_and_β = !isnothing(f₀) && !isnothing(β)
     use_planet_parameters = !isnothing(latitude)
 
-    if (use_f_and_β && !isnothing(latitude)) || (use_planet_parameters && (!isnothing(f₀) || !isnothing(β)))
+    if !xor(use_f_and_β, use_planet_parameters)
         throw(ArgumentError("Either both keywords f₀ and β must be specified, " *
                             "*or* all of rotation_rate, latitude, and radius."))
     end
