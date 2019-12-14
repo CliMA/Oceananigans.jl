@@ -10,7 +10,7 @@ function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
                                   + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_uˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_uˢ(i, j, k, grid, surface_waves, time)
                                   + F.u(i, j, k, grid, time, U, C, parameters)
         )
     end
@@ -25,7 +25,7 @@ function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
                                   + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_vˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_vˢ(i, j, k, grid, surface_waves, time)
                                   + F.v(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
@@ -38,7 +38,7 @@ function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - z_f_cross_U(i, j, k, grid, coriolis, U)
                                   + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
                                   + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_wˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_wˢ(i, j, k, grid, surface_waves, time)
                                   + F.w(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
