@@ -28,23 +28,28 @@ ũ = Dict(
 Nx, Ny, Nz = 1, 128, 128
 Lx, Ly, Lz = 1, 1, 1
 
-vbcs = ChannelBCs(top    = BoundaryCondition(Value, 1),
-                  bottom = BoundaryCondition(Value, 0),
+vbcs = ChannelBCs(top    = BoundaryCondition(Value, 0.0),
+                  bottom = BoundaryCondition(Value, 0.0),
                   north  = NoPenetrationBC(),
                   south  = NoPenetrationBC())
 
 wbcs = ChannelBCs(top    = NoPenetrationBC(),
                   bottom = NoPenetrationBC(),
-                  north  = BoundaryCondition(Value, 0),
-                  south  = BoundaryCondition(Value, 0))
+                  north  = BoundaryCondition(Value, 0.0),
+                  south  = BoundaryCondition(Value, 0.0))
 
 bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 
-Re = 400
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
 
-model = NonDimensionalModel(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                            Re=Re, Pr=Inf, Ro=Inf,
-                            coriolis=nothing, tracers=nothing, buoyancy=nothing, boundary_conditions=bcs)
+Re = 100
+model = NonDimensionalModel(grid=grid, Re=Re, Pr=Inf, Ro=Inf,
+                            coriolis=nothing, tracers=nothing, buoyancy=nothing,
+                            boundary_conditions=bcs)
+
+v₀(x, y, z) = -1 + 2z
+w₀(x, y, z) = 1 - 2y
+set!(model, v=v₀, w=w₀)
 
 Δ = max(model.grid.Δy, model.grid.Δz)
 
@@ -54,13 +59,13 @@ z = collect(model.grid.zC)
 
 # Δt = 0.5e-4
 
-wizard = TimeStepWizard(cfl=0.2, Δt=1e-5, max_change=1.1, max_Δt=1e-2)
+wizard = TimeStepWizard(cfl=0.01, Δt=1e-7, max_change=1.1, max_Δt=1e-6)
 cfl = AdvectiveCFL(wizard)
 
-while model.clock.time < 5e-3
+while model.clock.time < 4e-4
     update_Δt!(wizard, model)
 
-    time_step!(model; Δt=wizard.Δt, Nt=1, init_with_euler=model.clock.time == 0 ? true : false)
+    time_step!(model; Δt=wizard.Δt, Nt=10, init_with_euler=model.clock.time == 0 ? true : false)
 
     v = model.velocities.v.data[1, :, :]
     w = model.velocities.w.data[1, :, :]
@@ -76,9 +81,11 @@ while model.clock.time < 5e-3
     # heatmap!(p, y, z, ζ, color=:viridis, show=true)
     # heatmap!(p, y, z, interior(v)[1, :, :], color=:viridis, show=true)
 
-    u_max = max(maximum(interior(v)), maximum(interior(w)))
+    v_max = maximum(abs, interior(v))
+    w_max = maximum(abs, interior(w))
     CFL = cfl(model)
     dCFL = (1/Re) * wizard.Δt / Δ^2
-    @printf("Time: %.4g, Δt: %.4g CFL: %.3g, dCFL: %.3g, max (v, w, ζ): %.2g, %.2g, %.2g\n",
-            model.clock.time, wizard.Δt, CFL, dCFL, maximum(v.data.parent), maximum(w.data.parent), 10^maximum(ζ))
+    @printf("Time: %1.2e, Δt: %1.2e CFL: %1.2e, dCFL: %1.2e, max (v, w, ζ): %1.2e, %1.2e, %1.2e\n",
+            model.clock.time, wizard.Δt, CFL, dCFL, v_max, w_max, 10^maximum(ζ))
+    # @printf("(u, v) @ corner: %.2e, %.2e\n", )
 end
