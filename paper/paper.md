@@ -1,5 +1,5 @@
 ---
-title: 'Oceananigans.jl: A fast and friendly fluid flow solver'
+title: 'Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs'
 tags:
   - Julia
   - fluid
@@ -22,63 +22,84 @@ authors:
     affiliation: 3
   - name: Andre Souza
     affiliation: 1
+  - name: Alan Edelman
+    affiliation: 1
   - name: John Marshall
     affiliation: 1
   - name: Raffaele Ferrari
     affiliation: 1
 affiliations:
- - name: Department of Earth, Atmospheric, and Planetary Sciences, Massachusetts Institute of Technology
+ - name: Massachusetts Institute of Technology
    index: 1
- - name: Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology
-   index: 2
  - name: Julia Computing, Inc.
-   index: 3
-date: 21 September 2019
+   index: 2
+date: 14 December 2019
 bibliography: paper.bib
 ---
 
 # Summary
 
-``Oceananigans`` is a fast and friendly fluid flow solver written in Julia that
-can be run in 1-3 dimensions on CPUs and GPUs. Designed with high-resolution
-simulation of idealized geometries in mind, it employs a similar algorithm to
-the the Massachusetts Institute of Technology general circulation model
-[@Marshall1997] and ships with large eddy simulation capabilities.
+``Oceananigans.jl`` is a fast and friendly software package for the numerical
+simulation of incompressible, stratified, rotating fluids on CPUs and GPUs.
+It is being developed as part of the Climate Modeling Alliance project for the
+simulation of small-scale ocean physics at high-resolution that affect the
+evolution of Earth’s climate.
 
-Using Julia [@Bezanson2017] allows for the development of high-level,
-low-cost abstractions so that both a friendly user interface and a
-high-performance model can be programmed in the same language. Using a
-high-level language greatly reduces development time and allows users to easily
-extend the model and implement new features to carry out their experiments.
-Furthermore Julia's native GPU compiler [@Besard2019] allows us to develop a
-single code base that executes efficiently on CPUs and GPUs.
+``Oceananigans.jl`` is designed for high-resolution simulations in idealized
+geometries and supports direct numerical simulation, large eddy simulation,
+arbitrary numbers of active and passive tracers, and linear and nonlinear
+equations of state for seawater. Under the hood, Oceananigans.jl employs a
+finite volume algorithm similar to that used by the Massachusetts Institute of
+Technology general circulation model [@Marshall1997].
 
-Third paragraph on nice features and aspects:
-1. Makes computational fluid dynamics and ocean modeling more accessible:
-   generally, existing models are not very user-friendly as you have to fumble
-   with compilers and MPI and are written in Fortran, which is no longer
-   taught to students.
-2. Makes LES more accessible: existing LES code is not usually shared,
-   tested, or easy to use.
-3. Simulations are set up by scripts: extensible and flexible, no longer
-   limited by namelist or configuration file. Powerful features such as
-   radiation and open boundary conditions can be implemented with several
-   lines of code. Scripts can be shared for easy reproducible science.
-4. Model is continuously tested: unit tests, integration tests, comparison
-   with analytic solutions and published scientific results to ensure the
-   model is always correct with every commit.
-5. GPU benchmarks show that running on a single Nvidia V100 GPU is ~150x
-   faster than an Intel Xeon E5-2680. This reduces the lag between
-   simulation and analysis, leading to greater research productivity.
-   It also enables long integration times of high-resolution simulations.
-   Moreover, running on the cloud with GPUs is ~3x more cost-effective.
+``Oceananigans.jl`` leverages the Julia programming language [@Bezanson2017] to
+implement high-level, low-cost abstractions, a friendly user interface, and a
+high-performance model in one language. Julia, being a high-level language,
+greatly reduces development time and allows users to more easily extend the
+model and implement new features.
+
+Julia’s functional programming paradigm enables arbitrary spatially-varying and
+time-dependent forcing functions and boundary conditions to be defined as
+functions and passed to the model. This simplifies the implementation of
+complicated yet commonly-used features such as radiation and open boundary
+conditions and setting up a model linearized about a base state. Arbitrary
+quantities such as vorticity, turbulent kinetic energy, and advective fluxes
+can be diagnosed on demand. More general quantities such as horizontal and time
+averages, field maxima, and time series can be diagnosed on the fly as well.
+
+Using Julia's native GPU compiler [@Besard2019], we develop a single code base
+that compiles and executes efficiently on CPUs and GPUs. Writing
+``architecture=GPU()`` instead of ``architecture=CPU()`` when configuring a
+model specifies it to execute on the GPU. Performance benchmarks show
+significant speedups when running on a GPU. Large simulations on an Nvidia
+Tesla V100 GPU require only ~1 nanosecond per grid point per iteration. This
+also results in GPU simulations being roughly 3x more cost-effective than CPU
+simulations on cloud computing platforms such as Google Cloud. These
+performance gains allow for the long-time integration of demanding simulations
+that fit on a single GPU, such as large eddy simulation of oceanic boundary
+layer turbulence over a seasonal cycle and, for example, the generation of
+training data with huge ensembles of simulations where each ensemble member
+fits on a single GPU.
+
+``Oceananigans.jl`` is continuously tested with unit tests, integration tests,
+analytic solutions to the incompressible Navier-Stokes equations, and
+verification experiments against published scientific results. The verification
+experiments also serve as documented and advanced examples.
+
+Future development work includes distributed parallelism capabilities to allow
+for much larger simulations on multiple CPUs and multiple GPUs with CUDA-aware
+MPI, the addition of higher-order advection schemes, and support for topography.
+
+``Oceananigans.jl`` makes sophisticated science easy, makes scientists more
+productive, and makes high-powered computational fluid dynamics and ocean
+modeling accessible to students, scientists, and users with a variety of
+backgrounds. Oceananigans.jl is flexible, extensible, and can be used
+interactively or through scripts.
 
 # Acknowledgements
 
-Funding sources?
-
-We would like to thank Peter Ahrens and Alan Edelman for their
-Julia support, particularly in developing the GPU capabilities
-of ``Oceananigans``.
+Our work is supported by the generosity of Eric and Wendy Schmidt by
+recommendation of the Schmidt Futures program, and by the National Science
+Foundation under grant AGS-6939393.
 
 # References
