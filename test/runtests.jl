@@ -71,15 +71,15 @@ archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 
 closures = (
-            :ConstantIsotropicDiffusivity,
-            :ConstantAnisotropicDiffusivity,
-            :AnisotropicBiharmonicDiffusivity,
-            :TwoDimensionalLeith,
-            :SmagorinskyLilly,
-            :BlasiusSmagorinsky,
-            :RozemaAnisotropicMinimumDissipation,
-            :VerstappenAnisotropicMinimumDissipation
-           )
+    :ConstantIsotropicDiffusivity,
+    :ConstantAnisotropicDiffusivity,
+    :AnisotropicBiharmonicDiffusivity,
+    :TwoDimensionalLeith,
+    :SmagorinskyLilly,
+    :BlasiusSmagorinsky,
+    :RozemaAnisotropicMinimumDissipation,
+    :VerstappenAnisotropicMinimumDissipation
+)
 
 @testset "Oceananigans" begin
     include("test_grids.jl")

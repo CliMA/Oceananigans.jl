@@ -38,12 +38,12 @@ and `C` is a model constant.
 Keyword arguments
 =================
     - `C`      : Model constant
-    - `C_Redi` : Coefficient for down-gradient tracer diffusivity for each tracer. i
-                 Either a constant applied to every
-                 tracer, or a `NamedTuple` with fields for each tracer individually.
-    - `C_GM`   : Coefficient for down-gradient tracer diffusivity for each tracer. i
-                 Either a constant applied to every
-                 tracer, or a `NamedTuple` with fields for each tracer individually.
+    - `C_Redi` : Coefficient for down-gradient tracer diffusivity for each tracer.
+                 Either a constant applied to every tracer, or a `NamedTuple` with fields
+                 for each tracer individually.
+    - `C_GM`   : Coefficient for down-gradient tracer diffusivity for each tracer.
+                 Either a constant applied to every tracer, or a `NamedTuple` with fields
+                 for each tracer individually.
 
 References
 ==========
