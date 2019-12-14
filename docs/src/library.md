@@ -121,3 +121,19 @@ Modules = [Oceananigans]
 Private = false
 Pages   = ["utils.jl"]
 ```
+
+## Abstract operations
+```@autodocs
+Modules = [Oceananigans, Oceananigans.AbstractOperations]
+Private = false
+Pages   = ["AbstractOperations/AbstractOperations.jl",
+           "AbstractOperations/unary_operations.jl",
+           "AbstractOperations/binary_operations.jl",
+           "AbstractOperations/multiary_operations.jl",
+           "AbstractOperations/derivatives.jl",
+           "AbstractOperations/function_fields.jl",
+           "AbstractOperations/computations.jl",
+           "AbstractOperations/interpolation_utils.jl",
+           "AbstractOperations/show_abstract_operations.jl",
+           "AbstractOperations/grid_validation.jl"]
+```

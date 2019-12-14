@@ -9,7 +9,8 @@ using
     Oceananigans.Diagnostics,
     Oceananigans.OutputWriters,
     Oceananigans.TurbulenceClosures,
-    Oceananigans.TimeSteppers
+    Oceananigans.TimeSteppers,
+    Oceananigans.AbstractOperations
 
 #####
 ##### Generate examples
