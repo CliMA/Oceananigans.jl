@@ -42,14 +42,13 @@ Earth's rotation in a planar coordinate system tangent to the Earth's surface.
 """
 function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
-    if f == nothing && rotation_rate != nothing && latitude != nothing
+    if isnothing(f) && !isnothing(latitude)
         return FPlane{FT}(2rotation_rate*sind(latitude))
-    elseif f != nothing && rotation_rate == nothing && latitude == nothing
+    elseif !isnothing(f) && isnothing(latitude)
         return FPlane{FT}(f)
     else
-        throw(ArgumentError("Either both keywords rotation_rate and
-                             latitude must be specified, *or* only f
-                             must be specified."))
+        throw(ArgumentError("Either both keywords rotation_rate and latitude must be " *
+                            "specified, *or* only f must be specified."))
     end
 end
 
@@ -85,15 +84,15 @@ of a planet, and the central latitude at which the `β`-plane approximation is t
 function BetaPlane(T=Float64; f₀=nothing, β=nothing,
                               rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-    f_and_β = f₀ != nothing && β != nothing
-    planet_parameters = rotation_rate != nothing && latitude != nothing && radius != nothing
+    use_f_and_β = !isnothing(f₀) && !isnothing(β)
+    use_planet_parameters = !isnothing(latitude)
 
-    (f_and_β && all(Tuple(p === nothing for p in (rotation_rate, latitude, radius)))) ||
-    (planet_parameters && all(Tuple(p === nothing for p in (f₀, β)))) ||
-        throw(ArgumentError("Either both keywords f₀ and β must be specified,
-                            *or* all of rotation_rate, latitude, and radius."))
+    if (use_f_and_β && !isnothing(latitude)) || (use_planet_parameters && (!isnothing(f₀) || !isnothing(β)))
+        throw(ArgumentError("Either both keywords f₀ and β must be specified, " *
+                            "*or* all of rotation_rate, latitude, and radius."))
+    end
 
-    if planet_parameters
+    if use_planet_parameters
         f₀ = 2rotation_rate * sind(latitude)
          β = 2rotation_rate * cosd(latitude) / radius
      end
