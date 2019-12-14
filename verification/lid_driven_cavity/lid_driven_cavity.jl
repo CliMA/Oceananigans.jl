@@ -1,8 +1,10 @@
-using Oceananigans
 using Plots, Printf
 
-using Oceananigans: NoPenetrationBC
+using Oceananigans
 using Oceananigans.Diagnostics
+using Oceananigans.AbstractOperations
+
+using Oceananigans: Face, Cell, NoPenetrationBC
 
 # Workaround for plotting many frames.
 # See: https://github.com/JuliaPlots/Plots.jl/issues/1723
@@ -40,29 +42,6 @@ wbcs = ChannelBCs(top    = NoPenetrationBC(),
 
 bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 
-# @inline Fv(i, j, k, grid, time, U, C, p) =
-#     @inbounds ifelse(k == 1, - 2/grid.Δz^2 * U.v[i, j, 1], 0)
-
-@inline function Fv(i, j, k, grid, time, U, C, p)
-    if k == 1
-        return @inbounds - 2/grid.Δz^2 * U.v[i, j, 1]
-    else
-        return 0
-    end
-end
-
-@inline function Fw(i, j, k, grid, time, U, C, p)
-    if j == 1
-        return @inbounds - 2/grid.Δy^2 * U.w[i, 1, k]
-    elseif j == grid.Ny
-        return @inbounds - 2/grid.Δy^2 * U.w[i, grid.Ny, k]
-    else
-        return 0
-    end
-end
-
-forcing = ModelForcing(v=Fv, w=Fw)
-
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
 
 Re = 100
@@ -73,10 +52,11 @@ model = NonDimensionalModel(grid=grid, Re=Re, Pr=Inf, Ro=Inf,
 nan_checker = NaNChecker(model; frequency=10, fields=Dict(:w => model.velocities.w))
 push!(model.diagnostics, nan_checker)
 
-ε(x, y, z) = 1e-2 * randn()
-set!(model, v=ε, w=ε)
+u, v, w = model.velocities
+ζ_op = ∂y(w) - ∂z(v)
+ζ = Field(Face, Face, Cell, model.architecture, model.grid)
+ζ_comp = Computation(ζ_op, ζ)
 
-Δ = max(model.grid.Δy, model.grid.Δz)
 
 y = collect(model.grid.yC)
 z = collect(model.grid.zC)
@@ -87,37 +67,24 @@ z = collect(model.grid.zC)
 wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=1e-5)
 cfl = AdvectiveCFL(wizard)
 
-v_top(t) = min(1, t)
-
 while model.clock.time < 4e-3
     t = model.clock.time
 
     update_Δt!(wizard, model)
 
-    model.boundary_conditions.solution.v.z.top = BoundaryCondition(Value, v_top(t))
-
     time_step!(model; Δt=wizard.Δt, Nt=10, init_with_euler = t == 0 ? true : false)
 
-    v = model.velocities.v.data[1, :, :]
-    w = model.velocities.w.data[1, :, :]
+    compute!(ζ_comp)
 
-    Δy, Δz = model.grid.Δy, model.grid.Δz
-    dvdz = (v[1:Ny, 2:Nz+1] - v[1:Ny, 1:Nz]) / Δz
-    dwdy = (w[2:Ny+1, 1:Nz] - w[1:Ny, 1:Nz]) / Δy
-    ζ = dwdy - dvdz
-    ζ = log10.(abs.(ζ))
-
-    u, v, w = model.velocities
-
-    # heatmap!(p, y, z, ζ, color=:viridis, show=true)
+    # heatmap!(p, y, z, interior(ζ)[1, :, :], color=:viridis, show=true)
     # heatmap!(p, y, z, interior(v)[1, :, :], color=:viridis, show=true)
 
     v_max = maximum(abs, interior(v))
     w_max = maximum(abs, interior(w))
+    ζ_max = maximum(abs, interior(ζ))
     CFL = cfl(model)
     dCFL = (1/Re) * wizard.Δt / Δ^2
-    @printf("Time: %1.2e, Δt: %1.2e CFL: %1.2e, dCFL: %1.2e, max (v, w, ζ): %1.2e, %1.2e, %1.2e\n",
-            model.clock.time, wizard.Δt, CFL, dCFL, v_max, w_max, 10^maximum(ζ))
 
-    @show model.boundary_conditions.solution.v.z.top.condition
+    @printf("Time: %1.2e, Δt: %1.2e CFL: %1.2e, dCFL: %1.2e, max (v, w, ζ): %1.2e, %1.2e, %1.2e\n",
+            model.clock.time, wizard.Δt, CFL, dCFL, v_max, w_max, ζ_max)
 end
