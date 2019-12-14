@@ -2,7 +2,7 @@ using Oceananigans
 using Plots, Printf
 
 using Oceananigans: NoPenetrationBC
-using Oceananigans.Diagnostics: AdvectiveCFL
+using Oceananigans.Diagnostics
 
 # Workaround for plotting many frames.
 # See: https://github.com/JuliaPlots/Plots.jl/issues/1723
@@ -28,7 +28,7 @@ ũ = Dict(
 Nx, Ny, Nz = 1, 128, 128
 Lx, Ly, Lz = 1, 1, 1
 
-vbcs = ChannelBCs(top    = BoundaryCondition(Value, 0.0),
+vbcs = ChannelBCs(top    = BoundaryCondition(Value, 1.0),
                   bottom = BoundaryCondition(Value, 0.0),
                   north  = NoPenetrationBC(),
                   south  = NoPenetrationBC())
@@ -47,9 +47,8 @@ model = NonDimensionalModel(grid=grid, Re=Re, Pr=Inf, Ro=Inf,
                             coriolis=nothing, tracers=nothing, buoyancy=nothing,
                             boundary_conditions=bcs)
 
-v₀(x, y, z) = -1 + 2z
-w₀(x, y, z) = 1 - 2y
-set!(model, v=v₀, w=w₀)
+nan_checker = NaNChecker(model; frequency=10, fields=Dict(:w => model.velocities.w))
+push!(model.diagnostics, nan_checker)
 
 Δ = max(model.grid.Δy, model.grid.Δz)
 
@@ -59,13 +58,19 @@ z = collect(model.grid.zC)
 
 # Δt = 0.5e-4
 
-wizard = TimeStepWizard(cfl=0.01, Δt=1e-7, max_change=1.1, max_Δt=1e-6)
+wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=1e-4)
 cfl = AdvectiveCFL(wizard)
 
-while model.clock.time < 4e-4
+v_top(t) = min(1, t)
+
+while model.clock.time < 1e-3
+    t = model.clock.time
+
     update_Δt!(wizard, model)
 
-    time_step!(model; Δt=wizard.Δt, Nt=10, init_with_euler=model.clock.time == 0 ? true : false)
+    model.boundary_conditions.solution.v.z.top = BoundaryCondition(Value, v_top(t))
+
+    time_step!(model; Δt=wizard.Δt, Nt=10, init_with_euler = t == 0 ? true : false)
 
     v = model.velocities.v.data[1, :, :]
     w = model.velocities.w.data[1, :, :]
@@ -87,5 +92,6 @@ while model.clock.time < 4e-4
     dCFL = (1/Re) * wizard.Δt / Δ^2
     @printf("Time: %1.2e, Δt: %1.2e CFL: %1.2e, dCFL: %1.2e, max (v, w, ζ): %1.2e, %1.2e, %1.2e\n",
             model.clock.time, wizard.Δt, CFL, dCFL, v_max, w_max, 10^maximum(ζ))
-    # @printf("(u, v) @ corner: %.2e, %.2e\n", )
+
+    @show model.boundary_conditions.solution.v.z.top.condition
 end
