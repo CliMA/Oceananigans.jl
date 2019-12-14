@@ -40,21 +40,28 @@ wbcs = ChannelBCs(top    = NoPenetrationBC(),
 
 bcs = ChannelSolutionBCs(v=vbcs, w=wbcs)
 
+# @inline Fv(i, j, k, grid, time, U, C, p) =
+#     @inbounds ifelse(k == 1, - 2/grid.Δz^2 * U.v[i, j, 1], 0)
+
 @inline function Fv(i, j, k, grid, time, U, C, p)
-    if k == Nz
-        @inbounds return - 2*1e-5/grid.Δz^2 * (U.v[i, j, Nz] - 1)
+    if k == 1
+        return @inbounds - 2/grid.Δz^2 * U.v[i, j, 1]
     else
         return 0
     end
 end
 
-# @inline Fv(i, j, k, grid, time, U, C, p) =
-#     @inbounds ifelse(k == 1, - 2/grid.Δz^2 * U.v[i, j, 1], 0)
+@inline function Fw(i, j, k, grid, time, U, C, p)
+    if j == 1
+        return @inbounds - 2/grid.Δy^2 * U.w[i, 1, k]
+    elseif j == grid.Ny
+        return @inbounds - 2/grid.Δy^2 * U.w[i, grid.Ny, k]
+    else
+        return 0
+    end
+end
 
-@inline Fw(i, j, k, grid, time, U, C, p) =
-    @inbounds ifelse(j == 1 || j == Nz, - 2/grid.Δy^2 * U.w[i, j, 1], 0)
-
-forcing = ModelForcing(v=Fv)
+forcing = ModelForcing(v=Fv, w=Fw)
 
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
 
@@ -74,12 +81,12 @@ z = collect(model.grid.zC)
 
 # Δt = 0.5e-4
 
-wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=1e-4)
+wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=1e-5)
 cfl = AdvectiveCFL(wizard)
 
 v_top(t) = min(1, t)
 
-while model.clock.time < 1e-3
+while model.clock.time < 4e-3
     t = model.clock.time
 
     update_Δt!(wizard, model)
