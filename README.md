@@ -8,10 +8,10 @@
   <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/oceananigans</strong>
 </p>
 
-<!-- Information badge -->
+<!-- Information badges -->
 <p align="center">
   <a href="https://www.repostatus.org/#active">
-    <img alt="Project Status" src="https://www.repostatus.org/badges/latest/active.svg?style=flat-square" />
+    <img alt="Repo status" src="https://www.repostatus.org/badges/latest/active.svg?style=flat-square" />
   </a>
   <a href="https://mit-license.org">
     <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
@@ -19,30 +19,33 @@
   <a href="https://github.com/climate-machine/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
+  <a href="https://climate-machine.github.io/Oceananigans.jl/stable/">
+    <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
+  </a>
   <a href="https://climate-machine.github.io/Oceananigans.jl/latest">
-    <img alt="Documents" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
+    <img alt="Latest documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
   </a>
 </p>
 
-<!-- CI/CD badge -->
+<!-- CI/CD badges -->
 <p align="center">
   <a href="https://travis-ci.com/climate-machine/Oceananigans.jl">
-    <img alt="Build Status for CPU" src="https://img.shields.io/travis/com/climate-machine/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
+    <img alt="CPU build status" src="https://img.shields.io/travis/com/climate-machine/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
   </a>
   <a href="https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master">
-    <img alt="Build Status for GPU" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
+    <img alt="GPU build status" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
   </a>
   <a href="https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl">
-    <img alt="Build Status for Window" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=Window&logo=appveyor&logoColor=white&style=flat-square">
+    <img alt="Windows build status" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=Window&logo=appveyor&logoColor=white&style=flat-square">
   </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
-    <img alt="Build Status for Docker" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
+    <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
   <a href="https://codecov.io/gh/climate-machine/Oceananigans.jl">
-    <img alt="Coverage Status for Codecov" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
+    <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
   </a>
   <a href="https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master">
-    <img alt="Coverage Status for Coveralls" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?label=Coveralls&style=flat-square">
+    <img alt="Coveralls coverage" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?label=Coveralls&style=flat-square">
   </a>
 </p>
 
