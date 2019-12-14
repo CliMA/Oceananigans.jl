@@ -54,14 +54,18 @@ end
         @testset "Wind and convection mixing example [$(typeof(arch))]" begin
             println("  Testing wind and convection-driving mixing example [$(typeof(arch))]")
 
-            replace_strings = [ ("Nz = 48", "Nz = 16"),
-                                ("while model.clock.time < end_time", "while model.clock.iteration < 1"),
-                                ("time_step!(model, 10, wizard.Δt)", "time_step!(model, 1, wizard.Δt)"),
-                              ]
+            replace_strings = [
+                ("Nz = 48", "Nz = 16"),
+                ("while model.clock.time < end_time", "while model.clock.iteration < 1"),
+                ("time_step!(model, 10, wizard.Δt)", "time_step!(model, 1, wizard.Δt)"),
+            ]
 
-            arch == GPU() && push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
+            if arch == GPU()
+                push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
+            end
 
-            @test_skip run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
+            @test run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
+
             rm("ocean_wind_mixing_and_convection.jld2", force=true)
         end
     end
@@ -74,7 +78,7 @@ end
                            ("time_step!(model, 10", "time_step!(model, 1")
                           ]
 
-        @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
+        @test run_example(replace_strings, "ocean_convection_with_plankton")
     end
 
     @testset "Internal wave example" begin
@@ -95,6 +99,6 @@ end
                             ("end_time = 3day", "end_time = 1")
                           ]
 
-        @test_skip run_example(replace_strings, "eady_turbulence")
+        @test run_example(replace_strings, "eady_turbulence")
     end
 end
