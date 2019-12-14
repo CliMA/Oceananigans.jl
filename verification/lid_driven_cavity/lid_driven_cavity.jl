@@ -73,6 +73,9 @@ model = NonDimensionalModel(grid=grid, Re=Re, Pr=Inf, Ro=Inf,
 nan_checker = NaNChecker(model; frequency=10, fields=Dict(:w => model.velocities.w))
 push!(model.diagnostics, nan_checker)
 
+ε(x, y, z) = 1e-2 * randn()
+set!(model, v=ε, w=ε)
+
 Δ = max(model.grid.Δy, model.grid.Δz)
 
 y = collect(model.grid.yC)
