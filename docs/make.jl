@@ -5,7 +5,11 @@ using
     Literate,
     Oceananigans,
     Oceananigans.Operators,
-    Oceananigans.TurbulenceClosures
+    Oceananigans.Grids,
+    Oceananigans.Diagnostics,
+    Oceananigans.OutputWriters,
+    Oceananigans.TurbulenceClosures,
+    Oceananigans.TimeSteppers
 
 #####
 ##### Generate examples
