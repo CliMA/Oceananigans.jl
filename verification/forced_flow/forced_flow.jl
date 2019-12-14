@@ -65,7 +65,6 @@ set!(model; u=u₀, w=w₀)
 
 # CFL diagnostics
  cfl = AdvectiveCFL(Δt)
-dcfl = DiffusiveCFL(Δt)
 
 # Useful aliases
 u, v, w = model.velocities
@@ -83,6 +82,7 @@ while model.clock.time < end_time
 
     u_max = maximum(abs, u_model)
     w_max = maximum(abs, w_model)
+    dCFL = Δ^2 / ν
 
     u_analytic, w_analytic = uₐ.(xF, zC, t), wₐ.(xC, zF, t)
 
@@ -94,8 +94,8 @@ while model.clock.time < end_time
     w_L¹_err = mean(w_err)
     w_L∞_err = maximum(w_err)
 
-    @printf("i: %d, t: %.6f, umax: (%06.3g, %06.3g), CFL: %.4f, Δu: (L¹=%.4e, L∞=%.4e), Δw: (L¹=%.4e, L∞=%.4e), ⟨wall time⟩: %s\n",
-            i, t, u_max, w_max, cfl(model), u_L¹_err, u_L∞_err, w_L¹_err, w_L∞_err, prettytime(walltime))
+    @printf("i: %05d, t: %5.2e, umax: (%05.2e, %05.2e), CFL: %4.2e, dCFL: %4.2e, Δu: (L¹=%5.2e, L∞=%5.2e), Δw: (L¹=%5.2e, L∞=%5.2e), ⟨wall time⟩: %s\n",
+            i, t, u_max, w_max, cfl(model), dCFL, u_L¹_err, u_L∞_err, w_L¹_err, w_L∞_err, prettytime(walltime))
 
     any(isnan.(model.velocities.w.data.parent)) && break
 end
