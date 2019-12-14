@@ -64,14 +64,19 @@ Oceananigans or by requesting something you think is missing.
   clicking the "Fork" button.
 * Clone your fork of the Oceananigans repository (in terminal on Mac/Linux or git shell/
   GUI on Windows) in the location you'd like to keep it.
-  ``git clone https://github.com/your-user-name/Oceananigans.jl.git``
+  ```
+  git clone https://github.com/your-user-name/Oceananigans.jl.git
+  ```
 * Navigate to that folder in the terminal or in Anaconda Prompt if you're on Windows.
 * Connect your repository to the upstream (main project).
-  ``git remote add oceananigans https://github.com/climate-machine/Oceananigans.jl.git``
-* Create the development environment by opening Julia via ``julia --project`` then
-  typing in ``] instantiate``. This will install all the dependencies in the ``Project.toml``
+  ```
+  git remote add oceananigans https://github.com/climate-machine/Oceananigans.jl.git
+  ```
+* Create the development environment by opening Julia via `julia --project` then
+  typing in `] instantiate`. This will install all the dependencies in the Project.toml
   file.
-* You can test to make sure Oceananigans works by typing in ``] test``.
+* You can test to make sure Oceananigans works by typing in `] test` which will run all
+  the tests (this can take a while).
 
 Your development environment is now ready!
 
