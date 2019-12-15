@@ -2,6 +2,8 @@ import MPI
 
 using Oceananigans
 
+using Oceananigans.Grids: validate_tupled_argument
+
 struct DistributedModel{A, R, G, C}
                  ranks :: R
                 models :: A
@@ -21,15 +23,14 @@ const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom
     return i+1, j+1, k+1
 end
 
-function validate_tupled_argument(arg, argtype, argname)
-    length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))
-    all(isa.(arg, argtype)) || throw(ArgumentError("$argname=$arg must contain $argtype s."))
-    all(arg .> 0)           || throw(ArgumentError("Elements of $argname=$arg must be > 0!"))
-    return nothing
-end
-
-function DistributedModel(; ranks, model_kwargs...)
+function DistributedModel(; size, length, ranks, model_kwargs...)
+    validate_tupled_argument(ranks, Int, "size")
+    validate_tupled_argument(ranks, Number, "length")
     validate_tupled_argument(ranks, Int, "ranks")
+
+    Nx, Ny, Nz = size
+    Lx, Ly, Lz = length
+
     Rx, Ry, Rz = ranks
     total_ranks = Rx*Ry*Rz
 
@@ -52,9 +53,22 @@ function DistributedModel(; ranks, model_kwargs...)
     MPI.Barrier(comm)
 
     model_id = my_rank + 1
-    println("Model #$my_rank reporting in")
+    index = rank2index(my_rank, Rx, Ry, Rz)
+    rr = index2rank(index..., Rx, Ry, Rz)
+    # @info "rank=$my_rank, index=$index, index2rank=$rr"
+
+    i, j, k = rank2index(my_rank, Rx, Ry, Rz)
+    nx, ny, nz = Nx÷Rx, Ny÷Ry, Nz÷Rz
+    lx, ly, lz = Lx/Rx, Ly/Ry, Lz/Rz
+    x₁, x₂ = (i-1)*lx, i*lx
+    y₁, y₂ = (j-1)*ly, j*ly
+    z₁, z₂ = (k-1)*lz, k*lz
+    @info "rank=$my_rank, x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
+    grid = RegularCartesianGrid(size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂))
 
     return DistributedModel(ranks, nothing, nothing, comm)
 end
 
-dm = DistributedModel(ranks=(2, 2, 1))
+dm = DistributedModel(size=(32, 32, 32), length=(1, 2, 5), ranks=(2, 2, 2))
+
+MPI.Finalize()
