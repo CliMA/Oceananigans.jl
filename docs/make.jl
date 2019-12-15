@@ -36,13 +36,18 @@ end
 ##### Build and deploy docs
 #####
 
+format = Documenter.HTML(
+    collapselevel = 1,
+       prettyurls = get(ENV, "CI", nothing) == "true",
+        canonical = "https://climate-machine.github.io/Oceananigans.jl/latest/"
+)
+
 makedocs(
    modules = [Oceananigans, Oceananigans.Operators, Oceananigans.TurbulenceClosures],
    doctest = true,
    clean   = true,
  checkdocs = :all,
-    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true",
-                             canonical = "https://climate-machine.github.io/Oceananigans.jl/latest/"),
+    format = format,
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
