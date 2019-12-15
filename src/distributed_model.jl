@@ -107,15 +107,17 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
 
     connectivity_graph = MPI.Gather([0, 1, 2], 0, comm)
 
-    dm = DistributedModel(ranks, nothing, connectivity_graph, comm)
-
-    finalizer(x -> MPI.Finalize(), dm)
-
-    return dm
+    if my_rank == 0
+        dm = DistributedModel(ranks, nothing, connectivity_graph, comm)
+        finalizer(x -> MPI.Finalize(), dm)
+        return dm
+    end
 end
 
 dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32), x=(0, 1), y=(-0.5, 0.5), z=(-10, 0))
 
-# for r in dm.connectivity_graph
-#     @show r
-# end
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    for r in dm.connectivity_graph
+        @show r
+    end
+end
