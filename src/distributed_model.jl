@@ -5,11 +5,10 @@ using Oceananigans
 using Oceananigans: BCType
 using Oceananigans.Grids: validate_tupled_argument
 
-mutable struct DistributedModel{A, R, G, C}
+struct DistributedModel{A, R, G}
                  ranks :: R
-                models :: A
-    connectivity_graph :: G
-              MPI_Comm :: C
+                 model :: A
+          connectivity :: G
 end
 
 struct Communication <: BCType end
@@ -40,7 +39,6 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     Rx, Ry, Rz = ranks
     total_ranks = Rx*Ry*Rz
 
-    MPI.Init()
     comm = MPI.COMM_WORLD
 
     mpi_ranks = MPI.Comm_size(comm)
@@ -103,24 +101,20 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
                        north=r_north, south=r_south,
                        top=r_top, bottom=r_bot)
 
-    MPI.send(my_connectivity, 0, my_rank, comm)
-
     MPI.Barrier(comm)
 
-    if my_rank == 0
-        connectivity_graph = Array{RankConnectivity}(undef, mpi_ranks)
-        for r in 0:mpi_ranks-1
-            connectivity_graph[r+1], _ = MPI.recv(r, r, comm)
-        end
+    @info "Rank $my_rank creating my model..."
+    my_model = Model(grid=grid)
+    @info "Rank $my_rank: submodel created!"
 
-        return DistributedModel(ranks, nothing, connectivity_graph, comm)
-    end
+    return DistributedModel(ranks, my_model, my_connectivity)
 end
+
+MPI.Init()
 
 dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32), x=(0, 1), y=(-0.5, 0.5), z=(-10, 0))
 
-if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    for r in dm.connectivity_graph
-        @show r
-    end
-end
+my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+@info "Rank $my_rank: $(dm.connectivity), $(dm.model.grid.zF[end])"
+
+MPI.Finalize()
