@@ -5,7 +5,7 @@ using Oceananigans
 using Oceananigans: BCType
 using Oceananigans.Grids: validate_tupled_argument
 
-struct DistributedModel{A, R, G, C}
+mutable struct DistributedModel{A, R, G, C}
                  ranks :: R
                 models :: A
     connectivity_graph :: G
@@ -105,15 +105,17 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
 
     MPI.Barrier(comm)
 
-    connectivity_graph = MPI.Gather(my_connectivity, 0, comm)
-    
+    connectivity_graph = MPI.Gather([0, 1, 2], 0, comm)
+
     dm = DistributedModel(ranks, nothing, connectivity_graph, comm)
+
+    finalizer(x -> MPI.Finalize(), dm)
 
     return dm
 end
 
 dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32), x=(0, 1), y=(-0.5, 0.5), z=(-10, 0))
 
-for r in dm.connectivity_graph
-    @show r
-end
+# for r in dm.connectivity_graph
+#     @show r
+# end
