@@ -3,8 +3,14 @@ using Test
 import MPI
 
 using Oceananigans
-using Oceananigans: BCType
+using Oceananigans: BCType, PBC
 using Oceananigans.Grids: validate_tupled_argument
+
+#####
+##### Convinient aliases
+#####
+
+const PeriodicBC = PBC
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -26,27 +32,49 @@ end
 
 const Connectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
 
-function construct_connectivity(index, ranks, boundary_conditions)
+function increment_index(i, R, bc)
+    if i+1 > R
+        if bc isa PeriodicBC
+            return 1
+        else
+            return nothing
+        end
+    else
+        return i+1
+    end
+end
+
+function decrement_index(i, R, bc)
+    if i-1 < 1
+        if bc isa PeriodicBC
+            return R
+        else
+            return nothing
+        end
+    else
+        return i-1
+    end
+end
+
+function construct_connectivity(index, ranks, bcs)
     i, j, k = index
     Rx, Ry, Rz = ranks
 
-    i_east = i+1 > Rx ? nothing : i+1
-    i_west = i-1 < 1  ? nothing : i-1
+    @show Rx, Ry, Rz
 
-    j_north = j+1 > Ry ? nothing : j+1
-    j_south = j-1 < 1  ? nothing : j-1
+    i_east  = increment_index(i, Rx, bcs.x.right)
+    i_west  = decrement_index(i, Rx, bcs.x.left)
+    j_north = increment_index(j, Ry, bcs.y.north)
+    j_south = decrement_index(j, Ry, bcs.y.south)
+    k_top   = increment_index(k, Rz, bcs.z.top)
+    k_bot   = decrement_index(k, Rz, bcs.z.bottom)
 
-    k_top = k+1 > Rz ? nothing : k+1
-    k_bot = k-1 < 1  ? nothing : k-1
-
-    r_east = isnothing(i_east) ? nothing : index2rank(i_east, j, k, Rx, Ry, Rz)
-    r_west = isnothing(i_west) ? nothing : index2rank(i_west, j, k, Rx, Ry, Rz)
-
+    r_east  = isnothing(i_east)  ? nothing : index2rank(i_east, j, k, Rx, Ry, Rz)
+    r_west  = isnothing(i_west)  ? nothing : index2rank(i_west, j, k, Rx, Ry, Rz)
     r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
     r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
-
-    r_top = isnothing(k_top) ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
-    r_bot = isnothing(k_bot) ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
+    r_top   = isnothing(k_top)   ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
+    r_bot   = isnothing(k_bot)   ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
 
     return (east=r_east, west=r_west, north=r_north,
             south=r_south, top=r_top, bottom=r_bot)
@@ -145,7 +173,7 @@ MPI.Init()
 
 dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32),
                       x=(0, 1), y=(-0.5, 0.5), z=(-10, 0),
-                      boundary_conditions=nothing)
+                      boundary_conditions=HorizontallyPeriodicBCs())
 
 my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 @info "Rank $my_rank: $(dm.connectivity), $(dm.model.grid.zF[end])"
