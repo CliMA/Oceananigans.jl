@@ -103,11 +103,16 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
                        north=r_north, south=r_south,
                        top=r_top, bottom=r_bot)
 
+    MPI.send(my_connectivity, 0, my_rank, comm)
+
     MPI.Barrier(comm)
 
-    connectivity_graph = MPI.Gather([0, 1, 2], 0, comm)
-
     if my_rank == 0
+        connectivity_graph = Array{RankConnectivity}(undef, mpi_ranks)
+        for r in 0:mpi_ranks-1
+            connectivity_graph[r+1], _ = MPI.recv(r, r, comm)
+        end
+
         return DistributedModel(ranks, nothing, connectivity_graph, comm)
     end
 end
