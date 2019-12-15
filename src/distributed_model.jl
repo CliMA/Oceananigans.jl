@@ -9,7 +9,17 @@ struct DistributedModel{A, R, G, C}
               MPI_Comm :: C
 end
 
-const FieldBoundaryConditions = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
+const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
+
+@inline index2rank(i, j, k, Rx, Ry, Rz) = k*Rx*Ry + j*Rx + i
+
+@inline function rank2index(r, Rx, Ry, Rz)
+    k = div(r, Rx*Ry)
+    r -= k*Rx*Ry
+    j = div(r, Rx)
+    i = mod(r, Rx)
+    return i, j, k
+end
 
 function validate_tupled_argument(arg, argtype, argname)
     length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))
