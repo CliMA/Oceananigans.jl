@@ -230,7 +230,7 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos, C) = @inbounds haline_contraction(ℑzᵃᵃᶠ(i, j, k, grid, C.T), ℑzᵃᵃᶠ(i, j, k, grid, C.S), Dᵃᵃᶠ(i, j, k, grid), eos)
 
 @inline buoyancy_perturbation(i, j, k, grid, b::AbstractBuoyancy{<:AbstractNonlinearEquationOfState}, C) =
-    - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, C) / b.ρ₀
+    - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, C) / b.equation_of_state.ρ₀
 
 #####
 ##### Roquet et al 2015 idealized nonlinear equations of state
