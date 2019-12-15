@@ -75,6 +75,33 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
 
     MPI.Barrier(comm)
 
+    i_east = i+1 > Rx ? nothing : i+1
+    i_west = i-1 < 1  ? nothing : i-1
+
+    j_north = j+1 > Ry ? nothing : j+1
+    j_south = j-1 < 1  ? nothing : j-1
+
+    k_top = k+1 > Rz ? nothing : k+1
+    k_bot = k-1 < 1  ? nothing : k-1
+
+    r_east = isnothing(i_east) ? nothing : index2rank(i_east, j, k, Rx, Ry, Rz)
+    r_west = isnothing(i_west) ? nothing : index2rank(i_west, j, k, Rx, Ry, Rz)
+
+    r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
+    r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
+
+    r_top = isnothing(k_top) ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
+    r_bot = isnothing(k_bot) ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
+
+    @info "rank=$my_rank, index=$index, i_east=$i_east, i_west=$i_west, j_north=$j_north, j_south=$j_south, k_top=$k_top, k_bot=$k_bot"
+    @info "rank=$my_rank,                  r_east=$r_east, r_west=$r_west, r_north=$r_north, r_south=$r_south, r_top=$r_top, r_bot=$r_bot"
+
+    MPI.Barrier(comm)
+
+    my_connectivity = (east=r_east, west=r_west,
+                       north=r_north, south=r_south,
+                       top=r_top, bottom=r_bot)
+
     return DistributedModel(ranks, nothing, nothing, comm)
 end
 
