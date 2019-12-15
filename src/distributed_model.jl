@@ -11,14 +11,14 @@ end
 
 const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
 
-@inline index2rank(i, j, k, Rx, Ry, Rz) = k*Rx*Ry + j*Rx + i
+@inline index2rank(i, j, k, Rx, Ry, Rz) = (i-1)*Ry*Rz + (j-1)*Rz + (k-1)
 
 @inline function rank2index(r, Rx, Ry, Rz)
-    k = div(r, Rx*Ry)
-    r -= k*Rx*Ry
-    j = div(r, Rx)
-    i = mod(r, Rx)
-    return i, j, k
+    i = div(r, Ry*Rz)
+    r -= i*Ry*Rz
+    j = div(r, Rz)
+    k = mod(r, Rz)
+    return i+1, j+1, k+1
 end
 
 function validate_tupled_argument(arg, argtype, argname)
