@@ -23,13 +23,16 @@ const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom
     return i+1, j+1, k+1
 end
 
-function DistributedModel(; size, length, ranks, model_kwargs...)
+function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     validate_tupled_argument(ranks, Int, "size")
-    validate_tupled_argument(ranks, Number, "length")
     validate_tupled_argument(ranks, Int, "ranks")
 
     Nx, Ny, Nz = size
-    Lx, Ly, Lz = length
+
+    xL, xR = x
+    yL, yR = y
+    zL, zR = z
+    Lx, Ly, Lz = xR-xL, yR-yL, zR-zL
 
     Rx, Ry, Rz = ranks
     total_ranks = Rx*Ry*Rz
@@ -55,20 +58,26 @@ function DistributedModel(; size, length, ranks, model_kwargs...)
     model_id = my_rank + 1
     index = rank2index(my_rank, Rx, Ry, Rz)
     rr = index2rank(index..., Rx, Ry, Rz)
-    # @info "rank=$my_rank, index=$index, index2rank=$rr"
+    @info "rank=$my_rank, index=$index, index2rank=$rr"
+
+    MPI.Barrier(comm)
 
     i, j, k = rank2index(my_rank, Rx, Ry, Rz)
     nx, ny, nz = Nx÷Rx, Ny÷Ry, Nz÷Rz
     lx, ly, lz = Lx/Rx, Ly/Ry, Lz/Rz
-    x₁, x₂ = (i-1)*lx, i*lx
-    y₁, y₂ = (j-1)*ly, j*ly
-    z₁, z₂ = (k-1)*lz, k*lz
+
+    x₁, x₂ = xL + (i-1)*lx, xL + i*lx
+    y₁, y₂ = yL + (j-1)*ly, yL + j*ly
+    z₁, z₂ = zL + (k-1)*lz, zL + k*lz
+
     @info "rank=$my_rank, x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
     grid = RegularCartesianGrid(size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂))
+
+    MPI.Barrier(comm)
 
     return DistributedModel(ranks, nothing, nothing, comm)
 end
 
-dm = DistributedModel(size=(32, 32, 32), length=(1, 2, 5), ranks=(2, 2, 2))
+dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32), x=(0, 1), y=(-0.5, 0.5), z=(-10, 0))
 
 MPI.Finalize()
