@@ -33,7 +33,7 @@ export
     FPlane, BetaPlane,
 
     # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
