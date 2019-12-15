@@ -108,9 +108,7 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     connectivity_graph = MPI.Gather([0, 1, 2], 0, comm)
 
     if my_rank == 0
-        dm = DistributedModel(ranks, nothing, connectivity_graph, comm)
-        finalizer(x -> MPI.Finalize(), dm)
-        return dm
+        return DistributedModel(ranks, nothing, connectivity_graph, comm)
     end
 end
 
