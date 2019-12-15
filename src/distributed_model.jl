@@ -1,19 +1,14 @@
+using Test
+
 import MPI
 
 using Oceananigans
-
 using Oceananigans: BCType
 using Oceananigans.Grids: validate_tupled_argument
 
-struct DistributedModel{A, R, G}
-                 ranks :: R
-                 model :: A
-          connectivity :: G
-end
-
-struct Communication <: BCType end
-
-const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
+#####
+##### Converting between index and MPI rank taking k as the fast index
+#####
 
 @inline index2rank(i, j, k, Rx, Ry, Rz) = (i-1)*Ry*Rz + (j-1)*Rz + (k-1)
 
@@ -25,6 +20,32 @@ const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom
     return i+1, j+1, k+1
 end
 
+#####
+##### Communication boundary condition
+#####
+
+struct Communication <: BCType end
+
+#####
+##### Distributed model struct and constructor
+#####
+
+const Connectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
+
+struct DistributedModel{A, R, G}
+                 ranks :: R
+                 model :: A
+          connectivity :: G
+end
+
+"""
+    DistributedModel(size, x, y, z, ranks, model_kwargs...)
+
+size: Number of total grid points.
+x, y, z: Left and right endpoints for each dimension.
+ranks: Number of ranks in each dimension.
+model_kwargs: Passed to `Model` constructor.
+"""
 function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     validate_tupled_argument(ranks, Int, "size")
     validate_tupled_argument(ranks, Int, "ranks")
@@ -44,26 +65,19 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     mpi_ranks = MPI.Comm_size(comm)
     my_rank   = MPI.Comm_rank(comm)
 
-    if my_rank == 0
-        if total_ranks != mpi_ranks
-            throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
-                                "with number of MPI ranks: $mpi_ranks. Exiting with code 1."))
-            MPI.Finalize()
-            exit(code=1)
-        end
+    if total_ranks != mpi_ranks
+        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+                            "with number of MPI ranks: $mpi_ranks. Exiting with code 1."))
+        MPI.Finalize()
+        exit(code=1)
     end
 
-    # Ensure that ranks 1:N don't go ahead if total_ranks != mpi_ranks.
-    MPI.Barrier(comm)
+    i, j, k = index = rank2index(my_rank, Rx, Ry, Rz)
 
-    model_id = my_rank + 1
-    index = rank2index(my_rank, Rx, Ry, Rz)
-    rr = index2rank(index..., Rx, Ry, Rz)
-    @info "rank=$my_rank, index=$index, index2rank=$rr"
+    #####
+    ##### Construct local grid
+    #####
 
-    MPI.Barrier(comm)
-
-    i, j, k = rank2index(my_rank, Rx, Ry, Rz)
     nx, ny, nz = Nx÷Rx, Ny÷Ry, Nz÷Rz
     lx, ly, lz = Lx/Rx, Ly/Ry, Lz/Rz
 
@@ -71,10 +85,11 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
 
-    @info "rank=$my_rank, x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
     grid = RegularCartesianGrid(size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂))
 
-    MPI.Barrier(comm)
+    #####
+    ##### Construct local connectivity
+    #####
 
     i_east = i+1 > Rx ? nothing : i+1
     i_west = i-1 < 1  ? nothing : i-1
@@ -94,14 +109,12 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     r_top = isnothing(k_top) ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
     r_bot = isnothing(k_bot) ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
 
-    @info "rank=$my_rank, index=$index, i_east=$i_east, i_west=$i_west, j_north=$j_north, j_south=$j_south, k_top=$k_top, k_bot=$k_bot"
-    @info "rank=$my_rank,                  r_east=$r_east, r_west=$r_west, r_north=$r_north, r_south=$r_south, r_top=$r_top, r_bot=$r_bot"
+    my_connectivity = (east=r_east, west=r_west, north=r_north,
+                       south=r_south, top=r_top, bottom=r_bot)
 
-    my_connectivity = (east=r_east, west=r_west,
-                       north=r_north, south=r_south,
-                       top=r_top, bottom=r_bot)
-
-    MPI.Barrier(comm)
+    #####
+    ##### Construct local model
+    #####
 
     @info "Rank $my_rank creating my model..."
     my_model = Model(grid=grid)
@@ -109,6 +122,10 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
 
     return DistributedModel(ranks, my_model, my_connectivity)
 end
+
+#####
+##### Script/test/whatever
+#####
 
 MPI.Init()
 
