@@ -99,15 +99,21 @@ function DistributedModel(; size, x, y, z, ranks, model_kwargs...)
     @info "rank=$my_rank, index=$index, i_east=$i_east, i_west=$i_west, j_north=$j_north, j_south=$j_south, k_top=$k_top, k_bot=$k_bot"
     @info "rank=$my_rank,                  r_east=$r_east, r_west=$r_west, r_north=$r_north, r_south=$r_south, r_top=$r_top, r_bot=$r_bot"
 
-    MPI.Barrier(comm)
-
     my_connectivity = (east=r_east, west=r_west,
                        north=r_north, south=r_south,
                        top=r_top, bottom=r_bot)
 
-    return DistributedModel(ranks, nothing, nothing, comm)
+    MPI.Barrier(comm)
+
+    connectivity_graph = MPI.Gather(my_connectivity, 0, comm)
+    
+    dm = DistributedModel(ranks, nothing, connectivity_graph, comm)
+
+    return dm
 end
 
 dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32), x=(0, 1), y=(-0.5, 0.5), z=(-10, 0))
 
-MPI.Finalize()
+for r in dm.connectivity_graph
+    @show r
+end
