@@ -8,6 +8,18 @@ function time_stepping_works(arch, FT, Closure)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
+function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
+    grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3))
+
+    eos = RoquetIdealizedNonlinearEquationOfState(eos_type)
+    b = SeawaterBuoyancy(equation_of_state=eos)
+
+    model = Model(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
+    time_step!(model, 1, 1)
+
+    return true  # Test that no errors/crashes happen when time stepping.
+end
+
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
     model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
@@ -157,6 +169,16 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
     for arch in archs, FT in float_types, Closure in Closures
         println("  Testing that time stepping works [$arch, $FT, $Closure]...")
         @test time_stepping_works(arch, FT, Closure)
+    end
+
+    @testset "Idealized nonlinear equation of state" begin
+        for arch in archs, FT in float_types
+            for eos_type in keys(Oceananigans.optimized_roquet_coeffs)
+                println("  Testing that time stepping works with " *
+                        "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]")
+                @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
+            end
+        end
     end
 
     @testset "2nd-order Adams-Bashforth" begin
