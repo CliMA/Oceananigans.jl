@@ -2,6 +2,7 @@ import MPI
 
 using Oceananigans
 
+using Oceananigans: BCType
 using Oceananigans.Grids: validate_tupled_argument
 
 struct DistributedModel{A, R, G, C}
@@ -10,6 +11,8 @@ struct DistributedModel{A, R, G, C}
     connectivity_graph :: G
               MPI_Comm :: C
 end
+
+struct Communication <: BCType end
 
 const RankConnectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
 
