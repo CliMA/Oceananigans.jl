@@ -14,8 +14,6 @@ as possible is shared between the CPU and GPU algorithms.
 
 ## Getting help
 If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us
-questions and get in touch! Check out the
-[examples](https://github.com/climate-machine/Oceananigans.jl/tree/master/examples)
-and
-[open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new)
-if you have any questions, comments, suggestions, etc.
+questions and get in touch! If you're trying to set up a model then check out the examples and model setup
+documentation. Please feel free to [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new)
+if you have any questions, comments, suggestions, etc!
