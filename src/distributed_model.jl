@@ -90,7 +90,8 @@ struct Communication <: BCType end
 ##### Distributed model struct and constructor
 #####
 
-struct DistributedModel{A, R, G}
+struct DistributedModel{I, A, R, G}
+                 index :: I
                  ranks :: R
                  model :: A
           connectivity :: G
@@ -153,7 +154,6 @@ function DistributedModel(; size, x, y, z, ranks, boundary_conditions, model_kwa
     #####
 
     my_connectivity = construct_connectivity(index, ranks, boundary_conditions)
-
     @debug "Local connectivity: $my_connectivity"
 
     #####
@@ -162,7 +162,7 @@ function DistributedModel(; size, x, y, z, ranks, boundary_conditions, model_kwa
 
     my_model = Model(grid=grid)
 
-    return DistributedModel(ranks, my_model, my_connectivity)
+    return DistributedModel(index, ranks, my_model, my_connectivity)
 end
 
 #####
@@ -171,7 +171,7 @@ end
 
 MPI.Init()
 
-dm = DistributedModel(ranks=(2, 2, 2), size=(32, 32, 32),
+dm = DistributedModel(ranks=(2, 2, 2), size=(16, 16, 16),
                       x=(0, 1), y=(-0.5, 0.5), z=(-10, 0),
                       boundary_conditions=HorizontallyPeriodicBCs())
 
