@@ -12,5 +12,5 @@ mutable struct Clock{T<:Number}
   iteration :: Int
 end
 
-Base.show(io::IO, c::Clock{T}) where T =
-    println(io, "Clock{$T}: time = ", prettytime(c.time), ", iteration = ", c.iteration)
+Base.show(io::IO, c::Clock{FT}) where FT =
+    println(io, "Clock{$FT}: time = ", prettytime(c.time), ", iteration = ", c.iteration)
