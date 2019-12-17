@@ -2,12 +2,12 @@
 
 The tracers to be advected around can be specified via a list of symbols. By default the model evolves temperature and
 salinity
-```@example
+```
 tracers = (:T, :S)
 ```
 but any number of arbitrary tracers can be appended to this list. For example, to evolve quantities $C_1$, CO₂, and
 nitrogen as passive tracers you could set them up as
-```@example
+```
 tracers = (:T, :S, :C₁, :CO₂, :nitrogen)
 ```
 

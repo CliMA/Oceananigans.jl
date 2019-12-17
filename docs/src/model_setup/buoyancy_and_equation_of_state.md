@@ -7,13 +7,13 @@ The buoyancy option selects how buoyancy is treated. There are currently three o
 
 ## No buoyancy
 To turn off buoyancy (and gravity) simply pass
-```@example
+```
 buoyancy = nothing
 ```
 to the `Model` constructor. In this case, you will probably also want to explicitly specify which tracers to evolve.
 In particular, you probably will not want to evolve temperature and salinity, which are included by default. To specify
 no tracers, also pass
-```@example
+```
 tracers = ()
 ```
 to the `Model` constructor.
@@ -21,16 +21,18 @@ to the `Model` constructor.
 ## Buoyancy as a tracer
 To directly evolve buoyancy as a tracer simply pass
 ```@example
+using Oceananigans # hide
 buoyancy = BuoyancyTracer()
 ```
 to the `Model` constructor. Buoyancy `:b` must be included as a tracer, for example, by also passing
-```@example
+```
 tracers = (:b)
 ```
 
 ## Seawater buoyancy
 To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pass
 ```@example
+using Oceananigans # hide
 buoyancy = SeawaterBuoyancy()
 ```
 which is also the default. Without any options specified, a value of $g = 9.80665 \; \text{m/s}^2$ is used for the
@@ -40,20 +42,22 @@ with a linear equation of state with thermal expansion and haline contraction co
 If, for example, you wanted to simulate fluids on another planet such as Europa where $g = 1.3 \; \text{m/s}^2$, then
 use
 ```@example
+using Oceananigans # hide
 buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 ```
 
 When using `SeawaterBuoyancy` temperature `:T` and salinity `:S` tracers must be specified
-```@example
+```
 tracers = (:T, :S)
 ```
 
 ### Linear equation of state
 To use non-default thermal expansion and haline contraction coefficients, say
-$\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10{-4} \text{ppt}^{-1}$ corresponding to some other
+$\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10^{-4} \text{ppt}^{-1}$ corresponding to some other
 fluid, then use
 
 ```@example
+using Oceananigans # hide
 buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(α=1.67e-4, β=7.80e-4))
 ```
 
