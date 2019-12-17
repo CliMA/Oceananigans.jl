@@ -17,7 +17,7 @@ authors:
   - name: Jean-Michel Campin
     affiliation: 1
   - name: Valentin Churavy
-    affiliation: 2
+    affiliation: 1
   - name: Tim Besard
     affiliation: 2
   - name: Andre Souza
