@@ -58,7 +58,7 @@ Technology general circulation model [@Marshall1997].
 implement high-level, low-cost abstractions, a friendly user interface, a
 high-performance model in one language and a common code base for execution on
 the CPU or GPU with Julia’s native GPU compiler [@Besard2019]. Because Julia is
-a high-level language, development is faster and users can flexibly specify
+a high-level language, development is fast and users can flexibly specify
 model configurations, set up arbitrary diagnostics and output, extend the code
 base, and implement new features.  Configuring a model with `architecture=CPU()`
 or `architecture=GPU()` will execute the model on the CPU or GPU.
