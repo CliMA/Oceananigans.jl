@@ -299,16 +299,16 @@ end
 @testset "Solvers" begin
     println("Testing Solvers...")
 
-    @testset "FFTW plans" begin
-        println("  Testing FFTW planning...")
-
-        for FT in float_types
-            @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
-        end
-    end
+    # @testset "FFTW plans" begin
+    #     println("  Testing FFTW planning...")
+    #
+    #     for FT in float_types
+    #         @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
+    #     end
+    # end
 
     @testset "Divergence-free solution [CPU]" begin
         println("  Testing divergence-free solution [CPU]...")
