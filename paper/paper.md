@@ -52,7 +52,7 @@ equations of state for seawater. Under the hood, Oceananigans.jl employs a
 finite volume algorithm similar to that used by the Massachusetts Institute of
 Technology general circulation model [@Marshall1997].
 
-![(Left) Large eddy simulation of small-scale oceanic boundary layer turbulence forced by a surface cooling in a horizontally periodic domain using 2563 grid points. The upper layer is well-mixed by turbulent convection and bounded below by a strong buoyancy interface. (Right) Simulation of instability of a horizontal density gradient in a rotating channel using 256×512×128 grid points. A similar process called baroclinic instability acting on basin-scale temperature gradients fills the ocean with eddies that stir carbon and heat.](free_convection_and_baroclinic_instability.png)
+![(Left) Large eddy simulation of small-scale oceanic boundary layer turbulence forced by a surface cooling in a horizontally periodic domain using 256<sup>3</sup> grid points. The upper layer is well-mixed by turbulent convection and bounded below by a strong buoyancy interface. (Right) Simulation of instability of a horizontal density gradient in a rotating channel using 256×512×128 grid points. A similar process called baroclinic instability acting on basin-scale temperature gradients fills the ocean with eddies that stir carbon and heat.](free_convection_and_baroclinic_instability.png)
 
 ``Oceananigans.jl`` leverages the Julia programming language [@Bezanson2017] to
 implement high-level, low-cost abstractions, a friendly user interface, a
