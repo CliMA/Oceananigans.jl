@@ -39,20 +39,22 @@ bibliography: paper.bib
 
 # Summary
 
-Oceananigans.jl is a fast and friendly software package for the numerical
+``Oceananigans.jl`` is a fast and friendly software package for the numerical
 simulation of incompressible, stratified, rotating fluid flows on CPUs and GPUs.
 It is being developed as part of the Climate Modeling Alliance project for the
 simulation of small-scale ocean physics at high-resolution that affect the
 evolution of Earth’s climate.
 
-Oceananigans.jl is designed for high-resolution simulations in idealized
+``Oceananigans.jl`` is designed for high-resolution simulations in idealized
 geometries and supports direct numerical simulation, large eddy simulation,
 arbitrary numbers of active and passive tracers, and linear and nonlinear
 equations of state for seawater. Under the hood, Oceananigans.jl employs a
 finite volume algorithm similar to that used by the Massachusetts Institute of
 Technology general circulation model [@Marshall1997].
 
-Oceananigans.jl leverages the Julia programming language [@Bezanson2017] to
+![(Left) Large eddy simulation of small-scale oceanic boundary layer turbulence forced by a surface cooling in a horizontally periodic domain using 2563 grid points. The upper layer is well-mixed by turbulent convection and bounded below by a strong buoyancy interface. (Right) Simulation of instability of a horizontal density gradient in a rotating channel using 256×512×128 grid points. A similar process called baroclinic instability acting on basin-scale temperature gradients fills the ocean with eddies that stir carbon and heat.](free_convection_and_baroclinic_instability.png)
+
+``Oceananigans.jl`` leverages the Julia programming language [@Bezanson2017] to
 implement high-level, low-cost abstractions, a friendly user interface, a
 high-performance model in one language and a common code base for execution on
 the CPU or GPU with Julia’s native GPU compiler [@Besard2019]. Because Julia is
@@ -72,7 +74,7 @@ long-time integration of realistic simulations, such as large eddy simulation of
 oceanic boundary layer turbulence over a seasonal cycle or the generation of
 training data for turbulence parameterizations in Earth system models.
 
-Oceananigans.jl is continuously tested with unit tests, integration tests,
+``Oceananigans.jl`` is continuously tested with unit tests, integration tests,
 analytic solutions to the incompressible Navier-Stokes equations, and
 verification experiments against published scientific results. The verification
 experiments also serve as documented and advanced examples. Future development
