@@ -19,7 +19,7 @@ authors:
   - name: Valentin Churavy
     affiliation: 2
   - name: Tim Besard
-    affiliation: 3
+    affiliation: 2
   - name: Andre Souza
     affiliation: 1
   - name: Alan Edelman
@@ -33,7 +33,7 @@ affiliations:
    index: 1
  - name: Julia Computing, Inc.
    index: 2
-date: 14 December 2019
+date: 16 December 2019
 bibliography: paper.bib
 ---
 
