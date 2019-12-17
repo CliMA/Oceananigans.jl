@@ -68,7 +68,7 @@ simulations on an Nvidia Tesla V100 GPU require ~1 nanosecond per grid point per
 iteration. This results in GPU simulations being roughly 3x more cost-effective
 than CPU simulations on cloud computing platforms such as Google Cloud. A GPU
 with 32 GB of memory can time-step models with ~150 million grid points assuming
-five fields are being evolved; for example, three velocity components, and
+five fields are being evolved; for example, three velocity components and
 tracers for temperature and salinity. These performance gains permit the
 long-time integration of realistic simulations, such as large eddy simulation of
 oceanic boundary layer turbulence over a seasonal cycle or the generation of
@@ -76,10 +76,9 @@ training data for turbulence parameterizations in Earth system models.
 
 ``Oceananigans.jl`` is continuously tested with unit tests, integration tests,
 analytic solutions to the incompressible Navier-Stokes equations, and
-verification experiments against published scientific results. The verification
-experiments also serve as documented and advanced examples. Future development
-plans include support for distributed parallelism with CUDA-aware MPI as well as
-bathymetry and irregular domains.
+verification experiments against published scientific results. Future
+development plans include support for distributed parallelism with CUDA-aware
+MPI as well as bathymetry and irregular domains.
 
 # Acknowledgements
 
