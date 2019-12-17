@@ -155,6 +155,10 @@ and cell centers in `x` and `y`.
            thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.T)
         - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, C) * ∂zᵃᵃᶠ(i, j, k, grid, C.S) )
 
+Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
+    println(io, "SeawaterBuoyancy{$FT}: g = $(b.gravitational_acceleration)", '\n',
+                "└── equation of state: $(b.equation_of_state)")
+
 #####
 ##### Linear equation of state
 #####
@@ -205,6 +209,9 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 @inline haline_contractionᶠᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 @inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
+
+Base.show(io::IO, eos::LinearEquationOfState{FT}) where FT =
+    println(io, "LinearEquationOfState{$FT}: ", @sprintf("α = %.2e, β = %.2e", eos.α, eos.β))
 
 #####
 ##### Nonlinear equations of state
