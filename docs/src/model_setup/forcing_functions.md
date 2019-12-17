@@ -17,6 +17,7 @@ Some examples:
 1. Implementing a sponge layer at the bottom of the domain that damps the velocity (to filter out waves) with an
 e-folding length scale of 1% of the domain height.
 ```@example
+using Oceananigans # hide
 N, L = 16, 100
 grid = RegularCartesianGrid(size=(N, N, N), length=(L, L, L))
 
@@ -30,10 +31,12 @@ const Δμ = 0.01L    # Sponge layer width [m] set to 1% of the domain height.
 
 forcing = ModelForcing(Fu=Fu, Fv=Fv, Fw=Fw)
 model = Model(grid=grid, forcing=forcing)
+nothing # hide
 ```
 
 2. Implementing a point source of fresh meltwater from ice shelf melting via a relaxation term
 ```@example
+using Oceananigans # hide
 Nx = Ny = Nz = 16
 Lx = Ly = Lz = 1000
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
@@ -63,6 +66,7 @@ forcing = ModelForcing(T=T_point_source, S=S_point_source)
 constructor.
 
 ```@example
+using Oceananigans # hide
 const a = 2.1
 fun_forcing(x, y, z, t) = a * exp(z) * cos(t)
 u_forcing = SimpleForcing(fun_forcing)
@@ -72,6 +76,7 @@ v_forcing = SimpleForcing(parameterized_forcing, parameters=(μ=42, λ=0.1, ω=�
 
 forcing = ModelForcing(u=u_forcing, v=v_forcing)
 
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
-              forcing=forcing)
+grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+model = Model(grid=grid, forcing=forcing)
+nothing # hide
 ```

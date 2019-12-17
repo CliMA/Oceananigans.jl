@@ -52,12 +52,14 @@ Some examples of creating individual boundary conditions:
 
 1. A constant Value (Dirchlet) boundary condition, perhaps representing a constant temperature at some boundary.
 ```@example
+using Oceananigans # hide
 constant_T_bc = BoundaryCondition(Value, 20)
 ```
 
 2. A constant flux boundary condition, perhaps representing a constant wind stress at some boundary such as the ocean
    surface.
 ```@example
+using Oceananigans # hide
 ρ₀ = 1027  # Reference density [kg/m³]
 τₓ = 0.08  # Wind stress [N/m²]
 wind_stress_bc = BoundaryCondition(Flux, τₓ/ρ₀)
@@ -66,7 +68,8 @@ wind_stress_bc = BoundaryCondition(Flux, τₓ/ρ₀)
 3. A spatially varying (white noise) cooling flux to be imposed at some boundary. Note that the boundary condition
    is given by the array `Q` here. When running on the GPU, `Q` must be converted to a `CuArray`.
 ```@example
-Nx, Ny = 16, 16  # Number of grid points.
+using Oceananigans # hide
+Nx = Ny = 16  # Number of grid points.
 
 ρ₀ = 1027  # Reference density [kg/m³]
 cₚ = 4000  # Heat capacity of water at constant pressure [J/kg/K]
@@ -90,6 +93,7 @@ We can add a fourth example now:
 4. A spatially varying and time-dependent heating representing perhaps a localized source of heating modulated by a
    diurnal cycle.
 ```@example
+using Oceananigans # hide
 @inline Q(i, j, grid, t, U, C, params) = @inbounds exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
 localized_heating_bc = BoundaryCondition(Flux, Q)
 ```
@@ -102,6 +106,7 @@ localized_heating_bc = BoundaryCondition(Flux, Q)
 ## Specifying boundary conditions on a field
 To, for example, create a set of horizontally periodic field boundary conditions
 ```@example
+using Oceananigans # hide
 T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
                                 bottom = BoundaryCondition(Gradient, 0.01))
 ```
@@ -112,13 +117,15 @@ model configurations where the x and y boundary conditions are all periodic.
 A named tuple of [`FieldBoundaryConditions`](@ref) objects must be passed to the Model constructor specifying boundary
 conditions on all fields. To, for example, impose non-default boundary conditions on the u-velocity and temperature
 ```@example
+using Oceananigans # hide
 u_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.1),
                                 bottom = BoundaryCondition(Value, -0.1))
 T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 20),
                                 bottom = BoundaryCondition(Gradient, 0.01))
 
-model_bcs = HorizontallyPeriodicSolutionBCs(u=u_bc, T=T_bcs)
+model_bcs = HorizontallyPeriodicSolutionBCs(u=u_bcs, T=T_bcs)
 
 model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
               boundary_conditions=model_bcs)
+nothing # hide
 ```
