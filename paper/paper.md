@@ -60,8 +60,8 @@ high-performance model in one language and a common code base for execution on
 the CPU or GPU with Julia’s native GPU compiler [@Besard2019]. Because Julia is
 a high-level language, development is faster and users can flexibly specify
 model configurations, set up arbitrary diagnostics and output, extend the code
-base, and implement new features.  Configuring a model with  architecture=CPU()
-or architecture=GPU() will execute the model on the CPU or GPU.
+base, and implement new features.  Configuring a model with `architecture=CPU()`
+or `architecture=GPU()` will execute the model on the CPU or GPU.
 
 Performance benchmarks show significant speedups when running on a GPU. Large
 simulations on an Nvidia Tesla V100 GPU require ~1 nanosecond per grid point per
