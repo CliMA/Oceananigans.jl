@@ -1,4 +1,4 @@
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
+using Oceananigans.Operators
 
 #####
 ##### Physical constants
@@ -62,6 +62,34 @@ end
 @inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
+
+
+#####
+##### Non-traditonal Coriolis
+#####
+
+"""
+    NonTraditionalFPlane{FT} <: AbstractRotation
+
+A Coriolis implementation that facilitates non-traditional Coriolis terms in the zonal
+and vertical momentum equations along with the traditional Coriolis terms.
+"""
+struct NonTraditionalFPlane{FT} <: AbstractRotation
+    f  :: FT
+    f′ :: FT
+end
+
+function NonTraditionalFPlane(FT=Float64; rotation_rate=nothing, latitude=nothing)
+    f  = 2rotation_rate*sind(latitude)
+    f′ = 2rotation_rate*cosd(latitude)
+    return NonTraditionalFPlane{FT}(f, f′)
+end
+
+@inline fv_minus_f′w(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = coriolis.f′ * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.f * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
+
+@inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   ℑxᶠᵃᵃ(i, j, k, grid, fv_minus_f′w, coriolis, U)
+@inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   coriolis.f  * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+@inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = - coriolis.f′ * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 #####
 ##### The Beta Plane
