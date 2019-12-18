@@ -8,7 +8,7 @@ include:
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
 
 test:v1.3:
-  extends: .test:v1.3
+  extends: .test:v1.2
 
 test:dev:
   extends: .test:dev
