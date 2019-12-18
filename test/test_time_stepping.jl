@@ -166,13 +166,13 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 @testset "Time stepping" begin
     println("Testing time stepping...")
 
-    for arch in archs, FT in float_types, Closure in Closures
+    for arch in archs, FT in [Float64], Closure in Closures
         println("  Testing that time stepping works [$arch, $FT, $Closure]...")
         @test time_stepping_works(arch, FT, Closure)
     end
 
     @testset "Idealized nonlinear equation of state" begin
-        for arch in archs, FT in float_types
+        for arch in archs, FT in [Float64]
             for eos_type in keys(Oceananigans.optimized_roquet_coeffs)
                 println("  Testing that time stepping works with " *
                         "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]")
