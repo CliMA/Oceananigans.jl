@@ -43,7 +43,7 @@ using Plots, Random, Printf
 # `g = 9.81 s⁻²`. Note that, by default, the `SeawaterBuoyancy` model uses a gravitational
 # acceleration `gᴱᵃʳᵗʰ = 9.80665 s⁻²`.
 
-         Nz = 48       # Number of grid points in x, y, z
+         Nz = 32       # Number of grid points in x, y, z
          Δz = 1.0      # Grid spacing in x, y, z (meters)
          Qᵀ = 5e-5     # Temperature flux at surface
          Qᵘ = -2e-5    # Velocity flux at surface
@@ -152,7 +152,7 @@ nothing # hide
 
 # Finally, we run the the model in a `while` loop.
 
-anim = @animate for i in 1:200
+anim = @animate for i in 1:100
     ## Update the time step associated with `wizard`.
     update_Δt!(wizard, model)
 
@@ -168,7 +168,7 @@ anim = @animate for i in 1:200
     xC, zF, zC = model.grid.zC, model.grid.zF[1:Nz], model.grid.zC
 
     ## Slices to plots.
-    jhalf = floor(Int, model.grid.Nz/2)
+    jhalf = floor(Int, model.grid.Ny/2)
     w = Array(interior(model.velocities.w))[:, jhalf, :]
     T = Array(interior(model.tracers.T))[:, jhalf, :]
     S = Array(interior(model.tracers.S))[:, jhalf, :]

@@ -7,7 +7,7 @@ include:
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/test.yml'
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
 
-test:v1.3:
+test:v1.2:
   extends: .test:v1.2
 
 test:dev:
@@ -18,7 +18,7 @@ coverage:
   stage: post
   extends: .root
   variables:
-    CI_VERSION_TAG: 'v1.3'
+    CI_VERSION_TAG: 'v1.2'
   script:
     - julia --project -e 'using Pkg;
                           Pkg.add("Coverage")'
