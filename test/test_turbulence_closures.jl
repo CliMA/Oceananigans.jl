@@ -147,11 +147,11 @@ end
 
     @testset "Calculation of nonlinear diffusivities" begin
         println("  Testing calculation of nonlinear diffusivities...")
-        for T in float_types
+        for FT in [Float64]
             for arch in archs
                 for closure in closures
-                    println("    Calculating diffusivities for $closure [$T, $arch]")
-                    @test test_calculate_diffusivities(arch, closure, T)
+                    println("    Calculating diffusivities for $closure [$FT, $arch]")
+                    @test test_calculate_diffusivities(arch, closure, FT)
                 end
             end
         end

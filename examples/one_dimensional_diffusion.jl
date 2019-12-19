@@ -16,9 +16,9 @@
 
 using Oceananigans
 
-# We also use `PyPlot.jl` for plotting and `Printf` to format plot legends:
+# We also use `Plots.jl` for plotting and `Printf` to format plot legends:
 
-using PyPlot, Printf
+using Plots, Printf
 
 # ## Instantiating and configuring a `Model`
 #
@@ -26,9 +26,10 @@ using PyPlot, Printf
 # `Model` constructor:
 
 model = Model(
-    grid = RegularCartesianGrid(size = (1, 1, 128), length = (1, 1, 1)),
+    grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
+nothing # hide
 
 # The keyword arguments `grid` and `closure` indicate that
 # our model grid is Cartesian with uniform grid spacing, that our diffusive
@@ -41,7 +42,7 @@ model = Model(
 
 ## Build a Gaussian initial condition function with width `δ`:
 δ = 0.1
-Tᵢ(x, y, z) = exp( -(z + 0.5)^2 / (2δ^2) )
+Tᵢ(x, y, z) = exp( -z^2 / (2δ^2) )
 
 ## Set `model.tracers.T` to the function `Tᵢ`:
 set!(model, T=Tᵢ)
@@ -60,32 +61,31 @@ time_step!(model, Nt = 1000, Δt = 0.1 * cell_diffusion_time_scale)
 
 # ## Visualizing the results
 #
-# We use `PyPlot.jl` to look at the results.
+# We use `Plots.jl` to look at the results. Tracers are defined at cell
+# centers so we use `zC` as the z-coordinate when plotting it. Fields are
+# stored as 3D arrays in Oceananigans so we plot `interior(T)[1, 1, :]`
+# which will return a 1D array.
 
-## A convenient function for generating a label with the Current model time
-tracer_label(model) = @sprintf("\$ t=%.3f \$", model.clock.time)
-
-## Create a figure with `PyPlot.jl`
-close("all")
-fig, ax = subplots()
-title("Diffusion of a Gaussian")
-xlabel("Tracer concentration")
-ylabel(L"z")
+## A convenient function for generating a label with the current model time
+tracer_label(model) = @sprintf("t = %.3f", model.clock.time)
 
 ## Plot initial condition
-plot(Tᵢ.(0, 0, model.grid.zC), model.grid.zC, "--", label=L"t=0")
+zC = model.grid.zC
+p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
+         xlabel="Tracer concentration", ylabel="z")
 
 ## Plot current solution
-plot(interior(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
-legend()
-gcf()
+T = model.tracers.T
+plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
 
-# Interesting! Running the model even longer makes even more interesting results.
+# Interesting! We can keep running the model and animate the tracer
+# concentration to see the Gaussian diffusing.
 
-for i = 1:3
-    time_step!(model, Nt = 1000, Δt = 0.1 * cell_diffusion_time_scale)
-    plot(interior(model.tracers.T)[1, 1, :], model.grid.zC, label=tracer_label(model))
+anim = @animate for i=1:100
+    time_step!(model, Nt = 100, Δt = 0.1 * cell_diffusion_time_scale)
+
+    plot(interior(T)[1, 1, :], zC, linewidth=2, title=tracer_label(model),
+         label="", xlabel="Tracer concentration", ylabel="z", xlims=(0, 1))
 end
 
-legend()
-gcf()
+mp4(anim, "1d_diffusion.mp4", fps = 15) # hide

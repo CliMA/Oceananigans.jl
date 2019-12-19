@@ -1,4 +1,18 @@
-using Oceananigans: AbstractArchitecture
+import Pkg
+
+using Oceananigans: @hascuda, AbstractArchitecture
+
+@hascuda using CUDAdrv
+
+function print_benchmark_info()
+    versioninfo()
+    @hascuda begin
+        dev = device(CuCurrentContext()) |> string
+        gpu_name = split(dev, ":")[end] |> strip
+        println("  GPU: $gpu_name")
+    end
+    println()
+end
 
 arch_name(::CPU) = "CPU"
 arch_name(::GPU) = "GPU"
