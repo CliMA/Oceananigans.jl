@@ -150,7 +150,7 @@ end
         for FT in [Float64]
             for arch in archs
                 for closure in closures
-                    println("    Calculating diffusivities for $closure [$T, $arch]")
+                    println("    Calculating diffusivities for $closure [$FT, $arch]")
                     @test test_calculate_diffusivities(arch, closure, FT)
                 end
             end
