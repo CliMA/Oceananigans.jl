@@ -55,7 +55,7 @@ makedocs(
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
-                              "Home" => "home.md",
+                              "Home" => "index.md",
          "Installation instructions" => "installation_instructions.md",
                         "Using GPUs" => "using_gpus.md",
 
@@ -127,7 +127,7 @@ makedocs(
              "Fractional step method" => "appendix/fractional_step.md",
          ],
 
-         "Index"      => "index.md"
+         "Function index" => "function_index.md"
      ]
 )
 
