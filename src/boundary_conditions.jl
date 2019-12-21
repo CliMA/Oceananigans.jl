@@ -335,9 +335,6 @@ function ChannelSolutionBCs(;
     return merge((u=u, v=v, w=w), tracerbcs)
 end
 
-# Default semantics
-const BoundaryConditions = HorizontallyPeriodicSolutionBCs
-
 #####
 ##### Tracer, tendency and pressure boundary condition "translators":
 #####
