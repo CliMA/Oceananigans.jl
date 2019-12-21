@@ -297,10 +297,10 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
 end
 
 @testset "Solvers" begin
-    println("Testing Solvers...")
+    @info "Testing Solvers..."
 
     # @testset "FFTW plans" begin
-    #     println("  Testing FFTW planning...")
+    #     @info "  Testing FFTW planning..."
     #
     #     for FT in float_types
     #         @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
@@ -311,7 +311,7 @@ end
     # end
 
     @testset "Divergence-free solution [CPU]" begin
-        println("  Testing divergence-free solution [CPU]...")
+        @info "  Testing divergence-free solution [CPU]..."
 
         for N in [7, 10, 16, 20]
             for FT in float_types
@@ -332,7 +332,7 @@ end
     end
 
     @testset "Divergence-free solution [GPU]" begin
-        println("  Testing divergence-free solution [GPU]...")
+        @info "  Testing divergence-free solution [GPU]..."
         @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
@@ -349,7 +349,7 @@ end
     end
 
     @testset "Analytic solution reconstruction" begin
-        println("  Testing analytic solution reconstruction...")
+        @info "  Testing analytic solution reconstruction..."
         for N in [32, 48, 64], m in [1, 2, 3]
             @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
         end

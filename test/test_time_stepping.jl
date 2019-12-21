@@ -164,46 +164,46 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
 @testset "Time stepping" begin
-    println("Testing time stepping...")
+    @info "Testing time stepping..."
 
     for arch in archs, FT in [Float64], Closure in Closures
-        println("  Testing that time stepping works [$arch, $FT, $Closure]...")
+        @info "  Testing that time stepping works [$arch, $FT, $Closure]..."
         @test time_stepping_works(arch, FT, Closure)
     end
 
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
             for eos_type in keys(Oceananigans.optimized_roquet_coeffs)
-                println("  Testing that time stepping works with " *
-                        "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]")
+                @info "  Testing that time stepping works with " *
+                        "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]"
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
             end
         end
     end
 
     @testset "2nd-order Adams-Bashforth" begin
-        println("  Testing 2nd-order Adams-Bashforth...")
+        @info "  Testing 2nd-order Adams-Bashforth..."
         for arch in archs, FT in float_types
             run_first_AB2_time_step_tests(arch, FT)
         end
     end
 
     @testset "Recomputing w from continuity" begin
-        println("  Testing recomputing w from continuity...")
+        @info "  Testing recomputing w from continuity..."
         for arch in archs, FT in float_types
             @test compute_w_from_continuity(arch, FT)
         end
     end
 
     @testset "Incompressibility" begin
-        println("  Testing incompressibility...")
+        @info "  Testing incompressibility..."
         for arch in archs, FT in float_types, Nt in [1, 10, 100]
             @test incompressible_in_time(arch, FT, Nt)
         end
     end
 
     @testset "Tracer conservation in channel" begin
-        println("  Testing tracer conservation in channel...")
+        @info "  Testing tracer conservation in channel..."
         for arch in archs, FT in float_types
             @test tracer_conserved_in_channel(arch, FT, 10)
         end

@@ -29,10 +29,10 @@ function run_example(replace_strings, example_name, module_suffix="")
 end
 
 @testset "Examples" begin
-    println("Testing examples...")
+    @info "Testing examples..."
 
     @testset "One-dimensional diffusion" begin
-        println("  Testing one-dimensional diffusion example")
+        @info "  Testing one-dimensional diffusion example"
 
         replace_strings = [("size = (1, 1, 128)", "size = (1, 1, 16)"),
                            ("Nt = 1000", "Nt = 1"),
@@ -44,7 +44,7 @@ end
     end
 
     @testset "Two-dimensional turbulence example" begin
-        println("  Testing two-dimensional turbulence example")
+        @info "  Testing two-dimensional turbulence example"
 
         replace_strings = [("N=(128, 128, 1)", "N=(16, 16, 1)"),
                            ("i = 1:10", "i = 1:1"),
@@ -57,7 +57,7 @@ end
 
     for arch in archs
         @testset "Wind and convection mixing example [$(typeof(arch))]" begin
-            println("  Testing wind and convection-driving mixing example [$(typeof(arch))]")
+            @info "  Testing wind and convection-driving mixing example [$(typeof(arch))]"
 
             replace_strings = [
                 ("Nz = 48", "Nz = 16"),
@@ -77,7 +77,7 @@ end
     end
 
     @testset "Ocean convection with plankton example" begin
-        println("  Testing ocean convection with plankton example")
+        @info "  Testing ocean convection with plankton example"
 
         replace_strings = [("Nz = 128", "Nz = 16"),
                            ("for i = 1:100", "for i = 1:1"),
@@ -88,7 +88,7 @@ end
     end
 
     @testset "Internal wave example" begin
-        println("  Testing internal wave example")
+        @info "  Testing internal wave example"
 
         replace_strings = [("Nx = 128", "Nx = 16"),
                            ("i = 1:10", "i = 1:1"),
@@ -100,7 +100,7 @@ end
     end
 
     @testset "Eady turbulence" begin
-        println("  Testing Eady turbulence example")
+        @info "  Testing Eady turbulence example"
 
         replace_strings = [("Nh = 64", "Nh = 16"),
                            ("Nz = 32", "Nz = 16"),

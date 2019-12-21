@@ -62,10 +62,10 @@ function time_step_with_simple_forcing_parameters(arch)
 end
 
 @testset "ModelForcing" begin
-    println("Testing forcings...")
+    @info "Testing forcings..."
 
     @testset "Forcing function initialization" begin
-        println("  Testing forcing function initialization...")
+        @info "  Testing forcing function initialization..."
         for fld in (:u, :v, :w, :T, :S)
             @test test_forcing(fld)
         end
@@ -73,7 +73,7 @@ end
 
     for arch in archs
         @testset "Forcing function time stepping [$(typeof(arch))]" begin
-            println("  Testing forcing function time stepping [$(typeof(arch))]...")
+            @info "  Testing forcing function time stepping [$(typeof(arch))]..."
             @test time_step_with_forcing_functions(arch)
             @test time_step_with_forcing_functions_params(arch)
             @test time_step_with_forcing_functions_sin_exp(arch)

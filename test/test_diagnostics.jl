@@ -113,11 +113,11 @@ end
 
 
 @testset "Diagnostics" begin
-    println("Testing diagnostics...")
+    @info "Testing diagnostics..."
 
     for arch in archs
         @testset "Horizontal average [$(typeof(arch))]" begin
-            println("  Testing horizontal average [$(typeof(arch))]")
+            @info "  Testing horizontal average [$(typeof(arch))]"
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
             end
@@ -126,7 +126,7 @@ end
 
     for arch in archs
         @testset "NaN Checker [$(typeof(arch))]" begin
-            println("  Testing NaN Checker [$(typeof(arch))]")
+            @info "  Testing NaN Checker [$(typeof(arch))]"
             for FT in float_types
                 @test_throws ErrorException nan_checker_aborts_simulation(arch, FT)
             end
@@ -135,7 +135,7 @@ end
 
     for arch in archs
         @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
-            println("  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]")
+            @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)

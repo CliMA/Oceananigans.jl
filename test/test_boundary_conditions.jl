@@ -93,7 +93,7 @@ function test_flux_budget(arch, FT, fldname)
 end
 
 @testset "Boundary conditions" begin
-    println("Testing boundary conditions...")
+    @info "Testing boundary conditions..."
 
     @testset "Boundary functions" begin
         simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)

@@ -228,7 +228,7 @@ function multiplication_and_derivative_ccc(model)
 end
 
 @testset "Abstract operations" begin
-    println("Testing abstract operations...")
+    @info "Testing abstract operations..."
 
     for FT in float_types
         arch = CPU()
@@ -273,7 +273,7 @@ end
 
     @testset "Fidelity of simple binary operations" begin
         arch = CPU()
-        println("  Testing simple binary operations...")
+        @info "  Testing simple binary operations..."
         for FT in float_types
             num1 = FT(π)
             num2 = FT(42)
@@ -294,7 +294,7 @@ end
 
     @testset "Derivatives" begin
         arch = CPU()
-        println("  Testing derivatives...")
+        @info "  Testing derivatives..."
         for FT in float_types
             grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
 
@@ -310,16 +310,16 @@ end
     end
 
     @testset "Combined binary operations and derivatives" begin
-        println("  Testing combined binary operations and derivatives...")
+        @info "  Testing combined binary operations and derivatives..."
         arch = CPU()
         Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
             grid = RegularCartesianGrid(FT, size=(Nx, Nx, Nx), length=(Nx, Nx, Nx))
             a, b = (Field(Cell, Cell, Cell, arch, grid) for i in 1:2)
-    
+
             set!(b, 2)
             set!(a, (x, y, z) -> x < 2 ? 3x : 6)
-    
+
             #                            0   0.5   1   1.5   2   2.5   3
             # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
             #        i Face:    0        1         2        3          4
@@ -350,43 +350,43 @@ end
 
     for arch in archs
         @testset "Computations [$(typeof(arch))]" begin
-            println("  Testing combined binary operations and derivatives...")
+            @info "  Testing combined binary operations and derivatives..."
             for FT in float_types
-                println("    Testing computation of abstract operations [$FT, $(typeof(arch))]...")
+                @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
                 model = Model(architecture=arch, float_type=FT,
-                              grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1)))
+                                grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1)))
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
-                    println("      Testing compute! derivatives...")
+                    @info "      Testing compute! derivatives..."
                     @test compute_derivative(model, ∂x)
                     @test compute_derivative(model, ∂y)
                     @test compute_derivative(model, ∂z)
                 end
 
                 @testset "Unary computations [$FT, $(typeof(arch))]" begin
-                    println("      Testing compute! unary operations...")
+                    @info "      Testing compute! unary operations..."
                     for unary in Oceananigans.AbstractOperations.unary_operators
                         @test compute_unary(eval(unary), model)
                     end
                 end
 
                 @testset "Binary computations [$FT, $(typeof(arch))]" begin
-                    println("      Testing compute! binary operations...")
+                    @info "      Testing compute! binary operations..."
                     @test compute_plus(model)
                     @test compute_minus(model)
                     @test compute_times(model)
                 end
 
                 @testset "Multiary computations [$FT, $(typeof(arch))]" begin
-                    println("      Testing compute! multiary operations...")
+                    @info "      Testing compute! multiary operations..."
                     @test compute_many_plus(model)
 
-                    println("      Testing compute! kinetic energy...")
+                    @info "      Testing compute! kinetic energy..."
                     @test compute_kinetic_energy(model)
                 end
 
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
-                    println("      Testing horizontal averges...")
+                    @info "      Testing horizontal averges..."
                     @test horizontal_average_of_plus(model)
                     @test horizontal_average_of_minus(model)
                     @test horizontal_average_of_times(model)
