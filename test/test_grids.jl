@@ -39,10 +39,10 @@ function no_roundoff_error_in_ranges(FT)
 end
 
 @testset "Grids" begin
-    println("Testing grids...")
+    @info "Testing grids..."
 
     @testset "Grid initialization" begin
-        println("  Testing grid initialization...")
+        @info "  Testing grid initialization..."
         for FT in float_types
             @test correct_grid_size(FT)
             @test correct_halo_size(FT)
@@ -54,7 +54,7 @@ end
     end
 
     @testset "Grid dimensions" begin
-        println("  Testing grid constructor errors...")
+        @info "  Testing grid constructor errors..."
         L = (100, 100, 100)
         for FT in float_types
             @test isbitstype(typeof(RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 1, 1))))

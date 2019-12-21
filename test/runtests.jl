@@ -13,7 +13,8 @@ using
     Printf,
     Statistics,
     OffsetArrays,
-    FFTW
+    FFTW,
+    Logging
 
 @hascuda begin
     import CUDAdrv
@@ -81,25 +82,27 @@ closures = (
     :VerstappenAnisotropicMinimumDissipation
 )
 
-@testset "Oceananigans" begin
-    include("test_grids.jl")
-    include("test_fields.jl")
-    include("test_halo_regions.jl")
-    include("test_operators.jl")
-    include("test_solvers.jl")
-    include("test_coriolis.jl")
-    include("test_surface_waves.jl")
-    include("test_buoyancy.jl")
-    include("test_models.jl")
-    include("test_time_stepping.jl")
-    include("test_boundary_conditions.jl")
-    include("test_forcings.jl")
-    include("test_turbulence_closures.jl")
-    include("test_dynamics.jl")
-    include("test_diagnostics.jl")
-    include("test_output_writers.jl")
-    include("test_regression.jl")
-    include("test_examples.jl")
-    include("test_abstract_operations.jl")
-    include("test_verification.jl")
+with_logger(ModelLogger()) do
+    @testset "Oceananigans" begin
+        include("test_grids.jl")
+        include("test_fields.jl")
+        include("test_halo_regions.jl")
+        include("test_operators.jl")
+        include("test_solvers.jl")
+        include("test_coriolis.jl")
+        include("test_surface_waves.jl")
+        include("test_buoyancy.jl")
+        include("test_models.jl")
+        include("test_time_stepping.jl")
+        include("test_boundary_conditions.jl")
+        include("test_forcings.jl")
+        include("test_turbulence_closures.jl")
+        include("test_dynamics.jl")
+        include("test_diagnostics.jl")
+        include("test_output_writers.jl")
+        include("test_regression.jl")
+        include("test_examples.jl")
+        include("test_abstract_operations.jl")
+        include("test_verification.jl")
+    end
 end

@@ -39,7 +39,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 end
 
 @testset "Halo regions" begin
-    println("Testing halo regions...")
+    @info "Testing halo regions..."
 
     Ns = [(8, 8, 8), (8, 8, 4), (10, 7, 5),
           (1, 8, 8), (1, 9, 5),
@@ -48,14 +48,14 @@ end
           (1, 1, 8)]
 
     @testset "Initializing halo regions" begin
-        println("  Testing initializing halo regions...")
+        @info "  Testing initializing halo regions..."
         for arch in archs, FT in float_types, N in Ns
             @test halo_regions_initalized_correctly(arch, FT, N...)
         end
     end
 
     @testset "Filling halo regions" begin
-        println("  Testing filling halo regions...")
+        @info "  Testing filling halo regions..."
         for arch in archs, FT in float_types, N in Ns
             @test halo_regions_correctly_filled(arch, FT, N...)
         end
