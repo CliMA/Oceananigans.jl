@@ -1,10 +1,10 @@
 ---
 title: 'Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs'
 tags:
-  - Julia
   - fluid
   - ocean
   - climate
+  - Julia
   - gpu
 authors:
   - name: Ali Ramadhan
@@ -33,7 +33,7 @@ affiliations:
    index: 1
  - name: Julia Computing, Inc.
    index: 2
-date: 17 December 2019
+date: 21 December 2019
 bibliography: paper.bib
 ---
 
@@ -41,9 +41,10 @@ bibliography: paper.bib
 
 ``Oceananigans.jl`` is a fast and friendly software package for the numerical
 simulation of incompressible, stratified, rotating fluid flows on CPUs and GPUs.
-It is being developed as part of the Climate Modeling Alliance project for the
-simulation of small-scale ocean physics at high-resolution that affect the
-evolution of Earth’s climate.
+Intended for wide use, it is simple enough to be used for educational purposes
+yet fast and flexible enough for research use. It is being developed as part of
+the Climate Modeling Alliance project for the simulation of small-scale ocean
+physics at high-resolution that affect the evolution of Earth’s climate.
 
 ``Oceananigans.jl`` is designed for high-resolution simulations in idealized
 geometries and supports direct numerical simulation, large eddy simulation,
@@ -69,8 +70,10 @@ high-performance model in one language and a common code base for execution on
 the CPU or GPU with Julia’s native GPU compiler [@Besard2019]. Because Julia is
 a high-level language, development is fast and users can flexibly specify
 model configurations, set up arbitrary diagnostics and output, extend the code
-base, and implement new features.  Configuring a model with `architecture=CPU()`
-or `architecture=GPU()` will execute the model on the CPU or GPU.
+base, and implement new features. Configuring a model with `architecture=CPU()`
+or `architecture=GPU()` will execute the model on the CPU or GPU. By pinning a
+simulation script against a specific version of Oceananigans, the results of the
+simulation may be reproduced up to hardware differences.
 
 Performance benchmarks show significant speedups when running on a GPU. Large
 simulations on an Nvidia Tesla V100 GPU require ~1 nanosecond per grid point per
@@ -83,11 +86,11 @@ long-time integration of realistic simulations, such as large eddy simulation of
 oceanic boundary layer turbulence over a seasonal cycle or the generation of
 training data for turbulence parameterizations in Earth system models.
 
-``Oceananigans.jl`` is continuously tested with unit tests, integration tests,
-analytic solutions to the incompressible Navier-Stokes equations, and
-verification experiments against published scientific results. Future
-development plans include support for distributed parallelism with CUDA-aware
-MPI as well as bathymetry and irregular domains.
+``Oceananigans.jl`` is continuously tested on CPUs and GPUs with unit tests,
+integration tests, analytic solutions to the incompressible Navier-Stokes
+equations, and verification experiments against published scientific results.
+Future development plans include support for distributed parallelism with
+CUDA-aware MPI as well as bathymetry and irregular domains.
 
 # Acknowledgements
 
