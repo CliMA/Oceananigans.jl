@@ -520,7 +520,7 @@ end
 
     for arch in [CPU()]
         @testset "Divergence-free velocity [FACR, $arch]" begin
-            println("  Testing divergence-free velocity [FACR, $arch]...")
+            @info "  Testing divergence-free velocity [FACR, $arch]..."
 
             Nx = Ny = 8
             zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
