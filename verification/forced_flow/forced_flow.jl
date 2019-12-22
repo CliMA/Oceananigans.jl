@@ -81,7 +81,7 @@ while model.clock.time < end_time
 
     u_max = maximum(abs, u_model)
     w_max = maximum(abs, w_model)
-    dCFL = Δ^2 / ν
+    dCFL = Δt / (Δ^2 / ν)
 
     u_analytic, w_analytic = uₐ.(xF, zC, t), wₐ.(xC, zF, t)
 
