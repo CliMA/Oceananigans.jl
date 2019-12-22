@@ -352,7 +352,9 @@ function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
 
     d = zeros(Nx, Ny, Nz)
     for i in 1:Nx, j in 1:Ny
-        d[i, j, :] .= [-1/ΔzF[1], [δ(k, ΔzF, ΔzC, kx²[i], ky²[j]) for k in 2:Nz]...]
+        d[i, j, 1] = -1/ΔzF[1] - ΔzC[1] * (kx²[i] + ky²[j])
+        d[i, j, 2:Nz-1] .= [δ(k, ΔzF, ΔzC, kx²[i], ky²[j]) for k in 2:Nz-1]
+        d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
     end
 
     # Random right hand side
