@@ -44,7 +44,7 @@ model = Model(
                 tracers = nothing,
                coriolis = nothing,
                buoyancy = nothing,
-    boundary_conditions = BoundaryConditions(u=ubcs, w=wbcs)
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, w=wbcs)
 )
 
 #####
