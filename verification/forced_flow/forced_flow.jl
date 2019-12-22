@@ -7,11 +7,13 @@ using Oceananigans.Diagnostics
 ##### Forced flow analytic solution (§6.1, Brown et al., 2001)
 #####
 
+const ν = 1  # Implicitly setting Re = 1.
+
 @inline ωₐ(t) = 1 + sin(2π*t^2)
 @inline ω′ₐ(t) = 4π*t * cos(2π*t^2)
 
-@inline uₐ(x, z, t) =              cos(2π * (x - ωₐ(t))) * (3(z+1)^2 - 2(z+1))
-@inline wₐ(x, z, t) =         2π * sin(2π * (x - ωₐ(t))) * (z+1)^2 * ((z+1) - 1)
+@inline uₐ(x, z, t) =              cos(2π * (x - ωₐ(t))) * (3z^2 - 2z)
+@inline wₐ(x, z, t) =         2π * sin(2π * (x - ωₐ(t))) * z^2 * (z - 1)
 @inline pₐ(x, z, t) = -ω′ₐ(t)/2π * sin(2π * (x - ωₐ(t))) * (sin(2π*z) - 2π*z + π) +
                              - ν * cos(2π * (x - ωₐ(t))) * (-2sin(2π*z) + 2π*z - π)
 
@@ -32,14 +34,12 @@ wbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
 #####
 
 Nx, Ny, Nz = 192, 1, 192
-Lx, Ly, Lz = 1, 1, 1
-
-const ν = 1  # Also implicitly setting Re = 1.
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1))
 
 model = Model(
            architecture = CPU(),
              float_type = Float64,
-                   grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                   grid = grid,
                 closure = ConstantIsotropicDiffusivity(ν=ν),
                 tracers = nothing,
                coriolis = nothing,
@@ -53,7 +53,7 @@ model = Model(
 
 u₀(x, y, z) = uₐ(x, z, 0)
 w₀(x, y, z) = wₐ(x, z, 0)
-set!(model; u=u₀, w=w₀)
+set!(model, u=u₀, w=w₀)
 
 #####
 ##### Time step!
