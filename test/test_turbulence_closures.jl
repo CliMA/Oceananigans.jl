@@ -118,10 +118,10 @@ function compute_closure_specific_diffusive_cfl(closurename)
 end
 
 @testset "Turbulence closures" begin
-    println("Testing turbulence closures...")
+    @info "Testing turbulence closures..."
 
     @testset "Closure instantiation" begin
-        println("  Testing closure instantiation...")
+        @info "  Testing closure instantiation..."
         for T in float_types
             for closure in closures
                 @test test_closure_instantiation(T, closure)
@@ -130,7 +130,7 @@ end
     end
 
     @testset "Constant isotropic diffusivity" begin
-        println("  Testing constant isotropic diffusivity...")
+        @info "  Testing constant isotropic diffusivity..."
         for T in float_types
             @test test_constant_isotropic_diffusivity_basic(T)
             @test test_constant_isotropic_diffusivity_fluxdiv(T)
@@ -138,7 +138,7 @@ end
     end
 
     @testset "Constant anisotropic diffusivity" begin
-        println("  Testing constant anisotropic diffusivity...")
+        @info "  Testing constant anisotropic diffusivity..."
         for T in float_types
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
@@ -146,11 +146,11 @@ end
     end
 
     @testset "Calculation of nonlinear diffusivities" begin
-        println("  Testing calculation of nonlinear diffusivities...")
+        @info "  Testing calculation of nonlinear diffusivities..."
         for FT in [Float64]
             for arch in archs
                 for closure in closures
-                    println("    Calculating diffusivities for $closure [$FT, $arch]")
+                    @info "    Calculating diffusivities for $closure [$FT, $arch]"
                     @test test_calculate_diffusivities(arch, closure, FT)
                 end
             end
@@ -158,7 +158,7 @@ end
     end
 
     @testset "Closure tuples" begin
-        println("  Testing time-stepping with a tuple of closures...")
+        @info "  Testing time-stepping with a tuple of closures..."
         for arch in archs
             for FT in float_types
                 @test time_step_with_tupled_closure(FT, arch)
@@ -167,7 +167,7 @@ end
     end
 
     @testset "Diagnostics" begin
-        println("  Testing turbulence closure diagnostics...")
+        @info "  Testing turbulence closure diagnostics..."
         for closure in closures
             @test compute_closure_specific_diffusive_cfl(closure)
         end

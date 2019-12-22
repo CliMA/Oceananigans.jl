@@ -19,7 +19,7 @@ function instantiate_betaplane_2(FT)
 end
 
 @testset "Coriolis" begin
-    println("Testing Coriolis...")
+    @info "Testing Coriolis..."
 
     @testset "Coriolis" begin
         for FT in float_types

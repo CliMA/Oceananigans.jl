@@ -70,7 +70,7 @@ end
 EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
 
 @testset "Buoyancy" begin
-    println("Testing buoyancy...")
+    @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
         for FT in float_types

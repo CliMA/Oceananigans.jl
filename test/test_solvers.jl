@@ -445,21 +445,21 @@ function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
 end
 
 @testset "Solvers" begin
-    println("Testing Solvers...")
+    @info "Testing Solvers..."
 
-    # @testset "FFTW plans" begin
-    #     println("  Testing FFTW planning...")
-    #
-    #     for FT in float_types
-    #         @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
-    #     end
-    # end
+    @testset "FFTW plans" begin
+        @info "  Testing FFTW planning..."
+    
+        for FT in float_types
+            @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+            @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
+        end
+    end
 
     @testset "Divergence-free velocity [DCT, CPU]" begin
-        println("  Testing divergence-free velocity [DCT, CPU]...")
+        @info "  Testing divergence-free solution [DCT, CPU]..."
 
         for N in [7, 10, 16, 20]
             for FT in float_types
@@ -480,7 +480,8 @@ end
     end
 
     @testset "Divergence-free velocity [DCT, GPU]" begin
-        println("  Testing divergence-free velocity [DCT, GPU]...")
+        @info "  Testing divergence-free solution [DCT, GPU]..."
+    
         @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
@@ -497,7 +498,7 @@ end
     end
 
     @testset "Analytic solution reconstruction" begin
-        println("  Testing analytic solution reconstruction...")
+        @info "  Testing analytic solution reconstruction..."
         for N in [32, 48, 64], m in [1, 2, 3]
             @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
         end
