@@ -1,5 +1,6 @@
 using LinearAlgebra
-using Oceananigans: array_type
+using Oceananigans: array_type, NoPenetrationBC
+using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 function ∇²!(grid, f, ∇²f)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -301,6 +302,26 @@ function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
     Δx, Δy = Lx/Nx, Ly/Ny
 
     #####
+    ##### Vertically stretched operators
+    #####
+
+    @inline δx_caa(i, j, k, f) = @inbounds f[i+1, j, k] - f[i, j, k]
+    @inline δy_aca(i, j, k, f) = @inbounds f[i, j+1, k] - f[i, j, k]
+    @inline δz_aac(i, j, k, f) = @inbounds f[i, j, k+1] - f[i, j, k]
+
+    @inline ∂x_caa(i, j, k, Δx,  f) = δx_caa(i, j, k, f) / Δx
+    @inline ∂y_aca(i, j, k, Δy,  f) = δy_aca(i, j, k, f) / Δy
+    @inline ∂z_aac(i, j, k, ΔzF, f) = δz_aac(i, j, k, f) / ΔzF[k]
+
+    @inline ∂x²(i, j, k, Δx, f)       = (∂x_caa(i, j, k, Δx, f)  - ∂x_caa(i-1, j, k, Δx, f))  / Δx
+    @inline ∂y²(i, j, k, Δy, f)       = (∂y_aca(i, j, k, Δy, f)  - ∂y_aca(i, j-1, k, Δy, f))  / Δy
+    @inline ∂z²(i, j, k, ΔzF, ΔzC, f) = (∂z_aac(i, j, k, ΔzF, f) - ∂z_aac(i, j, k-1, ΔzF, f)) / ΔzC[k]
+
+    @inline div_ccc(i, j, k, Δx, Δy, ΔzF, u, v, w) = ∂x_caa(i, j, k, Δx, u) + ∂y_aca(i, j, k, Δy, v) + ∂z_aac(i, j, k, ΔzF, w)
+
+    @inline ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, f) = ∂x²(i, j, k, Δx, f) + ∂y²(i, j, k, Δy, f) + ∂z²(i, j, k, ΔzF, ΔzC, f)
+
+    #####
     ##### Generate "fake" vertically stretched grid
     #####
 
@@ -357,9 +378,38 @@ function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
         d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
     end
 
+    #####
+    ##### Random right hand side
+    #####
+
     # Random right hand side
-    R = rand(Nx, Ny, Nz)
-    R .= R .- mean(R)  # Need RHS with zero mean
+    Ru = CellField(Float64, arch, fake_grid)
+    Rv = CellField(Float64, arch, fake_grid)
+    Rw = CellField(Float64, arch, fake_grid)
+
+    interior(Ru) .= rand(Nx, Ny, Nz)
+    interior(Rv) .= rand(Nx, Ny, Nz)
+    interior(Rw) .= zeros(Nx, Ny, Nz)
+    U = (u=Ru, v=Rv, w=Rw)
+
+    uv_bcs = HorizontallyPeriodicBCs()
+    w_bcs = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())
+
+    fill_halo_regions!(Ru.data, uv_bcs, arch, fake_grid)
+    fill_halo_regions!(Rv.data, uv_bcs, arch, fake_grid)
+
+    _compute_w_from_continuity!(U, fake_grid)
+
+    fill_halo_regions!(Rw.data,  w_bcs, arch, fake_grid)
+
+    R = zeros(Nx, Ny, Nz)
+    for i in 1:Nx, j in 1:Ny, k in 1:Nz
+        R[i, j, k] = div_ccc(i, j, k, Δx, Δy, ΔzF, Ru.data, Rv.data, Rw.data)
+    end
+
+    # @show sum(R)  # should be zero by construction.
+
+    F = zeros(Nx, Ny, Nz)
     F = ΔzC .* R  # RHS needs to be multiplied by ΔzC
 
     #####
@@ -386,20 +436,6 @@ function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
     fill_halo_regions!(ϕ.data, fbcs, arch, fake_grid)
 
     ∇²ϕ = CellField(Float64, arch, fake_grid)
-
-    @inline δx_caa(i, j, k, f) = @inbounds f[i+1, j, k] - f[i, j, k]
-    @inline δy_aca(i, j, k, f) = @inbounds f[i, j+1, k] - f[i, j, k]
-    @inline δz_aac(i, j, k, f) = @inbounds f[i, j, k+1] - f[i, j, k]
-
-    @inline ∂x_caa(i, j, k, Δx,  f) = δx_caa(i, j, k, f) / Δx
-    @inline ∂y_aca(i, j, k, Δy,  f) = δy_aca(i, j, k, f) / Δy
-    @inline ∂z_aac(i, j, k, ΔzF, f) = δz_aac(i, j, k, f) / ΔzF[k]
-
-    @inline ∂x²(i, j, k, Δx, f)       = (∂x_caa(i, j, k, Δx, f)  - ∂x_caa(i-1, j, k, Δx, f))  / Δx
-    @inline ∂y²(i, j, k, Δy, f)       = (∂y_aca(i, j, k, Δy, f)  - ∂y_aca(i, j-1, k, Δy, f))  / Δy
-    @inline ∂z²(i, j, k, ΔzF, ΔzC, f) = (∂z_aac(i, j, k, ΔzF, f) - ∂z_aac(i, j, k-1, ΔzF, f)) / ΔzC[k]
-
-    @inline ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, f) = ∂x²(i, j, k, Δx, f) + ∂y²(i, j, k, Δy, f) + ∂z²(i, j, k, ΔzF, ΔzC, f)
 
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
         ∇²ϕ.data[i, j, k] = ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, ϕ.data)
