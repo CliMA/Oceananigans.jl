@@ -23,10 +23,7 @@ const ν = 1  # Implicitly setting Re = 1.
 
 @inline u_top(i, j, grid, t, args...) = @inbounds uₐ(grid.xF[i], 0, t)
 
-ubcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, u_top),
-                               bottom = BoundaryCondition(Value, 0))
-
-wbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
+u_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, u_top),
                                bottom = BoundaryCondition(Value, 0))
 
 #####
@@ -44,7 +41,7 @@ model = Model(
                 tracers = nothing,
                coriolis = nothing,
                buoyancy = nothing,
-    boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, w=wbcs)
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(u=u_bcs)
 )
 
 #####
@@ -61,22 +58,24 @@ set!(model, u=u₀, w=w₀)
 
 # Compute time step Δt from explicit diffusive stability criterion.
 Δ = min(model.grid.Δx, model.grid.Δz)
-Δt = 0.1 * (Δ^2 / ν)
+Δt = 0.05 * (Δ^2 / ν)
 
 # CFL diagnostics
- cfl = AdvectiveCFL(Δt)
+cfl = AdvectiveCFL(Δt)
 
 # Useful aliases
 u, v, w = model.velocities
-xC, zC = reshape(model.grid.xC, (Nx, 1, 1)), reshape(model.grid.zC, (1, 1, Nz))
-xF, zF = reshape(model.grid.xF[1:end-1], (Nx, 1, 1)), reshape(model.grid.zF[1:end-1], (1, 1, Nz))
+xC = reshape(model.grid.xC, (Nx, 1, 1))
+zC = reshape(model.grid.zC, (1, 1, Nz))
+xF = reshape(model.grid.xF[1:end-1], (Nx, 1, 1))
+zF = reshape(model.grid.zF[1:end-1], (1, 1, Nz))
 
 end_time = 1/2
 
 while model.clock.time < end_time
     i, t = model.clock.iteration, model.clock.time
 
-    walltime = @elapsed time_step!(model; Δt=Δt, Nt=1, init_with_euler = i == 0 ? true : false)
+    walltime = @elapsed time_step!(model; Δt=Δt, Nt=10, init_with_euler = i == 0 ? true : false)
 
     u_model, w_model = interior(u), interior(w)
 
