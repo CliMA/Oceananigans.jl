@@ -73,8 +73,6 @@ using
 using
     Adapt,
     FFTW,
-    Distributed,
-    StaticArrays,
     OffsetArrays,
     JLD2,
     NCDatasets
