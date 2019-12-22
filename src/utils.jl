@@ -1,3 +1,7 @@
+#####
+##### Adapting structures to be able to pass them to GPU CUDA kernels.
+#####
+
 # Adapt an offset CuArray to work nicely with CUDA kernels.
 Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.offsets)
 
@@ -6,9 +10,16 @@ Adapt.adapt_structure(to, x::OffsetArray) = OffsetArray(adapt(to, parent(x)), x.
 #Adapt.adapt_structure(to, A::SubArray{<:Any,<:Any,AT}) where {AT} =
 #    SubArray(adapt(to, parent(A)), adapt.(Ref(to), parentindices(A)))
 
-####
-#### Convinient macro
-####
+#####
+##### Utilities that make it easier to juggle around Arrays and CuArrays.
+#####
+
+         array_type(::CPU) = Array
+@hascuda array_type(::GPU) = CuArray
+
+#####
+##### Convenient macros
+#####
 
 macro loop_xyz(i, j, k, grid, expr)
     return esc(
@@ -22,21 +33,106 @@ macro loop_xyz(i, j, k, grid, expr)
             end
         end)
 end
-        
-####
-#### Convinient definitions
-####
 
+macro loop_xy(i, j, grid, expr)
+    return esc(
+        quote
+            @loop for $j in (1:$grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    $expr
+                end
+            end
+        end)
+end
+
+macro loop_xz(i, k, grid, expr)
+    return esc(
+        quote
+            @loop for $k in (1:$grid.Nz; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+                @loop for $i in (1:$grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                    $expr
+                end
+            end
+        end)
+end
+
+#####
+##### Convenient definitions
+#####
+
+"""
+    second
+
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Δt = 1second`.
+"""
 const second = 1.0
-const minute = 60.0
+
+"""
+    minute
+
+A `Float64` constant equal to 60`second`. Useful for increasing the clarity of scripts, e.g. `Δt = 15minute`.
+"""
+const minute = 60second
+
+"""
+    hour
+
+A `Float64` constant equal to 60`minute`. Useful for increasing the clarity of scripts, e.g. `Δt = 3hour`.
+"""
 const hour   = 60minute
+
+"""
+    day
+
+A `Float64` constant equal to 24`hour`. Useful for increasing the clarity of scripts, e.g. `Δt = 0.5day`.
+"""
 const day    = 24hour
 
-KiB, MiB, GiB, TiB = 1024.0 .^ (1:4)
+"""
+    meter
 
-####
-#### Pretty printing
-####
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 100meter`.
+"""
+const meter = 1.0
+
+"""
+    kilometer
+
+A `Float64` constant equal to 1000`meter`. Useful for increasing the clarity of scripts, e.g. `Lx = 250kilometer`.
+"""
+const kilometer = 1000meter
+
+"""
+    KiB
+
+A `Float64` constant equal to 1024.0. Useful for increasing the clarity of scripts, e.g. `max_filesize = 250KiB`.
+"""
+const KiB = 1024.0
+
+"""
+    MiB
+
+A `Float64` constant equal to 1024`KiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 100MiB`.
+"""
+const MiB = 1024KiB
+
+"""
+    GiB
+
+A `Float64` constant equal to 1024`MiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 50GiB`.
+"""
+const GiB = 1024MiB
+
+"""
+    TiB
+
+A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 2TiB`.
+"""
+const TiB = 1024GiB
+
+#####
+##### Pretty printing
+#####
 
 """
     prettytime(t)
@@ -48,6 +144,8 @@ milliseconds (ms), seconds (s), minutes (min), hours (hr), or days (day).
 """
 function prettytime(t)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
+    iszero(t) && return "0.000 s"
+    
     if t < 1e-6
         value, units = t * 1e9, "ns"
     elseif t < 1e-3
@@ -84,9 +182,9 @@ function pretty_filesize(s, suffix="B")
     return @sprintf("%.1f %s%s", s, "Yi", suffix)
 end
 
-####
-#### Creating fields by dispatching on architecture
-####
+#####
+##### Creating fields by dispatching on architecture
+#####
 
 function OffsetArray(underlying_data, grid::AbstractGrid)
     # Starting and ending indices for the offset array.
@@ -115,9 +213,9 @@ Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
 Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
 
-####
-#### Courant–Friedrichs–Lewy (CFL) condition number calculation
-####
+#####
+##### Courant–Friedrichs–Lewy (CFL) condition number calculation
+#####
 
 # Note: these functions will have to be refactored to work on non-uniform grids.
 
@@ -140,9 +238,9 @@ cell_advection_timescale(model) =
                              model.velocities.w.data.parent,
                              model.grid)
 
-####
-#### Adaptive time stepping
-####
+#####
+##### Adaptive time stepping
+#####
 
 """
     TimeStepWizard{T}
@@ -202,35 +300,39 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-####
-#### Dynamic launch configuration
-####
+#####
+##### Dynamic launch configuration
+#####
 
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun
         config = launch_configuration(fun)
 
-        # adapt the suggested config from 1D to the requested grid dimensions
-        if dims == 3
-            threads = floor(Int, cbrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ threads)
-            threads = [threads, threads, threads]
-        elseif dims == 2
-            threads = floor(Int, sqrt(config.threads))
-            blocks = ceil.(Int, [grid.Nx, grid.Ny] ./ threads)
-            threads = [threads, threads]
+        # Adapt the suggested config from 1D to the requested grid dimensions
+        if dims == :xyz
+            t = floor(Int, cbrt(config.threads))
+            threads = [t, t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ t)
+        elseif dims == :xy
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ t)
+        elseif dims == :xz
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Nx, grid.Nz] ./ t)
         else
-            error("unsupported launch configuration")
+            error("Unsupported launch configuration: $dims")
         end
 
         return (threads=Tuple(threads), blocks=Tuple(blocks))
     end
 end
 
-####
-#### Utilities shared between diagnostics and output writers
-####
+#####
+##### Utilities shared between diagnostics and output writers
+#####
 
 defaultname(::AbstractDiagnostic, nelems) = Symbol(:diag, nelems+1)
 defaultname(::AbstractOutputWriter, nelems) = Symbol(:writer, nelems+1)
@@ -294,7 +396,7 @@ end
 ##### Utils for models
 #####
 
-function ordered_dict_show(dict, padchar) 
+function ordered_dict_show(dict, padchar)
     if length(dict) == 0
         return string(typeof(dict), " with no entries")
     elseif length(dict) == 1
@@ -302,8 +404,8 @@ function ordered_dict_show(dict, padchar)
                       padchar, "   └── ", dict.keys[1], " => ", typeof(dict.vals[1]))
     else
         return string(typeof(dict), " with $(length(dict)) entries:", '\n',
-                      Tuple(string(padchar, 
-                                   "   ├── ", name, " => ", typeof(dict[name]), '\n') 
+                      Tuple(string(padchar,
+                                   "   ├── ", name, " => ", typeof(dict[name]), '\n')
                             for name in dict.keys[1:end-1]
                            )...,
                            padchar, "   └── ", dict.keys[end], " => ", typeof(dict.vals[end])
@@ -314,7 +416,7 @@ end
 """
     with_tracers(tracers, initial_tuple, tracer_default)
 
-Create a tuple corresponding to the solution variables `u`, `v`, `w`, 
+Create a tuple corresponding to the solution variables `u`, `v`, `w`,
 and `tracers`. `initial_tuple` is a `NamedTuple` that at least has
 fields `u`, `v`, and `w`, and may have some fields corresponding to
 the names in `tracers`. `tracer_default` is a function that produces

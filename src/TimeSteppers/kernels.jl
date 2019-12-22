@@ -10,7 +10,7 @@ function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
                                   + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_uˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_uˢ(i, j, k, grid, surface_waves, time)
                                   + F.u(i, j, k, grid, time, U, C, parameters)
         )
     end
@@ -25,7 +25,7 @@ function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
                                   + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
                                   + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_vˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_vˢ(i, j, k, grid, surface_waves, time)
                                   + F.v(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
@@ -38,7 +38,7 @@ function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   - z_f_cross_U(i, j, k, grid, coriolis, U)
                                   + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
                                   + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  - ∂t_wˢ(i, j, k, grid, surface_waves, time)
+                                  + ∂t_wˢ(i, j, k, grid, surface_waves, time)
                                   + F.w(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
@@ -56,7 +56,9 @@ end
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
-
+    # Manually choose thread-block layout here as it's ~20% faster.
+    # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
+    Tx, Ty = 16, 16 # CUDA threads per block
     Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
@@ -86,13 +88,15 @@ function calculate_boundary_source_terms!(Gⁿ, bcs, arch, grid, args...)
     # Velocity fields
     for i in 1:3
         ubcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top,   args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, ubcs.y.left,   ubcs.y.right, args...)
     end
 
     # Tracer fields
     for i in 4:length(bcs)
         cbcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, cbcs.z.bottom, cbcs.z.top, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, cbcs.z.bottom, cbcs.z.top,   args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, cbcs.y.left,   cbcs.y.right, args...)
     end
 
     return nothing
@@ -112,7 +116,7 @@ end
 "Solve the Poisson equation for non-hydrostatic pressure on the GPU."
 function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
-    @launch device(GPU()) config=launch_config(grid, 3) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
+    @launch device(GPU()) config=launch_config(grid, :xyz) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
     return nothing
 end
 
@@ -294,12 +298,12 @@ end
 
 "Update the solution variables (velocities and tracers)."
 function update_solution!(U, C, arch, grid, Δt, G, pNHS)
-    @launch device(arch) config=launch_config(grid, 3) update_velocities!(U, grid, Δt, G, pNHS)
+    @launch device(arch) config=launch_config(grid, :xyz) update_velocities!(U, grid, Δt, G, pNHS)
 
     for i in 1:length(C)
         @inbounds c = C[i]
         @inbounds Gc = G[i+3]
-        @launch device(arch) config=launch_config(grid, 3) update_tracer!(c, grid, Δt, Gc)
+        @launch device(arch) config=launch_config(grid, :xyz) update_tracer!(c, grid, Δt, Gc)
     end
 
     return nothing
@@ -311,7 +315,7 @@ Compute the vertical velocity w by integrating the continuity equation from the 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
 function compute_w_from_continuity!(model)
-    @launch(device(model.architecture), config=launch_config(model.grid, 2),
+    @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             _compute_w_from_continuity!(datatuple(model.velocities), model.grid))
     return nothing
 end

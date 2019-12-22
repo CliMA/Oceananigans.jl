@@ -120,12 +120,12 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, 3),
+    @launch(device(arch), config=launch_config(grid, :xyz),
             calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
 
     for (tracer_index, κₑ) in enumerate(K.κₑ)
         @inbounds c = C[tracer_index]
-        @launch(device(arch), config=launch_config(grid, 3),
+        @launch(device(arch), config=launch_config(grid, :xyz),
                 calculate_tracer_diffusivity!(κₑ, grid, closure, c, Val(tracer_index), U))
     end
 

@@ -120,7 +120,8 @@ size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
 length(grid::RegularCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
 eltype(grid::RegularCartesianGrid{FT}) where FT = FT
 
-short_show(grid::RegularCartesianGrid{T}) where T = "RegularCartesianGrid{$T}"
+short_show(grid::RegularCartesianGrid{T}) where T =
+    "RegularCartesianGrid{$T}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
                            "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ",
@@ -128,7 +129,7 @@ show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
 
 show(io::IO, g::RegularCartesianGrid) =
     print(io, "RegularCartesianGrid{$(eltype(g))}\n",
-              "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[end]), $(g.zF[1])]", '\n',
+              "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[1]), $(g.zF[end])]", '\n',
               "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))

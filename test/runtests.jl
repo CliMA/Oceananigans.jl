@@ -13,9 +13,13 @@ using
     Printf,
     Statistics,
     OffsetArrays,
-    FFTW
+    FFTW,
+    Logging
 
-@hascuda using CuArrays
+@hascuda begin
+    import CUDAdrv
+    using CUDAnative, CuArrays
+end
 
 using Statistics: mean
 using LinearAlgebra: norm
@@ -35,6 +39,24 @@ using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 using Oceananigans.AbstractOperations: Computation, compute!
 
+# On CI servers select the GPU with the most available memory or with the
+# highest capability if testing needs to be thorough).
+# Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
+@hascuda begin
+    gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
+                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in CUDAdrv.devices()]
+
+    thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
+    if thorough
+        sort!(gpu_candidates, by=x->(x.cap, x.mem))
+    else
+        sort!(gpu_candidates, by=x->x.mem)
+    end
+
+    pick = last(gpu_candidates)
+    device!(pick.dev)
+end
+
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
 function get_output_tuple(output, iter, tuplename)
@@ -50,35 +72,37 @@ archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 
 closures = (
-            :ConstantIsotropicDiffusivity,
-            :ConstantAnisotropicDiffusivity,
-            :AnisotropicBiharmonicDiffusivity,
-            :TwoDimensionalLeith,
-            :SmagorinskyLilly,
-            :BlasiusSmagorinsky,
-            :RozemaAnisotropicMinimumDissipation,
-            :VerstappenAnisotropicMinimumDissipation
-           )
+    :ConstantIsotropicDiffusivity,
+    :ConstantAnisotropicDiffusivity,
+    :AnisotropicBiharmonicDiffusivity,
+    :TwoDimensionalLeith,
+    :SmagorinskyLilly,
+    :BlasiusSmagorinsky,
+    :RozemaAnisotropicMinimumDissipation,
+    :VerstappenAnisotropicMinimumDissipation
+)
 
-@testset "Oceananigans" begin
-    include("test_grids.jl")
-    include("test_fields.jl")
-    include("test_halo_regions.jl")
-    include("test_operators.jl")
-    include("test_poisson_solvers.jl")
-    include("test_coriolis.jl")
-    include("test_surface_waves.jl")
-    include("test_buoyancy.jl")
-    include("test_models.jl")
-    include("test_time_stepping.jl")
-    include("test_boundary_conditions.jl")
-    include("test_forcings.jl")
-    include("test_turbulence_closures.jl")
-    include("test_dynamics.jl")
-    include("test_diagnostics.jl")
-    include("test_output_writers.jl")
-    include("test_regression.jl")
-    include("test_examples.jl")
-    include("test_abstract_operations.jl")
-    include("test_verification.jl")
+with_logger(ModelLogger()) do
+    @testset "Oceananigans" begin
+        include("test_grids.jl")
+        include("test_fields.jl")
+        include("test_halo_regions.jl")
+        include("test_operators.jl")
+        include("test_solvers.jl")
+        include("test_coriolis.jl")
+        include("test_surface_waves.jl")
+        include("test_buoyancy.jl")
+        include("test_models.jl")
+        include("test_time_stepping.jl")
+        include("test_boundary_conditions.jl")
+        include("test_forcings.jl")
+        include("test_turbulence_closures.jl")
+        include("test_dynamics.jl")
+        include("test_diagnostics.jl")
+        include("test_output_writers.jl")
+        include("test_regression.jl")
+        include("test_examples.jl")
+        include("test_abstract_operations.jl")
+        include("test_verification.jl")
+    end
 end

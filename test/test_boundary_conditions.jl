@@ -7,7 +7,7 @@ function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
     bc = BoundaryCondition(bctype, bc)
     fieldbcs = HorizontallyPeriodicBCs(top=bc)
-    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
+    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
     model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
                   float_type=FT, boundary_conditions=modelbcs)
@@ -22,7 +22,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     top_bc = BoundaryCondition(Value, val)
     bottom_bc = BoundaryCondition(Value, -val)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
-    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
+    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
     model = Model(grid=RegularCartesianGrid(FT; size=(N, N, N), length=(0.1, 0.2, 0.3)), architecture=arch,
                   float_type=FT, boundary_conditions=modelbcs)
@@ -45,7 +45,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
 
     value_bc = BoundaryCondition(Value, bcarray)
     fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
-    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
+    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
     model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
                   float_type=FT, boundary_conditions=modelbcs)
@@ -63,7 +63,7 @@ function test_flux_budget(arch, FT, fldname)
     bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
     fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
-    modelbcs = BoundaryConditions(; Dict(fldname=>fieldbcs)...)
+    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
     grid = RegularCartesianGrid(FT; size=(N, N, N), length=(1, 1, Lz))
     closure = ConstantIsotropicDiffusivity(FT; ν=κ, κ=κ)
@@ -93,7 +93,7 @@ function test_flux_budget(arch, FT, fldname)
 end
 
 @testset "Boundary conditions" begin
-    println("Testing boundary conditions...")
+    @info "Testing boundary conditions..."
 
     @testset "Boundary functions" begin
         simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)

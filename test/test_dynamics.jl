@@ -198,17 +198,17 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
 end
 
 @testset "Dynamics" begin
-    println("Testing dynamics...")
+    @info "Testing dynamics..."
 
     @testset "Simple diffusion" begin
-        println("  Testing simple diffusion...")
+        @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :T, :S)
             @test test_diffusion_simple(fieldname)
         end
     end
 
     @testset "Budgets in isotropic diffusion" begin
-        println("  Testing default model budgets with isotropic diffusion...")
+        @info "  Testing default model budgets with isotropic diffusion..."
         for fieldname in (:u, :v, :T, :S)
             @test test_diffusion_budget_default(fieldname)
         end
@@ -219,24 +219,24 @@ end
     end
 
     @testset "Diffusion cosine" begin
-        println("  Testing diffusion cosine...")
+        @info "  Testing diffusion cosine..."
         for fieldname in (:u, :v, :T, :S)
             @test test_diffusion_cosine(fieldname)
         end
     end
 
     @testset "Passive tracer advection" begin
-        println("  Testing passive tracer advection...")
+        @info "  Testing passive tracer advection..."
         @test passive_tracer_advection_test()
     end
 
     @testset "Internal wave" begin
-        println("  Testing internal wave...")
+        @info "  Testing internal wave..."
         @test internal_wave_test()
     end
 
     @testset "Taylor-Green vortex" begin
-        println("  Testing Taylor-Green vortex...")
+        @info "  Testing Taylor-Green vortex..."
         @test taylor_green_vortex_test(CPU())
     end
 end

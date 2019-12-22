@@ -121,6 +121,9 @@ getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
 
 Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
 
+Base.show(io::IO, bc::BC{C, T}) where {C, T} =
+    println(io, "BoundaryCondition: type=$C, condition=$(bc.condition)")
+
 #####
 ##### Wrapper for user-defined boundary condition functions
 #####
@@ -185,17 +188,22 @@ const CBC = CoordinateBoundaryConditions
 PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
 
 # Here we overload setproperty! and getproperty to permit users to call
-# the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'.
+# the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'
+# and the 'left' and 'right' bcs in the y-direction 'south' and 'north'.
 # Note that 'right' technically corresponds to face point N+1.
 Base.setproperty!(cbc::CBC, side::Symbol, bc) = setbc!(cbc, Val(side), bc)
 setbc!(cbc::CBC, ::Val{S}, bc) where S = setfield!(cbc, S, bc)
 setbc!(cbc::CBC, ::Val{:bottom}, bc) = setfield!(cbc, :left, bc)
 setbc!(cbc::CBC, ::Val{:top}, bc) = setfield!(cbc, :right, bc)
+setbc!(cbc::CBC, ::Val{:south}, bc) = setfield!(cbc, :left, bc)
+setbc!(cbc::CBC, ::Val{:north}, bc) = setfield!(cbc, :right, bc)
 
 Base.getproperty(cbc::CBC, side::Symbol) = getbc(cbc, Val(side))
 getbc(cbc::CBC, ::Val{S}) where S = getfield(cbc, S)
 getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :left)
 getbc(cbc::CBC, ::Val{:top}) = getfield(cbc, :right)
+getbc(cbc::CBC, ::Val{:south}) = getfield(cbc, :left)
+getbc(cbc::CBC, ::Val{:north}) = getfield(cbc, :right)
 
 #####
 ##### Boundary conditions for Fields
@@ -327,9 +335,6 @@ function ChannelSolutionBCs(;
     return merge((u=u, v=v, w=w), tracerbcs)
 end
 
-# Default semantics
-const BoundaryConditions = HorizontallyPeriodicSolutionBCs
-
 #####
 ##### Tracer, tendency and pressure boundary condition "translators":
 #####
@@ -428,6 +433,7 @@ Base.show(io::IO, bcs::ModelBoundaryConditions) =
 # a non-trivial flux.
 const NotFluxBC = Union{VBC, GBC, PBC, NPBC, NFBC}
 apply_z_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
+apply_y_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 
 """
     apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
@@ -435,18 +441,48 @@ apply_z_bcs!(Gc, arch, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-function apply_z_bcs!(Gc, arch, grid, top_bc, bottom_bc, args...)
-    @launch device(arch) config=launch_config(grid, 2) _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+function apply_z_bcs!(Gc, arch, grid, bottom_bc, top_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xy) _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
     return nothing
+end
+
+function apply_y_bcs!(Gc, arch, grid, left_bc, right_bc, args...)
+    @launch device(arch) config=launch_config(grid, :xz) _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
+    return nothing
+end
+
+"""
+    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
+
+Apply a top and/or bottom boundary condition to variable `c`.
+"""
+function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
+    @loop_xy i j grid begin
+        apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+           apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
+    end
+end
+
+function _apply_y_bcs!(Gc, grid, left_bc, right_bc, args...)
+    @loop_xz i k grid begin
+         apply_y_left_bc!(Gc, left_bc,  i, k, grid, args...)
+        apply_y_right_bc!(Gc, right_bc, i, k, grid, args...)
+    end
 end
 
 # Fall back functions for boundary conditions that are not of type Flux.
 @inline apply_z_top_bc!(args...) = nothing
 @inline apply_z_bottom_bc!(args...) = nothing
 
+@inline apply_y_right_bc!(args...) = nothing
+@inline apply_y_left_bc!(args...) = nothing
+
 # Shortcuts for 'no-flux' boundary conditions.
 @inline apply_z_top_bc!(Gc, ::NFBC, args...) = nothing
 @inline apply_z_bottom_bc!(Gc, ::NFBC, args...) = nothing
+
+@inline apply_y_right_bc!(Gc, ::NFBC, args...) = nothing
+@inline apply_y_left_bc!(Gc, ::NFBC, args...) = nothing
 
 """
     apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...)
@@ -464,6 +500,9 @@ If `top_bc.condition` is a function, the function must have the signature
 @inline apply_z_top_bc!(Gc, top_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) / ΔzF(i, j, grid.Nz, grid)
 
+@inline apply_y_right_bc!(Gc, right_flux::BC{<:Flux}, i, k, grid, args...) =
+    @inbounds Gc[i, grid.Ny, k] -= getbc(right_flux, i, k, grid, args...) / Δy(i, grid.Ny, k, grid)
+
 """
     apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
 
@@ -480,16 +519,5 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / ΔzF(i, j, 1, grid)
 
-"""
-    _apply_z_bcs!(Gc, grid, top_bc, bottom_bc, args...)
-
-Apply a top and/or bottom boundary condition to variable `c`.
-"""
-function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
-               apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
-        end
-    end
-end
+@inline apply_z_left_bc!(Gc, bottom_flux::BC{<:Flux}, i, k, grid, args...) =
+    @inbounds Gc[i, 1, k] += getbc(left_flux, i, k, grid, args...) / Δy(i, 1, k, grid)

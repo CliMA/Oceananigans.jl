@@ -94,13 +94,13 @@ function grid_properties_are_same_type_stretched(FT)
 end
 
 @testset "Grids" begin
-    println("Testing grids...")
+    @info "Testing grids..."
 
     @testset "Regular Cartesian grid" begin
-        println("  Testing regular Cartesian grid...")
+        @info "  Testing regular Cartesian grid..."
 
         @testset "Grid initialization" begin
-            println("    Testing grid initialization...")
+            @info "    Testing grid initialization..."
 
             for FT in float_types
                 @test correct_grid_size_regular(FT)
@@ -114,7 +114,7 @@ end
         end
 
         @testset "Grid dimensions" begin
-            println("    Testing grid constructor errors...")
+            @info "    Testing grid constructor errors..."
 
             for FT in float_types
                 @test isbitstype(typeof(RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 1, 1))))
@@ -150,10 +150,10 @@ end
     end
 
     @testset "Vertically stretched Cartesian grid" begin
-        println("  Testing vertically stretched Cartesian grid...")
+        @info "  Testing vertically stretched Cartesian grid..."
 
         @testset "Grid initialization" begin
-            println("    Testing grid initialization...")
+            @info "    Testing grid initialization..."
 
             for FT in float_types
                 @test correct_constant_grid_spacings(FT)

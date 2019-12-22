@@ -10,7 +10,7 @@ function instantiate_surface_waves()
 end
 
 @testset "Surface waves" begin
-    println("Testing surface waves...")
+    @info "Testing surface waves..."
 
     @testset "Surface waves" begin
         @test instantiate_surface_waves()

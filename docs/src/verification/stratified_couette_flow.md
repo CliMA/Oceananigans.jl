@@ -12,6 +12,8 @@ In this test we follow \citet{Vreugdenhil18} who use stratified Couette flow as 
 model. We will compare our results to theirs and the direct numerical simulation results of \citet{Deusebio15} and
 \citet{Zhou17}.
 
+## Simulation setup
+
 In our setup replicating that of \citet{Vreugdenhil18}, a domain of size ``(L_x, L_y, L_z)/h = (4\pi, 2\pi, 2)``
 is bounded in the vertical ``z``-direction by two infinite, parallel plates or walls at ``z = \pm h`` with horizontal
 velocity ``u = \pm U_w`` and constant temperature ``\theta = \pm \Theta_w`` where ``\theta`` denotes temperature in this
@@ -39,3 +41,14 @@ From here the friction Reynolds number and the Nusselt number can be defined
 \text{Re}_\tau = \frac{u_\tau h}{\nu}, \quad \text{Nu} = \frac{q_w h}{\kappa \Theta_w}
 ```
 which can be computed and compared.
+
+## Velocity and temperature
+![Velocity and temperature profiles](plots_stratified_couette_flow_stratified_couette_flow_velocity_temperature_profiles.png)
+![Velocity and temperature horizontal slices](plots_stratified_couette_flow_stratified_couette_flow_velocity_temperature_slices.png)
+
+## ``\mathrm{Re}_\tau`` and ``\mathrm{Nu}`` values
+![Re and Nu comparison plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_scatter.png)
+![Re and Nu time series plots](plots_stratified_couette_flow_stratified_couette_flow_Re_Nu_timeseries.png)
+
+## LES viscosity and diffusivity
+![LES profiles](plots_stratified_couette_flow_stratified_couette_flow_LES_profiles.png)

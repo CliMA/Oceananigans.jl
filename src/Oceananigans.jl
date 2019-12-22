@@ -11,6 +11,9 @@ export
     # Architectures
     CPU, GPU,
 
+    # Logging
+    ModelLogger, Diagnostic, Setup, Simulation,
+
     # Constants
     second, minute, hour, day,
 
@@ -30,7 +33,7 @@ export
     FPlane, BetaPlane,
 
     # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
@@ -238,6 +241,8 @@ function TimeStepper end
 function run_diagnostic end
 function write_output end
 
+using Logging
+
 include("utils.jl")
 
 include("clock.jl")
@@ -263,6 +268,7 @@ include("Solvers/Solvers.jl")
 using .Solvers
 
 include("forcing.jl")
+include("logger.jl")
 include("models.jl")
 
 include("Diagnostics/Diagnostics.jl")

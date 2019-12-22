@@ -1,3 +1,5 @@
+import Base: show
+
 """
     Clock{T<:Number}
 
@@ -9,3 +11,6 @@ mutable struct Clock{T<:Number}
        time :: T
   iteration :: Int
 end
+
+Base.show(io::IO, c::Clock{FT}) where FT =
+    println(io, "Clock{$FT}: time = ", prettytime(c.time), ", iteration = ", c.iteration)

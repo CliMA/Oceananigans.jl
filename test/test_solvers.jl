@@ -1,4 +1,5 @@
-using Oceananigans.Operators: ∇²
+using LinearAlgebra
+using Oceananigans: array_type
 
 function ∇²!(grid, f, ∇²f)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -178,37 +179,148 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     isapprox(ϕ, Ψ.(xC, yC, zC); rtol=5e-2)
 end
 
-@testset "Poisson solvers" begin
-    println("Testing Poisson solvers...")
+function can_solve_single_tridiagonal_system(arch, N)
+    ArrayType = array_type(arch)
 
-    @testset "FFTW plans" begin
-        println("  Testing FFTW planning...")
+    a = rand(N-1)
+    b = 3 .+ rand(N) # +3 to ensure diagonal dominance.
+    c = rand(N-1)
+    f = rand(N)
 
-        for FT in float_types
-            @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
-            @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
-        end
+    # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
+    M = Tridiagonal(a, b, c)
+    ϕ_correct = M \ f
+
+    # Convert to CuArray if needed.
+    a, b, c, f = ArrayType.([a, b, c, f])
+
+    ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
+
+    grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
+
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
+
+    return Array(ϕ[:]) ≈ ϕ_correct
+end
+
+function can_solve_single_tridiagonal_system_with_functions(arch, N)
+    ArrayType = array_type(arch)
+
+    grid = RegularCartesianGrid(size=(1, 1, N), length=(1, 1, 1))
+
+    a = rand(N-1)
+    c = rand(N-1)
+
+    @inline b(i, j, k, grid, p) = 3 .+ cos(2π*grid.zC[k])  # +3 to ensure diagonal dominance.
+    @inline f(i, j, k, grid, p) = sin(2π*grid.zC[k])
+
+    bₐ = [b(1, 1, k, grid, nothing) for k in 1:N]
+    fₐ = [f(1, 1, k, grid, nothing) for k in 1:N]
+
+    # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
+    M = Tridiagonal(a, bₐ, c)
+    ϕ_correct = M \ fₐ
+
+    # Convert to CuArray if needed.
+    a, c = ArrayType.([a, c])
+
+    ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
+
+    btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
+
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
+
+    return Array(ϕ[:]) ≈ ϕ_correct
+end
+
+function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+    ArrayType = array_type(arch)
+
+    a = rand(Nz-1)
+    b = 3 .+ rand(Nz) # +3 to ensure diagonal dominance.
+    c = rand(Nz-1)
+    f = rand(Nx, Ny, Nz)
+
+    M = Tridiagonal(a, b, c)
+    ϕ_correct = zeros(Nx, Ny, Nz)
+
+    # Solve the systems with backslash on the CPU to avoid scalar operations on the GPU.
+    for i = 1:Nx, j = 1:Ny
+        ϕ_correct[i, j, :] .= M \ f[i, j, :]
     end
 
+    # Convert to CuArray if needed.
+    a, b, c, f = ArrayType.([a, b, c, f])
+
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
+
+    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
+
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
+
+    return Array(ϕ) ≈ ϕ_correct
+end
+
+function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+    ArrayType = array_type(arch)
+
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1))
+
+    a = rand(Nz-1)
+    c = rand(Nz-1)
+
+    @inline b(i, j, k, grid, p) = 3 + grid.xC[i]*grid.yC[j] * cos(2π*grid.zC[k])
+    @inline f(i, j, k, grid, p) = (grid.xC[i] + grid.yC[j]) * sin(2π*grid.zC[k])
+
+    ϕ_correct = zeros(Nx, Ny, Nz)
+
+    # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
+    for i = 1:Nx, j = 1:Ny
+        bₐ = [b(i, j, k, grid, nothing) for k in 1:Nz]
+        M = Tridiagonal(a, bₐ, c)
+
+        fₐ = [f(i, j, k, grid, nothing) for k in 1:Nz]
+        ϕ_correct[i, j, :] .= M \ fₐ
+    end
+
+    # Convert to CuArray if needed.
+    a, c = ArrayType.([a, c])
+
+    btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
+
+    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
+    solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
+
+    return Array(ϕ) ≈ ϕ_correct
+end
+
+@testset "Solvers" begin
+    @info "Testing Solvers..."
+
+    # @testset "FFTW plans" begin
+    #     @info "  Testing FFTW planning..."
+    #
+    #     for FT in float_types
+    #         @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
+    #         @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
+    #     end
+    # end
+
     @testset "Divergence-free solution [CPU]" begin
-        println("  Testing divergence-free solution [CPU]...")
+        @info "  Testing divergence-free solution [CPU]..."
 
         for N in [7, 10, 16, 20]
             for FT in float_types
-                @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
-                @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, FFTW.ESTIMATE)
-                @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, FFTW.ESTIMATE)
-
-                @test poisson_pnn_planned_div_free_cpu(FT, 1, N, N, FFTW.ESTIMATE)
-
-                # Commented because https://github.com/climate-machine/Oceananigans.jl/issues/99
-                # for planner_flag in [FFTW.ESTIMATE, FFTW.MEASURE]
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, 1, N, N, planner_flag)
-                #     @test test_3d_poisson_ppn_planned!_div_free(mm, N, 1, N, planner_flag)
-                # end
+                for planner_flag in (FFTW.ESTIMATE, FFTW.MEASURE)
+                    @test poisson_ppn_planned_div_free_cpu(FT, N, N, N, planner_flag)
+                    @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, planner_flag)
+                    @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, planner_flag)
+                    @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, planner_flag)
+                end
             end
         end
 
@@ -220,7 +332,7 @@ end
     end
 
     @testset "Divergence-free solution [GPU]" begin
-        println("  Testing divergence-free solution [GPU]...")
+        @info "  Testing divergence-free solution [GPU]..."
         @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
@@ -237,9 +349,23 @@ end
     end
 
     @testset "Analytic solution reconstruction" begin
-        println("  Testing analytic solution reconstruction...")
+        @info "  Testing analytic solution reconstruction..."
         for N in [32, 48, 64], m in [1, 2, 3]
             @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
+        end
+    end
+
+    for arch in archs
+        @testset "Batched tridiagonal solver [$arch]" begin
+            for Nz in [8, 11, 18]
+                @test can_solve_single_tridiagonal_system(arch, Nz)
+                @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
+            end
+
+            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
+                @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+                @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
+            end
         end
     end
 end

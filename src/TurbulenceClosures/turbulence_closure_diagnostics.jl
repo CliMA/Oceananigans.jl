@@ -12,7 +12,7 @@ function cell_diffusion_timescale(closure::ConstantIsotropicDiffusivity, diffusi
     return min(Δ^2 / closure.ν, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::ConstantAnisotropicDiffusivity, diffusivies, grid)
+function cell_diffusion_timescale(closure::ConstantAnisotropicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
     max_κh = maximum(closure.κh)
@@ -21,7 +21,7 @@ function cell_diffusion_timescale(closure::ConstantAnisotropicDiffusivity, diffu
                Δz^2 / max_κv, Δh^2 / max_κh)
 end
 
-function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivies, grid)
+function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
     max_κh = maximum(closure.κh)
@@ -30,7 +30,7 @@ function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, dif
                Δz^4 / max_κv, Δh^4 / max_κh)
 end
 
-function cell_diffusion_timescale(closure::Union{AbstractSmagorinsky, AbstractLeith}, diffusivies, grid)
+function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivities, grid)
     Δ = min_Δxyz(grid)
     min_Pr = minimum(closure.Pr)
     max_κ = maximum(closure.κ)
@@ -38,10 +38,15 @@ function cell_diffusion_timescale(closure::Union{AbstractSmagorinsky, AbstractLe
     return min(Δ^2 / max_νκ, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AbstractAnisotropicMinimumDissipation, diffusivies, grid)
+function cell_diffusion_timescale(closure::AbstractAnisotropicMinimumDissipation, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in diffusivities.κₑ)...)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
+function cell_diffusion_timescale(closure::AbstractLeith, diffusivities, grid)
+    Δ = min_Δxyz(grid)
+    max_ν = maximum(diffusivities.νₑ.data.parent)
+    return Δ^2 / max_ν
+end
