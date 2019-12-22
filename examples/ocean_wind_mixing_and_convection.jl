@@ -8,13 +8,13 @@
 #   * how to use a function to impose a boundary condition;
 #   * how to use user-defined `model.parameters` in a boundary condition function.
 #
-# In addition to `Oceananigans.jl` we need `PyPlot` for plotting, `Random` for
+# In addition to `Oceananigans.jl` we need `Plots` for plotting, `Random` for
 # generating random initial conditions, and `Printf` for printing progress messages.
 # We also need `Oceananigans.OutputWriters` and `Oceananigans.Diagnostics` to access
 # some nice features for writing output data to disk.
 
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics
-using PyPlot, Random, Printf
+using Plots, Random, Printf
 
 # ## Model parameters
 #
@@ -43,16 +43,16 @@ using PyPlot, Random, Printf
 # `g = 9.81 s⁻²`. Note that, by default, the `SeawaterBuoyancy` model uses a gravitational
 # acceleration `gᴱᵃʳᵗʰ = 9.80665 s⁻²`.
 
-         Nz = 48       # Number of grid points in x, y, z
+         Nz = 32       # Number of grid points in x, y, z
          Δz = 1.0      # Grid spacing in x, y, z (meters)
          Qᵀ = 5e-5     # Temperature flux at surface
          Qᵘ = -2e-5    # Velocity flux at surface
        ∂T∂z = 0.005    # Initial vertical temperature gradient
 evaporation = 1e-7     # Mass-specific evaporation rate [m s⁻¹]
-   end_time = 2hour    # End time for the simulation
           f = 1e-4     # Coriolis parameter
           α = 2e-4     # Thermal expansion coefficient
           β = 8e-4     # Haline contraction coefficient
+nothing # hide
 
 # ## Boundary conditions
 #
@@ -70,6 +70,7 @@ T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qᵀ),
 @inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
 
 S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
+nothing # hide
 
 # ## Model instantiation
 #
@@ -90,6 +91,7 @@ model = Model(
   boundary_conditions = BoundaryConditions(u=u_bcs, T=T_bcs, S=S_bcs),
            parameters = (evaporation = evaporation,)
 )
+nothing # hide
 
 # Notes:
 #
@@ -98,16 +100,10 @@ model = Model(
 #
 # * To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
 #   `architecture = GPU()``
-#
-# Set makeplot = true to live-update a plot of vertical velocity, temperature, and salinity
-# as the simulation runs.
 
-makeplot = false
-
-#
 # ## Initial conditions
 #
-# Out initial condition for temperature consists of a linear stratification superposed with
+# Our initial condition for temperature consists of a linear stratification superposed with
 # random noise damped at the walls, while our initial condition for velocity consists
 # only of random noise.
 
@@ -115,7 +111,7 @@ makeplot = false
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
 ## Temperature initial condition: a stable density tradient with random noise superposed.
-T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-1 * Ξ(z)
+T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
 u₀(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
@@ -137,7 +133,8 @@ field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 ## Add the output writer to the models `output_writers`.
-model.output_writers[:fields] = field_writer;
+model.output_writers[:fields] = field_writer
+nothing # hide
 
 # ## Running the simulation
 #
@@ -145,70 +142,45 @@ model.output_writers[:fields] = field_writer;
 # with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
 wizard = TimeStepWizard(cfl=0.2, Δt=1.0, max_change=1.1, max_Δt=5.0)
+nothing # hide
 
 # A diagnostic that returns the maximum absolute value of `w` by calling
 # `wmax(model)`:
 
-wmax = FieldMaximum(abs, model.velocities.w);
-
-# We also create a figure and define a plotting function for live plotting of results.
-
-fig, axs = subplots(ncols=3, figsize=(12, 5))
-
-"""
-    makeplot!(axs, model)
-
-Make a triptych of x-z slices of vertical velocity, temperature, and salinity
-associated with `model` in `axs`.
-"""
-function makeplot!(axs, model)
-    jhalf = floor(Int, model.grid.Nz/2)
-
-    ## Coordinate arrays for plotting
-    xC = repeat(model.grid.xC, 1, model.grid.Nz)
-    zF = repeat(reshape(model.grid.zF[1:end-1], 1, model.grid.Nz), model.grid.Nx, 1)
-    zC = repeat(reshape(model.grid.zC, 1, model.grid.Nz), model.grid.Nx, 1)
-
-    sca(axs[1]); cla()
-    title("Vertical velocity")
-    pcolormesh(xC, zF, Array(interior(model.velocities.w))[:, jhalf, :])
-    xlabel("\$ x \$ (m)"); ylabel("\$ z \$ (m)")
-
-    sca(axs[2]); cla()
-    title("Temperature")
-    pcolormesh(xC, zC, Array(interior(model.tracers.T))[:, jhalf, :])
-    xlabel("\$ x \$ (m)")
-
-    sca(axs[3]); cla()
-    title("Salinity")
-    pcolormesh(xC, zC, Array(interior(model.tracers.S))[:, jhalf, :])
-    xlabel("\$ x \$ (m)")
-
-    [ax.set_aspect(1) for ax in axs]
-    pause(0.01)
-
-    return nothing
-end
+wmax = FieldMaximum(abs, model.velocities.w)
+nothing # hide
 
 # Finally, we run the the model in a `while` loop.
 
-while model.clock.time < end_time
-
+anim = @animate for i in 1:100
     ## Update the time step associated with `wizard`.
     update_Δt!(wizard, model)
 
     ## Time step the model forward
-    walltime = @elapsed time_step!(model, 100, wizard.Δt)
+    walltime = @elapsed time_step!(model, 10, wizard.Δt)
 
     ## Print a progress message
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
             model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt),
             wmax(model), prettytime(walltime))
 
-    makeplot && makeplot!(axs, model)
+    ## Coordinate arrays for plotting
+    xC, zF, zC = model.grid.zC, model.grid.zF[1:Nz], model.grid.zC
+
+    ## Slices to plots.
+    jhalf = floor(Int, model.grid.Ny/2)
+    w = Array(interior(model.velocities.w))[:, jhalf, :]
+    T = Array(interior(model.tracers.T))[:, jhalf, :]
+    S = Array(interior(model.tracers.S))[:, jhalf, :]
+
+    ## Plot the slices.
+    w_plot = heatmap(xC, zF, w', xlabel="x (m)", ylabel="z (m)", color=:balance, clims=(-3e-2, 3e-2))
+    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20))
+    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline, clims=(34.99, 35.01))
+
+    ## Arrange the plots side-by-side.
+    plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1600, 400),
+         title=["vertical velocity (m/s)" "temperature (C)" "salinity (g/kg)"])
 end
 
-# Show the reults in a plot
-
-makeplot!(axs, model)
-gcf()
+mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 15) # hide

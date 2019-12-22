@@ -1,3 +1,4 @@
+using Oceananigans.Grids: short_show
 using .TurbulenceClosures: ν₀, κ₀
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
@@ -24,14 +25,33 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F
 end
 
 """
-    Model(; grid, kwargs...)
+    Model(;
+                   grid,
+           architecture = CPU(),
+             float_type = Float64,
+                tracers = (:T, :S),
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                  clock = Clock{float_type}(0, 0),
+               buoyancy = SeawaterBuoyancy(float_type),
+               coriolis = nothing,
+          surface_waves = nothing,
+                forcing = ModelForcing(),
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(),
+         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
+             parameters = nothing,
+             velocities = VelocityFields(architecture, grid),
+              pressures = PressureFields(architecture, grid),
+          diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
+            timestepper = :AdamsBashforth,
+         poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
+    )
 
 Construct an `Oceananigans.jl` model on `grid`.
 
 Keyword arguments
 =================
-- `grid`: (required) The resolution and discrete geometry on which `model` is solved. Currently the only option is
-  `RegularCartesianGrid`.
+- `grid`: (required) The resolution and discrete geometry on which `model` is solved.
 - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
 - `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
@@ -88,18 +108,16 @@ end
 
 """Show the innards of a `Model` in the REPL."""
 Base.show(io::IO, model::Model) =
-    print(io,
-              "Oceananigans.Model on a ", typeof(model.architecture), " architecture (time = ", 
-                                          prettytime(model.clock.time), ", iteration = ", 
-                                          model.clock.iteration, ") \n",
-              "├── grid: ", typeof(model.grid), '\n',
+    print(io, "Oceananigans.Model on a ", typeof(model.architecture), " architecture ",
+                                          "(time = ",  prettytime(model.clock.time),
+                                          ", iteration = ", model.clock.iteration, ") \n",
+              "├── grid: ", short_show(model.grid), '\n',
               "├── tracers: ", tracernames(model.tracers), '\n',
               "├── closure: ", typeof(model.closure), '\n',
               "├── buoyancy: ", typeof(model.buoyancy), '\n',
               "├── coriolis: ", typeof(model.coriolis), '\n',
               "├── output writers: ", ordered_dict_show(model.output_writers, "│"), '\n',
               "└── diagnostics: ", ordered_dict_show(model.diagnostics, " "))
-              
 
 """
     ChannelModel(; kwargs...)

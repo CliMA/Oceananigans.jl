@@ -1,3 +1,5 @@
+using Printf
+
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 
 #####
@@ -63,8 +65,11 @@ end
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
 
+Base.show(io::IO, f_plane::FPlane{FT}) where FT =
+    println(io, "FPlane{$FT}: f = ", @sprintf("%.2e", f_plane.f))
+
 #####
-##### The Beta Plane
+##### βeta Plane
 #####
 
 """
@@ -113,3 +118,6 @@ end
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
     @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
+
+Base.show(io::IO, β_plane::BetaPlane{FT}) where FT =
+    println(io, "BetaPlane{$FT}: ", @sprintf("f₀ = %.2e, β = %.2e", β_plane.f₀, β_plane.β))

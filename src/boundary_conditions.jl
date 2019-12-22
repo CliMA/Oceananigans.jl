@@ -121,6 +121,9 @@ getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
 
 Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
 
+Base.show(io::IO, bc::BC{C, T}) where {C, T} =
+    println(io, "BoundaryCondition: type=$C, condition=$(bc.condition)")
+
 #####
 ##### Wrapper for user-defined boundary condition functions
 #####
@@ -331,9 +334,6 @@ function ChannelSolutionBCs(;
 
     return merge((u=u, v=v, w=w), tracerbcs)
 end
-
-# Default semantics
-const BoundaryConditions = HorizontallyPeriodicSolutionBCs
 
 #####
 ##### Tracer, tendency and pressure boundary condition "translators":
