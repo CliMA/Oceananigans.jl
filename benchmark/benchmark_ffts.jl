@@ -74,6 +74,43 @@ for FT in float_types, N in Ns
             @timeit timer bn IFFT! * R
         end
     end
+
+    #####
+    ##### 2D FFTxy
+    #####
+
+    bn =  benchmark_name(N, "2D  FFTxy", CPU(), FT, npad=3)
+
+    @info @sprintf("Planning transform: %s...\n", bn)
+    R = rand(Complex{FT}, Nx, Ny, Nz)
+    FFT! = FFTW.plan_fft!(R, [1, 2], flags=FFTW.PATIENT)
+    FFT! * R  # warmup
+
+    @info @sprintf("Running benchmark: %s...\n", bn)
+    for _ in 1:Nr
+        @timeit timer bn FFT! * R
+    end
+
+    #####
+    ##### 2D FFTxy (x then y)
+    #####
+
+    bn =  benchmark_name(N, "2D  FFT(x,y)", CPU(), FT, npad=3)
+
+    @info @sprintf("Planning transform: %s...\n", bn)
+    R = rand(Complex{FT}, Nx, Ny, Nz)
+    FFTx! = FFTW.plan_fft!(R, 1, flags=FFTW.PATIENT)
+    FFTy! = FFTW.plan_fft!(R, 2, flags=FFTW.PATIENT)
+    FFTx! * R  # warmup
+    FFTy! * R  # warmup
+
+    @info @sprintf("Running benchmark: %s...\n", bn)
+    for _ in 1:Nr
+        @timeit timer bn begin
+            FFTx! * R
+            FFTy! * R
+        end
+    end
 end
 
 #####
