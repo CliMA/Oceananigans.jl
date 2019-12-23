@@ -61,36 +61,6 @@ boundary_condition_function_arguments(model) =
     (model.clock.time, model.clock.iteration, datatuple(model.velocities),
      datatuple(model.tracers), model.parameters)
 
-#####
-##### Time-stepping kernels/function that are independent of the TimeStepper
-#####
-
-"""
-    time_step!(model; Nt, Δt, kwargs...)
-
-Step forward `model` `Nt` time steps with step size `Δt`.
-
-The kwargs are passed to the `time_step!` function specific to `model.timestepper`.
-"""
-time_step!(model; Nt, Δt, kwargs...) = time_step!(model, Nt, Δt; kwargs...)
-
-function time_step!(model, Nt, Δt; kwargs...)
-
-    if model.clock.iteration == 0
-        [ run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ write_output(model, out)    for out  in values(model.output_writers) ]
-    end
-
-    for n in 1:Nt
-        time_step!(model, Δt; kwargs...)
-
-        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ time_to_run(model.clock, out) && write_output(model, out) for out in values(model.output_writers) ]
-    end
-
-    return nothing
-end
-
 """
     time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
