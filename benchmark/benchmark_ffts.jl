@@ -17,7 +17,7 @@ Nr = 10  # Number of repeats for benchmarking.
 
 # Run benchmark across these parameters.
             Ns = [(256, 256, 256)]
-   float_types = [Float32, Float64]  # Float types to benchmark.
+   float_types = [Float64]  # Float types to benchmark.
          archs = [CPU()]             # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
@@ -33,7 +33,6 @@ end
 
 for FT in float_types, N in Ns
     Nx, Ny, Nz = N
-    Lx, Ly, Lz = 1, 1, 1
 
     #####
     ##### 1D FFT
@@ -49,7 +48,7 @@ for FT in float_types, N in Ns
         FFT! = FFTW.plan_fft!(R, dim, flags=FFTW.PATIENT)
         FFT! * R  # warmup
 
-        @info @sprintf("Running benchmark: %s...\n", bn)
+        @info @sprintf("Running benchmark:  %s...\n", bn)
         for _ in 1:Nr
             @timeit timer bn FFT! * R
         end
@@ -69,24 +68,56 @@ for FT in float_types, N in Ns
         IFFT! = FFTW.plan_ifft!(R, 1, flags=FFTW.PATIENT)
         IFFT! * R  # warmup
 
-        @info @sprintf("Running benchmark: %s...\n", bn)
+        @info @sprintf("Running benchmark:  %s...\n", bn)
         for _ in 1:Nr
             @timeit timer bn IFFT! * R
         end
     end
 
     #####
+    ##### 1D DCT
+    #####
+
+    bn = benchmark_name(N, "1D  DCTz", CPU(), FT, npad=3)
+
+    @info @sprintf("Planning transform: %s...\n", bn)
+    R = rand(FT, Nx, Ny, Nz)
+    DCT! = FFTW.plan_r2r!(R, FFTW.REDFT10, 3, flags=FFTW.PATIENT)
+    DCT! * R  # warmup
+
+    @info @sprintf("Running benchmark:  %s...\n", bn)
+    for _ in 1:Nr
+        @timeit timer bn DCT! * R
+    end
+
+    #####
+    ##### 1D IDCT
+    #####
+
+    bn = benchmark_name(N, "1D IDCTz", CPU(), FT, npad=3)
+
+    @info @sprintf("Planning transform: %s...\n", bn)
+    R = rand(FT, Nx, Ny, Nz)
+    IDCT! = FFTW.plan_r2r!(R, FFTW.REDFT01, 3, flags=FFTW.PATIENT)
+    IDCT! * R  # warmup
+
+    @info @sprintf("Running benchmark:  %s...\n", bn)
+    for _ in 1:Nr
+        @timeit timer bn IDCT! * R
+    end
+
+    #####
     ##### 2D FFTxy
     #####
 
-    bn =  benchmark_name(N, "2D  FFTxy", CPU(), FT, npad=3)
+    bn =  benchmark_name(N, "2D  FFTxy ", CPU(), FT, npad=3)
 
     @info @sprintf("Planning transform: %s...\n", bn)
     R = rand(Complex{FT}, Nx, Ny, Nz)
     FFT! = FFTW.plan_fft!(R, [1, 2], flags=FFTW.PATIENT)
     FFT! * R  # warmup
 
-    @info @sprintf("Running benchmark: %s...\n", bn)
+    @info @sprintf("Running benchmark:  %s...\n", bn)
     for _ in 1:Nr
         @timeit timer bn FFT! * R
     end
@@ -95,7 +126,7 @@ for FT in float_types, N in Ns
     ##### 2D FFTxy (x then y)
     #####
 
-    bn =  benchmark_name(N, "2D  FFT(x,y)", CPU(), FT, npad=3)
+    bn =  benchmark_name(N, "2D  FFTx,y", CPU(), FT, npad=3)
 
     @info @sprintf("Planning transform: %s...\n", bn)
     R = rand(Complex{FT}, Nx, Ny, Nz)
@@ -104,7 +135,7 @@ for FT in float_types, N in Ns
     FFTx! * R  # warmup
     FFTy! * R  # warmup
 
-    @info @sprintf("Running benchmark: %s...\n", bn)
+    @info @sprintf("Running benchmark:  %s...\n", bn)
     for _ in 1:Nr
         @timeit timer bn begin
             FFTx! * R
