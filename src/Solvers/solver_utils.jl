@@ -59,7 +59,7 @@ equation with periodic boundary conditions in the x-dimension on `grid`.
 function λi(grid::AbstractGrid, ::PoissonBCs)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     is = reshape(1:Nx, Nx, 1, 1)
-    @. (2sin((is-1)*π/Nx) / (Lx/Nx))^2
+    return @. (2sin((is-1)*π/Nx) / (Lx/Nx))^2
 end
 
 """
@@ -71,7 +71,7 @@ equation with periodic boundary conditions in the y-dimension on `grid`.
 function λj(grid::AbstractGrid, ::PPN)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     js = reshape(1:Ny, 1, Ny, 1)
-    @. (2sin((js-1)*π/Ny) / (Ly/Ny))^2
+    return @. (2sin((js-1)*π/Ny) / (Ly/Ny))^2
 end
 
 """
@@ -83,7 +83,7 @@ equation with staggered Neumann boundary conditions in the y-dimension on `grid`
 function λj(grid::AbstractGrid, ::PNN)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     js = reshape(1:Ny, 1, Ny, 1)
-    @. (2sin((js-1)*π/(2Ny)) / (Ly/Ny))^2
+    return @. (2sin((js-1)*π/(2Ny)) / (Ly/Ny))^2
 end
 
 """
@@ -95,5 +95,5 @@ equation with staggered Neumann boundary conditions in the y-dimension on `grid`
 function λk(grid::AbstractGrid, ::PoissonBCs)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     ks = reshape(1:Nz, 1, 1, Nz)
-    @. (2sin((ks-1)*π/(2Nz)) / (Lz/Nz))^2
+    return @. (2sin((ks-1)*π/(2Nz)) / (Lz/Nz))^2
 end
