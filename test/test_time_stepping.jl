@@ -143,7 +143,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     Tavg0 = mean(interior(model.tracers.T))
 
-    time_step!(model, Nt, 10*60)
+    time_step!(model; Nt=Nt, Δt=10*60)
 
     Tavg = mean(interior(model.tracers.T))
     @info "Tracer conservation after $Nt time steps [$arch, $FT]: ⟨T⟩-T₀=$(Tavg-Tavg0) °C"

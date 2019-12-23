@@ -236,7 +236,7 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
     while model.clock.time < end_time
         wizard.cfl = cfl(model.clock.time)
 
-        walltime = @elapsed time_step!(model, Ni, wizard.Δt)
+        walltime = @elapsed time_step!(model; Nt=Ni, Δt=wizard.Δt)
         progress = 100 * (model.clock.time / end_time)
 
         umax = maximum(abs, model.velocities.u.data.parent)
