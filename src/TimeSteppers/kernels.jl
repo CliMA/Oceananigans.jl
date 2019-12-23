@@ -118,7 +118,8 @@ end
 "Solve the Poisson equation for non-hydrostatic pressure on the GPU."
 function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
-    @launch device(GPU()) config=launch_config(grid, :xyz) idct_permute!(pressure, grid, poisson_solver.bcs, ϕ)
+    @launch(device(GPU()), config=launch_config(grid, :xyz),
+            idct_permute!(pressure, grid, poisson_solver.bcs, ϕ))
     return nothing
 end
 
