@@ -1,3 +1,5 @@
+using Oceananigans: @loop_xyz, @loop_xy
+
 #####
 ##### Navier-Stokes and tracer advection equations
 #####
@@ -127,13 +129,11 @@ the `buoyancy_perturbation` downwards:
     `pHY′ = ∫ buoyancy_perturbation dz` from `z=0` down to `z=-Lz`
 """
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
-            @unroll for k in grid.Nz-1 : -1 : 1
-                @inbounds pHY′[i, j, k] =
-                    pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
-            end
+    @loop_xy i j grid begin
+        @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
+        @unroll for k in grid.Nz-1 : -1 : 1
+            @inbounds pHY′[i, j, k] =
+                pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
         end
     end
     return nothing
@@ -321,14 +321,11 @@ function compute_w_from_continuity!(model)
 end
 
 function _compute_w_from_continuity!(U, grid)
-    @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-        @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-            # U.w[i, j, 1] = 0 is enforced via halo regions.
-            @unroll for k in 2:grid.Nz
-                @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * hdivᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
-            end
+    @loop_xy i j grid begin
+        # U.w[i, j, 1] = 0 is enforced via halo regions.
+        @unroll for k in 2:grid.Nz
+            @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * hdivᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
         end
     end
-
     return nothing
 end
