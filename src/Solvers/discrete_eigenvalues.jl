@@ -3,6 +3,13 @@ using Oceananigans: PBC, NFBC
 const PeriodicBC = PBC
 const NoFluxBC = NFBC
 
+function generate_discrete_eigenvalues(grid, pressure_bcs)
+    kx² = λi(grid, pressure_bcs.x.left)
+    ky² = λj(grid, pressure_bcs.y.left)
+    kz² = λk(grid, pressure_bcs.z.left)
+    return kx², ky², kz²
+end
+
 """
     λi(grid, ::PeriodicBC)
 

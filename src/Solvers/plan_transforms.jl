@@ -15,19 +15,19 @@ They operatore on an array with the shape of `A`, which is needed to plan
 efficient transforms. `A` will be mutated.
 =#
 
-plan_forward_transform(::PBC, A::Array, dims, planner_flag=FFTW.PATIENT) =
+plan_forward_transform(A::Array, ::PBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_fft!(A, dims, flags=planner_flag)
 
-plan_backward_transform(::PBC, A::Array, dims, planner_flag=FFTW.PATIENT) =
-    FFTW.plan_ifft!(A, dims, flags=planner_flag)
-
-plan_forward_transform(::NFBC, A::Array, dims, planner_flag=FFTW.PATIENT) =
+plan_forward_transform(A::Array, ::NFBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag)
 
-plan_backward_transform(::NFBC, A::Array, dims, planner_flag=FFTW.PATIENT) =
+plan_backward_transform(A::Array, ::PBC, dims, planner_flag=FFTW.PATIENT) =
+    FFTW.plan_ifft!(A, dims, flags=planner_flag)
+
+plan_backward_transform(A::Array, ::NFBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 
 @hascuda begin
-     plan_forward_transform(::PBC, C::CuArray, dims) = plan_fft!(C, dims)
-    plan_backward_transform(::PBC, C::CuArray, dims) = plan_ifft!(C, dims)
+     plan_forward_transform(::PBC, A::CuArray, dims) = plan_fft!(A, dims)
+    plan_backward_transform(::PBC, A::CuArray, dims) = plan_ifft!(A, dims)
 end
