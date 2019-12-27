@@ -13,8 +13,7 @@ function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, p
                                   + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
                                   + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
                                   + ∂t_uˢ(i, j, k, grid, surface_waves, time)
-                                  + F.u(i, j, k, grid, time, U, C, parameters)
-        )
+                                  + F.u(i, j, k, grid, time, U, C, parameters))
     end
     return nothing
 end
