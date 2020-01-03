@@ -1,5 +1,3 @@
-using Test
-
 import MPI
 
 using Oceananigans
@@ -60,8 +58,6 @@ function construct_connectivity(index, ranks, bcs)
     i, j, k = index
     Rx, Ry, Rz = ranks
 
-    @show Rx, Ry, Rz
-
     i_east  = increment_index(i, Rx, bcs.x.right)
     i_west  = decrement_index(i, Rx, bcs.x.left)
     j_north = increment_index(j, Ry, bcs.y.north)
@@ -81,10 +77,54 @@ function construct_connectivity(index, ranks, bcs)
 end
 
 #####
-##### Communication boundary condition
+##### Halo communication boundary condition
 #####
 
-struct Communication <: BCType end
+struct HaloCommunication <: BCType end
+const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
+
+const HaloCommunicationDetails = NamedTuple{(:rank_from, :rank_to)}
+HaloCommunicationDetails(; rank_from, rank_to) = HaloCommunicationDetails((rank_from, rank_to))
+
+function inject_halo_communication_boundary_conditions(boundary_conditions, my_rank, connectivity)
+    new_field_bcs = []
+
+    for field_bcs in boundary_conditions
+        rank_east = connectivity.east
+        rank_west = connectivity.west
+        rank_north = connectivity.north
+        rank_south = connectivity.south
+        rank_top = connectivity.top
+        rank_bottom = connectivity.bottom
+
+        east_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.east)
+        west_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.west)
+        north_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.north)
+        south_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.south)
+        top_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.top)
+        bottom_comm_bc_details = HaloCommunicationDetails(rank_from=my_rank, rank_to=connectivity.bottom)
+
+        east_comm_bc = BoundaryCondition(HaloCommunication, east_comm_bc_details)
+        west_comm_bc = BoundaryCondition(HaloCommunication, west_comm_bc_details)
+        north_comm_bc = BoundaryCondition(HaloCommunication, north_comm_bc_details)
+        south_comm_bc = BoundaryCondition(HaloCommunication, south_comm_bc_details)
+        top_comm_bc = BoundaryCondition(HaloCommunication, top_comm_bc_details)
+        bottom_comm_bc = BoundaryCondition(HaloCommunication, bottom_comm_bc_details)
+
+        x_bcs = CoordinateBoundaryConditions(isnothing(rank_west) ? field_bcs.x.left : west_comm_bc,
+                                             isnothing(rank_east) ? field_bcs.x.right : east_comm_bc)
+
+        y_bcs = CoordinateBoundaryConditions(isnothing(rank_south) ? field_bcs.y.south : south_comm_bc,
+                                             isnothing(rank_north) ? field_bcs.y.north : north_comm_bc)
+
+        z_bcs = CoordinateBoundaryConditions(isnothing(rank_bottom) ? field_bcs.z.bottom : bottom_comm_bc,
+                                             isnothing(rank_top) ? field_bcs.z.top : top_comm_bc)
+
+        push!(new_field_bcs, FieldBoundaryConditions(x_bcs, y_bcs, z_bcs))
+    end
+
+    return NamedTuple{propertynames(boundary_conditions)}(Tuple(new_field_bcs))
+end
 
 #####
 ##### Distributed model struct and constructor
@@ -153,15 +193,21 @@ function DistributedModel(; size, x, y, z, ranks, boundary_conditions, model_kwa
     ##### Construct local connectivity
     #####
 
-    my_connectivity = construct_connectivity(index, ranks, boundary_conditions)
+    my_connectivity = construct_connectivity(index, ranks, boundary_conditions.u)
     @debug "Local connectivity: $my_connectivity"
+
+    #####
+    ##### Change appropriate boundary conditions to halo communication BCs
+    #####
+
+    @debug "Injecting halo communication boundary conditions..."
+    boundary_conditions_with_communication = inject_halo_communication_boundary_conditions(boundary_conditions, my_rank, my_connectivity)
 
     #####
     ##### Construct local model
     #####
 
-    my_model = Model(grid=grid)
+    my_model = Model(grid=grid, boundary_conditions=boundary_conditions_with_communication)
 
     return DistributedModel(index, ranks, my_model, my_connectivity)
 end
-
