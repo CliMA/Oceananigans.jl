@@ -165,17 +165,3 @@ function DistributedModel(; size, x, y, z, ranks, boundary_conditions, model_kwa
     return DistributedModel(index, ranks, my_model, my_connectivity)
 end
 
-#####
-##### Script/test/whatever
-#####
-
-MPI.Init()
-
-dm = DistributedModel(ranks=(2, 2, 2), size=(16, 16, 16),
-                      x=(0, 1), y=(-0.5, 0.5), z=(-10, 0),
-                      boundary_conditions=HorizontallyPeriodicBCs())
-
-my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-@info "Rank $my_rank: $(dm.connectivity), $(dm.model.grid.zF[end])"
-
-MPI.Finalize()
