@@ -26,17 +26,17 @@ function ChannelPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATI
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    @info "Planning transforms for HorizontallyPeriodicPressureSolver..."
+    @info "Planning transforms for ChannelPressureSolver..."
     FFTx!   = plan_forward_transform(storage, x_bc, 1, planner_flag)
     DCTyz!  = plan_forward_transform(storage, z_bc, [2, 3], planner_flag)
     IFFTx!  = plan_backward_transform(storage, x_bc, 1, planner_flag)
     IDCTyz! = plan_backward_transform(storage, z_bc, [2, 3], planner_flag)
-    @info "Planning transforms for HorizontallyPeriodicPressureSolver done!"
+    @info "Planning transforms for ChannelPressureSolver done!"
 
     transforms = ( FFTx! =  FFTx!,  DCTyz! =  DCTyz!,
                   IFFTx! = IFFTx!, IDCTyz! = IDCTyz!)
 
-    return ChannelPressureSolver(CPU(), kx², ky², kz², storage, transforms)
+    return ChannelPressureSolver(CPU(), kx², ky², kz², storage, transforms, nothing)
 end
 
 function solve_poisson_equation!(solver::CPS, grid)

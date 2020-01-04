@@ -31,8 +31,6 @@ using Oceananigans: architecture, device, launch_config, datatuples, with_tracer
 
 import Oceananigans: interior, datatuple
 
-using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
-
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!

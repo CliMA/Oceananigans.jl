@@ -1,5 +1,6 @@
 using LinearAlgebra
 using Oceananigans: array_type
+using Oceananigans.Solvers: solve_poisson_equation!
 
 function ∇²!(grid, f, ∇²f)
     @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
@@ -13,15 +14,15 @@ end
 
 function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(100, 100, 100))
-    solver = PoissonSolver(CPU(), PPN(), grid)
-    true  # Just making sure the PoissonSolver does not error/crash.
+    solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs())
+    true  # Just making sure the PressureSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
-    solver = PoissonSolver(arch, PPN(), grid)
     fbcs = HorizontallyPeriodicBCs()
+    solver = PressureSolver(arch, grid, fbcs)
 
     RHS = CellField(FT, arch, grid)
     interior(RHS) .= rand(Nx, Ny, Nz)
@@ -29,7 +30,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     RHS_orig = deepcopy(RHS)
     solver.storage .= interior(RHS)
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_equation!(solver, grid)
 
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
@@ -47,8 +48,8 @@ end
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
-    solver = PoissonSolver(arch, PNN(), grid)
     fbcs = ChannelBCs()
+    solver = PressureSolver(arch, grid, fbcs)
 
     RHS = CellField(FT, arch, grid)
     interior(RHS) .= rand(Nx, Ny, Nz)
@@ -58,7 +59,7 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solver.storage .= interior(RHS)
 
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_equation!(solver, grid)
 
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
@@ -76,8 +77,8 @@ end
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
-    solver = PoissonSolver(arch, PPN(), grid)
     fbcs = HorizontallyPeriodicBCs()
+    solver = PressureSolver(arch, grid, fbcs)
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
@@ -92,7 +93,7 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     # solver.
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
 
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_equation!(solver, grid)
 
     # Undoing the permutation made above to complete the IDCT.
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
@@ -113,8 +114,8 @@ end
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
-    solver = PoissonSolver(arch, PNN(), grid)
     fbcs = ChannelBCs()
+    solver = PressureSolver(arch, grid, fbcs)
 
     RHS = rand(Nx, Ny, Nz)
     RHS .= RHS .- mean(RHS)
@@ -127,7 +128,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
     solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
 
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_equation!(solver, grid)
 
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
@@ -158,7 +159,7 @@ by giving it the source term or right hand side (RHS), which is
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    solver = PoissonSolver(CPU(), PPN(), grid)
+    solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs())
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
     xC = reshape(xC, (Nx, 1, 1))
@@ -169,7 +170,7 @@ function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx
     f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
-    solve_poisson_3d!(solver, grid)
+    solve_poisson_equation!(solver, grid)
     ϕ = real.(solver.storage)
 
     error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
