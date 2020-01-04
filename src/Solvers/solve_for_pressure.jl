@@ -21,6 +21,18 @@ function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     return nothing
 end
 
+function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
+    @launch(device(arch), config=launch_config(grid, :xyz),
+            calculate_pressure_right_hand_side!(solver.storage, solver, grid, U, G, Δt))
+
+    solve_poisson_equation!(solver, grid)
+
+    @launch(device(arch), config=launch_config(grid, :xyz),
+            copy_pressure!(pressure, solver, grid))
+
+    return nothing
+end
+
 """
 Calculate the right-hand-side of the Poisson equation for the non-hydrostatic
 pressure

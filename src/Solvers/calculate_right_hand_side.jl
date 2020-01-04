@@ -8,7 +8,7 @@ pressure and in the process apply the permutation
 
 along any direction we need to perform a GPU fast cosine transform algorithm.
 """
-function calculate_poisson_right_hand_side!(RHS, solver, grid, U, G, Δt)
+function calculate_pressure_right_hand_side!(RHS, solver, grid, U, G, Δt)
     @loop_xyz i j k grid begin
         i′, j′, k′ = permute_index(solver, i, j, k, grid.Nx, grid.Ny, grid.Nz)
 

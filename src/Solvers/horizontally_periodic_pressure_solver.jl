@@ -1,7 +1,7 @@
 using Oceananigans.Grids: unpack_grid
 
 struct HorizontallyPeriodicPressureSolver{A, R, T, C} <: AbstractPressureSolver{A}
-          arch :: A
+  architecture :: A
            kx² :: R
            ky² :: R
            kz² :: R
@@ -28,13 +28,13 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     IDCTz!  = plan_backward_transform(storage, z_bc, 3, planner_flag)
     @info "Planning transforms for HorizontallyPeriodicPressureSolver done!"
 
-    transforms = (FFTxy! = FFTxy!, DCTz! = DCTz!,
+    transforms = ( FFTxy! =  FFTxy!,  DCTz! =  DCTz!,
                   IFFTxy! = IFFTxy!, IDCTz! = IDCTz!)
 
     return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms)
 end
 
-function solve_poisson_equation!(output, solver::HPPS, grid)
+function solve_poisson_equation!(solver::HPPS, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
@@ -54,8 +54,8 @@ function solve_poisson_equation!(output, solver::HPPS, grid)
     # and so the DC component comes out to be ∞.
     ϕ[1, 1, 1] = 0
 
-    solver.transforms.IFFT! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
-    solver.transforms.IDCT! * ϕ  # Calculate IDCTᶻ(ϕ) in place.
+    solver.transforms.IFFTxy! * ϕ  # Calculate IFFTˣʸ(ϕ) in place.
+    solver.transforms.IDCTz!  * ϕ  # Calculate IDCTᶻ(ϕ) in place.
 
     # Must normalize by 2N for each dimension transformed via FFTW.REDFT.
     @. ϕ = ϕ / (2Nz)
