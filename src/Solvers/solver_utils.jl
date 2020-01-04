@@ -41,6 +41,17 @@ PoissonBCs(model_bcs::ModelBoundaryConditions) = PoissonBCs(model_bcs.solution)
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverCPU(pbcs, grid)
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverGPU(pbcs, grid)
 
+function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
+    x = poisson_bc_symbol(pressure_bcs.x.left)
+    y = poisson_bc_symbol(pressure_bcs.y.left)
+    z = poisson_bc_symbol(pressure_bcs.z.left)
+    bc_symbol = Symbol(x, y, z)
+
+    if bc_symbol == :PPN
+        return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
+    end
+end
+
 """
     ω(M, k)
 

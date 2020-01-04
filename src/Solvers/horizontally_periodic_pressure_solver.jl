@@ -1,12 +1,15 @@
 using Oceananigans.Grids: unpack_grid
 
-struct HorizontallyPeriodicPressureSolver{A, R, T, C} <: AbstractPressureSolver
+struct HorizontallyPeriodicPressureSolver{A, R, T, C} <: AbstractPressureSolver{A}
+          arch :: A
            kx² :: R
            ky² :: R
            kz² :: R
        storage :: C
     transforms :: T
 end
+
+const HPPS = HorizontallyPeriodicPressureSolver
 
 function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
@@ -28,10 +31,10 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     transforms = (FFTxy! = FFTxy!, DCTz! = DCTz!,
                   IFFTxy! = IFFTxy!, IDCTz! = IDCTz!)
 
-    return HorizontallyPeriodicPressureSolver{CPU}(kx², ky², kz², storage, transforms)
+    return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms)
 end
 
-function solve_for_pressure!(output, solver::HPPS, grid)
+function solve_poisson_equation!(output, solver::HPPS, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
