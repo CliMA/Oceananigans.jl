@@ -36,8 +36,8 @@ end
 ##### Build and deploy docs
 #####
 
-# Set up a timer to print a dot '.' every 60 seconds. This is to avoid Travis CI timing out when
-# building demanding Literate.jl examples.
+# Set up a timer to print a dot '.' every 60 seconds. This is to avoid Travis CI
+# timing out when building demanding Literate.jl examples.
 Timer(t -> println("."), 0, interval=60)
 
 format = Documenter.HTML(
@@ -47,7 +47,14 @@ format = Documenter.HTML(
 )
 
 makedocs(
-   modules = [Oceananigans, Oceananigans.Operators, Oceananigans.TurbulenceClosures],
+   modules = [Oceananigans,
+              Oceananigans.Grids,
+              Oceananigans.Operators,
+              Oceananigans.Diagnostics,
+              Oceananigans.OutputWriters,
+              Oceananigans.TimeSteppers,
+              Oceananigans.TurbulenceClosures,
+              Oceananigans.AbstractOperations],
    doctest = true,
    clean   = true,
  checkdocs = :all,
@@ -55,7 +62,7 @@ makedocs(
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
   sitename = "Oceananigans.jl",
      pages = [
-                              "Home" => "home.md",
+                              "Home" => "index.md",
          "Installation instructions" => "installation_instructions.md",
                         "Using GPUs" => "using_gpus.md",
 
@@ -127,7 +134,7 @@ makedocs(
              "Fractional step method" => "appendix/fractional_step.md",
          ],
 
-         "Index"      => "index.md"
+         "Function index" => "function_index.md"
      ]
 )
 
