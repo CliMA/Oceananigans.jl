@@ -1,3 +1,5 @@
+using Oceananigans.Grids: unpack_grid
+
 function plan_transforms(::PPN, A)
     FFT!      = plan_fft!(A, [1, 2])
     FFT_DCT!  = plan_fft!(A, 3)

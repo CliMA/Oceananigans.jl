@@ -2,7 +2,7 @@ using Oceananigans:
     CPU, GPU, AbstractGrid, AbstractPoissonSolver,
     BC, Periodic, ModelBoundaryConditions
 
-using Oceananigans.Grids: RegularCartesianGrid
+using Oceananigans.Grids: RegularCartesianGrid, unpack_grid
 
 # PoissonBCs are named XYZ, where each of X, Y, and Z is either
 # 'P' (for Periodic) or 'N' (for Neumann).
@@ -40,8 +40,6 @@ PoissonBCs(model_bcs::ModelBoundaryConditions) = PoissonBCs(model_bcs.solution)
 
 PoissonSolver(::CPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverCPU(pbcs, grid)
 PoissonSolver(::GPU, pbcs::PoissonBCs, grid::AbstractGrid) = PoissonSolverGPU(pbcs, grid)
-
-unpack_grid(grid::AbstractGrid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
 """
     ω(M, k)

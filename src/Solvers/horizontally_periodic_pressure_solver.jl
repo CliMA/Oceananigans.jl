@@ -1,3 +1,5 @@
+using Oceananigans.Grids: unpack_grid
+
 struct HorizontallyPeriodicPressureSolver{A, R, T, C} <: AbstractPressureSolver
            kx² :: R
            ky² :: R

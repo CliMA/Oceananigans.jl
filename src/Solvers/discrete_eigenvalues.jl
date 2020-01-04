@@ -1,4 +1,5 @@
 using Oceananigans: PBC, NFBC
+using Oceananigans.Grids: unpack_grid
 
 const PeriodicBC = PBC
 const NoFluxBC = NFBC
