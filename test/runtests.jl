@@ -87,6 +87,7 @@ with_logger(ModelLogger()) do
         include("test_halo_regions.jl")
         include("test_operators.jl")
         include("test_solvers.jl")
+        include("test_pressure_solvers.jl")
         include("test_coriolis.jl")
         include("test_surface_waves.jl")
         include("test_buoyancy.jl")
