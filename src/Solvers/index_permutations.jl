@@ -19,8 +19,8 @@ end
 const HPPS = HorizontallyPeriodicPressureSolver
 const CPS  = ChannelPressureSolver
 
-@inline permute_index(::HPPS{GPU}, i, j, k, Nx, Ny, Nz) = i, j, _permute_index(k, Nz)
-@inline permute_index(::CPS{GPU},  i, j, k, Nx, Ny, Nz) = i, _permute_index(j, Ny), _permute_index(k, Nz)
-
+@inline   permute_index(::HPPS{GPU}, i, j, k, Nx, Ny, Nz) = i, j,   _permute_index(k, Nz)
 @inline unpermute_index(::HPPS{GPU}, i, j, k, Nx, Ny, Nz) = i, j, _unpermute_index(k, Nz)
-@inline unpermute_index(::CPS{GPU},  i, j, k, Nx, Ny, Nz) = i, _unpermute_index(j, Ny), _unpermute_index(k, Nz)
+
+@inline   permute_index(::CPS{GPU}, i, j, k, Nx, Ny, Nz) = i,   _permute_index(j, Ny),   _permute_index(k, Nz)
+@inline unpermute_index(::CPS{GPU}, i, j, k, Nx, Ny, Nz) = i, _unpermute_index(j, Ny), _unpermute_index(k, Nz)

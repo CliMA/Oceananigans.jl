@@ -18,6 +18,6 @@ include("poisson_solver_cpu.jl")
 include("poisson_solver_gpu.jl")
 include("batched_tridiagonal_solver.jl")
 
-include("tmp.jl")
+include("solve_for_pressure.jl")
 
 end
