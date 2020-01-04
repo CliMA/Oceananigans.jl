@@ -32,7 +32,6 @@ using Oceananigans.Solvers
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 
-using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
@@ -145,16 +144,14 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies
                                              v=model.boundary_conditions.tendency.v,
                                              w=model.boundary_conditions.tendency.w)
 
-    fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions, model.architecture, model.grid)
+    fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions,
+                       model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, :xyz),
-            calculate_poisson_right_hand_side!(model.poisson_solver.storage, model.architecture, model.grid,
-                                               model.poisson_solver.bcs, velocities, tendencies, Δt))
+    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
+                        model.architecture, model.grid, velocities, tendencies, Δt)
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.architecture, model.grid, model.poisson_solver,
-                        model.poisson_solver.storage)
-
-    fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure, model.architecture, model.grid)
+    fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure,
+                       model.architecture, model.grid)
 
     return nothing
 end

@@ -17,7 +17,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F
                 closure :: E         # Diffusive 'turbulence closure' for all model fields
     boundary_conditions :: BCS       # Container for 3d bcs on all fields
             timestepper :: TS        # Object containing timestepper fields and parameters
-         poisson_solver :: S         # Poisson Solver
+        pressure_solver :: S         # Pressure/Poisson solver
           diffusivities :: K         # Container for turbulent diffusivities
          output_writers :: OW        # Objects that write data to disk
             diagnostics :: DI        # Objects that calc diagnostics on-line during simulation
@@ -44,7 +44,7 @@ end
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
             timestepper = :AdamsBashforth,
-         poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
+        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
     )
 
 Construct an `Oceananigans.jl` model on `grid`.
@@ -81,7 +81,7 @@ function Model(;
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
             timestepper = :AdamsBashforth,
-         poisson_solver = PoissonSolver(architecture, PoissonBCs(boundary_conditions), grid)
+        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
     )
 
     if architecture == GPU()
@@ -103,7 +103,7 @@ function Model(;
 
     return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
-                 poisson_solver, diffusivities, output_writers, diagnostics, parameters)
+                 pressure_solver, diffusivities, output_writers, diagnostics, parameters)
 end
 
 """Show the innards of a `Model` in the REPL."""
