@@ -4,6 +4,34 @@ using Oceananigans: @loop_xyz, @loop_xy
 ##### Navier-Stokes and tracer advection equations
 #####
 
+""" Store previous value of the source term and calculate current source term. """
+function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
+    # Manually choose thread-block layout here as it's ~20% faster.
+    # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
+    Tx, Ty = 16, 16 # CUDA threads per block
+    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
+
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
+
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
+
+    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+            calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time))
+
+    for tracer_index in 1:length(C)
+        @inbounds Gc = G[tracer_index+3]
+        @inbounds Fc = F[tracer_index+3]
+        @inbounds  c = C[tracer_index]
+
+        @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
+                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, parameters, time))
+    end
+
+    return nothing
+end
+
 """ Calculate the right-hand-side of the u-momentum equation. """
 function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
@@ -55,34 +83,6 @@ function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc
     return nothing
 end
 
-""" Store previous value of the source term and calculate current source term. """
-function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
-    # Manually choose thread-block layout here as it's ~20% faster.
-    # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
-    Tx, Ty = 16, 16 # CUDA threads per block
-    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
-
-    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
-
-    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
-
-    @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time))
-
-    for tracer_index in 1:length(C)
-        @inbounds Gc = G[tracer_index+3]
-        @inbounds Fc = F[tracer_index+3]
-        @inbounds  c = C[tracer_index]
-
-        @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, parameters, time))
-    end
-
-    return nothing
-end
-
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_source_terms!(Gⁿ, bcs, arch, grid, args...)
 
@@ -119,23 +119,6 @@ function solve_for_pressure!(pressure, ::GPU, grid, poisson_solver, ϕ)
     solve_poisson_3d!(poisson_solver, grid)
     @launch(device(GPU()), config=launch_config(grid, :xyz),
             idct_permute!(pressure, grid, poisson_solver.bcs, ϕ))
-    return nothing
-end
-
-"""
-Update the hydrostatic pressure perturbation pHY′. This is done by integrating
-the `buoyancy_perturbation` downwards:
-
-    `pHY′ = ∫ buoyancy_perturbation dz` from `z=0` down to `z=-Lz`
-"""
-function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
-    @loop_xy i j grid begin
-        @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
-        @unroll for k in grid.Nz-1 : -1 : 1
-            @inbounds pHY′[i, j, k] =
-                pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
-        end
-    end
     return nothing
 end
 
@@ -306,6 +289,27 @@ function update_solution!(U, C, arch, grid, Δt, G, pNHS)
         @launch device(arch) config=launch_config(grid, :xyz) update_tracer!(c, grid, Δt, Gc)
     end
 
+    return nothing
+end
+
+#####
+##### Vertical integrals
+#####
+
+"""
+Update the hydrostatic pressure perturbation pHY′. This is done by integrating
+the `buoyancy_perturbation` downwards:
+
+    `pHY′ = ∫ buoyancy_perturbation dz` from `z=0` down to `z=-Lz`
+"""
+function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
+    @loop_xy i j grid begin
+        @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
+        @unroll for k in grid.Nz-1 : -1 : 1
+            @inbounds pHY′[i, j, k] =
+                pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
+        end
+    end
     return nothing
 end
 

@@ -85,6 +85,24 @@ end
 ##### Adams-Bashforth-specific kernels
 #####
 
+""" Store previous source terms before updating them. """
+function ab2_store_previous_source_terms!(G⁻, arch, grid, Gⁿ)
+
+    # Velocity fields
+    @launch(device(arch), config=launch_config(grid, :xyz),
+            ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ))
+
+    # Tracer fields
+    for i in 4:length(G⁻)
+        @inbounds Gc⁻ = G⁻[i]
+        @inbounds Gcⁿ = Gⁿ[i]
+        @launch(device(arch), config=launch_config(grid, :xyz),
+                ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ))
+    end
+
+    return nothing
+end
+
 """ Store previous source terms for `u`, `v`, and `w` before updating them. """
 function ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ)
     @loop_xyz i j k grid begin
@@ -103,19 +121,21 @@ function ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ)
     return nothing
 end
 
-""" Store previous source terms before updating them. """
-function ab2_store_previous_source_terms!(G⁻, arch, grid, Gⁿ)
-
+"""
+Evaluate the right-hand-side terms for velocity fields and tracer fields
+at time step n+½ using a weighted 2nd-order Adams-Bashforth method.
+"""
+function ab2_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
     # Velocity fields
     @launch(device(arch), config=launch_config(grid, :xyz),
-            ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ))
+            ab2_update_velocity_source_terms!(Gⁿ, grid, χ, G⁻))
 
     # Tracer fields
-    for i in 4:length(G⁻)
-        @inbounds Gc⁻ = G⁻[i]
+    for i in 4:length(Gⁿ)
         @inbounds Gcⁿ = Gⁿ[i]
+        @inbounds Gc⁻ = G⁻[i]
         @launch(device(arch), config=launch_config(grid, :xyz),
-                ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ))
+                ab2_update_tracer_source_term!(Gcⁿ, grid, χ, Gc⁻))
     end
 
     return nothing
@@ -147,25 +167,5 @@ function ab2_update_tracer_source_term!(Gcⁿ, grid::AbstractGrid{FT}, χ, Gc⁻
     @loop_xyz i j k grid begin
         @inbounds Gcⁿ[i, j, k] = (FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k]
     end
-    return nothing
-end
-
-"""
-Evaluate the right-hand-side terms for velocity fields and tracer fields
-at time step n+½ using a weighted 2nd-order Adams-Bashforth method.
-"""
-function ab2_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
-    # Velocity fields
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            ab2_update_velocity_source_terms!(Gⁿ, grid, χ, G⁻))
-
-    # Tracer fields
-    for i in 4:length(Gⁿ)
-        @inbounds Gcⁿ = Gⁿ[i]
-        @inbounds Gc⁻ = G⁻[i]
-        @launch(device(arch), config=launch_config(grid, :xyz),
-                ab2_update_tracer_source_term!(Gcⁿ, grid, χ, Gc⁻))
-    end
-
     return nothing
 end
