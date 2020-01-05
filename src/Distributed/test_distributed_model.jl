@@ -19,3 +19,5 @@ my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 interior(dm.model.velocities.u) .= rand(8, 8, 8)
 fill_halo_regions!(dm.model.velocities.u.data, dm.model.boundary_conditions.solution.u, CPU(), dm.model.grid)
+
+display(interior(dm.model.velocities.u))

@@ -128,35 +128,37 @@ function inject_halo_communication_boundary_conditions(boundary_conditions, my_r
     return NamedTuple{propertynames(boundary_conditions)}(Tuple(new_field_bcs))
 end
 
-# Note: Hard-coded so this only works up to 10^3 ranks.
-@inline halo_comm_bc_send_tag(bc) = 10^3 * bc.condition.rank_from + bc.condition.rank_to
-@inline halo_comm_bc_recv_tag(bc) = 10^3 * bc.condition.rank_to   + bc.condition.rank_from
+# Unfortunately can't call MPI.Comm_size(MPI.COMM_WORLD) before MPI.Init().
+const MAX_RANKS = 10^3
+
+sides  = (:west, :east, :south, :north, :top, :bottom)
+coords = (:x,    :x,    :y,     :y,     :z,   :z)
+
+@inline west_halo_comm_bc_send_tag(bc) = 6 * (MAX_RANKS * bc.condition.rank_from + bc.condition.rank_to)
+@inline west_halo_comm_bc_recv_tag(bc) = 6 * (MAX_RANKS * bc.condition.rank_to   + bc.condition.rank_from)
+
+@inline west_send_buffer(c, N, H) = c.parent[N+1:N+H, :, :]
+
+@inline west_recv_buffer(grid) = zeros(grid.Hx, grid.Ty, grid.Tz)
+
+const east_recv_buffer = west_recv_buffer
 
 function fill_west_halo!(c, bc::HaloCommunicationBC, arch, grid, args...)
-    N, H = grid.Nx, grid.Hx
+    send_buffer = west_send_buffer(c, grid.Nx, grid.Hx)
+    recv_buffer = west_recv_buffer(grid)
 
-    send_buffer = c.parent[N+1:N+H, :, :]
-    recv_buffer = c.parent[1:H, :, :]
+    send_tag = west_halo_comm_bc_send_tag(bc)
+    recv_tag = west_halo_comm_bc_recv_tag(bc)
 
-    dest_rank = bc.condition.rank_to
-     src_rank = bc.condition.rank_from
+    rank_send_to = rank_recv_from = bc.condition.rank_to
 
-    send_tag = halo_comm_bc_send_tag(bc)
-    recv_tag = halo_comm_bc_recv_tag(bc)
-
-    # @info "MPI.Isend: dest_rank=$dest_rank, send_tag=$send_tag"
-    # MPI.Isend(send_buffer, dest_rank, send_tag, MPI.COMM_WORLD)
-    # @info "MPI.Isend: done!"
-    #
-    # @info "MPI.Recv!: src_rank=$src_rank, recv_tag=$recv_tag"
-    # MPI.Recv!(recv_buffer, dest_rank, recv_tag, MPI.COMM_WORLD)
-    # @info "MPI.Recv! done!"
-
-    @info "Sendrecv! src_rank=$src_rank, dest_rank=$dest_rank, send_tag=$send_tag, recv_tag=$recv_tag"
-    MPI.Sendrecv!(send_buffer, dest_rank, send_tag,
-                  recv_buffer, dest_rank, recv_tag,
+    @info "Sendrecv!: rank_send_to=rank_recv_from=$rank_send_to, send_tag=$send_tag, recv_tag=$recv_tag"
+    MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
+                  recv_buffer, rank_recv_from, recv_tag,
                   MPI.COMM_WORLD)
-    @info "Sendrecv! done!"
+    @info "Sendrecv!: done!"
+
+    c.parent[1:grid.Hx, :, :] .= recv_buffer
 end
 
 #####
