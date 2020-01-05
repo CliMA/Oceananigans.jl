@@ -4,7 +4,9 @@ using Oceananigans
 using Oceananigans: BCType, PBC
 using Oceananigans.Grids: validate_tupled_argument
 
-import Oceananigans: fill_west_halo!
+import Oceananigans: fill_west_halo!, fill_east_halo!,
+                     fill_south_halo!, fill_north_halo!,
+                     fill_bottom_halo!, fill_top_halo!
 
 #####
 ##### Convinient aliases
@@ -128,37 +130,82 @@ function inject_halo_communication_boundary_conditions(boundary_conditions, my_r
     return NamedTuple{propertynames(boundary_conditions)}(Tuple(new_field_bcs))
 end
 
-# Unfortunately can't call MPI.Comm_size(MPI.COMM_WORLD) before MPI.Init().
-const MAX_RANKS = 10^3
+#####
+##### Filling halos for halo communication boundary conditions
+#####
 
 sides  = (:west, :east, :south, :north, :top, :bottom)
 coords = (:x,    :x,    :y,     :y,     :z,   :z)
 
-@inline west_halo_comm_bc_send_tag(bc) = 6 * (MAX_RANKS * bc.condition.rank_from + bc.condition.rank_to)
-@inline west_halo_comm_bc_recv_tag(bc) = 6 * (MAX_RANKS * bc.condition.rank_to   + bc.condition.rank_from)
+# Unfortunately can't call MPI.Comm_size(MPI.COMM_WORLD) before MPI.Init().
+const MAX_RANKS = 10^3
 
-@inline west_send_buffer(c, N, H) = c.parent[N+1:N+H, :, :]
+# Define functions that return unique send and recv MPI tags for each side.
+for (i, side) in enumerate(sides)
+    send_tag_fn_name = Symbol(side, :_halo_comm_bc_send_tag)
+    recv_tag_fn_name = Symbol(side, :_halo_comm_bc_recv_tag)
+    @eval begin
+        @inline $send_tag_fn_name(bc) = 6 * (MAX_RANKS * bc.condition.rank_from + bc.condition.rank_to)   + $i
+        @inline $recv_tag_fn_name(bc) = 6 * (MAX_RANKS * bc.condition.rank_to   + bc.condition.rank_from) + $i
+    end
+end
 
-@inline west_recv_buffer(grid) = zeros(grid.Hx, grid.Ty, grid.Tz)
+@inline   west_send_buffer(c, N, H) = c.parent[N+1:N+H, :, :]
+@inline   east_send_buffer(c, N, H) = c.parent[1+H:2H,  :, :]
+@inline  south_send_buffer(c, N, H) = c.parent[:, N+1:N+H, :]
+@inline  north_send_buffer(c, N, H) = c.parent[:, 1+H:2H,  :]
+@inline    top_send_buffer(c, N, H) = c.parent[:, :,  1+H:2H]
+@inline bottom_send_buffer(c, N, H) = c.parent[:, :, N+1:N+H]
 
-const east_recv_buffer = west_recv_buffer
+@inline west_recv_buffer(grid)  = zeros(grid.Hx, grid.Ty, grid.Tz)
+@inline south_recv_buffer(grid) = zeros(grid.Tx, grid.Hy, grid.Tz)
+@inline top_recv_buffer(grid)   = zeros(grid.Tx, grid.Ty, grid.Hz)
 
-function fill_west_halo!(c, bc::HaloCommunicationBC, arch, grid, args...)
-    send_buffer = west_send_buffer(c, grid.Nx, grid.Hx)
-    recv_buffer = west_recv_buffer(grid)
+const   east_recv_buffer =  west_recv_buffer
+const  north_recv_buffer = south_recv_buffer
+const bottom_recv_buffer =   top_recv_buffer
 
-    send_tag = west_halo_comm_bc_send_tag(bc)
-    recv_tag = west_halo_comm_bc_recv_tag(bc)
+@inline   copy_recv_buffer_into_west_halo!(c, N, H, buf) = (c.parent[    1:H,    :, :] .= buf)
+@inline   copy_recv_buffer_into_east_halo!(c, N, H, buf) = (c.parent[N+H+1:N+2H, :, :] .= buf)
+@inline  copy_recv_buffer_into_south_halo!(c, N, H, buf) = (c.parent[:,     1:H,    :] .= buf)
+@inline  copy_recv_buffer_into_north_halo!(c, N, H, buf) = (c.parent[:, N+H+1:N+2H, :] .= buf)
+@inline copy_recv_buffer_into_bottom_halo!(c, N, H, buf) = (c.parent[:, :,     1:H   ] .= buf)
+@inline    copy_recv_buffer_into_top_halo!(c, N, H, buf) = (c.parent[:, :, N+H+1:N+2H] .= buf)
 
-    rank_send_to = rank_recv_from = bc.condition.rank_to
+for (x, side) in zip(coords, sides)
+    H = Symbol(:H, x)
+    N = Symbol(:N, x)
 
-    @info "Sendrecv!: rank_send_to=rank_recv_from=$rank_send_to, send_tag=$send_tag, recv_tag=$recv_tag"
-    MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
-                  recv_buffer, rank_recv_from, recv_tag,
-                  MPI.COMM_WORLD)
-    @info "Sendrecv!: done!"
+    fill_fn_name     = Symbol(:fill_, side, :_halo!)
+    send_buf_fn_name = Symbol(side, :_send_buffer)
+    recv_buf_fn_name = Symbol(side, :_recv_buffer)
+    send_tag_fn_name = Symbol(side, :_halo_comm_bc_send_tag)
+    recv_tag_fn_name = Symbol(side, :_halo_comm_bc_recv_tag)
+    copy_buf_fn_name = Symbol(:copy_recv_buffer_into_, side, :_halo!)
 
-    c.parent[1:grid.Hx, :, :] .= recv_buffer
+    @eval begin
+        function $fill_fn_name(c, bc::HaloCommunicationBC, arch, grid, args...)
+            send_buffer = $send_buf_fn_name(c, grid.$(N), grid.$(H))
+            recv_buffer = $recv_buf_fn_name(grid)
+
+            send_tag = $send_tag_fn_name(bc)
+            recv_tag = $recv_tag_fn_name(bc)
+
+            my_rank = bc.condition.rank_from
+            rank_send_to = rank_recv_from = bc.condition.rank_to
+
+            @info "Sendrecv!: my_rank=$my_rank, rank_send_to=rank_recv_from=$rank_send_to, " *
+                  "send_tag=$send_tag, recv_tag=$recv_tag"
+
+            MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
+                          recv_buffer, rank_recv_from, recv_tag,
+                          MPI.COMM_WORLD)
+
+            @info "Sendrecv!: my_rank=$my_rank done!"
+
+            $copy_buf_fn_name(c, grid.$(N), grid.$(H), recv_buffer)
+        end
+    end
 end
 
 #####
