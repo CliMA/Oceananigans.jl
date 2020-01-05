@@ -17,8 +17,6 @@ const HPPS = HorizontallyPeriodicPressureSolver
 #####
 
 function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
-    x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
-
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs)
 
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
@@ -27,6 +25,7 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
     @info "Planning transforms for HorizontallyPeriodicPressureSolver..."
+    x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
     DCTz!   = plan_forward_transform(storage, z_bc, 3, planner_flag)
     IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
@@ -39,7 +38,17 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms, nothing)
 end
 
-function solve_poisson_equation!(solver::HPPS, grid)
+"""
+    solve_poisson_3d!(solver::HPPS, grid)
+
+Solve Poisson equation on a uniform staggered grid (Arakawa C-grid) with
+appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
+and DCTs. The right-hand-side RHS is stored in solver.storage which the solver
+mutates to produce the solution, so it will also be stored in solver.storage.
+
+We should describe the algorithm in detail in the documentation.
+"""
+function solve_poisson_equation!(solver::HPPS{CPU}, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
 
@@ -71,3 +80,84 @@ end
 #####
 ##### GPU horizontally periodic pressure solver
 #####
+
+function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args...)
+    Nx, Ny, Nz, _ = unpack_grid(grid)
+
+    kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs) .|> CuArray
+
+    kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
+    kz⁻ = reshape(0:-1:-(Nz-1), 1, 1, Nz)
+
+    ω_4Nz⁺ = ω.(4Nz, kz⁺) |> CuArray
+    ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
+
+    constants = (ω_4Nz⁺ = ω_4Nz⁺, ω_4Nz⁻ = ω_4Nz⁻)
+
+    # Storage for RHS and Fourier coefficients is hard-coded to be Float64
+    # because of precision issues with Float32.
+    # See https://github.com/climate-machine/Oceananigans.jl/issues/55
+    storage = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
+
+    @info "Planning transforms for HorizontallyPeriodicPressureSolver..."
+    x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
+    FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
+    FFTz!   = plan_forward_transform(storage, z_bc, 3, planner_flag)
+    IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
+    IFFTz!  = plan_backward_transform(storage, z_bc, 3, planner_flag)
+    @info "Planning transforms for HorizontallyPeriodicPressureSolver done!"
+
+    transforms = ( FFTxy! =  FFTxy!,  FFTz! =  FFTz!,
+                  IFFTxy! = IFFTxy!, IFFTz! = IFFTz!)
+
+    return HorizontallyPeriodicPressureSolver(GPU(), kx², ky², kz², storage, transforms, constants)
+end
+
+"""
+    solve_poisson_equation!(solver::HPPS{GPU}, grid)
+
+Similar to solve_poisson_equation!(solver::HPPS{CPU}, grid) except that since
+the discrete cosine transform is not available through cuFFT, we perform our
+own fast cosine transform (FCT) via an algorithm that utilizes the FFT.
+
+Note that for the FCT algorithm to work, the input must have been permuted along
+the dimension the FCT is to be calculated by ordering the odd elements first
+followed by the even elements. For example,
+
+    [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
+
+The output will be permuted in this way and so the permutation must be undone.
+
+We should describe the algorithm in detail in the documentation.
+"""
+function solve_poisson_equation!(solver::HPPS{GPU}, grid)
+    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    ω_4Nz⁺, ω_4Nz⁻ = solver.constants.ω_4Nz⁺, solver.constants.ω_4Nz⁻
+
+    # We can use the same storage for the RHS and the solution ϕ.
+    RHS, ϕ = solver.storage, solver.storage
+
+    # Calculate DCTᶻ(f) in place using the FFT.
+    solver.transforms.FFTz! * RHS
+    @. RHS = 2 * real(ω_4Nz⁺ * RHS)
+
+    solver.transforms.FFTxy! * RHS  # Calculate FFTˣʸ(f) in place.
+
+    # Solve the discrete Poisson equation in spectral space. We are essentially
+    # computing the Fourier coefficients of the solution from the Fourier
+    # coefficients of the RHS.
+    @. ϕ = -RHS / (kx² + ky² + kz²)
+
+    # Setting DC component of the solution (the mean) to be zero. This is also
+    # necessary because the source term to the Poisson equation has zero mean
+    # and so the DC component comes out to be ∞.
+    ϕ[1, 1, 1] = 0
+
+    solver.transforms.IFFTxy! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
+
+    # Calculate IDCTᶻ(ϕ̂) in place using the FFT.
+    ϕ .*= ω_4Nz⁻
+    solver.transforms.IFFTz! * ϕ
+
+    return nothing
+end

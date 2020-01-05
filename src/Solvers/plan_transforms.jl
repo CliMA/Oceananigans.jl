@@ -28,6 +28,6 @@ plan_backward_transform(A::Array, ::NFBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 
 @hascuda begin
-     plan_forward_transform(::PBC, A::CuArray, dims) = plan_fft!(A, dims)
-    plan_backward_transform(::PBC, A::CuArray, dims) = plan_ifft!(A, dims)
+     plan_forward_transform(A::CuArray, ::Union{PBC, NFBC}, dims) = plan_fft!(A, dims)
+    plan_backward_transform(A::CuArray, ::Union{PBC, NFBC}, dims) = plan_ifft!(A, dims)
 end
