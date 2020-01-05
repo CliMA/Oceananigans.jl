@@ -4,6 +4,8 @@ using Oceananigans
 using Oceananigans: BCType, PBC
 using Oceananigans.Grids: validate_tupled_argument
 
+import Oceananigans: fill_west_halo!
+
 #####
 ##### Convinient aliases
 #####
@@ -124,6 +126,37 @@ function inject_halo_communication_boundary_conditions(boundary_conditions, my_r
     end
 
     return NamedTuple{propertynames(boundary_conditions)}(Tuple(new_field_bcs))
+end
+
+# Note: Hard-coded so this only works up to 10^3 ranks.
+@inline halo_comm_bc_send_tag(bc) = 10^3 * bc.condition.rank_from + bc.condition.rank_to
+@inline halo_comm_bc_recv_tag(bc) = 10^3 * bc.condition.rank_to   + bc.condition.rank_from
+
+function fill_west_halo!(c, bc::HaloCommunicationBC, arch, grid, args...)
+    N, H = grid.Nx, grid.Hx
+
+    send_buffer = c.parent[N+1:N+H, :, :]
+    recv_buffer = c.parent[1:H, :, :]
+
+    dest_rank = bc.condition.rank_to
+     src_rank = bc.condition.rank_from
+
+    send_tag = halo_comm_bc_send_tag(bc)
+    recv_tag = halo_comm_bc_recv_tag(bc)
+
+    # @info "MPI.Isend: dest_rank=$dest_rank, send_tag=$send_tag"
+    # MPI.Isend(send_buffer, dest_rank, send_tag, MPI.COMM_WORLD)
+    # @info "MPI.Isend: done!"
+    #
+    # @info "MPI.Recv!: src_rank=$src_rank, recv_tag=$recv_tag"
+    # MPI.Recv!(recv_buffer, dest_rank, recv_tag, MPI.COMM_WORLD)
+    # @info "MPI.Recv! done!"
+
+    @info "Sendrecv! src_rank=$src_rank, dest_rank=$dest_rank, send_tag=$send_tag, recv_tag=$recv_tag"
+    MPI.Sendrecv!(send_buffer, dest_rank, send_tag,
+                  recv_buffer, dest_rank, recv_tag,
+                  MPI.COMM_WORLD)
+    @info "Sendrecv! done!"
 end
 
 #####
