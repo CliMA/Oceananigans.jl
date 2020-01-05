@@ -124,10 +124,10 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
 
     @info "Planning transforms for ChannelPressureSolver..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
-    FFTx!   = plan_forward_transform(storage, x_bc, 1, planner_flag)
-    FFTyz!  = plan_forward_transform(storage, z_bc, [2, 3], planner_flag)
-    IFFTx!  = plan_backward_transform(storage, x_bc, 1, planner_flag)
-    IFFTyz! = plan_backward_transform(storage, z_bc, [2, 3], planner_flag)
+    FFTx!   = plan_forward_transform(storage, x_bc, 1)
+    FFTyz!  = plan_forward_transform(storage, z_bc, [2, 3])
+    IFFTx!  = plan_backward_transform(storage, x_bc, 1)
+    IFFTyz! = plan_backward_transform(storage, z_bc, [2, 3])
     @info "Planning transforms for ChannelPressureSolver done!"
 
     transforms = ( FFTx! =  FFTx!,  FFTyz! =  FFTyz!,

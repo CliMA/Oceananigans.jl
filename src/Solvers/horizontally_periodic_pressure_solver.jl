@@ -107,10 +107,10 @@ function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args..
 
     @info "Planning transforms for HorizontallyPeriodicPressureSolver..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
-    FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
-    FFTz!   = plan_forward_transform(storage, z_bc, 3, planner_flag)
-    IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
-    IFFTz!  = plan_backward_transform(storage, z_bc, 3, planner_flag)
+    FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2])
+    FFTz!   = plan_forward_transform(storage, z_bc, 3)
+    IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2])
+    IFFTz!  = plan_backward_transform(storage, z_bc, 3)
     @info "Planning transforms for HorizontallyPeriodicPressureSolver done!"
 
     transforms = ( FFTxy! =  FFTxy!,  FFTz! =  FFTz!,
