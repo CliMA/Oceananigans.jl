@@ -207,7 +207,8 @@ function DistributedModel(; size, x, y, z, ranks, boundary_conditions, model_kwa
     ##### Construct local model
     #####
 
-    my_model = Model(grid=grid, boundary_conditions=boundary_conditions_with_communication)
+    my_model = Model(; grid = grid, boundary_conditions = boundary_conditions_with_communication,
+                     model_kwargs...)
 
     return DistributedModel(index, ranks, my_model, my_connectivity)
 end
