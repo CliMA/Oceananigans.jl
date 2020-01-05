@@ -39,7 +39,7 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
 end
 
 """
-    solve_poisson_3d!(solver::HPPS, grid)
+    solve_poisson_equation!(solver::HPPS, grid)
 
 Solve Poisson equation on a uniform staggered grid (Arakawa C-grid) with
 appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
@@ -91,6 +91,12 @@ function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args..
 
     ω_4Nz⁺ = ω.(4Nz, kz⁺) |> CuArray
     ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
+
+    # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01) is not
+    # multiplied by 2. For some reason, we only need to account for this when
+    # doing a 1D IDCT (for PPN boundary conditions) but not for a 2D IDCT. It's
+    # possible that the masks are effectively doing this job.
+    ω_4Nz⁻[1] *= 1/2
 
     constants = (ω_4Nz⁺ = ω_4Nz⁺, ω_4Nz⁻ = ω_4Nz⁻)
 
