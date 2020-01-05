@@ -194,14 +194,22 @@ for (x, side) in zip(coords, sides)
             my_rank = bc.condition.rank_from
             rank_send_to = rank_recv_from = bc.condition.rank_to
 
-            @info "Sendrecv!: my_rank=$my_rank, rank_send_to=rank_recv_from=$rank_send_to, " *
-                  "send_tag=$send_tag, recv_tag=$recv_tag"
+            @info "MPI.Isend: my_rank=$my_rank, rank_send_to=$rank_send_to, send_tag=$send_tag"
+            MPI.Isend(send_buffer, rank_send_to, send_tag, MPI.COMM_WORLD)
+            @info "MPI.Isend: done!"
 
-            MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
-                          recv_buffer, rank_recv_from, recv_tag,
-                          MPI.COMM_WORLD)
+            @info "MPI.Recv!: my_rank=$my_rank, rank_recv_from=$rank_recv_from, recv_tag=$recv_tag"
+            MPI.Recv!(recv_buffer, rank_recv_from, recv_tag, MPI.COMM_WORLD)
+            @info "MPI.Recv! done!"
 
-            @info "Sendrecv!: my_rank=$my_rank done!"
+            # @info "Sendrecv!: my_rank=$my_rank, rank_send_to=rank_recv_from=$rank_send_to, " *
+            #       "send_tag=$send_tag, recv_tag=$recv_tag"
+            #
+            # MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
+            #               recv_buffer, rank_recv_from, recv_tag,
+            #               MPI.COMM_WORLD)
+            #
+            # @info "Sendrecv!: my_rank=$my_rank done!"
 
             $copy_buf_fn_name(c, grid.$(N), grid.$(H), recv_buffer)
         end
