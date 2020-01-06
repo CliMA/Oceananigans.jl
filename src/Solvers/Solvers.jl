@@ -10,8 +10,6 @@ using Oceananigans.Grids
 using Oceananigans: @hascuda
 @hascuda using CUDAnative, CuArrays
 
-abstract type AbstractPressureSolver{A} end
-
 include("solver_utils.jl")
 include("batched_tridiagonal_solver.jl")
 
