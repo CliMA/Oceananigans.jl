@@ -13,13 +13,13 @@ function ChannelPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATI
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    @info "Planning transforms for ChannelPressureSolver..."
+    @info "Planning transforms for PressureSolver{Channel, CPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTx!   = plan_forward_transform(storage, x_bc, 1, planner_flag)
     DCTyz!  = plan_forward_transform(storage, z_bc, [2, 3], planner_flag)
     IFFTx!  = plan_backward_transform(storage, x_bc, 1, planner_flag)
     IDCTyz! = plan_backward_transform(storage, z_bc, [2, 3], planner_flag)
-    @info "Planning transforms for ChannelPressureSolver done!"
+    @info "Planning transforms for PressureSolver{Channel, CPU} done!"
 
     transforms = ( FFTx! =  FFTx!,  DCTyz! =  DCTyz!,
                   IFFTx! = IFFTx!, IDCTyz! = IDCTyz!)
@@ -112,13 +112,13 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
 
     storage = (storage1 = storage1, storage2 = storage2)
 
-    @info "Planning transforms for ChannelPressureSolver..."
+    @info "Planning transforms for PressureSolver{Channel, GPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTx!   = plan_forward_transform(storage1, x_bc, 1)
     FFTyz!  = plan_forward_transform(storage1, z_bc, [2, 3])
     IFFTx!  = plan_backward_transform(storage1, x_bc, 1)
     IFFTyz! = plan_backward_transform(storage1, z_bc, [2, 3])
-    @info "Planning transforms for ChannelPressureSolver done!"
+    @info "Planning transforms for PressureSolver{Channel, GPU} done!"
 
     transforms = ( FFTx! =  FFTx!,  FFTyz! =  FFTyz!,
                   IFFTx! = IFFTx!, IFFTyz! = IFFTyz!)

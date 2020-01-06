@@ -25,6 +25,8 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     z = poisson_bc_symbol(pressure_bcs.z.left)
     bc_symbol = Symbol(x, y, z)
 
+    if bc_symbol == :PPP
+        return TriplyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     if bc_symbol == :PPN
         return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PNN
