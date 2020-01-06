@@ -27,7 +27,7 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
 
     if bc_symbol == :PPP
         return TriplyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
-    if bc_symbol == :PPN
+    elseif bc_symbol == :PPN
         return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PNN
         return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
