@@ -76,11 +76,6 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     ω_4Ny⁻ = ω.(4Ny, ky⁻) |> CuArray
     ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
 
-    # Indices used when we need views to permuted arrays where the odd indices
-    # are iterated over first followed by the even indices.
-    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
-    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
-
     # Indices used when we need views with reverse indexing but index N+1 should
     # return a 0. This can't be enforced using views so we just map N+1 to 1,
     # and use masks M_ky and M_kz to enforce that the value at N+1 is 0.
@@ -96,7 +91,6 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     M_kz[1] = 0
 
     constants = (ω_4Ny⁺ = ω_4Ny⁺, ω_4Nz⁺ = ω_4Nz⁺, ω_4Ny⁻ = ω_4Ny⁻, ω_4Nz⁻ = ω_4Nz⁻,
-                 p_y_inds = p_y_inds, p_z_inds = p_z_inds,
                  r_y_inds = r_y_inds, r_z_inds = r_z_inds,
                  M_ky = M_ky, M_kz = M_kz)
 

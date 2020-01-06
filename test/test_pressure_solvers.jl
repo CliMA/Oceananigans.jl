@@ -131,7 +131,12 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     ϕ   = CellField(FT, arch, grid)
     ∇²ϕ = CellField(FT, arch, grid)
 
-    ϕ_p = view(interior(ϕ), 1:Nx, solver.p_y_inds, solver.p_z_inds)
+    # Indices used when we need views to permuted arrays where the odd indices
+    # are iterated over first followed by the even indices.
+    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
+    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
+
+    ϕ_p = view(interior(ϕ), 1:Nx, p_y_inds, p_z_inds)
 
     @. ϕ_p = real(solver.storage)
 
