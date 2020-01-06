@@ -1,0 +1,36 @@
+struct PressureSolver{T, A, W, S, R, C}
+          type :: T
+  architecture :: A
+   wavenumbers :: W
+       storage :: S
+    transforms :: R
+     constants :: C
+end
+
+abstract type PressureSolverType end
+
+struct TriplyPeriodic <: PressureSolverType end
+struct HorizontallyPeriodic <: PressureSolverType end
+struct Channel <: PressureSolverType end
+struct Box <: PressureSolverType end
+
+# const TPPS =       TriplyPeriodicPressureSolver = PressureSolver{<:TriplyPeriodic}
+# const HPPS = HorizontallyPeriodicPressureSolver = PressureSolver{<:HorizontallyPeriodic}
+# const  CPS =              ChannelPressureSolver = PressureSolver{<:Channel}
+# const  BPS =                  BoxPressureSolver = PressureSolver{<:Box}
+
+poisson_bc_symbol(::BC) = :N
+poisson_bc_symbol(::BC{<:Periodic}) = :P
+
+function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
+    x = poisson_bc_symbol(pressure_bcs.x.left)
+    y = poisson_bc_symbol(pressure_bcs.y.left)
+    z = poisson_bc_symbol(pressure_bcs.z.left)
+    bc_symbol = Symbol(x, y, z)
+
+    if bc_symbol == :PPN
+        return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
+    elseif bc_symbol == :PNN
+        return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
+    end
+end

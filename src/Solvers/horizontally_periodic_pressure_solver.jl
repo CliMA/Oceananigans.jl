@@ -1,23 +1,13 @@
 using Oceananigans.Grids: unpack_grid
 
-struct HorizontallyPeriodicPressureSolver{A, R, S, T, C} <: AbstractPressureSolver{A}
-  architecture :: A
-           kx² :: R
-           ky² :: R
-           kz² :: R
-       storage :: S
-    transforms :: T
-     constants :: C
-end
-
-const HPPS = HorizontallyPeriodicPressureSolver
-
 #####
 ##### CPU horizontally periodic pressure solver
 #####
 
 function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs)
+
+    wavenumbers = (kx² = kx², ky² = ky², kz² = kz²)
 
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
     # because of precision issues with Float32.
@@ -35,7 +25,8 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     transforms = ( FFTxy! =  FFTxy!,  DCTz! =  DCTz!,
                   IFFTxy! = IFFTxy!, IDCTz! = IDCTz!)
 
-    return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms, nothing)
+    return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
+    # return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms, nothing)
 end
 
 """
@@ -48,9 +39,9 @@ mutates to produce the solution, so it will also be stored in solver.storage.
 
 We should describe the algorithm in detail in the documentation.
 """
-function solve_poisson_equation!(solver::HPPS{CPU}, grid)
+function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, CPU}, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
-    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    kx², ky², kz² = solver.wavenumbers.kx², solver.wavenumbers.ky², solver.wavenumbers.kz²
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -136,7 +127,7 @@ The output will be permuted in this way and so the permutation must be undone.
 
 We should describe the algorithm in detail in the documentation.
 """
-function solve_poisson_equation!(solver::HPPS{GPU}, grid)
+function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, GPU}, grid)
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
     ω_4Nz⁺, ω_4Nz⁻ = solver.constants.ω_4Nz⁺, solver.constants.ω_4Nz⁻
 

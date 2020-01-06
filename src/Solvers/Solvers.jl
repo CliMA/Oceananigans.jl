@@ -17,6 +17,7 @@ include("batched_tridiagonal_solver.jl")
 
 include("discrete_eigenvalues.jl")
 include("plan_transforms.jl")
+include("pressure_solver.jl")
 include("horizontally_periodic_pressure_solver.jl")
 include("channel_pressure_solver.jl")
 include("index_permutations.jl")
