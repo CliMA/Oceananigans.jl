@@ -1,26 +1,12 @@
 using Oceananigans.Grids: unpack_grid
 
-struct ChannelPressureSolver{A, R, S, S2, T, C} <: AbstractPressureSolver{A}
-  architecture :: A
-           kx² :: R
-           ky² :: R
-           kz² :: R
-       storage :: S
-      storage2 :: S2
-    transforms :: T
-     constants :: C
-end
-
-const CPS = ChannelPressureSolver
-
 #####
 ##### CPU channel pressure solver
 #####
 
 function ChannelPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
-    x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
-
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs)
+    wavenumbers = (kx² = kx², ky² = ky², kz² = kz²)
 
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
     # because of precision issues with Float32.
@@ -28,6 +14,7 @@ function ChannelPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATI
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
     @info "Planning transforms for ChannelPressureSolver..."
+    x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTx!   = plan_forward_transform(storage, x_bc, 1, planner_flag)
     DCTyz!  = plan_forward_transform(storage, z_bc, [2, 3], planner_flag)
     IFFTx!  = plan_backward_transform(storage, x_bc, 1, planner_flag)
@@ -37,12 +24,12 @@ function ChannelPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATI
     transforms = ( FFTx! =  FFTx!,  DCTyz! =  DCTyz!,
                   IFFTx! = IFFTx!, IDCTyz! = IDCTyz!)
 
-    return ChannelPressureSolver(CPU(), kx², ky², kz², storage, nothing, transforms, nothing)
+    return PressureSolver(Channel(), CPU(), wavenumbers, storage, transforms, nothing)
 end
 
-function solve_poisson_equation!(solver::CPS, grid)
+function solve_poisson_equation!(solver::PressureSolver{Channel, CPU}, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
-    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    kx², ky², kz² = solver.wavenumbers.kx², solver.wavenumbers.ky², solver.wavenumbers.kz²
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -77,6 +64,7 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs) .|> CuArray
+    wavenumbers = (kx² = kx², ky² = ky², kz² = kz²)
 
     ky⁺ = reshape(0:Ny-1,       1, Ny, 1)
     kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
@@ -115,28 +103,30 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
     # because of precision issues with Float32.
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
-    storage = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
+    storage1 = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
 
     # For solving the Poisson equation with PNN boundary conditions, we need a
     # second storage/buffer array to perform the 2D fast cosine transform. Maybe
     # we can get around this but for now we'll just use up a second array.
     storage2 = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
 
+    storage = (storage1 = storage1, storage2 = storage2)
+
     @info "Planning transforms for ChannelPressureSolver..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
-    FFTx!   = plan_forward_transform(storage, x_bc, 1)
-    FFTyz!  = plan_forward_transform(storage, z_bc, [2, 3])
-    IFFTx!  = plan_backward_transform(storage, x_bc, 1)
-    IFFTyz! = plan_backward_transform(storage, z_bc, [2, 3])
+    FFTx!   = plan_forward_transform(storage1, x_bc, 1)
+    FFTyz!  = plan_forward_transform(storage1, z_bc, [2, 3])
+    IFFTx!  = plan_backward_transform(storage1, x_bc, 1)
+    IFFTyz! = plan_backward_transform(storage1, z_bc, [2, 3])
     @info "Planning transforms for ChannelPressureSolver done!"
 
     transforms = ( FFTx! =  FFTx!,  FFTyz! =  FFTyz!,
                   IFFTx! = IFFTx!, IFFTyz! = IFFTyz!)
 
-    return ChannelPressureSolver(GPU(), kx², ky², kz², storage, storage2, transforms, constants)
+    return PressureSolver(Channel(), GPU(), wavenumbers, storage, transforms, constants)
 end
 
-function solve_poisson_equation!(solver::CPS{GPU}, grid)
+function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
     kx², ky², kz² = solver.kx², solver.ky², solver.kz²
@@ -146,9 +136,9 @@ function solve_poisson_equation!(solver::CPS{GPU}, grid)
     M_ky, M_kz = solver.constants.M_ky, solver.constants.M_kz
 
     # We can use the same storage for the RHS and the solution ϕ.
-    RHS, ϕ = solver.storage, solver.storage
+    RHS =  ϕ = solver.storage.storage1
 
-    B = solver.storage2  # Complex buffer storage.
+    B = solver.storage.storage2  # Complex buffer storage.
 
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.transforms.FFTyz! * RHS

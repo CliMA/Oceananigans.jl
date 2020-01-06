@@ -1,3 +1,5 @@
+using Oceananigans: BC, Periodic
+
 struct PressureSolver{T, A, W, S, R, C}
           type :: T
   architecture :: A
@@ -9,15 +11,10 @@ end
 
 abstract type PressureSolverType end
 
-struct TriplyPeriodic <: PressureSolverType end
+struct TriplyPeriodic       <: PressureSolverType end
 struct HorizontallyPeriodic <: PressureSolverType end
-struct Channel <: PressureSolverType end
-struct Box <: PressureSolverType end
-
-# const TPPS =       TriplyPeriodicPressureSolver = PressureSolver{<:TriplyPeriodic}
-# const HPPS = HorizontallyPeriodicPressureSolver = PressureSolver{<:HorizontallyPeriodic}
-# const  CPS =              ChannelPressureSolver = PressureSolver{<:Channel}
-# const  BPS =                  BoxPressureSolver = PressureSolver{<:Box}
+struct Channel              <: PressureSolverType end
+struct Box                  <: PressureSolverType end
 
 poisson_bc_symbol(::BC) = :N
 poisson_bc_symbol(::BC{<:Periodic}) = :P
@@ -32,5 +29,7 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
         return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PNN
         return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
+    else
+        throw(ArgumentError("Unsupported pressure boundary conditions: $bc_symbol"))
     end
 end

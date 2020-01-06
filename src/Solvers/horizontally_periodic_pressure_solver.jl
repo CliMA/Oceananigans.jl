@@ -1,3 +1,4 @@
+using Oceananigans: CPU, GPU
 using Oceananigans.Grids: unpack_grid
 
 #####
@@ -6,7 +7,6 @@ using Oceananigans.Grids: unpack_grid
 
 function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs)
-
     wavenumbers = (kx² = kx², ky² = ky², kz² = kz²)
 
     # Storage for RHS and Fourier coefficients is hard-coded to be Float64
@@ -26,11 +26,10 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
                   IFFTxy! = IFFTxy!, IDCTz! = IDCTz!)
 
     return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
-    # return HorizontallyPeriodicPressureSolver(CPU(), kx², ky², kz², storage, transforms, nothing)
 end
 
 """
-    solve_poisson_equation!(solver::HPPS, grid)
+    solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, CPU}, grid)
 
 Solve Poisson equation on a uniform staggered grid (Arakawa C-grid) with
 appropriate boundary conditions as specified by `solver.bcs` using planned FFTs
@@ -76,6 +75,7 @@ function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args..
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
     kx², ky², kz² = generate_discrete_eigenvalues(grid, pressure_bcs) .|> CuArray
+    wavenumbers = (kx² = kx², ky² = ky², kz² = kz²)
 
     kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
     kz⁻ = reshape(0:-1:-(Nz-1), 1, 1, Nz)
@@ -107,11 +107,11 @@ function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args..
     transforms = ( FFTxy! =  FFTxy!,  FFTz! =  FFTz!,
                   IFFTxy! = IFFTxy!, IFFTz! = IFFTz!)
 
-    return HorizontallyPeriodicPressureSolver(GPU(), kx², ky², kz², storage, transforms, constants)
+    return PressureSolver(HorizontallyPeriodic(), GPU(), wavenumbers, storage, transforms, constants)
 end
 
 """
-    solve_poisson_equation!(solver::HPPS{GPU}, grid)
+    solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, GPU}, grid)
 
 Similar to solve_poisson_equation!(solver::HPPS{CPU}, grid) except that since
 the discrete cosine transform is not available through cuFFT, we perform our
@@ -128,7 +128,7 @@ The output will be permuted in this way and so the permutation must be undone.
 We should describe the algorithm in detail in the documentation.
 """
 function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, GPU}, grid)
-    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    kx², ky², kz² = solver.wavenumbers.kx², solver.wavenumbers.ky², solver.wavenumbers.kz²
     ω_4Nz⁺, ω_4Nz⁻ = solver.constants.ω_4Nz⁺, solver.constants.ω_4Nz⁻
 
     # We can use the same storage for the RHS and the solution ϕ.

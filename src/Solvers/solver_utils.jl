@@ -1,9 +1,3 @@
-using Oceananigans:
-    CPU, GPU, AbstractGrid, AbstractPoissonSolver,
-    BC, Periodic, ModelBoundaryConditions
-
-using Oceananigans.Grids: RegularCartesianGrid, unpack_grid
-
 """
     ω(M, k)
 
