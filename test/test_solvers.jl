@@ -297,7 +297,7 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     return Array(ϕ) ≈ ϕ_correct
 end
 
-function vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
+function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     Lx, Ly, Lz = 1, 1, zF[end]
     Δx, Δy = Lx/Nx, Ly/Ny
 
@@ -449,7 +449,7 @@ end
 
     @testset "FFTW plans" begin
         @info "  Testing FFTW planning..."
-    
+
         for FT in float_types
             @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
             @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
@@ -481,7 +481,7 @@ end
 
     @testset "Divergence-free velocity [DCT, GPU]" begin
         @info "  Testing divergence-free solution [DCT, GPU]..."
-    
+
         @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
@@ -519,12 +519,12 @@ end
     end
 
     for arch in [CPU()]
-        @testset "Divergence-free velocity [FACR, $arch]" begin
-            @info "  Testing divergence-free velocity [FACR, $arch]..."
+        @testset "Vertically stretched Poisson solver [FACR, $arch]" begin
+            @info "  Testing vertically stretched Poisson solver [FACR, $arch]..."
 
             Nx = Ny = 8
             zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
-            @test vertically_stretched_grid_div_free_velocity(arch, Nx, Ny, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
         end
     end
 end
