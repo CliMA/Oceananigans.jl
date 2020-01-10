@@ -25,7 +25,7 @@ function initial_conditions_correctly_set(arch, FT)
     T₀(x, y, z) = 4 + tanh(x+y-z)
     S₀(x, y, z) = 5
 
-    set_ic!(model; u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
+    set!(model; u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC

@@ -139,7 +139,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     # Initial temperature field [°C].
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
-    set_ic!(model, T=T₀)
+    set!(model, T=T₀)
 
     Tavg0 = mean(interior(model.tracers.T))
 

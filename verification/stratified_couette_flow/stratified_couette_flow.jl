@@ -130,7 +130,7 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+    set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
     #####
     ##### Print simulation banner
