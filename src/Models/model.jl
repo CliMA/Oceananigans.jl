@@ -2,8 +2,9 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.Fields
 
-using Oceananigans: AbstractArchitecture, CPU, GPU, ModelForcing
+using Oceananigans: AbstractArchitecture, CPU, GPU
 using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
+using Oceananigans.Forcing: ModelForcing
 using Oceananigans.BoundaryConditions: HorizontallyPeriodicSolutionBCs, ModelBoundaryConditions
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic
