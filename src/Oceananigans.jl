@@ -113,13 +113,6 @@ Abstract supertype for architectures supported by Oceananigans.
 abstract type AbstractArchitecture end
 
 """
-    AbstractRotation
-
-Abstract supertype for parameters related to background rotation rates.
-"""
-abstract type AbstractRotation end
-
-"""
     AbstractGrid{T}
 
 Abstract supertype for grids with elements of type `T`.
@@ -256,7 +249,7 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 
 using .TurbulenceClosures
 
-include("coriolis.jl")
+include("Coriolis/Coriolis.jl")
 include("buoyancy.jl")
 include("SurfaceWaves.jl")
 include("BoundaryConditions/BoundaryConditions.jl")

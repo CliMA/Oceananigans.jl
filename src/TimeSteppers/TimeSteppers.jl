@@ -16,9 +16,6 @@ using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     @loop_xyz,
 
                     buoyancy_perturbation,
-                    x_f_cross_U, y_f_cross_U, z_f_cross_U,
-
-                    fill_halo_regions!, apply_z_bcs!, apply_y_bcs!,
 
                     time_to_run
 
@@ -28,6 +25,8 @@ using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using Oceananigans.Operators
+using Oceananigans.Coriolis
+using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
