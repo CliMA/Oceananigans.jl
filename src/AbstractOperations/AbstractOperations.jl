@@ -12,8 +12,7 @@ using Oceananigans: @hascuda
 
 using Oceananigans, Oceananigans.Grids, Adapt
 
-using Oceananigans: AbstractModel, AbstractGrid, short_show,
-                    device, launch_config, architecture
+using Oceananigans: AbstractGrid, device, launch_config, architecture
 
 import Oceananigans: data, architecture
 
@@ -21,8 +20,8 @@ using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 
-using Oceananigans.Grids: show_domain
-
+using Oceananigans.Grids: show_domain, short_show
+using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
 
 import Oceananigans.Diagnostics: run_diagnostic

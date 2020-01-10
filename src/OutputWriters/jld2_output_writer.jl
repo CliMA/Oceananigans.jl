@@ -123,7 +123,7 @@ function jld2output!(path, iter, time, data, kwargs)
     return nothing
 end
 
-function start_next_file(model::Model, fw::JLD2OutputWriter)
+function start_next_file(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     sz = filesize(fw.filepath)
     verbose && @info begin

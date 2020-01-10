@@ -83,7 +83,6 @@ import
 
 using Base: @propagate_inbounds
 using Statistics: mean
-using OrderedCollections: OrderedDict
 using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
@@ -97,13 +96,6 @@ import Base:
 #####
 ##### Abstract types
 #####
-
-"""
-    AbstractModel
-
-Abstract supertype for models.
-"""
-abstract type AbstractModel end
 
 """
     AbstractArchitecture
@@ -200,7 +192,6 @@ using Logging
 
 include("utils.jl")
 
-include("clock.jl")
 include("Grids/Grids.jl")
 
 using .Grids
@@ -227,7 +218,9 @@ using .Solvers
 
 include("forcing.jl")
 include("logger.jl")
-include("models.jl")
+include("Models/Models.jl")
+
+using .Models
 
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")

@@ -11,7 +11,7 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
+using Oceananigans: AbstractGrid,
                     @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
                     @loop_xyz, time_to_run
 
@@ -25,10 +25,12 @@ using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
 using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
+using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 
 using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
+using Oceananigans.Models: Tendencies, tracernames
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
