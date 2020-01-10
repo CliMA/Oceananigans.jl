@@ -259,8 +259,10 @@ using .TurbulenceClosures
 include("coriolis.jl")
 include("buoyancy.jl")
 include("SurfaceWaves.jl")
-include("boundary_conditions.jl")
-include("halo_regions.jl")
+include("BoundaryConditions/BoundaryConditions.jl")
+
+using .BoundaryConditions
+
 include("Solvers/Solvers.jl")
 
 using .Solvers
