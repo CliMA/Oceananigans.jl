@@ -45,7 +45,7 @@ for (x, side) in zip(coords, sides)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
     @eval begin
-        $outername(c, bc::Union{FBC, PBC, NPBC}, arch::AbstractArchitecture, grid::AbstractGrid, args...) =
+        $outername(c, bc::Union{FBC, PBC, NPBC}, arch, grid, args...) =
             $innername(c, bc, grid.$(H), grid.$(N))
     end
 end

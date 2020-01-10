@@ -1,3 +1,6 @@
+using GPUifyLoops: @launch, @loop
+using Oceananigans: device, @loop_xy, @loop_xz
+
 #####
 ##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.
 ##### Inhomogeneous Value and Gradient boundary conditions are handled by filling halos.

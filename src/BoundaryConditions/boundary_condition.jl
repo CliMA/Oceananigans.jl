@@ -1,3 +1,5 @@
+import Adapt
+
 """
     BoundaryCondition{C<:BCType}(condition)
 
@@ -19,7 +21,7 @@ BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
 bctype(bc::BoundaryCondition{C}) where C = C
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-Adapt.adapt_structure(to, b::BC{C, A}) where {C<:BCType, A<:AbstractArray} =
+Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:AbstractArray} =
     BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
 
 #####

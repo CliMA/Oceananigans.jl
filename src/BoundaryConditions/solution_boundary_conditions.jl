@@ -1,3 +1,5 @@
+using Oceananigans.TurbulenceClosures: with_tracers
+
 """
     SolutionBoundaryConditions(tracers, proposal_bcs)
 

@@ -11,6 +11,14 @@ mutable struct CoordinateBoundaryConditions{L, R}
     right :: R
 end
 
+#####
+##### Some aliases to make life easier.
+#####
+
+const CBC = CoordinateBoundaryConditions
+
+PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
+
 # Here we overload setproperty! and getproperty to permit users to call
 # the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'
 # and the 'left' and 'right' bcs in the y-direction 'south' and 'north'.
@@ -29,11 +37,3 @@ getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :left)
 getbc(cbc::CBC, ::Val{:top})    = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:south})  = getfield(cbc, :left)
 getbc(cbc::CBC, ::Val{:north})  = getfield(cbc, :right)
-
-#####
-##### Some aliases to make life easier.
-#####
-
-const CBC = CoordinateBoundaryConditions
-
-PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
