@@ -135,28 +135,7 @@ and defined on a grid `G`.
 abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
 
 """
-    AbstractEquationOfState
-
-Abstract supertype for buoyancy models.
-"""
-abstract type AbstractBuoyancy{EOS} end
-
-"""
-    AbstractEquationOfState
-
-Abstract supertype for equations of state.
-"""
-abstract type AbstractEquationOfState end
-
-"""
-    AbstractEquationOfState
-
-Abstract supertype for nonlinar equations of state.
-"""
-abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
-
-"""
-    AbstractEquationOfState
+    AbstractPoissonSolver
 
 Abstract supertype for solvers for Poisson's equation.
 """
@@ -250,7 +229,10 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 using .TurbulenceClosures
 
 include("Coriolis/Coriolis.jl")
-include("buoyancy.jl")
+include("Buoyancy/Buoyancy.jl")
+
+using .Buoyancy
+
 include("SurfaceWaves.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 

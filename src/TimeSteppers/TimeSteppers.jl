@@ -13,11 +13,7 @@ import Oceananigans: TimeStepper
 
 using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
                     @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
-                    @loop_xyz,
-
-                    buoyancy_perturbation,
-
-                    time_to_run
+                    @loop_xyz, time_to_run
 
 using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
@@ -26,6 +22,7 @@ using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_
 
 using Oceananigans.Operators
 using Oceananigans.Coriolis
+using Oceananigans.Buoyancy
 using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
 using Oceananigans.Diagnostics

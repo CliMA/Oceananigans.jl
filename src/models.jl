@@ -1,6 +1,8 @@
 using Oceananigans.Grids: short_show
 using .TurbulenceClosures: ν₀, κ₀
 
+using Oceananigans.Buoyancy: validate_buoyancy
+
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
