@@ -3,6 +3,8 @@ using .TurbulenceClosures: ν₀, κ₀
 
 using Oceananigans.Buoyancy: validate_buoyancy
 
+using Oceananigans.Fields
+
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 

@@ -1,4 +1,4 @@
- using Oceananigans: AbstractField
+using Oceananigans.Fields: AbstractField
 
 #####
 ##### Output writer utilities

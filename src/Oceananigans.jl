@@ -22,7 +22,7 @@ export
 
     # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    interior, set!, set_ic!,
+    interior, set!,
     nodes, xnodes, ynodes, znodes,
     compute_w_from_continuity!,
 
@@ -120,21 +120,6 @@ Abstract supertype for grids with elements of type `T`.
 abstract type AbstractGrid{T} end
 
 """
-    AbstractField{A, G}
-
-Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
-"""
-abstract type AbstractField{A, G} end
-
-"""
-    AbstractLocatedField{X, Y, Z, A, G}
-
-Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
-and defined on a grid `G`.
-"""
-abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
-
-"""
     AbstractPoissonSolver
 
 Abstract supertype for solvers for Poisson's equation.
@@ -220,10 +205,8 @@ include("Grids/Grids.jl")
 
 using .Grids
 
-include("fields.jl")
-
+include("Fields/Fields.jl")
 include("Operators/Operators.jl")
-
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
 using .TurbulenceClosures

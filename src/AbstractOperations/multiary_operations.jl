@@ -24,12 +24,12 @@ fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractLocatedField`."""
 function define_multiary_operator(op)
     return quote
-        import Oceananigans
+        import Oceananigans.Fields: AbstractField
 
-        local location = Oceananigans.location
+        local location = Oceananigans.Fields.location
 
         # "Function, or Field"
-        local FuFi = Union{Function, Oceananigans.AbstractField}
+        local FuFi = Union{Function, AbstractField}
 
         function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi...)
             args = tuple(a, b, c...)

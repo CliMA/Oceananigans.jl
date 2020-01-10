@@ -12,13 +12,14 @@ using Oceananigans: @hascuda
 
 using Oceananigans, Oceananigans.Grids, Adapt
 
-using Oceananigans: AbstractModel, AbstractGrid, AbstractField, AbstractLocatedField, Face, Cell,
-                    xnode, ynode, znode, location, show_location, short_show,
-                    device, launch_config, architecture, zero_halo_regions!
+using Oceananigans: AbstractModel, AbstractGrid, short_show,
+                    device, launch_config, architecture
 
 import Oceananigans: data, architecture
 
+using Oceananigans.Fields
 using Oceananigans.Operators
+using Oceananigans.BoundaryConditions
 
 using Oceananigans.Grids: show_domain
 

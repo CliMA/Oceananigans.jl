@@ -1,6 +1,7 @@
 using NCDatasets
 
-using Oceananigans: Face, Cell, validate_interval, interiorparent
+using Oceananigans.Fields
+using Oceananigans: validate_interval
 
 """
     netcdf_spatial_dimensions(::field)

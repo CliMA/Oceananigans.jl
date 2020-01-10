@@ -39,13 +39,14 @@ end
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractLocatedField`."""
 function define_binary_operator(op)
     return quote
-        import Oceananigans
+        import Oceananigans: AbstractGrid
+        import Oceananigans.Fields: AbstractLocatedField
 
-        local location = Oceananigans.location
+        local location = Oceananigans.Fields.location
         local FunctionField = Oceananigans.AbstractOperations.FunctionField
-        local ALF = Oceananigans.AbstractLocatedField
+        local ALF = AbstractLocatedField
 
-        @inline $op(i, j, k, grid::Oceananigans.AbstractGrid, ▶a, ▶b, a, b) =
+        @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
             @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         """
@@ -67,8 +68,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::ALF{X, Y, Z}, b::ALF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
 
         # Sugar for mixing in functions of (x, y, z)
-        $op(Lc::Tuple, a::Function, b::Oceananigans.AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
-        $op(Lc::Tuple, a::Oceananigans.AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
+        $op(Lc::Tuple, a::Function, b::AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
+        $op(Lc::Tuple, a::AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
 
         # Sugary versions with default locations
         $op(a::ALF, b::ALF) = $op(location(a), a, b)
