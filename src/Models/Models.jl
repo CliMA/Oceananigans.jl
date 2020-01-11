@@ -1,6 +1,6 @@
 module Models
 
-export Model, ChannelModel, NonDimensionalModel
+export Model, ChannelModel, NonDimensionalModel, Clock
 
 """
     AbstractModel
