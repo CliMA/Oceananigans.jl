@@ -54,23 +54,20 @@ export
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
-using
-    Printf,
-    Logging,
-    Statistics,
-    LinearAlgebra
+using Printf
+using Logging
+using Statistics
+using LinearAlgebra
 
 # Third-party modules
-using
-    Adapt,
-    OffsetArrays,
-    FFTW,
-    JLD2,
-    NCDatasets
+using Adapt
+using OffsetArrays
+using FFTW
+using JLD2
+using NCDatasets
 
-import
-    CUDAapi,
-    GPUifyLoops
+import CUDAapi
+import GPUifyLoops
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -116,6 +113,18 @@ Abstract supertype for types that perform input and output.
 """
 abstract type AbstractOutputWriter end
 
+#####
+##### Place-holder functions
+#####
+
+function TimeStepper end
+function run_diagnostic end
+function write_output end
+
+#####
+##### Include all the submodules
+#####
+
 include("Architectures.jl")
 
 using Oceananigans.Architectures: @hascuda
@@ -131,47 +140,40 @@ using Oceananigans.Architectures: @hascuda
     end
 end
 
-# Place-holder functions
-function TimeStepper end
-function run_diagnostic end
-function write_output end
-
 include("Utils/Utils.jl")
+include("Logger.jl")
 include("Grids/Grids.jl")
-
-using .Grids
-
 include("Fields/Fields.jl")
 include("Operators/Operators.jl")
 include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
-include("TurbulenceClosures/TurbulenceClosures.jl")
-
-using .TurbulenceClosures
-
 include("SurfaceWaves.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
-
-using .BoundaryConditions
-
 include("Solvers/Solvers.jl")
-
-using .Solvers
-
 include("Forcing/Forcing.jl")
-include("Logger.jl")
 include("Models/Models.jl")
-
-using .Models
-
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("TimeSteppers/TimeSteppers.jl")
-
-using .TimeSteppers
-
 include("AbstractOperations/AbstractOperations.jl")
 
+#####
+##### Re-export stuff from submodules
+#####
+
+using .Architectures
+using .Utils
+using .Grids
+using .Fields
+using .Coriolis
+using .Buoyancy
 using .SurfaceWaves
+using .TurbulenceClosures
+using .BoundaryConditions
+using .Solvers
+using .Forcing
+using .Models
+using .TimeSteppers
 
 end # module
