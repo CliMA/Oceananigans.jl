@@ -1,47 +1,53 @@
-using
-    Oceananigans,
-    Oceananigans.Operators,
-    Oceananigans.Grids,
-    Oceananigans.Solvers,
-    Oceananigans.Diagnostics,
-    Oceananigans.OutputWriters,
-    Oceananigans.TurbulenceClosures,
-    Oceananigans.AbstractOperations,
-    Test,
-    Random,
-    JLD2,
-    Printf,
-    Statistics,
-    OffsetArrays,
-    FFTW,
-    Logging
+using Test
+using Printf
+using Random
+using Statistics
+using Logging
 
+using JLD2
+using FFTW
+using OffsetArrays
+
+using Oceananigans.Architectures: @hascuda
 @hascuda begin
     import CUDAdrv
     using CUDAnative, CuArrays
 end
+
+using Oceananigans
+using Oceananigans.Architectures
+using Oceananigans.Operators
+using Oceananigans.Grids
+using Oceananigans.Fields
+using Oceananigans.Coriolis
+using Oceananigans.Buoyancy
+using Oceananigans.BoundaryConditions
+using Oceananigans.Solvers
+using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+using Oceananigans.TurbulenceClosures
+using Oceananigans.AbstractOperations
+using Oceananigans.Logger
 
 using Statistics: mean
 using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
-using Oceananigans: architecture, device, launch_config, datatuples, with_tracers,
-                    Face, Cell, interiorparent, location, TracerFields, fill_halo_regions!
-
-import Oceananigans: interior, datatuple
+import Oceananigans.Fields: interior
+import Oceananigans.Utils: datatuple
 
 using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
-
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
-
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
-
 using Oceananigans.AbstractOperations: Computation, compute!
 
-# On CI servers select the GPU with the most available memory or with the
-# highest capability if testing needs to be thorough).
-# Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
+#####
+##### On CI servers select the GPU with the most available memory or with the
+##### highest capability if testing needs to be thorough).
+##### Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
+#####
+
 @hascuda begin
     gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
                        mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in CUDAdrv.devices()]
@@ -57,6 +63,10 @@ using Oceananigans.AbstractOperations: Computation, compute!
     device!(pick.dev)
 end
 
+#####
+##### Useful definitions
+#####
+
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
 function get_output_tuple(output, iter, tuplename)
@@ -68,7 +78,7 @@ end
 
 float_types = (Float32, Float64)
 
-archs = (CPU(),)
+         archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 
 closures = (
@@ -81,6 +91,10 @@ closures = (
     :RozemaAnisotropicMinimumDissipation,
     :VerstappenAnisotropicMinimumDissipation
 )
+
+#####
+##### Run tests!
+#####
 
 with_logger(ModelLogger()) do
     @testset "Oceananigans" begin

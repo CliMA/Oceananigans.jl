@@ -1,3 +1,4 @@
+import Base: size, length, getindex, setindex!, lastindex
 using Base: @propagate_inbounds
 
 import Adapt

@@ -7,7 +7,7 @@ export
     launch_config,
     TimeStepWizard, update_Δt!,
     prettytime, pretty_filesize,
-    tupleit, parenttuple, datatuple,
+    tupleit, parenttuple, datatuple, datatuples,
     validate_interval, time_to_run,
     ordered_dict_show,
     with_tracers

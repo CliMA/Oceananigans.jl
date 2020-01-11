@@ -1,7 +1,9 @@
-using Oceananigans: thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶜᶠ, thermal_expansionᶜᶠᶜ,
-                    haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶜᶠ, haline_contractionᶜᶠᶜ,
-                    RoquetIdealizedNonlinearEquationOfState, required_tracers,
-                    buoyancy_frequency_squared, ρ′, ∂x_b, ∂y_b
+using Oceananigans.Models: TracerFields
+
+using Oceananigans.Buoyancy:
+    required_tracers, ρ′, ∂x_b, ∂y_b, buoyancy_frequency_squared,
+    thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶠᶜ, thermal_expansionᶜᶜᶠ,
+    haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶠᶜ, haline_contractionᶜᶜᶠ
 
 function instantiate_linear_equation_of_state(FT, α, β)
     eos = LinearEquationOfState(FT, α=α, β=β)

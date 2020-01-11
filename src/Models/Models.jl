@@ -2,6 +2,10 @@ module Models
 
 export Model, ChannelModel, NonDimensionalModel, Clock
 
+using Oceananigans.Coriolis
+using Oceananigans.Buoyancy
+using Oceananigans.Utils
+
 """
     AbstractModel
 

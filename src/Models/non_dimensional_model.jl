@@ -1,3 +1,5 @@
+using Oceananigans.Buoyancy
+
 """
     NonDimensionalModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 

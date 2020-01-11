@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: ChannelSolutionBCs
+
 """
     ChannelModel(; kwargs...)
 
