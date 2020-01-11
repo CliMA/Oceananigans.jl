@@ -61,7 +61,7 @@ end
 
             replace_strings = [
                 ("Nz = 48", "Nz = 16"),
-                ("for i in 1:200", "for i in 1:1"),
+                ("for i in 1:100", "for i in 1:1"),
                 ("time_step!(model, 10", "time_step!(model, 1"),
                 ("mp4(", "# mp4(")
             ]

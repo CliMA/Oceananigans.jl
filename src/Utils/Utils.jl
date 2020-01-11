@@ -5,6 +5,7 @@ export
     KiB, MiB, GiB, TiB,
     @loop_xyz, @loop_xy, @loop_xz,
     launch_config,
+    cell_advection_timescale,
     TimeStepWizard, update_Δt!,
     prettytime, pretty_filesize,
     tupleit, parenttuple, datatuple, datatuples,

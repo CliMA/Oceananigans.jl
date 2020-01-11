@@ -1,7 +1,6 @@
 using Printf
 using JLD2
-
-using Oceananigans.Utils: validate_interval
+using Oceananigans.Utils
 
 """
     JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
