@@ -4,7 +4,9 @@ export
     Face, Cell,
     AbstractField, AbstractLocatedField,
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    interior, interiorparent, set!,
+    interior, interiorparent,
+    xnode, ynode, znode, location,
+    set!,
     VelocityFields, TracerFields, PressureFields, Tendencies
 
 include("field_utils.jl")

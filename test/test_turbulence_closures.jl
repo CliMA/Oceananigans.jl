@@ -23,8 +23,8 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
        closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
-    velocities = Oceananigans.VelocityFields(arch, grid)
-       tracers = Oceananigans.TracerFields(arch, grid, (:T, :S))
+    velocities = VelocityFields(arch, grid)
+       tracers = TracerFields(arch, grid, (:T, :S))
 
     u, v, w = velocities
        T, S = tracers
@@ -51,8 +51,8 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
           grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
-    velocities = Oceananigans.VelocityFields(arch, grid)
-       tracers = Oceananigans.TracerFields(arch, grid, (:T, :S))
+    velocities = VelocityFields(arch, grid)
+       tracers = TracerFields(arch, grid, (:T, :S))
 
     u, v, w, T, S = merge(velocities, tracers)
 
@@ -88,8 +88,8 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
              grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, tracernames, closure)
          buoyancy = BuoyancyTracer()
-       velocities = Oceananigans.VelocityFields(arch, grid)
-          tracers = Oceananigans.TracerFields(arch, grid, tracernames)
+       velocities = VelocityFields(arch, grid)
+          tracers = TracerFields(arch, grid, tracernames)
 
     U, C, K = datatuples(velocities, tracers, diffusivities)
 

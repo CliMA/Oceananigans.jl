@@ -1,10 +1,12 @@
-import Base: size, length, getindex, setindex!, lastindex
+import Base: size, length, iterate, getindex, setindex!, lastindex
 using Base: @propagate_inbounds
 
 import Adapt
 using OffsetArrays
 
+import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
+
 using Oceananigans: AbstractGrid
 using Oceananigans.Architectures: @hascuda, CPU, GPU
 

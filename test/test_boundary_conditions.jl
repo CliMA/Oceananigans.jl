@@ -96,6 +96,8 @@ end
     @info "Testing boundary conditions..."
 
     @testset "Boundary functions" begin
+        @info "  Testing boundary functions..."
+
         simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
         for B in (:x, :y, :z)
             for X1 in (:Face, :Cell)
@@ -111,6 +113,8 @@ end
         Nx = Ny = 16
         for arch in archs
             for FT in float_types
+                @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
+
                 for fld in (:u, :v, :T, :S)
                     for bctype in (Gradient, Flux, Value)
 

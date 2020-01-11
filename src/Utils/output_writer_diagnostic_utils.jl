@@ -1,4 +1,4 @@
-import Base: push!
+import Base: push!, getindex, setindex!
 
 using OrderedCollections: OrderedDict
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic
