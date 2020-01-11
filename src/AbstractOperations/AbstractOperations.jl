@@ -3,32 +3,29 @@ module AbstractOperations
 export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
 
 import Base: identity
-
 using Base: @propagate_inbounds
 
-using Oceananigans: @hascuda
+import Adapt
+using GPUifyLoops: @launch, @loop
 
+using Oceananigans: @hascuda
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
-using Oceananigans, Oceananigans.Grids, Adapt
-
-using Oceananigans: AbstractGrid
-
-import Oceananigans.Fields: data
-
+using Oceananigans
+using Oceananigans.Grids
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 
-using Oceananigans.Grids: show_domain, short_show
+using Oceananigans: AbstractGrid
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
 using Oceananigans.Utils: launch_config
 
+import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: data
 import Oceananigans.Diagnostics: run_diagnostic
-
-using GPUifyLoops: @launch, @loop
 
 #####
 ##### Basic functionality

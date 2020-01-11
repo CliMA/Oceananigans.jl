@@ -92,7 +92,7 @@ macro unary(ops...)
                 return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
             end
 
-            $op(a::AbstractLocatedField) = $op(Oceananigans.location(a), a)
+            $op(a::AbstractLocatedField) = $op(location(a), a)
 
             push!(Oceananigans.AbstractOperations.operators, Symbol($op))
             push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
