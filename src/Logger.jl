@@ -1,6 +1,6 @@
 module Logger
 
-export ModelLogger
+export ModelLogger, Diagnostic, Setup, Simulation
 
 using Dates
 using Logging

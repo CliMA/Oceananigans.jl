@@ -5,9 +5,6 @@ if VERSION < v"1.1"
 end
 
 export
-    # Helper macro for determining if a CUDA-enabled GPU is available.
-    @hascuda,
-
     # Architectures
     CPU, GPU,
 
@@ -20,8 +17,6 @@ export
     # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
     interior, set!,
-    nodes, xnodes, ynodes, znodes,
-    compute_w_from_continuity!,
 
     # Forcing functions
     ModelForcing, SimpleForcing,
@@ -30,7 +25,8 @@ export
     FPlane, BetaPlane,
 
     # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
@@ -43,16 +39,13 @@ export
     BoundaryFunction, getbc, setbc!,
 
     # Time stepping
-    TimeStepWizard,
-    update_Δt!, time_step!,
-
-    # Clock
-    Clock,
+    time_step!,
+    TimeStepWizard, update_Δt!,
 
     # Models
     Model, ChannelModel, NonDimensionalModel,
 
-    # Package utilities
+    # Utilities
     prettytime, pretty_filesize,
 
     # Turbulence closures
