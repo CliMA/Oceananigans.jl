@@ -2,6 +2,7 @@ module Models
 
 export Model, ChannelModel, NonDimensionalModel, Clock
 
+using Oceananigans.Fields
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
 using Oceananigans.Utils
@@ -13,7 +14,6 @@ Abstract supertype for models.
 """
 abstract type AbstractModel end
 
-include("model_utils.jl")
 include("clock.jl")
 include("model.jl")
 include("channel_model.jl")

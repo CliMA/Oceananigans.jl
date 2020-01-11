@@ -1,5 +1,3 @@
-float_type(m::AbstractModel) = eltype(model.grid)
-
 """
     VelocityFields(arch, grid)
 

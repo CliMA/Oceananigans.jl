@@ -3,6 +3,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.Fields
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU
+using Oceananigans.Fields: tracernames
 using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
 using Oceananigans.Forcing: ModelForcing
 using Oceananigans.BoundaryConditions: HorizontallyPeriodicSolutionBCs, ModelBoundaryConditions
