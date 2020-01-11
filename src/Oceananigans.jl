@@ -162,8 +162,6 @@ using .TurbulenceClosures
 include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
 
-using .Buoyancy
-
 include("SurfaceWaves.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 
@@ -174,7 +172,7 @@ include("Solvers/Solvers.jl")
 using .Solvers
 
 include("Forcing/Forcing.jl")
-include("logger.jl")
+include("Logger.jl")
 include("Models/Models.jl")
 
 using .Models
