@@ -81,7 +81,6 @@ import
 
 using Base: @propagate_inbounds
 using Statistics: mean
-using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
@@ -94,13 +93,6 @@ import Base:
 #####
 ##### Abstract types
 #####
-
-"""
-    AbstractArchitecture
-
-Abstract supertype for architectures supported by Oceananigans.
-"""
-abstract type AbstractArchitecture end
 
 """
     AbstractGrid{T}
@@ -131,34 +123,9 @@ Abstract supertype for types that perform input and output.
 """
 abstract type AbstractOutputWriter end
 
-#####
-##### All the functionality
-#####
+include("Architectures.jl")
 
-"""
-    CPU <: AbstractArchitecture
-
-Run Oceananigans on a single-core of a CPU.
-"""
-struct CPU <: AbstractArchitecture end
-
-"""
-    GPU <: AbstractArchitecture
-
-Run Oceananigans on a single NVIDIA CUDA GPU.
-"""
-struct GPU <: AbstractArchitecture end
-
-"""
-    @hascuda expr
-
-A macro to compile and execute `expr` only if CUDA is installed and available. Generally used to
-wrap expressions that can only be compiled if `CuArrays` and `CUDAnative` can be loaded.
-"""
-macro hascuda(expr)
-    return has_cuda() ? :($(esc(expr))) : :(nothing)
-end
-
+using Oceananigans.Architectures: @hascuda
 @hascuda begin
     # Import CUDA utilities if it's detected.
     using CUDAdrv, CUDAnative, CuArrays
@@ -168,12 +135,6 @@ end
         println(dev)
     end
 end
-
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
-architecture(::Array) = CPU()
-@hascuda architecture(::CuArray) = GPU()
 
 # Place-holder functions
 function buoyancy_perturbation end

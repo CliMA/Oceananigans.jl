@@ -25,23 +25,21 @@ export
 
   cell_diffusion_timescale
 
-using Oceananigans: @hascuda
+using Oceananigans.Architectures: @hascuda
 
+using GPUifyLoops
 @hascuda using CUDAdrv, CUDAnative
-
-using
-  Oceananigans,
-  Oceananigans.Grids,
-  Oceananigans.Operators,
-  GPUifyLoops
 
 import Oceananigans.Utils: with_tracers
 
-using Oceananigans: AbstractArchitecture, AbstractGrid,
-                    TracerFields, device,
-                    buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
+using Oceananigans
+using Oceananigans.Utils
+using Oceananigans.Grids
+using Oceananigans.Operators
 
-using Oceananigans.Utils: launch_config
+using Oceananigans.Architectures: AbstractArchitecture, device
+using Oceananigans: AbstractGrid, TracerFields,
+                    buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
 
 #####
 ##### Molecular viscosity and thermal diffusivity definitions

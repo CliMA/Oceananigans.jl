@@ -3,10 +3,9 @@ using Base: @propagate_inbounds
 import Adapt
 using OffsetArrays
 
-import Oceananigans: AbstractGrid, CPU, GPU
 import Oceananigans.Utils: datatuple
-
-using Oceananigans: @hascuda
+using Oceananigans: AbstractGrid
+using Oceananigans.Architectures: @hascuda, CPU, GPU
 
 """
     AbstractField{A, G}

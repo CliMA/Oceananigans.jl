@@ -1,7 +1,6 @@
 module Utils
 
 export
-    array_type,
     second, minute, hour, day, meter, kilometer,
     KiB, MiB, GiB, TiB,
     @loop_xyz, @loop_xy, @loop_xz,
@@ -14,7 +13,6 @@ export
     with_tracers
 
 include("adapt_structure.jl")
-include("array_type.jl")
 include("units.jl")
 include("loop_macros.jl")
 include("launch_config.jl")

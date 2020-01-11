@@ -5,21 +5,19 @@ export
     time_step!,
     compute_w_from_continuity!
 
-using Oceananigans: device
-
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid, @hascuda, CPU, GPU
-
-using Oceananigans.Utils
+using Oceananigans: AbstractGrid
 
 using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
 
+using Oceananigans.Architectures: @hascuda
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
+using Oceananigans.Architectures
 using Oceananigans.Operators
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
@@ -28,6 +26,7 @@ using Oceananigans.Solvers
 using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
+using Oceananigans.Utils
 
 using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
 using Oceananigans.Models: Tendencies, tracernames

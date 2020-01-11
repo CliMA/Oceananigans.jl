@@ -12,10 +12,11 @@ using Oceananigans: @hascuda
 
 using Oceananigans, Oceananigans.Grids, Adapt
 
-using Oceananigans: AbstractGrid, device, architecture
+using Oceananigans: AbstractGrid
 
-import Oceananigans: data, architecture
+import Oceananigans.Fields: data
 
+using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions

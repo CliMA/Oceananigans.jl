@@ -1,4 +1,5 @@
-using Oceananigans: CPU, GPU, AbstractGrid, AbstractPoissonSolver
+using Oceananigans: AbstractGrid, AbstractPoissonSolver
+using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Grids: RegularCartesianGrid
 using Oceananigans.BoundaryConditions: BC, Periodic, ModelBoundaryConditions
 

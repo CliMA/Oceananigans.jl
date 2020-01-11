@@ -1,5 +1,5 @@
 using GPUifyLoops: @launch, @loop, @unroll
-using Oceananigans: device
+using Oceananigans.Architectures: device
 using Oceananigans.Utils: @loop_xy, @loop_xz
 
 #####

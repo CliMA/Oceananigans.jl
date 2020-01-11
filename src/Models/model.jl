@@ -2,7 +2,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.Fields
 
-using Oceananigans: AbstractArchitecture, CPU, GPU
+using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU
 using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
 using Oceananigans.Forcing: ModelForcing
 using Oceananigans.BoundaryConditions: HorizontallyPeriodicSolutionBCs, ModelBoundaryConditions
