@@ -11,9 +11,9 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid,
-                    @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
-                    @loop_xyz, time_to_run
+using Oceananigans: AbstractGrid, @hascuda, CPU, GPU
+
+using Oceananigans.Utils
 
 using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ

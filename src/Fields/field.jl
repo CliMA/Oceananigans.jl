@@ -3,7 +3,9 @@ using Base: @propagate_inbounds
 import Adapt
 using OffsetArrays
 
-import Oceananigans: datatuple
+import Oceananigans: AbstractGrid, CPU, GPU
+import Oceananigans.Utils: datatuple
+
 using Oceananigans: @hascuda
 
 """
@@ -176,3 +178,34 @@ const AbstractCPUField =
 
 @hascuda const AbstractGPUField =
     AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+
+#####
+##### Creating fields by dispatching on architecture
+#####
+
+function OffsetArray(underlying_data, grid)
+    # Starting and ending indices for the offset array.
+    i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
+    j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
+    k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
+
+    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+end
+
+function Base.zeros(T, ::CPU, grid)
+    underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
+    return OffsetArray(underlying_data, grid)
+end
+
+function Base.zeros(T, ::GPU, grid)
+    underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
+    underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
+    return OffsetArray(underlying_data, grid)
+end
+
+Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+
+# Default to type of Grid
+Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
+Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)

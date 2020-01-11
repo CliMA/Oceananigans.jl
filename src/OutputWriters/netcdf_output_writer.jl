@@ -1,7 +1,7 @@
 using NCDatasets
 
 using Oceananigans.Fields
-using Oceananigans: validate_interval
+using Oceananigans.Utils: validate_interval
 
 """
     netcdf_spatial_dimensions(::field)

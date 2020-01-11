@@ -1,5 +1,6 @@
 using GPUifyLoops: @launch, @loop
-using Oceananigans: device, @loop_xy, @loop_xz
+using Oceananigans: device
+using Oceananigans.Utils: @loop_xy, @loop_xz
 
 #####
 ##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.

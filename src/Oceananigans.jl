@@ -14,9 +14,6 @@ export
     # Logging
     ModelLogger, Diagnostic, Setup, Simulation,
 
-    # Constants
-    second, minute, hour, day,
-
     # Grids
     RegularCartesianGrid,
 
@@ -56,7 +53,7 @@ export
     Model, ChannelModel, NonDimensionalModel,
 
     # Package utilities
-    prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
+    prettytime, pretty_filesize,
 
     # Turbulence closures
     ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
@@ -65,15 +62,16 @@ export
 
 # Standard library modules
 using
+    Printf,
+    Logging,
     Statistics,
-    LinearAlgebra,
-    Printf
+    LinearAlgebra
 
 # Third-party modules
 using
     Adapt,
-    FFTW,
     OffsetArrays,
+    FFTW,
     JLD2,
     NCDatasets
 
@@ -188,9 +186,7 @@ function TimeStepper end
 function run_diagnostic end
 function write_output end
 
-using Logging
-
-include("utils.jl")
+include("Utils/Utils.jl")
 
 include("Grids/Grids.jl")
 

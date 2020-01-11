@@ -1,5 +1,6 @@
 using GPUifyLoops: @launch, @loop
-using Oceananigans: device, @loop_xyz
+using Oceananigans: device
+using Oceananigans.Utils: @loop_xyz
 
 """
     set!(model; kwargs...)

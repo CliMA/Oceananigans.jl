@@ -1,7 +1,8 @@
 @hascuda using CUDAnative
 using GPUifyLoops: @launch, @loop, @unroll
 
-using Oceananigans: @loop_xy, device, array_type, launch_config
+using Oceananigans: device
+using Oceananigans.Utils: @loop_xy, array_type, launch_config
 
 """
     BatchedTridiagonalSolver

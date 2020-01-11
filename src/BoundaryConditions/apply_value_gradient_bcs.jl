@@ -1,5 +1,6 @@
 using GPUifyLoops: @launch, @loop, @unroll
-using Oceananigans: device, @loop_xy, @loop_xz
+using Oceananigans: device
+using Oceananigans.Utils: @loop_xy, @loop_xz
 
 #####
 ##### Halo filling for value and gradient boundary conditions
