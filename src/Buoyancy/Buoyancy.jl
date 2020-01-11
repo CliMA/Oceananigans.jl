@@ -2,7 +2,8 @@ module Buoyancy
 
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
 
 # Physical constants
 # https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)

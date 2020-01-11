@@ -2,6 +2,7 @@ using Test
 using Printf
 using Random
 using Statistics
+using LinearAlgebra
 using Logging
 
 using JLD2
@@ -11,7 +12,8 @@ using OffsetArrays
 using Oceananigans.Architectures: @hascuda
 @hascuda begin
     import CUDAdrv
-    using CUDAnative, CuArrays
+    using CuArrays
+    using CUDAnative
 end
 
 using Oceananigans
@@ -22,12 +24,15 @@ using Oceananigans.Fields
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
 using Oceananigans.BoundaryConditions
+using Oceananigans.Forcing
 using Oceananigans.Solvers
+using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
 using Oceananigans.Logger
+using Oceananigans.Utils
 
 using Statistics: mean
 using LinearAlgebra: norm
@@ -64,7 +69,7 @@ using Oceananigans.AbstractOperations: Computation, compute!
 end
 
 #####
-##### Useful definitions
+##### Useful utilities
 #####
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
@@ -75,6 +80,10 @@ function get_output_tuple(output, iter, tuplename)
     close(file)
     return output_tuple
 end
+
+#####
+##### Testing parameters
+#####
 
 float_types = (Float32, Float64)
 
@@ -104,8 +113,8 @@ with_logger(ModelLogger()) do
         include("test_operators.jl")
         include("test_solvers.jl")
         include("test_coriolis.jl")
-        include("test_surface_waves.jl")
         include("test_buoyancy.jl")
+        include("test_surface_waves.jl")
         include("test_models.jl")
         include("test_time_stepping.jl")
         include("test_boundary_conditions.jl")
@@ -114,9 +123,9 @@ with_logger(ModelLogger()) do
         include("test_dynamics.jl")
         include("test_diagnostics.jl")
         include("test_output_writers.jl")
+        include("test_abstract_operations.jl")
         include("test_regression.jl")
         include("test_examples.jl")
-        include("test_abstract_operations.jl")
         include("test_verification.jl")
     end
 end

@@ -33,13 +33,14 @@ using GPUifyLoops
 import Oceananigans.Utils: with_tracers
 
 using Oceananigans
-using Oceananigans.Utils
 using Oceananigans.Grids
+using Oceananigans.Fields
 using Oceananigans.Operators
+using Oceananigans.Buoyancy
+using Oceananigans.Utils
 
+using Oceananigans: AbstractGrid
 using Oceananigans.Architectures: AbstractArchitecture, device
-using Oceananigans: AbstractGrid, TracerFields,
-                    buoyancy_perturbation, buoyancy_frequency_squared, ∂x_b, ∂y_b, ∂z_b
 
 #####
 ##### Molecular viscosity and thermal diffusivity definitions

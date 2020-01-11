@@ -121,7 +121,9 @@ include("Architectures.jl")
 using Oceananigans.Architectures: @hascuda
 @hascuda begin
     # Import CUDA utilities if it's detected.
-    using CUDAdrv, CUDAnative, CuArrays
+    using CUDAdrv
+    using CUDAnative
+    using CuArrays
 
     println("CUDA-enabled GPU(s) detected:")
     for (gpu, dev) in enumerate(CUDAnative.devices())
@@ -130,30 +132,22 @@ using Oceananigans.Architectures: @hascuda
 end
 
 # Place-holder functions
-function buoyancy_perturbation end
-function buoyancy_frequency_squared end
-function ∂x_b end
-function ∂y_b end
-function ∂z_b end
-function TracerFields end
 function TimeStepper end
 function run_diagnostic end
 function write_output end
 
 include("Utils/Utils.jl")
-
 include("Grids/Grids.jl")
 
 using .Grids
 
 include("Fields/Fields.jl")
 include("Operators/Operators.jl")
+include("Coriolis/Coriolis.jl")
+include("Buoyancy/Buoyancy.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 
 using .TurbulenceClosures
-
-include("Coriolis/Coriolis.jl")
-include("Buoyancy/Buoyancy.jl")
 
 include("SurfaceWaves.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
@@ -172,7 +166,6 @@ using .Models
 
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-
 include("TimeSteppers/TimeSteppers.jl")
 
 using .TimeSteppers

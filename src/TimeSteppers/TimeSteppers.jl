@@ -28,8 +28,8 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.Utils
 
+using Oceananigans.Fields: Tendencies, tracernames
 using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
-using Oceananigans.Models: Tendencies, tracernames
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 

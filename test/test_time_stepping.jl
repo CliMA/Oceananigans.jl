@@ -1,4 +1,4 @@
-function time_stepping_works(arch, FT, Closure)
+function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
 
@@ -166,14 +166,16 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
-    for arch in archs, FT in [Float64], Closure in Closures
-        @info "  Testing that time stepping works [$arch, $FT, $Closure]..."
-        @test time_stepping_works(arch, FT, Closure)
+    @testset "Turbulence closures" begin
+        for arch in archs, FT in [Float64], Closure in Closures
+            @info "  Testing that time stepping works [$arch, $FT, $Closure]..."
+            @test time_stepping_works_with_closure(arch, FT, Closure)
+        end
     end
 
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
-            for eos_type in keys(Oceananigans.optimized_roquet_coeffs)
+            for eos_type in keys(Oceananigans.Buoyancy.optimized_roquet_coeffs)
                 @info "  Testing that time stepping works with " *
                         "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]"
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
