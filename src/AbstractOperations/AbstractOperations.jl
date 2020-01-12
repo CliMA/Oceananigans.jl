@@ -8,7 +8,7 @@ using Base: @propagate_inbounds
 import Adapt
 using GPUifyLoops: @launch, @loop
 
-using Oceananigans: @hascuda
+using Oceananigans.Architectures: @hascuda
 @hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using Oceananigans
@@ -19,6 +19,7 @@ using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 
 using Oceananigans: AbstractGrid
+using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
 using Oceananigans.Utils: launch_config

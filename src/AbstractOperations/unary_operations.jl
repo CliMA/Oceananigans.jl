@@ -108,5 +108,5 @@ const unary_operators = Set()
 
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
-    UnaryOperation{X, Y, Z}(adapt(to, unary.op), adapt(to, unary.arg),
-                            adapt(to, unary.▶), unary.grid)
+    UnaryOperation{X, Y, Z}(Adapt.adapt(to, unary.op), Adapt.adapt(to, unary.arg),
+                            Adapt.adapt(to, unary.▶), unary.grid)

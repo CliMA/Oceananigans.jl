@@ -127,5 +127,5 @@ const multiary_operators = Set()
 
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
-    MultiaryOperation{X, Y, Z}(adapt(to, multiary.op), adapt(to, multiary.args),
-                               adapt(to, multiary.▶), multiary.grid)
+    MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
+                               Adapt.adapt(to, multiary.▶),  multiary.grid)

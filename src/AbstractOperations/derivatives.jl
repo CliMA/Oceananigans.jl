@@ -96,5 +96,5 @@ Return an abstract representation of a z-derivative acting on `a`.
 
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
-    Derivative{X, Y, Z}(adapt(to, deriv.∂), adapt(to, deriv.arg),
-                        adapt(to, deriv.▶), deriv.grid)
+    Derivative{X, Y, Z}(Adapt.adapt(to, deriv.∂), Adapt.adapt(to, deriv.arg),
+                        Adapt.adapt(to, deriv.▶), deriv.grid)

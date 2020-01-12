@@ -10,6 +10,8 @@ export
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!
 
+using CUDAnative
+
 using Oceananigans.Architectures
 using Oceananigans.Fields
 
