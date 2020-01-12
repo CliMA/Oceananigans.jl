@@ -2,42 +2,63 @@ using Printf
 using OffsetArrays
 using Plots
 
+abstract type AbstractAdvectionScheme end
+
 # Second order advection
+struct SecondOrderCentered <: AbstractAdvectionScheme end
 @inline advective_flux(i, N, u, ϕ) = u[i] * (ϕ[i-1] + ϕ[i]) / 2
 @inline ∂x_advective_flux(i, N, Δx, u, ϕ) = (advective_flux(i+1, N, u, ϕ) - advective_flux(i, N, u, ϕ)) / Δx
 
-N = 128
-L = 1
-Δx = L/N
+# Convert x to periodic range in [-L/2, L/2] assuming u = 1.
+@inline x′(x, t, L) = mod(x + L/2 - t, L) - L/2
 
-x = range(-L/2 + Δx/2, L/2 - Δx/2; length=N)
+# Analytic solutions
+@inline ϕ_Gaussian(x, t, L; a=1, c=1/8) = a*exp(-x′(x, t, L)^2 / (2c^2))
 
-ϕ₀ = @. exp(-25x^2) # initial condition
-x′(t) = @. mod(x + L/2 - t, L) - L/2
-ϕₐ(t) = exp.(-25x′(t).^2)  # analytic solution
+function run_advection_experiment(N, L, CFL, ϕ, scheme)
+    Δx = L/N
+    x = range(-L/2 + Δx/2, L/2 - Δx/2; length=N)
+    ϕ₀ = ϕ.(x, 0, L)
 
-u = OffsetArray(ones(N+2), 0:N+1)
-ϕ = OffsetArray([0, ϕ₀..., 0], 0:N+1)
+    u = OffsetArray(ones(N+2), 0:N+1)
+    ϕ₀ = OffsetArray([0, ϕ₀..., 0], 0:N+1)
 
-T = 1 # end time
-CFL = 0.1
-Δt = CFL * Δx / maximum(abs, u)
-nt = ceil(T/Δt) # number of time steps
+    create_animation(N, L, x, Δx, CFL, u, ϕ₀, ϕ, nothing)
+end
 
-t = 0
-anim = @animate for iter in 1:nt
-    @printf("iter=%d/%d\n", iter, nt)
-    global t
+function every(N)
+     0 < N <= 16 && return 1
+    16 < N <= 32 && return 2
+    32 < N <= 64 && return 4
+    64 < N       && return 8
+end
 
-    ϕ[0], ϕ[N+1] = ϕ[N], ϕ[1]  # Fill ghost points.
-    for i in 1:N
-        ϕ[i] = ϕ[i] - Δt * ∂x_advective_flux(i, N, Δx, u, ϕ)
-    end
-    t = t + Δt
-   
-    plot(x, ϕₐ(t), label="analytic")
-    plot!(x, ϕ[1:N], label="2nd order")
-end every 10
+function create_animation(N, L, x, Δx, CFL, u, ϕ, ϕₐ, scheme)
+    T = 2  # two revolutions end time
+    Δt = CFL * Δx / maximum(abs, u)
+    nt = ceil(T/Δt)
 
-mp4(anim, "tracer_advection_1d.mp4", fps = 30)
+    anim = @animate for iter in 1:nt
+        iter % 100 == 0 && @printf("iter = %d/%d\n", iter, nt)
+
+        ϕ[0], ϕ[N+1] = ϕ[N], ϕ[1]  # Fill ghost points.
+        for i in 1:N
+            ϕ[i] = ϕ[i] - Δt * ∂x_advective_flux(i, N, Δx, u, ϕ)
+        end
+
+        title = @sprintf("%s N=%d CFL=%.1f", scheme, N, CFL)
+        plot(x, ϕₐ.(x, nt*Δt, L), label="analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2))
+        plot!(x, ϕ[1:N], label="2nd order")
+    end every every(N)
+
+    mp4(anim, "tracer_advection_1d.mp4", fps = 30)
+
+    return nothing
+end
+
+Ns = [16, 32, 64, 128]
+CFLs = [0.1, 0.3, 0.5]
+schemes = (SecondOrderCentered,)
+
+run_advection_experiment(16, 1, 0.1, ϕ_Gaussian, nothing)
 
