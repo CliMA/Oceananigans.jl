@@ -42,10 +42,10 @@ end
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
 
+@hascuda using CuArrays
+
          architecture(::Array)   = CPU()
 @hascuda architecture(::CuArray) = GPU()
-
-@hascuda using CuArrays
 
          array_type(::CPU) = Array
 @hascuda array_type(::GPU) = CuArray

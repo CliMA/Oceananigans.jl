@@ -15,7 +15,7 @@ using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
 
 using Oceananigans.Architectures: @hascuda
-@hascuda using CUDAnative, CUDAdrv, CuArrays
+@hascuda using CUDAnative, CuArrays
 
 using Oceananigans.Architectures
 using Oceananigans.Operators

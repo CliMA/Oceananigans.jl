@@ -1,4 +1,5 @@
 using OrderedCollections: OrderedDict
+using CUDAapi: has_cuda
 
 using Oceananigans.Fields
 

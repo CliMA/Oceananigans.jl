@@ -2,6 +2,8 @@
 ##### Dynamic launch configuration
 #####
 
+using CUDAdrv
+
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun

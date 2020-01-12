@@ -10,6 +10,8 @@ import Oceananigans.Utils: datatuple
 using Oceananigans: AbstractGrid
 using Oceananigans.Architectures: @hascuda, CPU, GPU
 
+@hascuda using CuArrays
+
 """
     AbstractField{A, G}
 
