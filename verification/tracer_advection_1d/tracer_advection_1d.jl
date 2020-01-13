@@ -67,12 +67,12 @@ function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme)
 
     @info "Solver return code: $(sol.retcode)"
 
-    title = @sprintf("%s %s N=%d CFL=%.1f", typeof(scheme), typeof(time_stepper), N, CFL)
+    title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), N, CFL)
     ϕ_analytic = ϕₐ.(x, T, L)
-    p = plot(x, ϕ_analytic, label="Analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2), dpi=200)
-    plot!(p, x, ϕ[1:N], label="$(typeof(scheme))")
+    p = plot(x, ϕ_analytic, label="analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2), dpi=200)
+    plot!(p, x, ϕ[1:N], label="numerical")
 
-    fig_filename = @sprintf("%s_%s_%s_N%d_CFL%.1f.png", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), N, CFL)
+    fig_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.png", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), N, CFL)
     savefig(p, fig_filename)
 
     return nothing
@@ -102,13 +102,13 @@ function create_animation(N, L, CFL, ϕₐ, scheme)
 
         time_step_advection!(ϕ, u, N, Δx, Δt, scheme)
 
-        title = @sprintf("%s N=%d CFL=%.1f", typeof(scheme), N, CFL)
+        title = @sprintf("%s N=%d CFL=%.2f", typeof(scheme), N, CFL)
         ϕ_analytic = ϕₐ.(x, nt*Δt, L)
         plot(x, ϕ_analytic, label="analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2), dpi=200)
         plot!(x, ϕ[1:N], label="$(typeof(scheme))")
     end every every(N)
 
-    anim_filename = @sprintf("%s_%s_N%d_CFL%.1f.mp4", ic_name(ϕₐ), typeof(scheme), N, CFL)
+    anim_filename = @sprintf("%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), N, CFL)
     mp4(anim, anim_filename, fps = 30)
 
     return nothing
@@ -119,18 +119,17 @@ end
 #####
 
 L = 1
-ϕs = (ϕ_Square,)
-schemes = (FirstOrderUpwind(),)
+ϕs = (ϕ_Gaussian,)
+time_steppers = (Euler(), AB3(), CarpenterKennedy2N54())
+schemes = (SecondOrderCentered(),)
 Ns = [16, 32, 64, 128]
-CFLs = [0.1, 0.5]
+CFLs = [0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0]
 
-create_figure(64, L, 0.1, ϕ_Gaussian, Euler(), SecondOrderCentered())
+for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs
+    @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
+    create_figure(N, L, CFL, ϕ, ts, scheme)
 
-for ϕ in ϕs, scheme in schemes, N in Ns, CFL in CFLs
-    # @info @sprintf("Creating one-revolution figure [%s, %s, N=%d, CFL=%.1f]...", ic_name(ϕ), typeof(scheme), N, CFL)
-    # create_figure(N, L, CFL, ϕ, scheme)
-
-    # @info @sprintf("Creating two-revolution animation [%s, N=%d, CFL=%.1f]...", typeof(scheme), N, CFL)
+    # @info @sprintf("Creating two-revolution animation [%s, N=%d, CFL=%.2f]...", typeof(scheme), N, CFL)
     # create_animation(N, L, CFL, ϕ, scheme)
 end
 
