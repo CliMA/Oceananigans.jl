@@ -122,14 +122,15 @@ end
 #####
 
 L = 1
-ϕs = (ϕ_Gaussian,)
-time_steppers = (AB3(), CarpenterKennedy2N54())
+ϕs = (ϕ_Gaussian, ϕ_Square)
+time_steppers = (AB3(), CarpenterKennedy2N54(), NDBLSRK144())
 schemes = (SecondOrderCentered(), WENO5())
 Ns = [16, 32, 64, 128]
 CFLs = Dict(
     Euler => (0.05, 0.3, 0.5),
     AB3   => (0.05, 0.3, 0.5, 0.9),
-    CarpenterKennedy2N54 => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0)
+    CarpenterKennedy2N54 => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0),
+    NDBLSRK144           => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
 )
 
 for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs[typeof(ts)]
