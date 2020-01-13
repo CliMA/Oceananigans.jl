@@ -52,7 +52,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 ##### Experiment functions
 #####
 
-function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme)
+function setup_problem(N, L, T, CFL, ϕₐ, time_stepper, scheme)
     Δx = L/N
     x = range(-L/2 + Δx/2, L/2 - Δx/2; length=N)
     ϕ₀ = ϕₐ.(x, 0, L)
@@ -64,16 +64,17 @@ function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme)
     u  = OffsetArray(u,  -H+1:N+H)
     ϕ₀ = OffsetArray(ϕ₀, -H+1:N+H)
 
-    T = 1.0  # one revolution end time
     Δt = CFL * Δx / maximum(abs, u)
-    nt = ceil(T/Δt)
 
-    tspan = (0.0, 5Δt)
+    tspan = (0.0, T)
     params = (N=N, H=H, Δx=Δx, u=u, scheme=scheme)
-    prob = ODEProblem(advection!, ϕ₀, tspan, params)
+    return x, Δt, ODEProblem(advection!, ϕ₀, tspan, params)
+end
+
+function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme; T=1.0)
+    x, Δt, prob = setup_problem(N, L, T, CFL, ϕₐ, time_stepper, scheme)
     sol = solve(prob, time_stepper, adaptive=false, dt=Δt)
     ϕ = sol[:, end]
-
     @info "Solver return code: $(sol.retcode)"
 
     title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), N, CFL)
@@ -87,37 +88,30 @@ function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme)
     return nothing
 end
 
-function create_animation(N, L, CFL, ϕₐ, scheme)
-    Δx = L/N
-    x = range(-L/2 + Δx/2, L/2 - Δx/2; length=N)
-    ϕ₀ = ϕₐ.(x, 0, L)
-
-    u = OffsetArray(ones(N+2), 0:N+1)
-    ϕ = OffsetArray([0, ϕ₀..., 0], 0:N+1)
-
-    T = 2  # two revolutions end time
-    Δt = CFL * Δx / maximum(abs, u)
-    nt = ceil(T/Δt)
+function create_animation(N, L, CFL, ϕₐ, time_stepper, scheme; T=2.0)
+    x, Δt, prob = setup_problem(N, L, T, CFL, ϕₐ, time_stepper, scheme)
+    integrator = init(prob, time_stepper, adaptive=false, dt=Δt)
 
     function every(N)
-         0 < N <= 16 && return 10
+         0 < N <= 16 && return 1
         16 < N <= 32 && return 2
         32 < N <= 64 && return 4
         64 < N       && return 8
     end
 
+    nt = ceil(Int, T/Δt)
     anim = @animate for iter in 1:nt
-        iter % 100 == 0 && @printf("iter = %d/%d\n", iter, nt)
+        iter % 10 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
 
-        time_step_advection!(ϕ, u, N, Δx, Δt, scheme)
+        step!(integrator)
 
-        title = @sprintf("%s N=%d CFL=%.2f", typeof(scheme), N, CFL)
-        ϕ_analytic = ϕₐ.(x, nt*Δt, L)
+        title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), N, CFL)
+        ϕ_analytic = ϕₐ.(x, integrator.t, L)
         plot(x, ϕ_analytic, label="analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2), dpi=200)
-        plot!(x, ϕ[1:N], label="$(typeof(scheme))")
+        plot!(x, integrator.u[1:N], label="$(typeof(scheme))")
     end every every(N)
 
-    anim_filename = @sprintf("%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), N, CFL)
+    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), N, CFL)
     mp4(anim, anim_filename, fps = 30)
 
     return nothing
@@ -129,7 +123,7 @@ end
 
 L = 1
 ϕs = (ϕ_Gaussian,)
-time_steppers = (Euler(), AB3(), CarpenterKennedy2N54())
+time_steppers = (AB3(), CarpenterKennedy2N54())
 schemes = (SecondOrderCentered(),)
 Ns = [16, 32, 64, 128]
 CFLs = Dict(
@@ -138,7 +132,7 @@ CFLs = Dict(
     CarpenterKennedy2N54 => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0)
 )
 
-create_figure(128, L, 0.05, ϕ_Gaussian, AB3(), WENO5())
+create_animation(16, L, 0.5, ϕ_Gaussian, AB3(), SecondOrderCentered())
 
 for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs[typeof(ts)]
     # @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
