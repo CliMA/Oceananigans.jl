@@ -27,8 +27,9 @@ struct WENO5 end
 #####
 
 function advection!(∂ϕ∂t, ϕ, p, t)
-    ϕ[0], ϕ[p.N+1] = ϕ[p.N], ϕ[1]  # Fill ghost points to enforce periodic boundary conditions.
-    for i in 1:p.N
+    N, H = p.N, p.H
+    ϕ[-H+1:0], ϕ[N+1:N+H] = ϕ[N-H+1:N], ϕ[1:H] # Fill ghost points to enforce periodic boundary conditions.
+    for i in 1:N
         ∂ϕ∂t[i] = ∂x_advective_flux(i, p.Δx, p.u, ϕ, p.scheme)
     end
 end
@@ -56,15 +57,19 @@ function create_figure(N, L, CFL, ϕₐ, time_stepper, scheme)
     x = range(-L/2 + Δx/2, L/2 - Δx/2; length=N)
     ϕ₀ = ϕₐ.(x, 0, L)
 
-    u = OffsetArray(ones(N+2), 0:N+1)
-    ϕ₀ = OffsetArray([0, ϕ₀..., 0], 0:N+1)
+    H = 3
+    halo = zeros(H)
+    u  = [halo..., ones(N)..., halo...]
+    ϕ₀ = [halo..., ϕ₀...,      halo...]
+    u  = OffsetArray(u,  -H+1:N+H)
+    ϕ₀ = OffsetArray(ϕ₀, -H+1:N+H)
 
     T = 1.0  # one revolution end time
     Δt = CFL * Δx / maximum(abs, u)
     nt = ceil(T/Δt)
 
-    tspan = (0.0, T)
-    params = (N=N, Δx=Δx, u=u, scheme=scheme)
+    tspan = (0.0, 5Δt)
+    params = (N=N, H=H, Δx=Δx, u=u, scheme=scheme)
     prob = ODEProblem(advection!, ϕ₀, tspan, params)
     sol = solve(prob, time_stepper, adaptive=false, dt=Δt)
     ϕ = sol[:, end]
