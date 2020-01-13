@@ -91,15 +91,15 @@ end
 function create_animation(N, L, CFL, ϕₐ, time_stepper, scheme; T=2.0)
     x, Δt, prob = setup_problem(N, L, T, CFL, ϕₐ, time_stepper, scheme)
     integrator = init(prob, time_stepper, adaptive=false, dt=Δt)
+    nt = ceil(Int, T/Δt)
 
-    function every(N)
-         0 < N <= 16 && return 1
-        16 < N <= 32 && return 2
-        32 < N <= 64 && return 4
-        64 < N       && return 8
+    function every(n)
+          0 < n <= 128 && return 1
+        128 < n <= 256 && return 2
+        256 < n <= 512 && return 4
+        512 < n        && return 8
     end
 
-    nt = ceil(Int, T/Δt)
     anim = @animate for iter in 1:nt
         iter % 10 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
 
@@ -109,10 +109,10 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, scheme; T=2.0)
         ϕ_analytic = ϕₐ.(x, integrator.t, L)
         plot(x, ϕ_analytic, lw=2, label="analytic", title=title, xlims=(-0.5, 0.5), ylims=(-0.2, 1.2), dpi=200)
         plot!(x, integrator.u[1:N], lw=2, label="numerical")
-    end every every(N)
+    end every every(nt)
 
     anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), N, CFL)
-    mp4(anim, anim_filename, fps = 30)
+    mp4(anim, anim_filename, fps = 15)
 
     return nothing
 end
@@ -132,14 +132,18 @@ CFLs = Dict(
     CarpenterKennedy2N54 => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0)
 )
 
-# create_animation(128, L, 0.1, ϕ_Gaussian, AB3(), SecondOrderCentered(), T=0.2)
-# create_animation(128, L, 0.1, ϕ_Gaussian, CarpenterKennedy2N54(), WENO5(), T=0.2)
-
 for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs[typeof(ts)]
-    #  @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
-    #  create_figure(N, L, CFL, ϕ, ts, scheme)
+    @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
+    create_figure(N, L, CFL, ϕ, ts, scheme)
 
     # @info @sprintf("Creating two-revolution animation [%s, N=%d, CFL=%.2f]...", typeof(scheme), N, CFL)
     # create_animation(N, L, CFL, ϕ, scheme)
 end
+
+create_animation(64, L, 0.6, ϕ_Gaussian, AB3(), SecondOrderCentered())
+create_animation(32, L, 1.8, ϕ_Gaussian, CarpenterKennedy2N54(), WENO5())
+
+create_animation(64, L, 0.6, ϕ_Square, AB3(), SecondOrderCentered())
+create_animation(32, L, 1.8, ϕ_Square, CarpenterKennedy2N54(), WENO5())
+create_animation(256, L, 1.8, ϕ_Square, CarpenterKennedy2N54(), WENO5())
 
