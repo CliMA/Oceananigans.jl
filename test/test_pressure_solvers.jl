@@ -121,10 +121,11 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     RHS_orig = copy(RHS)
 
-    solver.storage .= RHS
+    storage = solver.storage.storage1
+    storage .= RHS
 
-    solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
-    solver.storage .= cat(solver.storage[:, 1:2:Ny, :], solver.storage[:, Ny:-2:2, :]; dims=2)
+    storage .= cat(storage[:, :, 1:2:Nz], storage[:, :, Nz:-2:2]; dims=3)
+    storage .= cat(storage[:, 1:2:Ny, :], storage[:, Ny:-2:2, :]; dims=2)
 
     solve_poisson_equation!(solver, grid)
 
@@ -138,7 +139,7 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     ϕ_p = view(interior(ϕ), 1:Nx, p_y_inds, p_z_inds)
 
-    @. ϕ_p = real(solver.storage)
+    @. ϕ_p = real(storage)
 
     fill_halo_regions!(ϕ.data, fbcs, arch, grid)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)

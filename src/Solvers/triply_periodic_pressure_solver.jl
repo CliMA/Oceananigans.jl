@@ -64,11 +64,11 @@ function TriplyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, Nx, Ny, Nz) |> CuArray
 
-    @info "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU}..."
+    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTxyz!  =  plan_forward_transform(storage, x_bc, [1, 2, 3])
     IFFTxyz! = plan_backward_transform(storage, x_bc, [1, 2, 3])
-    @info "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU} done!"
+    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU} done!"
 
     transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxy!)
 

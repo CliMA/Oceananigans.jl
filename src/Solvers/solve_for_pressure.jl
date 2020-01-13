@@ -3,16 +3,19 @@ using Oceananigans.Operators
 using Oceananigans: @loop_xyz
 
 function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
-    ϕ = RHS = solver.storage
-    solver_t = pressure_solver_type(solver)
+    if solver.type isa Channel && arch isa GPU
+        ϕ = RHS = solver.storage.storage1
+    else
+        ϕ = RHS = solver.storage
+    end
 
     @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_pressure_right_hand_side!(RHS, solver_t, arch, grid, U, G, Δt))
+            calculate_pressure_right_hand_side!(RHS, solver.type, arch, grid, U, G, Δt))
 
     solve_poisson_equation!(solver, grid)
 
     @launch(device(arch), config=launch_config(grid, :xyz),
-            copy_pressure!(pressure, ϕ, solver_t, arch, grid))
+            copy_pressure!(pressure, ϕ, solver.type, arch, grid))
 
     return nothing
 end

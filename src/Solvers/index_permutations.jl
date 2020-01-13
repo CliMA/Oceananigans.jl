@@ -1,12 +1,12 @@
 # We never need to permute indices on the CPU.
-@inline   permute_index(::Any, ::CPU, i, j, k, Nx, Ny, Nz) where T = i, j, k
-@inline unpermute_index(::Any, ::CPU, i, j, k, Nx, Ny, Nz) where T = i, j, k
+@inline   permute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
+@inline unpermute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
 
 @inline function _permute_index(i, N)
     if (i & 1) == 1  # Same as isodd(i)
-        return convert(UInt32, CUDAnative.floor(i/2) + 1)
+        return floor(Int, i/2) + 1
     else
-        return convert(UInt32, N - CUDAnative.floor((i-1)/2))
+        return N - floor(Int, (i-1)/2)
     end
 end
 

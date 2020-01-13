@@ -16,8 +16,6 @@ struct HorizontallyPeriodic <: PressureSolverType end
 struct Channel              <: PressureSolverType end
 struct Box                  <: PressureSolverType end
 
-pressure_solver_type(::PressureSolver{T}) where T = T
-
 poisson_bc_symbol(::BC) = :N
 poisson_bc_symbol(::BC{<:Periodic}) = :P
 

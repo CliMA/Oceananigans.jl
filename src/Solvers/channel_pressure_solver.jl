@@ -106,13 +106,13 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
 
     storage = (storage1 = storage1, storage2 = storage2)
 
-    @info "Planning transforms for PressureSolver{Channel, GPU}..."
+    @debug "Planning transforms for PressureSolver{Channel, GPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTx!   = plan_forward_transform(storage1, x_bc, 1)
     FFTyz!  = plan_forward_transform(storage1, z_bc, [2, 3])
     IFFTx!  = plan_backward_transform(storage1, x_bc, 1)
     IFFTyz! = plan_backward_transform(storage1, z_bc, [2, 3])
-    @info "Planning transforms for PressureSolver{Channel, GPU} done!"
+    @debug "Planning transforms for PressureSolver{Channel, GPU} done!"
 
     transforms = ( FFTx! =  FFTx!,  FFTyz! =  FFTyz!,
                   IFFTx! = IFFTx!, IFFTyz! = IFFTyz!)
@@ -123,7 +123,7 @@ end
 function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
     Nx, Ny, Nz, _ = unpack_grid(grid)
 
-    kx², ky², kz² = solver.kx², solver.ky², solver.kz²
+    kx², ky², kz² = solver.wavenumbers.kx², solver.wavenumbers.ky², solver.wavenumbers.kz²
     ω_4Ny⁺, ω_4Ny⁻ = solver.constants.ω_4Ny⁺, solver.constants.ω_4Ny⁻
     ω_4Nz⁺, ω_4Nz⁻ = solver.constants.ω_4Nz⁺, solver.constants.ω_4Nz⁻
     r_y_inds, r_z_inds = solver.constants.r_y_inds, solver.constants.r_z_inds
@@ -146,7 +146,7 @@ function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
 
     B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
-    solver.IFFTx! * B  # Calculate IFFTˣ(ϕ̂) in place.
+    solver.transforms.IFFTx! * B  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
     B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
