@@ -2,10 +2,10 @@
 Implementation of WENO-5 following §5.7 of Durran 2ed, Numerical Methods for Fluid Dynamics.
 """
 
-# WENO-5 interpolation functions
+# WENO-5 interpolation functions (or stencils)
 @inline p₀(i, f) =  1/3 * f[i]   + 5/6 * f[i+1] -  1/6 * f[i+2]
 @inline p₁(i, f) = -1/6 * f[i-1] + 5/6 * f[i]   +  1/3 * f[i+1]
-@inline p₂(i, f) =  1/3 * f[i-2] + 7/6 * f[i-1] + 11/6 * f[i]
+@inline p₂(i, f) =  1/3 * f[i-2] - 7/6 * f[i-1] + 11/6 * f[i]
 
 # WENO-5 weight calculation
 @inline β₀(i, f) = 13/12 * (f[i]   - 2f[i+1] + f[i+2])^2 + 1/4 * (3f[i] - 4f[i+1] + f[i+2])^2
