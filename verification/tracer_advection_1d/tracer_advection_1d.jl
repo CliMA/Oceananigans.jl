@@ -10,13 +10,17 @@ using Plots
 abstract type AbstractAdvectionScheme end
 
 struct FirstOrderUpwind <: AbstractAdvectionScheme end
-@inline ∂x_advective_flux(i, N, Δx, u, ϕ, ::FirstOrderUpwind) =
+@inline ∂x_advective_flux(i, Δx, u, ϕ, ::FirstOrderUpwind) =
     max(u[i], 0) * (ϕ[i] - ϕ[i-1])/Δx + min(u[i], 0) * (ϕ[i+1] - ϕ[i])/Δx
 
 struct SecondOrderCentered <: AbstractAdvectionScheme end
-@inline advective_flux(i, N, u, ϕ, ::SecondOrderCentered) = u[i] * (ϕ[i-1] + ϕ[i]) / 2
-@inline ∂x_advective_flux(i, N, Δx, u, ϕ, scheme) =
-    (advective_flux(i+1, N, u, ϕ, scheme) - advective_flux(i, N, u, ϕ, scheme)) / Δx
+@inline advective_flux(i, u, ϕ, ::SecondOrderCentered) = u[i] * (ϕ[i-1] + ϕ[i]) / 2
+@inline ∂x_advective_flux(i, Δx, u, ϕ, scheme) =
+    (advective_flux(i+1, u, ϕ, scheme) - advective_flux(i, u, ϕ, scheme)) / Δx
+
+include("weno.jl")
+struct WENO5 end
+@inline ∂x_advective_flux(i, Δx, u, ϕ, ::WENO5) = u[i] * (weno5_flux(i+1, ϕ) - weno5_flux(i, ϕ)) / Δx
 
 #####
 ##### Forward Euler time-stepping of advection equation
@@ -25,7 +29,7 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
 function advection!(∂ϕ∂t, ϕ, p, t)
     ϕ[0], ϕ[p.N+1] = ϕ[p.N], ϕ[1]  # Fill ghost points to enforce periodic boundary conditions.
     for i in 1:p.N
-        ∂ϕ∂t[i] = ∂x_advective_flux(i, p.N, p.Δx, p.u, ϕ, p.scheme)
+        ∂ϕ∂t[i] = ∂x_advective_flux(i, p.Δx, p.u, ϕ, p.scheme)
     end
 end
 
@@ -123,11 +127,17 @@ L = 1
 time_steppers = (Euler(), AB3(), CarpenterKennedy2N54())
 schemes = (SecondOrderCentered(),)
 Ns = [16, 32, 64, 128]
-CFLs = [0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0]
+CFLs = Dict(
+    Euler => (0.05, 0.3, 0.5),
+    AB3   => (0.05, 0.3, 0.5, 0.9),
+    CarpenterKennedy2N54 => (0.05, 0.3, 0.5, 0.9, 1.5, 2.0, 3.0, 4.0)
+)
 
-for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs
-    @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
-    create_figure(N, L, CFL, ϕ, ts, scheme)
+create_figure(128, L, 0.05, ϕ_Gaussian, AB3(), WENO5())
+
+for ϕ in ϕs, ts in time_steppers, scheme in schemes, N in Ns, CFL in CFLs[typeof(ts)]
+    # @info @sprintf("Creating one-revolution figure [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(ts), typeof(scheme), N, CFL)
+    # create_figure(N, L, CFL, ϕ, ts, scheme)
 
     # @info @sprintf("Creating two-revolution animation [%s, N=%d, CFL=%.2f]...", typeof(scheme), N, CFL)
     # create_animation(N, L, CFL, ϕ, scheme)
