@@ -75,7 +75,7 @@ function TriplyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     return PressureSolver(TriplyPeriodic(), GPU(), wavenumbers, storage, transforms, nothing)
 end
 
-function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, GPU}, grid)
+function solve_poisson_equation!(solver::PressureSolver{TriplyPeriodic, GPU}, grid)
     kx², ky², kz² = solver.wavenumbers.kx², solver.wavenumbers.ky², solver.wavenumbers.kz²
 
     # We can use the same storage for the RHS and the solution ϕ.
