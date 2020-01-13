@@ -20,7 +20,7 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
 
 include("weno.jl")
 struct WENO5 end
-@inline ∂x_advective_flux(i, Δx, u, ϕ, ::WENO5) = u[i] * (weno5_flux(i, ϕ) - weno5_flux(i-1, ϕ)) / Δx
+@inline ∂x_advective_flux(i, Δx, u, ϕ, ::WENO5) = u[i] * (weno5_flux(i+1, ϕ) - weno5_flux(i, ϕ)) / Δx
 
 #####
 ##### Right hand side evaluation of the advection equation
