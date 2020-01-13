@@ -34,7 +34,7 @@ function weno5_weights(i, f)
     w₀ = a₀ / Σa
     w₁ = a₁ / Σa
     w₂ = a₂ / Σa
-    return w₁, w₂, w₂
+    return w₀, w₁, w₂
 end
 
 # WENO-5 flux reconstruction
