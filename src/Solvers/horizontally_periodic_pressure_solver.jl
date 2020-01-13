@@ -14,13 +14,13 @@ function HorizontallyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_f
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    @info "Planning transforms for PressureSolver{HorizontallyPeriodic, CPU}..."
+    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, CPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
     DCTz!   = plan_forward_transform(storage, z_bc, 3, planner_flag)
     IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
     IDCTz!  = plan_backward_transform(storage, z_bc, 3, planner_flag)
-    @info "Planning transforms for PressureSolver{HorizontallyPeriodic, CPU} done!"
+    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, CPU} done!"
 
     transforms = ( FFTxy! =  FFTxy!,  DCTz! =  DCTz!,
                   IFFTxy! = IFFTxy!, IDCTz! = IDCTz!)

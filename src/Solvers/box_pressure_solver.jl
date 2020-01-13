@@ -13,11 +13,11 @@ function BoxPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     # See https://github.com/climate-machine/Oceananigans.jl/issues/55
     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
 
-    @info "Planning transforms for PressureSolver{Box, CPU}..."
+    @debug "Planning transforms for PressureSolver{Box, CPU}..."
     x_bc, y_bc, z_bc = pressure_bcs.x.left, pressure_bcs.y.left, pressure_bcs.z.left
     DCTxyz!  =  plan_forward_transform(storage, z_bc, [1, 2, 3], planner_flag)
     IDCTxyz! = plan_backward_transform(storage, z_bc, [1, 2, 3], planner_flag)
-    @info "Planning transforms for PressureSolver{Box, CPU} done!"
+    @debug "Planning transforms for PressureSolver{Box, CPU} done!"
 
     transforms = (DCTxyz! =  DCTxyz!, IDCTxyz! = IDCTxyz!)
 
@@ -56,5 +56,5 @@ end
 #####
 
 function BoxPressureSolver(::GPU, grid, pressure_bcs, no_args...)
-    throw(ArgumentError("Box pressure solver not implemented for GPUs :("))
+    throw(ArgumentError("Box pressure solver not implemented for GPUs yet :("))
 end
