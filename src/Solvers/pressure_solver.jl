@@ -26,11 +26,15 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     bc_symbol = Symbol(x, y, z)
 
     if bc_symbol == :PPP
+        @warn "TriplyPeriodicPressureSolver is still untested."
         return TriplyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PPN
         return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PNN
         return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
+    elseif bc_symbol == :NNN
+        @warn "BoxPressureSolver is still untested."
+        return BoxPressureSolver(arch, grid, pressure_bcs, planner_flag)
     else
         throw(ArgumentError("Unsupported pressure boundary conditions: $bc_symbol"))
     end
