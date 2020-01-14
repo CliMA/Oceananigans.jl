@@ -5,26 +5,18 @@ if VERSION < v"1.1"
 end
 
 export
-    # Helper macro for determining if a CUDA-enabled GPU is available.
-    @hascuda,
-
     # Architectures
     CPU, GPU,
 
     # Logging
     ModelLogger, Diagnostic, Setup, Simulation,
 
-    # Constants
-    second, minute, hour, day,
-
     # Grids
     RegularCartesianGrid,
 
     # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
-    interior, set!, set_ic!,
-    nodes, xnodes, ynodes, znodes,
-    compute_w_from_continuity!,
+    interior, set!,
 
     # Forcing functions
     ModelForcing, SimpleForcing,
@@ -33,7 +25,8 @@ export
     FPlane, BetaPlane,
 
     # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    BuoyancyTracer, SeawaterBuoyancy,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
@@ -46,17 +39,14 @@ export
     BoundaryFunction, getbc, setbc!,
 
     # Time stepping
-    TimeStepWizard,
-    update_Δt!, time_step!,
-
-    # Clock
-    Clock,
+    time_step!,
+    TimeStepWizard, update_Δt!,
 
     # Models
     Model, ChannelModel, NonDimensionalModel,
 
-    # Package utilities
-    prettytime, pretty_filesize, KiB, MiB, GiB, TiB,
+    # Utilities
+    prettytime, pretty_filesize,
 
     # Turbulence closures
     ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
@@ -64,27 +54,23 @@ export
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
 # Standard library modules
-using
-    Statistics,
-    LinearAlgebra,
-    Printf
+using Printf
+using Logging
+using Statistics
+using LinearAlgebra
 
 # Third-party modules
-using
-    Adapt,
-    FFTW,
-    OffsetArrays,
-    JLD2,
-    NCDatasets
+using Adapt
+using OffsetArrays
+using FFTW
+using JLD2
+using NCDatasets
 
-import
-    CUDAapi,
-    GPUifyLoops
+import CUDAapi
+import GPUifyLoops
 
 using Base: @propagate_inbounds
 using Statistics: mean
-using OrderedCollections: OrderedDict
-using CUDAapi: has_cuda
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
@@ -99,27 +85,6 @@ import Base:
 #####
 
 """
-    AbstractModel
-
-Abstract supertype for models.
-"""
-abstract type AbstractModel end
-
-"""
-    AbstractArchitecture
-
-Abstract supertype for architectures supported by Oceananigans.
-"""
-abstract type AbstractArchitecture end
-
-"""
-    AbstractRotation
-
-Abstract supertype for parameters related to background rotation rates.
-"""
-abstract type AbstractRotation end
-
-"""
     AbstractGrid{T}
 
 Abstract supertype for grids with elements of type `T`.
@@ -127,43 +92,7 @@ Abstract supertype for grids with elements of type `T`.
 abstract type AbstractGrid{T} end
 
 """
-    AbstractField{A, G}
-
-Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
-"""
-abstract type AbstractField{A, G} end
-
-"""
-    AbstractLocatedField{X, Y, Z, A, G}
-
-Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
-and defined on a grid `G`.
-"""
-abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
-
-"""
-    AbstractEquationOfState
-
-Abstract supertype for buoyancy models.
-"""
-abstract type AbstractBuoyancy{EOS} end
-
-"""
-    AbstractEquationOfState
-
-Abstract supertype for equations of state.
-"""
-abstract type AbstractEquationOfState end
-
-"""
-    AbstractEquationOfState
-
-Abstract supertype for nonlinar equations of state.
-"""
-abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
-
-"""
-    AbstractEquationOfState
+    AbstractPoissonSolver
 
 Abstract supertype for solvers for Poisson's equation.
 """
@@ -185,36 +114,25 @@ Abstract supertype for types that perform input and output.
 abstract type AbstractOutputWriter end
 
 #####
-##### All the functionality
+##### Place-holder functions
 #####
 
-"""
-    CPU <: AbstractArchitecture
+function TimeStepper end
+function run_diagnostic end
+function write_output end
 
-Run Oceananigans on a single-core of a CPU.
-"""
-struct CPU <: AbstractArchitecture end
+#####
+##### Include all the submodules
+#####
 
-"""
-    GPU <: AbstractArchitecture
+include("Architectures.jl")
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
-"""
-struct GPU <: AbstractArchitecture end
-
-"""
-    @hascuda expr
-
-A macro to compile and execute `expr` only if CUDA is installed and available. Generally used to
-wrap expressions that can only be compiled if `CuArrays` and `CUDAnative` can be loaded.
-"""
-macro hascuda(expr)
-    return has_cuda() ? :($(esc(expr))) : :(nothing)
-end
-
+using Oceananigans.Architectures: @hascuda
 @hascuda begin
     # Import CUDA utilities if it's detected.
-    using CUDAdrv, CUDAnative, CuArrays
+    using CUDAdrv
+    using CUDAnative
+    using CuArrays
 
     println("CUDA-enabled GPU(s) detected:")
     for (gpu, dev) in enumerate(CUDAnative.devices())
@@ -222,62 +140,40 @@ end
     end
 end
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
-architecture(::Array) = CPU()
-@hascuda architecture(::CuArray) = GPU()
-
-# Place-holder functions
-function buoyancy_perturbation end
-function buoyancy_frequency_squared end
-function ∂x_b end
-function ∂y_b end
-function ∂z_b end
-function TracerFields end
-function TimeStepper end
-function run_diagnostic end
-function write_output end
-
-using Logging
-
-include("utils.jl")
-
-include("clock.jl")
+include("Utils/Utils.jl")
+include("Logger.jl")
 include("Grids/Grids.jl")
-
-using .Grids
-
-include("fields.jl")
-
+include("Fields/Fields.jl")
 include("Operators/Operators.jl")
-
-include("TurbulenceClosures/TurbulenceClosures.jl")
-
-using .TurbulenceClosures
-
-include("coriolis.jl")
-include("buoyancy.jl")
+include("Coriolis/Coriolis.jl")
+include("Buoyancy/Buoyancy.jl")
 include("SurfaceWaves.jl")
-include("boundary_conditions.jl")
-include("halo_regions.jl")
+include("TurbulenceClosures/TurbulenceClosures.jl")
+include("BoundaryConditions/BoundaryConditions.jl")
 include("Solvers/Solvers.jl")
-
-using .Solvers
-
-include("forcing.jl")
-include("logger.jl")
-include("models.jl")
-
+include("Forcing/Forcing.jl")
+include("Models/Models.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-
 include("TimeSteppers/TimeSteppers.jl")
-
-using .TimeSteppers
-
 include("AbstractOperations/AbstractOperations.jl")
 
+#####
+##### Re-export stuff from submodules
+#####
+
+using .Architectures
+using .Utils
+using .Grids
+using .Fields
+using .Coriolis
+using .Buoyancy
 using .SurfaceWaves
+using .TurbulenceClosures
+using .BoundaryConditions
+using .Solvers
+using .Forcing
+using .Models
+using .TimeSteppers
 
 end # module

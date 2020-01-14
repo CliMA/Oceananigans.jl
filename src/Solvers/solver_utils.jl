@@ -1,8 +1,7 @@
-using Oceananigans:
-    CPU, GPU, AbstractGrid, AbstractPoissonSolver,
-    BC, Periodic, ModelBoundaryConditions
-
+using Oceananigans: AbstractGrid, AbstractPoissonSolver
+using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Grids: RegularCartesianGrid
+using Oceananigans.BoundaryConditions: BC, Periodic, ModelBoundaryConditions
 
 # PoissonBCs are named XYZ, where each of X, Y, and Z is either
 # 'P' (for Periodic) or 'N' (for Neumann).

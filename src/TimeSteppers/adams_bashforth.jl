@@ -1,5 +1,7 @@
 import Oceananigans.OutputWriters: saveproperty!
 
+using Oceananigans.Utils: datatuples
+
 """
     AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ)
 

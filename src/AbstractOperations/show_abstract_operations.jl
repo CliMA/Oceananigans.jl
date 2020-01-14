@@ -1,3 +1,6 @@
+using Oceananigans.Grids: show_domain, short_show
+using Oceananigans.Fields: show_location
+
 for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
     op = eval(Symbol(op_string))
     @eval begin
