@@ -2,6 +2,12 @@
 @inline   permute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
 @inline unpermute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
 
+"""
+    _permute_index(i, N)
+
+Perform the permutation [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
+on index `i` out of `N`.
+"""
 @inline function _permute_index(i, N)
     if (i & 1) == 1  # Same as isodd(i)
         return floor(Int, i/2) + 1
@@ -10,6 +16,12 @@
     end
 end
 
+"""
+    _permute_index(i, N)
+
+Undo the permutation [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
+on index `i` out of `N`.
+"""
 @inline function _unpermute_index(i, N)
     if i <= N/2
         return 2i-1
