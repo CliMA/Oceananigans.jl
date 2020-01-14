@@ -12,7 +12,7 @@ export
     ModelLogger, Diagnostic, Setup, Simulation,
 
     # Grids
-    RegularCartesianGrid,
+    RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
     Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
