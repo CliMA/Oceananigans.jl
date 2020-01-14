@@ -1,17 +1,10 @@
 using OrderedCollections: OrderedDict
 using CUDAapi: has_cuda
 
-using Oceananigans.Fields
-
-using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU
-using Oceananigans.Fields: tracernames
-using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
-using Oceananigans.Forcing: ModelForcing
-using Oceananigans.BoundaryConditions: HorizontallyPeriodicSolutionBCs, ModelBoundaryConditions
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
-using Oceananigans: AbstractOutputWriter, AbstractDiagnostic
-using Oceananigans.Solvers: PoissonBCs, PoissonSolver
-using Oceananigans: TimeStepper
+using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
+using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Buoyancy: validate_buoyancy
+using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel

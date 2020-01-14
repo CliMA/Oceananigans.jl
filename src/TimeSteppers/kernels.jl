@@ -1,5 +1,3 @@
-using Oceananigans: @loop_xyz, @loop_xy
-
 #####
 ##### Navier-Stokes and tracer advection equations
 #####
