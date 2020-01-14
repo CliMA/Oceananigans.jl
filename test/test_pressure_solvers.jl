@@ -10,10 +10,10 @@ function ∇²!(grid, f, ∇²f)
     end
 end
 
-function fftw_planner_works(FT, Nx, Ny, Nz, planner_flag)
+function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(100, 100, 100))
-    solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs())
-    true  # Just making sure the PressureSolver does not error/crash.
+    solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs(), planner_flag)
+    return true  # Just making sure the PressureSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
@@ -187,16 +187,16 @@ end
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
-    # @testset "FFTW plans" begin
-    #     @info "  Testing FFTW planning..."
-    #
-    #     for FT in float_types
-    #         @test fftw_planner_works(FT, 32, 32, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT, 1,  32, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT, 32,  1, 32, FFTW.ESTIMATE)
-    #         @test fftw_planner_works(FT,  1,  1, 32, FFTW.ESTIMATE)
-    #     end
-    # end
+    @testset "Pressure solver instantiation" begin
+        @info "  Testing pressure solver instantiation..."
+
+        for FT in float_types
+            @test pressure_solver_instantiates(FT, 32, 32, 32, FFTW.ESTIMATE)
+            @test pressure_solver_instantiates(FT, 1,  32, 32, FFTW.ESTIMATE)
+            @test pressure_solver_instantiates(FT, 32,  1, 32, FFTW.ESTIMATE)
+            @test pressure_solver_instantiates(FT,  1,  1, 32, FFTW.ESTIMATE)
+        end
+    end
 
     @testset "Divergence-free solution [CPU]" begin
         @info "  Testing divergence-free solution [CPU]..."

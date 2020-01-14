@@ -1,5 +1,6 @@
 using LinearAlgebra
-using Oceananigans: array_type, NoPenetrationBC
+using Oceananigans.Architectures: array_type
+using Oceananigans.BoundaryConditions: NoPenetrationBC
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 function can_solve_single_tridiagonal_system(arch, N)
