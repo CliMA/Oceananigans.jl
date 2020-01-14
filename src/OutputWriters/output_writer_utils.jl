@@ -1,4 +1,5 @@
- using Oceananigans: AbstractField
+using Oceananigans.Fields: AbstractField
+using Oceananigans.BoundaryConditions: CoordinateBoundaryConditions
 
 #####
 ##### Output writer utilities

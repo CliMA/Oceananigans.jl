@@ -4,6 +4,7 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures
 using Oceananigans.OutputWriters
 using Oceananigans.Diagnostics
+using Oceananigans.Utils
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg)
@@ -130,7 +131,7 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+    set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
 
     #####
     ##### Print simulation banner
@@ -242,7 +243,7 @@ boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
         umax = maximum(abs, model.velocities.u.data.parent)
         vmax = maximum(abs, model.velocities.v.data.parent)
         wmax = maximum(abs, model.velocities.w.data.parent)
-        CFL = wizard.Δt / Oceananigans.cell_advection_timescale(model)
+        CFL = wizard.Δt / cell_advection_timescale(model)
 
         νmax = maximum(model.diffusivities.νₑ.data.parent)
         κmax = maximum(model.diffusivities.κₑ.T.data.parent)

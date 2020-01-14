@@ -67,7 +67,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
     b₀(x, y, z) = (ξ(z) - z) / Lz
-    set_ic!(model, b=b₀)
+    set!(model, b=b₀)
 
     time_step!(model, spinup_steps-test_steps, Δt)
     push!(model.output_writers, outputwriter)

@@ -1,7 +1,6 @@
 using Printf
 using JLD2
-
-using Oceananigans: validate_interval
+using Oceananigans.Utils
 
 """
     JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
@@ -123,7 +122,7 @@ function jld2output!(path, iter, time, data, kwargs)
     return nothing
 end
 
-function start_next_file(model::Model, fw::JLD2OutputWriter)
+function start_next_file(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     sz = filesize(fw.filepath)
     verbose && @info begin

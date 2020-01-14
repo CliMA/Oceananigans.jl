@@ -22,7 +22,7 @@ function x_derivative(a)
         interior(a)[:, 3, k] .= [1, 2, 3]
     end
 
-    return dx_a[2, 2, 2] == 1 
+    return dx_a[2, 2, 2] == 1
 end
 
 function y_derivative(a)
@@ -34,7 +34,7 @@ function y_derivative(a)
         interior(a)[3, :, k] .= [1, 3, 5]
     end
 
-    return dy_a[2, 2, 2] == 2 
+    return dy_a[2, 2, 2] == 2
 end
 
 function z_derivative(a)
@@ -46,7 +46,7 @@ function z_derivative(a)
         interior(a)[3, k, :] .= [1, 4, 7]
     end
 
-    return dz_a[2, 2, 2] == 3 
+    return dz_a[2, 2, 2] == 3
 end
 
 function x_derivative_cell(FT, arch)
@@ -60,7 +60,7 @@ function x_derivative_cell(FT, arch)
         interior(a)[:, 3, k] .= [1, 4, 4]
     end
 
-    return dx_a[2, 2, 2] == 3 
+    return dx_a[2, 2, 2] == 3
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
@@ -233,7 +233,7 @@ end
     for FT in float_types
         arch = CPU()
         grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
-        u, v, w = Oceananigans.VelocityFields(arch, grid)
+        u, v, w = VelocityFields(arch, grid)
         c = Field(Cell, Cell, Cell, arch, grid)
 
         @testset "Unary operations and derivatives [$FT]" begin
@@ -279,8 +279,8 @@ end
             num2 = FT(42)
             grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
 
-            u, v, w = Oceananigans.VelocityFields(arch, grid)
-            T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
+            u, v, w = VelocityFields(arch, grid)
+            T, S = TracerFields(arch, grid, (:T, :S))
 
             for op in (+, *, -, /)
                 @test simple_binary_operation(op, u, v, num1, num2)
@@ -298,8 +298,8 @@ end
         for FT in float_types
             grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
 
-            u, v, w = Oceananigans.VelocityFields(arch, grid)
-            T, S = Oceananigans.TracerFields(arch, grid, (:T, :S))
+            u, v, w = VelocityFields(arch, grid)
+            T, S = TracerFields(arch, grid, (:T, :S))
             for a in (u, v, w, T)
                 @test x_derivative(a)
                 @test y_derivative(a)
@@ -327,14 +327,14 @@ end
 
             #              a = [    0,       1.5,      4.5,       6,        0    ]
             #              b = [    0,        2,        2,        2,        0    ]
-            #          ∂x(a) = [        1.5,       3,       1.5,      -6         ] 
+            #          ∂x(a) = [        1.5,       3,       1.5,      -6         ]
 
             # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
             #        i Face:    0        1         2         3         4
             #        i Cell:        0         1         2         3         4
 
-            # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ] 
-            # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ] 
+            # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ]
+            # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ]
 
 
             @test times_x_derivative(a, b, (C, C, C), 1, 2, 2, 4.5)
@@ -353,8 +353,12 @@ end
             @info "  Testing combined binary operations and derivatives..."
             for FT in float_types
                 @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
-                model = Model(architecture=arch, float_type=FT,
-                                grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1)))
+
+                model = Model(
+                    architecture = arch,
+                      float_type = FT,
+                            grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1))
+                )
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! derivatives..."

@@ -8,9 +8,10 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
-using Oceananigans: AbstractGrid, Face, Cell, xnode, ynode, znode
+using Oceananigans: AbstractGrid
 
-using Oceananigans.Operators: ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+using Oceananigans.Fields
+using Oceananigans.Operators
 
 """
     abstract type AbstractStokesDrift end
@@ -51,11 +52,11 @@ end
 addzero(args...) = 0
 
 """
-    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, 
+    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero,
                                     ∂t_uˢ=addzero, ∂t_vˢ=addzero)
 
 Construct a set of functions that describes the Stokes drift field beneath
-a uniform surface gravity wave field. 
+a uniform surface gravity wave field.
 """
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
@@ -67,10 +68,10 @@ const USD = UniformStokesDrift
 
 @inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = 
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
     @inbounds ℑzᵃᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(Cell, k, grid), time)
 
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = 
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
     @inbounds ℑzᵃᵃᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(Cell, k, grid), time)
 
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds begin (
