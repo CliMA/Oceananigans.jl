@@ -5,34 +5,30 @@ export
     time_step!,
     compute_w_from_continuity!
 
-using Oceananigans: device
-
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid, Model, Tendencies, tracernames,
-                    @hascuda, CPU, GPU, launch_config, datatuples, datatuple,
-                    @loop_xyz,
-
-                    buoyancy_perturbation,
-                    x_f_cross_U, y_f_cross_U, z_f_cross_U,
-
-                    fill_halo_regions!, apply_z_bcs!, apply_y_bcs!,
-
-                    time_to_run
+using Oceananigans: AbstractGrid
 
 using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
                                  ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
 
-@hascuda using CUDAnative, CUDAdrv, CuArrays
+using Oceananigans.Architectures: @hascuda
+@hascuda using CUDAnative, CuArrays
 
+using Oceananigans.Architectures
 using Oceananigans.Operators
+using Oceananigans.Coriolis
+using Oceananigans.Buoyancy
+using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
+using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
+using Oceananigans.Utils
 
-using Oceananigans.Solvers: solve_poisson_3d!, PoissonBCs, PPN, PNN
+using Oceananigans.Fields: Tendencies, tracernames
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.OutputWriters: write_output
 
@@ -145,16 +141,14 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies
                                              v=model.boundary_conditions.tendency.v,
                                              w=model.boundary_conditions.tendency.w)
 
-    fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions, model.architecture, model.grid)
+    fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions,
+                       model.architecture, model.grid)
 
-    @launch(device(model.architecture), config=launch_config(model.grid, :xyz),
-            calculate_poisson_right_hand_side!(model.poisson_solver.storage, model.architecture, model.grid,
-                                               model.poisson_solver.bcs, velocities, tendencies, Δt))
+    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
+                        model.architecture, model.grid, velocities, tendencies, Δt)
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.architecture, model.grid, model.poisson_solver,
-                        model.poisson_solver.storage)
-
-    fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure, model.architecture, model.grid)
+    fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure,
+                       model.architecture, model.grid)
 
     return nothing
 end

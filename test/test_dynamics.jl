@@ -115,7 +115,7 @@ function internal_wave_test(; N=128, Nt=10)
     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ)
     model = Model(grid=grid, closure=closure, buoyancy=BuoyancyTracer(), tracers=:b, coriolis=FPlane(f=f))
 
-    set_ic!(model, u=u₀, v=v₀, w=w₀, b=b₀)
+    set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     time_step!(model, Nt, Δt)
 
@@ -138,7 +138,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
     model = Model(grid=grid, closure=closure)
 
-    set_ic!(model, u=u₀, v=v₀, T=T₀)
+    set!(model, u=u₀, v=v₀, T=T₀)
     time_step!(model, Nt, Δt)
 
     # Error tolerance is a bit arbitrary
@@ -171,7 +171,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
-    set_ic!(model; u=u₀, v=v₀)
+    set!(model; u=u₀, v=v₀)
 
     time_step!(model, Nt, Δt)
 

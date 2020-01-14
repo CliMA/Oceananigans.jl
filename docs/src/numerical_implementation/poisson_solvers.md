@@ -91,7 +91,7 @@ Discretizing the $\partial_z^2$ derivative and equating the term inside the brac
 $N_x\times N_y$ symmetric tridiagonal systems of $N_z$ linear equations for the Fourier modes:
 ```math
 \frac{\tilde{\phi}_{mn,k-1}}{\Delta z^F_{k-1}}
-- \left\lbrace \frac{1}{1/\Delta z^F_{k-1} + 1/\Delta z^F_k} + \Delta z^C_k (k_x^2 + k_y^2) \right\rbrace
+- \left\lbrace \frac{1}{\Delta z^F_{k-1}} + \frac{1}{\Delta z^F_k} + \Delta z^C_k (k_x^2 + k_y^2) \right\rbrace
   \tilde{\phi}_{mnk}
 + \frac{\tilde{\phi}_{mn,k+1}}{\Delta z^F_k}
 = \Delta z^C_k \tilde{\mathscr{F}}_{mnk}

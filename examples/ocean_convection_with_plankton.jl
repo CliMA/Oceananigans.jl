@@ -9,7 +9,8 @@
 #
 # To begin, we load Oceananigans, a plotting package, and a few miscellaneous useful packages.
 
-using Oceananigans, Plots, Random, Printf
+using Random, Printf, Plots
+using Oceananigans, Oceananigans.Utils
 
 # ## Parameters
 #
@@ -60,7 +61,7 @@ model = Model(
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
                 forcing = ModelForcing(plankton=growth_and_decay),
-    boundary_conditions = BoundaryConditions(b=buoyancy_bcs)
+    boundary_conditions = HorizontallyPeriodicSolutionBCs(b=buoyancy_bcs)
 )
 nothing # hide
 

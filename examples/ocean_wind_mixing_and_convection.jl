@@ -13,8 +13,8 @@
 # We also need `Oceananigans.OutputWriters` and `Oceananigans.Diagnostics` to access
 # some nice features for writing output data to disk.
 
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics
-using Plots, Random, Printf
+using Random, Printf, Plots
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils
 
 # ## Model parameters
 #
@@ -88,7 +88,7 @@ model = Model(
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
-  boundary_conditions = BoundaryConditions(u=u_bcs, T=T_bcs, S=S_bcs),
+  boundary_conditions = HorizontallyPeriodicSolutionBCs(u=u_bcs, T=T_bcs, S=S_bcs),
            parameters = (evaporation = evaporation,)
 )
 nothing # hide

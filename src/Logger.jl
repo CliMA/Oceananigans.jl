@@ -1,16 +1,21 @@
-using Logging, Dates
+module Logger
 
+export ModelLogger, Diagnostic, Setup, Simulation
 
-####
-#### Custom LogLevels
-####
+using Dates
+using Logging
+
+#####
+##### Custom LogLevels
+#####
+
 _custom_log_level_docs = """
     Severity Order:
     Debug < Diagnostic < Simulation < Setup < Info
 
     Usage:
     @logmsg Logging.LogLevel "Log Message"
-    
+
     @logmsg comes from Base/Logging
     LogLevel can be any Base/Logging.LogLevel
     Log Message can be any expression that evaluates to a string (preferably human readable!)
@@ -18,12 +23,12 @@ _custom_log_level_docs = """
 
 const Diagnostic = Logging.LogLevel(-500)  # Sits between Debug and Info
 const Simulation = Logging.LogLevel(-250)
-const Setup = Logging.LogLevel(-125)
+const Setup      = Logging.LogLevel(-125)
 
+#####
+##### ModelLogger
+#####
 
-####
-#### ModelLogger
-####
 _model_logger_docs = """
 
     ModelLogger(stream::IO, level::LogLevel)
@@ -39,6 +44,7 @@ struct ModelLogger <: Logging.AbstractLogger
     min_level::Logging.LogLevel
     message_limits::Dict{Any,Int}
 end
+
 ModelLogger(stream::IO=stderr, level=Diagnostic) = ModelLogger(stream, level, Dict{Any,Int}())
 
 Logging.shouldlog(logger::ModelLogger, level, _module, group, id) = get(logger.message_limits, id, 1) > 0
@@ -52,9 +58,9 @@ function level_to_string(level::Logging.LogLevel)
          "Diagnostic"
     elseif level == Setup
          "Setup"
-    elseif level == Logging.Warn 
+    elseif level == Logging.Warn
         "Warning"
-    else 
+    else
         string(level)
     end
 end
@@ -76,4 +82,6 @@ function Logging.handle_message(logger::ModelLogger, level, message, _module, gr
     println(iob, formatted_message)
     write(logger.stream, take!(buf))
     return nothing
+end
+
 end

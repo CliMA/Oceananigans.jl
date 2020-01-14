@@ -50,7 +50,8 @@ indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` o
 the `length` argument, e.g. `length=(Lx, Ly, Lz)` which specifies the length of each dimension
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
-Constants are stored using floating point values of type `FT`.
+Constants are stored using floating point values of type `FT`. By default this is `Float64`.
+Make sure to specify the desired `FT` if not using `Float64`.
 
 Grid properties
 ===============
@@ -95,19 +96,13 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     Ty = Ny + 2Hy
     Tz = Nz + 2Hz
 
-    Δx = Lx / Nx
-    Δy = Ly / Ny
-    Δz = Lz / Nz
+    Δx = convert(FT, Lx / Nx)
+    Δy = convert(FT, Ly / Ny)
+    Δz = convert(FT, Lz / Nz)
 
-    Ax = Δy*Δz
-    Ay = Δx*Δz
-    Az = Δx*Δy
-
-    V = Δx*Δy*Δz
-
-    x₁, x₂ = x[1], x[2]
-    y₁, y₂ = y[1], y[2]
-    z₁, z₂ = z[1], z[2]
+    x₁, x₂ = convert.(FT, [x[1], x[2]])
+    y₁, y₂ = convert.(FT, [y[1], y[2]])
+    z₁, z₂ = convert.(FT, [z[1], z[2]])
 
     xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
     yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)

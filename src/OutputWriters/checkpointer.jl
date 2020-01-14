@@ -120,7 +120,7 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
     # Restore model properties that were just serialized.
     # We skip fields that contain structs and restore them after model creation.
     for p in cps
-        if p ∉ has_array_refs
+        if p ∉ has_array_refs && !haskey(kwargs, p)
             kwargs[p] = file["$p"]
         end
     end
