@@ -1,3 +1,13 @@
+#####
+##### Convinience functions
+#####
+
+unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
+
+#####
+##### Input validation
+#####
+
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
 function validate_tupled_argument(arg, argtype, argname)
     length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))

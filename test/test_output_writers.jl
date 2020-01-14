@@ -52,7 +52,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     w = read_output(nc_writer, "w")
     T = read_output(nc_writer, "T")
     S = read_output(nc_writer, "S")
-  
+
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
     @test all(w .≈ Array(interiorparent(model.velocities.w)))
@@ -144,7 +144,8 @@ function run_thermal_bubble_checkpointer_tests(arch)
     # Remove all knowledge of the checkpointed model.
     checkpointed_model = nothing
 
-    restored_model = restore_from_checkpoint("checkpoint5.jld2")
+    model_kwargs = Dict{Symbol, Any}(:boundary_conditions => HorizontallyPeriodicSolutionBCs())
+    restored_model = restore_from_checkpoint("checkpoint5.jld2", kwargs=model_kwargs)
 
     time_step!(restored_model, 4, Δt; init_with_euler=false)
 

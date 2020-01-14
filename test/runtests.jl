@@ -42,7 +42,6 @@ using NCDatasets: Dataset
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: datatuple
 
-using Oceananigans.Solvers: PoissonSolver, PPN, PNN, solve_poisson_3d!
 using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
@@ -112,6 +111,7 @@ with_logger(ModelLogger()) do
         include("test_halo_regions.jl")
         include("test_operators.jl")
         include("test_solvers.jl")
+        include("test_pressure_solvers.jl")
         include("test_coriolis.jl")
         include("test_buoyancy.jl")
         include("test_surface_waves.jl")

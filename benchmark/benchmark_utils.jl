@@ -21,23 +21,23 @@ benchmark_name(N)               = benchmark_name(N, "", nothing, nothing)
 benchmark_name(N, arch::Symbol) = benchmark_name(N, "", arch, nothing)
 benchmark_name(N, ft::DataType) = benchmark_name(N, "", nothing, ft)
 
-function benchmark_name(N, id, arch, ft; npad=3)
+function benchmark_name(N, id, arch, FT; npad=3)
     Nx, Ny, Nz = N
     print_arch = typeof(arch) <: AbstractArchitecture ? true : false
-    print_ft   = typeof(ft) == DataType && ft <: AbstractFloat ? true : false
+    print_FT   = typeof(FT) == DataType && FT <: AbstractFloat ? true : false
 
     bn = ""
     bn *= lpad(Nx, npad, " ") * "×" * lpad(Ny, npad, " ") * "×" * lpad(Nz, npad, " ")
     bn *= " $id"
 
-    if print_arch && print_ft
+    if print_arch && print_FT
         arch = arch_name(arch)
-        bn *= " ($arch, $ft)"
-    elseif print_arch && !print_ft
+        bn *= " [$arch, $FT]"
+    elseif print_arch && !print_FT
         arch = arch_name(arch)
-        bn *= " ($arch)"
-    elseif !print_arch && print_ft
-        bn *= " ($ft)"
+        bn *= " [$arch]"
+    elseif !print_arch && print_FT
+        bn *= " [$FT]"
     end
 
     return bn
