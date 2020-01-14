@@ -1,5 +1,3 @@
-using Oceananigans.Grids: unpack_grid
-
 #####
 ##### CPU channel pressure solver
 #####

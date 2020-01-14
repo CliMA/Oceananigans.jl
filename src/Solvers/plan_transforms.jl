@@ -1,6 +1,6 @@
 using FFTW
 
-using Oceananigans: PBC, NFBC
+using Oceananigans.BoundaryConditions: PBC, NFBC
 
 #=
 These functions return the transforms required to solve Poisson's equation with

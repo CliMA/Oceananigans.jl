@@ -1,5 +1,5 @@
-using Oceananigans: PBC, NFBC
 using Oceananigans.Grids: unpack_grid
+using Oceananigans.BoundaryConditions: PBC, NFBC
 
 const PeriodicBC = PBC
 const NoFluxBC = NFBC

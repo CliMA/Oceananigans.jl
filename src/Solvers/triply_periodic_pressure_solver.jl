@@ -1,6 +1,3 @@
-using Oceananigans: CPU, GPU
-using Oceananigans.Grids: unpack_grid
-
 #####
 ##### CPU triply periodic pressure solver
 #####

@@ -4,11 +4,13 @@ export
     BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
     PressureSolver, solve_for_pressure!
 
+using Oceananigans.Architectures
+@hascuda using CUDAnative, CuArrays
+using GPUifyLoops: @launch, @loop, @unroll
 
 using Oceananigans.Grids
-
-using Oceananigans: @hascuda
-@hascuda using CUDAnative, CuArrays
+using Oceananigans.Utils
+using Oceananigans.Grids: unpack_grid
 
 include("solver_utils.jl")
 include("batched_tridiagonal_solver.jl")

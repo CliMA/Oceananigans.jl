@@ -1,4 +1,4 @@
-using Oceananigans: BC, Periodic
+using Oceananigans.BoundaryConditions: BC, Periodic
 
 struct PressureSolver{T, A, W, S, R, C}
           type :: T

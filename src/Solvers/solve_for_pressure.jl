@@ -1,7 +1,5 @@
 using Oceananigans.Operators
 
-using Oceananigans: @loop_xyz
-
 function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
     if solver.type isa Channel && arch isa GPU
         ϕ = RHS = solver.storage.storage1
