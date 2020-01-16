@@ -8,7 +8,8 @@ using Oceananigans: AbstractGrid
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces.
 """
-struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:AbstractArray} <: AbstractGrid{FT}
+struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange,
+                                         A<:AbstractArray, O<:OffsetArray} <: AbstractGrid{FT}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -28,8 +29,8 @@ struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:
     # Grid spacing [m].
     Δx::FT
     Δy::FT
-    ΔzF::A
-    ΔzC::A
+    ΔzF::O
+    ΔzC::O
     # Range of coordinates at the centers of the cells.
     xC::R
     yC::R
@@ -73,6 +74,11 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, typeof(xF), typeof(zF)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz, Lx, Ly, Lz,
-                                                                 Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
+    # Fill halo regions for ΔzF and ΔzC.
+    ΔzF = OffsetArray([ΔzF[1], ΔzF..., ΔzF[end]], 0:Nz+1)
+    ΔzC = OffsetArray([ΔzC[1], ΔzC..., ΔzC[end], ΔzC[end]], 0:Nz+1)
+
+    VerticallyStretchedCartesianGrid{FT, typeof(xF), typeof(zF), typeof(ΔzF)}(
+        Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz, Lx, Ly, Lz,
+        Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
