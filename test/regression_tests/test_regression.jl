@@ -23,6 +23,7 @@ end
 include("thermal_bubble_regression_test.jl")
 include("rayleigh_benard_regression_test.jl")
 include("ocean_large_eddy_simulation_regression_test.jl")
+include("vertically_unstretched_thermal_bubble_regression_test.jl")
 
 @testset "Regression" begin
     @info "Running regression tests..."
@@ -48,7 +49,7 @@ include("ocean_large_eddy_simulation_regression_test.jl")
         
         @testset "Vertically stretched grid with constant spacing [$(typeof(arch))]" begin
             @info "  Testing vertically stretched grid with constant spacing [$(typeof(arch))]"
-            run_vertically_stretched_thermal_bubble_regression_test(arch)
+            run_vertically_unstretched_thermal_bubble_regression_test(arch)
         end
     end
 end

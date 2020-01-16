@@ -1,4 +1,4 @@
-function run_vertically_stretched_thermal_bubble_regression_test(arch)
+function run_vertically_unstretched_thermal_bubble_regression_test(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
