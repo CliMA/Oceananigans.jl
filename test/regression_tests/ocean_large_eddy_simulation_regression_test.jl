@@ -36,12 +36,21 @@ function get_fields_from_checkpoint(filename)
     return solution, Gⁿ, G⁻
 end
 
-function run_ocean_large_eddy_simulation_regression_test(arch, closure)
+function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
 
     spinup_steps = 10000
       test_steps = 10
               Δt = 2.0
+
+    # Grid
+    N = L = 16
+    if grid_type == :regular
+        grid = RegularCartesianGrid(size=(N, N, N), length=(L, L, L))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-L, 0, length=N+1)
+        grid = VerticallyStretchedCartesianGrid(size=(N, N, N), length=(L, L, L), zF=zF)
+    end
 
     # Parameters
       Qᵀ = 5e-5     # Temperature flux at surface
@@ -57,7 +66,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     # Model instantiation
     model = Model(
              architecture = arch,
-                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
+                     grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
