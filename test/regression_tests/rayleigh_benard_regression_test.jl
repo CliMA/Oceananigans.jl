@@ -1,4 +1,4 @@
-function run_rayleigh_benard_regression_test(arch)
+function run_rayleigh_benard_regression_test(arch, grid_type)
 
     #####
     ##### Parameters
@@ -22,6 +22,13 @@ function run_rayleigh_benard_regression_test(arch)
     ##### Model setup
     #####
 
+    if grid_type == :regular
+        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-Lz, 0, length=Nz+1)
+        grid = VerticallyStretchedCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz), zF=zF)
+    end
+
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
     Fc(i, j, k, grid, time, U, C, params) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - C.c[i, j, k])
@@ -31,7 +38,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     model = Model(
                architecture = arch,
-                       grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                       grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),

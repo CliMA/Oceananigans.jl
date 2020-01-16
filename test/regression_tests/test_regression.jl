@@ -23,7 +23,6 @@ end
 include("thermal_bubble_regression_test.jl")
 include("rayleigh_benard_regression_test.jl")
 include("ocean_large_eddy_simulation_regression_test.jl")
-include("vertically_unstretched_thermal_bubble_regression_test.jl")
 
 @testset "Regression" begin
     @info "Running regression tests..."
@@ -31,7 +30,7 @@ include("vertically_unstretched_thermal_bubble_regression_test.jl")
     for arch in archs
         @testset "Thermal bubble [$(typeof(arch))]" begin
             @info "  Testing thermal bubble regression [$(typeof(arch))]"
-            run_thermal_bubble_regression_test(arch)
+            run_thermal_bubble_regression_test(arch, :regular)
         end
 
         @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
@@ -46,10 +45,11 @@ include("vertically_unstretched_thermal_bubble_regression_test.jl")
                 run_ocean_large_eddy_simulation_regression_test(arch, closure)
             end
         end
-        
+
         @testset "Vertically stretched grid with constant spacing [$(typeof(arch))]" begin
             @info "  Testing vertically stretched grid with constant spacing [$(typeof(arch))]"
-            run_vertically_unstretched_thermal_bubble_regression_test(arch)
+            run_thermal_bubble_regression_test(arch, :vertically_unstretched)
+            run_rayleigh_benard_regression_test(arch, :vertically_unstretched)
         end
     end
 end
