@@ -13,9 +13,16 @@ function summarize_regression_test(field_names, fields, correct_fields)
     end
 end
 
-include("regression_tests/thermal_bubble_regression_test.jl")
-include("regression_tests/rayleigh_benard_regression_test.jl")
-include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
+function get_output_tuple(output, iter, tuplename)
+    file = jldopen(output.filepath, "r")
+    output_tuple = file["timeseries/$tuplename/$iter"]
+    close(file)
+    return output_tuple
+end
+
+include("thermal_bubble_regression_test.jl")
+include("rayleigh_benard_regression_test.jl")
+include("ocean_large_eddy_simulation_regression_test.jl")
 
 @testset "Regression" begin
     @info "Running regression tests..."

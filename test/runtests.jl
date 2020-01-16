@@ -73,13 +73,6 @@ end
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
-
 #####
 ##### Testing parameters
 #####
@@ -124,7 +117,7 @@ with_logger(ModelLogger()) do
         include("test_diagnostics.jl")
         include("test_output_writers.jl")
         include("test_abstract_operations.jl")
-        include("test_regression.jl")
+        include("regression_tests/test_regression.jl")
         include("test_examples.jl")
         include("test_verification.jl")
     end
