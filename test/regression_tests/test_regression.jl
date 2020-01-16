@@ -45,5 +45,10 @@ include("ocean_large_eddy_simulation_regression_test.jl")
                 run_ocean_large_eddy_simulation_regression_test(arch, closure)
             end
         end
+        
+        @testset "Vertically stretched grid with constant spacing [$(typeof(arch))]" begin
+            @info "  Testing vertically stretched grid with constant spacing [$(typeof(arch))]"
+            run_vertically_stretched_thermal_bubble_regression_test(arch)
+        end
     end
 end
