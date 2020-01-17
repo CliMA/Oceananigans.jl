@@ -7,5 +7,3 @@ required_tracers(::Nothing) = ()
 @inline ∂x_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
 @inline ∂y_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
 @inline ∂z_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-
-@inline buoyancy_frequency_squared(args...) = ∂z_b(args...)

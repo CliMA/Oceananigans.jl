@@ -24,8 +24,8 @@ Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
 """
 LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfState{FT}(α, β)
 
-@inline  thermal_expansion(Θ, Sᴬ, D, eos::LinearEquationOfState) = eos.α
-@inline haline_contraction(Θ, Sᴬ, D, eos::LinearEquationOfState) = eos.β
+@inline  thermal_expansion(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.α
+@inline haline_contraction(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.β
 
 # Shortcuts
 @inline  thermal_expansionᶜᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.α
@@ -39,7 +39,15 @@ LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfStat
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
+const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Nothing, <:Number} where FT
+const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where FT
 
 @inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
-    return @inbounds b.gravitational_acceleration * (  b.equation_of_state.α * C.T[i, j, k]
-                                                     - b.equation_of_state.β * C.S[i, j, k])
+    @inbounds b.gravitational_acceleration * (  b.equation_of_state.α * C.T[i, j, k]
+                                              - b.equation_of_state.β * C.S[i, j, k])
+
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
+    @inbounds b.gravitational_acceleration * b.equation_of_state.α * C.T[i, j, k]
+
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
+    @inbounds - b.gravitational_acceleration * b.equation_of_state.β * C.S[i, j, k]
