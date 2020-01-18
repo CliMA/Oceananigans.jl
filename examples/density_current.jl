@@ -22,7 +22,8 @@ Nx = Int(Lx/Δ)
 Ny = 1
 Nz = Int(Lz/Δ)
 
-grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(-Lx/2, Lx/2), y=(-1, 1), z=(0, Lz))
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
+                            x=(-Lx/2, Lx/2), y=(-1, 1), z=(0, Lz))
 
 ####
 #### Initial perturbation
@@ -83,7 +84,7 @@ end
 ρ_hd = model.density.data[1:Nx, 1, 1:Nz]
 Θ_hd = model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz]
 
-Δρ(x, y, z) = 
+Δρ(x, y, z) =
 
 xC, zC = grid.xC, grid.zC
 ρ, Θ = model.density, model.tracers.Θᵐ

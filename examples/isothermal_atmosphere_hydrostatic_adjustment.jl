@@ -6,7 +6,8 @@ Nx = Ny = 1
 Nz = 32
 L = 10e3
 
-grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, L), y=(0, L), z=(0, L))
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
+                            x=(0, L), y=(0, L), z=(0, L))
 
 pₛ = 100000
 Tₐ = 293.15
@@ -109,4 +110,3 @@ display(plot(θ_plot, ρ_plot, show=true))
 ####
 
 plot(times, ρw_ts, linewidth=2, xlabel="time (s)", ylabel="rho*w(z=$(Int(L/2)) m)", label="", show=true)
-
