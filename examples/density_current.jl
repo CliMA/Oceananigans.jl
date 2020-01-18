@@ -25,9 +25,9 @@ Nz = Int(Lz/Δ)
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
                             x=(-Lx/2, Lx/2), y=(-1, 1), z=(0, Lz))
 
-####
-#### Initial perturbation
-####
+#####
+##### Initial perturbation
+#####
 
 xᶜ, xʳ = 0, 4km
 zᶜ, zʳ = 3km, 2km
@@ -38,9 +38,9 @@ function ΔT(x, y, z)
     L ≤ 1 && return -15 * (1 + cos(π*L)) / 2
 end
 
-####
-#### Run an isothermal atmosphere to hydrostatic balance
-####
+#####
+##### Set up model
+#####
 
 pₛ = 100000
 Tₐ = 300
@@ -72,14 +72,18 @@ model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
 
+#####
+##### Run an isothermal atmosphere to hydrostatic balance
+#####
+
 while model.clock.time < 500
     @show model.clock.time
     time_step!(model; Δt=0.5, Nt=100)
 end
 
-####
-#### Now add the cold bubble perturbation.
-####
+#####
+##### Now add the cold bubble perturbation.
+#####
 
 ρ_hd = model.density.data[1:Nx, 1, 1:Nz]
 Θ_hd = model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz]
@@ -92,9 +96,9 @@ for k in 1:Nz, i in 1:Nx
     ρ[i, 1, k] += 0.005 * ΔT(grid.xC[i], 0, grid.zC[k])
 end
 
-####
-#### Watch the density current evolve!
-####
+#####
+##### Watch the density current evolve!
+#####
 
 for i = 1:1000
     @show model.clock.time
