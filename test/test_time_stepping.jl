@@ -169,7 +169,11 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
     @testset "Turbulence closures" begin
         for arch in archs, FT in [Float64], Closure in Closures
             @info "  Testing that time stepping works [$arch, $FT, $Closure]..."
-            @test time_stepping_works_with_closure(arch, FT, Closure)
+            if Closure === TwoDimensionalLeith
+                @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+            else
+                @test time_stepping_works_with_closure(arch, FT, Closure)
+            end
         end
     end
 
