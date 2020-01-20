@@ -1,6 +1,6 @@
 using JULES.Operators
 
-using Oceananigans: AbstractBuoyancy, AbstractEquationOfState
+using Oceananigans.Buoyancy: AbstractBuoyancy, AbstractEquationOfState
 
 ####
 #### Some constants for dry and moist gases on Earth

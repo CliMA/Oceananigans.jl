@@ -1,6 +1,7 @@
 using Oceananigans
 
-using Oceananigans: AbstractModel, zeroforcing
+using Oceananigans.Models: AbstractModel, Clock
+using Oceananigans.Forcing: zeroforcing
 
 ####
 #### Definition of a compressible model

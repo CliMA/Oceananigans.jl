@@ -1,6 +1,7 @@
 using JULES.Operators
 
-using Oceananigans: NoPenetrationBC, fill_halo_regions!, datatuple
+using Oceananigans: datatuple
+using Oceananigans.BoundaryConditions: NoPenetrationBC, fill_halo_regions!
 import Oceananigans: time_step!
 
 ####
