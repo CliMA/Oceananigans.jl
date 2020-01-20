@@ -24,9 +24,9 @@ authors:
     affiliation: 1
   - name: Alan Edelman
     affiliation: 1
-  - name: John Marshall
-    affiliation: 1
   - name: Raffaele Ferrari
+    affiliation: 1
+  - name: John Marshall
     affiliation: 1
 affiliations:
  - name: Massachusetts Institute of Technology
