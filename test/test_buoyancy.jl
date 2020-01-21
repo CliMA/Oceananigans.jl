@@ -16,8 +16,8 @@ function instantiate_roquet_equations_of_state(FT, flavor; coeffs=nothing)
     return typeof(eos.polynomial_coeffs.R₁₀₀) == FT
 end
 
-function instantiate_seawater_buoyancy(FT, EquationOfState)
-    buoyancy = SeawaterBuoyancy(FT, equation_of_state=EquationOfState(FT))
+function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
+    buoyancy = SeawaterBuoyancy(FT; equation_of_state=EquationOfState(FT), kwargs...)
     return typeof(buoyancy.gravitational_acceleration) == FT
 end
 
@@ -70,6 +70,7 @@ function haline_contraction_works(arch, FT, eos)
 end
 
 EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
+buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
 @testset "Buoyancy" begin
     @info "Testing buoyancy..."
@@ -85,7 +86,9 @@ EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfSta
             end
 
             for EOS in EquationsOfState
-                @test instantiate_seawater_buoyancy(FT, EOS)
+                for kwargs in buoyancy_kwargs
+                    @test instantiate_seawater_buoyancy(FT, EOS; kwargs...)
+                end
             end
 
             for arch in archs
