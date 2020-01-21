@@ -1,12 +1,29 @@
 """ Return the geopotential depth at `i, j, k` at cell centers. """
-@inline Dᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT = @inbounds k < 1       ? - grid.zC[1] + (1 - k) * grid.Δz :
-                                                                   k > grid.Nz ? - grid.zC[end] - (k - grid.Nz) * grid.Δz : 
-                                                                                 - grid.zC[k]
+@inline function Dᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT 
+    @inbounds begin
+        if k < 1
+            return -grid.zC[1] + (1 - k) * grid.Δz
+        elseif k > grid.Nz
+            return -grid.zC[grid.Nz] - (k - grid.Nz) * grid.Δz
+        else
+            return -grid.zC[k]
+        end
+    end
+end
 
 """ Return the geopotential depth at `i, j, k` at cell z-interfaces. """
-@inline Dᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}) where FT = @inbounds k < 1           ? - grid.zF[1] + (1 - k) * grid.Δz :
-                                                                   k > grid.Nz + 1 ? - grid.zF[end] - (k - grid.Nz + 1) * grid.Δz : 
-                                                                                     - grid.zF[k]
+@inline function Dᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}) where FT
+    @inbounds begin
+        if k < 1
+            return -grid.zF[1] + (1 - k) * grid.Δz
+        elseif k > grid.Nz + 1
+            return -grid.zF[grid.Nz+1] - (k - grid.Nz + 1) * grid.Δz
+        else
+            return -grid.zF[k]
+        end
+    end
+end
+
 # Dispatch shenanigans
 @inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
 @inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::AbstractArray) = @inbounds θ, sᴬ[i, j, k]
