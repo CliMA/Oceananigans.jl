@@ -3,8 +3,9 @@ This example sets up a cold bubble perturbation which develops into a non-linear
 density current. This numerical test case is described by Straka et al. (1993).
 Also see: http://www2.mmm.ucar.edu/projects/srnwp_tests/density/density.html
 
-Straka et al. (1993). "Numerical Solutions of a Nonlinear Density-Current - A Benchmark Solution and Comparisons."
-    International Journal for Numerical Methods in Fluids 17, pp. 1-22.
+Straka et al. (1993). "Numerical Solutions of a Nonlinear Density-Current -
+    A Benchmark Solution and Comparisons." International Journal for Numerical
+    Methods in Fluids 17, pp. 1-22.
 """
 
 using Printf
@@ -77,7 +78,7 @@ set!(model.tracers.Θᵐ, Θ₀)
 #####
 
 while model.clock.time < 500
-    @show model.clock.time
+    @printf("t = %.2f s\n", model.clock.time)
     time_step!(model; Δt=0.5, Nt=100)
 end
 
@@ -88,12 +89,12 @@ end
 ρ_hd = model.density.data[1:Nx, 1, 1:Nz]
 Θ_hd = model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz]
 
-Δρ(x, y, z) =
-
 xC, zC = grid.xC, grid.zC
 ρ, Θ = model.density, model.tracers.Θᵐ
 for k in 1:Nz, i in 1:Nx
-    ρ[i, 1, k] += 0.005 * ΔT(grid.xC[i], 0, grid.zC[k])
+    # ρ[i, 1, k] += 0.005 * ΔT(grid.xC[i], 0, grid.zC[k])
+    x, z = grid.xC[i], grid.zC[k]
+    Θ[i, 1, k] += ΔT(x, 0, z) * (pₛ / p₀(x, 0, z))^(Rᵈ/cₚ)
 end
 
 #####
@@ -101,10 +102,9 @@ end
 #####
 
 for i = 1:1000
-    @show model.clock.time
-    time_step!(model; Δt=0.1)
+    @printf("t = %.2f s\n", model.clock.time)
+    time_step!(model, Δt=0.1, Nt=100)
 
-    t = @sprintf("%.3f s", model.clock.time)
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
