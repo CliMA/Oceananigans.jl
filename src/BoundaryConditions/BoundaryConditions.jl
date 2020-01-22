@@ -14,6 +14,7 @@ export
 using CUDAnative
 
 using Oceananigans.Architectures
+using Oceananigans.Operators
 using Oceananigans.Fields
 
 include("boundary_condition_types.jl")

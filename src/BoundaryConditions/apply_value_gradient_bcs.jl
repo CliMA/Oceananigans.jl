@@ -41,9 +41,9 @@ end
 
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xy i j grid begin
-        @inbounds ∇c = bottom_gradient(bc, c[i, j, 1], grid.Δz, i, j, grid, args...)
+        @inbounds ∇c = bottom_gradient(bc, c[i, j, 1], ΔzC(i, j, 1, grid), i, j, grid, args...)
         @unroll for k in (1 - grid.Hz):0
-            Δ = (k - 1) * grid.Δz  # separation between bottom grid cell and halo is negative
+            Δ = (k - 1) * ΔzC(i, j, k, grid)  # separation between bottom grid cell and halo is negative
             @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, 1], ∇c, Δ)
         end
     end
@@ -52,9 +52,9 @@ end
 
 function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xy i j grid begin
-        @inbounds ∇c = top_gradient(bc, c[i, j, grid.Nz], grid.Δz, i, j, grid, args...)
+        @inbounds ∇c = top_gradient(bc, c[i, j, grid.Nz], ΔzC(i, j, grid.Nz, grid), i, j, grid, args...)
         @unroll for k in (grid.Nz + 1) : (grid.Nz + grid.Hz)
-            Δ = (k - grid.Nz) * grid.Δz
+            Δ = (k - grid.Nz) * ΔzC(i, j, k, grid)
             @inbounds c[i, j, k] = linearly_extrapolate(c[i, j, grid.Nz], ∇c, Δ)
         end
     end
@@ -63,9 +63,9 @@ end
 
 function _fill_south_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xz i k grid begin
-        @inbounds ∇c = south_gradient(bc, c[i, 1, k], grid.Δy, i, k, grid, args...)
+        @inbounds ∇c = south_gradient(bc, c[i, 1, k], Δy(i, 1, k, grid), i, k, grid, args...)
         @unroll for j in (1 - grid.Hy):0
-            Δ = (j - 1) * grid.Δy  # separation between southern-most grid cell and halo is negative
+            Δ = (j - 1) * Δy(i, j, k, grid)  # separation between southern-most grid cell and halo is negative
             @inbounds c[i, j, k] = linearly_extrapolate(c[i, 1, k], ∇c, Δ)
         end
     end
@@ -74,9 +74,9 @@ end
 
 function _fill_north_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xz i k grid begin
-        @inbounds ∇c = north_gradient(bc, c[i, grid.Ny, k], grid.Δy, i, k, grid, args...)
+        @inbounds ∇c = north_gradient(bc, c[i, grid.Ny, k], Δy(i, grid.Ny, k, grid), i, k, grid, args...)
         @unroll for j in (grid.Ny + 1) : (grid.Ny + grid.Hy)
-            Δ = (k - grid.Ny) * grid.Δy
+            Δ = (k - grid.Ny) * Δy(i, j, k, grid)
             @inbounds c[i, j, k] = linearly_extrapolate(c[i, grid.Ny, k], ∇c, Δ)
         end
     end

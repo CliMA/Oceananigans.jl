@@ -49,7 +49,8 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
 
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
+    # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
+    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, Lz/Nz)^2 / ν
 
     spinup_steps = 1000
       test_steps = 100
