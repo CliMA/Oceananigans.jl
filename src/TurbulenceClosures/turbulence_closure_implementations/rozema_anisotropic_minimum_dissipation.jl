@@ -1,3 +1,5 @@
+import Oceananigans.Operators: Δx, Δy
+
 struct RozemaAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
      C :: FT
     Cb :: FT
