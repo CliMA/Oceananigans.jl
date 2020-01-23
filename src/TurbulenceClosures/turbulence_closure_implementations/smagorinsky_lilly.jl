@@ -95,7 +95,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 
 @inline function νᶜᶜᶜ(i, j, k, grid, clo::SmagorinskyLilly{FT}, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
-    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_frequency_squared, buoyancy, C))
+    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
