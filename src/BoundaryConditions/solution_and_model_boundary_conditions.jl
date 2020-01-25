@@ -1,0 +1,121 @@
+using Oceananigans.Utils: with_tracers
+using Oceananigans.TurbulenceClosures: with_tracers
+
+"""
+    SolutionBoundaryConditions(tracers, proposal_bcs)
+
+Construct a `NamedTuple` of `FieldBoundaryConditions` for a model with
+fields `u`, `v`, `w`, and `tracers` from the proposal boundary conditions
+`proposal_bcs`, which must contain the boundary conditions on `u`, `v`, and `w`
+and may contain some or all of the boundary conditions on `tracers`.
+"""
+SolutionBoundaryConditions(tracers, proposal_bcs) =
+    with_tracers(tracers, proposal_bcs, default_tracer_bcs, with_velocities=true)
+
+"""
+    HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs(), ...)
+
+Construct `SolutionBoundaryConditions` for a horizontally-periodic model
+configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
+
+By default `HorizontallyPeriodicBCs` are applied to `u`, `v`, `T`, and `S`
+and `HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
+
+Use `HorizontallyPeriodicBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
+"""
+function HorizontallyPeriodicSolutionBCs(;
+    u = HorizontallyPeriodicBCs(),
+    v = HorizontallyPeriodicBCs(),
+    w = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
+    tracerbcs...)
+
+    return merge((u=u, v=v, w=w), tracerbcs)
+end
+
+"""
+    ChannelSolutionBCs(u=ChannelBCs(), ...)
+
+Construct `SolutionBoundaryConditions` for a reentrant channel model
+configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
+
+By default `ChannelBCs` are applied to `u`, `v`, `T`, and `S`
+and `ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
+
+Use `ChannelBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
+"""
+function ChannelSolutionBCs(;
+    u = ChannelBCs(),
+    v = ChannelBCs(north=NoPenetrationBC(), south=NoPenetrationBC()),
+    w = ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
+    tracerbcs...)
+
+    return merge((u=u, v=v, w=w), tracerbcs)
+end
+
+#####
+##### Default boundary conditions on tracers are periodic or no flux and
+##### can be derived from boundary conditions on any field
+#####
+
+DefaultTracerBC(::BC)  = BoundaryCondition(Flux, nothing)
+DefaultTracerBC(::PBC) = PeriodicBC()
+
+DefaultTracerCoordinateBCs(bcs) =
+    CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
+
+DefaultTracerBoundaryConditions(field_bcs) =
+    FieldBoundaryConditions(Tuple(DefaultTracerCoordinateBCs(bcs) for bcs in field_bcs))
+
+#####
+##### Boundary conditions for model solutions
+#####
+
+default_tracer_bcs(tracers, solution_bcs) = DefaultTracerBoundaryConditions(solution_bcs[1])
+
+#####
+##### Boundary conditions on tendency terms are derived from the boundary
+##### conditions on their repsective fields.
+#####
+
+TendencyBC(::BC)   = BoundaryCondition(Flux, nothing)
+TendencyBC(::PBC)  = PeriodicBC()
+TendencyBC(::NPBC) = NoPenetrationBC()
+
+TendencyCoordinateBCs(bcs) =
+    CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
+
+TendencyFieldBCs(field_bcs) =
+    FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
+
+TendenciesBoundaryConditions(solution_bcs) =
+    NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBCs(bcs) for bcs in solution_bcs))
+
+#####
+##### Boundary conditions on pressure are derived from boundary conditions
+##### on the north-south horizontal velocity, v.
+#####
+
+# Pressure boundary conditions are either zero flux (Neumann) or Periodic.
+PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
+PressureBC(::PBC) = PeriodicBC()
+
+function PressureBoundaryConditions(vbcs)
+    x = CoordinateBoundaryConditions(PressureBC(vbcs.x.left), PressureBC(vbcs.x.right))
+    y = CoordinateBoundaryConditions(PressureBC(vbcs.y.left), PressureBC(vbcs.y.right))
+    z = CoordinateBoundaryConditions(PressureBC(vbcs.z.left), PressureBC(vbcs.z.right))
+    return (x=x, y=y, z=z)
+end
+
+const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure)}
+
+function ModelBoundaryConditions(tracers, proposal_bcs::NamedTuple)
+    solution_boundary_conditions = SolutionBoundaryConditions(tracers, proposal_bcs)
+
+    model_boundary_conditions = (solution = solution_boundary_conditions,
+                                 tendency = TendenciesBoundaryConditions(solution_boundary_conditions),
+                                 pressure = PressureBoundaryConditions(solution_boundary_conditions.v))
+    return model_boundary_conditions
+end
+
+ModelBoundaryConditions(tracers, model_boundary_conditions::ModelBoundaryConditions) =
+    model_boundary_conditions
