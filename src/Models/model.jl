@@ -103,8 +103,8 @@ function Model(;
 
     # Regularize forcing, boundary conditions, and closure for given tracer fields
     forcing = ModelForcing(tracernames(tracers), forcing)
-    boundary_conditions = ModelBoundaryConditions(tracernames(tracers), boundary_conditions)
     closure = with_tracers(tracernames(tracers), closure)
+    boundary_conditions = ModelBoundaryConditions(tracernames(tracers), diffusivities, boundary_conditions)
 
     return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
