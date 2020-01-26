@@ -16,7 +16,7 @@ DefaultTracerBoundaryConditions(field_bcs) =
     FieldBoundaryConditions(Tuple(DefaultTracerCoordinateBCs(bcs) for bcs in field_bcs))
 
 "Returns default tracer boundary conditions. For use in `with_tracers`."
-default_tracer_bcs(tracer_names, solution_bcs) = DefaultTracerBoundaryConditions(solution_bcs[1])
+default_tracer_bcs(tracer_names, solution_bcs) = DefaultTracerBoundaryConditions(solution_bcs.u)
 
 #####
 ##### Boundary conditions on tendency terms are derived from the boundary
@@ -145,26 +145,15 @@ end
 const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :diffusivities)}
 
 """
-    ModelBoundaryConditions(tracer_names::Tuple, diffusivities::NamedTuple, proposal_bcs::NamedTuple)
+    ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs)
 
 Construct `ModelBoundaryConditions` with defaults for the tendency boundary conditions, pressure boundary
-conditions, and diffusivity boundary conditions. We use the boundary conditions on the `v` component of the
-velocity field to determine the topology of the grid at the moment.
+conditions, and diffusivity boundary conditions given a tuple of `tracer_names`, a `NamedTuple` of 
+`diffusivity_fields`, and a set of `proposal_boundary_conditions` that includes boundary conditions for
+`u`, `v`, and `w` and any of the tracers in `tracer_names`. The boundary conditions on `v` 
+are used to determine the topology of the grid for setting default boundary conditions.
 """
-function ModelBoundaryConditions(tracer_names, diffusivities, proposal_bcs::NamedTuple)
-    solution_boundary_conditions = SolutionBoundaryConditions(tracer_names, proposal_bcs)
-
-    model_boundary_conditions = (
-        solution = solution_boundary_conditions,
-        tendency = (solution_boundary_conditions),
-        pressure = PressureBoundaryConditions(solution_boundary_conditions.v),
-        diffusivities = DiffusivitiesBoundaryConditions(diffusivities, solution_boundary_conditions.v)
-    )
-
-    return model_boundary_conditions
-end
-
-function ModelBoundaryConditions(tracer_names, proposal_bcs, diffusivity_fields=nothing;
+function ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs;
          tendency = TendenciesBoundaryConditions(SolutionBoundaryConditions(tracer_names, proposal_bcs)),
          pressure = PressureBoundaryConditions(proposal_bcs.v),
     diffusivities = DiffusivitiesBoundaryConditions(diffusivity_fields, proposal_bcs.v)

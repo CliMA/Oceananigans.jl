@@ -100,8 +100,7 @@ function time_step_precomputations!(diffusivities, pressures, velocities, tracer
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure, model.buoyancy,
                              velocities, tracers)
 
-    # Diffusivities share bcs with pressure:
-    fill_halo_regions!(diffusivities, model.boundary_conditions.pressure, model.architecture, model.grid)
+    fill_halo_regions!(diffusivities, model.boundary_conditions.diffusivities, model.architecture, model.grid)
 
     @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
