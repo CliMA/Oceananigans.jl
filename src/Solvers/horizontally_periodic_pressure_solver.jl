@@ -192,9 +192,27 @@ function HorizontallyPeriodicPressureSolver(arch, grid::VerticallyStretchedCarte
         d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
     end
 
-    bt_solver = BatchedTridiagonalSolver(arch, dl=dl, d=d, du=du, f=storage, grid=grid)
+    RHS = zeros(grid.Nx, grid.Ny, grid.Nz)
+    bt_solver = BatchedTridiagonalSolver(arch, dl=dl, d=d, du=du, f=RHS, grid=grid)
 
     transforms = (FFTxy! = FFTxy!, IFFTxy! = IFFTxy!, batched_tridiagonal_solver = bt_solver)
+    constants = (ΔzC = reshape(ΔzC[1:Nz], (1, 1, Nz)),)
 
-    return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
+    return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, constants)
+end
+
+function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic}, grid::VerticallyStretchedCartesianGrid)
+    ΔzC = solver.constants.ΔzC
+    bt_solver = solver.transforms.batched_tridiagonal_solver
+    RHS = bt_solver.f
+    ϕ = solver.storage
+
+    @. RHS = ΔzC * RHS
+    solver.transforms.FFTxy! * RHS
+
+    solve_batched_tridiagonal_system!(ϕ, solver.architecture, bt_solver)
+
+    solver.transforms.IFFTxy! * ϕ
+
+    return nothing
 end

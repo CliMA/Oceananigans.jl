@@ -3,6 +3,9 @@ using Oceananigans.Operators
 function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
     if solver.type isa Channel && arch isa GPU
         ϕ = RHS = solver.storage.storage1
+    elseif solver.type isa HorizontallyPeriodic && grid isa VerticallyStretchedCartesianGrid
+        RHS = solver.transforms.batched_tridiagonal_solver.f
+        ϕ   = solver.storage
     else
         ϕ = RHS = solver.storage
     end
@@ -29,7 +32,6 @@ along any direction we need to perform a GPU fast cosine transform algorithm.
 function calculate_pressure_right_hand_side!(RHS, solver_type, arch, grid, U, G, Δt)
     @loop_xyz i j k grid begin
         i′, j′, k′ = permute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
-
         @inbounds RHS[i′, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w) / Δt +
                                     divᶜᶜᶜ(i, j, k, grid, G.u, G.v, G.w)
     end
