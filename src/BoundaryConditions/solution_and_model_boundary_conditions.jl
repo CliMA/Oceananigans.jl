@@ -151,17 +151,29 @@ Construct `ModelBoundaryConditions` with defaults for the tendency boundary cond
 conditions, and diffusivity boundary conditions. We use the boundary conditions on the `v` component of the
 velocity field to determine the topology of the grid at the moment.
 """
-function ModelBoundaryConditions(tracer_names::Tuple, diffusivities, proposal_bcs::NamedTuple)
+function ModelBoundaryConditions(tracer_names, diffusivities, proposal_bcs::NamedTuple)
     solution_boundary_conditions = SolutionBoundaryConditions(tracer_names, proposal_bcs)
 
     model_boundary_conditions = (
         solution = solution_boundary_conditions,
-        tendency = TendenciesBoundaryConditions(solution_boundary_conditions),
+        tendency = (solution_boundary_conditions),
         pressure = PressureBoundaryConditions(solution_boundary_conditions.v),
-        diffusivities = DiffusivitiesBoundaryConditions(solution_boundary_conditions.v)
+        diffusivities = DiffusivitiesBoundaryConditions(diffusivities, solution_boundary_conditions.v)
     )
 
     return model_boundary_conditions
+end
+
+function ModelBoundaryConditions(tracer_names, proposal_bcs, diffusivity_fields=nothing;
+         tendency = TendenciesBoundaryConditions(SolutionBoundaryConditions(tracer_names, proposal_bcs)),
+         pressure = PressureBoundaryConditions(proposal_bcs.v),
+    diffusivities = DiffusivitiesBoundaryConditions(diffusivity_fields, proposal_bcs.v)
+   )
+
+    return (     solution = SolutionBoundaryConditions(tracer_names, proposal_bcs),  
+                 tendency = tendency, 
+                 pressure = pressure, 
+            diffusivities = diffusivities)
 end
 
 ModelBoundaryConditions(::Tuple, diffusivities, model_boundary_conditions::ModelBoundaryConditions) =
