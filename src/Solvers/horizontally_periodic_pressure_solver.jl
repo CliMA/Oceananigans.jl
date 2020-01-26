@@ -160,39 +160,39 @@ end
 ##### Horizontally periodic pressure solver for vertically stretched grids
 #####
 
-function HorizontallyPeriodicPressureSolver(arch, grid::VerticallyStretchedCartesianGrid, pressure_bcs, planner_flag=nothing)
-    kx², ky², _ = generate_discrete_eigenvalues(grid, pressure_bcs)
-    wavenumbers = (kx² = kx², ky² = ky²)
-
-    if isnothing(planner_flag) && arch isa CPU
-        planner_flag = FFTW.PATIENT
-    end
-
-    storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
-
-    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, $(typeof(arch)), VerticallyStretchedCartesianGrid}..."
-    x_bc, y_bc = pressure_bcs.x.left, pressure_bcs.y.left
-    FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
-    IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
-    @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, $(typeof(arch)), VerticallyStretchedCartesianGrid} done!"
-
-    # Set up batched tridiagonal solver.
-    dl = [1/grid.ΔzF[k] for k in 1:Nz-1]
-    du = copy(ld)
-
-    # Diagonal (different for each i,j)
-    @inline δ(k, ΔzF, ΔzC, kx², ky²) = - (1/ΔzF[k-1] + 1/ΔzF[k]) - ΔzC[k] * (kx² + ky²)
-
-    d = zeros(Nx, Ny, Nz)
-    for i in 1:Nx, j in 1:Ny
-        d[i, j, 1] = -1/ΔzF[1] - ΔzC[1] * (kx²[i] + ky²[j])
-        d[i, j, 2:Nz-1] .= [δ(k, ΔzF, ΔzC, kx²[i], ky²[j]) for k in 2:Nz-1]
-        d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
-    end
-
-    bt_solver = BatchedTridiagonalSolver(arch, dl=dl, d=d, du=du, f=storage, grid=grid)
-
-    transforms = (FFTxy! = FFTxy!, IFFTxy! = IFFTxy!, batched_tridiagonal_solver = bt_solver)
-
-    return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
-end
+# function HorizontallyPeriodicPressureSolver(arch, grid::VerticallyStretchedCartesianGrid, pressure_bcs, planner_flag=nothing)
+#     kx², ky², _ = generate_discrete_eigenvalues(grid, pressure_bcs)
+#     wavenumbers = (kx² = kx², ky² = ky²)
+#
+#     if isnothing(planner_flag) && arch isa CPU
+#         planner_flag = FFTW.PATIENT
+#     end
+#
+#     storage = zeros(Complex{Float64}, grid.Nx, grid.Ny, grid.Nz)
+#
+#     @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, $(typeof(arch)), VerticallyStretchedCartesianGrid}..."
+#     x_bc, y_bc = pressure_bcs.x.left, pressure_bcs.y.left
+#     FFTxy!  = plan_forward_transform(storage, x_bc, [1, 2], planner_flag)
+#     IFFTxy! = plan_backward_transform(storage, x_bc, [1, 2], planner_flag)
+#     @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, $(typeof(arch)), VerticallyStretchedCartesianGrid} done!"
+#
+#     # Set up batched tridiagonal solver.
+#     dl = [1/grid.ΔzF[k] for k in 1:Nz-1]
+#     du = copy(ld)
+#
+#     # Diagonal (different for each i,j)
+#     @inline δ(k, ΔzF, ΔzC, kx², ky²) = - (1/ΔzF[k-1] + 1/ΔzF[k]) - ΔzC[k] * (kx² + ky²)
+#
+#     d = zeros(Nx, Ny, Nz)
+#     for i in 1:Nx, j in 1:Ny
+#         d[i, j, 1] = -1/ΔzF[1] - ΔzC[1] * (kx²[i] + ky²[j])
+#         d[i, j, 2:Nz-1] .= [δ(k, ΔzF, ΔzC, kx²[i], ky²[j]) for k in 2:Nz-1]
+#         d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
+#     end
+#
+#     bt_solver = BatchedTridiagonalSolver(arch, dl=dl, d=d, du=du, f=storage, grid=grid)
+#
+#     transforms = (FFTxy! = FFTxy!, IFFTxy! = IFFTxy!, batched_tridiagonal_solver = bt_solver)
+#
+#     return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
+# end
