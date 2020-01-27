@@ -31,8 +31,11 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
 xᶜ, zᶜ = 0km, 2km
 xʳ, zʳ = 2km, 2km
 
-@inline  L(x, y, z) = √(((x - xᶜ) / xʳ)^2 + ((z - zᶜ) / zʳ)^2)
-@inline θ′(x, y, z) = 2cos(π/2 * L(x, y, z))^2
+@inline L(x, y, z) = √(((x - xᶜ) / xʳ)^2 + ((z - zᶜ) / zʳ)^2)
+@inline function θ′(x, y, z)
+    ℓ = L(x, y, z)
+    return (ℓ <= 1) * 2cos(π/2 * ℓ)^2
+end
 
 #####
 ##### Set up model
@@ -74,7 +77,7 @@ set!(model.tracers.Θᵐ, Θ₀)
 
 while model.clock.time <= 500
     @printf("t = %.2f s\n", model.clock.time)
-    time_step!(model; Δt=0.2, Nt=100)
+    time_step!(model, Δt=0.2, Nt=100)
 end
 
 #####
@@ -94,15 +97,18 @@ for k in 1:Nz, i in 1:Nx
     Θ[i, 1, k] = ρ[i, 1, k] * θ
 end
 
-contour(model.grid.xC, model.grid.zC, rotr90(Θ.data[1:Nx, 1, 1:Nz]) .- Θʰᵈ, fill=true, levels=10, color=:thermal, show=true)
-exit()
+ρ_plot = contour(model.grid.xC, model.grid.zC, rotr90(ρ.data[1:Nx, 1, 1:Nz]), fill=true, levels=10, color=:balance, show=true)
+savefig(ρ_plot, "rho.png")
+
+Θ_plot = contour(model.grid.xC, model.grid.zC, rotr90(Θ.data[1:Nx, 1, 1:Nz]), fill=true, levels=10, color=:thermal, show=true)
+savefig(Θ_plot, "Theta.png")
 
 #####
 ##### Watch the thermal bubble rise!
 #####
 
 for i = 1:1000
-    time_step!(model; Δt=0.1)
+    time_step!(model, Δt=0.1, Nt=10)
 
     @printf("t = %.2f s\n", model.clock.time)
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
