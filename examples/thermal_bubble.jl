@@ -73,10 +73,10 @@ set!(model.tracers.Θᵐ, Θ₀)
 ##### Run a dry adiabatic atmosphere to hydrostatic balance
 #####
 
-while model.clock.time <= 500
-    @printf("t = %.2f s\n", model.clock.time)
-    time_step!(model, Δt=0.2, Nt=100)
-end
+# while model.clock.time <= 500
+#     @printf("t = %.2f s\n", model.clock.time)
+#     time_step!(model, Δt=0.2, Nt=100)
+# end
 
 #####
 ##### Now add the cold bubble perturbation.
@@ -96,35 +96,37 @@ for k in 1:Nz, i in 1:Nx
 end
 
 ρ_plot = contour(model.grid.xC, model.grid.zC, rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ),
-                 fill=true, levels=10, clims=(-0.006, 0.006), color=:balance, show=true)
-savefig(ρ_plot, "rho_prime.png")
+                 fill=true, levels=10, clims=(-0.008, 0.008), color=:balance, dpi=200)
+savefig(ρ_plot, "rho_prime_initial_condition.png")
 
 θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
 Θ_plot = contour(model.grid.xC, model.grid.zC, θ_slice,
-                 fill=true, levels=10, color=:thermal, show=true)
-savefig(Θ_plot, "theta.png")
+                 fill=true, levels=10, color=:thermal, dpi=200)
+savefig(Θ_plot, "theta_initial_condition.png")
 
 #####
 ##### Watch the thermal bubble rise!
 #####
 
-for i = 1:1000
-    time_step!(model, Δt=0.1, Nt=10)
+for n in 1:200
+    time_step!(model, Δt=0.1, Nt=50)
 
     @printf("t = %.2f s\n", model.clock.time)
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
     j = 1
-    U_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz])
-    W_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz])
+    u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
+    w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
     ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
     θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
-    pU = contour(xC, zC, U_slice, fill=true, levels=10, color=:balance, clims=(-4, 4))
-    pW = contour(xC, zC, W_slice, fill=true, levels=10, color=:balance, clims=(-4, 4))
-    pρ = contour(xC, zC, ρ_slice, fill=true, levels=10, color=:balance, clims=(-0.01, 0.01))
-    pθ = contour(xC, zC, θ_slice, fill=true, levels=10, color=:thermal)
+    u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
+    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, color=:balance, clims=(-4, 4))
+    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, color=:balance, clims=(-4, 4))
+    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, color=:balance, clims=(-0.01, 0.01))
+    pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, color=:thermal, clims=(299.9, 302))
 
-    display(plot(pU, pW, pρ, pθ, layout=(2, 2), show=true))
+    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=300, show=true)
+    savefig(p, @sprintf("thermal_bubble_%03d.png", n))
 end
