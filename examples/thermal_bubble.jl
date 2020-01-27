@@ -127,6 +127,6 @@ for n in 1:200
     pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, color=:balance, clims=(-0.01, 0.01))
     pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, color=:thermal, clims=(299.9, 302))
 
-    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=300, show=true)
+    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
     savefig(p, @sprintf("thermal_bubble_%03d.png", n))
 end
