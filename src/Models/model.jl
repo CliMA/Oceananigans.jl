@@ -86,7 +86,7 @@ function Model(;
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
             timestepper = :AdamsBashforth,
-        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
+        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions))
     )
 
     if architecture == GPU()

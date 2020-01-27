@@ -1,6 +1,8 @@
 using Oceananigans.Utils: with_tracers
 using Oceananigans.TurbulenceClosures: with_tracers
 
+const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :diffusivities)}
+
 #####
 ##### Default boundary conditions on tracers are periodic or no flux and
 ##### can be derived from boundary conditions on any field
@@ -38,44 +40,49 @@ TendenciesBoundaryConditions(solution_bcs) =
 
 #####
 ##### Boundary conditions on pressure are derived from boundary conditions
-##### on the north-south horizontal velocity, v.
+##### on the east-west horizontal velocity, u.
 #####
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
 PressureBC(::PBC) = PeriodicBC()
 
-function PressureBoundaryConditions(vbcs)
-    x = CoordinateBoundaryConditions(PressureBC(vbcs.x.left), PressureBC(vbcs.x.right))
-    y = CoordinateBoundaryConditions(PressureBC(vbcs.y.left), PressureBC(vbcs.y.right))
-    z = CoordinateBoundaryConditions(PressureBC(vbcs.z.left), PressureBC(vbcs.z.right))
+function PressureBoundaryConditions(solution_boundary_conditions)
+    ubcs = solution_boundary_conditions.u
+    x = CoordinateBoundaryConditions(PressureBC(ubcs.x.left), PressureBC(ubcs.x.right))
+    y = CoordinateBoundaryConditions(PressureBC(ubcs.y.left), PressureBC(ubcs.y.right))
+    z = CoordinateBoundaryConditions(PressureBC(ubcs.z.left), PressureBC(ubcs.z.right))
     return (x=x, y=y, z=z)
 end
 
+PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
+    PressureBoundaryConditions(model_boundary_conditions.solution)
+
 #####
 ##### Boundary conditions on diffusivities are derived from boundary conditions
-##### on the north-south horizontal velocity, v.
+##### on the east-west horizontal velocity, u.
 #####
 
 # Diffusivity boundary conditions are either zero flux (Neumann) or Periodic.
 DiffusivityBC(::BC)  = BoundaryCondition(Flux, nothing)
 DiffusivityBC(::PBC) = PeriodicBC()
 
-function DiffusivityBoundaryConditions(vbcs)
-    x = CoordinateBoundaryConditions(DiffusivityBC(vbcs.x.left), DiffusivityBC(vbcs.x.right))
-    y = CoordinateBoundaryConditions(DiffusivityBC(vbcs.y.left), DiffusivityBC(vbcs.y.right))
-    z = CoordinateBoundaryConditions(DiffusivityBC(vbcs.z.left), DiffusivityBC(vbcs.z.right))
+function DiffusivityBoundaryConditions(solution_boundary_conditions)
+    ubcs = solution_boundary_conditions.u
+    x = CoordinateBoundaryConditions(DiffusivityBC(ubcs.x.left), DiffusivityBC(ubcs.x.right))
+    y = CoordinateBoundaryConditions(DiffusivityBC(ubcs.y.left), DiffusivityBC(ubcs.y.right))
+    z = CoordinateBoundaryConditions(DiffusivityBC(ubcs.z.left), DiffusivityBC(ubcs.z.right))
     return (x=x, y=y, z=z)
 end
 
 DiffusivitiesBoundaryConditions(::Nothing, args...) = nothing
-DiffusivitiesBoundaryConditions(::AbstractField, vbcs) = DiffusivityBoundaryConditions(vbcs)
+DiffusivitiesBoundaryConditions(::AbstractField, proposal_bcs) = DiffusivityBoundaryConditions(proposal_bcs)
 
-function DiffusivitiesBoundaryConditions(diffusivities, vbcs)
+function DiffusivitiesBoundaryConditions(diffusivities, proposal_bcs)
     κbcs = Dict()
 
     for κ in propertynames(diffusivities)
-        κbcs[κ] = DiffusivitiesBoundaryConditions(diffusivities[κ], vbcs)
+        κbcs[κ] = DiffusivitiesBoundaryConditions(diffusivities[κ], proposal_bcs)
     end
 
     return (; κbcs...)
@@ -142,8 +149,6 @@ end
 ##### tendencies, pressure, and diffusivities 
 #####
 
-const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :diffusivities)}
-
 """
     ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs)
 
@@ -155,8 +160,8 @@ are used to determine the topology of the grid for setting default boundary cond
 """
 function ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs;
          tendency = TendenciesBoundaryConditions(SolutionBoundaryConditions(tracer_names, proposal_bcs)),
-         pressure = PressureBoundaryConditions(proposal_bcs.v),
-    diffusivities = DiffusivitiesBoundaryConditions(diffusivity_fields, proposal_bcs.v)
+         pressure = PressureBoundaryConditions(proposal_bcs),
+    diffusivities = DiffusivitiesBoundaryConditions(diffusivity_fields, proposal_bcs)
    )
 
     return (     solution = SolutionBoundaryConditions(tracer_names, proposal_bcs),  
@@ -165,5 +170,5 @@ function ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs;
             diffusivities = diffusivities)
 end
 
-ModelBoundaryConditions(::Tuple, diffusivities, model_boundary_conditions::ModelBoundaryConditions) =
+ModelBoundaryConditions(tracer_names, diffusivities, model_boundary_conditions::ModelBoundaryConditions) =
     model_boundary_conditions
