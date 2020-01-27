@@ -36,4 +36,3 @@ const MPT = ModifiedPotentialTemperature
 @inline ∂p∂x(i, j, k, grid, pt::Entropy, gas::IG, ρ, C) = ∂xᶠᵃᵃ(i, j, k, grid, p, pt, gas, ρ, C)
 @inline ∂p∂y(i, j, k, grid, pt::Entropy, gas::IG, ρ, C) = ∂yᵃᶠᵃ(i, j, k, grid, p, pt, gas, ρ, C)
 @inline ∂p∂z(i, j, k, grid, pt::Entropy, gas::IG, ρ, C) = ∂zᵃᵃᶠ(i, j, k, grid, p, pt, gas, ρ, C)
-
