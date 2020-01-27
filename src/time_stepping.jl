@@ -50,7 +50,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
     Φ⁺ = merge(Ũ, C̃, (ρ=ρᵈ,))
 
-    # On the first and second RK3 steps we can to update intermediate Ũ and C̃.
+    # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
     Ũ_names = propertynames(Ũ)
     IV_Ũ_vals = [getproperty(IV, U) for U in Ũ_names]
     IV_Ũ = NamedTuple{Ũ_names}(IV_Ũ_vals)
@@ -87,8 +87,6 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
             end
 
             compute_right_hand_sides!(compute_rhs_args...)
-
-            fill_halo_regions!(R.ρw.data, hpbcs_np, arch, grid)
 
             # n, Δτ = acoustic_time_steps(rk3_iter)
             # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
