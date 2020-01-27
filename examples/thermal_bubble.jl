@@ -41,20 +41,18 @@ end
 ##### Set up model
 #####
 
-pₛ = 1000hPa
-Tₐ = 300
-g  = 9.80665
-
 gas = IdealGas()
 Rᵈ, cₚ, cᵥ = gas.Rᵈ, gas.cₚ, gas.cᵥ
 
-H = Rᵈ * Tₐ / g    # Scale height [m]
-ρₛ = pₛ / (Rᵈ*Tₐ)  # Surface density [kg/m³]
+g  = 9.80665
+pₛ = 1000hPa
+θₛ = 300
+πₛ = 1
 
-p₀(x, y, z) = pₛ * exp(-z/H)
-ρ₀(x, y, z) = ρₛ * exp(-z/H)
-
-θ₀(x, y, z) = Tₐ * exp(z/H * Rᵈ/cₚ)
+θ₀(x, y, z) = θₛ
+π₀(x, y, z) = πₛ - g*z / (cₚ*θₛ)
+p₀(x, y, z) = pₛ * π₀(x, y, z)^(cₚ/Rᵈ)
+ρ₀(x, y, z) = pₛ / (Rᵈ * θ₀(x, y, z)) * π₀(x, y, z)^(cᵥ/Rᵈ)
 Θ₀(x, y, z) = ρ₀(x, y, z) * θ₀(x, y, z)
 
 const τ⁻¹ = 1     # Damping/relaxation time scale [s⁻¹]. This is very strong damping.
@@ -72,7 +70,7 @@ set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
 
 #####
-##### Run an isothermal atmosphere to hydrostatic balance
+##### Run a dry adiabatic atmosphere to hydrostatic balance
 #####
 
 while model.clock.time <= 500
@@ -97,11 +95,14 @@ for k in 1:Nz, i in 1:Nx
     Θ[i, 1, k] = ρ[i, 1, k] * θ
 end
 
-ρ_plot = contour(model.grid.xC, model.grid.zC, rotr90(ρ.data[1:Nx, 1, 1:Nz]), fill=true, levels=10, color=:balance, show=true)
-savefig(ρ_plot, "rho.png")
+ρ_plot = contour(model.grid.xC, model.grid.zC, rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ),
+                 fill=true, levels=10, clims=(-0.006, 0.006), color=:balance, show=true)
+savefig(ρ_plot, "rho_prime.png")
 
-Θ_plot = contour(model.grid.xC, model.grid.zC, rotr90(Θ.data[1:Nx, 1, 1:Nz]), fill=true, levels=10, color=:thermal, show=true)
-savefig(Θ_plot, "Theta.png")
+θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
+Θ_plot = contour(model.grid.xC, model.grid.zC, θ_slice,
+                 fill=true, levels=10, color=:thermal, show=true)
+savefig(Θ_plot, "theta.png")
 
 #####
 ##### Watch the thermal bubble rise!
@@ -118,13 +119,12 @@ for i = 1:1000
     U_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz])
     W_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz])
     ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
-    Θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] .- Θʰᵈ)
+    θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
     pU = contour(xC, zC, U_slice, fill=true, levels=10, color=:balance, clims=(-4, 4))
     pW = contour(xC, zC, W_slice, fill=true, levels=10, color=:balance, clims=(-4, 4))
     pρ = contour(xC, zC, ρ_slice, fill=true, levels=10, color=:balance, clims=(-0.01, 0.01))
-    pΘ = contour(xC, zC, Θ_slice, fill=true, levels=10, color=:thermal)
+    pθ = contour(xC, zC, θ_slice, fill=true, levels=10, color=:thermal)
 
-    display(plot(pU, pW, pρ, pΘ, layout=(2, 2), show=true))
+    display(plot(pU, pW, pρ, pθ, layout=(2, 2), show=true))
 end
-
