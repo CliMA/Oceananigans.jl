@@ -24,12 +24,12 @@ fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractLocatedField`."""
 function define_multiary_operator(op)
     return quote
-        import Oceananigans
+        import Oceananigans.Fields: AbstractField
 
-        local location = Oceananigans.location
+        local location = Oceananigans.Fields.location
 
         # "Function, or Field"
-        local FuFi = Union{Function, Oceananigans.AbstractField}
+        local FuFi = Union{Function, AbstractField}
 
         function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi...)
             args = tuple(a, b, c...)
@@ -127,5 +127,5 @@ const multiary_operators = Set()
 
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
-    MultiaryOperation{X, Y, Z}(adapt(to, multiary.op), adapt(to, multiary.args),
-                               adapt(to, multiary.▶), multiary.grid)
+    MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
+                               Adapt.adapt(to, multiary.▶),  multiary.grid)

@@ -55,20 +55,20 @@ function test_function_interpolation(T=Float64)
 end
 
 @testset "Operators" begin
-    println("Testing operators...")
+    @info "Testing operators..."
 
     @testset "Function differentiation" begin
-        println("  Testing function differentiation...")
+        @info "  Testing function differentiation..."
         @test test_function_differentiation()
     end
 
     @testset "Function interpolation" begin
-        println("  Testing function interpolation...")
+        @info "  Testing function interpolation..."
         @test test_function_interpolation()
     end
 
     @testset "2D operators" begin
-        println("  Testing 2D operators...")
+        @info "  Testing 2D operators..."
 
         Nx, Ny, Nz = 32, 16, 8
         Lx, Ly, Lz = 100, 100, 100

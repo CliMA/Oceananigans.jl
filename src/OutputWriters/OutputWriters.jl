@@ -6,7 +6,9 @@ export
     NetCDFOutputWriter, write_grid,
     Checkpointer, restore_from_checkpoint
 
-using Oceananigans, Oceananigans.Grids
+using Oceananigans
+using Oceananigans.Grids
+using Oceananigans.Architectures
 
 using Oceananigans: AbstractOutputWriter, @hascuda
 

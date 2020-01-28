@@ -25,15 +25,19 @@ function nan_checker_aborts_simulation(arch, FT)
     time_step!(model, 1, 1);
 end
 
-TestModel(::GPU, FT, ν=1.0, Δx=0.5) = Model(grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
-                                         closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
-                                    architecture = GPU(),
-                                      float_type = FT)
+TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
+    Model(grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
+       closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+  architecture = GPU(),
+    float_type = FT
+)
 
-TestModel(::CPU, FT, ν=1.0, Δx=0.5) = Model(grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
-                                         closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
-                                    architecture = CPU(),
-                                      float_type = FT)
+TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
+    Model(grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
+       closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+  architecture = CPU(),
+    float_type = FT
+)
 
 function max_abs_field_diagnostic_is_correct(arch, FT)
     model = TestModel(arch, FT)
@@ -113,11 +117,11 @@ end
 
 
 @testset "Diagnostics" begin
-    println("Testing diagnostics...")
+    @info "Testing diagnostics..."
 
     for arch in archs
         @testset "Horizontal average [$(typeof(arch))]" begin
-            println("  Testing horizontal average [$(typeof(arch))]")
+            @info "  Testing horizontal average [$(typeof(arch))]"
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
             end
@@ -126,7 +130,7 @@ end
 
     for arch in archs
         @testset "NaN Checker [$(typeof(arch))]" begin
-            println("  Testing NaN Checker [$(typeof(arch))]")
+            @info "  Testing NaN Checker [$(typeof(arch))]"
             for FT in float_types
                 @test_throws ErrorException nan_checker_aborts_simulation(arch, FT)
             end
@@ -135,7 +139,7 @@ end
 
     for arch in archs
         @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
-            println("  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]")
+            @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)

@@ -23,8 +23,8 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
        closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
-    velocities = Oceananigans.VelocityFields(arch, grid)
-       tracers = Oceananigans.TracerFields(arch, grid, (:T, :S))
+    velocities = VelocityFields(arch, grid)
+       tracers = TracerFields(arch, grid, (:T, :S))
 
     u, v, w = velocities
        T, S = tracers
@@ -51,8 +51,8 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
           grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
-    velocities = Oceananigans.VelocityFields(arch, grid)
-       tracers = Oceananigans.TracerFields(arch, grid, (:T, :S))
+    velocities = VelocityFields(arch, grid)
+       tracers = TracerFields(arch, grid, (:T, :S))
 
     u, v, w, T, S = merge(velocities, tracers)
 
@@ -88,8 +88,8 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
              grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3, 3, 3))
     diffusivities = TurbulentDiffusivities(arch, grid, tracernames, closure)
          buoyancy = BuoyancyTracer()
-       velocities = Oceananigans.VelocityFields(arch, grid)
-          tracers = Oceananigans.TracerFields(arch, grid, tracernames)
+       velocities = VelocityFields(arch, grid)
+          tracers = TracerFields(arch, grid, tracernames)
 
     U, C, K = datatuples(velocities, tracers, diffusivities)
 
@@ -118,10 +118,10 @@ function compute_closure_specific_diffusive_cfl(closurename)
 end
 
 @testset "Turbulence closures" begin
-    println("Testing turbulence closures...")
+    @info "Testing turbulence closures..."
 
     @testset "Closure instantiation" begin
-        println("  Testing closure instantiation...")
+        @info "  Testing closure instantiation..."
         for T in float_types
             for closure in closures
                 @test test_closure_instantiation(T, closure)
@@ -130,7 +130,7 @@ end
     end
 
     @testset "Constant isotropic diffusivity" begin
-        println("  Testing constant isotropic diffusivity...")
+        @info "  Testing constant isotropic diffusivity..."
         for T in float_types
             @test test_constant_isotropic_diffusivity_basic(T)
             @test test_constant_isotropic_diffusivity_fluxdiv(T)
@@ -138,7 +138,7 @@ end
     end
 
     @testset "Constant anisotropic diffusivity" begin
-        println("  Testing constant anisotropic diffusivity...")
+        @info "  Testing constant anisotropic diffusivity..."
         for T in float_types
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
@@ -146,19 +146,19 @@ end
     end
 
     @testset "Calculation of nonlinear diffusivities" begin
-        println("  Testing calculation of nonlinear diffusivities...")
-        for T in float_types
+        @info "  Testing calculation of nonlinear diffusivities..."
+        for FT in [Float64]
             for arch in archs
                 for closure in closures
-                    println("    Calculating diffusivities for $closure [$T, $arch]")
-                    @test test_calculate_diffusivities(arch, closure, T)
+                    @info "    Calculating diffusivities for $closure [$FT, $arch]"
+                    @test test_calculate_diffusivities(arch, closure, FT)
                 end
             end
         end
     end
 
     @testset "Closure tuples" begin
-        println("  Testing time-stepping with a tuple of closures...")
+        @info "  Testing time-stepping with a tuple of closures..."
         for arch in archs
             for FT in float_types
                 @test time_step_with_tupled_closure(FT, arch)
@@ -167,7 +167,7 @@ end
     end
 
     @testset "Diagnostics" begin
-        println("  Testing turbulence closure diagnostics...")
+        @info "  Testing turbulence closure diagnostics..."
         for closure in closures
             @test compute_closure_specific_diffusive_cfl(closure)
         end

@@ -3,6 +3,10 @@ using Oceananigans
 
 include("benchmark_utils.jl")
 
+#####
+##### Benchmark setup and parameters
+#####
+
 const timer = TimerOutput()
 
 Ni = 2  # Number of iterations before benchmarking starts.
@@ -14,11 +18,17 @@ Nt = 5  # Number of iterations to use for benchmarking time stepping.
          archs = [CPU()]             # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
+#####
+##### Run benchmarks
+#####
+
 for arch in archs, FT in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 250e3, 250e3, 1000
 
-    model = ChannelModel(N=(Nx, Ny, Nz), L=(Lx, Ly, Lz), ν=1e-2, κ=1e-2, arch=arch, float_type=FT)
+    model = ChannelModel(architecture = arch, float_type = FT,
+			 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Lx, Lz)),
+			 closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2))
 
     # Eddying channel model setup.
     Ty = 4e-5  # Meridional temperature gradient [K/m].
@@ -37,7 +47,14 @@ for arch in archs, FT in float_types, N in Ns
     end
 end
 
-print_timer(timer, title="Eddying channel benchmarks")
+#####
+##### Print benchmark results
+#####
+
+println()
+print_benchmark_info()
+
+print_timer(timer, title="Eddying channel benchmarks", sortby=:name)
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns

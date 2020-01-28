@@ -1,8 +1,3 @@
-@hascuda using CUDAnative
-using GPUifyLoops: @launch, @loop, @unroll
-
-using Oceananigans: @loop_xy, device, array_type, launch_config
-
 """
     BatchedTridiagonalSolver
 
@@ -39,9 +34,9 @@ where `dl` stores the lower diagonal coefficients `a(i, j, k)`, `d` stores the d
 
 `params` is an optional named tuple of parameters that is accessible to functions.
 """
-function BatchedTridiagonalSolver(arch=CPU(); dl, d, du, f, grid, params=nothing)
+function BatchedTridiagonalSolver(arch=CPU(), FT=Float64; dl, d, du, f, grid, params=nothing)
     ArrayType = array_type(arch)
-    t = zeros(grid.Nx, grid.Ny, grid.Nz) |> ArrayType
+    t = zeros(FT, grid.Nx, grid.Ny, grid.Nz) |> ArrayType
 
     return BatchedTridiagonalSolver(dl, d, du, f, t, grid, params)
 end

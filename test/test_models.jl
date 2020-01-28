@@ -25,7 +25,7 @@ function initial_conditions_correctly_set(arch, FT)
     T₀(x, y, z) = 4 + tanh(x+y-z)
     S₀(x, y, z) = 5
 
-    set_ic!(model; u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
+    set!(model; u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
     xC, yC, zC = model.grid.xC, model.grid.yC, model.grid.zC
@@ -47,10 +47,10 @@ function initial_conditions_correctly_set(arch, FT)
 end
 
 @testset "Models" begin
-    println("Testing models...")
+    @info "Testing models..."
 
     @testset "Doubly periodic model" begin
-        println("  Testing doubly periodic model construction...")
+        @info "  Testing doubly periodic model construction..."
         for arch in archs, FT in float_types
             model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 2), length=(1, 2, 3)), 
                           architecture=arch, float_type=FT)
@@ -61,7 +61,7 @@ end
     end
 
     @testset "Reentrant channel model" begin
-        println("  Testing reentrant channel model construction...")
+        @info "  Testing reentrant channel model construction..."
         for arch in archs, FT in float_types
             model = ChannelModel(grid=RegularCartesianGrid(FT; size=(16, 16, 2), length=(1, 2, 3)), 
                                  architecture=arch, float_type=FT)
@@ -72,7 +72,7 @@ end
     end
 
     @testset "Non-dimensional model" begin
-        println("  Testing non-dimensional model construction...")
+        @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT; size=(16, 16, 2), length=(3, 2, 1))
             model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
@@ -83,7 +83,7 @@ end
     end
 
     @testset "Setting model fields" begin
-        println("  Testing setting model fields...")
+        @info "  Testing setting model fields..."
         for arch in archs, FT in float_types
             N = (16, 16, 8)
             L = (2π, 3π, 5π)

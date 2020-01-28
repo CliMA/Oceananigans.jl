@@ -7,15 +7,16 @@
 #   * How to use biharmonic diffusivity
 #   * How to implement a background flow (a background geostrophic shear)
 
+using Random, Printf
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
-      Oceananigans.AbstractOperations, Random, Printf
+      Oceananigans.AbstractOperations, Oceananigans.Utils
 
 # These imports from Oceananigans's `TurbuleneClosures` module are needed for imposing
 # a background flow as a user-defined forcing.
 
 using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂xᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ
 
-using Oceananigans: Face, Cell
+using Oceananigans.Fields: Face, Cell
 
 # # Parameters
 #
@@ -138,7 +139,7 @@ model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
            buoyancy = BuoyancyTracer(), tracers = :b,
             forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
             closure = closure,
-boundary_conditions = BoundaryConditions(u=ubcs, v=vbcs, b=bbcs),
+boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, b=bbcs),
 # "parameters" is a NamedTuple of user-defined parameters that can be used in boundary condition and forcing functions.
          parameters = merge(bc_parameters, forcing_parameters))
 

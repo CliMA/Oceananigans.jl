@@ -3,17 +3,17 @@ using Oceananigans
 
 include("benchmark_utils.jl")
 
-const timer = TimerOutput()
+#####
+##### Benchmark setup and parameters
+#####
 
-#####
-##### Benchmark parameters
-#####
+const timer = TimerOutput()
 
 Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
          archs = [CPU()]             # Architectures to benchmark on.
-@hascuda archs = [GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
+@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
 
 FT = Float64
 Nxyz(::CPU) = (32, 32, 32)
@@ -42,7 +42,7 @@ function na2buoyancy(n)
 end
 
 #####
-##### Run benchmarks.
+##### Run benchmarks
 #####
 
 test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
@@ -70,5 +70,11 @@ for arch in archs, test_case in test_cases
     end
 end
 
+#####
+##### Print benchmark results
+#####
+
+println()
+print_benchmark_info()
 print_timer(timer, title="Tracer benchmarks", sortby=:name)
-println("")
+println()

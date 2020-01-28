@@ -1,4 +1,6 @@
-using Oceananigans: architecture, zero_halo_regions!, tupleit, parenttuple
+using Oceananigans.Architectures
+using Oceananigans.BoundaryConditions
+using Oceananigans.Utils
 
 """
     HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic

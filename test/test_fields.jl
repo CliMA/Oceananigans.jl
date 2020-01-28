@@ -23,7 +23,7 @@ function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
 end
 
 @testset "Fields" begin
-    println("Testing fields...")
+    @info "Testing fields..."
 
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
@@ -31,7 +31,7 @@ end
     fieldtypes = (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
 
     @testset "Field initialization" begin
-        println("  Testing field initialization...")
+        @info "  Testing field initialization..."
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT; size=N, length=L)
 
@@ -49,7 +49,7 @@ end
     vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
     @testset "Setting fields" begin
-        println("  Testing field setting...")
+        @info "  Testing field setting..."
 
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT; size=N, length=L)
