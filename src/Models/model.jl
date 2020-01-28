@@ -6,12 +6,13 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, RS, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
                    grid :: G         # Grid of physical points on which `Model` is solved
-                  clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+              restarter :: RS        # A path for a checkpoint file
+                  clock :: Clock{T}  # Tracks iteration number andsimulation time of `Model`
                buoyancy :: B         # Set of parameters for buoyancy model
                coriolis :: R         # Set of parameters for the background rotation rate of `Model`
           surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
@@ -32,6 +33,7 @@ end
 """
     Model(;
                    grid,
+              restarter = nothing,
            architecture = CPU(),
              float_type = Float64,
                 tracers = (:T, :S),
@@ -57,6 +59,7 @@ Construct an `Oceananigans.jl` model on `grid`.
 Keyword arguments
 =================
 - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+- `restarter`: Path to a checkpoint file saved using `Checkpointer`.
 - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
 - `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
@@ -69,6 +72,7 @@ Keyword arguments
 """
 function Model(;
                    grid,
+              restarter = nothing,
            architecture = CPU(),
              float_type = Float64,
                 tracers = (:T, :S),
@@ -88,7 +92,9 @@ function Model(;
             timestepper = :AdamsBashforth,
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
     )
-
+    if !isnothing(restarter)
+        return restore_from_checkpoint(restarter)
+    end
     if architecture == GPU()
         !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
         if mod(grid.Nx, 16) != 0 || mod(grid.Ny, 16) != 0
@@ -106,7 +112,8 @@ function Model(;
     boundary_conditions = ModelBoundaryConditions(tracernames(tracers), boundary_conditions)
     closure = with_tracers(tracernames(tracers), closure)
 
-    return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
-                 pressures, forcing, closure, boundary_conditions, timestepper,
-                 pressure_solver, diffusivities, output_writers, diagnostics, parameters)
+    return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves,
+                    velocities, tracers, pressures, forcing, closure,
+                    boundary_conditions, timestepper, pressure_solver,
+                    diffusivities, output_writers, diagnostics, parameters)
 end
