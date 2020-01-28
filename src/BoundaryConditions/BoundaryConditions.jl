@@ -6,7 +6,8 @@ export
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
     SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
-    TendenciesBoundaryConditions, PressureBoundaryConditions, DiffusivitiesBoundaryConditions,
+    TendenciesBoundaryConditions, PressureBoundaryConditions, 
+    DiffusivityBoundaryConditions, DiffusivitiesBoundaryConditions,
     ModelBoundaryConditions, BoundaryFunction,
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!

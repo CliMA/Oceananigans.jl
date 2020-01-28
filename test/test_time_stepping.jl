@@ -158,29 +158,6 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     end
 end
 
-function time_stepping_with_custom_diffusivity_boundary_conditions(arch, FT)
-
-    tracer_names = (:b,)
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-    closure = with_tracers(tracer_names, AnisotropicMinimumDissipation())
-    diffusivities = TurbulentDiffusivities(arch, grid, tracer_names, closure)
-    proposal_bcs = HorizontallyPeriodicSolutionBCs()
-
-    νₑ = HorizontallyPeriodicBCs(top=BoundaryCondition(Value, 1e-3))
-    κₑ_b = HorizontallyPeriodicBCs(top=BoundaryCondition(Value, 1e-3))
-    diffusivity_bcs = DiffusivitiesBoundaryConditions(diffusivities, proposal_bcs)
-
-    model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, proposal_bcs; 
-                                        diffusivities=diffusivity_bcs)
-
-    model = Model(grid=grid, architecture=arch, float_type=FT, tracers=tracer_names, buoyancy=BuoyancyTracer(),
-                  closure=closure, diffusivities=diffusivities, boundary_conditions=model_bcs)
-
-    time_step!(model; Nt=3, Δt=1e-16)
-
-    return true
-end
-
 Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             ConstantSmagorinsky, SmagorinskyLilly,
@@ -239,10 +216,4 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
         end
     end
 
-    @testset "Custom diffusivity boundary conditions" begin
-        @info "  Testing time stepping with custom diffusivity boundary conditions..."
-        for arch in archs, FT in float_types
-            @test time_stepping_with_custom_diffusivity_boundary_conditions(arch, FT)
-        end
-    end
 end
