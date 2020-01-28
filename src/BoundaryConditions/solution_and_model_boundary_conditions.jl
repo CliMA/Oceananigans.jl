@@ -78,7 +78,10 @@ end
 DiffusivitiesBoundaryConditions(::Nothing, args...) = nothing
 DiffusivitiesBoundaryConditions(::AbstractField, proposal_bcs) = DiffusivityBoundaryConditions(proposal_bcs)
 
-function DiffusivitiesBoundaryConditions(diffusivities, proposal_bcs)
+DiffusivitiesBoundaryConditions(diffusivities::Tuple, args...) =
+    Tuple(DiffusivitiesBoundaryConditions(κ, args...) for κ in diffusivities)
+
+function DiffusivitiesBoundaryConditions(diffusivities::NamedTuple, proposal_bcs)
     κbcs = Dict()
 
     for κ in propertynames(diffusivities)
