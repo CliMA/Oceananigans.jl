@@ -6,12 +6,11 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, RS, T, B, R, SW, U, C, Φ, F,
+mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                      BCS, S, K, OW, DI, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
                    grid :: G         # Grid of physical points on which `Model` is solved
-              restarter :: RS        # A path for a checkpoint file
                   clock :: Clock{T}  # Tracks iteration number andsimulation time of `Model`
                buoyancy :: B         # Set of parameters for buoyancy model
                coriolis :: R         # Set of parameters for the background rotation rate of `Model`
