@@ -1,7 +1,7 @@
 module Coriolis
 
 export
-    FPlane, BetaPlane,
+    FPlane, NonTraditionalFPlane, BetaPlane,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 # Physical constants for FPlane and BetaPlane constructors.
