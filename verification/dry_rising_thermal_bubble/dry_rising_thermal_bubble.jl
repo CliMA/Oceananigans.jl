@@ -79,7 +79,7 @@ while model.clock.time < 500
 end
 
 #####
-##### Now add the cold bubble perturbation.
+##### Now add the warm bubble perturbation.
 #####
 
 ρʰᵈ = model.density.data[1:Nx, 1, 1:Nz]
