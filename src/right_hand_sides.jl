@@ -3,8 +3,8 @@
 ####
 
 const grav = 9.80665
-const μ = 1e-2
-const κ = 1e-2
+const μ = 0.5
+const κ = 0.5
 
 ####
 #### Element-wise forcing and right-hand-side calculations
