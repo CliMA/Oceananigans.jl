@@ -4,14 +4,14 @@
 Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by
 Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
-     C :: FT
+struct VerstappenAnisotropicMinimumDissipation{FT, P, K} <: AbstractAnisotropicMinimumDissipation{FT}
+     C :: P
     Cb :: FT
      ν :: FT
      κ :: K
 
     function VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ) where FT
-        return new{FT, typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
+        return new{FT, typeof(C), typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
@@ -34,7 +34,8 @@ Keyword arguments
 
 By default, `C` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
-and molecular values are used for `ν` and `κ`.
+the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and the molecular
+diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
 
 References
 ==========
@@ -67,6 +68,11 @@ end
 ##### Kernel functions
 #####
 
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, closure::VAMD{FT, <:AbstractFloat}) where FT = closure.C
+
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, closure::VAMD{FT, <:Function}) where FT =
+    closure.C(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid))
+
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
@@ -77,7 +83,7 @@ end
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w)
         ζ = norm_wᵢ_bᵢᶜᶜᶜ(ijk..., closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
+        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure) * δ² * (r - closure.Cb * ζ) / q
     end
 
     return max(zero(FT), νˢᵍˢ) + closure.ν
@@ -96,7 +102,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w, c)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - closure.C * δ² * ϑ / σ
+        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure) * δ² * ϑ / σ
     end
 
     return max(zero(FT), κˢᵍˢ) + κ
