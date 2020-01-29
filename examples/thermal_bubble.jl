@@ -124,9 +124,15 @@ for n in 1:200
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
     pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
     pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
-    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.004, 0.004))
+    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.006, 0.006))
     pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, xlims=(-5, 5), color=:thermal, clims=(299.9, 302))
 
     p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
     savefig(p, @sprintf("thermal_bubble_%03d.png", n))
 end
+
+θ_1000 = (model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz]) .- θₛ
+w_1000 = (model.momenta.ρw.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz])
+
+@printf("θ′: min=%.2f, max=%.2f\n", minimum(θ_1000), maximum(θ_1000))
+@printf("w:  min=%.2f, max=%.2f\n", minimum(w_1000), maximum(w_1000))
