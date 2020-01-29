@@ -73,10 +73,10 @@ set!(model.tracers.Θᵐ, Θ₀)
 ##### Run a dry adiabatic atmosphere to hydrostatic balance
 #####
 
-# while model.clock.time <= 500
-#     @printf("t = %.2f s\n", model.clock.time)
-#     time_step!(model, Δt=0.2, Nt=100)
-# end
+while model.clock.time < 500
+    @printf("t = %.2f s\n", model.clock.time)
+    time_step!(model, Δt=0.2, Nt=100)
+end
 
 #####
 ##### Now add the cold bubble perturbation.
@@ -122,9 +122,9 @@ for n in 1:200
     θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
-    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-4, 4))
-    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-4, 4))
-    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.01, 0.01))
+    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-8, 8))
+    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-8, 8))
+    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.004, 0.004))
     pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, xlims=(-5, 5), color=:thermal, clims=(299.9, 302))
 
     p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
