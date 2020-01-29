@@ -122,8 +122,8 @@ for n in 1:200
     θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
-    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-8, 8))
-    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-8, 8))
+    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
+    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
     pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.004, 0.004))
     pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, xlims=(-5, 5), color=:thermal, clims=(299.9, 302))
 
