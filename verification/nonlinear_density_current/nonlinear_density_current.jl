@@ -94,19 +94,25 @@ xC, zC = grid.xC, grid.zC
 ρ, Θ = model.density, model.tracers.Θᵐ
 for k in 1:Nz, i in 1:Nx
     π = Π(i, 1, k, grid, gas, Θ)
-    θ = Θ[i, 1, k] / ρ[i, 1, k] + π / ΔT(xC[i], 0, zC[k])
+
+    ΔTᵢₖ = ΔT(xC[i], 0, zC[k])
+    if ΔTᵢₖ ≈ 0
+        θ = Θ[i, 1, k] / ρ[i, 1, k]
+    else
+        θ = Θ[i, 1, k] / ρ[i, 1, k] + ΔT(xC[i], 0, zC[k]) / π
+    end
 
     ρ[i, 1, k] = pₛ / (Rᵈ*θ) * π^(cᵥ/Rᵈ)
     Θ[i, 1, k] = ρ[i, 1, k] * θ
 end
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ),
-                 fill=true, levels=10, color=:balance, dpi=200)
+                 fill=true, levels=10, ylims=(0, 6.4), color=:balance, aspect_ratio=:equal, dpi=200)
 savefig(ρ_plot, "rho_prime_initial_condition.png")
 
 θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
 Θ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, θ_slice,
-                 fill=true, levels=10, color=:thermal, dpi=200)
+                 fill=true, levels=10, ylims=(0, 6.4), color=:thermal, aspect_ratio=:equal, dpi=200)
 savefig(Θ_plot, "theta_initial_condition.png")
 
 #####
