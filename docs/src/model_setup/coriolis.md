@@ -14,7 +14,7 @@ coriolis = nothing
 
 ## $f$-plane
 
-To set up an $f$-plane with, for example, rotation rate $f = 10^{-4} \text{s}^{-1}$
+To set up an $f$-plane with, for example, Coriolis parameter $f = 10^{-4} \text{s}^{-1}$
 ```@example
 using Oceananigans # hide
 coriolis = FPlane(f=1e-4)
@@ -28,6 +28,23 @@ using Oceananigans # hide
 coriolis = FPlane(rotation_rate=7.292115e-5, latitude=45)
 ```
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
+
+To set up an $f$-plane with non-traditional Coriolis terms, for example, with $f = 10^{-4} \text{s}^{-1}$ and 
+$f^{\prime} = 2 \times 10^{-4} \text{s}^{-1}$
+```@example
+using Oceananigans # hide
+coriolis = NonTraditionalFPlane(f=1e-4, f′=2e-4)
+```
+
+An $f$-plane with non-traditional Coriolis terms can also be specified at some latitude on a spherical planet
+with a planetary rotation rate. For example, to specify an $f$-plane at a latitude of $\varphi = 45°\text{N}$ 
+on Earth which has a rotation rate of $\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}$
+```@example
+using Oceananigans # hide
+coriolis = NonTraditionalFPlane(rotation_rate=7.292115e-5, latitude=45)
+```
+in which case the value of $f$ is given by $2\Omega\sin\varphi$ and that of $f^{\prime}$ is given by $2\Omega\cos\varphi$.
+
 
 ## $\beta$-plane
 To set up a $\beta$-plane the background rotation rate $f_0$ and the $\beta$ parameter must be specified. For example,
