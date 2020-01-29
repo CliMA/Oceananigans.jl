@@ -34,7 +34,7 @@ end
 
 Base.show(io::IO, bcs::ModelBoundaryConditions) =
     print(io,
-          "Oceananigans.ModelBoundaryConditions (NamedTuple{(:solution, :tendency, :pressure)}) with ", '\n',
+          "Oceananigans.ModelBoundaryConditions (NamedTuple{(:solution, :tendency, :pressure, :diffusivities)}) with ", '\n',
           "├── solution: ", show_solution_boundary_conditions(bcs.solution, "│   "), '\n',
           "├── tendency: ", show_solution_boundary_conditions(bcs.tendency, "│   "), '\n',
           "└── pressure: ", show_field_boundary_conditions(bcs.pressure, "    "))
