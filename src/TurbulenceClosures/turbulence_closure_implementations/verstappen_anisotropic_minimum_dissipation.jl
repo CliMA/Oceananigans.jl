@@ -4,38 +4,44 @@
 Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by
 Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{FT, P, K} <: AbstractAnisotropicMinimumDissipation{FT}
-     C :: P
+struct VerstappenAnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractAnisotropicMinimumDissipation{FT}
+    Cν :: PN
+    Cκ :: PK
     Cb :: FT
      ν :: FT
      κ :: K
 
-    function VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ) where FT
-        return new{FT, typeof(C), typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
+    function VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
+        return new{FT, typeof(Cν), typeof(Cκ), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
 const VAMD = VerstappenAnisotropicMinimumDissipation
 
 """
-    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀)
+    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+                                            Cb=0.0, ν=ν₀, κ=κ₀)
 
 Returns parameters of type `FT` for the `VerstappenAnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
 =================
-    - `C`  : Poincaré constant
+    - `C`  : Poincaré constant for both eddy viscosity and eddy diffusivities
+    - `Cν` : Poincaré constant for eddy viscosity
+    - `Cκ` : Poincaré constant for eddy diffusivities
     - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
     - `ν`  : Constant background viscosity for momentum
     - `κ`  : Constant background diffusivity for tracer. Can either be a single number
              applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
              tracer.
 
-By default, `C` = 1/12, which is appropriate for a finite-volume method employing a
+By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
-the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and the molecular
-diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
+the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and 
+the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
+
+Setting `Cν` or `Cκ` overrides `C`.
 
 References
 ==========
@@ -46,12 +52,17 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀) =
-    VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+function VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+                                                 Cb=0.0, ν=ν₀, κ=κ₀)
+    Cν = Cν === nothing ? C : Cν
+    Cκ = Cκ === nothing ? C : Cκ
+
+    return VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
+end
 
 function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
-    return VerstappenAnisotropicMinimumDissipation{FT}(closure.C, closure.Cb, closure.ν, κ)
+    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, closure.Cκ, closure.Cb, closure.ν, κ)
 end
 
 #####
@@ -68,10 +79,11 @@ end
 ##### Kernel functions
 #####
 
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, closure::VAMD{FT, <:AbstractFloat}) where FT = closure.C
-
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, closure::VAMD{FT, <:Function}) where FT =
-    closure.C(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid))
+# Dispatch on the type of the user-provided AMD model constant.
+# Only numbers, arrays, and functions supported now.
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid))
 
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
@@ -83,7 +95,7 @@ end
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w)
         ζ = norm_wᵢ_bᵢᶜᶜᶜ(ijk..., closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure) * δ² * (r - closure.Cb * ζ) / q
+        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - closure.Cb * ζ) / q
     end
 
     return max(zero(FT), νˢᵍˢ) + closure.ν
@@ -102,7 +114,7 @@ end
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w, c)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure) * δ² * ϑ / σ
+        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cκ) * δ² * ϑ / σ
     end
 
     return max(zero(FT), κˢᵍˢ) + κ
