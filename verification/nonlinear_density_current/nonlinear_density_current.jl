@@ -1,6 +1,11 @@
 """
-This example sets up a dry, warm thermal bubble perturbation in a uniform
-lateral mean flow which buoyantly rises.
+This example sets up a cold bubble perturbation which develops into a non-linear
+density current. This numerical test case is described by Straka et al. (1993).
+Also see: http://www2.mmm.ucar.edu/projects/srnwp_tests/density/density.html
+
+Straka et al. (1993). "Numerical Solutions of a Nonlinear Density-Current -
+    A Benchmark Solution and Comparisons." International Journal for Numerical
+    Methods in Fluids 17, pp. 1-22.
 """
 
 using Printf
@@ -12,10 +17,10 @@ using JULES: Π
 const km = 1000
 const hPa = 100
 
-Lx = 20km
-Lz = 10km
+Lx = 51.2km
+Lz = 6.4km
 
-Δ = 125  # grid spacing [m]
+Δ = 100  # grid spacing [m]
 
 Nx = Int(Lx/Δ)
 Ny = 1
@@ -25,16 +30,16 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
                             x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
 
 #####
-##### Dry thermal bubble perturbation
+##### Initial perturbation
 #####
 
-xᶜ, zᶜ = 0km, 2km
-xʳ, zʳ = 2km, 2km
+xᶜ, xʳ = 0km, 4km
+zᶜ, zʳ = 3km, 2km
 
-@inline L(x, y, z) = √(((x - xᶜ) / xʳ)^2 + ((z - zᶜ) / zʳ)^2)
-@inline function θ′(x, y, z)
-    ℓ = L(x, y, z)
-    return (ℓ <= 1) * 2cos(π/2 * ℓ)^2
+function ΔT(x, y, z)
+    L = √(((x - xᶜ) / xʳ)^2 + ((z - zᶜ) / zʳ)^2)
+    L > 1 && return 0
+    L ≤ 1 && return -15 * (1 + cos(π*L)) / 2
 end
 
 #####
@@ -75,11 +80,11 @@ set!(model.tracers.Θᵐ, Θ₀)
 
 while model.clock.time < 500
     @printf("t = %.2f s\n", model.clock.time)
-    time_step!(model, Δt=0.2, Nt=100)
+    time_step!(model, Δt=0.25, Nt=100)
 end
 
 #####
-##### Now add the warm bubble perturbation.
+##### Now add the cold bubble perturbation.
 #####
 
 ρʰᵈ = model.density.data[1:Nx, 1, 1:Nz]
@@ -88,30 +93,36 @@ end
 xC, zC = grid.xC, grid.zC
 ρ, Θ = model.density, model.tracers.Θᵐ
 for k in 1:Nz, i in 1:Nx
-    θ = Θ[i, 1, k] / ρ[i, 1, k] + θ′(xC[i], 0, zC[k])
     π = Π(i, 1, k, grid, gas, Θ)
+
+    ΔTᵢₖ = ΔT(xC[i], 0, zC[k])
+    if ΔTᵢₖ ≈ 0
+        θ = Θ[i, 1, k] / ρ[i, 1, k]
+    else
+        θ = Θ[i, 1, k] / ρ[i, 1, k] + ΔT(xC[i], 0, zC[k]) / π
+    end
 
     ρ[i, 1, k] = pₛ / (Rᵈ*θ) * π^(cᵥ/Rᵈ)
     Θ[i, 1, k] = ρ[i, 1, k] * θ
 end
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ),
-                 fill=true, levels=10, xlims=(-5, 5), clims=(-0.008, 0.008), color=:balance, dpi=200)
+                 fill=true, levels=10, ylims=(0, 6.4), clims=(-0.05, 0.05), color=:balance, aspect_ratio=:equal, dpi=200)
 savefig(ρ_plot, "rho_prime_initial_condition.png")
 
 θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
 Θ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, θ_slice,
-                 fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
+                 fill=true, levels=10, ylims=(0, 6.4), color=:thermal, aspect_ratio=:equal, dpi=200)
 savefig(Θ_plot, "theta_initial_condition.png")
 
 #####
-##### Watch the thermal bubble rise!
+##### Watch the density current evolve!
 #####
 
-for n in 1:200
+for n = 1:180
+    @printf("t = %.2f s\n", model.clock.time)
     time_step!(model, Δt=0.1, Nt=50)
 
-    @printf("t = %.2f s\n", model.clock.time)
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
@@ -122,17 +133,11 @@ for n in 1:200
     θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
-    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
-    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-10, 10))
-    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, xlims=(-5, 5), color=:balance, clims=(-0.006, 0.006))
-    pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, xlims=(-5, 5), color=:thermal, clims=(299.9, 302))
+    pu = contour(xC, zC, u_slice, title=u_title, fill=true, levels=10, color=:balance, clims=(-20, 20), linewidth=0)
+    pw = contour(xC, zC, w_slice, title="w", fill=true, levels=10, color=:balance, clims=(-20, 20), linewidth=0)
+    pρ = contour(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10, color=:balance, clims=(-0.05, 0.05), linewidth=0)
+    pθ = contour(xC, zC, θ_slice, title="theta", fill=true, levels=10, color=:thermal, clims=(284, 300), linewidth=0)
 
-    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
-    savefig(p, @sprintf("thermal_bubble_%03d.png", n))
+    p = plot(pu, pw, pρ, pθ, layout=(4, 1), dpi=300, show=true)
+    savefig(p, @sprintf("density_current_%03d.png", n))
 end
-
-θ_1000 = (model.tracers.Θᵐ.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz]) .- θₛ
-w_1000 = (model.momenta.ρw.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz])
-
-@printf("θ′: min=%.2f, max=%.2f\n", minimum(θ_1000), maximum(θ_1000))
-@printf("w:  min=%.2f, max=%.2f\n", minimum(w_1000), maximum(w_1000))
