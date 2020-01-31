@@ -4,6 +4,7 @@ using DifferentialEquations
 
 ENV["GKSwstype"] = "nul"
 using Plots
+pyplot()
 
 include("wind_driven_gyres.jl")
 
@@ -85,8 +86,10 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
         ϕ[i, j] = ϕₐ(xC[i], yC[j], L=L, A=A, σˣ=σˣ, σʸ=σʸ)
     end
 
-    u = u ./ maximum(abs, u)
-    v = v ./ maximum(abs, v)
+    U_max = max(maximum(abs, u), maximum(abs, v))
+    u = u ./ U_max
+    v = v ./ U_max
+
     Δt = CFL * min(Δx, Δy) / max(maximum(abs, u), maximum(abs, v))
     
     @info "Nx=$Nx, Ny=$Ny, Δx=$Δx, Δy=$Δy, Δt=$Δt"
@@ -114,12 +117,12 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
     end
 
     anim = @animate for iter in 1:nt
-        iter % 1 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
+        iter % 100 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
 
         step!(integrator)
 
         title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), Nx, CFL)
-        plot(xC, yC, integrator.u[1:Nx, 1:Ny], title=title, linewidth=0, levels=20, fill=:true, color=:matter, clims=(0, 1), dpi=200)
+        contourf(xC ./ L, yC ./ L, integrator.u[1:Nx, 1:Ny], title=title, linewidth=0, levels=20, fill=:true, color=:matter, clims=(-0.1, 1), dpi=200)
     end every every(nt)
 
     anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), Nx, CFL)
@@ -130,7 +133,7 @@ end
 
 Nx = Ny = 32
 L = 1000km
-T = 10day
+T = 1day
 CFL = 0.1
 create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
