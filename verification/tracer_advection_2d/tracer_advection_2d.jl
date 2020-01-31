@@ -21,10 +21,10 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
 
 @inline ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) =
     (advective_flux_x(i+1, j, u, ϕ, scheme) - advective_flux_x(i, j, u, ϕ, scheme)) / Δx
-@inline ∂y_advective_flux(i, j, Δx, v, ϕ, scheme) =
+@inline ∂y_advective_flux(i, j, Δy, v, ϕ, scheme) =
     (advective_flux_y(i, j+1, v, ϕ, scheme) - advective_flux_y(i, j, v, ϕ, scheme)) / Δy
 
-@inline div_advective_flux(i, j, Δx, Δy, u, v, scheme) =
+@inline div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme) =
     ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) + ∂y_advective_flux(i, j, Δy, v, ϕ, scheme)
 
 #####
@@ -42,7 +42,7 @@ function advection!(∂ϕ∂t, ϕ, p, t)
     ϕ[:, Ny+1:Ny+Hy] .= ϕ[:, Ny:Ny]
 
     for j in 1:Ny, i in 1:Nx
-        ∂ϕ∂t[i, j] = -div_advective_flux(i, j, Δx, Δy, u, v, scheme)
+        ∂ϕ∂t[i, j] = -div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme)
     end
 end
 
