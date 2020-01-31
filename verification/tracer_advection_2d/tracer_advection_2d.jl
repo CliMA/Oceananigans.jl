@@ -1,6 +1,8 @@
 using Printf
 using OffsetArrays
 using DifferentialEquations
+
+ENV["GKSwstype"] = "nul"
 using Plots
 
 include("wind_driven_gyres.jl")
@@ -50,8 +52,8 @@ end
 ##### Initial (= final) conditions
 #####
 
-@inline ϕ_Gaussian(x, y; A, σˣ, σʸ) = A * exp(-x^2/(2σˣ^2) -y^2/(2σʸ^2))
-@inline ϕ_Square(x, y; A, σˣ, σʸ)   = A * (-σˣ <= x <= σˣ) * (-σʸ <= y <= σʸ)
+@inline ϕ_Gaussian(x, y; L, A, σˣ, σʸ) = A * exp(-(x-L/2)^2/(2σˣ^2) -(y-L/2)^2/(2σʸ^2))
+@inline ϕ_Square(x, y; L, A, σˣ, σʸ)   = A * (-σˣ <= x-L/2 <= σˣ) * (-σʸ <= y-L/2 <= σʸ)
 
 ic_name(::typeof(ϕ_Gaussian)) = "Gaussian"
 ic_name(::typeof(ϕ_Square))   = "Square"
@@ -60,8 +62,9 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 ##### Experiment functions
 #####
 
-function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme; u, v,
-                       L=4000km, τ₀=1, β=1e-11, r=0.04*β*L, A=1, σˣ=10km, σʸ=10km)
+function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
+                       u, v, L=4000km, τ₀=1, β=1e-11, r=0.04*β*L,
+                       A=1, σˣ=10km, σʸ=10km)
     Δx = L/Nx
     Δy = L/Ny
     Hx = Hy = 3
@@ -79,29 +82,55 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme; u, v,
     for j in 1:Ny, i in 1:Nx
         u[i, j] = u_Stommel(xF[i], yF[j], L=L, τ₀=τ₀, β=β, r=r)
         v[i, j] = v_Stommel(xF[i], yF[j], L=L, τ₀=τ₀, β=β, r=r)
-        ϕ[i, j] = ϕₐ(xC[i], yC[j], A=A, σˣ=σˣ, σʸ=σʸ)
+        ϕ[i, j] = ϕₐ(xC[i], yC[j], L=L, A=A, σˣ=σˣ, σʸ=σʸ)
     end
 
-    @show Δx, Δy
-    @show maximum(abs, u)
-    @show maximum(abs, v)
     u = u ./ maximum(abs, u)
     v = v ./ maximum(abs, v)
     Δt = CFL * min(Δx, Δy) / max(maximum(abs, u), maximum(abs, v))
-    @show Δt
+    
+    @info "Nx=$Nx, Ny=$Ny, Δx=$Δx, Δy=$Δy, Δt=$Δt"
 
     tspan = (0.0, T)
     params = (Nx=Nx, Ny=Ny, Hx=Hx, Hy=Hy, Δx=Δx, Δy=Δy, u=u, v=v, scheme=scheme)
     return xC, yC, Δt, ODEProblem(advection!, ϕ, tspan, params)
 end
 
+function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
+                          u, v, L=1000km, τ₀=1, β=1e-11, r=0.04*β*L,
+                          A=1, σˣ=50km, σʸ=50km)
+
+    xC, yC, Δt, prob = setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme,
+                                    u=u, v=v, L=L, τ₀=τ₀, β=β, r=r, A=A, σˣ=σˣ, σʸ=σʸ)
+
+    integrator = init(prob, time_stepper, adaptive=false, dt=Δt)
+    nt = ceil(Int, T/Δt)
+
+    function every(n)
+          0 < n <= 128 && return 1
+        128 < n <= 256 && return 2
+        256 < n <= 512 && return 4
+        512 < n        && return 8
+    end
+
+    anim = @animate for iter in 1:nt
+        iter % 1 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
+
+        step!(integrator)
+
+        title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), Nx, CFL)
+        plot(xC, yC, integrator.u[1:Nx, 1:Ny], title=title, linewidth=0, levels=20, fill=:true, color=:matter, clims=(0, 1), dpi=200)
+    end every every(nt)
+
+    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), Nx, CFL)
+    mp4(anim, anim_filename, fps = 15)
+
+    return nothing
+end
+
 Nx = Ny = 32
 L = 1000km
-T = 1day
+T = 10day
 CFL = 0.1
-x, y, Δt, prob = setup_problem(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(),
-                              u=u_Stommel, v=v_Stommel)
-
-integrator = init(prob, Tsit5(), adaptive=false, dt=Δt)
-step!(integrator)
+create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
