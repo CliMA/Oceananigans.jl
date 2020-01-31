@@ -11,6 +11,7 @@ include("wind_driven_gyres.jl")
 const km = 1000
 const hour = 3600
 const day  = 24hour
+const month = 30day
 
 #####
 ##### Advection or flux-reconstruction schemes
@@ -65,8 +66,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 #####
 
 function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
-                       u, v, L=4000km, τ₀=1, β=1e-11, r=0.04*β*L,
-                       A=1, σˣ=10km, σʸ=10km)
+                       u, v, L, τ₀, β, r, A, σˣ, σʸ)
     Δx = L/Nx
     Δy = L/Ny
     Hx = Hy = 3
@@ -138,9 +138,9 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
     return nothing
 end
 
-Nx = Ny = 32
+Nx = Ny = 64
 L = 1000km
-T = 365day
+T = 7month
 CFL = 0.3
 create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
