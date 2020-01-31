@@ -124,7 +124,7 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
         step!(integrator)
 
         title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), Nx, CFL)
-        contourf(xC ./ L, yC ./ L, permutedims(integrator.u[1:Nx, 1:Ny]),
+        contourf(xC ./ L, yC ./ L, reverse(transpose(integrator.u[1:Nx, 1:Ny]), dims=1),
                  title=title, xlabel="x/L", ylabel="y/L",
                  xlims=(0, 1), ylims=(0, 1),
                  levels=20, fill=:true, color=:balance, clims=(-1.0, 1.0), legend=false,
@@ -140,7 +140,7 @@ end
 
 Nx = Ny = 32
 L = 1000km
-T = 50day
+T = 365day
 CFL = 0.3
 create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
