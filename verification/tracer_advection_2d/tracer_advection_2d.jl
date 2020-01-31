@@ -37,8 +37,11 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
 #####
 
 function advection!(∂ϕ∂t, ϕ, p, t)
-    Nx, Ny, Δx, Hx, Hy, Δy = p.Nx, p.Ny, p.Δx, p.Hx, p.Hy, p.Δy
+    Nx, Ny, Δx, Hx, Hy, Δy, T = p.Nx, p.Ny, p.Δx, p.Hx, p.Hy, p.Δy, p.T
     u, v, scheme = p.u, p.v, p.scheme
+
+    # Forward advection for t < T/2, then backward advection for t >= T/2.
+    sign = t < T/2 ? -1 : 1
 
     # Fill ghost points to enforce no-flux boundary conditions.
     ϕ[-Hx+1:0,    :] .= ϕ[1:1,   :]
@@ -47,7 +50,7 @@ function advection!(∂ϕ∂t, ϕ, p, t)
     ϕ[:, Ny+1:Ny+Hy] .= ϕ[:, Ny:Ny]
 
     for j in 1:Ny, i in 1:Nx
-        ∂ϕ∂t[i, j] = -div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme)
+        ∂ϕ∂t[i, j] = sign * div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme)
     end
 end
 
@@ -97,7 +100,7 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
                    Nx, Ny, L/km, Δx/km, Δy/km, Δt/hour)
 
     tspan = (0.0, T)
-    params = (Nx=Nx, Ny=Ny, Hx=Hx, Hy=Hy, Δx=Δx, Δy=Δy, u=u, v=v, scheme=scheme)
+    params = (Nx=Nx, Ny=Ny, Hx=Hx, Hy=Hy, Δx=Δx, Δy=Δy, T=T, u=u, v=v, scheme=scheme)
     return xC, yC, Δt, ODEProblem(advection!, ϕ, tspan, params)
 end
 
@@ -108,9 +111,9 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
     xC, yC, Δt, prob = setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme,
                                     u=u, v=v, L=L, τ₀=τ₀, β=β, r=r, A=A, σˣ=σˣ, σʸ=σʸ)
 
-    integrator = init(prob, time_stepper, adaptive=false, dt=Δt)
     nt = ceil(Int, T/Δt)
-
+    integrator  = init(prob, time_stepper, adaptive=false, dt=Δt)
+    
     function every(n)
           0 < n <= 128 && return 1
         128 < n <= 256 && return 2
@@ -140,7 +143,7 @@ end
 
 Nx = Ny = 64
 L = 1000km
-T = 7month
+T = 14month
 CFL = 0.3
 create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
