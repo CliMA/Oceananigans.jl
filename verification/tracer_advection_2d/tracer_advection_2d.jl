@@ -9,7 +9,8 @@ pyplot()
 include("wind_driven_gyres.jl")
 
 const km = 1000
-const day = 3600*24
+const hour = 3600
+const day  = 24hour
 
 #####
 ##### Advection or flux-reconstruction schemes
@@ -92,7 +93,8 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
 
     Δt = CFL * min(Δx, Δy) / max(maximum(abs, u), maximum(abs, v))
     
-    @info "Nx=$Nx, Ny=$Ny, Δx=$Δx, Δy=$Δy, Δt=$Δt"
+    @info @sprintf("Nx=%d, Ny=%d, L=%.3f km, Δx=%.3f km, Δy=%.3f km, Δt=%.3f hours",
+                   Nx, Ny, L/km, Δx/km, Δy/km, Δt/hour)
 
     tspan = (0.0, T)
     params = (Nx=Nx, Ny=Ny, Hx=Hx, Hy=Hy, Δx=Δx, Δy=Δy, u=u, v=v, scheme=scheme)
@@ -116,13 +118,18 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
         512 < n        && return 8
     end
 
-    anim = @animate for iter in 1:nt
+    anim = @animate for iter in 0:nt-1
         iter % 100 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
 
         step!(integrator)
 
         title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), Nx, CFL)
-        contourf(xC ./ L, yC ./ L, integrator.u[1:Nx, 1:Ny], title=title, linewidth=0, levels=20, fill=:true, color=:matter, clims=(-0.1, 1), dpi=200)
+        contourf(xC ./ L, yC ./ L, permutedims(integrator.u[1:Nx, 1:Ny]),
+                 title=title, xlabel="x/L", ylabel="y/L",
+                 xlims=(0, 1), ylims=(0, 1),
+                 levels=20, fill=:true, color=:balance, clims=(-1.0, 1.0), legend=false,
+                 aspect_ratio=:equal, dpi=200)  
+
     end every every(nt)
 
     anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), Nx, CFL)
@@ -133,7 +140,7 @@ end
 
 Nx = Ny = 32
 L = 1000km
-T = 1day
-CFL = 0.1
+T = 50day
+CFL = 0.3
 create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
