@@ -1,10 +1,10 @@
 """
-WENO interpolation schemes following Shu (§2, 2009). Combining k interpolants
-each of order k will produce a scheme of order 2k+1.
+WENO interpolation schemes following the procedure outlined in §2 of Shu (2009).
+Combining k interpolants each of order k will produce a scheme of order 2k-1.
 
 Shu (2009) "High Order Weighted Essentially Nonoscillatory Schemes for
     Convection Dominated Problems", SIAM Review 51(1), pp. 82–126.
-    DOI: https://doi.org/10.1137/070679065.
+    DOI: https://doi.org/10.1137/070679065
 """
 
 const Δx = 1
