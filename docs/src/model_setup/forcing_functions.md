@@ -4,10 +4,10 @@ tracer evolution equations.
 
 Forcing functions will be called with the signature
 ```
-f(i, j, k, grid, t, U, C, params)
+f(i, j, k, grid, t, U, C, p)
 ```
 where `i, j, k` is the grid index, `grid` is `model.grid`, `t` is the `model.clock.time`, `U` is the named tuple
-`model.velocities`, `C` is the named tuple `C.tracers`, and `params` is the user-defined `model.parameters`.
+`model.velocities`, `C` is the named tuple `C.tracers`, and `p` is the user-defined `model.parameters`.
 
 Once you have defined all the forcing functions needed by the model, `ModelForcing` can be used to create a named tuple
 of forcing functions that can be passed to the `Model` constructor.
@@ -25,11 +25,11 @@ const τ⁻¹ = 1 / 60  # Damping/relaxation time scale [s⁻¹].
 const Δμ = 0.01L    # Sponge layer width [m] set to 1% of the domain height.
 @inline μ(z, Lz) = τ⁻¹ * exp(-(z+Lz) / Δμ)
 
-@inline Fu(grid, U, Φ, i, j, k) = @inbounds -μ(grid.zC[k], grid.Lz) * U.u[i, j, k]
-@inline Fv(grid, U, Φ, i, j, k) = @inbounds -μ(grid.zC[k], grid.Lz) * U.v[i, j, k]
-@inline Fw(grid, U, Φ, i, j, k) = @inbounds -μ(grid.zF[k], grid.Lz) * U.w[i, j, k]
+@inline Fu(i, j, k, grid, t, U, C, p) = @inbounds -μ(grid.zC[k], grid.Lz) * U.u[i, j, k]
+@inline Fv(i, j, k, grid, t, U, C, p) = @inbounds -μ(grid.zC[k], grid.Lz) * U.v[i, j, k]
+@inline Fw(i, j, k, grid, t, U, C, p) = @inbounds -μ(grid.zF[k], grid.Lz) * U.w[i, j, k]
 
-forcing = ModelForcing(Fu=Fu, Fv=Fv, Fw=Fw)
+forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 model = Model(grid=grid, forcing=forcing)
 nothing # hide
 ```
