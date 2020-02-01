@@ -7,7 +7,7 @@ using Oceananigans.Forcing: zeroforcing
 #### Definition of a compressible model
 ####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, F, P, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -17,6 +17,8 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, F, P, SF, RHS, IV,
                   tracers :: TS
                  buoyancy :: B
                  coriolis :: C
+                  closure :: TC
+            diffusivities :: DF
                   forcing :: F
                parameters :: P
        reference_pressure :: FT
@@ -36,11 +38,13 @@ function CompressibleModel(;
                float_type = Float64,
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
-              dry_density = CellField(architecture, grid),
+                  density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
                   tracers = (:Θᵐ, :Qv, :Ql, :Qi),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
+                  closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
+            diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
                   forcing = ModelForcing(),
                parameters = nothing,
        reference_pressure = 100000,
@@ -56,10 +60,12 @@ function CompressibleModel(;
     tracers = TracerFields(architecture, grid, tracers)
 
     forcing = ModelForcing(tracernames(tracers), forcing)
+    closure = with_tracers(tracernames(tracers), closure)
 
-    return CompressibleModel(architecture, grid, clock, momenta, dry_density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, forcing, parameters, reference_pressure,
-                             slow_forcings, right_hand_sides, intermediate_vars, acoustic_time_stepper)
+    return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
+                             tracers, buoyancy, coriolis, closure, diffusivities, forcing, parameters,
+                             reference_pressure, slow_forcings, right_hand_sides, intermediate_vars,
+                             acoustic_time_stepper)
 end
 
 ####
