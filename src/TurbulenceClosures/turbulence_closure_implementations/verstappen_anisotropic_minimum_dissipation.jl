@@ -12,7 +12,7 @@ struct VerstappenAnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractAnisotr
      κ :: K
 
     function VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
-        return new{FT, typeof(Cν), typeof(Cκ), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
+        return new{FT, typeof(Cκ), typeof(Cν), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
