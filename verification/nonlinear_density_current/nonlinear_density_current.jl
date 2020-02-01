@@ -67,9 +67,15 @@ const Δμ = 0.1Lz  # Sponge layer width [m] set to 10% of the domain height.
 @inline Fw(i, j, k, grid, t, Ũ, C̃, p) = @inbounds (t <= 500) * -μ(grid.zF[k], grid.Lz) * Ũ.ρw[i, j, k]
 forcing = ModelForcing(w=Fw)
 
-model = CompressibleModel(grid=grid, buoyancy=gas, reference_pressure=pₛ,
-                          prognostic_temperature=ModifiedPotentialTemperature(),
-                          tracers=(:Θᵐ,), forcing=forcing)
+model = CompressibleModel(
+                      grid = grid,
+                  buoyancy = gas,
+        reference_pressure = pₛ,
+    prognostic_temperature = ModifiedPotentialTemperature(),
+                   tracers = (:Θᵐ,),
+                   closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5),
+                   forcing = forcing
+)
 
 set!(model.density, ρ₀)
 set!(model.tracers.Θᵐ, Θ₀)
