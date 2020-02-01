@@ -2,6 +2,9 @@ module JULES
 
 using Oceananigans
 
+using Oceananigans.TurbulenceClosures:
+    ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
+
 export
     Temperature, ModifiedPotentialTemperature, Entropy,
     IdealGas,

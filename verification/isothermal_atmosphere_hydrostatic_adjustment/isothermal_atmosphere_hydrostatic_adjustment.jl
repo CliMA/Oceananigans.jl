@@ -44,9 +44,14 @@ forcing = ModelForcing(w=Fw)
 #### Create model
 ####
 
-model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
-                          prognostic_temperature=ModifiedPotentialTemperature(),
-                          tracers=(:Θᵐ,), forcing=forcing)
+model = CompressibleModel(
+                      grid = grid,
+                  buoyancy = buoyancy,
+        reference_pressure = pₛ,
+    prognostic_temperature = ModifiedPotentialTemperature(),
+                   tracers = (:Θᵐ,),
+                   forcing = forcing
+)
 
 ####
 #### Set initial conditions
