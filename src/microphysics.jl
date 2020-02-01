@@ -1,3 +1,5 @@
+import JULES.Operators: ρᵐ
+
 abstract type AbstractMicrophysics end
 struct VaporPlaceholder <: AbstractMicrophysics end
 struct VaporLiquidIcePlaceholder <: AbstractMicrophysics end
@@ -17,3 +19,13 @@ function validate_microphysics(microphysics, tracers)
     end
     return true
 end
+
+#####
+##### Moist density calculation
+#####
+
+@inline ρᵐ(i, j, k, grid, ::VaporPlaceholder, ρᵈ, C̃) =
+    @inbounds ρᵈ[i, j, k] + C̃.Qv[i, j, k]
+
+@inline ρᵐ(i, j, k, grid, ::VaporLiquidIcePlaceholder, ρᵈ, C̃) =
+    @inbounds ρᵈ[i, j, k] + C̃.Qv[i, j, k] + C̃.Ql[i, j, k] + C̃.Qi[i, j, k]

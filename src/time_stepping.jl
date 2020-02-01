@@ -35,10 +35,13 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     arch = model.architecture
     grid = model.grid
     time = model.clock.time
+    coriolis = model.coriolis
+    buoyancy = model.buoyancy
+    closure = model.closure
+    prog_temp = model.prognostic_temperature
+    microphysics = model.microphysics
     forcing = model.forcing
     params = model.parameters
-    coriolis = model.coriolis
-    closure = model.closure
 
     Ũ  = model.momenta
     ρᵈ = model.density
@@ -76,14 +79,12 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
             @debug "  Computing right hand sides..."
             if rk3_iter == 1
-                compute_rhs_args = (R, grid, ρᵈ, Ũ, model.prognostic_temperature, model.buoyancy, pₛ, C̃, F)
-
+                compute_rhs_args = (R, grid, prog_temp, buoyancy, pₛ, microphysics, ρᵈ, Ũ, C̃, F)
                 fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
-                compute_rhs_args = (R, grid, IV.ρ, IV_Ũ, model.prognostic_temperature, model.buoyancy, pₛ, IV_C̃, F)
-
+                compute_rhs_args = (R, grid, prog_temp, buoyancy, pₛ, microphysics, IV.ρ, IV_Ũ, IV_C̃, F)
                 fill_halo_regions!(IV.ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(IV_Ũ.ρw.data, hpbcs_np, arch, grid)

@@ -1,13 +1,15 @@
 using Oceananigans.Operators
-
 using Oceananigans: AbstractGrid
 
 #####
 ##### Moist density
 #####
 
-@inline ρᵐ(i, j, k, grid, ρᵈ, C) = @inbounds ρᵈ[i, j, k] # TODO: * (1 + ...)
-@inline ρᵈ_over_ρᵐ(i, j, k, grid, ρᵈ, C) = @inbounds ρᵈ[i, j, k] / ρᵐ(i, j, k, grid, ρᵈ, C)
+# ρᵈ = ρᵐ with no moist species (no microphysics)
+# Moist density calculations for other schemes in `microphysics.jl`
+@inline ρᵐ(i, j, k, grid, ::Nothing, ρᵈ, C̃) = @inbounds ρᵈ[i, j, k]
+@inline ρᵈ_over_ρᵐ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, ρᵈ, C̃) where FT = FT(1)
+@inline ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) = @inbounds ρᵈ[i, j, k] / ρᵐ(i, j, k, grid, mp, ρᵈ, C)
 
 @inline U_over_ρ(i, j, k, grid, U, ρᵈ) = @inbounds U[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, ρᵈ)
 @inline V_over_ρ(i, j, k, grid, V, ρᵈ) = @inbounds V[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, ρᵈ)

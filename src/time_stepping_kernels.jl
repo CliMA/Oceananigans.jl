@@ -23,12 +23,12 @@ end
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_right_hand_sides!(R, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F)
+function compute_right_hand_sides!(R, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C̃, F)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.ρu[i, j, k] = RU(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρu)
-            R.ρv[i, j, k] = RV(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρv)
-            R.ρw[i, j, k] = RW(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C̃, F.ρw)
+            R.ρu[i, j, k] = RU(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C̃, F.ρu)
+            R.ρv[i, j, k] = RV(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C̃, F.ρv)
+            R.ρw[i, j, k] = RW(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C̃, F.ρw)
 
             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
         end
