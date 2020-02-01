@@ -3,18 +3,35 @@
 ####
 
 const grav = 9.80665
-const μ = 0.5
-const κ = 0.5
 
 ####
 #### Element-wise forcing and right-hand-side calculations
 ####
 
-@inline FU(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -x_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇u(i, j, k, grid, μ, ρᵈ, Ũ.ρu)
-@inline FV(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -y_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇v(i, j, k, grid, μ, ρᵈ, Ũ.ρv)
-@inline FW(i, j, k, grid, coriolis, μ, ρᵈ, Ũ) = -z_f_cross_U(i, j, k, grid, coriolis, Ũ) + div_μ∇w(i, j, k, grid, μ, ρᵈ, Ũ.ρw)
+@inline function FU(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+    @inbounds begin
+        return (- x_f_cross_U(i, j, k, grid, coriolis, Ũ)
+                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+    end
+end
 
-@inline FC(i, j, k, grid, κ, ρᵈ, C) = div_κ∇c(i, j, k, grid, κ, ρᵈ, C)
+
+@inline function FV(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+    @inbounds begin
+        return (- y_f_cross_U(i, j, k, grid, coriolis, Ũ)
+                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+    end
+end
+
+@inline function FW(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+    @inbounds begin
+        return (- z_f_cross_U(i, j, k, grid, coriolis, Ũ)
+                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+    end
+end
+
+@inline FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃) =
+    @inbounds ρᵈ[i, j, k] * ∇_κ_∇c(i, j, k, grid, closure, ρᵈ, C, Val(tracer_index), K̃)
 
 @inline function RU(i, j, k, grid, ρᵈ, Ũ, pt, b, pₛ, C, FU)
     @inbounds begin
@@ -41,5 +58,8 @@ end
     end
 end
 
-@inline Rρ(i, j, k, grid, Ũ) = -divᶜᶜᶜ(i, j, k, grid, Ũ.ρu, Ũ.ρv, Ũ.ρw)
-@inline RC(i, j, k, grid, ρᵈ, Ũ, C, FC) = @inbounds -div_flux(i, j, k, grid, ρᵈ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+@inline Rρ(i, j, k, grid, Ũ) =
+    -divᶜᶜᶜ(i, j, k, grid, Ũ.ρu, Ũ.ρv, Ũ.ρw)
+
+@inline RC(i, j, k, grid, ρᵈ, Ũ, C, FC) =
+    @inbounds -div_flux(i, j, k, grid, ρᵈ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
