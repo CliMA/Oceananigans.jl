@@ -1,10 +1,4 @@
 ####
-#### Dirty hacks!
-####
-
-const grav = 9.80665
-
-####
 #### Element-wise forcing and right-hand-side calculations
 ####
 
@@ -33,7 +27,7 @@ end
 @inline FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃) =
     @inbounds ρᵈ[i, j, k] * ∇_κ_∇c(i, j, k, grid, closure, ρᵈ, C, Val(tracer_index), K̃)
 
-@inline function RU(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C, FU)
+@inline function RU(i, j, k, grid, pt, b, mp, pₛ, ρᵈ, Ũ, C, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
                 - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂x(i, j, k, grid, pt, b, ρᵈ, C)
@@ -41,7 +35,7 @@ end
     end
 end
 
-@inline function RV(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C, FV)
+@inline function RV(i, j, k, grid, pt, b, mp, pₛ, ρᵈ, Ũ, C, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
                 - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂y(i, j, k, grid, pt, b, ρᵈ, C)
@@ -49,12 +43,12 @@ end
     end
 end
 
-@inline function RW(i, j, k, grid, pt, b, pₛ, mp, ρᵈ, Ũ, C, FW)
+@inline function RW(i, j, k, grid, pt, b, mp, pₛ, gravity, ρᵈ, Ũ, C, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
                 - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * (
                       ∂p∂z(i, j, k, grid, pt, b, ρᵈ, C)
-                    + buoyancy_perturbation(i, j, k, grid, grav, mp, ρᵈ, C))
+                    + buoyancy_perturbation(i, j, k, grid, gravity, mp, ρᵈ, C))
                 + FW[i, j, k])
     end
 end

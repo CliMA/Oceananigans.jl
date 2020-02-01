@@ -24,6 +24,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, MP, F, P, 
                   forcing :: F
                parameters :: P
        reference_pressure :: FT
+                  gravity :: FT
             slow_forcings :: SF
          right_hand_sides :: RHS
         intermediate_vars :: IV
@@ -33,6 +34,9 @@ end
 #####
 ##### Constructor for compressible models
 #####
+
+const pₛ_Earth = 100000
+const  g_Earth = 9.80665
 
 function CompressibleModel(;
                      grid,
@@ -50,7 +54,8 @@ function CompressibleModel(;
              microphysics = nothing,
                   forcing = ModelForcing(),
                parameters = nothing,
-       reference_pressure = 100000,
+       reference_pressure = pₛ_Earth,
+                  gravity = g_Earth,
             slow_forcings = ForcingFields(architecture, grid, tracernames(tracers)),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames(tracers)),
         intermediate_vars = RightHandSideFields(architecture, grid, tracernames(tracers)),
@@ -61,14 +66,15 @@ function CompressibleModel(;
     validate_microphysics(microphysics, tracers)
 
     reference_pressure = float_type(reference_pressure)
-    tracers = TracerFields(architecture, grid, tracers)
+               gravity = float_type(gravity)
 
+    tracers = TracerFields(architecture, grid, tracers)
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
 
     return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
                              tracers, buoyancy, coriolis, closure, diffusivities, microphysics,
-                             forcing, parameters, reference_pressure, slow_forcings,
+                             forcing, parameters, reference_pressure, gravity, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
@@ -93,9 +99,7 @@ function ForcingFields(arch, grid, tracernames)
     ρv = FaceFieldY(arch, grid)
     ρw = FaceFieldZ(arch, grid)
     momenta = (ρu=ρu, ρv=ρv, ρw=ρw)
-
     tracers = TracerFields(arch, grid, tracernames)
-
     return merge(momenta, tracers)
 end
 
@@ -105,8 +109,6 @@ function RightHandSideFields(arch, grid, tracernames)
     ρw = FaceFieldZ(arch, grid)
     ρ =  CellField(arch, grid)
     momenta_and_density = (ρu=ρu, ρv=ρv, ρw=ρw, ρ=ρ)
-
     tracers = TracerFields(arch, grid, tracernames)
-
     return merge(momenta_and_density, tracers)
 end
