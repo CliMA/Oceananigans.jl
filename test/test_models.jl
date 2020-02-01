@@ -1,5 +1,3 @@
-using Oceananigans, JULES
-
 @testset "Models" begin
     @info "Testing models..."
 
@@ -27,5 +25,37 @@ using Oceananigans, JULES
 
         @test_throws(ArgumentError,
             CompressibleModel(grid=grid, prognostic_temperature=pt, tracers=(:T,)))
+    end
+
+    @testset "VaporPlaceholder" begin
+        @info "  Testing model construction with vapor placeholder microphysics..."
+
+        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+        pt   = ModifiedPotentialTemperature()
+        mp   = VaporPlaceholder()
+
+        model = CompressibleModel(grid=grid, prognostic_temperature=pt,
+                                  microphysics=mp, tracers=(:Θᵐ, :Qv))
+        @test model isa CompressibleModel
+
+        @test_throws(ArgumentError,
+            CompressibleModel(grid=grid, prognostic_temperature=pt,
+                              microphysics=mp, tracers=(:Θᵐ, :qv)))
+    end
+
+    @testset "VaporLiquidIcePlaceholder" begin
+        @info "  Testing model construction with vapor+liquid+ice placeholder microphysics..."
+
+        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+        pt   = ModifiedPotentialTemperature()
+        mp   = VaporLiquidIcePlaceholder()
+
+        model = CompressibleModel(grid=grid, prognostic_temperature=pt,
+                                  microphysics=mp, tracers=(:Θᵐ, :Qv, :Ql, :Qi))
+        @test model isa CompressibleModel
+
+        @test_throws(ArgumentError,
+            CompressibleModel(grid=grid, prognostic_temperature=pt,
+                              microphysics=mp, tracers=(:Θᵐ, :Qv, :Ql)))
     end
 end

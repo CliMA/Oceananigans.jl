@@ -1,5 +1,6 @@
 using Oceananigans
 
+using Oceananigans.Fields: tracernames
 using Oceananigans.Models: AbstractModel, Clock
 using Oceananigans.Forcing: zeroforcing
 
@@ -81,11 +82,6 @@ function MomentumFields(arch, grid)
     ρw = FaceFieldZ(arch, grid)
     return (ρu=ρu, ρv=ρv, ρw=ρw)
 end
-
-tracernames(::Nothing) = ()
-tracernames(name::Symbol) = tuple(name)
-tracernames(names::NTuple{N, Symbol}) where N = names
-tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)

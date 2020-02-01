@@ -5,7 +5,7 @@ struct ModifiedPotentialTemperature <: AbstractPrognosticTemperature end
 struct Entropy <: AbstractPrognosticTemperature end
 
 missing_tracer_error(name, pt) =
-    "Must specify a $name tracer to use $pt as a prognostic temperature variable."
+    "Must specify a $name tracer to use $(typeof(pt)) as a prognostic temperature variable."
 
 required_tracer(::Temperature) = :T
 required_tracer(::ModifiedPotentialTemperature) = :Θᵐ
