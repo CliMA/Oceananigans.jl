@@ -10,7 +10,7 @@ export
     IdealGas,
     CompressibleModel,
     time_step!,
-    cfl
+    cfl, acoustic_cfl
 
 include("Operators/Operators.jl")
 
