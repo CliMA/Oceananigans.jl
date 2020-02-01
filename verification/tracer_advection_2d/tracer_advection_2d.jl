@@ -79,7 +79,7 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
 
     xF = range(0, L, length=Nx+1)
     yF = range(0, L, length=Ny+1)
-    
+
     u = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
     v = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
     ϕ = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
@@ -95,7 +95,7 @@ function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
     v = v ./ U_max
 
     Δt = CFL * min(Δx, Δy) / max(maximum(abs, u), maximum(abs, v))
-    
+
     @info @sprintf("Nx=%d, Ny=%d, L=%.3f km, Δx=%.3f km, Δy=%.3f km, Δt=%.3f hours",
                    Nx, Ny, L/km, Δx/km, Δy/km, Δt/hour)
 
@@ -113,7 +113,7 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
 
     nt = ceil(Int, T/Δt)
     integrator  = init(prob, time_stepper, adaptive=false, dt=Δt)
-    
+
     function every(n)
           0 < n <= 128 && return 1
         128 < n <= 256 && return 2
@@ -131,12 +131,12 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
                  title=title, xlabel="x/L", ylabel="y/L",
                  xlims=(0, 1), ylims=(0, 1),
                  levels=20, fill=:true, color=:balance, clims=(-1.0, 1.0), legend=false,
-                 aspect_ratio=:equal, dpi=200)  
+                 aspect_ratio=:equal, dpi=300)
 
     end every every(nt)
 
     anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), Nx, CFL)
-    mp4(anim, anim_filename, fps = 15)
+    mp4(anim, anim_filename, fps = 60)
 
     return nothing
 end

@@ -45,4 +45,3 @@ print_interpolants(4)
 
 println("\nWENO-9:")
 print_interpolants(6)
-
