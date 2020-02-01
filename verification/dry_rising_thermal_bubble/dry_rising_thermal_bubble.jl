@@ -79,9 +79,12 @@ set!(model.tracers.Θᵐ, Θ₀)
 ##### Run a dry adiabatic atmosphere to hydrostatic balance
 #####
 
+Δt = 0.2
 while model.clock.time < 500
-    @printf("t = %.2f s\n", model.clock.time)
-    time_step!(model, Δt=0.2, Nt=100)
+    CFL = cfl(model, Δt)
+    aCFL = acoustic_cfl(model, Δt)
+    @printf("t = %.2f s, CFL = %.2e, aCFL = %.2e\n", model.clock.time, CFL, aCFL)
+    time_step!(model, Δt=Δt, Nt=100)
 end
 
 #####
@@ -114,10 +117,14 @@ savefig(Θ_plot, "theta_initial_condition.png")
 ##### Watch the thermal bubble rise!
 #####
 
+Δt=0.1
 for n in 1:200
-    time_step!(model, Δt=0.1, Nt=50)
+    time_step!(model, Δt=Δt, Nt=50)
 
-    @printf("t = %.2f s\n", model.clock.time)
+    CFL = cfl(model, Δt)
+    aCFL = acoustic_cfl(model, Δt)
+    @printf("t = %.2f s, CFL = %.2e, aCFL = %.2e\n", model.clock.time, CFL, aCFL)
+
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
