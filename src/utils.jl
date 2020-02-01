@@ -1,4 +1,4 @@
-function cfl(model)
+function cfl(model, Δt)
     grid = model.grid
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
@@ -15,5 +15,5 @@ function cfl(model)
         w_max = max(w_max, abs(ρw[i, j, k] / ρ[i, j, k]))
     end
 
-    return min(Δx/u_max, Δy/v_max, Δz/w_max)
+    return Δt / min(Δx/u_max, Δy/v_max, Δz/w_max)
 end

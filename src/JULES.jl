@@ -9,7 +9,8 @@ export
     Temperature, ModifiedPotentialTemperature, Entropy,
     IdealGas,
     CompressibleModel,
-    time_step!
+    time_step!,
+    cfl
 
 include("Operators/Operators.jl")
 
