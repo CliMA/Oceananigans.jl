@@ -1,13 +1,14 @@
 using Oceananigans
 
+using Oceananigans.Fields: tracernames
 using Oceananigans.Models: AbstractModel, Clock
 using Oceananigans.Forcing: zeroforcing
 
-####
-#### Definition of a compressible model
-####
+#####
+##### Definition of a compressible model
+#####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, MP, F, P, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -19,6 +20,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, 
                  coriolis :: C
                   closure :: TC
             diffusivities :: DF
+             microphysics :: MP
                   forcing :: F
                parameters :: P
        reference_pressure :: FT
@@ -28,9 +30,9 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, 
     acoustic_time_stepper :: ATS
 end
 
-####
-#### Constructor for compressible models
-####
+#####
+##### Constructor for compressible models
+#####
 
 function CompressibleModel(;
                      grid,
@@ -40,11 +42,12 @@ function CompressibleModel(;
                   momenta = MomentumFields(architecture, grid),
                   density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
-                  tracers = (:Θᵐ, :Qv, :Ql, :Qi),
+                  tracers = (:Θᵐ,),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
+             microphysics = nothing,
                   forcing = ModelForcing(),
                parameters = nothing,
        reference_pressure = 100000,
@@ -55,6 +58,7 @@ function CompressibleModel(;
    )
 
     validate_prognostic_temperature(prognostic_temperature, tracers)
+    validate_microphysics(microphysics, tracers)
 
     reference_pressure = float_type(reference_pressure)
     tracers = TracerFields(architecture, grid, tracers)
@@ -63,14 +67,14 @@ function CompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, closure, diffusivities, forcing, parameters,
-                             reference_pressure, slow_forcings, right_hand_sides, intermediate_vars,
-                             acoustic_time_stepper)
+                             tracers, buoyancy, coriolis, closure, diffusivities, microphysics,
+                             forcing, parameters, reference_pressure, slow_forcings,
+                             right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
-####
-#### Utilities for constructing compressible models
-####
+#####
+##### Utilities for constructing compressible models
+#####
 
 function MomentumFields(arch, grid)
     ρu = FaceFieldX(arch, grid)
@@ -78,11 +82,6 @@ function MomentumFields(arch, grid)
     ρw = FaceFieldZ(arch, grid)
     return (ρu=ρu, ρv=ρv, ρw=ρw)
 end
-
-tracernames(::Nothing) = ()
-tracernames(name::Symbol) = tuple(name)
-tracernames(names::NTuple{N, Symbol}) where N = names
-tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)

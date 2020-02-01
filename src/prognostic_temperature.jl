@@ -4,24 +4,18 @@ struct Temperature <: AbstractPrognosticTemperature end
 struct ModifiedPotentialTemperature <: AbstractPrognosticTemperature end
 struct Entropy <: AbstractPrognosticTemperature end
 
-function validate_prognostic_temperature(::Temperature, tracers)
-    if :T ∉ tracers
-        throw(ArgumentError("Must specify a T tracer to use Temperature as a prognostic variable."))
-    end
-    return nothing
-end
+missing_tracer_error(name, pt) =
+    "Must specify a $name tracer to use $(typeof(pt)) as a prognostic temperature variable."
 
-function validate_prognostic_temperature(::ModifiedPotentialTemperature, tracers)
-    if :Θᵐ ∉ tracers
-        throw(ArgumentError("Must specify a Θᵐ tracer to use ModifiedPotentialTemperature as a prognostic variable."))
-    end
-    return nothing
-end
+required_tracer(::Temperature) = :T
+required_tracer(::ModifiedPotentialTemperature) = :Θᵐ
+required_tracer(::Entropy) = :S
 
-function validate_prognostic_temperature(::Entropy, tracers)
-    if :S ∉ tracers
-        throw(ArgumentError("Must specify S as a tracer to use Entropy as a prognostic variable."))
+function validate_prognostic_temperature(prognostic_temperature, tracers)
+    c = required_tracer(prognostic_temperature)
+    if c ∉ tracers
+        throw(ArgumentError(missing_tracer_error(c, prognostic_temperature)))
+    else
+        return true
     end
-    return nothing
 end
-

@@ -17,6 +17,7 @@ include("Operators/Operators.jl")
 include("prognostic_temperature.jl")
 include("buoyancy.jl")
 include("pressure.jl")
+include("microphysics.jl")
 include("models.jl")
 
 include("right_hand_sides.jl")
