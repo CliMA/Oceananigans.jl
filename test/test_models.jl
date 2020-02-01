@@ -16,4 +16,3 @@ using Oceananigans, JULES
         @test isa(model, CompressibleModel)
     end
 end
-
