@@ -7,7 +7,7 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, MX, B, C, TC, DF, F, P, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -15,7 +15,6 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, MX, B, C, TC, DF, F, P, 
                   density :: D
    prognostic_temperature :: T
                   tracers :: TS
-            mixing_ratios :: MX
                  buoyancy :: B
                  coriolis :: C
                   closure :: TC
@@ -41,8 +40,7 @@ function CompressibleModel(;
                   momenta = MomentumFields(architecture, grid),
                   density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
-                  tracers = (:Θᵐ,),
-            mixing_ratios = (:Qv, :Ql, :Qi),
+                  tracers = (:Θᵐ, :Qv, :Ql, :Qi),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
@@ -60,15 +58,14 @@ function CompressibleModel(;
 
     reference_pressure = float_type(reference_pressure)
     tracers = TracerFields(architecture, grid, tracers)
-    mixing_ratios = MixingRatioFields(arch, grid, mixing_ratios)
 
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
 
     return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
-                             tracers, mixing_ratios, buoyancy, coriolis, closure, diffusivities,
-                             forcing, parameters, reference_pressure, slow_forcings, right_hand_sides,
-                             intermediate_vars, acoustic_time_stepper)
+                             tracers, buoyancy, coriolis, closure, diffusivities,
+                             forcing, parameters, reference_pressure, slow_forcings,
+                             right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 
 #####
@@ -90,11 +87,6 @@ tracernames(::NamedTuple{names}) where names = tracernames(names)
 function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
     return NamedTuple{tracernames}(tracerfields)
-end
-
-function MixingRatioFields(arch, grid, mixing_ratio_names)
-    mixing_ratio_fields = Tuple(CellField(arch, grid) for c in mixing_ratio_names)
-    return NamedTuple{mixing_ratio_names}(mixing_ratio_fields)
 end
 
 function ForcingFields(arch, grid, tracernames)
