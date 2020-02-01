@@ -7,7 +7,7 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, MP, F, P, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -19,6 +19,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, F, P, SF, 
                  coriolis :: C
                   closure :: TC
             diffusivities :: DF
+             microphysics :: MP
                   forcing :: F
                parameters :: P
        reference_pressure :: FT
@@ -40,11 +41,12 @@ function CompressibleModel(;
                   momenta = MomentumFields(architecture, grid),
                   density = CellField(architecture, grid),
    prognostic_temperature = ModifiedPotentialTemperature(),
-                  tracers = (:Θᵐ, :Qv, :Ql, :Qi),
+                  tracers = (:Θᵐ,),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
+             microphysics = nothing,
                   forcing = ModelForcing(),
                parameters = nothing,
        reference_pressure = 100000,
@@ -55,6 +57,7 @@ function CompressibleModel(;
    )
 
     validate_prognostic_temperature(prognostic_temperature, tracers)
+    validate_microphysics(microphysics, tracers)
 
     reference_pressure = float_type(reference_pressure)
     tracers = TracerFields(architecture, grid, tracers)
@@ -63,7 +66,7 @@ function CompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
-                             tracers, buoyancy, coriolis, closure, diffusivities,
+                             tracers, buoyancy, coriolis, closure, diffusivities, microphysics,
                              forcing, parameters, reference_pressure, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
