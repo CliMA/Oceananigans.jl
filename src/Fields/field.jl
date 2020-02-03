@@ -197,12 +197,12 @@ function OffsetArray(underlying_data, grid)
 end
 
 function Base.zeros(T, ::CPU, grid)
-    underlying_data = zeros(T, grid.Tx, grid.Ty, grid.Tz)
+    underlying_data = zeros(T, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
     return OffsetArray(underlying_data, grid)
 end
 
 function Base.zeros(T, ::GPU, grid)
-    underlying_data = CuArray{T}(undef, grid.Tx, grid.Ty, grid.Tz)
+    underlying_data = CuArray{T}(undef, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
     return OffsetArray(underlying_data, grid)
 end

@@ -17,10 +17,6 @@ struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:
     Hx::Int
     Hy::Int
     Hz::Int
-    # Total number of grid points (including halo regions).
-    Tx::Int
-    Ty::Int
-    Tz::Int
     # Domain size [m].
     Lx::FT
     Ly::FT
@@ -54,10 +50,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Nx, Ny, Nz = sz
     Hx, Hy, Hz = halo
 
-    Tx = Nx + 2*Hx
-    Ty = Ny + 2*Hy
-    Tz = Nz + 2*Hz
-
     Δx = convert(FT, Lx / Nx)
     Δy = convert(FT, Ly / Ny)
 
@@ -73,6 +65,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, typeof(xF), typeof(zF)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz, Lx, Ly, Lz,
+    VerticallyStretchedCartesianGrid{FT, typeof(xF), typeof(zF)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
                                                                  Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end

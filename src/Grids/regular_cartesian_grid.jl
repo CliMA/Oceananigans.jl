@@ -17,10 +17,6 @@ struct RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid
     Hx::Int
     Hy::Int
     Hz::Int
-    # Total number of grid points (including halo regions).
-    Tx::Int
-    Ty::Int
-    Tz::Int
     # Domain size [m].
     Lx::FT
     Ly::FT
@@ -92,10 +88,6 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     Nx, Ny, Nz = sz
     Hx, Hy, Hz = halo
 
-    Tx = Nx + 2Hx
-    Ty = Ny + 2Hy
-    Tz = Nz + 2Hz
-
     Δx = convert(FT, Lx / Nx)
     Δy = convert(FT, Ly / Ny)
     Δz = convert(FT, Lz / Nz)
@@ -112,8 +104,8 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     yF = range(y₁, y₂; length=Ny+1)
     zF = range(z₁, z₂; length=Nz+1)
 
-    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Tx, Ty, Tz,
-                                         Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
+                                         Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
