@@ -14,7 +14,7 @@ export
 
 include("Operators/Operators.jl")
 
-include("prognostic_temperature.jl")
+include("thermodynamic_variable.jl")
 include("buoyancy.jl")
 include("pressure.jl")
 include("microphysics.jl")

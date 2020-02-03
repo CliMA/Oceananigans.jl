@@ -79,7 +79,7 @@ display(plot(p_plot, ρ_plot, show=true))
 ####
 
 model = CompressibleModel(grid=grid, buoyancy=buoyancy, reference_pressure=pₛ,
-                          prognostic_temperature=ModifiedPotentialTemperature(),
+                          thermodynamic_variable=ModifiedPotentialTemperature(),
                           tracers=(:Θᵐ,))
 
 Θ∞_prof = ρ∞_prof .* θ₀_prof

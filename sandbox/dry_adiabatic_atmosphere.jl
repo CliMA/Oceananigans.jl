@@ -31,7 +31,7 @@ p(x, y, z) = pₛ * π(x, y, z)^(cₚ/Rᵈ)
 #####
 
 model = CompressibleModel(grid=grid, buoyancy=gas, reference_pressure=pₛ,
-                          prognostic_temperature=ModifiedPotentialTemperature(),
+                          thermodynamic_variable=ModifiedPotentialTemperature(),
                           tracers=(:Θᵐ,))
 
 #####

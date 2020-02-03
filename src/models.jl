@@ -14,7 +14,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, B, C, TC, DF, MP, F, P, 
                     clock :: Clock{FT}
                   momenta :: M
                   density :: D
-   prognostic_temperature :: T
+   thermodynamic_variable :: T
                   tracers :: TS
                  buoyancy :: B
                  coriolis :: C
@@ -45,7 +45,7 @@ function CompressibleModel(;
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
                   density = CellField(architecture, grid),
-   prognostic_temperature = ModifiedPotentialTemperature(),
+   thermodynamic_variable = ModifiedPotentialTemperature(),
                   tracers = (:Θᵐ,),
                  buoyancy = IdealGas(float_type),
                  coriolis = nothing,
@@ -62,7 +62,7 @@ function CompressibleModel(;
     acoustic_time_stepper = nothing
    )
 
-    validate_prognostic_temperature(prognostic_temperature, tracers)
+    validate_thermodynamic_variable(thermodynamic_variable, tracers)
     validate_microphysics(microphysics, tracers)
 
     reference_pressure = float_type(reference_pressure)
@@ -72,7 +72,7 @@ function CompressibleModel(;
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
 
-    return CompressibleModel(architecture, grid, clock, momenta, density, prognostic_temperature,
+    return CompressibleModel(architecture, grid, clock, momenta, density, thermodynamic_variable,
                              tracers, buoyancy, coriolis, closure, diffusivities, microphysics,
                              forcing, parameters, reference_pressure, gravity, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
