@@ -1,12 +1,12 @@
 module BoundaryConditions
 
 export
-    BCType, Periodic, Flux, Gradient, Value, NoPenetration, Dirchlet, Neumann,
+    BCType, Periodic, Flux, Gradient, Value, NoPenetration,
     BoundaryCondition, bctype, getbc, setbc!,
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
     SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
-    TendenciesBoundaryConditions, PressureBoundaryConditions, 
+    TendenciesBoundaryConditions, PressureBoundaryConditions,
     DiffusivityBoundaryConditions, DiffusivitiesBoundaryConditions,
     ModelBoundaryConditions, BoundaryFunction,
     apply_z_bcs!, apply_y_bcs!,
