@@ -71,7 +71,7 @@ model = CompressibleModel(
                       grid = grid,
                   buoyancy = gas,
         reference_pressure = pₛ,
-    prognostic_temperature = ModifiedPotentialTemperature(),
+    thermodynamic_variable = ModifiedPotentialTemperature(),
                    tracers = (:Θᵐ,),
                    closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5),
                    forcing = forcing

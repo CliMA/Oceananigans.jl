@@ -16,7 +16,7 @@ using Oceananigans, JULES
         @info "  Testing time stepping with S prognostic temperature..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), halo=(2, 2, 2))
-        model = CompressibleModel(grid=grid, prognostic_temperature=Entropy(), tracers=(:S,))
+        model = CompressibleModel(grid=grid, thermodynamic_variable=Entropy(), tracers=(:S,))
         time_step!(model; Δt=1)
         @test model isa CompressibleModel
     end

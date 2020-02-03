@@ -5,41 +5,41 @@
         @info "  Testing model construction with Θᵐ prognostic temperature..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        pt   = ModifiedPotentialTemperature()
+        tvar = ModifiedPotentialTemperature()
 
-        model = CompressibleModel(grid=grid, prognostic_temperature=pt, tracers=(:Θᵐ,))
+        model = CompressibleModel(grid=grid, thermodynamic_variable=tvar, tracers=(:Θᵐ,))
         @test model isa CompressibleModel
 
         @test_throws(ArgumentError,
-            CompressibleModel(grid=grid, prognostic_temperature=pt, tracers=(:T,)))
+            CompressibleModel(grid=grid, thermodynamic_variable=tvar, tracers=(:T,)))
     end
 
     @testset "Entropy" begin
         @info "  Testing model construction with S prognostic temperature..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        pt   = Entropy()
+        tvar = Entropy()
 
-        model = CompressibleModel(grid=grid, prognostic_temperature=pt, tracers=(:S,))
+        model = CompressibleModel(grid=grid, thermodynamic_variable=tvar, tracers=(:S,))
         @test model isa CompressibleModel
 
         @test_throws(ArgumentError,
-            CompressibleModel(grid=grid, prognostic_temperature=pt, tracers=(:T,)))
+            CompressibleModel(grid=grid, thermodynamic_variable=tvar, tracers=(:T,)))
     end
 
     @testset "VaporPlaceholder" begin
         @info "  Testing model construction with vapor placeholder microphysics..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        pt   = ModifiedPotentialTemperature()
+        tvar = ModifiedPotentialTemperature()
         mp   = VaporPlaceholder()
 
-        model = CompressibleModel(grid=grid, prognostic_temperature=pt,
+        model = CompressibleModel(grid=grid, thermodynamic_variable=tvar,
                                   microphysics=mp, tracers=(:Θᵐ, :Qv))
         @test model isa CompressibleModel
 
         @test_throws(ArgumentError,
-            CompressibleModel(grid=grid, prognostic_temperature=pt,
+            CompressibleModel(grid=grid, thermodynamic_variable=tvar,
                               microphysics=mp, tracers=(:Θᵐ, :qv)))
     end
 
@@ -47,15 +47,15 @@
         @info "  Testing model construction with vapor+liquid+ice placeholder microphysics..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        pt   = ModifiedPotentialTemperature()
+        tvar = ModifiedPotentialTemperature()
         mp   = VaporLiquidIcePlaceholder()
 
-        model = CompressibleModel(grid=grid, prognostic_temperature=pt,
+        model = CompressibleModel(grid=grid, thermodynamic_variable=tvar,
                                   microphysics=mp, tracers=(:Θᵐ, :Qv, :Ql, :Qi))
         @test model isa CompressibleModel
 
         @test_throws(ArgumentError,
-            CompressibleModel(grid=grid, prognostic_temperature=pt,
+            CompressibleModel(grid=grid, thermodynamic_variable=tvar,
                               microphysics=mp, tracers=(:Θᵐ, :Qv, :Ql)))
     end
 end

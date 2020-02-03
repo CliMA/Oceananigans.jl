@@ -48,7 +48,7 @@ model = CompressibleModel(
                       grid = grid,
                   buoyancy = buoyancy,
         reference_pressure = pₛ,
-    prognostic_temperature = ModifiedPotentialTemperature(),
+    thermodynamic_variable = ModifiedPotentialTemperature(),
                    tracers = (:Θᵐ,),
                    forcing = forcing
 )
