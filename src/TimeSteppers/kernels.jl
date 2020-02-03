@@ -168,10 +168,10 @@ the `buoyancy_perturbation` downwards:
 """
 function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     @loop_xy i j grid begin
-        @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz, grid)
+        @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz+1, grid)
         @unroll for k in grid.Nz-1 : -1 : 1
             @inbounds pHY′[i, j, k] =
-                pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k, grid)
+                pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k+1, grid)
         end
     end
     return nothing
