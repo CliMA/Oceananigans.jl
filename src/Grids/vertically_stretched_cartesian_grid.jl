@@ -1,5 +1,3 @@
-import Base: size, length, eltype, show
-
 """
     VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
 

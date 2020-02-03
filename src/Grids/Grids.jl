@@ -1,6 +1,10 @@
 module Grids
 
-export AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
+export
+    AbstractTopology, Periodic, Bounded, Singleton, topology,
+    AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
+
+import Base: size, length, eltype, show
 
 using Oceananigans
 
@@ -39,6 +43,12 @@ struct Singleton <: AbstractTopology end
 Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ} end
+
+eltype(::AbstractGrid{FT}) where FT = FT
+topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
+
+size(grid::AbstractGrid)   = (grid.Nx, grid.Ny, grid.Nz)
+length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
 include("grid_utils.jl")
 include("regular_cartesian_grid.jl")

@@ -1,5 +1,3 @@
-import Base: size, length, eltype, show
-
 """
     RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
 
@@ -107,10 +105,6 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1), topology,
     RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ) typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
-
-size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)
-length(grid::RegularCartesianGrid) = (grid.Lx, grid.Ly, grid.Lz)
-eltype(grid::RegularCartesianGrid{FT}) where FT = FT
 
 short_show(grid::RegularCartesianGrid{T}) where T =
     "RegularCartesianGrid{$T}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
