@@ -102,7 +102,7 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1), topology,
     yF = range(y₁, y₂; length=Ny+1)
     zF = range(z₁, z₂; length=Nz+1)
 
-    RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ) typeof(xC)}(
+    RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
