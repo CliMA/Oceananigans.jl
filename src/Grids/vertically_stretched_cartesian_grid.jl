@@ -1,7 +1,5 @@
 import Base: size, length, eltype, show
 
-using Oceananigans: AbstractGrid
-
 """
     VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:AbstractArray} <: AbstractGrid{FT}
 

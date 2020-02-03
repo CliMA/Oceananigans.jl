@@ -18,6 +18,8 @@ export
     ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ,
     div_uc, div_ũu, div_ũv, div_ũw
 
+using Oceananigans.Grids
+
 include("areas_and_volumes.jl")
 include("difference_operators.jl")
 include("derivative_operators.jl")

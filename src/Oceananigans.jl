@@ -85,13 +85,6 @@ import Base:
 #####
 
 """
-    AbstractGrid{T}
-
-Abstract supertype for grids with elements of type `T`.
-"""
-abstract type AbstractGrid{T} end
-
-"""
     AbstractPoissonSolver
 
 Abstract supertype for solvers for Poisson's equation.

@@ -18,7 +18,6 @@ using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 
-using Oceananigans: AbstractGrid
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!

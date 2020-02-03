@@ -39,7 +39,6 @@ using Oceananigans.Operators
 using Oceananigans.Buoyancy
 using Oceananigans.Utils
 
-using Oceananigans: AbstractGrid
 using Oceananigans.Architectures: AbstractArchitecture, device
 
 #####

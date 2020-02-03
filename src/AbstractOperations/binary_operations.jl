@@ -39,7 +39,7 @@ end
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractLocatedField`."""
 function define_binary_operator(op)
     return quote
-        import Oceananigans: AbstractGrid
+        import Oceananigans.Grids: AbstractGrid
         import Oceananigans.Fields: AbstractLocatedField
 
         local location = Oceananigans.Fields.location

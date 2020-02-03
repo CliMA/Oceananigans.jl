@@ -1,6 +1,6 @@
 module Grids
 
-export RegularCartesianGrid, VerticallyStretchedCartesianGrid
+export AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 using Oceananigans
 
@@ -32,6 +32,13 @@ struct Bounded <: AbstractTopology end
 Grid topology for singleton dimensions with one grid point.
 """
 struct Singleton <: AbstractTopology end
+
+"""
+    AbstractGrid{FT, TX, TY, TZ}
+
+Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+"""
+abstract type AbstractGrid{FT} end
 
 include("grid_utils.jl")
 include("regular_cartesian_grid.jl")

@@ -7,8 +7,9 @@ using OffsetArrays
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
 
-using Oceananigans: AbstractGrid
-using Oceananigans.Architectures: @hascuda, CPU, GPU
+using Oceananigans.Architectures
+using Oceananigans.Grids
+using Oceananigans.Utils
 
 @hascuda using CuArrays
 

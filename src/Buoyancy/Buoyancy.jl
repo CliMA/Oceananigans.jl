@@ -5,11 +5,9 @@ export
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
 
-using 
-    Printf,
-    Oceananigans.Operators
-
-using Oceananigans: AbstractGrid
+using Printf
+using Oceananigans.Grids
+using Oceananigans.Operators
 
 # Physical constants
 # https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)

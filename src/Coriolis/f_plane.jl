@@ -1,8 +1,3 @@
-using Printf
-using Oceananigans.Operators
-
-using Oceananigans: AbstractGrid
-
 """
     FPlane{FT} <: AbstractRotation
 
@@ -90,6 +85,7 @@ function NonTraditionalFPlane(FT=Float64; f=nothing, f′=nothing, rotation_rate
         f  = 2rotation_rate*sind(latitude)
         f′ = 2rotation_rate*cosd(latitude)
     end
+
     return NonTraditionalFPlane{FT}(f, f′)
 end
 
