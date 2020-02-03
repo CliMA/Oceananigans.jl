@@ -12,6 +12,7 @@ export
     ModelLogger, Diagnostic, Setup, Simulation,
 
     # Grids
+    Periodic, Bounded, Singleton,
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
@@ -33,7 +34,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Periodic, Flux, Gradient, Value, Dirchlet, Neumann,
+    Flux, Gradient, Value, Dirchlet, Neumann,
     CoordinateBoundaryConditions, FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
     BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     BoundaryFunction, getbc, setbc!,
