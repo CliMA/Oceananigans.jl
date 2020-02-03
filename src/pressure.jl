@@ -9,14 +9,6 @@ const IG = IdealGas
 const MPT = ModifiedPotentialTemperature
 
 ####
-#### Pressure gradient ∇p terms for regular temperature ρT
-####
-
-@inline ∂p∂x(i, j, k, grid, pt::Temperature, gas::IG, ρ, C) = gas.Rᵈ * ∂xᶠᵃᵃ(i, j, k, grid, C.T)
-@inline ∂p∂y(i, j, k, grid, pt::Temperature, gas::IG, ρ, C) = gas.Rᵈ * ∂yᵃᶠᵃ(i, j, k, grid, C.T)
-@inline ∂p∂z(i, j, k, grid, pt::Temperature, gas::IG, ρ, C) = gas.Rᵈ * ∂zᵃᵃᶠ(i, j, k, grid, C.T)
-
-####
 #### Pressure gradient ∇p terms for modified potential temperature Θᵐ = ρθᵐ
 ####
 
