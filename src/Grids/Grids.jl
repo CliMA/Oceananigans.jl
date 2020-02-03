@@ -38,7 +38,7 @@ struct Singleton <: AbstractTopology end
 
 Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractGrid{FT} end
+abstract type AbstractGrid{FT, TX, TY, TZ} end
 
 include("grid_utils.jl")
 include("regular_cartesian_grid.jl")

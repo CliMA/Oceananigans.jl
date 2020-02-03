@@ -1,12 +1,13 @@
 import Base: size, length, eltype, show
 
 """
-    RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{FT}
+    RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
-and cell faces.
+and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
+of type `R`.
 """
-struct RegularCartesianGrid{FT<:AbstractFloat, R<:AbstractRange} <: AbstractGrid{FT}
+struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -73,7 +74,7 @@ domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.1415
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
-function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
+function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1), topology,
                               length=nothing, x=nothing, y=nothing, z=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
@@ -81,6 +82,7 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     sz, len = size, length
     length = Base.length
 
+    TX, TY, TZ = validate_topology(topology)
     Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
 
     Nx, Ny, Nz = sz
@@ -102,8 +104,8 @@ function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1),
     yF = range(y₁, y₂; length=Ny+1)
     zF = range(z₁, z₂; length=Nz+1)
 
-    RegularCartesianGrid{FT, typeof(xC)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
-                                         Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
+    RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ) typeof(xC)}(
+        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
 size(grid::RegularCartesianGrid)   = (grid.Nx, grid.Ny, grid.Nz)

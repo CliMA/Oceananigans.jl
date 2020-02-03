@@ -1,12 +1,12 @@
 import Base: size, length, eltype, show
 
 """
-    VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:AbstractArray} <: AbstractGrid{FT}
+    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces.
 """
-struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:AbstractArray} <: AbstractGrid{FT}
+struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx::Int
     Ny::Int
@@ -36,13 +36,15 @@ struct VerticallyStretchedCartesianGrid{FT<:AbstractFloat, R<:AbstractRange, A<:
 end
 
 function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-        size, halo=(1, 1, 1), length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
+        size, halo=(1, 1, 1), topology,
+        length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
     # use the `size` and `length` functions.
     sz, len = size, length
     length = Base.length
 
+    TX, TY, TZ = validate_topology(topology)
     Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
 
     Nx, Ny, Nz = sz
@@ -63,6 +65,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, typeof(xF), typeof(zF)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
-                                                                 Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
+    VerticallyStretchedCartesianGrid{FT, tyopeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
+        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
