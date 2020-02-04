@@ -55,19 +55,3 @@ to normal velocity components at a wall, where the velocity at the cell face col
 at the wall is known and set to zero.
 """
 struct NoPenetration <: BCType end
-
-# Famous people
-
-"""
-    Dirchlet
-
-An alias for the `Value` boundary condition type.
-"""
-const Dirchlet = Value
-
-"""
-    Neumann
-
-An alias for the `Gradient` boundary condition type.
-"""
-const Neumann = Gradient

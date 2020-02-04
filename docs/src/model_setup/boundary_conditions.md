@@ -15,8 +15,8 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 ## Types of boundary conditions
 1. [`Periodic`](@ref Periodic)
 2. [`Flux`](@ref Flux)
-3. [`Value`](@ref Value) ([`Dirchlet`](@ref))
-4. [`Gradient`](@ref Gradient) ([`Neumann`](@ref))
+3. [`Value`](@ref Value)
+4. [`Gradient`](@ref Gradient)
 5. [`No-penetration`](@ref NoPenetration)
 
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
