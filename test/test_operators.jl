@@ -1,6 +1,6 @@
-function test_function_differentiation(FT=Float64)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3), topology=DT)
-    ϕ = rand(FT, 3, 3, 3)
+function test_function_differentiation(T=Float64)
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
     ∂x_ϕ_f = ϕ²[2, 2, 2] - ϕ²[1, 2, 2]
@@ -26,9 +26,9 @@ function test_function_differentiation(FT=Float64)
     )
 end
 
-function test_function_interpolation(FT=Float64)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3), topology=DT)
-    ϕ = rand(FT, 3, 3, 3)
+function test_function_interpolation(T=Float64)
+    grid = RegularCartesianGrid(T; size=(3, 3, 3), length=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
     ℑx_ϕ_f = (ϕ²[2, 2, 2] + ϕ²[1, 2, 2]) / 2
@@ -74,7 +74,7 @@ end
         Lx, Ly, Lz = 100, 100, 100
 
         arch = CPU()
-        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz), topology=DT)
+        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz
@@ -85,7 +85,7 @@ end
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
-        grid_yz = RegularCartesianGrid(size=(1, Ny, Nz), length=(Lx, Ly, Lz), topology=DT)
+        grid_yz = RegularCartesianGrid(size=(1, Ny, Nz), length=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
@@ -94,7 +94,7 @@ end
 
         # An xz-slice with Ny==1.
         A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
-        grid_xz = RegularCartesianGrid(size=(Nx, 1, Nz), length=(Lx, Ly, Lz), topology=DT)
+        grid_xz = RegularCartesianGrid(size=(Nx, 1, Nz), length=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]

@@ -1,20 +1,24 @@
 using Oceananigans.Solvers: solve_poisson_equation!
 
 function ∇²!(grid, f, ∇²f)
-    @loop_xyz i j k grid begin
-        @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
+        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
+            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
+                @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+            end
+        end
     end
 end
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(100, 100, 100), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(100, 100, 100))
     solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs(), planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
     fbcs = HorizontallyPeriodicBCs()
     solver = PressureSolver(arch, grid, fbcs)
 
@@ -41,7 +45,7 @@ end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
     fbcs = ChannelBCs()
     solver = PressureSolver(arch, grid, fbcs)
 
@@ -70,7 +74,7 @@ end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
     fbcs = HorizontallyPeriodicBCs()
     solver = PressureSolver(arch, grid, fbcs)
 
@@ -107,7 +111,7 @@ end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
     fbcs = ChannelBCs()
     solver = PressureSolver(arch, grid, fbcs)
 
@@ -158,7 +162,7 @@ by giving it the source term or right hand side (RHS), which is
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     solver = PressureSolver(CPU(), grid, HorizontallyPeriodicBCs())
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC

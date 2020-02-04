@@ -1,3 +1,6 @@
+# A Default Topology to use for testing.
+const DT = (Periodic, Periodic, Bounded)
+
 function correct_grid_size_regular(FT)
     grid = RegularCartesianGrid(FT, size=(4, 6, 8), length=(2π, 4π, 9π), topology=DT)
 
