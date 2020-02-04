@@ -1,7 +1,7 @@
 module BoundaryConditions
 
 export
-    BCType, Flux, Gradient, Value, NoPenetration, Dirchlet, Neumann,
+    BCType, Flux, Gradient, Value, NoPenetration,
     BoundaryCondition, bctype, getbc, setbc!,
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,

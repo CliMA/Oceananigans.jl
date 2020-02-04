@@ -34,7 +34,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Gradient, Value, Dirchlet, Neumann,
+    Flux, Gradient, Value,
     CoordinateBoundaryConditions, FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
     BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     BoundaryFunction, getbc, setbc!,
