@@ -89,6 +89,9 @@ float_types = (Float32, Float64)
          archs = (CPU(),)
 @hascuda archs = (CPU(), GPU())
 
+# A Default Topology to use for constructing grids for testing.
+const DT = (Periodic, Periodic, Bounded)
+
 closures = (
     :ConstantIsotropicDiffusivity,
     :ConstantAnisotropicDiffusivity,
