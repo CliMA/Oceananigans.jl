@@ -55,9 +55,12 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     S_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, 5e-8)     )
 
     # Model instantiation
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16),
+                                topology=(Periodic, Periodic, Bounded))
+
     model = Model(
              architecture = arch,
-                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
+                     grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,

@@ -21,7 +21,7 @@ end
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
-          grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
+          grid = RegularCartesianGrid(FT, size=(3, 1, 4), length=(3, 1, 4), topology=DT)
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
     velocities = VelocityFields(arch, grid)
        tracers = TracerFields(arch, grid, (:T, :S))
@@ -48,7 +48,7 @@ end
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
           arch = CPU()
        closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=(T=κh, S=κh), κv=(T=κv, S=κv))
-          grid = RegularCartesianGrid(FT; size=(3, 1, 4), length=(3, 1, 4))
+          grid = RegularCartesianGrid(FT, size=(3, 1, 4), length=(3, 1, 4), topology=DT)
            bcs = SolutionBoundaryConditions((:T, :S), HorizontallyPeriodicSolutionBCs())
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=LinearEquationOfState(FT))
     velocities = VelocityFields(arch, grid)
@@ -85,7 +85,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
       tracernames = (:b,)
           closure = getproperty(TurbulenceClosures, closurename)(FT; kwargs...)
           closure = with_tracers(tracernames, closure)
-             grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3, 3, 3))
+             grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3), topology=DT)
     diffusivities = TurbulentDiffusivities(arch, grid, tracernames, closure)
          buoyancy = BuoyancyTracer()
        velocities = VelocityFields(arch, grid)
@@ -101,15 +101,15 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
 
-    model = Model(architecture=arch, float_type=FT, closure=closure_tuple,
-                  grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)))
+    grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3), topology=DT)
+    model = Model(architecture=arch, float_type=FT, closure=closure_tuple, grid=grid)
 
     time_step!(model, 1, 1)
     return true
 end
 
 function compute_closure_specific_diffusive_cfl(closurename)
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 2, 3))
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 2, 3), topology=DT)
     closure = getproperty(TurbulenceClosures, closurename)()
     model = Model(grid=grid, closure=closure)
     dcfl = DiffusiveCFL(0.1)

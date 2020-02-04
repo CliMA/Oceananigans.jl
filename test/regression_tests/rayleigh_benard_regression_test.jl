@@ -29,9 +29,11 @@ function run_rayleigh_benard_regression_test(arch)
     bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.0),
                                    bottom = BoundaryCondition(Value, Δb))
 
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz),
+                                topology=(Periodic, Periodic, Bounded))
     model = Model(
                architecture = arch,
-                       grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                       grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),

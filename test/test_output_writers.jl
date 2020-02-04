@@ -8,7 +8,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz), topology=DT)
     closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = Model(architecture=arch, grid=grid, closure=closure)
 
@@ -73,7 +73,7 @@ function run_thermal_bubble_netcdf_tests(arch)
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+    model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=DT))
 
     u(model) = Array(model.velocities.u.data.parent)
     fields = Dict(:u => u)
@@ -120,7 +120,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz), topology=DT)
     closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = Model(architecture=arch, grid=grid, closure=closure)
 
