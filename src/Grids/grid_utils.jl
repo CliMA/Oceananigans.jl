@@ -20,7 +20,7 @@ function validate_topology(topology)
     for t in (TX, TY, TZ)
         if !isa(t, AbstractTopology)
             e = "$(typeof(t)) is not a valid topology! " *
-                "Valid topologies are: Periodic, Bounded, Singleton."
+                "Valid topologies are: Periodic, Bounded, Flat."
             throw(ArgumentError(e))
         end
     end

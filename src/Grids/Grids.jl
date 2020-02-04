@@ -1,7 +1,7 @@
 module Grids
 
 export
-    AbstractTopology, Periodic, Bounded, Singleton, topology,
+    AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 import Base: size, length, eltype, show
@@ -31,11 +31,12 @@ or dimensions
 struct Bounded <: AbstractTopology end
 
 """
-    Singleton
+    Flat
 
-Grid topology for singleton dimensions with one grid point.
+Grid topology for flat dimensions, generally with one grid point, along which the solution
+is uniform and does not vary.
 """
-struct Singleton <: AbstractTopology end
+struct Flat <: AbstractTopology end
 
 """
     AbstractGrid{FT, TX, TY, TZ}

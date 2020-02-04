@@ -43,8 +43,8 @@ indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` o
 the `length` argument, e.g. `length=(Lx, Ly, Lz)` which specifies the length of each dimension
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
-A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Singleton`
-to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Singleton)`
+A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
+to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Flat)`
 is assumed.
 
 Constants are stored using floating point values of type `FT`. By default this is `Float64`.

@@ -12,7 +12,7 @@ export
     ModelLogger, Diagnostic, Setup, Simulation,
 
     # Grids
-    Periodic, Bounded, Singleton,
+    Periodic, Bounded, Flat,
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
