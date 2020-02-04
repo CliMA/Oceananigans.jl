@@ -63,6 +63,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
+    VerticallyStretchedCartesianGrid{FT, tyopeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end

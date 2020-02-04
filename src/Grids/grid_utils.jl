@@ -12,19 +12,16 @@ instantiate_datatype(t::DataType) = t()
 instantiate_datatype(t) = t
 
 function validate_topology(topology)
+    for t in topology
+        if !isa(t, AbstractTopology)
+            throw(ArgumentError("$t is not a valid topology! Valid topologies are: Periodic, Bounded, Singleton."))
+        end
+    end
+
     TX, TY, TZ = topology
     TX = instantiate_datatype(TX)
     TY = instantiate_datatype(TY)
     TZ = instantiate_datatype(TZ)
-
-    for t in (TX, TY, TZ)
-        if !isa(t, AbstractTopology)
-            e = "$(typeof(t)) is not a valid topology! " *
-                "Valid topologies are: Periodic, Bounded, Singleton."
-            throw(ArgumentError(e))
-        end
-    end
-
     return TX, TY, TZ
 end
 
