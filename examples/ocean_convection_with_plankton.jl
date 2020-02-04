@@ -54,8 +54,10 @@ nothing # hide
 growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16))
 
 ## Instantiate the model
-model = Model(
-                   grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz)),
+grid = RegularCartesianGrid(size=(Nz, 1, Nz), length=(Lz, Lz, Lz),
+                            topology=(Periodic, Periodic, Bounded))
+
+model = Model(     grid = grid,
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),

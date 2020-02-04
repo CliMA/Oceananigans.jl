@@ -132,8 +132,11 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 # Our use of biharmonic diffusivity means we must instantiate the model grid
 # with halos of size `(2, 2, 2)` in `(x, y, z)`.
 
-model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
-                                           x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0)),
+grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
+                            topology=(Periodic, Periodic, Bounded),
+                            x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0))
+
+model = Model( grid = grid,
        architecture = CPU(),
            coriolis = FPlane(f=f),
            buoyancy = BuoyancyTracer(), tracers = :b,

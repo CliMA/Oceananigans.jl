@@ -82,9 +82,12 @@ nothing # hide
 # model.parameters for use in the boundary condition function that calculates the salinity
 # flux.
 
+grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz),
+                            topology=(Periodic, Periodic, Bounded))
+
 model = Model(
          architecture = CPU(),
-                 grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz)),
+                 grid = grid,
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
