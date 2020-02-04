@@ -145,6 +145,8 @@ end
                 @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
                 @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1))
                 @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
+
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1), topology=(Periodic, Periodic, Flux))
             end
         end
     end

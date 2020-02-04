@@ -2,7 +2,9 @@
     VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
-non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces.
+non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
+topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
+`A` (where an array is needed).
 """
 struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
@@ -34,7 +36,7 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT
 end
 
 function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-        size, halo=(1, 1, 1), topology,
+        size, halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded),
         length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
 
     # Hack that allows us to use `size` and `length` as keyword arguments but then also
@@ -63,6 +65,6 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
 
     zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, Nz, z₁, z₂)
 
-    VerticallyStretchedCartesianGrid{FT, tyopeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
+    VerticallyStretchedCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
