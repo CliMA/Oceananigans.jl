@@ -30,7 +30,7 @@ coriolis = FPlane(rotation_rate=7.292115e-5, latitude=45)
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
 
 To set up an $f$-plane with non-traditional Coriolis terms, for example, with 
-$\bm{f} = (0, f_y, f_z) = (0, 1, 2) \times 10^{-4} \text{s}^{-1}$,
+$\bm{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}$,
 ```@example
 using Oceananigans # hide
 coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)
