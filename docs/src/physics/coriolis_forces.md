@@ -5,7 +5,7 @@ The Coriolis model controls the manifestation of the term $\bm{f} \times \bm{u}$
 ## The traditional and non-traditional $f$-plane approximation
 
 Under an $f$-plane approximation[^3] the reference frame in which
-the momentum and tracer equations are are solved rotates at a constant rate. 
+the momentum and tracer equations are solved rotates at a constant rate. 
 
 ### The traditional $f$-plane approximation 
 
@@ -35,7 +35,7 @@ where $f_y$ and $f_z$ are constant and determined by the user.
       ```
       where the Earth's rotation rate is approximately $2 \pi / \text{day}$.
       The *traditional* $f$-plane approximation neglects the $y$-component of this projection, which is appropriate for 
-      fluid motions with small horizontal-to-vertical aspect ratios.
+      fluid motions with large horizontal-to-vertical aspect ratios.
 
 ## The $\beta$-plane approximation
 
