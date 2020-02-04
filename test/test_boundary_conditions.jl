@@ -9,12 +9,12 @@ function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     fieldbcs = HorizontallyPeriodicBCs(top=bc)
     modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3), topology=DT)
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     time_step!(model, 1, 1e-16)
 
-    return model isa Model
+    return typeof(model) <: Model
 end
 
 function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
@@ -24,8 +24,8 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
     modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
-    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(0.1, 0.2, 0.3), topology=DT)
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(N, N, N), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -47,8 +47,8 @@ function test_z_boundary_condition_array(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
     modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3), topology=DT)
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
+                  float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -65,7 +65,7 @@ function test_flux_budget(arch, FT, fldname)
     fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
     modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
 
-    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(1, 1, Lz), topology=DT)
+    grid = RegularCartesianGrid(FT; size=(N, N, N), length=(1, 1, Lz))
     closure = ConstantIsotropicDiffusivity(FT; ν=κ, κ=κ)
     model = Model(grid=grid, closure=closure, architecture=arch,
                   float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
@@ -100,7 +100,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     flux = - κ₀ * bz
 
     tracer_names = (:b,)
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, Lz), topology=DT)
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, Lz))
     closure = with_tracers(tracer_names, AnisotropicMinimumDissipation())
     diffusivities = TurbulentDiffusivities(arch, grid, tracer_names, closure)
 
@@ -111,7 +111,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     κₑ_bcs = HorizontallyPeriodicBCs(bottom=BoundaryCondition(Value, κ₀))
     diffusivities_bcs = (νₑ=νₑ_bcs, κₑ=(b=κₑ_bcs))
 
-    model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, solution_bcs;
+    model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, solution_bcs; 
                                         diffusivities=diffusivities_bcs)
 
     model = Model(grid=grid, architecture=arch, float_type=FT, tracers=tracer_names, buoyancy=BuoyancyTracer(),
