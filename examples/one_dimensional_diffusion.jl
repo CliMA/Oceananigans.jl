@@ -26,8 +26,7 @@ using Plots, Printf
 # `Model` constructor:
 
 model = Model(
-    grid = RegularCartesianGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5),
-                                topology=(Singleton, Singleton, Bounded)),
+    grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
 nothing # hide

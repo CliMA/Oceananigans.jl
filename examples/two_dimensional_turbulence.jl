@@ -24,11 +24,8 @@ using Oceananigans: Face, Cell
 # `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
 # model with a simple isotropic diffusivity.
 
-grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π),
-                            topology=(Periodic, Periodic, Singleton))
-
 model = Model(
-        grid = grid,
+        grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π)),
     buoyancy = nothing,
      tracers = nothing,
      closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)

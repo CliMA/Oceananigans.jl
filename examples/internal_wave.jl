@@ -69,11 +69,8 @@ nothing # hide
 # use temperature as a buoyancy tracer, and use a small constant viscosity
 # and diffusivity to stabilize the model.
 
-grid = RegularCartesianGrid(size=(Nx, 1, Nx), length=(Lx, Lx, Lx),
-                            topology=(Periodic, Singleton, Bounded))
-
 model = Model(
-        grid = grid,
+        grid = RegularCartesianGrid(size=(Nx, 1, Nx), length=(Lx, Lx, Lx)),
      closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
     coriolis = FPlane(f=f),
      tracers = :b,
