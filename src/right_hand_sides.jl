@@ -2,59 +2,69 @@
 #### Element-wise forcing and right-hand-side calculations
 ####
 
-@inline function FU(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+@inline function FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K)
     @inbounds begin
         return (- x_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+                + ∂ⱼτ₁ⱼ(i, j, k, grid, closure, ρ, Ũ, K))
     end
 end
 
 
-@inline function FV(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+@inline function FV(i, j, k, grid, coriolis, closure, ρ, Ũ, K)
     @inbounds begin
         return (- y_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+                + ∂ⱼτ₂ⱼ(i, j, k, grid, closure, ρ, Ũ, K))
     end
 end
 
-@inline function FW(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+@inline function FW(i, j, k, grid, coriolis, closure, ρ, Ũ, K)
     @inbounds begin
         return (- z_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+                + ∂ⱼτ₃ⱼ(i, j, k, grid, closure, ρ, Ũ, K))
     end
 end
 
-@inline FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃) =
-    @inbounds ρᵈ[i, j, k] * ∇_κ_∇c(i, j, k, grid, closure, ρᵈ, C, Val(tracer_index), K̃)
+@inline FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃) =
+    @inbounds ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
 
-@inline function RU(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C, FU)
+@inline function FS(i, j, k, grid, closure, tvar::Entropy, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
-        return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂x(i, j, k, grid, tvar, b, ρᵈ, C)
+        Ṡ = 0.0
+        T = diagnose_T(i, j, k, tvar, ρ̃, C̃)
+        for key in keys(ρ̃)
+            tracer_index = findall(keys(C̃) .== key)[1]
+            s = diagnose_s(ρ̃.key, C̃.key.data[i, j, k], T)
+            Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C̃.key, s, tracer_index, K̃)
+        end
+        Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ, args...) / T
+    end
+    return Ṡ
+end
+
+@inline function RU(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C, FU)
+    @inbounds begin
+        return (- div_ρuũ(i, j, k, grid, ρ, Ũ)
+                - ∂p∂x(i, j, k, grid, tvar, ρ̃, C)
                 + FU[i, j, k])
     end
 end
 
-@inline function RV(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C, FV)
+@inline function RV(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂y(i, j, k, grid, tvar, b, ρᵈ, C)
+                - ∂p∂y(i, j, k, grid, tvar, ρ̃, C)
                 + FV[i, j, k])
     end
 end
 
-@inline function RW(i, j, k, grid, tvar, b, mp, pₛ, gravity, ρᵈ, Ũ, C, FW)
+@inline function RW(i, j, k, grid, tvar, gravity, ρ, ρ̃, Ũ, C, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * (
-                      ∂p∂z(i, j, k, grid, tvar, b, ρᵈ, C)
-                    + buoyancy_perturbation(i, j, k, grid, gravity, mp, ρᵈ, C))
+                - ∂p∂z(i, j, k, grid, tvar, ρ̃, C)
+                - gravity*ρ[i,j,k]
                 + FW[i, j, k])
     end
 end
 
-@inline Rρ(i, j, k, grid, Ũ) =
-    -divᶜᶜᶜ(i, j, k, grid, Ũ.ρu, Ũ.ρv, Ũ.ρw)
-
-@inline RC(i, j, k, grid, ρᵈ, Ũ, C, FC) =
-    @inbounds -div_flux(i, j, k, grid, ρᵈ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+@inline RC(i, j, k, grid, ρ, Ũ, C, FC) =
+    @inbounds -div_flux(i, j, k, grid, ρ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]

@@ -6,17 +6,16 @@ using Oceananigans.TurbulenceClosures:
     ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
 
 export
-    Temperature, ModifiedPotentialTemperature, Entropy,
-    IdealGas,
+    PrognosticΘᵐ, PrognosticS,
+    DryEarth,
     CompressibleModel,
     time_step!,
     cfl, acoustic_cfl
 
 include("Operators/Operators.jl")
 
-include("thermodynamic_variable.jl")
-include("buoyancy.jl")
-include("pressure.jl")
+include("thermodynamics.jl")
+include("pressure_gradients.jl")
 include("microphysics.jl")
 include("models.jl")
 

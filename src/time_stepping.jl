@@ -44,7 +44,8 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     params = model.parameters
 
     Ũ  = model.momenta
-    ρᵈ = model.density
+    ρ = model.total_density
+    ρ̃ = model.densities
     C̃  = model.tracers
     K̃ = model.diffusivities
     F  = model.slow_forcings
@@ -68,10 +69,10 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
     for _ in 1:Nt
         @debug "Computing slow forcings..."
-        fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
+        fill_halo_regions!(ρ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρᵈ, C̃, K̃, forcing, time, params)
+        compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
         fill_halo_regions!(F.ρw.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping
@@ -80,13 +81,16 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
             @debug "  Computing right hand sides..."
             if rk3_iter == 1
-                compute_rhs_args = (R, grid, tvar, buoyancy, microphysics, pₛ, g, ρᵈ, Ũ, C̃, F)
-                fill_halo_regions!(ρᵈ.data, hpbcs, arch, grid)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
+                update_total_density(ρ.data, grid, ρ̃, C̃)
+                fill_halo_regions!(ρ, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
-                compute_rhs_args = (R, grid, tvar, buoyancy, microphysics, pₛ, g, IV.ρ, IV_Ũ, IV_C̃, F)
-                fill_halo_regions!(IV.ρ.data, hpbcs, arch, grid)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
+                update_total_density!(ρ.data, grid, ρ̃, C̃)
+                fill_total_density!(ρ.data, ρ̃, C̃)
+                fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(IV_Ũ.ρw.data, hpbcs_np, arch, grid)
             end
@@ -98,7 +102,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
             @debug "  Advancing variables..."
             LHS = rk3_iter == 3 ? Φ⁺ : IV
-            advance_variables!(LHS, grid, Ũ, C̃, ρᵈ, R; Δt=rk3_time_step(rk3_iter, Δt))
+            advance_variables!(LHS, grid, Ũ, C̃, R; Δt=rk3_time_step(rk3_iter, Δt))
         end
 
         model.clock.iteration += 1

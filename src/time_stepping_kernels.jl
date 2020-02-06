@@ -1,12 +1,23 @@
 """
-Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
+Compute total density from densities of massive tracers
 """
-function compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρᵈ, C̃, K̃, forcing, time, params)
+function update_total_density!(ρ, grid, ρ̃, C̃)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
+            ρ[i, j, k] = diagnose_ρ(i, j, k, grid, ρ̃, C̃)
+        end
+    end
+end
+
+"""
+Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
+"""
+function compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+    @inbounds begin
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
+            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
+            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
         end
 
         for (tracer_index, C_name) in enumerate(propertynames(C̃))
@@ -14,22 +25,26 @@ function compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρᵈ, C̃, K̃
             F_C = getproperty(F, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                F_C[i, j, k] = FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃)
+                F_C[i, j, k] = FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
             end
         end
+
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F.ρs[i, j, k] = FS(i, j, k, grid, closure, tvar, ρ, ρ̃, Ũ, C̃, K̃)
+        end
+
     end
 end
 
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_right_hand_sides!(R, grid, tvar, b, mp, pₛ, g, ρᵈ, Ũ, C̃, F)
+function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.ρu[i, j, k] = RU(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C̃, F.ρu)
-            R.ρv[i, j, k] = RV(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C̃, F.ρv)
-            R.ρw[i, j, k] = RW(i, j, k, grid, tvar, b, mp, pₛ, g, ρᵈ, Ũ, C̃, F.ρw)
-             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
+            R.ρu[i, j, k] = RU(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C̃, F.ρu)
+            R.ρv[i, j, k] = RV(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C̃, F.ρv)
+            R.ρw[i, j, k] = RW(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F.ρw)
         end
 
         for C_name in propertynames(C̃)
@@ -38,7 +53,7 @@ function compute_right_hand_sides!(R, grid, tvar, b, mp, pₛ, g, ρᵈ, Ũ, C�
             F_C = getproperty(F, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                R_C[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C, F_C)
+                R_C[i, j, k] = RC(i, j, k, grid, ρ, Ũ, C, F_C)
             end
         end
     end
@@ -50,13 +65,12 @@ Updates variables according to the RK3 time step:
     2. Φ**     = Φᵗ + Δt/2 * R(Φ*)
     3. Φ(t+Δt) = Φᵗ + Δt   * R(Φ**)
 """
-function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, ρᵗ, R; Δt)
+function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, R; Δt)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
             I.ρu[i, j, k] = Ũᵗ.ρu[i, j, k] + Δt * R.ρu[i, j, k]
             I.ρv[i, j, k] = Ũᵗ.ρv[i, j, k] + Δt * R.ρv[i, j, k]
             I.ρw[i, j, k] = Ũᵗ.ρw[i, j, k] + Δt * R.ρw[i, j, k]
-            I.ρ[i, j, k] =     ρᵗ[i, j, k] + Δt *  R.ρ[i, j, k]
         end
 
         for C_name in propertynames(C̃ᵗ)

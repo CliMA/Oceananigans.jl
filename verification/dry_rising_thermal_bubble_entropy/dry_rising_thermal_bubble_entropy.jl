@@ -28,12 +28,19 @@ Nz = Int(Lz/Δ)
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
                             x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
 
+model = CompressibleModel(
+                      grid = grid,
+                 densities = DryEarth(),
+    thermodynamic_variable = PrognosticS(),
+                   closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5)
+)
+
 #####
 ##### Dry thermal bubble perturbation
 #####
 
-gas = IdealGas()
-Rᵈ, cₚ, cᵥ = gas.Rᵈ, gas.cₚ, gas.cᵥ
+gas = model.densities.ρ
+R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
 sref, Tref, ρref = gas.s₀, gas.T₀, gas.ρ₀
 g  = 9.80665
 pₛ = 1000hPa
@@ -62,27 +69,14 @@ pᵢ(x, y, z) = p₀(x, y, z)
 Tᵢ(x, y, z) = pᵢ(x, y, z) / (Rᵈ * ρᵢ(x, y, z))
 sᵢ(x, y, z) = sref + cᵥ*log(Tᵢ(x, y, z)/Tref) - Rᵈ*log(ρᵢ(x, y, z)/ρref)
 
-#####
-##### Set up model
-#####
-
-model = CompressibleModel(
-                      grid = grid,
-                  buoyancy = gas,
-        reference_pressure = pₛ,
-    thermodynamic_variable = Entropy(),
-                   tracers = (:S,),
-                   closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5)
-)
-
 # Set initial state after saving perturbation-free background
-ρ, S = model.density, model.tracers.S
+ρ, S = model.tracers.ρ, model.tracers.S
 xC, zC = grid.xC, grid.zC
-set!(model.density, ρ₀)
+set!(model.tracers.ρ, ρ₀)
 set!(model.tracers.S, (x, y, z) -> ρ₀(x, y, z) * s₀(x, y, z))
 ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
 Sʰᵈ = S.data[1:Nx, 1, 1:Nz]
-set!(model.density, ρᵢ)
+set!(model.tracers.ρ, ρᵢ)
 set!(model.tracers.S, (x, y, z) -> ρᵢ(x, y, z) * sᵢ(x, y, z))
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
@@ -112,10 +106,10 @@ for n in 1:200
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
     j = 1
-    u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
-    w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
-    ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
-    s_slice = rotr90(model.tracers.S.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
+    u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
+    w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
+    ρ_slice = rotr90(model.tracers.ρ.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
+    s_slice = rotr90(model.tracers.S.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
     pu = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
@@ -131,8 +125,8 @@ for n in 1:200
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
 end
 
-ρ′_1000 = (model.density.data[1:Nx, 1, 1:Nz] .- ρʰᵈ)
-w_1000 = (model.momenta.ρw.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz])
+ρ′_1000 = (model.tracers.ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ)
+w_1000 = (model.momenta.ρw.data[1:Nx, 1, 1:Nz] ./ model.tracers.ρ.data[1:Nx, 1, 1:Nz])
 
 @printf("ρ′: min=%.2f, max=%.2f\n", minimum(ρ′_1000), maximum(ρ′_1000))
 @printf("w:  min=%.2f, max=%.2f\n", minimum(w_1000), maximum(w_1000))
