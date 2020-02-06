@@ -23,7 +23,16 @@ const MPT = ModifiedPotentialTemperature
 #### Pressure gradient ∇p terms for entropy S = ρs
 ####
 
-@inline p(i, j, k, grid, tvar::Entropy, gas::IG, ρ, C) = @inbounds gas.p₀ * exp( (C.S[i, j, k] - gas.s₀ + gas.cₚ * log(ρ[i, j, k] / gas.ρ₀) ) / gas.cᵥ)
+@inline function p(i, j, k, grid, tvar::Entropy, gas::IG, density, tracers)
+    @inbounds s = tracers.S[i,j,k]/density[i,j,k]
+    @inbounds ρ = density[i,j,k]
+    p₀ = gas.p₀
+    s₀ = gas.s₀
+    cₚ = gas.cₚ
+    cᵥ = gas.cᵥ
+    ρ₀ = gas.ρ₀
+    return p₀ * exp((s - s₀ + cₚ*log(ρ/ρ₀))/cᵥ)
+end
 
 @inline ∂p∂x(i, j, k, grid, tvar::Entropy, gas::IG, ρ, C) = ∂xᶠᵃᵃ(i, j, k, grid, p, tvar, gas, ρ, C)
 @inline ∂p∂y(i, j, k, grid, tvar::Entropy, gas::IG, ρ, C) = ∂yᵃᶠᵃ(i, j, k, grid, p, tvar, gas, ρ, C)
