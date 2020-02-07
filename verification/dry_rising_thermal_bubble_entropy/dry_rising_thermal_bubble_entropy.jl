@@ -98,7 +98,7 @@ savefig(s_plot, "entropy_initial_condition.png")
 #####
 
 Δt=0.1
-for n in 1:200
+for n in 1:10
 
     @time time_step!(model, Δt = Δt, Nt = 50)
 

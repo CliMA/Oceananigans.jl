@@ -24,8 +24,11 @@ end
     end
 end
 
-@inline FC(i, j, k, grid, closure, ρ, C, ::Val{tracer_index}, K̃) where tracer_index =
-    @inbounds ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
+@inline function FC(i, j, k, grid, closure, ρ, C, ::Val{tracer_index}, K̃) where tracer_index
+    @inbounds begin
+        return ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
+    end
+end
 
 @inline function FS(i, j, k, grid, closure, tvar::Entropy, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
@@ -39,8 +42,8 @@ end
             Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, ρᶜ, sᶜ, Val(tracer_index), K̃)
         end
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ) / T
+        return Ṡ
     end
-    return Ṡ
 end
 
 @inline function RU(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C, FU)
@@ -68,5 +71,8 @@ end
     end
 end
 
-@inline RC(i, j, k, grid, ρ, Ũ, C, FC) =
-    @inbounds -div_flux(i, j, k, grid, ρ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+@inline function RC(i, j, k, grid, ρ, Ũ, C, FC)
+    @inbounds begin
+        return -div_flux(i, j, k, grid, ρ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+    end
+end

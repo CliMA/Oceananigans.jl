@@ -46,7 +46,7 @@ function CompressibleModel(;
    thermodynamic_variable = PrognosticEntropy(),
              microphysics = nothing,
             extra_tracers = nothing,
-              tracernames = collect_tracers(densities, thermodynamic_variable, microphysics, extra_tracers),
+              tracernames = collect_tracers(thermodynamic_variable, densities, microphysics, extra_tracers),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),

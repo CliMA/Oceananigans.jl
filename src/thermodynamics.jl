@@ -73,37 +73,43 @@ struct Entropy <: AbstractThermodynamicVariable end
 end
 
 @inline function diagnose_T(i, j, k, grid, tvar::Entropy, densities, tracers)
-    numerator = tracers.ρs.data[i,j,k]
-    denominator = 0.0
-    for key in keys(densities)
-        ρ = getproperty(tracers, key).data[i,j,k]
-        gas = getproperty(densities, key)
-        cᵥ = gas.cᵥ
-        R = gas.R
-        ρ₀ = gas.ρ₀
-        T₀ = gas.T₀
-        s₀ = gas.s₀
-        numerator += ρ*R*log(ρ/ρ₀) - ρ*s₀
-        denominator += ρ*cᵥ
+    @inbounds begin
+        numerator = tracers.ρs.data[i,j,k]
+        denominator = 0.0
+        for ind_gas in 1:length(densities)
+            ρ = tracers[ind_gas + 1].data[i,j,k]
+            gas = densities[ind_gas]
+            cᵥ = gas.cᵥ
+            R = gas.R
+            ρ₀ = gas.ρ₀
+            T₀ = gas.T₀
+            s₀ = gas.s₀
+            numerator += ρ*R*log(ρ/ρ₀) - ρ*s₀
+            denominator += ρ*cᵥ
+        end
+        return T₀*exp(numerator/denominator)
     end
-    return T₀*exp(numerator/denominator)
 end
 
 @inline function diagnose_p(i, j, k, grid, tvar::Entropy, densities, tracers)
-    T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
-    p = 0.0
-    for key in keys(densities)
-        R = getproperty(densities, key).R
-        ρ = getproperty(tracers, key).data[i,j,k]
-        p += ρ*R*T
+    @inbounds begin
+        T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
+        p = 0.0
+        for ind_gas in 1:length(densities)
+            R = densities[ind_gas].R
+            ρ = tracers[ind_gas + 1].data[i, j, k]
+            p += ρ*R*T
+        end
+        return p
     end
-    return p
 end
 
 @inline function diagnose_ρ(i, j, k, grid, densities, tracers)
-    ρ = 0.0
-    for key in keys(densities)
-        ρ += getproperty(tracers, key).data[i,j,k]
+    @inbounds begin
+        ρ = 0.0
+        for ind_gas in 1:length(densities)
+            ρ += tracers[ind_gas + 1].data[i,j,k]
+        end
+        return ρ
     end
-    return ρ
 end
