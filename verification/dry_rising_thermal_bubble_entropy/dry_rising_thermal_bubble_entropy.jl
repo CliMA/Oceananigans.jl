@@ -31,7 +31,7 @@ model = CompressibleModel(
                       grid = grid,
                  densities = DryEarth(),
     thermodynamic_variable = PrognosticS(),
-                   closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5)
+                   closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
 )
 
 #####
@@ -120,7 +120,7 @@ for n in 1:200
     pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
         xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.006, 0.006))
     ps = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
-        xlims=(-5, 5), color=:thermal, linecolor = nothing, clims=(94, 101))
+        xlims=(-5, 5), color=:thermal, linecolor = nothing, clims=(99, 105))
 
     p = plot(pu, pw, pρ, ps, layout=(2, 2), dpi=200, show=true)
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
