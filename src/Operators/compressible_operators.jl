@@ -95,10 +95,10 @@ end
 @inline strain_rate_tensor_ux(i, j, k, grid, ρ, U) = 1.0/3.0 * ∂xᶜᵃᵃ(i, j, k, grid, U_over_ρ, U, ρ)
 @inline strain_rate_tensor_uy(i, j, k, grid, ρ, U, V) = ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρ) + ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρ)
 @inline strain_rate_tensor_uz(i, j, k, grid, ρ, U, W) = ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρ) + ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ)
-@inline strain_rate_tensor_vx(i, j, k, grid, ρ, V, U) = ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, ρ)
+@inline strain_rate_tensor_vx(i, j, k, grid, ρ, V, U) = ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρ)
 @inline strain_rate_tensor_vy(i, j, k, grid, ρ, V) = 1.0/3.0 * ∂yᵃᶜᵃ(i, j, k, grid, V_over_ρ, V, ρ)
-@inline strain_rate_tensor_vz(i, j, k, grid, ρ, V, W) = ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ)
-@inline strain_rate_tensor_wx(i, j, k, grid, ρ, W, U) = ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ) + ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, ρ)
+@inline strain_rate_tensor_vz(i, j, k, grid, ρ, V, W) = ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρ)
+@inline strain_rate_tensor_wx(i, j, k, grid, ρ, W, U) = ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ) + ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρ)
 @inline strain_rate_tensor_wy(i, j, k, grid, ρ, W, V) = ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρ) + ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρ)
 @inline strain_rate_tensor_wz(i, j, k, grid, ρ, W) = 1.0/3.0 * ∂zᵃᵃᶜ(i, j, k, grid, W_over_ρ, W, ρ)
 

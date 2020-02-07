@@ -22,7 +22,6 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, P,
             diffusivities :: DF
                   forcing :: F
                parameters :: P
-       reference_pressure :: FT
                   gravity :: FT
             slow_forcings :: SF
          right_hand_sides :: RHS
@@ -53,7 +52,6 @@ function CompressibleModel(;
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),
                   forcing = ModelForcing(),
                parameters = nothing,
-       reference_pressure = pₛ_Earth,
                   gravity = g_Earth,
             slow_forcings = ForcingFields(architecture, grid, tracernames),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
@@ -61,17 +59,15 @@ function CompressibleModel(;
     acoustic_time_stepper = nothing
    )
 
-    reference_pressure = float_type(reference_pressure)
-               gravity = float_type(gravity)
-
+    gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
     forcing = ModelForcing(tracernames, forcing)
     closure = with_tracers(tracernames, closure)
-    total_density = CellField(arch, grid)
+    total_density = CellField(architecture, grid)
 
     return CompressibleModel(architecture, grid, clock, momenta, densities, thermodynamic_variable,
                              microphysics, tracers, total_density, coriolis, closure, diffusivities,
-                             forcing, parameters, reference_pressure, gravity, slow_forcings,
+                             forcing, parameters, gravity, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
 

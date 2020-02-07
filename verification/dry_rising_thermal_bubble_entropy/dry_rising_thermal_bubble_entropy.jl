@@ -11,7 +11,6 @@ using VideoIO
 using FileIO
 using Oceananigans
 using JULES
-using JULES: Π
 
 const km = 1000
 const hPa = 100
@@ -42,16 +41,16 @@ model = CompressibleModel(
 gas = model.densities.ρ
 R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
 sref, Tref, ρref = gas.s₀, gas.T₀, gas.ρ₀
-g  = 9.80665
+g  = model.gravity
 pₛ = 1000hPa
 Tₛ = 300
 
 # Define an approximately hydrostatic background state
 θ₀(x, y, z) = Tₛ
-p₀(x, y, z) = pₛ * (1 - g*z/(cₚ*Tₛ))^(cₚ/Rᵈ)
-T₀(x, y, z) = Tₛ*(p₀(x, y, z)/pₛ)^(Rᵈ/cₚ)
-ρ₀(x, y, z) = p₀(x, y, z)/(Rᵈ*T₀(x, y, z))
-s₀(x, y, z) = sref + cᵥ*log(T₀(x, y, z)/Tref) - Rᵈ*log(ρ₀(x, y, z)/ρref)
+p₀(x, y, z) = pₛ * (1 - g*z/(cₚ*Tₛ))^(cₚ/R)
+T₀(x, y, z) = Tₛ*(p₀(x, y, z)/pₛ)^(R/cₚ)
+ρ₀(x, y, z) = p₀(x, y, z)/(R*T₀(x, y, z))
+s₀(x, y, z) = sref + cᵥ*log(T₀(x, y, z)/Tref) - R*log(ρ₀(x, y, z)/ρref)
 
 # Define the initial density perturbation
 xᶜ, zᶜ = 0km, 2km
@@ -66,25 +65,27 @@ end
 # Define initial state
 ρᵢ(x, y, z) = ρ₀(x, y, z) + ρ′(x, y, z)
 pᵢ(x, y, z) = p₀(x, y, z)
-Tᵢ(x, y, z) = pᵢ(x, y, z) / (Rᵈ * ρᵢ(x, y, z))
-sᵢ(x, y, z) = sref + cᵥ*log(Tᵢ(x, y, z)/Tref) - Rᵈ*log(ρᵢ(x, y, z)/ρref)
+Tᵢ(x, y, z) = pᵢ(x, y, z) / (R * ρᵢ(x, y, z))
+sᵢ(x, y, z) = sref + cᵥ*log(Tᵢ(x, y, z)/Tref) - R*log(ρᵢ(x, y, z)/ρref)
 
 # Set initial state after saving perturbation-free background
-ρ, S = model.tracers.ρ, model.tracers.S
+ρ, ρs = model.total_density, model.tracers.ρs
 xC, zC = grid.xC, grid.zC
 set!(model.tracers.ρ, ρ₀)
-set!(model.tracers.S, (x, y, z) -> ρ₀(x, y, z) * s₀(x, y, z))
+set!(model.tracers.ρs, (x, y, z) -> ρ₀(x, y, z) * s₀(x, y, z))
+update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
 ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
-Sʰᵈ = S.data[1:Nx, 1, 1:Nz]
+ρsʰᵈ = ρs.data[1:Nx, 1, 1:Nz]
 set!(model.tracers.ρ, ρᵢ)
-set!(model.tracers.S, (x, y, z) -> ρᵢ(x, y, z) * sᵢ(x, y, z))
+set!(model.tracers.ρs, (x, y, z) -> ρᵢ(x, y, z) * sᵢ(x, y, z))
+update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
     rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ), fill=true, levels=10, xlims=(-5, 5),
     clims=(-0.008, 0.008), color=:balance, dpi=200)
 savefig(ρ_plot, "rho_prime_initial_condition.png")
 
-s_slice = rotr90(S.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
+s_slice = rotr90(ρs.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
 s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
                  fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
 savefig(s_plot, "entropy_initial_condition.png")
@@ -109,7 +110,7 @@ for n in 1:200
     u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
     w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
     ρ_slice = rotr90(model.tracers.ρ.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
-    s_slice = rotr90(model.tracers.S.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
+    s_slice = rotr90(model.tracers.ρs.data[1:Nx, j, 1:Nz] ./ model.tracers.ρ.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
     pu = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
@@ -118,10 +119,10 @@ for n in 1:200
         xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-10, 10))
     pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
         xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.006, 0.006))
-    pθ = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
+    ps = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
         xlims=(-5, 5), color=:thermal, linecolor = nothing, clims=(94, 101))
 
-    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
+    p = plot(pu, pw, pρ, ps, layout=(2, 2), dpi=200, show=true)
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
 end
 

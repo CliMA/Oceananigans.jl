@@ -34,6 +34,6 @@ function acoustic_cfl(model, Δt)
         c = √(gas.γ * R * T / M)
         c_max = max(c_max, c)
     end
-    
+
     return Δt / min(Δx/c_max, Δy/c_max, Δz/c_max)
 end

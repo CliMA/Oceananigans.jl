@@ -32,13 +32,13 @@ end
 ####
 
 function time_step!(model::CompressibleModel; Δt, Nt=1)
+
     arch = model.architecture
     grid = model.grid
     time = model.clock.time
     coriolis = model.coriolis
-    buoyancy = model.buoyancy
     closure = model.closure
-    tvar = model.thermodynamic_variable
+    tvar = values(model.thermodynamic_variable)[1]
     microphysics = model.microphysics
     forcing = model.forcing
     params = model.parameters
@@ -52,11 +52,10 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     R  = model.right_hand_sides
     IV = model.intermediate_vars
 
-    pₛ = model.reference_pressure
     g  = model.gravity
 
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
-    Φ⁺ = merge(Ũ, C̃, (ρ=ρᵈ,))
+    Φ⁺ = merge(Ũ, C̃)
 
     # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
     Ũ_names = propertynames(Ũ)
@@ -69,10 +68,11 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
     for _ in 1:Nt
         @debug "Computing slow forcings..."
+        update_total_density!(ρ.data, grid, ρ̃, C̃)
         fill_halo_regions!(ρ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+        compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
         fill_halo_regions!(F.ρw.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping
@@ -82,14 +82,13 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
             @debug "  Computing right hand sides..."
             if rk3_iter == 1
                 compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
-                update_total_density(ρ.data, grid, ρ̃, C̃)
-                fill_halo_regions!(ρ, hpbcs, arch, grid)
+                update_total_density!(ρ.data, grid, ρ̃, C̃)
+                fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
                 compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
                 update_total_density!(ρ.data, grid, ρ̃, C̃)
-                fill_total_density!(ρ.data, ρ̃, C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(IV_Ũ.ρw.data, hpbcs_np, arch, grid)

@@ -5,8 +5,8 @@ using JULES.Operators: ∂xᶠᵃᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶠ
 #### Convinient aliases
 ####
 
-const IG = IdealGas
-const MPT = ModifiedPotentialTemperature
+# const IG = IdealGas
+# const MPT = ModifiedPotentialTemperature
 
 ####
 #### Pressure gradient ∇p terms for modified potential temperature Θᵐ = ρθᵐ

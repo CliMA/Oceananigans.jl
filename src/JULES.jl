@@ -6,11 +6,11 @@ using Oceananigans.TurbulenceClosures:
     ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
 
 export
-    PrognosticΘᵐ, PrognosticS,
+    PrognosticS,
     DryEarth,
     CompressibleModel,
     time_step!,
-    cfl, acoustic_cfl
+    cfl, update_total_density!
 
 include("Operators/Operators.jl")
 

@@ -73,15 +73,16 @@ struct Entropy <: AbstractThermodynamicVariable end
 end
 
 @inline function diagnose_T(i, j, k, grid, tvar::Entropy, densities, tracers)
-    numerator = tracers.S.data[i,j,k]
+    numerator = tracers.ρs.data[i,j,k]
     denominator = 0.0
     for key in keys(densities)
-        ρ = tracers.key.data[i,j,k]
-        cᵥ = densities.key.cᵥ
-        R = densities.key.R
-        ρ₀ = densities.key.ρ₀
-        T₀ = densities.key.T₀
-        s₀ = densities.key.s₀
+        ρ = getproperty(tracers, key).data[i,j,k]
+        gas = getproperty(densities, key)
+        cᵥ = gas.cᵥ
+        R = gas.R
+        ρ₀ = gas.ρ₀
+        T₀ = gas.T₀
+        s₀ = gas.s₀
         numerator += ρ*R*log(ρ/ρ₀) - ρ*s₀
         denominator += ρ*cᵥ
     end
@@ -92,8 +93,8 @@ end
     T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
     p = 0.0
     for key in keys(densities)
-        R = densities.key.R
-        ρ = tracers.key.data[i,j,k]
+        R = getproperty(densities, key).R
+        ρ = getproperty(tracers, key).data[i,j,k]
         p += ρ*R*T
     end
     return p
@@ -102,7 +103,7 @@ end
 @inline function diagnose_ρ(i, j, k, grid, densities, tracers)
     ρ = 0.0
     for key in keys(densities)
-        ρ += tracers.key.data[i,j,k]
+        ρ += getproperty(tracers, key).data[i,j,k]
     end
     return ρ
 end

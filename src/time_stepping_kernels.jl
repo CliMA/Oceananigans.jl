@@ -12,7 +12,7 @@ end
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
             F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
