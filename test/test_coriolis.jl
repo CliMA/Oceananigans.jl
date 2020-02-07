@@ -10,13 +10,13 @@ end
 
 
 function instantiate_ntfplane_1(FT)
-    coriolis = NonTraditionalFPlane(FT, f=π, f′=π)
-    return coriolis.f == FT(π) && coriolis.f′ == FT(π)
+    coriolis = NonTraditionalFPlane(FT, fz=π, fy=π)
+    return coriolis.fz == FT(π) && coriolis.fy == FT(π)
 end
 
 function instantiate_ntfplane_2(FT)
     coriolis = NonTraditionalFPlane(FT, rotation_rate=2, latitude=30)
-    return coriolis.f == FT(2) && coriolis.f′ == FT(2*√3)
+    return coriolis.fz == FT(2) && coriolis.fy == FT(2*√3)
 end
 
 function instantiate_betaplane_1(FT)
@@ -50,12 +50,12 @@ end
             # Test that NonTraditionalFPlane throws an ArgumentError
             @test_throws ArgumentError NonTraditionalFPlane(FT)
             @test_throws ArgumentError NonTraditionalFPlane(FT, rotation_rate=7e-5)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f=1, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f=1, rotation_rate=7e-5, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f′=1, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f′=1, rotation_rate=7e-5, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f=1, f′=1, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, f=1, f′=1, rotation_rate=7e-5, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, rotation_rate=7e-5, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fy=1, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fy=1, rotation_rate=7e-5, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, fy=1, latitude=40)
+            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, fy=1, rotation_rate=7e-5, latitude=40)
 
             # Non-exhaustively test that BetaPlane throws an ArgumentError
             @test_throws ArgumentError BetaPlane(FT)
