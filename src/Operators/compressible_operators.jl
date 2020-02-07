@@ -36,13 +36,12 @@ end
 ##### Diffusion
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρ, C) = ρ[i,j,k] * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρ, C) = ρ[i,j,k] * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρ, C) = ρ[i,j,k] * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρ, C) = @inbounds ρ[i,j,k] * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρ, C) = @inbounds ρ[i,j,k] * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρ, C) = @inbounds ρ[i,j,k] * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
 
 @inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                        ρ, C, ::Val{tracer_index}, args...) where tracer_index
-
+                       ρ, C, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κ = closure.κ[tracer_index]
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, ρ, C) +
                                     δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κ, ρ, C) +
@@ -92,27 +91,27 @@ end
 ##### Viscous dissipation
 #####
 
-@inline strain_rate_tensor_ux(i, j, k, grid, ρ, U) = 1.0/3.0 * ∂xᶜᵃᵃ(i, j, k, grid, U_over_ρ, U, ρ)
+@inline strain_rate_tensor_ux(i, j, k, grid, ρ, U)    = 1.0/3.0 * ∂xᶜᵃᵃ(i, j, k, grid, U_over_ρ, U, ρ)
 @inline strain_rate_tensor_uy(i, j, k, grid, ρ, U, V) = ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρ) + ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρ)
 @inline strain_rate_tensor_uz(i, j, k, grid, ρ, U, W) = ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρ) + ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ)
 @inline strain_rate_tensor_vx(i, j, k, grid, ρ, V, U) = ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρ)
-@inline strain_rate_tensor_vy(i, j, k, grid, ρ, V) = 1.0/3.0 * ∂yᵃᶜᵃ(i, j, k, grid, V_over_ρ, V, ρ)
+@inline strain_rate_tensor_vy(i, j, k, grid, ρ, V)    = 1.0/3.0 * ∂yᵃᶜᵃ(i, j, k, grid, V_over_ρ, V, ρ)
 @inline strain_rate_tensor_vz(i, j, k, grid, ρ, V, W) = ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρ) + ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρ)
 @inline strain_rate_tensor_wx(i, j, k, grid, ρ, W, U) = ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρ) + ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρ)
 @inline strain_rate_tensor_wy(i, j, k, grid, ρ, W, V) = ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρ) + ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρ)
-@inline strain_rate_tensor_wz(i, j, k, grid, ρ, W) = 1.0/3.0 * ∂zᵃᵃᶜ(i, j, k, grid, W_over_ρ, W, ρ)
+@inline strain_rate_tensor_wz(i, j, k, grid, ρ, W)    = 1.0/3.0 * ∂zᵃᵃᶜ(i, j, k, grid, W_over_ρ, W, ρ)
 
-@inline viscous_flux_ux(i, j, k, grid, νᶜᶜᶜ, ρ, U) = ρ[i, j, k] * νᶜᶜᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_ux(i, j, k, grid, ρ, U)
-@inline viscous_flux_uy(i, j, k, grid, νᶠᶠᶜ, ρ, U, V) = ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_uy(i, j, k, grid, ρ, U, V)
-@inline viscous_flux_uz(i, j, k, grid, νᶠᶜᶠ, ρ, U, W) = ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_uz(i, j, k, grid, ρ, U, W)
+@inline viscous_flux_ux(i, j, k, grid, νᶜᶜᶜ, ρ, U)    = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_ux(i, j, k, grid, ρ, U)
+@inline viscous_flux_uy(i, j, k, grid, νᶠᶠᶜ, ρ, U, V) =           ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_uy(i, j, k, grid, ρ, U, V)
+@inline viscous_flux_uz(i, j, k, grid, νᶠᶜᶠ, ρ, U, W) =           ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_uz(i, j, k, grid, ρ, U, W)
 
-@inline viscous_flux_vx(i, j, k, grid, νᶠᶠᶜ, ρ, V, U) = ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vx(i, j, k, grid, ρ, V, U)
-@inline viscous_flux_vy(i, j, k, grid, νᶜᶜᶜ, ρ, V) = ρ[i, j, k] * νᶜᶜᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vy(i, j, k, grid, ρ, V)
-@inline viscous_flux_vz(i, j, k, grid, νᶜᶠᶠ, ρ, V, W) = ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_vz(i, j, k, grid, ρ, V, W)
+@inline viscous_flux_vx(i, j, k, grid, νᶠᶠᶜ, ρ, V, U) =           ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vx(i, j, k, grid, ρ, V, U)
+@inline viscous_flux_vy(i, j, k, grid, νᶜᶜᶜ, ρ, V)    = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vy(i, j, k, grid, ρ, V)
+@inline viscous_flux_vz(i, j, k, grid, νᶜᶠᶠ, ρ, V, W) =           ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_vz(i, j, k, grid, ρ, V, W)
 
-@inline viscous_flux_wx(i, j, k, grid, νᶠᶜᶠ, ρ, W, U) = ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Axᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wx(i, j, k, grid, ρ, W, U)
-@inline viscous_flux_wy(i, j, k, grid, νᶜᶠᶠ, ρ, W, V) = ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Ayᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wy(i, j, k, grid, ρ, W, V)
-@inline viscous_flux_wz(i, j, k, grid, νᶜᶜᶜ, ρ, W) = ρ[i, j, k] * νᶜᶜᶜ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_wz(i, j, k, grid, ρ, W)
+@inline viscous_flux_wx(i, j, k, grid, νᶠᶜᶠ, ρ, W, U) =           ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Axᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wx(i, j, k, grid, ρ, W, U)
+@inline viscous_flux_wy(i, j, k, grid, νᶜᶠᶠ, ρ, W, V) =           ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Ayᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wy(i, j, k, grid, ρ, W, V)
+@inline viscous_flux_wz(i, j, k, grid, νᶜᶜᶜ, ρ, W)    = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_wz(i, j, k, grid, ρ, W)
 
 @inline function ∂ⱼτ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, Ũ, args...)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, closure.ν, ρ, Ũ.ρu) +

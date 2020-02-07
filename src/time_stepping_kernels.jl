@@ -25,7 +25,7 @@ function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃,
             F_C = getproperty(F, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                F_C[i, j, k] = FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
+                F_C[i, j, k] = FC(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
             end
         end
 

@@ -6,6 +6,7 @@ the prognostic thermodynamic variable rather than potential temperature.
 """
 
 using Printf
+using Profile
 using Plots
 using VideoIO
 using FileIO
@@ -98,7 +99,8 @@ savefig(s_plot, "entropy_initial_condition.png")
 
 Δt=0.1
 for n in 1:200
-    time_step!(model, Δt=Δt, Nt=50)
+
+    @time time_step!(model, Δt = Δt, Nt = 50)
 
     CFL = cfl(model, Δt)
     @printf("t = %.2f s, CFL = %.2e\n", model.clock.time, CFL)
