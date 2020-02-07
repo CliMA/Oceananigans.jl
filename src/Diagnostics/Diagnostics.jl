@@ -1,7 +1,7 @@
 module Diagnostics
 
 export
-    HorizontalAverage, Timeseries, FieldMaximum,
+    HorizontalAverage, TimeSeries, FieldMaximum,
     CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker
 
 using Oceananigans,

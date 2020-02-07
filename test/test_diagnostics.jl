@@ -77,7 +77,7 @@ get_time(model) = model.clock.time
 
 function timeseries_diagnostic_works(arch, FT)
     model = TestModel(arch, FT)
-    iter_diag = Timeseries(get_iteration, model; frequency=1)
+    iter_diag = TimeSeries(get_iteration, model; frequency=1)
     push!(model.diagnostics, iter_diag)
     Δt = FT(1e-16)
     time_step!(model, 1, Δt)
@@ -87,7 +87,7 @@ end
 
 function timeseries_diagnostic_tuples(arch, FT)
     model = TestModel(arch, FT)
-    timeseries = Timeseries((iters=get_iteration, itertimes=get_time), model; frequency=2)
+    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model; frequency=2)
     model.diagnostics[:timeseries] = timeseries
     Δt = FT(1e-16)
     time_step!(model, 2, Δt)
@@ -96,8 +96,8 @@ end
 
 function diagnostics_getindex(arch, FT)
     model = TestModel(arch, FT)
-    iter_timeseries = Timeseries(get_iteration, model)
-    time_timeseries = Timeseries(get_time, model)
+    iter_timeseries = TimeSeries(get_iteration, model)
+    time_timeseries = TimeSeries(get_time, model)
     model.diagnostics[:iters] = iter_timeseries
     model.diagnostics[:times] = time_timeseries
     return model.diagnostics[2] == time_timeseries
@@ -105,9 +105,9 @@ end
 
 function diagnostics_setindex(arch, FT)
     model = TestModel(arch, FT)
-    iter_timeseries = Timeseries(get_iteration, model)
-    time_timeseries = Timeseries(get_time, model)
-    max_abs_u_timeseries = Timeseries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+    iter_timeseries = TimeSeries(get_iteration, model)
+    time_timeseries = TimeSeries(get_time, model)
+    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
 
     push!(model.diagnostics, iter_timeseries, time_timeseries)
     model.diagnostics[2] = max_abs_u_timeseries

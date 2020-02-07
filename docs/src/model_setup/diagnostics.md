@@ -12,7 +12,7 @@ Most diagnostics can be run at specified frequencies (e.g. every 25 time steps) 
 (and do not add it to `model.diagnostics`).
 
 We describe the `HorizontalAverage` diagnostic in detail below but see the API documentation for other diagnostics such
-as [`Timeseries`](@ref), [`FieldMaximum`](@ref), [`CFL`](@ref), and [`NaNChecker`](@ref).
+as [`TimeSeries`](@ref), [`FieldMaximum`](@ref), [`CFL`](@ref), and [`NaNChecker`](@ref).
 
 ## Horizontal averages
 You can create a `HorizontalAverage` diagnostic by passing a field to the constructor, e.g.
