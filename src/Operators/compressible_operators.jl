@@ -41,7 +41,7 @@ end
 @inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρ, C) = @inbounds ρ[i,j,k] * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
 
 @inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                       ρ, C, ::Val{tracer_index}, args...) where tracer_index
+                       ρ, C, tracer_index, args...)
     @inbounds κ = closure.κ[tracer_index]
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, ρ, C) +
                                     δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κ, ρ, C) +
@@ -49,8 +49,8 @@ end
 end
 
 @inline function sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                          ρ, C, s, ::Val{tracer_index}, args ...) where tracer_index
-    return s * ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, Val(tracer_index), args...)
+                          ρ, C, s, tracer_index, args ...)
+    return s * ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, tracer_index, args...)
 end
 
 #####

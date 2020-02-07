@@ -24,9 +24,9 @@ end
     end
 end
 
-@inline function FC(i, j, k, grid, closure, ρ, C, ::Val{tracer_index}, K̃) where tracer_index
+@inline function FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
     @inbounds begin
-        return ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
+        return ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
     end
 end
 
@@ -39,7 +39,7 @@ end
             gas = ρ̃[ind_gas]
             ρᶜ = C̃[tracer_index]
             sᶜ = diagnose_s(gas, ρᶜ[i, j, k], T)
-            Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, ρᶜ, sᶜ, Val(tracer_index), K̃)
+            Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, ρᶜ, sᶜ, tracer_index, K̃)
         end
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ) / T
         return Ṡ
