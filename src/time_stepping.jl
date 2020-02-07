@@ -55,7 +55,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     g  = model.gravity
 
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
-    Φ⁺ = merge(Ũ, C̃)
+    Φ⁺ = (Ũ..., tracers = C̃)
 
     # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
     Ũ_names = propertynames(Ũ)
@@ -63,7 +63,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     IV_Ũ = NamedTuple{Ũ_names}(IV_Ũ_vals)
 
     C̃_names = propertynames(C̃)
-    IV_C̃_vals = [getproperty(IV, C) for C in C̃_names]
+    IV_C̃_vals = [getproperty(IV.tracers, C) for C in C̃_names]
     IV_C̃ = NamedTuple{C̃_names}(IV_C̃_vals)
 
     for _ in 1:Nt

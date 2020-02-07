@@ -22,7 +22,7 @@ function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃,
 
         for (tracer_index, C_name) in enumerate(propertynames(C̃))
             C   = getproperty(C̃, C_name)
-            F_C = getproperty(F, C_name)
+            F_C = getproperty(F.tracers, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 F_C[i, j, k] = FC(i, j, k, grid, closure, ρ, C, Val(tracer_index), K̃)
@@ -30,7 +30,7 @@ function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃,
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.ρs[i, j, k] = FS(i, j, k, grid, closure, tvar, ρ, ρ̃, Ũ, C̃, K̃)
+            F.tracers.ρs[i, j, k] = FS(i, j, k, grid, closure, tvar, ρ, ρ̃, Ũ, C̃, K̃)
         end
 
     end
@@ -49,8 +49,8 @@ function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
 
         for C_name in propertynames(C̃)
             C   = getproperty(C̃, C_name)
-            R_C = getproperty(R, C_name)
-            F_C = getproperty(F, C_name)
+            R_C = getproperty(R.tracers, C_name)
+            F_C = getproperty(F.tracers, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 R_C[i, j, k] = RC(i, j, k, grid, ρ, Ũ, C, F_C)
@@ -75,8 +75,8 @@ function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, R; Δt)
 
         for C_name in propertynames(C̃ᵗ)
             Cᵗ  = getproperty(C̃ᵗ, C_name)
-            I_C = getproperty(I,  C_name)
-            R_C = getproperty(R,  C_name)
+            I_C = getproperty(I.tracers,  C_name)
+            R_C = getproperty(R.tracers,  C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 I_C[i, j, k] = Cᵗ[i, j, k] + Δt * R_C[i, j, k]

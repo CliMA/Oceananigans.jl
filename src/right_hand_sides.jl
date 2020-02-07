@@ -34,10 +34,10 @@ end
     @inbounds begin
         Ṡ = 0.0
         T = diagnose_T(i, j, k, grid, tvar, ρ̃, C̃)
-        for key in keys(ρ̃)
-            tracer_index = findall(keys(C̃) .== key)[1]
-            gas = getproperty(ρ̃, key)
-            ρᶜ = getproperty(C̃, key)
+        for ind_gas = 1:length(ρ̃)
+            tracer_index = ind_gas + 1
+            gas = ρ̃[ind_gas]
+            ρᶜ = C̃[tracer_index]
             sᶜ = diagnose_s(gas, ρᶜ[i, j, k], T)
             Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, ρᶜ, sᶜ, Val(tracer_index), K̃)
         end

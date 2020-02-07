@@ -111,16 +111,14 @@ function ForcingFields(arch, grid, tracernames)
     ρu = FaceFieldX(arch, grid)
     ρv = FaceFieldY(arch, grid)
     ρw = FaceFieldZ(arch, grid)
-    momenta = (ρu=ρu, ρv=ρv, ρw=ρw)
     tracers = TracerFields(arch, grid, tracernames)
-    return merge(momenta, tracers)
+    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
 
 function RightHandSideFields(arch, grid, tracernames)
     ρu = FaceFieldX(arch, grid)
     ρv = FaceFieldY(arch, grid)
     ρw = FaceFieldZ(arch, grid)
-    momenta = (ρu=ρu, ρv=ρv, ρw=ρw)
     tracers = TracerFields(arch, grid, tracernames)
-    return merge(momenta, tracers)
+    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end

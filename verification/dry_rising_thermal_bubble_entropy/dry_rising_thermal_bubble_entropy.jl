@@ -98,9 +98,9 @@ savefig(s_plot, "entropy_initial_condition.png")
 #####
 
 Δt=0.1
-for n in 1:10
+for n in 1:1
 
-    @time time_step!(model, Δt = Δt, Nt = 50)
+    @time time_step!(model, Δt = Δt, Nt = 1)
 
     CFL = cfl(model, Δt)
     @printf("t = %.2f s, CFL = %.2e\n", model.clock.time, CFL)
