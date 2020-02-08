@@ -1,3 +1,5 @@
+using Oceananigans.Operators: ℑzᵃᵃᶠ
+
 ####
 #### Element-wise forcing and right-hand-side calculations
 ####
@@ -64,7 +66,7 @@ end
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρ, Ũ)
                 - ∂p∂z(i, j, k, grid, tvar, ρ̃, C)
-                - gravity*ρ[i,j,k]
+                - gravity*ℑzᵃᵃᶠ(i, j, k, grid, ρ)
                 + FW[i, j, k])
     end
 end
