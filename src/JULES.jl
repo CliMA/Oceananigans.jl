@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures:
 
 export
     PrognosticS,
-    DryEarth,
+    DryEarth, DryEarth3,
     CompressibleModel,
     time_step!,
     cfl, update_total_density!

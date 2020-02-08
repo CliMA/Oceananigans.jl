@@ -91,6 +91,10 @@ function DryEarth(FT = Float64)
     return (ρ = EarthN₂O₂(FT),)
 end
 
+function DryEarth3(FT = Float64)
+    return (ρ₁ = EarthN₂O₂(FT), ρ₂ = EarthN₂O₂(FT), ρ₃ = EarthN₂O₂(FT))
+end
+
 function PrognosticS()
     return (ρs = Entropy(),)
 end

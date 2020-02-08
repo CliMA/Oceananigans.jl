@@ -33,14 +33,12 @@ end
 @inline function FS(i, j, k, grid, closure, tvar::Entropy, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
         Ṡ = 0.0
-        T = diagnose_T(i, j, k, grid, tvar, ρ̃, C̃)
         for ind_gas = 1:length(ρ̃)
             tracer_index = ind_gas + 1
-            gas = ρ̃[ind_gas]
-            ρᶜ = C̃[tracer_index]
-            sᶜ = diagnose_s(gas, ρᶜ[i, j, k], T)
-            Ṡ += -sᶜ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, ρᶜ, sᶜ, tracer_index, K̃)
+            C = C̃[tracer_index]
+            Ṡ += ∂ⱼsᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tvar, tracer_index, ρ̃, C̃, ρ, C, K̃)
         end
+        T = diagnose_T(i, j, k, grid, tvar, ρ̃, C̃)
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ) / T
         return Ṡ
     end

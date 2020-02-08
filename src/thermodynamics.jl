@@ -67,9 +67,13 @@ struct Entropy <: AbstractThermodynamicVariable end
 ###
 ### Thermodynamic state diagnostics
 ###
-
-@inline function diagnose_s(gas::IdealGas, ρ, T)
-    return gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρ/gas.ρ₀)
+@inline function diagnose_ρs(i, j, k, grid, tvar, tracer_index, densities, tracers)
+    @inbounds begin
+        T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
+        ρ = tracers[tracer_index].data[i, j, k]
+        gas = densities[tracer_index - 1]
+        return (ρ > 0.0 ? ρ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρ/gas.ρ₀)) : 0.0)
+    end
 end
 
 @inline function diagnose_T(i, j, k, grid, tvar::Entropy, densities, tracers)
@@ -84,7 +88,7 @@ end
             ρ₀ = gas.ρ₀
             T₀ = gas.T₀
             s₀ = gas.s₀
-            numerator += ρ*R*log(ρ/ρ₀) - ρ*s₀
+            numerator += (ρ > 0 ? (ρ*R*log(ρ/ρ₀) - ρ*s₀) : 0.0)
             denominator += ρ*cᵥ
         end
         return T₀*exp(numerator/denominator)

@@ -88,7 +88,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
                 compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
-                update_total_density!(ρ.data, grid, ρ̃, C̃)
+                update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(IV_Ũ.ρw.data, hpbcs_np, arch, grid)
