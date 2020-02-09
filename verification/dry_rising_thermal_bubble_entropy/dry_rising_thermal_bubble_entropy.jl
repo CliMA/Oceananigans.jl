@@ -95,13 +95,18 @@ savefig(s_plot, "entropy_initial_condition.png")
 ##### Watch the thermal bubble rise!
 #####
 
+ρ̄ᵢ = sum(ρ.data[1:Nx,1,1:Nz])/(Nx*Nz)
+ρ̄s̄ᵢ = sum(ρs.data[1:Nx,1,1:Nz])/(Nx*Nz)
 Δt=0.1
 for n in 1:200
 
     time_step!(model, Δt = Δt, Nt = 50)
 
     CFL = cfl(model, Δt)
-    @printf("t = %.2f s, CFL = %.2e\n", model.clock.time, CFL)
+    ρ̄ = sum(ρ.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
+    ρ̄s̄ = sum(ρs.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
+    @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄s̄ = %.2e (rerr = %.2e)\n",
+        model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
 
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km

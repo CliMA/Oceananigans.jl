@@ -20,7 +20,7 @@ const hPa = 100
 Lx = 20km
 Lz = 10km
 
-Δ = 0.1km  # grid spacing [m]
+Δ = 0.2km  # grid spacing [m]
 
 Nx = Int(Lx/Δ)
 Ny = 1
@@ -33,7 +33,7 @@ model = CompressibleModel(
                       grid = grid,
                  densities = DryEarth3(),
     thermodynamic_variable = PrognosticS(),
-                   closure = ConstantIsotropicDiffusivity(ν=150.0, κ=150.0)
+                   closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
 )
 
 #####
@@ -49,8 +49,8 @@ Tₛ = 300
 
 # Define initial mixing ratios
 q₁(z) = exp(-(4z/Lz)^2)
-q₂(z) = exp(-(4*(z - Lz)/Lz)^2)
-q₃(z) = 1 - q₁(z) - q₂(z)
+q₃(z) = exp(-(4*(z - Lz)/Lz)^2)
+q₂(z) = 1 - q₁(z) - q₃(z)
 
 # Define an approximately hydrostatic background state
 θ₀(x, y, z) = Tₛ
@@ -129,6 +129,7 @@ savefig(s_plot, "entropy_initial_condition.png")
 #####
 
 ρ̄ᵢ = sum(ρ.data[1:Nx,1,1:Nz])/(Nx*Nz)
+ρ̄s̄ᵢ = sum(ρs.data[1:Nx,1,1:Nz])/(Nx*Nz)
 Δt=0.1
 for n in 1:200
 
@@ -136,14 +137,15 @@ for n in 1:200
 
     CFL = cfl(model, Δt)
     ρ̄ = sum(ρ.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
+    ρ̄s̄ = sum(ρs.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
+    @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄s̄ = %.2e (rerr = %.2e)\n",
+        model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
     ∂tρ₁ = maximum(model.slow_forcings.tracers.ρ₁[1:Nx,1:Ny,1:Nz])
     ∂tρ₂ = maximum(model.slow_forcings.tracers.ρ₂[1:Nx,1:Ny,1:Nz])
     ∂tρ₃ = maximum(model.slow_forcings.tracers.ρ₃[1:Nx,1:Ny,1:Nz])
     ∂tρ = maximum(model.slow_forcings.tracers.ρ₁[1:Nx,1:Ny,1:Nz] .+
               model.slow_forcings.tracers.ρ₂[1:Nx,1:Ny,1:Nz] .+
               model.slow_forcings.tracers.ρ₃[1:Nx,1:Ny,1:Nz])
-    @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rel.err. = %.2e)\n",
-        model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄)
     @printf("Maximum mass tendencies from diffusion:\n")
     @printf("ρ₁: %.2e\n", ∂tρ₁)
     @printf("ρ₂: %.2e\n", ∂tρ₂)
@@ -164,20 +166,19 @@ for n in 1:200
 
     ρ₁_title = @sprintf("rho1, t = %d s", round(Int, model.clock.time))
     pρ₁ = heatmap(xC, zC, ρ₁_slice, title=ρ₁_title, fill=true, levels=50,
-        xlims = (-5, 5), color=:dense, linecolor = nothing)
+        xlims = (-3, 3), color=:dense, linecolor = nothing, clims = (0, 1.1))
     pρ₂ = heatmap(xC, zC, ρ₂_slice, title="rho2", fill=true, levels=50,
-        xlims = (-5, 5), color=:dense, linecolor = nothing)
+        xlims = (-3, 3), color=:dense, linecolor = nothing, clims = (0, 1.1))
     pρ₃ = heatmap(xC, zC, ρ₃_slice, title="rho3", fill=true, levels=50,
-        xlims = (-5, 5), color=:dense, linecolor = nothing)
+        xlims = (-3, 3), color=:dense, linecolor = nothing, clims = (0, 1.1))
     pρ = heatmap(xC, zC, ρ_slice, title="rho", fill=true, levels=50,
-        xlims = (-5, 5), color=:dense, linecolor = nothing, clims = (0, 1.1))
+        xlims = (-3, 3), color=:dense, linecolor = nothing, clims = (0, 1.1))
     pρ′ = heatmap(xC, zC, ρ′_slice, title="rho'", fill=true, levels=50,
-        xlims = (-5, 5), color=:balance, linecolor = nothing, clims = (-0.007, 0.007))
+        xlims = (-3, 3), color=:balance, linecolor = nothing, clims = (-0.007, 0.007))
     ps = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
-        xlims = (-5, 5), color=:oxy, linecolor = nothing)
+        xlims = (-3, 3), color=:oxy_r, linecolor = nothing, clims = (100, 300))
 
-    p = plot(pρ₁, pρ₂, pρ₃, pρ, pρ′, ps, layout=(3, 2), show=true, dpi = 200,
-        size = (600, 600))
+    p = plot(pρ₁, pρ₂, pρ₃, pρ, pρ′, ps, layout=(2, 3), show=true, dpi = 200)
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
 end
 
