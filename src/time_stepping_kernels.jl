@@ -30,7 +30,7 @@ function compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.tracers[1].data[i, j, k] = FT(i, j, k, grid, closure, tvar, g, ρ, ρ̃, Ũ, C̃, K̃)
+            F.tracers[1].data[i, j, k] += FT(i, j, k, grid, closure, tvar, g, ρ, ρ̃, Ũ, C̃, K̃)
         end
 
     end
@@ -58,7 +58,7 @@ function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.tracers[1].data[i, j, k] = RT(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃)
+            R.tracers[1].data[i, j, k] += RT(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃)
         end
 
     end

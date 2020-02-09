@@ -135,3 +135,11 @@ end
         return ρ
     end
 end
+
+@inline function diagnose_p_over_ρ(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+    @inbounds begin
+        p = diagnose_p(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+        ρ = total_density[i, j, k]
+        return p/ρ
+    end
+end

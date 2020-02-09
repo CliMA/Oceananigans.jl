@@ -52,6 +52,8 @@ end
 
 #####
 ##### Diffusion
+##### Note: need a better way to enforce boundary conditions on diffusive fluxes
+##### at rigid boundaries
 #####
 
 @inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρ, C) = ℑxᶠᵃᵃ(i, j, k, grid, ρ) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
@@ -60,9 +62,12 @@ end
 @inline diffusive_tvar_flux_x(i, j, k, grid, κᶠᶜᶜ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑxᶠᵃᵃ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
 @inline diffusive_tvar_flux_y(i, j, k, grid, κᶜᶠᶜ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑyᵃᶠᵃ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
 @inline diffusive_tvar_flux_z(i, j, k, grid, κᶜᶜᶠ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑzᵃᵃᶠ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_pressure_flux_x(i, j, k, grid, κᶠᶜᶜ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
-@inline diffusive_pressure_flux_y(i, j, k, grid, κᶜᶠᶜ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
-@inline diffusive_pressure_flux_z(i, j, k, grid, κᶜᶜᶠ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+@inline diffusive_pressure_flux_x(i, j, k, grid, κᶠᶜᶜ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = ℑxᶠᵃᵃ(i, j, k, grid, ρ) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+@inline diffusive_pressure_flux_y(i, j, k, grid, κᶜᶠᶜ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = ℑyᵃᶠᵃ(i, j, k, grid, ρ) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+@inline function diffusive_pressure_flux_z(i, j, k, grid, κᶜᶜᶠ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+    (k <= 1 || k > grid.Nz) && return 0.0
+    return ℑzᵃᵃᶠ(i, j, k, grid, ρ) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+end
 
 @inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
                        ρ, C, tracer_index, args...)
@@ -81,11 +86,11 @@ end
 end
 
 @inline function ∂ⱼDᵖⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                       p_diag, tvar, g, Ũ, ρ̃, C̃, ρ, args ...)
-    @inbounds κ = closure.κ[1]
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_pressure_flux_x, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
-                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_pressure_flux_y, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
-                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_pressure_flux_z, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃))
+                       p_over_ρ_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, args ...)
+    @inbounds κ = closure.κ[tracer_index]
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_pressure_flux_x, κ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_pressure_flux_y, κ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_pressure_flux_z, κ, p_over_ρ_diag, tvar, g, Ũ, ρ, ρ̃, C̃))
 end
 
 #####

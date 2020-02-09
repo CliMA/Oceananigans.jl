@@ -97,10 +97,10 @@ savefig(e_plot, "energy_initial_condition.png")
 
 ρ̄ᵢ = sum(ρ.data[1:Nx,1,1:Nz])/(Nx*Nz)
 ρ̄ēᵢ = sum(ρe.data[1:Nx,1,1:Nz])/(Nx*Nz)
-Δt=0.05
+Δt=0.1
 for n in 1:200
 
-    time_step!(model, Δt = Δt, Nt = 100)
+    time_step!(model, Δt = Δt, Nt = 50)
 
     CFL = cfl(model, Δt)
     ρ̄ = sum(ρ.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
@@ -125,7 +125,7 @@ for n in 1:200
     pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
         xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.006, 0.006))
     pe = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
-        xlims=(-5, 5), color=:oxy_r, linecolor = nothing)
+        xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims = (0, 1200))
 
     p = plot(pu, pw, pρ, pe, layout=(2, 2), dpi=200, show=true)
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))

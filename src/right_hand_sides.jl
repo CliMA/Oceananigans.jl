@@ -48,7 +48,7 @@ end
 
 @inline function FT(i, j, k, grid, closure, tvar::Energy, g, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
-        return ∂ⱼDᵖⱼ(i, j, k, grid, closure, diagnose_p, tvar, g, Ũ, ρ̃, C̃, ρ, K̃)
+        return ∂ⱼDᵖⱼ(i, j, k, grid, closure, diagnose_p_over_ρ, tvar, 1, g, Ũ, ρ̃, C̃, ρ, K̃)
     end
 end
 
