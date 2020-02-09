@@ -1,5 +1,4 @@
 using JULES.Operators
-
 using Oceananigans.Buoyancy: AbstractEquationOfState
 
 ####
@@ -11,6 +10,7 @@ const R⁰ = 8.31446261815324  # Universal gas constant [J/mol/K]
 const T₀ = 273.16            # Reference temperature [K]
 const p₀ = 1atm              # Reference pressure [Pa]
 const s₀ = 0.0               # Reference entropy [J/kg/K]
+const u₀ = 0.0               # Reference internal energy [J/kg]
 
 ####
 #### Molar masses and degrees of freedom for common gases
@@ -38,21 +38,22 @@ struct IdealGas{FT} <: AbstractEquationOfState
     p₀ :: FT
     ρ₀ :: FT
     s₀ :: FT
+    u₀ :: FT
 end
 
-function EarthN₂O₂(FT = Float64; T₀ = T₀, p₀ = p₀, s₀ = s₀)
+function EarthN₂O₂(FT = Float64; T₀ = T₀, p₀ = p₀, s₀ = s₀, u₀ = u₀)
     # Calculate abundance-weighted molar masses and DOFs
     M = (η_N₂_earth * M_N₂ + η_O₂_earth * M_O₂)/(η_N₂_earth + η_O₂_earth)
     dof = (η_N₂_earth * dof_N₂ + η_O₂_earth * dof_O₂)/(η_N₂_earth + η_O₂_earth)
-    return IdealGas(FT, M, dof; T₀ = T₀, p₀ = p₀, s₀ = s₀)
+    return IdealGas(FT, M, dof; T₀ = T₀, p₀ = p₀, s₀ = s₀, u₀ = u₀)
 end
 
-function IdealGas(FT, M, dof; T₀ = T₀, p₀ = p₀, s₀ = s₀)
+function IdealGas(FT, M, dof; T₀ = T₀, p₀ = p₀, s₀ = s₀, u₀ = u₀)
     R = R⁰/M
     cᵥ = R*dof/2
     cₚ = cᵥ + R
     ρ₀ = p₀/(R*T₀)
-    return IdealGas{FT}(R, cₚ, cᵥ, T₀, p₀, ρ₀, s₀)
+    return IdealGas{FT}(R, cₚ, cᵥ, T₀, p₀, ρ₀, s₀, u₀)
 end
 
 ####
@@ -63,20 +64,21 @@ abstract type AbstractThermodynamicVariable end
 
 # struct ModifiedPotentialTemperature <: AbstractThermodynamicVariable end
 struct Entropy <: AbstractThermodynamicVariable end
+struct Energy  <: AbstractThermodynamicVariable end
 
 ###
 ### Thermodynamic state diagnostics
 ###
-@inline function diagnose_ρs(i, j, k, grid, tvar, tracer_index, densities, tracers)
+@inline function diagnose_ρs(i, j, k, grid, tvar, tracer_index, gravity, momenta, total_density, densities, tracers)
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
+        T = diagnose_T(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
         ρ = tracers[tracer_index].data[i, j, k]
         gas = densities[tracer_index - 1]
         return (ρ > 0.0 ? ρ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρ/gas.ρ₀)) : 0.0)
     end
 end
 
-@inline function diagnose_T(i, j, k, grid, tvar::Entropy, densities, tracers)
+@inline function diagnose_T(i, j, k, grid, tvar::Entropy, gravity, momenta, total_density, densities, tracers)
     @inbounds begin
         numerator = tracers.ρs.data[i,j,k]
         denominator = 0.0
@@ -95,9 +97,25 @@ end
     end
 end
 
-@inline function diagnose_p(i, j, k, grid, tvar::Entropy, densities, tracers)
+@inline function diagnose_T(i, j, k, grid, tvar::Energy, gravity, momenta, total_density, densities, tracers)
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, densities, tracers)
+        numerator = tracers.ρe.data[i,j,k]
+        denominator = 0.0
+        K = kinetic_energy(i, j, k, grid, momenta, total_density)
+        Φ = gravity * grid.zC[k]
+        for ind_gas in 1:length(densities)
+            ρ = tracers[ind_gas + 1].data[i,j,k]
+            gas = densities[ind_gas]
+            numerator += -ρ*(gas.u₀ + Φ + K - gas.cᵥ*gas.T₀)
+            denominator += ρ*gas.cᵥ
+        end
+        return numerator/denominator
+    end
+end
+
+@inline function diagnose_p(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+    @inbounds begin
+        T = diagnose_T(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
         p = 0.0
         for ind_gas in 1:length(densities)
             R = densities[ind_gas].R

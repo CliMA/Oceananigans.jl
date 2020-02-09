@@ -72,7 +72,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
         fill_halo_regions!(ρ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
         fill_halo_regions!(F.ρw.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping

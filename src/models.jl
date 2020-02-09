@@ -99,6 +99,10 @@ function PrognosticS()
     return (ρs = Entropy(),)
 end
 
+function PrognosticE()
+    return (ρe = Energy(),)
+end
+
 function MomentumFields(arch, grid)
     ρu = FaceFieldX(arch, grid)
     ρv = FaceFieldY(arch, grid)

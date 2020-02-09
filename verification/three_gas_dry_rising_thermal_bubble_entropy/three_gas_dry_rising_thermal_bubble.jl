@@ -33,7 +33,7 @@ model = CompressibleModel(
                       grid = grid,
                  densities = DryEarth3(),
     thermodynamic_variable = PrognosticS(),
-                   closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
+                   closure = ConstantIsotropicDiffusivity(ν=150.0, κ=150.0)
 )
 
 #####

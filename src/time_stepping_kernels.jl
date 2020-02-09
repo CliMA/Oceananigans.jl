@@ -12,7 +12,7 @@ end
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+function compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
             F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
@@ -30,7 +30,7 @@ function compute_slow_forcings!(F, grid, tvar, coriolis, closure, Ũ, ρ, ρ̃,
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.tracers.ρs[i, j, k] = FS(i, j, k, grid, closure, tvar, ρ, ρ̃, Ũ, C̃, K̃)
+            F.tracers[1].data[i, j, k] = FT(i, j, k, grid, closure, tvar, g, ρ, ρ̃, Ũ, C̃, K̃)
         end
 
     end
@@ -42,8 +42,8 @@ Fast forcings include advection, pressure gradient, and buoyancy terms.
 function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.ρu[i, j, k] = RU(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C̃, F.ρu)
-            R.ρv[i, j, k] = RV(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C̃, F.ρv)
+            R.ρu[i, j, k] = RU(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F.ρu)
+            R.ρv[i, j, k] = RV(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F.ρv)
             R.ρw[i, j, k] = RW(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F.ρw)
         end
 
@@ -56,6 +56,11 @@ function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
                 R_C[i, j, k] = RC(i, j, k, grid, ρ, Ũ, C, F_C)
             end
         end
+
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F.tracers[1].data[i, j, k] = RT(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃)
+        end
+
     end
 end
 

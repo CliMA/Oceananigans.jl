@@ -32,41 +32,47 @@ end
     end
 end
 
-@inline function FS(i, j, k, grid, closure, tvar::Entropy, ρ, ρ̃, Ũ, C̃, K̃)
+@inline function FT(i, j, k, grid, closure, tvar::Entropy, g, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
         Ṡ = 0.0
         for ind_gas = 1:length(ρ̃)
             tracer_index = ind_gas + 1
             C = C̃[tracer_index]
-            Ṡ += ∂ⱼsᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tvar, tracer_index, ρ̃, C̃, ρ, C, K̃)
+            Ṡ += ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C, K̃)
         end
-        T = diagnose_T(i, j, k, grid, tvar, ρ̃, C̃)
+        T = diagnose_T(i, j, k, grid, tvar, g, Ũ, ρ, ρ̃, C̃)
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ) / T
         return Ṡ
     end
 end
 
-@inline function RU(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C, FU)
+@inline function FT(i, j, k, grid, closure, tvar::Energy, g, ρ, ρ̃, Ũ, C̃, K̃)
+    @inbounds begin
+        return ∂ⱼDᵖⱼ(i, j, k, grid, closure, diagnose_p, tvar, g, Ũ, ρ̃, C̃, ρ, K̃)
+    end
+end
+
+@inline function RU(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρ, Ũ)
-                - ∂p∂x(i, j, k, grid, tvar, ρ̃, C)
+                - ∂p∂x(i, j, k, grid, tvar, g, Ũ, ρ, ρ̃, C)
                 + FU[i, j, k])
     end
 end
 
-@inline function RV(i, j, k, grid, tvar, ρ, ρ̃, Ũ, C, FV)
+@inline function RV(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρ, Ũ)
-                - ∂p∂y(i, j, k, grid, tvar, ρ̃, C)
+                - ∂p∂y(i, j, k, grid, tvar, g, Ũ, ρ, ρ̃, C)
                 + FV[i, j, k])
     end
 end
 
-@inline function RW(i, j, k, grid, tvar, gravity, ρ, ρ̃, Ũ, C, FW)
+@inline function RW(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρ, Ũ)
-                - ∂p∂z(i, j, k, grid, tvar, ρ̃, C)
-                - gravity*ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+                - ∂p∂z(i, j, k, grid, tvar, g, Ũ, ρ, ρ̃, C)
+                - g*ℑzᵃᵃᶠ(i, j, k, grid, ρ)
                 + FW[i, j, k])
     end
 end
@@ -75,4 +81,12 @@ end
     @inbounds begin
         return -div_flux(i, j, k, grid, ρ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
     end
+end
+
+@inline function RT(i, j, k, grid, tvar::Entropy, g, ρ, ρ̃, Ũ, C̃)
+    return 0.0
+end
+
+@inline function RT(i, j, k, grid, tvar::Energy, g, ρ, ρ̃, Ũ, C̃)
+    return -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃)
 end

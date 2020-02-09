@@ -11,6 +11,24 @@ using Oceananigans: AbstractGrid
 @inline C_over_ρ(i, j, k, grid, C, ρ) = @inbounds C[i, j, k] / ρ[i, j, k]
 
 #####
+##### Kinetic energy
+#####
+@inline kinetic_energy(i, j, k, grid, Ũ, ρ) = @inbounds 0.5*((ℑxᶜᵃᵃ(i, j, k, grid, Ũ.ρu) / ρ[i, j, k])^2 + (ℑyᵃᶜᵃ(i, j, k, grid, Ũ.ρv) / ρ[i, j, k])^2 + (ℑzᵃᵃᶜ(i, j, k, grid, Ũ.ρw) / ρ[i, j, k])^2)
+
+#####
+##### Pressure work
+#####
+@inline pu(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) = ℑxᶠᵃᵃ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) * Axᵃᵃᶠ(i, j, k, grid) * U_over_ρ(i, j, k, grid, Ũ.ρu, ρ)
+@inline pv(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) = ℑyᵃᶠᵃ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) * Ayᵃᵃᶠ(i, j, k, grid) * V_over_ρ(i, j, k, grid, Ũ.ρv, ρ)
+@inline pw(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) = ℑzᵃᵃᶠ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) * Azᵃᵃᵃ(i, j, k, grid) * W_over_ρ(i, j, k, grid, Ũ.ρw, ρ)
+
+@inline function ∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃)
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, pu, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δyᵃᶜᵃ(i, j, k, grid, pv, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δzᵃᵃᶜ(i, j, k, grid, pw, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃))
+end
+
+#####
 ##### Coriolis terms
 #####
 
@@ -39,10 +57,12 @@ end
 @inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρ, C) = ℑxᶠᵃᵃ(i, j, k, grid, ρ) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
 @inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρ, C) = ℑyᵃᶠᵃ(i, j, k, grid, ρ) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
 @inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρ, C) = ℑzᵃᵃᶠ(i, j, k, grid, ρ) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_entropy_flux_x(i, j, k, grid, κᶠᶜᶜ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C) = ℑxᶠᵃᵃ(i, j, k, grid, entropy_diag, tvar, tracer_index, ρ̃, C̃) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_entropy_flux_y(i, j, k, grid, κᶜᶠᶜ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C) = ℑyᵃᶠᵃ(i, j, k, grid, entropy_diag, tvar, tracer_index, ρ̃, C̃) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
-@inline diffusive_entropy_flux_z(i, j, k, grid, κᶜᶜᶠ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C) = ℑzᵃᵃᶠ(i, j, k, grid, entropy_diag, tvar, tracer_index, ρ̃, C̃) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
-
+@inline diffusive_tvar_flux_x(i, j, k, grid, κᶠᶜᶜ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑxᶠᵃᵃ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_tvar_flux_y(i, j, k, grid, κᶜᶠᶜ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑyᵃᶠᵃ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_tvar_flux_z(i, j, k, grid, κᶜᶜᶠ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) = ℑzᵃᵃᶠ(i, j, k, grid, tvar_diag, tvar, tracer_index, g, Ũ, ρ, ρ̃, C̃) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρ)
+@inline diffusive_pressure_flux_x(i, j, k, grid, κᶠᶜᶜ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+@inline diffusive_pressure_flux_y(i, j, k, grid, κᶜᶠᶜ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
+@inline diffusive_pressure_flux_z(i, j, k, grid, κᶜᶜᶠ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃)
 
 @inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
                        ρ, C, tracer_index, args...)
@@ -52,12 +72,20 @@ end
                                     δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κ, ρ, C))
 end
 
-@inline function ∂ⱼsᶜDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                          entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C, args ...)
+@inline function ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
+                          tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C, args ...)
     @inbounds κ = closure.κ[tracer_index]
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_entropy_flux_x, κ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C) +
-                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_entropy_flux_y, κ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C) +
-                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_entropy_flux_z, κ, entropy_diag, tvar, tracer_index, ρ̃, C̃, ρ, C))
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_tvar_flux_x, κ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) +
+                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_tvar_flux_y, κ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C) +
+                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_tvar_flux_z, κ, tvar_diag, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C))
+end
+
+@inline function ∂ⱼDᵖⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
+                       p_diag, tvar, g, Ũ, ρ̃, C̃, ρ, args ...)
+    @inbounds κ = closure.κ[1]
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_pressure_flux_x, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_pressure_flux_y, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃) +
+                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_pressure_flux_z, κ, p_diag, tvar, g, Ũ, ρ, ρ̃, C̃))
 end
 
 #####
