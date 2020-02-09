@@ -123,7 +123,7 @@ for n in 1:200
     pw = heatmap(xC, zC, w_slice, title="w", fill=true, levels=50,
         xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-10, 10))
     pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
-        xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.006, 0.006))
+        xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.007, 0.007))
     pe = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
         xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims = (0, 1200))
 
