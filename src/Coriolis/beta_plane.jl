@@ -1,8 +1,3 @@
-using Printf
-using Oceananigans.Operators
-
-using Oceananigans: AbstractGrid
-
 """
     BetaPlane{T} <: AbstractRotation
 

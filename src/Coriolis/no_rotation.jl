@@ -1,5 +1,3 @@
-using Oceananigans: AbstractGrid
-
 #####
 ##### Functions for non-rotating models
 #####

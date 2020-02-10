@@ -9,18 +9,15 @@ using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans: AbstractGrid
-
-using Oceananigans.SurfaceWaves: x_curl_Uˢ_cross_U, y_curl_Uˢ_cross_U, z_curl_Uˢ_cross_U,
-                                 ∂t_uˢ, ∂t_vˢ, ∂t_wˢ
-
 using Oceananigans.Architectures: @hascuda
 @hascuda using CUDAnative, CuArrays
 
 using Oceananigans.Architectures
+using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
+using Oceananigans.SurfaceWaves
 using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
 using Oceananigans.Models

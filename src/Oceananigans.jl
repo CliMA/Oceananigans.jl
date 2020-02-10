@@ -12,6 +12,7 @@ export
     ModelLogger, Diagnostic, Setup, Simulation,
 
     # Grids
+    Periodic, Bounded, Flat,
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
@@ -33,7 +34,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Periodic, Flux, Gradient, Value,
+    Flux, Gradient, Value,
     CoordinateBoundaryConditions, FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
     BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
     BoundaryFunction, getbc, setbc!,
@@ -83,13 +84,6 @@ import Base:
 #####
 ##### Abstract types
 #####
-
-"""
-    AbstractGrid{T}
-
-Abstract supertype for grids with elements of type `T`.
-"""
-abstract type AbstractGrid{T} end
 
 """
     AbstractPoissonSolver

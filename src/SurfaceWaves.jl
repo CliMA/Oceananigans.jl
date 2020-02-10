@@ -8,7 +8,7 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
-using Oceananigans: AbstractGrid
+using Oceananigans.Grids: AbstractGrid
 
 using Oceananigans.Fields
 using Oceananigans.Operators

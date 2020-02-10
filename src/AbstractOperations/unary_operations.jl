@@ -73,7 +73,7 @@ macro unary(ops...)
 
     for op in ops
         define_unary_operator = quote
-            import Oceananigans: AbstractGrid
+            import Oceananigans.Grids: AbstractGrid
             import Oceananigans.Fields: AbstractLocatedField
 
             local location = Oceananigans.Fields.location

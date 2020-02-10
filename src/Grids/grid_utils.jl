@@ -8,6 +8,26 @@ unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 ##### Input validation
 #####
 
+instantiate_datatype(t::DataType) = t()
+instantiate_datatype(t) = t
+
+function validate_topology(topology)
+    TX, TY, TZ = topology
+    TX = instantiate_datatype(TX)
+    TY = instantiate_datatype(TY)
+    TZ = instantiate_datatype(TZ)
+
+    for t in (TX, TY, TZ)
+        if !isa(t, AbstractTopology)
+            e = "$(typeof(t)) is not a valid topology! " *
+                "Valid topologies are: Periodic, Bounded, Flat."
+            throw(ArgumentError(e))
+        end
+    end
+
+    return TX, TY, TZ
+end
+
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
 function validate_tupled_argument(arg, argtype, argname)
     length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))
