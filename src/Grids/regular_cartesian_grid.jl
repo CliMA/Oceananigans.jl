@@ -34,7 +34,8 @@ struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
 end
 
 """
-    RegularCartesianGrid([FT=Float64]; size, length, topology, x, y, z)
+    RegularCartesianGrid([FT=Float64]; size, length, topology=(Periodic, Periodic, Bounded),
+                         x=nothing, y=nothing, z=nothing)
 
 Creates a `RegularCartesianGrid` with `size = (Nx, Ny, Nz)` grid points.
 
