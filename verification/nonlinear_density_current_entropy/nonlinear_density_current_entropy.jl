@@ -1,7 +1,10 @@
 """
 This example sets up a cold bubble perturbation which develops into a non-linear
 density current. This numerical test case is described by Straka et al. (1993).
-Also see: http://www2.mmm.ucar.edu/projects/srnwp_tests/density/density.html
+Also see: http://www2.mmm.ucar.edu/projects/srnwp_tests/density/density.html.
+This script is identical to the verification experiment in
+../nonlinear_density_current except that entropy is used as the prognostic
+variable rather than potential temperature.
 
 Straka et al. (1993). "Numerical Solutions of a Nonlinear Density-Current -
     A Benchmark Solution and Comparisons." International Journal for Numerical
@@ -37,6 +40,7 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
 
 gas = IdealGas()
 Rᵈ, cₚ, cᵥ = gas.Rᵈ, gas.cₚ, gas.cᵥ
+sref, Tref, ρref = gas.s₀, gas.T₀, gas.ρ₀
 g  = 9.80665
 pₛ = 1000hPa
 Tₛ = 300
@@ -46,6 +50,7 @@ Tₛ = 300
 p₀(x, y, z) = pₛ * (1 - g*z/(cₚ*Tₛ))^(cₚ/Rᵈ)
 T₀(x, y, z) = Tₛ*(p₀(x, y, z)/pₛ)^(Rᵈ/cₚ)
 ρ₀(x, y, z) = p₀(x, y, z)/(Rᵈ*T₀(x, y, z))
+s₀(x, y, z) = sref + cᵥ*log(T₀(x, y, z)/Tref) - Rᵈ*log(ρ₀(x, y, z)/ρref)
 
 # Define the initial density perturbation
 xᶜ, zᶜ = 0km, 2km
@@ -61,7 +66,7 @@ end
 ρᵢ(x, y, z) = ρ₀(x, y, z) + ρ′(x, y, z)
 pᵢ(x, y, z) = p₀(x, y, z)
 Tᵢ(x, y, z) = pᵢ(x, y, z) / (Rᵈ * ρᵢ(x, y, z))
-θᵢ(x, y, z) = Tᵢ(x, y, z) * (pₛ / pᵢ(x, y, z))^(Rᵈ/cₚ)
+sᵢ(x, y, z) = sref + cᵥ*log(Tᵢ(x, y, z)/Tref) - Rᵈ*log(ρᵢ(x, y, z)/ρref)
 
 #####
 ##### Set up model
@@ -71,31 +76,33 @@ model = CompressibleModel(
                       grid = grid,
                   buoyancy = gas,
         reference_pressure = pₛ,
-    thermodynamic_variable = ModifiedPotentialTemperature(),
-                   tracers = (:Θᵐ,),
+    thermodynamic_variable = Entropy(),
+                   tracers = (:S,),
                    closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5)
 )
 
 # Set initial state after saving perturbation-free background
-ρ, Θ = model.density, model.tracers.Θᵐ
+ρ, S = model.density, model.tracers.S
 xC, zC = grid.xC, grid.zC
 set!(model.density, ρ₀)
-set!(model.tracers.Θᵐ, (x, y, z) -> ρ₀(x, y, z) * θ₀(x, y, z))
+set!(model.tracers.S, (x, y, z) -> ρ₀(x, y, z) * s₀(x, y, z))
 ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
-Θʰᵈ = Θ.data[1:Nx, 1, 1:Nz]
+Sʰᵈ = Θ.data[1:Nx, 1, 1:Nz]
 set!(model.density, ρᵢ)
-set!(model.tracers.Θᵐ, (x, y, z) -> ρᵢ(x, y, z) * θᵢ(x, y, z))
+set!(model.tracers.S, (x, y, z) -> ρᵢ(x, y, z) * sᵢ(x, y, z))
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
     rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ), fill=true, levels=10, ylims=(0, 6.4),
     clims=(-0.05, 0.05), color=:balance, aspect_ratio=:equal, dpi=200)
 savefig(ρ_plot, "rho_prime_initial_condition.png")
 
-θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
-Θ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, θ_slice,
+s_slice = rotr90(S.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
+s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
                  fill=true, levels=10, ylims=(0, 6.4), color=:thermal,
                  aspect_ratio=:equal, dpi=200)
-savefig(Θ_plot, "theta_initial_condition.png")
+savefig(s_plot, "entropy_initial_condition.png")
+
+@printf("Initial s: min=%.2f, max=%.2f\n", minimum(s_slice), maximum(s_slice))
 
 #####
 ##### Watch the density current evolve!
@@ -112,7 +119,7 @@ for n = 1:180
     u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
     w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
     ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
-    θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
+    s_slice = rotr90(model.tracers.S.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
     pu = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=10,
@@ -124,11 +131,11 @@ for n = 1:180
     pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=10,
         color=:balance, clims=(-0.05, 0.05), linewidth=0, xticks = nothing,
         titlefontsize = 10)
-    pθ = heatmap(xC, zC, θ_slice, title="theta", fill=true, levels=10,
-        color=:oxy, clims=(284, 300), linewidth=0,
+    ps = heatmap(xC, zC, s_slice, title="s", fill=true, levels=10,
+        color=:oxy, clims=(45, 94), linewidth=0,
         titlefontsize = 10)
 
-    p = plot(pu, pw, pρ, pθ, layout=(4, 1), dpi=300, show=true)
+    p = plot(pu, pw, pρ, ps, layout=(4, 1), dpi=300, show=true)
     savefig(p, @sprintf("frames/density_current_%03d.png", n))
 end
 

@@ -28,3 +28,6 @@ notes/*.gz
 *.png
 *.gif
 *.mp4
+
+# Local development packages
+dev
