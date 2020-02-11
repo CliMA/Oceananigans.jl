@@ -8,16 +8,17 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, G, M, GS, T, TS, D, TD, C, TC, DF, MP, F, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, GS, TV, TF, TS, D, TD, C, TC, DF, MP, F, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
                   momenta :: M
                     gases :: GS
-   thermodynamic_variable :: T
+   thermodynamic_variable :: TV
              microphysics :: MP
                   tracers :: TS
-                densities :: D
+           density_fields :: D
+     thermodynamic_fields :: TF
             total_density :: TD
                  coriolis :: C
                   closure :: TC
@@ -44,10 +45,10 @@ function CompressibleModel(;
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
                     gases = DryEarth(float_type),
-   thermodynamic_variable = PrognosticEntropy(),
+   thermodynamic_variable = Energy(),
              microphysics = nothing,
             extra_tracers = nothing,
-              tracernames = collect_tracers(thermodynamic_variable, densities, microphysics, extra_tracers),
+              tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),
@@ -63,15 +64,16 @@ function CompressibleModel(;
     tracers = TracerFields(architecture, grid, tracernames)
     forcing = ModelForcing(tracernames, forcing)
     closure = with_tracers(tracernames, closure)
-    densities = create_density_pointers(gases, tracers,
-        forcings, slow_forcings, right_hand_sides, intermediate_vars)
-    thermodynamic_variable = create_thermodynamic_pointers(
-        thermodynamic_variable, tracers, forcings, slow_forcings,
+    density_fields = create_density_pointers(gases, tracers,
+        forcing, slow_forcings, right_hand_sides, intermediate_vars)
+    thermodynamic_fields = create_thermodynamic_pointers(
+        thermodynamic_variable, tracers, forcing, slow_forcings,
         right_hand_sides, intermediate_vars)
     total_density = CellField(architecture, grid)
 
     return CompressibleModel(architecture, grid, clock, momenta, gases, thermodynamic_variable,
-                             microphysics, tracers, densities, total_density, coriolis, closure, diffusivities,
+                             microphysics, tracers, density_fields, thermodynamic_fields,
+                             total_density, coriolis, closure, diffusivities,
                              forcing, gravity, slow_forcings,
                              right_hand_sides, intermediate_vars, acoustic_time_stepper)
 end
@@ -80,8 +82,9 @@ end
 ##### Utilities for constructing compressible models
 #####
 
-function collect_tracers(args...)
+function collect_tracers(thermodynamic_variable, args...)
     list = []
+    push!(list, generate_key(thermodynamic_variable))
     for arg in args
         if arg !== nothing
             for name in keys(arg)
@@ -94,24 +97,28 @@ end
 
 function create_density_pointers(gases, tracers, forcings, slow_forcings,
     right_hand_sides, intermediate_vars)
-    return ((gas = getproperty(gases, key),
-             ρ = getproperty(tracers, key),
-             forcing = getproperty(forcings, key),
-             F = getproperty(slow_forcings, key),
-             R = getproperty(right_hand_sides, key),
-             IV = getproperty(intermediate_vars, key))
-             for key in keys(gases))
+    names = Tuple(key for key in keys(gases))
+    values = Tuple((gas = getproperty(gases, key),
+                    values = getproperty(tracers, key),
+                    forcing = getproperty(forcings, key),
+                    F = getproperty(slow_forcings, key),
+                    R = getproperty(right_hand_sides, key),
+                    IV = getproperty(intermediate_vars, key))
+                    for key in keys(gases))
+    return NamedTuple{names}(values)
 end
 
 function create_thermodynamic_pointers(thermodynamic_variable, tracers,
     forcings, slow_forcings, right_hand_sides, intermediate_vars)
-    return ((variable = getproperty(thermodynamic_variable, key),
-             value = getproperty(tracers, key),
-             forcing = getproperty(forcings, key),
-             F = getproperty(slow_forcings, key),
-             R = getproperty(right_hand_sides, key),
-             IV = getproperty(intermediate_vars, key))
-             for key in keys(thermodynamic_variable))
+    key = generate_key(thermodynamic_variable)
+    names = Tuple((key,))
+    values = Tuple(((variable = thermodynamic_variable,
+                     values = getproperty(tracers, key),
+                     forcing = getproperty(forcings, key),
+                     F = getproperty(slow_forcings, key),
+                     R = getproperty(right_hand_sides, key),
+                     IV = getproperty(intermediate_vars, key)),))
+    return NamedTuple{names}(values)
 end
 
 function DryEarth(FT = Float64)
@@ -122,13 +129,8 @@ function DryEarth3(FT = Float64)
     return (ρ₁ = EarthN₂O₂(FT), ρ₂ = EarthN₂O₂(FT), ρ₃ = EarthN₂O₂(FT))
 end
 
-function PrognosticS()
-    return (ρs = Entropy(),)
-end
-
-function PrognosticE()
-    return (ρe = Energy(),)
-end
+@inline generate_key(tvar::Entropy) = :ρs
+@inline generate_key(tvar::Energy) = :ρe
 
 function MomentumFields(arch, grid)
     ρu = FaceFieldX(arch, grid)
@@ -147,7 +149,7 @@ function ForcingFields(arch, grid, tracernames)
     ρv = FaceFieldY(arch, grid)
     ρw = FaceFieldZ(arch, grid)
     tracers = TracerFields(arch, grid, tracernames)
-    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
+    return merge((ρu = ρu, ρv = ρv, ρw = ρw), tracers)
 end
 
 function RightHandSideFields(arch, grid, tracernames)
@@ -155,5 +157,5 @@ function RightHandSideFields(arch, grid, tracernames)
     ρv = FaceFieldY(arch, grid)
     ρw = FaceFieldZ(arch, grid)
     tracers = TracerFields(arch, grid, tracernames)
-    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
+    return merge((ρu = ρu, ρv = ρv, ρw = ρw), tracers)
 end
