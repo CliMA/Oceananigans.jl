@@ -21,12 +21,6 @@ function rk3_time_step(rk3_iter, Δt)
     rk3_iter == 3 && return Δt
 end
 
-function acoustic_time_steps(rk3_iter, nₛ, Δt)
-    rk3_iter == 1 && return 1,         Δt/3
-    rk3_iter == 2 && return Int(nₛ/2), Δt/nₛ
-    rk3_iter == 3 && return nₛ,        Δt/nₛ
-end
-
 ####
 #### Time-stepping algorithm
 ####
