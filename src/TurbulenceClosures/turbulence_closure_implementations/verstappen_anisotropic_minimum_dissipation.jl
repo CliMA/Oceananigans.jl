@@ -27,21 +27,22 @@ turbulence closure.
 
 Keyword arguments
 =================
-    - `C`  : Poincaré constant for both eddy viscosity and eddy diffusivities
-    - `Cν` : Poincaré constant for eddy viscosity
-    - `Cκ` : Poincaré constant for eddy diffusivities
+    - `C`  : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+             for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+    - `Cν` : Poincaré constant for momentum eddy viscosity.
+    - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
+             number or function is applied to all tracers. If a `NamedTuple`, it must possess
+             a field specifying the Poncaré constant for every tracer.
     - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
-    - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
-             tracer.
+    - `ν`  : Constant background viscosity for momentum.
+    - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
+             diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
+             specifying a background diffusivity for every tracer.
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
 the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and 
 the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
-
-Setting `Cν` or `Cκ` overrides `C`.
 
 References
 ==========
@@ -62,7 +63,8 @@ end
 
 function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
-    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, closure.Cκ, closure.Cb, closure.ν, κ)
+    Cκ = tracer_diffusivities(tracers, closure.Cκ)
+    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
 
 #####
@@ -105,16 +107,18 @@ end
                        U) where {FT, tracer_index}
 
     ijk = (i, j, k, grid)
+
     @inbounds κ = closure.κ[tracer_index]
+    @inbounds Cκ = closure.Cκ[tracer_index]
 
     σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c)
 
-    if σ == 0
+    if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w, c)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cκ) * δ² * ϑ / σ
+        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     return max(zero(FT), κˢᵍˢ) + κ
