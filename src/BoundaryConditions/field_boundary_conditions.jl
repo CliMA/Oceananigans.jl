@@ -14,47 +14,50 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 """
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-"""
-    HorizontallyPeriodicBCs(;   top = BoundaryCondition(Flux, nothing),
-                             bottom = BoundaryCondition(Flux, nothing))
+default_bc(::Periodic) = PeriodicBC()
+default_bc(::Bounded)  = NoFluxBC()
 
-Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x and y
-directions and specified `top` (+z) and `bottom` (-z) boundary conditions for u, v,
-and tracer fields.
+valid_directions = (:west, :east, :south, :north, :bottom, :top)
 
-`HorizontallyPeriodicBCs` cannot be applied to the the vertical velocity w.
-"""
-function HorizontallyPeriodicBCs(;    top = BoundaryCondition(Flux, nothing),
-                                   bottom = BoundaryCondition(Flux, nothing))
+function FieldBoundaryConditions(grid; kwargs...)
+    kws = keys(kwargs)
+    for kw in kws
+        if kw ∉ valid_directions
+            e = "$kw is not a valid keyword argument. Must be one of " *
+                "the valid directions: $valid_directions"
+            throw(ArgumentError(e))
+        end
+    end
 
-    x = PeriodicBCs()
-    y = PeriodicBCs()
-    z = CoordinateBoundaryConditions(bottom, top)
+    TX, TY, TZ = topology(grid)
 
-    return FieldBoundaryConditions(x, y, z)
-end
+    if (TX isa Periodic || TX isa Flat) && (:west in kws || :east in kws)
+        e = "Cannot specify west or east boundary conditions with $TX topology in x-direction."
+        throw(ArgumentError(e))
+    else
+        west_bc = :west in kws ? kwargs[:west] : default_bc(TX)
+        east_bc = :east in kws ? kwargs[:east] : default_bc(TX)
+    end
 
-"""
-    ChannelBCs(; north = BoundaryCondition(Flux, nothing),
-                 south = BoundaryCondition(Flux, nothing),
-                   top = BoundaryCondition(Flux, nothing),
-                bottom = BoundaryCondition(Flux, nothing))
+    if (TY isa Periodic || TY isa Flat) && (:south in kws || :north in kws)
+        e = "Cannot specify south or north boundary conditions with $TY topology in y-direction."
+        throw(ArgumentError(e))
+    else
+        south_bc = :south in kws ? kwargs[:south] : default_bc(TY)
+        north_bc = :north in kws ? kwargs[:north] : default_bc(TY)
+    end
 
-Construct `FieldBoundaryConditions` with `Periodic` boundary conditions in the x
-direction and specified `north` (+y), `south` (-y), `top` (+z) and `bottom` (-z)
-boundary conditions for u, v, and tracer fields.
+    if (TZ isa Periodic || TZ isa Flat) && (:bottom in kws || :top in kws)
+        e = "Cannot specify bottom or top boundary conditions with $TZ topology in z-direction."
+        throw(ArgumentError(e))
+    else
+        bottom_bc = :bottom in kws ? kwargs[:bottom] : default_bc(TZ)
+        top_bc    = :top    in kws ? kwargs[:top]    : default_bc(TZ)
+    end
 
-`ChannelBCs` cannot be applied to the the vertical velocity w.
-"""
-function ChannelBCs(;  north = BoundaryCondition(Flux, nothing),
-                       south = BoundaryCondition(Flux, nothing),
-                         top = BoundaryCondition(Flux, nothing),
-                      bottom = BoundaryCondition(Flux, nothing)
-                    )
-
-    x = PeriodicBCs()
-    y = CoordinateBoundaryConditions(south, north)
-    z = CoordinateBoundaryConditions(bottom, top)
+    x = CoordinateBoundaryConditions(west_bc, east_bc)
+    y = CoordinateBoundaryConditions(south_bc, north_bc)
+    z = CoordinateBoundaryConditions(bottom_bc, top_bc)
 
     return FieldBoundaryConditions(x, y, z)
 end
