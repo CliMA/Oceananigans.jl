@@ -18,6 +18,14 @@ end
 
 const VAMD = VerstappenAnisotropicMinimumDissipation
 
+function Base.show(io::IO, closure::VAMD{FT}) where FT =
+    print(io, "VerstappenAnisotropicMinimumDissipation{$FT} turbulence closure with:\n"
+              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
+              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
+              "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
+              "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
+              "             Background kinematic viscosity for momentum, ν: ", closure.ν, '\n')
+
 """
     VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
                                             Cb=0.0, ν=ν₀, κ=κ₀)
@@ -43,6 +51,22 @@ By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume met
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
 the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and 
 the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
+
+`Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
+
+Example
+=======
+
+julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
+
+julia> const Δz = 0.5; # grid resolution at surface
+
+julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
+
+julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
+
+julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
+
 
 References
 ==========
