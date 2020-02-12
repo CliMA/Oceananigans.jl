@@ -6,8 +6,18 @@
 function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
     # Manually choose thread-block layout here as it's ~20% faster.
     # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
-    Tx, Ty = 16, 16 # CUDA threads per block
-    Bx, By, Bz = floor(Int, grid.Nx/Tx), floor(Int, grid.Ny/Ty), grid.Nz  # Blocks in grid
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+
+    if Nx == 1
+        Tx, Ty = 1, min(256, Ny)
+        Bx, By, Bz = Tx, floor(Int, Ny/Ty), Nz
+    elseif Ny == 1
+        Tx, Ty = min(256, Nx), 1
+        Bx, By, Bz = floor(Int, Nx/Tx), Ty, Nz
+    else
+        Tx, Ty = 16, 16
+        Bx, By, Bz = floor(Int, Nx/Tx), floor(Int, Ny/Ty), Nz
+    end
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
             calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
