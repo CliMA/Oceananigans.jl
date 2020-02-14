@@ -4,11 +4,13 @@ export
     BCType, Flux, Gradient, Value, NoPenetration,
     BoundaryCondition, bctype, getbc, setbc!,
     CoordinateBoundaryConditions,
-    FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
-    TendenciesBoundaryConditions, PressureBoundaryConditions,
+    FieldBoundaryConditions, UVelocityBoundaryConditions, VVelocityBoundaryConditions,
+    WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,
+    DiffusivityBoundaryConditions,
+    SolutionBoundaryConditions, TendenciesBoundaryConditions, PressureBoundaryConditions,
     DiffusivityBoundaryConditions, DiffusivitiesBoundaryConditions,
-    ModelBoundaryConditions, BoundaryFunction,
+    ModelBoundaryConditions,
+    BoundaryFunction,
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!
 
