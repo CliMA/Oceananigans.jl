@@ -14,13 +14,21 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 """
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-default_bc(::Grids.Periodic) = PeriodicBC()  # To avoid conflict with BoundaryConditions.Periodic
-default_bc(::Bounded)  = NoFluxBC()
-default_bc(::Flat)     = PeriodicBC()
+default_tracer_bc(::Grids.Periodic) = PeriodicBC()
+default_tracer_bc(::Bounded)  = NoFluxBC()
+default_tracer_bc(::Flat)     = PeriodicBC()
 
-default_x_bc(grid) = default_bc(topology(grid)[1])
-default_y_bc(grid) = default_bc(topology(grid)[2])
-default_z_bc(grid) = default_bc(topology(grid)[3])
+default_velocity_bc(::Grids.Periodic) = PeriodicBC()
+default_velocity_bc(::Bounded) = NoPenetrationBC()
+default_velocity_bc(::Flat)    = PeriodicBC()
+
+const default_pressure_bc = default_tracer_bc
+const default_diffusivity_bc = default_tracer_bc
+
+function default_bc(grid, type, dim)
+    default_type_bc = Symbol(:default_, type, :_bc)
+    return @eval $default_type_bc(topology($grid)[$dim])
+end
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)
@@ -30,13 +38,16 @@ function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_
     return true
 end
 
-function FieldBoundaryConditions(grid::AbstractGrid; west=default_x_bc(grid), east=default_x_bc(grid),
-                                 south=default_y_bc(grid), north=default_y_bc(grid),
-                                 bottom=default_z_bc(grid), top=default_z_bc(grid))
+# accepted_field_types
+
+function FieldBoundaryConditions(grid::AbstractGrid; field_type,
+                                 west=default_bc(grid, field_type, 1), east=default_bc(grid, field_type, 1),
+                                 south=default_bc(grid, field_type, 2), north=default_bc(grid, field_type, 2),
+                                 bottom=default_bc(grid, field_type, 3), top=default_bc(grid, field_type, 3))
     TX, TY, TZ = topology(grid)
-    validate_bcs(TX, west,   east, default_x_bc(grid), :west,   :east, :x)
-    validate_bcs(TY, south, north, default_y_bc(grid), :south, :north, :y)
-    validate_bcs(TZ, bottom,  top, default_z_bc(grid), :bottom,  :top, :z)
+    validate_bcs(TX, west,   east, default_bc(grid, field_type, 1), :west,   :east, :x)
+    validate_bcs(TY, south, north, default_bc(grid, field_type, 2), :south, :north, :y)
+    validate_bcs(TZ, bottom,  top, default_bc(grid, field_type, 3), :bottom,  :top, :z)
 
     x = CoordinateBoundaryConditions(west, east)
     y = CoordinateBoundaryConditions(south, north)
