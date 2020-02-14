@@ -91,9 +91,6 @@ function Model(;
 
     if architecture == GPU()
         !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-        if mod(grid.Nx, 16) != 0 || mod(grid.Ny, 16) != 0
-            throw(ArgumentError("For GPU models, Nx and Ny must be multiples of 16."))
-        end
     end
 
     timestepper = TimeStepper(timestepper, float_type, architecture, grid, tracernames(tracers))
