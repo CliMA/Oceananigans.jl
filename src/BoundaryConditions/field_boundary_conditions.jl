@@ -14,50 +14,33 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 """
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-default_bc(::Periodic) = PeriodicBC()
+default_bc(::Grids.Periodic) = PeriodicBC()  # To avoid conflict with BoundaryConditions.Periodic
 default_bc(::Bounded)  = NoFluxBC()
+default_bc(::Flat)     = PeriodicBC()
 
-valid_directions = (:west, :east, :south, :north, :bottom, :top)
+default_x_bc(grid) = default_bc(topology(grid)[1])
+default_y_bc(grid) = default_bc(topology(grid)[2])
+default_z_bc(grid) = default_bc(topology(grid)[3])
 
-function FieldBoundaryConditions(grid; kwargs...)
-    kws = keys(kwargs)
-    for kw in kws
-        if kw ∉ valid_directions
-            e = "$kw is not a valid keyword argument. Must be one of " *
-                "the valid directions: $valid_directions"
-            throw(ArgumentError(e))
-        end
+function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
+    if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)
+        e = "Cannot specify $left_name or $right_name boundary conditions with $topology topology in $dir-direction."
+        throw(ArgumentError(e))
     end
+    return true
+end
 
+function FieldBoundaryConditions(grid::AbstractGrid; west=default_x_bc(grid), east=default_x_bc(grid),
+                                 south=default_y_bc(grid), north=default_y_bc(grid),
+                                 bottom=default_z_bc(grid), top=default_z_bc(grid))
     TX, TY, TZ = topology(grid)
+    validate_bcs(TX, west,   east, default_x_bc(grid), :west,   :east, :x)
+    validate_bcs(TY, south, north, default_y_bc(grid), :south, :north, :y)
+    validate_bcs(TZ, bottom,  top, default_z_bc(grid), :bottom,  :top, :z)
 
-    if (TX isa Periodic || TX isa Flat) && (:west in kws || :east in kws)
-        e = "Cannot specify west or east boundary conditions with $TX topology in x-direction."
-        throw(ArgumentError(e))
-    else
-        west_bc = :west in kws ? kwargs[:west] : default_bc(TX)
-        east_bc = :east in kws ? kwargs[:east] : default_bc(TX)
-    end
-
-    if (TY isa Periodic || TY isa Flat) && (:south in kws || :north in kws)
-        e = "Cannot specify south or north boundary conditions with $TY topology in y-direction."
-        throw(ArgumentError(e))
-    else
-        south_bc = :south in kws ? kwargs[:south] : default_bc(TY)
-        north_bc = :north in kws ? kwargs[:north] : default_bc(TY)
-    end
-
-    if (TZ isa Periodic || TZ isa Flat) && (:bottom in kws || :top in kws)
-        e = "Cannot specify bottom or top boundary conditions with $TZ topology in z-direction."
-        throw(ArgumentError(e))
-    else
-        bottom_bc = :bottom in kws ? kwargs[:bottom] : default_bc(TZ)
-        top_bc    = :top    in kws ? kwargs[:top]    : default_bc(TZ)
-    end
-
-    x = CoordinateBoundaryConditions(west_bc, east_bc)
-    y = CoordinateBoundaryConditions(south_bc, north_bc)
-    z = CoordinateBoundaryConditions(bottom_bc, top_bc)
+    x = CoordinateBoundaryConditions(west, east)
+    y = CoordinateBoundaryConditions(south, north)
+    z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
 end

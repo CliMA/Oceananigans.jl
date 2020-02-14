@@ -46,7 +46,7 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
 eltype(::AbstractGrid{FT}) where FT = FT
-topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
+topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX(), TY(), TZ())
 
 size(grid::AbstractGrid)   = (grid.Nx, grid.Ny, grid.Nz)
 length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
