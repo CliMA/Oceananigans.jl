@@ -41,10 +41,17 @@ function Simulation(model, Δt;
                      run_time, diagnostics, output_writers, progress)
 end
 
-function stop(simulation)
+function stop(sim)
+    time_before = time()
     for sc in sim.stop_criteria
-        sc(sim) && return true
+        if sc(sim)
+            time_after = time()
+            sim.run_time += time_after - time_before
+            return true
+        end
     end
+    time_after = time()
+    sim.run_time += time_after - time_before
     return false
 end
 
@@ -96,9 +103,6 @@ function run!(sim)
             [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(diagnostics)]
             [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(output_writers)]
         end
-
-        time_step!(sim.model, Δt=get_Δt(sim.Δt), Nt=sim.progress_frequency,
-                   diagnostics=sim.diagnostics, output_writers=sim.output_writers)
 
         Δt isa TimeStepWizard && update_Δt!(Δt, model)
         progress isa Function && progress(simulation)
