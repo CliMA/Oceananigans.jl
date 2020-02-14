@@ -18,16 +18,24 @@ default_tracer_bc(::Grids.Periodic) = PeriodicBC()
 default_tracer_bc(::Bounded)  = NoFluxBC()
 default_tracer_bc(::Flat)     = PeriodicBC()
 
-default_velocity_bc(::Grids.Periodic) = PeriodicBC()
-default_velocity_bc(::Bounded) = NoPenetrationBC()
-default_velocity_bc(::Flat)    = PeriodicBC()
-
+# Right now it seems all defaults are the same except for no-normal
+# flow velocity BCs (which are treated in default_bc below), but
+# that might change in the future.
+const default_velocity_bc = default_tracer_bc
 const default_pressure_bc = default_tracer_bc
 const default_diffusivity_bc = default_tracer_bc
 
-function default_bc(grid, type, dim)
-    default_type_bc = Symbol(:default_, type, :_bc)
-    return @eval $default_type_bc(topology($grid)[$dim])
+function default_bc(grid, field, dim)
+    top = topology(grid)[dim]
+
+    # No normal flow velocity boundary conditions by default.
+    top isa Bounded && field == :u && dim == 1 && return NoPenetrationBC()
+    top isa Bounded && field == :v && dim == 2 && return NoPenetrationBC()
+    top isa Bounded && field == :w && dim == 3 && return NoPenetrationBC()
+
+    field in (:u, :v, :w) && (field = :velocity)
+    default_field_bc = Symbol(:default_, field, :_bc)
+    return @eval $default_field_bc(top)
 end
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
@@ -37,8 +45,6 @@ function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_
     end
     return true
 end
-
-# accepted_field_types
 
 function FieldBoundaryConditions(grid::AbstractGrid; field_type,
                                  west=default_bc(grid, field_type, 1), east=default_bc(grid, field_type, 1),
@@ -55,3 +61,10 @@ function FieldBoundaryConditions(grid::AbstractGrid; field_type,
 
     return FieldBoundaryConditions(x, y, z)
 end
+
+  UVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:u, kwargs...)
+  VVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:v, kwargs...)
+  WVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:w, kwargs...)
+     TracerBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:tracer, kwargs...)
+   PressureBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:pressure, kwargs...)
+DiffusivityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:diffusivity, kwargs...)
