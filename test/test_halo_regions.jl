@@ -25,7 +25,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
-    fbcs = HorizontallyPeriodicBCs()
+    fbcs = TracerBoundaryConditions(grid)
 
     interior(field) .= rand(FT, Nx, Ny, Nz)
     fill_halo_regions!(field.data, fbcs, arch, grid)

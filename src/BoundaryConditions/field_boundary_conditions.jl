@@ -25,6 +25,11 @@ const default_velocity_bc = default_tracer_bc
 const default_pressure_bc = default_tracer_bc
 const default_diffusivity_bc = default_tracer_bc
 
+"""
+    default_bc(grid, field, dim)
+
+Returns the default boundary condition for a `field` on some `grid` and along some dimension `dim`.
+"""
 function default_bc(grid, field, dim)
     top = topology(grid)[dim]
 
@@ -35,7 +40,7 @@ function default_bc(grid, field, dim)
 
     field in (:u, :v, :w) && (field = :velocity)
     default_field_bc = Symbol(:default_, field, :_bc)
-    return @eval $default_field_bc(top)
+    return @eval $default_field_bc($top)
 end
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)

@@ -108,11 +108,11 @@ SolutionBoundaryConditions(tracer_names, proposal_bcs) =
     with_tracers(tracer_names, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
 function SolutionBoundaryConditions(grid;
-    u = FieldBoundaryConditions(grid, type=:velocity),
-    v = FieldBoundaryConditions(grid, type=:velocity),
-    w = FieldBoundaryConditions(grid, type=:velocity),
+    u = UVelocityBoundaryConditions(grid),
+    v = VVelocityBoundaryConditions(grid),
+    w = WVelocityBoundaryConditions(grid),
     tracers_boundary_conditions...)
-
+    
     return merge((u=u, v=v, w=w), tracers_boundary_conditions)
 end
 
