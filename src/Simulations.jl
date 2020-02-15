@@ -67,8 +67,13 @@ function Simulation(model; Δt,
    progress_frequency = 1)
 
    if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
-         @warn "This simulation will run forever as stop iteration = stop time " *
-               "= wall time limit = Inf."
+       @warn "This simulation will run forever as stop iteration = stop time " *
+             "= wall time limit = Inf."
+   end
+
+   if Δt isa TimeStepWizard && progress_frequency == 1
+       @warn "You have used the default progress_frequency=1. This simulation will " *
+             "recalculate the time step every iteration which can be slow."
    end
 
    run_time = 0.0
