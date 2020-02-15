@@ -44,9 +44,9 @@ Keyword arguments
 =================
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
   for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
-- `stop_criteria`: A list of functions (each taking a single argument, the `simulation`).
-  If any of the functions return `true` when the stop criteria is evaluated the simulation
-  will stop.
+- `stop_criteria`: A list of functions or callable objects (each taking a single argument,
+  the `simulation`). If any of the functions return `true` when the stop criteria is
+  evaluated the simulation will stop.
 - `stop_iteration`: Stop the simulation after this many iterations.
 - `stop_time`: Stop the simulation once this much model clock time has passed.
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
@@ -57,7 +57,7 @@ Keyword arguments
   `progress` function (in number of iterations).
 """
 function Simulation(model; Δt,
-        stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
+        stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
        stop_iteration = Inf,
             stop_time = Inf,
       wall_time_limit = Inf,
@@ -127,8 +127,8 @@ get_Δt(wizard::TimeStepWizard) = wizard.Δt
 """
     run!(simulation)
 
-Run a `simulation` until one of the stop criteria evaluates to true and the
-simulation stops.
+Run a `simulation` until one of the stop criteria evaluates to true. The simulation
+will then stop.
 """
 function run!(sim)
     model = sim.model
