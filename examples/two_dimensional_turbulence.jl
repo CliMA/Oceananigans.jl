@@ -70,9 +70,11 @@ nothing # hide
 # ## Visualizing the simulation
 
 # Finally, we run the model and animate the vorticity field.
+simulation = Simulation(model, Δt=0.1, stop_iteration=0)
 
 anim = @animate for i=1:100
-    time_step!(model, Nt=10, Δt=0.1)
+    simulation.stop_iteration += 10
+    run!(simulation)
 
     compute!(vorticity_computation)
 

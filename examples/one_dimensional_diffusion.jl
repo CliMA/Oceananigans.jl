@@ -55,9 +55,10 @@ set!(model, T=Tᵢ)
 ## Time-scale for diffusion across a grid cell
 cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 
-## The function `time_step!` executes `Nt` time steps with step size `Δt`
-## using a second-order Adams-Bashforth method
-time_step!(model, Nt = 1000, Δt = 0.1 * cell_diffusion_time_scale)
+## We create a `Simulation` which will handle time stepping the model. It will
+## execute `Nt` time steps with step size `Δt` using a second-order Adams-Bashforth method.
+simulation = Simulation(model, Δt = 0.1 * cell_diffusion_time_scale, stop_iteration = 1000)
+run!(simulation)
 
 # ## Visualizing the results
 #
@@ -78,11 +79,12 @@ p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
 T = model.tracers.T
 plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
 
-# Interesting! We can keep running the model and animate the tracer
+# Interesting! We can keep running the simulation and animate the tracer
 # concentration to see the Gaussian diffusing.
 
 anim = @animate for i=1:100
-    time_step!(model, Nt = 100, Δt = 0.1 * cell_diffusion_time_scale)
+    simulation.stop_iteration += 100
+    run!(simulation)
 
     plot(interior(T)[1, 1, :], zC, linewidth=2, title=tracer_label(model),
          label="", xlabel="Tracer concentration", ylabel="z", xlims=(0, 1))
