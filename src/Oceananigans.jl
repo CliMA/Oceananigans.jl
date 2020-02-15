@@ -46,7 +46,7 @@ export
     # Models
     Model, ChannelModel, NonDimensionalModel,
 
-    # Simulation
+    # Simulations
     Simulation, run!,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
@@ -174,5 +174,6 @@ using .Solvers
 using .Forcing
 using .Models
 using .TimeSteppers
+using .Simulations
 
 end # module

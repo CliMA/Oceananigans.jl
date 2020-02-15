@@ -2,8 +2,15 @@ module Simulations
 
 export Simulation, run!
 
+using OrderedCollections: OrderedDict
+
 using Oceananigans.Models
+using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+using Oceananigans.TimeSteppers
 using Oceananigans.Utils
+
+using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
 
 mutable struct Simulation{M, Δ, S, SI, ST, W, R, D, O, P, F}
                  model :: M
@@ -37,8 +44,8 @@ function Simulation(model; Δt,
 
    run_time = 0.0
 
-   return Simulation(model, Δt, stop_iteration, stop_time, wall_time_limit,
-                     run_time, diagnostics, output_writers, progress)
+   return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit,
+                     run_time, diagnostics, output_writers, progress, progress_frequency)
 end
 
 function stop(sim)
@@ -101,14 +108,14 @@ function run!(sim)
         end
 
         for n in 1:sim.progress_frequency
-            time_step!(model, Δt, euler=n==1)
+            time_step!(model, get_Δt(sim.Δt), euler=n==1)
 
-            [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(diagnostics)]
-            [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(output_writers)]
+            [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(sim.diagnostics)]
+            [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
         end
 
-        Δt isa TimeStepWizard && update_Δt!(Δt, model)
-        progress isa Function && progress(simulation)
+        sim.Δt isa TimeStepWizard && update_Δt!(sim.Δt, model)
+        sim.progress isa Function && sim.progress(sim)
 
         time_after = time()
         sim.run_time += time_after - time_before
