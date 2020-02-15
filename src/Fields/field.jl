@@ -72,7 +72,7 @@ Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3]}(data, grid)
 Construct a `Field` on architecture `arch` and `grid` at location `L`,
 where `L` is a tuple of `Cell` or `Face` types.
 """
-Field(L::Tuple, arch, grid) = Field{L[1], L[2], L[3]}(zeros(arch, grid), grid)
+Field(L::Tuple, arch, grid) = Field{L[1], L[2], L[3]}(zeros(arch, grid, L), grid)
 
 """
     Field(X, Y, Z, arch, grid)
@@ -88,7 +88,7 @@ Field(X, Y, Z, arch, grid) =  Field((X, Y, Z), arch, grid)
 Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid`.
 Used for tracers and pressure fields.
 """
-CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid), grid)
+CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid, (Cell, Cell, Cell)), grid)
 
 """
     FaceFieldX([T=eltype(grid)], arch, grid)
@@ -96,7 +96,7 @@ CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid), grid)
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid`.
 Used for the x-velocity field.
 """
-FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid), grid)
+FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid, (Face, Cell, Cell)), grid)
 
 """
     FaceFieldY([T=eltype(grid)], arch, grid)
@@ -104,7 +104,7 @@ FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid), grid)
 Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid`.
 Used for the y-velocity field.
 """
-FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid), grid)
+FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid, (Cell, Face, Cell)), grid)
 
 """
     FaceFieldZ([T=eltype(grid)], arch, grid)
@@ -112,7 +112,7 @@ FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid), grid)
 Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid`.
 Used for the z-velocity field.
 """
-FaceFieldZ(T, arch, grid) = Field{Cell, Cell, Face}(zeros(T, arch, grid), grid)
+FaceFieldZ(T, arch, grid) = Field{Cell, Cell, Face}(zeros(T, arch, grid, (Cell, Cell, Face)), grid)
 
  CellField(arch, grid) = Field((Cell, Cell, Cell), arch, grid)
 FaceFieldX(arch, grid) = Field((Face, Cell, Cell), arch, grid)
@@ -188,6 +188,12 @@ const AbstractCPUField =
 ##### Creating fields by dispatching on architecture
 #####
 
+field_length(::Type{Cell}, N, H) = N + 2H
+field_length(::Type{Face}, N, H) = N + 1 + 2H
+
+field_length(::Cell, N, H) = N + 2H
+field_length(::Face, N, H) = N + 1 + 2H
+
 function OffsetArray(underlying_data, grid)
     # Starting and ending indices for the offset array.
     i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
@@ -195,6 +201,23 @@ function OffsetArray(underlying_data, grid)
     k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
 
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+end
+
+function Base.zeros(T, ::CPU, grid, loc)
+    underlying_data = zeros(T, field_length(loc[1], grid.Nx, grid.Hx),
+                               field_length(loc[2], grid.Ny, grid.Hy),
+                               field_length(loc[3], grid.Nz, grid.Hz))
+
+    return OffsetArray(underlying_data, grid)
+end
+
+function Base.zeros(T, ::GPU, grid, loc)
+    underlying_data = CuArray{T}(undef, field_length(loc[1], grid.Nx, grid.Hx),
+                                        field_length(loc[2], grid.Ny, grid.Hy),
+                                        field_length(loc[3], grid.Nz, grid.Hz))
+    underlying_data .= 0 # Ensure data is initially 0.
+
+    return OffsetArray(underlying_data, grid)
 end
 
 function Base.zeros(T, ::CPU, grid)
@@ -212,5 +235,8 @@ Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
 Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 
 # Default to type of Grid
-Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
-Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+Base.zeros(arch, grid::AbstractGrid{T}, loc=(Cell, Cell, Cell)) where T = 
+    zeros(T, arch, grid, loc)
+
+Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz, 
+           loc=(Cell, Cell, Cell)) where T = zeros(T, arch, grid, Nx, Ny, Nz)
