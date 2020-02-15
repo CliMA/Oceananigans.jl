@@ -28,6 +28,7 @@ Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:Abstr
 ##### Some abbreviations to make life easier.
 #####
 
+# These type aliases make dispatching on BCs easier (not exported).
 const BC   = BoundaryCondition
 const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
@@ -36,9 +37,14 @@ const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const NFBC = BoundaryCondition{Flux, Nothing}
 
-     PeriodicBC() = BoundaryCondition(Periodic,      nothing)
-NoPenetrationBC() = BoundaryCondition(NoPenetration, nothing)
-       NoFluxBC() = BoundaryCondition(Flux,          nothing)
+# More readable BC constructors for the public API.
+     PeriodicBoundaryCondition() = BoundaryCondition(Periodic,      nothing)
+NoPenetrationBoundaryCondition() = BoundaryCondition(NoPenetration, nothing)
+       NoFluxBoundaryCondition() = BoundaryCondition(Flux,          nothing)
+
+    FluxBoundaryCondition(val) = BoundaryCondition(Flux, val)
+   ValueBoundaryCondition(val) = BoundaryCondition(Value, val)
+GradientBoundaryCondition(val) = BoundaryCondition(Gradient, val)
 
 # Multiple dispatch on the type of boundary condition
 getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition

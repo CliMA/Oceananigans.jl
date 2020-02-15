@@ -22,20 +22,22 @@ function run_rayleigh_benard_regression_test(arch)
     ##### Model setup
     #####
 
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
     Fc(i, j, k, grid, time, U, C, params) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - C.c[i, j, k])
 
-    bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0.0),
-                                   bottom = BoundaryCondition(Value, Δb))
+    bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
+                                          bottom = BoundaryCondition(Value, Δb))
 
     model = Model(
                architecture = arch,
-                       grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                       grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
-        boundary_conditions = HorizontallyPeriodicSolutionBCs(b=bbcs),
+        boundary_conditions = SolutionBoundaryConditions(grid, b=bbcs),
                     forcing = ModelForcing(c=Fc)
     )
 

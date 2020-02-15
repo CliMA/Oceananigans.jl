@@ -45,7 +45,7 @@ function compute_w_from_continuity(arch, FT)
     Lx, Ly, Lz = 16, 16, 16
 
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    bcs = HorizontallyPeriodicSolutionBCs()
+    bcs = SolutionBoundaryConditions(grid)
 
     u = FaceFieldX(FT, arch, grid)
     v = FaceFieldY(FT, arch, grid)
@@ -130,9 +130,10 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νh, κh = 20.0, 20.0
     νv, κv = α*νh, α*κh
 
-    model = ChannelModel(architecture = arch, float_type = FT,
-                         grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                         closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+    topology = (Periodic, Bounded, Bounded)
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    model = Model(architecture = arch, float_type = FT, grid = grid,
+                  closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].

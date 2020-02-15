@@ -26,15 +26,15 @@ function nan_checker_aborts_simulation(arch, FT)
 end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
-    Model(grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
-       closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+    Model(grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
+       closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
 )
 
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
-    Model(grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
-       closure = ConstantIsotropicDiffusivity(FT; ν=ν, κ=ν),
+    Model(grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
+       closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = CPU(),
     float_type = FT
 )

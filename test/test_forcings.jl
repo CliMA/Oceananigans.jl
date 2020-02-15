@@ -61,7 +61,7 @@ function time_step_with_simple_forcing_parameters(arch)
     return true
 end
 
-@testset "ModelForcing" begin
+@testset "Forcing" begin
     @info "Testing forcings..."
 
     @testset "Forcing function initialization" begin

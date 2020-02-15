@@ -17,40 +17,40 @@ function instantiate_roquet_equations_of_state(FT, flavor; coeffs=nothing)
 end
 
 function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
-    buoyancy = SeawaterBuoyancy(FT; equation_of_state=EquationOfState(FT), kwargs...)
+    buoyancy = SeawaterBuoyancy(FT, equation_of_state=EquationOfState(FT); kwargs...)
     return typeof(buoyancy.gravitational_acceleration) == FT
 end
 
 function density_perturbation_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, (:T, :S)))
     density_anomaly = ρ′(2, 2, 2, grid, eos, C.T, C.S)
     return true
 end
 
 function ∂x_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, required_tracers(buoyancy)))
     dbdx = ∂x_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂y_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, required_tracers(buoyancy)))
     dbdy = ∂y_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂z_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, required_tracers(buoyancy)))
     dbdz = ∂z_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function thermal_expansion_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, (:T, :S)))
     α = thermal_expansionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     α = thermal_expansionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
@@ -60,7 +60,7 @@ function thermal_expansion_works(arch, FT, eos)
 end
 
 function haline_contraction_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT; size=(3, 3, 3), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(1, 1, 1))
     C = datatuple(TracerFields(arch, grid, (:T, :S)))
     β = haline_contractionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     β = haline_contractionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)

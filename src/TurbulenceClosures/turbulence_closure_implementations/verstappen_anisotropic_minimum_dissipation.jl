@@ -4,37 +4,87 @@
 Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by
 Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
-     C :: FT
+struct VerstappenAnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractAnisotropicMinimumDissipation{FT}
+    Cν :: PN
+    Cκ :: PK
     Cb :: FT
      ν :: FT
      κ :: K
 
-    function VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ) where FT
-        return new{FT, typeof(κ)}(C, Cb, ν, convert_diffusivity(FT, κ))
+    function VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
+        return new{FT, typeof(Cκ), typeof(Cν), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
 const VAMD = VerstappenAnisotropicMinimumDissipation
 
+Base.show(io::IO, closure::VAMD{FT}) where FT =
+    print(io, "VerstappenAnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
+              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
+              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
+              "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
+              "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
+              "             Background kinematic viscosity for momentum, ν: ", closure.ν, '\n')
+
 """
-    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀)
+    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+                                            Cb=0.0, ν=ν₀, κ=κ₀)
 
 Returns parameters of type `FT` for the `VerstappenAnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
 =================
-    - `C`  : Poincaré constant
+    - `C`  : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+             for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+    - `Cν` : Poincaré constant for momentum eddy viscosity.
+    - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
+             number or function is applied to all tracers. If a `NamedTuple`, it must possess
+             a field specifying the Poncaré constant for every tracer.
     - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
-    - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
-             tracer.
+    - `ν`  : Constant background viscosity for momentum.
+    - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
+             diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
+             specifying a background diffusivity for every tracer.
 
-By default, `C` = 1/12, which is appropriate for a finite-volume method employing a
+By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
-and molecular values are used for `ν` and `κ`.
+the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and 
+the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
+
+`Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
+
+Example
+=======
+
+julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
+VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+           Poincaré constant for momentum eddy viscosity Cν: 0.5
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
+                        Buoyancy modification multiplier Cb: 0.0
+                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
+             Background kinematic viscosity for momentum, ν: 1.05e-6
+
+julia> const Δz = 0.5; # grid resolution at surface
+
+julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
+surface_enhanced_tracer_C (generic function with 1 method)
+
+julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
+VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+           Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
+                        Buoyancy modification multiplier Cb: 0.0
+                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
+             Background kinematic viscosity for momentum, ν: 1.05e-6
+
+julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
+VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+           Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
+    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
+                        Buoyancy modification multiplier Cb: 0.0
+                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
+             Background kinematic viscosity for momentum, ν: 1.05e-6
 
 References
 ==========
@@ -45,12 +95,18 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cb=0.0, ν=ν₀, κ=κ₀) =
-    VerstappenAnisotropicMinimumDissipation{FT}(C, Cb, ν, κ)
+function VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+                                                 Cb=0.0, ν=ν₀, κ=κ₀)
+    Cν = Cν === nothing ? C : Cν
+    Cκ = Cκ === nothing ? C : Cκ
+
+    return VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
+end
 
 function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
-    return VerstappenAnisotropicMinimumDissipation{FT}(closure.C, closure.Cb, closure.ν, κ)
+    Cκ = tracer_diffusivities(tracers, closure.Cκ)
+    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
 
 #####
@@ -67,6 +123,12 @@ end
 ##### Kernel functions
 #####
 
+# Dispatch on the type of the user-provided AMD model constant.
+# Only numbers, arrays, and functions supported now.
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid))
+
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
@@ -77,7 +139,7 @@ end
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w)
         ζ = norm_wᵢ_bᵢᶜᶜᶜ(ijk..., closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        νˢᵍˢ = - closure.C * δ² * (r - closure.Cb * ζ) / q
+        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - closure.Cb * ζ) / q
     end
 
     return max(zero(FT), νˢᵍˢ) + closure.ν
@@ -87,16 +149,18 @@ end
                        U) where {FT, tracer_index}
 
     ijk = (i, j, k, grid)
+
     @inbounds κ = closure.κ[tracer_index]
+    @inbounds Cκ = closure.Cκ[tracer_index]
 
     σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c)
 
-    if σ == 0
+    if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w, c)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        κˢᵍˢ = - closure.C * δ² * ϑ / σ
+        κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     return max(zero(FT), κˢᵍˢ) + κ
