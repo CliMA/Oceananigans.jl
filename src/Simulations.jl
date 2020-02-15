@@ -143,7 +143,8 @@ function run!(sim)
         end
 
         for n in 1:sim.progress_frequency
-            time_step!(model, get_Δt(sim.Δt), euler=n==1)
+            euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
+            time_step!(model, get_Δt(sim.Δt), euler=euler)
 
             [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(sim.diagnostics)]
             [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
