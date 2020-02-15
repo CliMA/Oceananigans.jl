@@ -27,6 +27,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Forcing
 using Oceananigans.Solvers
 using Oceananigans.Models
+using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -116,6 +117,7 @@ with_logger(ModelLogger()) do
         include("test_buoyancy.jl")
         include("test_surface_waves.jl")
         include("test_models.jl")
+        include("test_simulations.jl")
         include("test_time_stepping.jl")
         include("test_boundary_conditions.jl")
         include("test_forcings.jl")
