@@ -34,10 +34,12 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Gradient, Value,
-    CoordinateBoundaryConditions, FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    BoundaryConditions, SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
-    BoundaryFunction, getbc, setbc!,
+    Flux, Value, Gradient,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
+    CoordinateBoundaryConditions, FieldBoundaryConditions, UVelocityBoundaryConditions,
+    VVelocityBoundaryConditions, WVelocityBoundaryConditions, TracerBoundaryConditions,
+    PressureBoundaryConditions, SolutionBoundaryConditions,
+    BoundaryFunction,
 
     # Time stepping
     time_step!,

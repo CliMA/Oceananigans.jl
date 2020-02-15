@@ -41,8 +41,8 @@ nothing # hide
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-buoyancy_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qb),
-                                       bottom = BoundaryCondition(Gradient, N²))
+buoyancy_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qb),
+                                              bottom = BoundaryCondition(Gradient, N²))
 nothing # hide
 
 # ## Define a forcing function
@@ -61,7 +61,7 @@ model = Model(
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
                 forcing = ModelForcing(plankton=growth_and_decay),
-    boundary_conditions = HorizontallyPeriodicSolutionBCs(b=buoyancy_bcs)
+    boundary_conditions = SolutionBoundaryConditions(grid, b=buoyancy_bcs)
 )
 nothing # hide
 

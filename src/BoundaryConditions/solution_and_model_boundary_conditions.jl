@@ -9,7 +9,7 @@ const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :di
 #####
 
 DefaultTracerBC(::BC)  = BoundaryCondition(Flux, nothing)
-DefaultTracerBC(::PBC) = PeriodicBC()
+DefaultTracerBC(::PBC) = PeriodicBoundaryCondition()
 
 DefaultTracerCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
@@ -26,8 +26,8 @@ default_tracer_bcs(tracer_names, solution_bcs) = DefaultTracerBoundaryConditions
 #####
 
 TendencyBC(::BC)   = BoundaryCondition(Flux, nothing)
-TendencyBC(::PBC)  = PeriodicBC()
-TendencyBC(::NPBC) = NoPenetrationBC()
+TendencyBC(::PBC)  = PeriodicBoundaryCondition()
+TendencyBC(::NPBC) = NoPenetrationBoundaryCondition()
 
 TendencyCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
@@ -45,14 +45,14 @@ TendenciesBoundaryConditions(solution_bcs) =
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
-PressureBC(::PBC) = PeriodicBC()
+PressureBC(::PBC) = PeriodicBoundaryCondition()
 
 function PressureBoundaryConditions(solution_boundary_conditions)
     ubcs = solution_boundary_conditions.u
     x = CoordinateBoundaryConditions(PressureBC(ubcs.x.left), PressureBC(ubcs.x.right))
     y = CoordinateBoundaryConditions(PressureBC(ubcs.y.left), PressureBC(ubcs.y.right))
     z = CoordinateBoundaryConditions(PressureBC(ubcs.z.left), PressureBC(ubcs.z.right))
-    return (x=x, y=y, z=z)
+    return FieldBoundaryConditions(x, y, z)
 end
 
 PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
@@ -65,14 +65,14 @@ PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
 
 # Diffusivity boundary conditions are either zero flux (Neumann) or Periodic.
 DiffusivityBC(::BC)  = BoundaryCondition(Flux, nothing)
-DiffusivityBC(::PBC) = PeriodicBC()
+DiffusivityBC(::PBC) = PeriodicBoundaryCondition()
 
 function DiffusivityBoundaryConditions(solution_boundary_conditions)
     ubcs = solution_boundary_conditions.u
     x = CoordinateBoundaryConditions(DiffusivityBC(ubcs.x.left), DiffusivityBC(ubcs.x.right))
     y = CoordinateBoundaryConditions(DiffusivityBC(ubcs.y.left), DiffusivityBC(ubcs.y.right))
     z = CoordinateBoundaryConditions(DiffusivityBC(ubcs.z.left), DiffusivityBC(ubcs.z.right))
-    return (x=x, y=y, z=z)
+    return FieldBoundaryConditions(x, y, z)
 end
 
 DiffusivitiesBoundaryConditions(::Nothing, args...) = nothing
@@ -107,41 +107,10 @@ and may contain some or all of the boundary conditions on `tracers`.
 SolutionBoundaryConditions(tracer_names, proposal_bcs) =
     with_tracers(tracer_names, proposal_bcs, default_tracer_bcs, with_velocities=true)
 
-"""
-    HorizontallyPeriodicSolutionBCs(u=HorizontallyPeriodicBCs(), ...)
-
-Construct `SolutionBoundaryConditions` for a horizontally-periodic model
-configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
-
-By default `HorizontallyPeriodicBCs` are applied to `u`, `v`, `T`, and `S`
-and `HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
-
-Use `HorizontallyPeriodicBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
-"""
-function HorizontallyPeriodicSolutionBCs(;
-    u = HorizontallyPeriodicBCs(),
-    v = HorizontallyPeriodicBCs(),
-    w = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
-    tracers_boundary_conditions...)
-
-    return merge((u=u, v=v, w=w), tracers_boundary_conditions)
-end
-
-"""
-    ChannelSolutionBCs(u=ChannelBCs(), ...)
-
-Construct `SolutionBoundaryConditions` for a reentrant channel model
-configuration with solution fields `u`, `v`, `w`, `T`, and `S` specified by keyword arguments.
-
-By default `ChannelBCs` are applied to `u`, `v`, `T`, and `S`
-and `ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())` is applied to `w`.
-
-Use `ChannelBCs` when constructing non-default boundary conditions for `u`, `v`, `w`, `T`, `S`.
-"""
-function ChannelSolutionBCs(;
-    u = ChannelBCs(),
-    v = ChannelBCs(north=NoPenetrationBC(), south=NoPenetrationBC()),
-    w = ChannelBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC()),
+function SolutionBoundaryConditions(grid;
+    u = UVelocityBoundaryConditions(grid),
+    v = VVelocityBoundaryConditions(grid),
+    w = WVelocityBoundaryConditions(grid),
     tracers_boundary_conditions...)
 
     return merge((u=u, v=v, w=w), tracers_boundary_conditions)
@@ -149,16 +118,16 @@ end
 
 #####
 ##### ModelBoundaryConditions, which include boundary conditions on the solution,
-##### tendencies, pressure, and diffusivities 
+##### tendencies, pressure, and diffusivities
 #####
 
 """
     ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs)
 
 Construct `ModelBoundaryConditions` with defaults for the tendency boundary conditions, pressure boundary
-conditions, and diffusivity boundary conditions given a tuple of `tracer_names`, a `NamedTuple` of 
+conditions, and diffusivity boundary conditions given a tuple of `tracer_names`, a `NamedTuple` of
 `diffusivity_fields`, and a set of `proposal_boundary_conditions` that includes boundary conditions for
-`u`, `v`, and `w` and any of the tracers in `tracer_names`. The boundary conditions on `v` 
+`u`, `v`, and `w` and any of the tracers in `tracer_names`. The boundary conditions on `v`
 are used to determine the topology of the grid for setting default boundary conditions.
 """
 function ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs;
@@ -167,9 +136,9 @@ function ModelBoundaryConditions(tracer_names, diffusivity_fields, proposal_bcs;
     diffusivities = DiffusivitiesBoundaryConditions(diffusivity_fields, proposal_bcs)
    )
 
-    return (     solution = SolutionBoundaryConditions(tracer_names, proposal_bcs),  
-                 tendency = tendency, 
-                 pressure = pressure, 
+    return (     solution = SolutionBoundaryConditions(tracer_names, proposal_bcs),
+                 tendency = tendency,
+                 pressure = pressure,
             diffusivities = diffusivities)
 end
 

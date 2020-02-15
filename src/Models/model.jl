@@ -78,7 +78,7 @@ function Model(;
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
-    boundary_conditions = HorizontallyPeriodicSolutionBCs(),
+    boundary_conditions = SolutionBoundaryConditions(grid),
          output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
             diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing,

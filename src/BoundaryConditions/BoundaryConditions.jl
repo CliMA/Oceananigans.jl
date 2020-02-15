@@ -3,18 +3,23 @@ module BoundaryConditions
 export
     BCType, Flux, Gradient, Value, NoPenetration,
     BoundaryCondition, bctype, getbc, setbc!,
+    PeriodicBoundaryCondition, NoPenetrationBoundaryCondition, NoFluxBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     CoordinateBoundaryConditions,
-    FieldBoundaryConditions, HorizontallyPeriodicBCs, ChannelBCs,
-    SolutionBoundaryConditions, HorizontallyPeriodicSolutionBCs, ChannelSolutionBCs,
-    TendenciesBoundaryConditions, PressureBoundaryConditions,
+    FieldBoundaryConditions, UVelocityBoundaryConditions, VVelocityBoundaryConditions,
+    WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,
+    DiffusivityBoundaryConditions,
+    SolutionBoundaryConditions, TendenciesBoundaryConditions, PressureBoundaryConditions,
     DiffusivityBoundaryConditions, DiffusivitiesBoundaryConditions,
-    ModelBoundaryConditions, BoundaryFunction,
+    ModelBoundaryConditions,
+    BoundaryFunction,
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!
 
 using CUDAnative
 
 using Oceananigans.Architectures
+using Oceananigans.Grids
 using Oceananigans.Fields
 
 include("boundary_condition_types.jl")

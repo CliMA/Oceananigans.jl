@@ -1,6 +1,5 @@
 using LinearAlgebra
 using Oceananigans.Architectures: array_type
-using Oceananigans.BoundaryConditions: NoPenetrationBC
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 function can_solve_single_tridiagonal_system(arch, N)
@@ -215,8 +214,8 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     interior(Rw) .= zeros(Nx, Ny, Nz)
     U = (u=Ru, v=Rv, w=Rw)
 
-    uv_bcs = HorizontallyPeriodicBCs()
-    w_bcs = HorizontallyPeriodicBCs(top=NoPenetrationBC(), bottom=NoPenetrationBC())
+    uv_bcs = UVelocityBoundaryConditions(fake_grid)
+     w_bcs = WVelocityBoundaryConditions(fake_grid)
 
     fill_halo_regions!(Ru.data, uv_bcs, arch, fake_grid)
     fill_halo_regions!(Rv.data, uv_bcs, arch, fake_grid)
@@ -255,7 +254,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     #####
 
     # Gotta fill halo regions
-    fbcs = HorizontallyPeriodicBCs()
+    fbcs = TracerBoundaryConditions(fake_grid)
     fill_halo_regions!(ϕ.data, fbcs, arch, fake_grid)
 
     ∇²ϕ = CellField(Float64, arch, fake_grid)

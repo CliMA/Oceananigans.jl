@@ -1,5 +1,5 @@
 function correct_grid_size_regular(FT)
-    grid = RegularCartesianGrid(FT; size=(4, 6, 8), length=(2π, 4π, 9π))
+    grid = RegularCartesianGrid(FT, size=(4, 6, 8), length=(2π, 4π, 9π))
 
     # Checking ≈ as the grid could be storing Float32 values.
     return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
@@ -7,17 +7,17 @@ function correct_grid_size_regular(FT)
 end
 
 function correct_halo_size_regular(FT)
-    grid = RegularCartesianGrid(FT; size=(4, 6, 8), length=(2π, 4π, 9π), halo=(1, 2, 3))
+    grid = RegularCartesianGrid(FT, size=(4, 6, 8), length=(2π, 4π, 9π), halo=(1, 2, 3))
     return (grid.Hx == 1  && grid.Hy == 2  && grid.Hz == 3)
 end
 
 function faces_start_at_zero_regular(FT)
-    grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(2π, 2π, 2π))
+    grid = RegularCartesianGrid(FT, size=(10, 10, 10), length=(2π, 2π, 2π))
     return grid.xF[1] == 0 && grid.yF[1] == 0 && grid.zF[end] == 0
 end
 
 function end_faces_match_grid_length_regular(FT)
-    grid = RegularCartesianGrid(FT; size=(12, 13, 14), length=(π, π^2, π^3))
+    grid = RegularCartesianGrid(FT, size=(12, 13, 14), length=(π, π^2, π^3))
     return (grid.xF[end] - grid.xF[1] ≈ π   &&
             grid.yF[end] - grid.yF[1] ≈ π^2 &&
             grid.zF[end] - grid.zF[1] ≈ π^3)
@@ -25,7 +25,7 @@ end
 
 function ranges_have_correct_length_regular(FT)
     Nx, Ny, Nz = 8, 9, 10
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1, 1, 1))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1, 1, 1))
     return (length(grid.xC) == Nx && length(grid.xF) == Nx+1 &&
             length(grid.yC) == Ny && length(grid.yF) == Ny+1 &&
             length(grid.zC) == Nz && length(grid.zF) == Nz+1)
@@ -34,24 +34,24 @@ end
 # See: https://github.com/climate-machine/Oceananigans.jl/issues/480
 function no_roundoff_error_in_ranges_regular(FT)
     Nx, Ny, Nz = 1, 1, 64
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1, 1, π/2))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1, 1, π/2))
     return length(grid.zC) == Nz && length(grid.zF) == Nz+1
 end
 
 function grid_properties_are_same_type_regular(FT)
-    grid = RegularCartesianGrid(FT; size=(10, 10, 10), length=(1, 1//7, 2π))
+    grid = RegularCartesianGrid(FT, size=(10, 10, 10), length=(1, 1//7, 2π))
     return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy, grid.Δz], FT)) &&
            all(eltype.([grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
 function correct_constant_grid_spacings(FT)
-    grid = VerticallyStretchedCartesianGrid(FT; size=(16, 16, 16), x=(0,1), y=(0,1), z=(0,16), zF=collect(0:16))
+    grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), z=(0,16), zF=collect(0:16))
     return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
 end
 
 function correct_quadratic_grid_spacings(FT)
     Nx = Ny = Nz = 16
-    grid = VerticallyStretchedCartesianGrid(FT; size=(Nx, Ny, Nz), x=(0,1), y=(0,1), z=(0,Nz^2), zF=collect(0:Nz).^2)
+    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0,1), y=(0,1), z=(0,Nz^2), zF=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
      zC(k) = ((k-1)^2 + k^2) / 2
@@ -72,7 +72,7 @@ function correct_tanh_grid_spacings(FT)
     S = 3  # Stretching factor
     zF(k) = tanh(S * (2*(k-1)/Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedCartesianGrid(FT; size=(Nx, Ny, Nz), x=(0,1), y=(0,1), z=(-1,1), zF=zF)
+    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0,1), y=(0,1), z=(-1,1), zF=zF)
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
@@ -88,7 +88,7 @@ end
 
 function grid_properties_are_same_type_stretched(FT)
     Nx, Ny, Nz = 16, 16, 16
-    grid = VerticallyStretchedCartesianGrid(FT; size=(16, 16, 16), x=(0,1), y=(0,1), z=(0.0,16.0), zF=collect(0:16))
+    grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), z=(0.0,16.0), zF=collect(0:16))
     return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
            all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
@@ -117,34 +117,34 @@ end
             @info "    Testing grid constructor errors..."
 
             for FT in float_types
-                @test isbitstype(typeof(RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 1, 1))))
+                @test isbitstype(typeof(RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1))))
 
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32,), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 64), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32, 16), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32,), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 64), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32, 16), length=(1, 1, 1))
 
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32.0), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(20.1, 32, 32), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, nothing, 32), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, "32", 32), length=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, nothing, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, "1", 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, 1, 1), halo=(1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(32, 32, 32), length=(1, 1, 1), halo=(1.0, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32.0), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(20.1, 32, 32), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, nothing, 32), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, "32", 32), length=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), length=(1, nothing, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), length=(1, "1", 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), length=(1, 1, 1), halo=(1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), length=(1, 1, 1), halo=(1.0, 1, 1))
 
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=2)
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), y=[1, 2])
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), z=(-π, π))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=1, y=2, z=3)
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=2)
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), y=[1, 2])
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), z=(-π, π))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=1, y=2, z=3)
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3), x=(0, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
 
                 @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1), topology=(Periodic, Periodic, Flux))
             end

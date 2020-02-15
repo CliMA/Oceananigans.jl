@@ -17,8 +17,6 @@ end
 
 const CBC = CoordinateBoundaryConditions
 
-PeriodicBCs() = CBC(PeriodicBC(), PeriodicBC())
-
 # Here we overload setproperty! and getproperty to permit users to call
 # the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'
 # and the 'left' and 'right' bcs in the y-direction 'south' and 'north'.

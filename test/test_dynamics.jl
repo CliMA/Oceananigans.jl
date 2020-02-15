@@ -39,9 +39,9 @@ function test_diffusion_budget_default(fieldname)
 end
 
 function test_diffusion_budget_channel(fieldname)
-    grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = ChannelModel(grid=grid, closure=closure, buoyancy=nothing)
+    model = Model(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
@@ -75,7 +75,6 @@ function test_diffusion_cosine(fieldname)
 end
 
 function internal_wave_test(; N=128, Nt=10)
-
     # Internal wave parameters
      ν = κ = 1e-9
      L = 2π
@@ -164,14 +163,14 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
     model = Model(architecture = arch,
-                          grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                       closure = ConstantIsotropicDiffusivity(FT; ν=1, κ=0),  # Turn off diffusivity.
+                          grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+                       closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
                        tracers = nothing,
-                      buoyancy = nothing) # turn off buoyancy
+                      buoyancy = nothing)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
-    set!(model; u=u₀, v=v₀)
+    set!(model, u=u₀, v=v₀)
 
     time_step!(model, Nt, Δt)
 
