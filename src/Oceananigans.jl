@@ -46,7 +46,7 @@ export
     TimeStepWizard, update_Δt!,
 
     # Models
-    Model, ChannelModel, NonDimensionalModel,
+    IncompressibleModel, NonDimensionalModel,
 
     # Simulations
     Simulation, run!,

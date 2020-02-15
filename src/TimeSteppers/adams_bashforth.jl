@@ -31,12 +31,12 @@ end
 #####
 
 """
-    time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
+    time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
-function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
+function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
