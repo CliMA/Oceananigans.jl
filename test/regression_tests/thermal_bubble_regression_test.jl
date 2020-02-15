@@ -6,6 +6,7 @@ function run_thermal_bubble_regression_test(arch)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = Model(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
+    simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
@@ -33,14 +34,14 @@ function run_thermal_bubble_regression_test(arch)
                    "S" => model.tracers.S)
 
     nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
-    push!(model.output_writers, nc_writer)
+    push!(simulation.output_writers, nc_writer)
     =#
 
     ####
     #### Regression test
     ####
 
-    time_step!(model, 10, Δt)
+    run!(simulation)
 
     ds = Dataset(regression_data_filepath, "r")
 

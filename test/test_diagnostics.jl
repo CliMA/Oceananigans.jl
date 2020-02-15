@@ -77,42 +77,46 @@ get_time(model) = model.clock.time
 
 function timeseries_diagnostic_works(arch, FT)
     model = TestModel(arch, FT)
-    iter_diag = TimeSeries(get_iteration, model; frequency=1)
-    push!(model.diagnostics, iter_diag)
     Δt = FT(1e-16)
-    time_step!(model, 1, Δt)
-
+    simulation = Simulation(model, Δt=Δt, stop_iteration=1)
+    iter_diag = TimeSeries(get_iteration, model, frequency=1)
+    push!(simulation.diagnostics, iter_diag)
+    run!(simulation)
     return iter_diag.time[end] == Δt && iter_diag.data[end] == 1
 end
 
 function timeseries_diagnostic_tuples(arch, FT)
     model = TestModel(arch, FT)
-    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model; frequency=2)
-    model.diagnostics[:timeseries] = timeseries
     Δt = FT(1e-16)
-    time_step!(model, 2, Δt)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=2)
+    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model, frequency=2)
+    simulation.diagnostics[:timeseries] = timeseries
+    run!(simulation)
     return timeseries.iters[end] == 2 && timeseries.itertimes[end] == 2Δt
 end
 
 function diagnostics_getindex(arch, FT)
     model = TestModel(arch, FT)
+    simulation = Simulation(model, Δt=0, stop_iteration=0)
     iter_timeseries = TimeSeries(get_iteration, model)
     time_timeseries = TimeSeries(get_time, model)
-    model.diagnostics[:iters] = iter_timeseries
-    model.diagnostics[:times] = time_timeseries
-    return model.diagnostics[2] == time_timeseries
+    simulation.diagnostics[:iters] = iter_timeseries
+    simulation.diagnostics[:times] = time_timeseries
+    return simulation.diagnostics[2] == time_timeseries
 end
 
 function diagnostics_setindex(arch, FT)
     model = TestModel(arch, FT)
+    simulation = Simulation(model, Δt=0, stop_iteration=0)
+
     iter_timeseries = TimeSeries(get_iteration, model)
     time_timeseries = TimeSeries(get_time, model)
-    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
+    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model, frequency=1)
 
-    push!(model.diagnostics, iter_timeseries, time_timeseries)
-    model.diagnostics[2] = max_abs_u_timeseries
+    push!(simulation.diagnostics, iter_timeseries, time_timeseries)
+    simulation.diagnostics[2] = max_abs_u_timeseries
 
-    return model.diagnostics[:diag2] == max_abs_u_timeseries
+    return simulation.diagnostics[:diag2] == max_abs_u_timeseries
 end
 
 

@@ -26,8 +26,6 @@ using Oceananigans.OutputWriters
 using Oceananigans.Utils
 
 using Oceananigans.Fields: Tendencies, tracernames
-using Oceananigans.Diagnostics: run_diagnostic
-using Oceananigans.OutputWriters: write_output
 
 using ..TurbulenceClosures: calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 

@@ -15,7 +15,7 @@ function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
 
     model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
-    time_step!(model, 1, 1e-16)
+    time_step!(model, 1e-16, euler=true)
 
     return typeof(model) <: Model
 end
@@ -33,7 +33,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
-    time_step!(model, 1, 1e-16)
+    time_step!(model, 1e-16, euler=true)
 
     return getbc(bcs.z.top) == val && getbc(bcs.z.bottom) == -val
 end
@@ -57,7 +57,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
-    time_step!(model, 1, 1e-16)
+    time_step!(model, 1e-16, euler=true)
 
     return bcs.z.top[1, 2] == bcarray[1, 2]
 end
@@ -90,7 +90,9 @@ function test_flux_budget(arch, FT, fldname)
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
     Nt = 100        # Number of time steps
 
-    time_step!(model, Nt, Δt)
+    for n in 1:Nt
+        time_step!(model, Δt, euler= n==1)
+    end
 
     # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz
@@ -132,7 +134,9 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     Δt = 1e-6 * τκ     # Time step much less than diffusion time-scale
     Nt = 10            # Number of time steps
 
-    time_step!(model; Nt=Nt, Δt=Δt)
+    for n in 1:Nt
+        time_step!(model, Δt, euler= n==1)
+    end
 
     # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz

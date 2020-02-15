@@ -162,7 +162,7 @@ end
 
 Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly,
+            SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
 @testset "Time stepping" begin

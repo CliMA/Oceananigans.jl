@@ -20,7 +20,7 @@ function test_diffusion_simple(fieldname)
     field = getmodelfield(fieldname, model)
     value = π
     interior(field) .= value
-    time_step!(model, 10, 0.01)
+    for n in 1:10; time_step!(model, 1, euler= n==1); end
     field_data = interior(field)
 
     return !any(@. !isapprox(value, field_data))
@@ -52,7 +52,7 @@ end
 
 function test_diffusion_budget(field, model, κ, L)
     mean_init = mean(interior(field))
-    time_step!(model, 100, 1e-4 * L^2 / κ)
+    for n in 1:100; time_step!(model, 1e-4 * L^2 / κ, euler= n==1); end
     return isapprox(mean_init, mean(interior(field)))
 end
 
@@ -68,7 +68,8 @@ function test_diffusion_cosine(fieldname)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
 
-    time_step!(model, 100, 1e-6 * Lz^2 / κ) # Use small time-step relative to diff. time-scale
+    # Use small time-step relative to diff. time-scale
+    for n in 1:100; time_step!(model, 1e-6 * Lz^2 / κ, euler= n==1); end
     field_numerical = dropdims(interior(field), dims=(1, 2))
 
     return !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
@@ -116,7 +117,9 @@ function internal_wave_test(; N=128, Nt=10)
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
-    time_step!(model, Nt, Δt)
+    for n in 1:Nt
+        time_step!(model, Δt, euler= n==1)
+    end
 
     # Tolerance was found by trial and error...
     return relative_error(model.velocities.u, u, model.clock.time) < 1e-4
@@ -138,7 +141,10 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     model = Model(grid=grid, closure=closure)
 
     set!(model, u=u₀, v=v₀, T=T₀)
-    time_step!(model, Nt, Δt)
+
+    for n in 1:Nt
+        time_step!(model, Δt, euler= n==1)
+    end
 
     # Error tolerance is a bit arbitrary
     return relative_error(model.tracers.T, T, model.clock.time) < 1e-4
@@ -172,7 +178,9 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     v₀(x, y, z) = v(x, y, z, 0)
     set!(model, u=u₀, v=v₀)
 
-    time_step!(model, Nt, Δt)
+    for n in 1:Nt
+        time_step!(model, Δt, euler = n==1)
+    end
 
     xC, yC, zC = reshape(model.grid.xC, (Nx, 1, 1)), reshape(model.grid.yC, (1, Ny, 1)), reshape(model.grid.zC, (1, 1, Nz))
     xF, yF = reshape(model.grid.xF[1:end-1], (Nx, 1, 1)), reshape(model.grid.yF[1:end-1], (1, Ny, 1))
