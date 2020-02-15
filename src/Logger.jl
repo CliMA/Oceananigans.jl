@@ -1,6 +1,6 @@
 module Logger
 
-export ModelLogger, Diagnostic, Setup, Simulation
+export ModelLogger, Diagnostic, Setup
 
 using Dates
 using Logging
@@ -11,7 +11,7 @@ using Logging
 
 _custom_log_level_docs = """
     Severity Order:
-    Debug < Diagnostic < Simulation < Setup < Info
+    Debug < Diagnostic < Setup < Info
 
     Usage:
     @logmsg Logging.LogLevel "Log Message"
@@ -22,7 +22,6 @@ _custom_log_level_docs = """
 """
 
 const Diagnostic = Logging.LogLevel(-500)  # Sits between Debug and Info
-const Simulation = Logging.LogLevel(-250)
 const Setup      = Logging.LogLevel(-125)
 
 #####

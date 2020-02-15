@@ -1,13 +1,13 @@
-module Simulation
+module Simulations
 
 export Simulation, run!
 
 using Oceananigans.Models
 using Oceananigans.Utils
 
-mutable struct Simulation{M, T, S, SI, ST, W, R, D, O, P}
+mutable struct Simulation{M, Δ, S, SI, ST, W, R, D, O, P, F}
                  model :: M
-                    Δt :: T
+                    Δt :: Δ
          stop_criteria :: S
         stop_iteration :: SI
              stop_time :: ST
@@ -19,8 +19,8 @@ mutable struct Simulation{M, T, S, SI, ST, W, R, D, O, P}
     progress_frequency :: F
 end
 
-function Simulation(model, Δt;
-        stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded]
+function Simulation(model; Δt,
+        stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
        stop_iteration = Inf,
             stop_time = Inf,
       wall_time_limit = Inf,
@@ -43,6 +43,7 @@ end
 
 function stop(sim)
     time_before = time()
+
     for sc in sim.stop_criteria
         if sc(sim)
             time_after = time()
@@ -50,8 +51,10 @@ function stop(sim)
             return true
         end
     end
+
     time_after = time()
     sim.run_time += time_after - time_before
+
     return false
 end
 
