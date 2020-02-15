@@ -34,7 +34,8 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Gradient, Value,
+    Flux, Value, Gradient,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions, UVelocityBoundaryConditions,
     VVelocityBoundaryConditions, WVelocityBoundaryConditions, TracerBoundaryConditions,
     PressureBoundaryConditions, SolutionBoundaryConditions,
