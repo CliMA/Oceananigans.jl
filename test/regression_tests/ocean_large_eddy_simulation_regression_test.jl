@@ -58,7 +58,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
-    model = Model(
+    model = IncompressibleModel(
              architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),

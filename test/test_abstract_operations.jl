@@ -354,7 +354,7 @@ end
             for FT in float_types
                 @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
 
-                model = Model(
+                model = IncompressibleModel(
                     architecture = arch,
                       float_type = FT,
                             grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1))

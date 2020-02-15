@@ -101,8 +101,8 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
 
-    model = Model(architecture=arch, float_type=FT, closure=closure_tuple,
-                  grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3)))
+    model = IncompressibleModel(architecture=arch, float_type=FT, closure=closure_tuple,
+                                grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
     return true
@@ -111,7 +111,7 @@ end
 function compute_closure_specific_diffusive_cfl(closurename)
     grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
-    model = Model(grid=grid, closure=closure)
+    model = IncompressibleModel(grid=grid, closure=closure)
     dcfl = DiffusiveCFL(0.1)
     dcfl(model)
     return true  # Just make sure dcfl(model) does not error.

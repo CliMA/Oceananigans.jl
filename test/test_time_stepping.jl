@@ -2,7 +2,7 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -14,7 +14,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
     eos = RoquetIdealizedNonlinearEquationOfState(eos_type)
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = Model(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -22,8 +22,8 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
-                  architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                                architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
@@ -87,7 +87,8 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)), architecture=arch, float_type=FT)
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     grid = model.grid
     u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
@@ -133,8 +134,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    model = Model(architecture = arch, float_type = FT, grid = grid,
-                  closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+    model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
+                                closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
