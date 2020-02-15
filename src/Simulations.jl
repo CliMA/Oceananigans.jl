@@ -95,7 +95,7 @@ function stop(sim)
 end
 
 function iteration_limit_exceeded(sim)
-    if sim.model.clock.iteration > sim.stop_iteration
+    if sim.model.clock.iteration >= sim.stop_iteration
           @warn "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
                 "has exceeded simulation stop iteration $(sim.stop_iteration)."
           return true
@@ -104,7 +104,7 @@ function iteration_limit_exceeded(sim)
 end
 
 function stop_time_exceeded(sim)
-    if sim.model.clock.time > sim.stop_time
+    if sim.model.clock.time >= sim.stop_time
           @warn "Simulation is stopping. Model time $(sim.model.clock.time) " *
                 "has exceeded simulation stop time $(sim.stop_time)."
           return true
@@ -113,7 +113,7 @@ function stop_time_exceeded(sim)
 end
 
 function wall_time_limit_exceeded(sim)
-    if sim.run_time > sim.wall_time_limit
+    if sim.run_time >= sim.wall_time_limit
           @warn "Simulation is stopping. Simulation run time $(sim.run_time) " *
                 "has exceeded simulation wall time limit $(sim.wall_time_limit)."
           return true
