@@ -19,7 +19,7 @@ A `TimeSeries` `Diagnostic` that records a time series of `diagnostic(model)`.
 Example
 =======
 ```julia
-julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> max_u = TimeSeries(FieldMaximum(abs, model.velocities.u), model; frequency=1)
 
@@ -55,7 +55,7 @@ A `TimeSeries` `Diagnostic` that records a `NamedTuple` of time series of
 Example
 =======
 ```julia
-julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))); Δt = 1.0;
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))); Δt = 1.0;
 
 julia> cfl = TimeSeries((adv=AdvectiveCFL(Δt), diff=DiffusiveCFL(Δt)), model; frequency=1);
 

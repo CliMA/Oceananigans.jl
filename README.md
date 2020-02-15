@@ -82,11 +82,12 @@ At this time, updating should be done with care, as Oceananigans is under rapid 
 **Note**: Oceananigans requires at least Julia v1.1 to run correctly.
 
 ## Running your first model
-Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
+Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 time step of 60 seconds.
 ```julia
 using Oceananigans
-model = Model(grid = RegularCartesianGrid(size=(100, 100, 50), length = (2000, 2000, 1000)))
-time_step!(model; Δt=60, Nt=10)
+grid = RegularCartesianGrid(size=(100, 100, 50), length = (2000, 2000, 1000))
+model = IncompressibleModel(grid=grid)
+time_step!(model, 60)
 ```
 You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
 
@@ -97,9 +98,11 @@ using Oceananigans
 
 # We'll set up a 2D model with an xz-slice so there's only 1 grid point in y
 # and use an artificially high viscosity ν and diffusivity κ.
-model = Model(architecture = CPU(),
-                      grid = RegularCartesianGrid(size=(128, 128, 128), length=(2000, 2000, 2000)),
-                   closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2))
+model = IncompressibleModel(
+    architecture = CPU(),
+            grid = RegularCartesianGrid(size=(128, 128, 128), length=(2000, 2000, 2000)),
+         closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+)
 
 # Set a temperature perturbation with a Gaussian profile located at the center
 # of the vertical slice. This will create a buoyant thermal bubble that will
@@ -109,7 +112,8 @@ x₀, z₀ = Lx/2, Lz/2
 T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (Lx^2 + Lz^2))
 set!(model; T=T₀)
 
-time_step!(model; Δt=10, Nt=5000)
+simulation = Simulation(model, Δt=10, stop_iteration=5000)
+run!(simulation)
 ```
 By changing `arch=CPU()` to `arch=GPU()`, the example will run on an Nvidia GPU!
 
