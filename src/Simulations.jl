@@ -13,11 +13,11 @@ using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
 
-mutable struct Simulation{M, Δ, S, T, W, R, D, O, P, F}
+mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F}
                  model :: M
                     Δt :: Δ
-         stop_criteria :: S
-        stop_iteration :: Int
+         stop_criteria :: C
+        stop_iteration :: I
              stop_time :: T
        wall_time_limit :: W
               run_time :: R
@@ -150,12 +150,14 @@ function run!(sim)
             [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
         end
 
-        sim.Δt isa TimeStepWizard && update_Δt!(sim.Δt, model)
         sim.progress isa Function && sim.progress(sim)
+        sim.Δt isa TimeStepWizard && update_Δt!(sim.Δt, model)
 
         time_after = time()
         sim.run_time += time_after - time_before
     end
+
+    return nothing
 end
 
 Base.show(io::IO, s::Simulation) =
