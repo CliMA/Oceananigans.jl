@@ -44,9 +44,9 @@ Keyword arguments
 =================
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
   for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
-- `stop_criteria`: A list of functions (each taking a single argument, the `simulation`).
-  If any of the functions return `true` when the stop criteria is evaluated the simulation
-  will stop.
+- `stop_criteria`: A list of functions or callable objects (each taking a single argument,
+  the `simulation`). If any of the functions return `true` when the stop criteria is
+  evaluated the simulation will stop.
 - `stop_iteration`: Stop the simulation after this many iterations.
 - `stop_time`: Stop the simulation once this much model clock time has passed.
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
@@ -57,7 +57,7 @@ Keyword arguments
   `progress` function (in number of iterations).
 """
 function Simulation(model; Δt,
-        stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
+        stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
        stop_iteration = Inf,
             stop_time = Inf,
       wall_time_limit = Inf,
@@ -67,8 +67,13 @@ function Simulation(model; Δt,
    progress_frequency = 1)
 
    if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
-         @warn "This simulation will run forever as stop iteration = stop time " *
-               "= wall time limit = Inf."
+       @warn "This simulation will run forever as stop iteration = stop time " *
+             "= wall time limit = Inf."
+   end
+
+   if Δt isa TimeStepWizard && progress_frequency == 1
+       @warn "You have used the default progress_frequency=1. This simulation will " *
+             "recalculate the time step every iteration which can be slow."
    end
 
    run_time = 0.0
@@ -96,8 +101,8 @@ end
 
 function iteration_limit_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
-          @warn "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
-                "has exceeded simulation stop iteration $(sim.stop_iteration)."
+          @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
+                "has hit or exceeded simulation stop iteration $(sim.stop_iteration)."
           return true
     end
     return false
@@ -105,8 +110,8 @@ end
 
 function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
-          @warn "Simulation is stopping. Model time $(sim.model.clock.time) " *
-                "has exceeded simulation stop time $(sim.stop_time)."
+          @info "Simulation is stopping. Model time $(sim.model.clock.time) " *
+                "has hit or exceeded simulation stop time $(sim.stop_time)."
           return true
     end
     return false
@@ -114,8 +119,8 @@ end
 
 function wall_time_limit_exceeded(sim)
     if sim.run_time >= sim.wall_time_limit
-          @warn "Simulation is stopping. Simulation run time $(sim.run_time) " *
-                "has exceeded simulation wall time limit $(sim.wall_time_limit)."
+          @info "Simulation is stopping. Simulation run time $(sim.run_time) " *
+                "has hit or exceeded simulation wall time limit $(sim.wall_time_limit)."
           return true
     end
     return false
@@ -127,8 +132,8 @@ get_Δt(wizard::TimeStepWizard) = wizard.Δt
 """
     run!(simulation)
 
-Run a `simulation` until one of the stop criteria evaluates to true and the
-simulation stops.
+Run a `simulation` until one of the stop criteria evaluates to true. The simulation
+will then stop.
 """
 function run!(sim)
     model = sim.model

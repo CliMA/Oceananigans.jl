@@ -34,11 +34,13 @@ end
     @testset "One-dimensional diffusion" begin
         @info "  Testing one-dimensional diffusion example"
 
-        replace_strings = [("size = (1, 1, 128)", "size = (1, 1, 16)"),
-                           ("Nt = 1000", "Nt = 1"),
-                           ("Nt = 100",  "Nt = 1"),
-                           ("for i=1:100", "for i=1:1"),
-                           ("mp4(", "# mp4(")]
+        replace_strings = [
+            ("size = (1, 1, 128)", "size = (1, 1, 16)"),
+            ("stop_iteration = 1000", "stop_iteration = 1"),
+            ("stop_iteration += 100", "stop_iteration += 1"),
+            ("for i=1:100", "for i=1:1"),
+            ("mp4(", "# mp4(")
+        ]
 
         @test_skip run_example(replace_strings, "one_dimensional_diffusion")
     end
@@ -46,11 +48,12 @@ end
     @testset "Two-dimensional turbulence example" begin
         @info "  Testing two-dimensional turbulence example"
 
-        replace_strings = [("N=(128, 128, 1)", "N=(16, 16, 1)"),
-                           ("i = 1:10", "i = 1:1"),
-                           ("Nt = 10", "Nt = 1"),
-                           ("for i=1:100", "for i=1:1"),
-                           ("mp4(", "# mp4(")]
+        replace_strings = [
+            ("N=(128, 128, 1)", "N=(16, 16, 1)"),
+            ("for i=1:100", "for i=1:1"),
+            ("stop_iteration += 10", "stop_iteration += 1"),
+            ("mp4(", "# mp4(")
+        ]
 
         @test_skip run_example(replace_strings, "two_dimensional_turbulence")
     end
@@ -61,8 +64,9 @@ end
 
             replace_strings = [
                 ("Nz = 48", "Nz = 16"),
+                ("progress_frequency=10", "progress_frequency=1"),
                 ("for i in 1:100", "for i in 1:1"),
-                ("time_step!(model, 10", "time_step!(model, 1"),
+                ("stop_iteration += 10", "stop_iteration += 1"),
                 ("mp4(", "# mp4(")
             ]
 
@@ -79,10 +83,13 @@ end
     @testset "Ocean convection with plankton example" begin
         @info "  Testing ocean convection with plankton example"
 
-        replace_strings = [("Nz = 128", "Nz = 16"),
-                           ("for i = 1:100", "for i = 1:1"),
-                           ("time_step!(model, 100", "time_step!(model, 1"),
-                           ("mp4(", "# mp4(")]
+        replace_strings = [
+            ("Nz = 128", "Nz = 16"),
+            ("progress_frequency=100", "progress_frequency=1"),
+            ("for i = 1:100", "for i = 1:1"),
+            ("stop_iteration += 100", "stop_iteration += 1"),
+            ("mp4(", "# mp4(")
+        ]
 
         @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
     end
@@ -90,11 +97,13 @@ end
     @testset "Internal wave example" begin
         @info "  Testing internal wave example"
 
-        replace_strings = [("Nx = 128", "Nx = 16"),
-                           ("i = 1:10", "i = 1:1"),
-                           ("Nt = 200", "Nt = 2"),
-                           ("for i=1:100", "for i=1:1"),
-                           ("mp4(", "# mp4(")]
+        replace_strings = [
+            ("Nx = 128", "Nx = 16"),
+            ("progress_frequency = 20", "progress_frequency = 1"),
+            ("for i=1:100", "for i=1:1"),
+            ("stop_iteration += 20", "stop_iteration += 1"),
+            ("mp4(", "# mp4(")
+        ]
 
         @test_skip run_example(replace_strings, "internal_wave")
     end
@@ -102,9 +111,11 @@ end
     @testset "Eady turbulence" begin
         @info "  Testing Eady turbulence example"
 
-        replace_strings = [("Nh = 64", "Nh = 16"),
-                           ("Nz = 32", "Nz = 16"),
-                           ("end_time = 3day", "end_time = 1")]
+        replace_strings = [
+            ("Nh = 64", "Nh = 16"),
+            ("Nz = 32", "Nz = 16"),
+            ("end_time = 3day", "end_time = 1")
+        ]
 
         @test_skip run_example(replace_strings, "eady_turbulence")
     end
