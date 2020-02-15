@@ -51,6 +51,15 @@ function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_
     return true
 end
 
+"""
+    FieldBoundaryConditions(grid::AbstractGrid; field_type,
+                            west=default_bc(grid, field_type, 1), east=default_bc(grid, field_type, 1),
+                            south=default_bc(grid, field_type, 2), north=default_bc(grid, field_type, 2),
+                            bottom=default_bc(grid, field_type, 3), top=default_bc(grid, field_type, 3))
+
+Construct `FieldBoundaryConditions` for a field with type `field_type` (:u, :v, :w, :tracer, :pressure, :diffusivity)
+
+"""
 function FieldBoundaryConditions(grid::AbstractGrid; field_type,
                                  west=default_bc(grid, field_type, 1), east=default_bc(grid, field_type, 1),
                                  south=default_bc(grid, field_type, 2), north=default_bc(grid, field_type, 2),
@@ -67,9 +76,9 @@ function FieldBoundaryConditions(grid::AbstractGrid; field_type,
     return FieldBoundaryConditions(x, y, z)
 end
 
-  UVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:u, kwargs...)
-  VVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:v, kwargs...)
-  WVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:w, kwargs...)
-     TracerBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:tracer, kwargs...)
-   PressureBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:pressure, kwargs...)
-DiffusivityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:diffusivity, kwargs...)
+  UVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:u; kwargs...)
+  VVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:v; kwargs...)
+  WVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:w; kwargs...)
+     TracerBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:tracer; kwargs...)
+#   PressureBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:pressure, kwargs...)
+#DiffusivityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:diffusivity, kwargs...)

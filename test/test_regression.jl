@@ -8,7 +8,7 @@ function summarize_regression_test(field_names, fields, correct_fields)
         Δ_abs_mean = mean(abs, Δ)
         Δ_std      = std(Δ)
 
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g\n",
+        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g",
                        field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
     end
 end

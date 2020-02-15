@@ -48,20 +48,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
       Qᵘ = -2e-5    # Velocity flux at surface
     ∂T∂z = 0.005    # Initial vertical temperature gradient
 
+    # Grid
+    grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16))
+
     # Boundary conditions
-    u_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Qᵘ)       )
-    T_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, Qᵀ),
-                                     bottom = BoundaryCondition(Gradient, ∂T∂z) )
-    S_bcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Flux, 5e-8)     )
+    u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+    T_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵀ),
+                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
+    S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
     model = Model(
              architecture = arch,
-                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(16, 16, 16)),
+                     grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
-      boundary_conditions = HorizontallyPeriodicSolutionBCs(u=u_bcs, T=T_bcs, S=S_bcs)
+      boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
     # The type of the underlying data, not the offset array.

@@ -144,7 +144,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     # Remove all knowledge of the checkpointed model.
     checkpointed_model = nothing
 
-    model_kwargs = Dict{Symbol, Any}(:boundary_conditions => HorizontallyPeriodicSolutionBCs())
+    model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
     restored_model = restore_from_checkpoint("checkpoint5.jld2", kwargs=model_kwargs)
 
     time_step!(restored_model, 4, Δt; init_with_euler=false)

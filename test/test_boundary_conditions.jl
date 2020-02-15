@@ -5,12 +5,13 @@ end
 
 function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
-    bc = BoundaryCondition(bctype, bc)
-    fieldbcs = HorizontallyPeriodicBCs(top=bc)
-    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3))
 
-    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
-                  float_type=FT, boundary_conditions=modelbcs)
+    bc = BoundaryCondition(bctype, bc)
+    fieldbcs = TracerBoundaryConditions(grid, top=bc)
+    modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
+
+    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     time_step!(model, 1, 1e-16)
 
@@ -19,13 +20,14 @@ end
 
 function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     N, val = 16, 1.0
-    top_bc = BoundaryCondition(Value, val)
-    bottom_bc = BoundaryCondition(Value, -val)
-    fieldbcs = HorizontallyPeriodicBCs(top=top_bc, bottom=bottom_bc)
-    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
+    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(0.1, 0.2, 0.3))
 
-    model = Model(grid=RegularCartesianGrid(FT; size=(N, N, N), length=(0.1, 0.2, 0.3)), architecture=arch,
-                  float_type=FT, boundary_conditions=modelbcs)
+    top_bc    = BoundaryCondition(Value,  val)
+    bottom_bc = BoundaryCondition(Value, -val)
+    fieldbcs = TracerBoundaryConditions(grid, top=top_bc, bottom=bottom_bc)
+    modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
+
+    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -43,12 +45,13 @@ function test_z_boundary_condition_array(arch, FT, fldname)
         bcarray = CuArray(bcarray)
     end
 
-    value_bc = BoundaryCondition(Value, bcarray)
-    fieldbcs = HorizontallyPeriodicBCs(top=value_bc)
-    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3))
 
-    model = Model(grid=RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3)), architecture=arch,
-                  float_type=FT, boundary_conditions=modelbcs)
+    value_bc = BoundaryCondition(Value, bcarray)
+    fieldbcs = TracerBoundaryConditions(grid, top=value_bc)
+    modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
+
+    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -59,14 +62,14 @@ end
 
 function test_flux_budget(arch, FT, fldname)
     N, κ, Lz = 16, 1, 0.7
+    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(1, 1, Lz))
 
     bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
-    fieldbcs = HorizontallyPeriodicBCs(bottom=flux_bc)
-    modelbcs = HorizontallyPeriodicSolutionBCs(; Dict(fldname=>fieldbcs)...)
+    fieldbcs = TracerBoundaryConditions(grid, bottom=flux_bc)
+    modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
 
-    grid = RegularCartesianGrid(FT; size=(N, N, N), length=(1, 1, Lz))
-    closure = ConstantIsotropicDiffusivity(FT; ν=κ, κ=κ)
+    closure = ConstantIsotropicDiffusivity(FT, ν=κ, κ=κ)
     model = Model(grid=grid, closure=closure, architecture=arch,
                   float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
 
@@ -104,14 +107,14 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     closure = with_tracers(tracer_names, AnisotropicMinimumDissipation())
     diffusivities = TurbulentDiffusivities(arch, grid, tracer_names, closure)
 
-    buoyancy_bcs = HorizontallyPeriodicBCs(bottom=BoundaryCondition(Gradient, bz))
-    solution_bcs = HorizontallyPeriodicSolutionBCs(b=buoyancy_bcs)
+    buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
+    solution_bcs = SolutionBoundaryConditions(grid, b=buoyancy_bcs)
 
     νₑ_bcs = DiffusivityBoundaryConditions(solution_bcs)
-    κₑ_bcs = HorizontallyPeriodicBCs(bottom=BoundaryCondition(Value, κ₀))
+    κₑ_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))
     diffusivities_bcs = (νₑ=νₑ_bcs, κₑ=(b=κₑ_bcs))
 
-    model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, solution_bcs; 
+    model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, solution_bcs;
                                         diffusivities=diffusivities_bcs)
 
     model = Model(grid=grid, architecture=arch, float_type=FT, tracers=tracer_names, buoyancy=BuoyancyTracer(),
