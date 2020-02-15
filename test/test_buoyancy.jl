@@ -17,7 +17,7 @@ function instantiate_roquet_equations_of_state(FT, flavor; coeffs=nothing)
 end
 
 function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
-    buoyancy = SeawaterBuoyancy(FT, equation_of_state=EquationOfState(FT), kwargs...)
+    buoyancy = SeawaterBuoyancy(FT, equation_of_state=EquationOfState(FT); kwargs...)
     return typeof(buoyancy.gravitational_acceleration) == FT
 end
 
