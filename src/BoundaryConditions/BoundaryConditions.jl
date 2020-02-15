@@ -3,6 +3,8 @@ module BoundaryConditions
 export
     BCType, Flux, Gradient, Value, NoPenetration,
     BoundaryCondition, bctype, getbc, setbc!,
+    PeriodicBoundaryCondition, NoPenetrationBoundaryCondition, NoFluxBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     CoordinateBoundaryConditions,
     FieldBoundaryConditions, UVelocityBoundaryConditions, VVelocityBoundaryConditions,
     WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,

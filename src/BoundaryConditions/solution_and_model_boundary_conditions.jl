@@ -9,7 +9,7 @@ const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :di
 #####
 
 DefaultTracerBC(::BC)  = BoundaryCondition(Flux, nothing)
-DefaultTracerBC(::PBC) = PeriodicBC()
+DefaultTracerBC(::PBC) = PeriodicBoundaryCondition()
 
 DefaultTracerCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(DefaultTracerBC(bcs.left), DefaultTracerBC(bcs.right))
@@ -26,8 +26,8 @@ default_tracer_bcs(tracer_names, solution_bcs) = DefaultTracerBoundaryConditions
 #####
 
 TendencyBC(::BC)   = BoundaryCondition(Flux, nothing)
-TendencyBC(::PBC)  = PeriodicBC()
-TendencyBC(::NPBC) = NoPenetrationBC()
+TendencyBC(::PBC)  = PeriodicBoundaryCondition()
+TendencyBC(::NPBC) = NoPenetrationBoundaryCondition()
 
 TendencyCoordinateBCs(bcs) =
     CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
@@ -45,7 +45,7 @@ TendenciesBoundaryConditions(solution_bcs) =
 
 # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
 PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
-PressureBC(::PBC) = PeriodicBC()
+PressureBC(::PBC) = PeriodicBoundaryCondition()
 
 function PressureBoundaryConditions(solution_boundary_conditions)
     ubcs = solution_boundary_conditions.u
@@ -65,7 +65,7 @@ PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
 
 # Diffusivity boundary conditions are either zero flux (Neumann) or Periodic.
 DiffusivityBC(::BC)  = BoundaryCondition(Flux, nothing)
-DiffusivityBC(::PBC) = PeriodicBC()
+DiffusivityBC(::PBC) = PeriodicBoundaryCondition()
 
 function DiffusivityBoundaryConditions(solution_boundary_conditions)
     ubcs = solution_boundary_conditions.u
@@ -112,7 +112,7 @@ function SolutionBoundaryConditions(grid;
     v = VVelocityBoundaryConditions(grid),
     w = WVelocityBoundaryConditions(grid),
     tracers_boundary_conditions...)
-    
+
     return merge((u=u, v=v, w=w), tracers_boundary_conditions)
 end
 

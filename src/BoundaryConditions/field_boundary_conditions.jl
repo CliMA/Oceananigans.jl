@@ -14,9 +14,9 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 """
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-default_tracer_bc(::Grids.Periodic) = PeriodicBC()
-default_tracer_bc(::Bounded)  = NoFluxBC()
-default_tracer_bc(::Flat)     = PeriodicBC()
+default_tracer_bc(::Grids.Periodic) = PeriodicBoundaryCondition()
+default_tracer_bc(::Bounded)  = NoFluxBoundaryCondition()
+default_tracer_bc(::Flat)     = PeriodicBoundaryCondition()
 
 # Right now it seems all defaults are the same except for no-normal
 # flow velocity BCs (which are treated in default_bc below), but
@@ -34,9 +34,9 @@ function default_bc(grid, field, dim)
     top = topology(grid)[dim]
 
     # No normal flow velocity boundary conditions by default.
-    top isa Bounded && field == :u && dim == 1 && return NoPenetrationBC()
-    top isa Bounded && field == :v && dim == 2 && return NoPenetrationBC()
-    top isa Bounded && field == :w && dim == 3 && return NoPenetrationBC()
+    top isa Bounded && field == :u && dim == 1 && return NoPenetrationBoundaryCondition()
+    top isa Bounded && field == :v && dim == 2 && return NoPenetrationBoundaryCondition()
+    top isa Bounded && field == :w && dim == 3 && return NoPenetrationBoundaryCondition()
 
     field in (:u, :v, :w) && (field = :velocity)
     default_field_bc = Symbol(:default_, field, :_bc)
