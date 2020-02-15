@@ -2,15 +2,16 @@ module Simulations
 
 export Simulation, run!
 
+import Base: show
+
 using OrderedCollections: OrderedDict
+using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
 
 using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
-
-using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
 
 mutable struct Simulation{M, Δ, S, T, W, R, D, O, P, F}
                  model :: M
@@ -43,7 +44,7 @@ Keyword arguments
 =================
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
   for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
-- `stop_critera`: A list of functions (each taking a single argument, the `simulation`).
+- `stop_criteria`: A list of functions (each taking a single argument, the `simulation`).
   If any of the functions return `true` when the stop criteria is evaluated the simulation
   will stop.
 - `stop_iteration`: Stop the simulation after this many iterations.
@@ -52,8 +53,8 @@ Keyword arguments
    seconds of wall clock time.
 - `progress`: A function with a single argument, the `simulation`. Will be called every
   `progress_frequency` iterations. Useful for logging simulation health.
-- `progress_frequency`: How often to check stop criteria and call `progress` function
-  (in number of iterations).
+- `progress_frequency`: How often to update the time step, check stop criteria, and call
+  `progress` function (in number of iterations).
 """
 function Simulation(model; Δt,
         stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
@@ -155,5 +156,16 @@ function run!(sim)
         sim.run_time += time_after - time_before
     end
 end
+
+Base.show(io::IO, s::Simulation) =
+    print(io, "Oceananigans.Simulation with a model on a $(typeof(s.model.architecture)) architecture \n",
+            "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration) \n",
+            "├── Next time step ($(typeof(s.Δt))): $(prettytime(get_Δt(s.Δt))) \n",
+            "├── Progress frequency: $(s.progress_frequency)\n",
+            "├── Stop criteria: $(s.stop_criteria)\n",
+            "├── Run time: $(prettytime(s.run_time)), wall time limit: $(s.wall_time_limit)\n",
+            "├── Stop time: $(prettytime(s.stop_time)), stop iteration: $(s.stop_iteration)\n",
+            "├── Diagnostics: $(ordered_dict_show(s.model.diagnostics, " "))\n",
+            "└── Output writers: $(ordered_dict_show(s.model.output_writers, "│"))\n")
 
 end
