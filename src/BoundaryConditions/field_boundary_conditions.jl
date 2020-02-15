@@ -57,8 +57,11 @@ end
                             south=default_bc(grid, field_type, 2), north=default_bc(grid, field_type, 2),
                             bottom=default_bc(grid, field_type, 3), top=default_bc(grid, field_type, 3))
 
-Construct `FieldBoundaryConditions` for a field with type `field_type` (:u, :v, :w, :tracer, :pressure, :diffusivity)
-
+Construct `FieldBoundaryConditions` for a field with type `field_type` (choices are :u, :v, :w, :tracer,
+:pressure, :diffusivity). Specific boundary conditions can be applied along the x dimension with the
+`west` and `east` kwargs, along the y-dimension with the `south` and `north` kwargs, and along the
+z-dimension with the `bottom` and `top` kwargs. Default boundary conditions are applied depending on
+the `field_type`.
 """
 function FieldBoundaryConditions(grid::AbstractGrid; field_type,
                                  west=default_bc(grid, field_type, 1), east=default_bc(grid, field_type, 1),
