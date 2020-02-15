@@ -3,7 +3,7 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
 
     model = Model(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
-    time_step!(model, 1, 1)
+    time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -15,7 +15,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
     b = SeawaterBuoyancy(equation_of_state=eos)
 
     model = Model(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
-    time_step!(model, 1, 1)
+    time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -24,7 +24,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
     model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
                   architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
-    time_step!(model, 1, 1)
+    time_step!(model, 1)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
@@ -96,7 +96,9 @@ function incompressible_in_time(arch, FT, Nt)
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
-    time_step!(model, Nt, 0.05)
+    for _ in 1:Nt
+        time_step!(model, 0.05)
+    end
 
     velocity_div!(grid, u, v, w, div_u)
 
@@ -144,7 +146,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     Tavg0 = mean(interior(model.tracers.T))
 
-    time_step!(model; Nt=Nt, Δt=10*60)
+    for _ in 1:Nt
+        time_step!(model, 600)
+    end
 
     Tavg = mean(interior(model.tracers.T))
     @info "Tracer conservation after $Nt time steps [$arch, $FT]: ⟨T⟩-T₀=$(Tavg-Tavg0) °C"

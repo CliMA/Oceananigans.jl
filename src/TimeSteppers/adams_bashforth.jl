@@ -31,31 +31,10 @@ end
 #####
 
 """
-    time_step!(model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
+    time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
 
-Step forward `model` `Nt` time steps with step size `Δt` with an Adams-Bashforth
-timestepping method.
-"""
-function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
-
-    if model.clock.iteration == 0
-        [ run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ write_output(model, out)    for out  in values(model.output_writers) ]
-    end
-
-    for n in 1:Nt
-        time_step!(model, Δt; euler=init_with_euler && n==1)
-
-        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ time_to_run(model.clock, out) && write_output(model, out) for out in values(model.output_writers) ]
-    end
-
-    return nothing
-end
-
-"""
-Step forward one time step with a 2nd-order Adams-Bashforth method and pressure-correction
-substep.
+Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
+pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
 function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
