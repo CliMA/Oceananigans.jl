@@ -96,26 +96,28 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1, 
     ##### Impose boundary conditions
     #####
 
-    Tbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  Θ_wall),
-                                    bottom = BoundaryCondition(Value, -Θ_wall))
+    grid = RegularCartesianGrid(size = (Nxy, Nxy, Nz), length = (4π*h, 2π*h, 2h))
 
-    ubcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value,  U_wall),
-                                    bottom = BoundaryCondition(Value, -U_wall))
+    Tbcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Value,  Θ_wall),
+                                       bottom = BoundaryCondition(Value, -Θ_wall))
 
-    vbcs = HorizontallyPeriodicBCs(    top = BoundaryCondition(Value, 0),
-                                    bottom = BoundaryCondition(Value, 0))
+    ubcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Value,  U_wall),
+                                          bottom = BoundaryCondition(Value, -U_wall))
+
+    vbcs = VVelocityBoundaryConditions(grid, top = BoundaryCondition(Value, 0),
+                                          bottom = BoundaryCondition(Value, 0))
 
     #####
     ##### Non-dimensional model setup
     #####
 
     model = Model(
-       architecture = arch,
-               grid = RegularCartesianGrid(size = (Nxy, Nxy, Nz), length = (4π*h, 2π*h, 2h)),
-           buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
-            closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
-boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, T=Tbcs),
-         parameters = parameters
+               architecture = arch,
+                       grid = grid,
+                   buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
+                    closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
+        boundary_conditions = SolutionBoundaryConditions(grid, u=ubcs, v=vbcs, T=Tbcs),
+                 parameters = parameters
     )
 
     #####

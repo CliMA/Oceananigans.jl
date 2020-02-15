@@ -50,15 +50,18 @@ end_time = 3day # Simulation end time
 # condition. We also fix the surface and bottom buoyancy to enforce a buoyancy
 # gradient `N²`.
 
+grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
+                            x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0))
+
 bc_parameters = (μ=μ, H=Lz)
 
 @inline τ₁₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.u[i, j, 1]
 @inline τ₂₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.v[i, j, 1]
 
-ubcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
-vbcs = HorizontallyPeriodicBCs(bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
-bbcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Value, 0),
-                               bottom = BoundaryCondition(Value, -N² * Lz))
+ubcs = UVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
+vbcs = VVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
+bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0),
+                                      bottom = BoundaryCondition(Value, -N² * Lz))
 
 # # Forcing functions
 #
@@ -132,14 +135,13 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 # Our use of biharmonic diffusivity means we must instantiate the model grid
 # with halos of size `(2, 2, 2)` in `(x, y, z)`.
 
-model = Model( grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
-                                           x=(-Lh/2, Lh/2), y=(-Lh/2, Lh/2), z=(-Lz, 0)),
+model = Model( grid = grid,
        architecture = CPU(),
            coriolis = FPlane(f=f),
            buoyancy = BuoyancyTracer(), tracers = :b,
             forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
             closure = closure,
-boundary_conditions = HorizontallyPeriodicSolutionBCs(u=ubcs, v=vbcs, b=bbcs),
+boundary_conditions = SolutionBoundaryConditions(grid, u=ubcs, v=vbcs, b=bbcs),
 # "parameters" is a NamedTuple of user-defined parameters that can be used in boundary condition and forcing functions.
          parameters = merge(bc_parameters, forcing_parameters))
 

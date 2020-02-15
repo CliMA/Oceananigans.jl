@@ -1,9 +1,9 @@
 # # Langmuir turbulence example
 #
 # This example implements the Langmuir turbulence simulation reported in section
-# 4 of McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of 
+# 4 of McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of
 # Fluid Mechanics (1997). This example demonstrates:
-#   
+#
 #   * how to run a simulation with surface wave effects via the Craik-Leibovich
 #     approximation
 #
@@ -17,7 +17,7 @@ using Oceananigans.SurfaceWaves: UniformStokesDrift
 # ## Model parameters
 #
 # Here we use an anisotropic grid with `Nh` horizontal grid points, `Nz` vertical
-# grid points, `Δh` horizontal grid spacing, and `Δz` vertical grid spacing. 
+# grid points, `Δh` horizontal grid spacing, and `Δz` vertical grid spacing.
 # We specify fluxes of buouyancy and momentum that match the specifications in
 # McWilliams and Sullivan (1997) via
 #
@@ -39,7 +39,7 @@ using Oceananigans.SurfaceWaves: UniformStokesDrift
        f = 1e-4     # [s⁻¹] Coriolis parameter
 end_time = 2hour    # [s] End time for the simulation
 
-# Surface wave stokes drift profile: 
+# Surface wave stokes drift profile:
 #
 # $ uˢ(z) = Uˢ exp(2kˢʷ z) $
 #
@@ -61,7 +61,7 @@ const aˢʷ = 0.8      # [m] Surface wave amplitude
 const Uˢ = aˢʷ^2 * kˢʷ * sqrt(g_Earth * kˢʷ)
 
 ## Oceananigans
-∂z_uˢ(z, t) = 2kˢʷ * Uˢ * exp(2kˢʷ * z) 
+∂z_uˢ(z, t) = 2kˢʷ * Uˢ * exp(2kˢʷ * z)
 
 # We use the Stokes drift profile for the initial condition
 uˢ(z) = Uˢ * exp(2kˢʷ * z)
@@ -73,25 +73,27 @@ uˢ(z) = Uˢ * exp(2kˢʷ * z)
 # at the bottom. Our flux boundary condition for salinity uses a function that calculates
 # the salinity flux in terms of the evaporation rate.
 
-u_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qᵘ))
+grid = RegularCartesianGrid(size=(Nh, Nh, Nz), length=(Δh*Nh, Δh*Nh, Δz*Nz))
 
-b_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qᵇ), 
-                                bottom = BoundaryCondition(Gradient, N²))
+u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+
+b_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵇ),
+                                       bottom = BoundaryCondition(Gradient, N²))
 
 # ## Model instantiation
 #
 # We instantiate a horizontally-periodic `Model` on the CPU with on a `RegularCartesianGrid`,
-# using a `FPlane` model for rotation (constant rotation rate), the Anisotropic Minimum 
-# Dissipation closure to model the effects of unresolved turbulence, and the previously defined 
+# using a `FPlane` model for rotation (constant rotation rate), the Anisotropic Minimum
+# Dissipation closure to model the effects of unresolved turbulence, and the previously defined
 # boundary conditions for `u` and `b`.
 
 model = Model(
          architecture = CPU(),
-                 grid = RegularCartesianGrid(size=(Nh, Nh, Nz), length=(Δh*Nh, Δh*Nh, Δz*Nz)),
+                 grid = grid,
              buoyancy = BuoyancyTracer(), tracers = :b,
               closure = AnisotropicMinimumDissipation(),
         surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-  boundary_conditions = BoundaryConditions(u=u_bcs, b=b_bcs),
+  boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, b=b_bcs),
 )
 
 # ## Initial conditions
@@ -106,8 +108,8 @@ model = Model(
 b₀(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
 
 # Velocity initial condition: note that McWilliams and Sullivan (1997) use a model
-# that is formulated in terms of the Eulerian-mean velocity field. Due to this, 
-# their 'resting' initial condition actually consists of a sheared and 
+# that is formulated in terms of the Eulerian-mean velocity field. Due to this,
+# their 'resting' initial condition actually consists of a sheared and
 # unbalanced Lagrangian-mean velocity field uˢ(z). To this we add noise.
 u₀(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 

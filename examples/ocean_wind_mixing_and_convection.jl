@@ -61,15 +61,17 @@ nothing # hide
 # at the bottom. Our flux boundary condition for salinity uses a function that calculates
 # the salinity flux in terms of the evaporation rate.
 
-u_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qᵘ))
+grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz))
 
-T_bcs = HorizontallyPeriodicBCs(   top = BoundaryCondition(Flux, Qᵀ),
-                                bottom = BoundaryCondition(Gradient, ∂T∂z))
+u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+
+T_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵀ),
+                                       bottom = BoundaryCondition(Gradient, ∂T∂z))
 
 ## Salinity flux: Qˢ = - E * S
 @inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
 
-S_bcs = HorizontallyPeriodicBCs(top = BoundaryCondition(Flux, Qˢ))
+S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qˢ))
 nothing # hide
 
 # ## Model instantiation
@@ -84,11 +86,11 @@ nothing # hide
 
 model = Model(
          architecture = CPU(),
-                 grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz)),
+                 grid = grid,
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
-  boundary_conditions = HorizontallyPeriodicSolutionBCs(u=u_bcs, T=T_bcs, S=S_bcs),
+  boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs),
            parameters = (evaporation = evaporation,)
 )
 nothing # hide
