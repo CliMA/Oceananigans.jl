@@ -13,11 +13,10 @@ struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
     G⁻ :: TG
 end
 
-function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
-                                   Gⁿ = TendencyFields(arch, grid, tracers),
-                                   G⁻ = TendencyFields(arch, grid, tracers))
-   return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
-end
+AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+    Gⁿ = TendencyFields(arch, grid, tracers),
+    G⁻ = TendencyFields(arch, grid, tracers)
+    ) = AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 
 #####
 ##### Time steppping

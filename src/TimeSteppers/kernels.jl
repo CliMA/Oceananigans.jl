@@ -92,20 +92,18 @@ function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_source_terms!(Gⁿ, bcs, arch, grid, args...)
+function calculate_boundary_source_terms!(Gⁿ, arch, grid, args...)
 
     # Velocity fields
     for i in 1:3
-        ubcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, ubcs.z.bottom, ubcs.z.top,   args...)
-        apply_y_bcs!(Gⁿ[i], arch, grid, ubcs.y.left,   ubcs.y.right, args...)
+        apply_z_bcs!(Gⁿ[i], arch, grid, args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, args...)
     end
 
     # Tracer fields
-    for i in 4:length(bcs)
-        cbcs = bcs[i]
-        apply_z_bcs!(Gⁿ[i], arch, grid, cbcs.z.bottom, cbcs.z.top,   args...)
-        apply_y_bcs!(Gⁿ[i], arch, grid, cbcs.y.left,   cbcs.y.right, args...)
+    for i in 4:length(Gⁿ)
+        apply_z_bcs!(Gⁿ[i], arch, grid, args...)
+        apply_y_bcs!(Gⁿ[i], arch, grid, args...)
     end
 
     return nothing
