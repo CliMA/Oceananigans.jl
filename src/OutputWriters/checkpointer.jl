@@ -132,8 +132,8 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     kwargs[:timestepper] =
         AdamsBashforthTimeStepper(
             eltype(grid), arch, grid, tracer_names;
-            Gⁿ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
-            G⁻ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
+            Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...),
+            G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...))
     filter!(p -> p ≠ :timestepper, cps)
 
     for p in cps
