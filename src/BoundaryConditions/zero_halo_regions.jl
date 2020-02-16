@@ -1,18 +1,20 @@
-function zero_halo_regions!(fields::Tuple, grid)
-  for field in fields
+function zero_halo_regions!(fields::NamedTuple, grid)
+    for field in fields
       zero_halo_regions!(field, grid)
-  end
-  return nothing
+    end
+    return nothing
 end
 
+zero_halo_regions!(field, grid) = zero_halo_regions!(field.data, grid)
+
 function zero_halo_regions!(c::AbstractArray, grid)
-    zero_west_halo!(c, grid.Hx, grid.Nx)
-    zero_east_halo!(c, grid.Hx, grid.Nx)
-   zero_south_halo!(c, grid.Hy, grid.Ny)
-   zero_north_halo!(c, grid.Hy, grid.Ny)
-     zero_top_halo!(c, grid.Hz, grid.Nz)
-  zero_bottom_halo!(c, grid.Hz, grid.Nz)
-  return nothing
+      zero_west_halo!(c, grid.Hx, grid.Nx)
+      zero_east_halo!(c, grid.Hx, grid.Nx)
+     zero_south_halo!(c, grid.Hy, grid.Ny)
+     zero_north_halo!(c, grid.Hy, grid.Ny)
+       zero_top_halo!(c, grid.Hz, grid.Nz)
+    zero_bottom_halo!(c, grid.Hz, grid.Nz)
+    return nothing
 end
 
   zero_west_halo!(c, H, N) = @views @. c[1:H, :, :] = 0
