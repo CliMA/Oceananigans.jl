@@ -202,9 +202,10 @@ of `f` along `x, y, z`.
                                                                    interior_indices(Z, z_topology(f), f.grid.Nz))
 
 "Returns a reference (not a view) to the interior points of `field.data.parent.`"
-@inline interiorparent(f::Field) = @inbounds f.data.parent[interior_parent_indices(X, x_topology(f), f.grid.Nx, f.grid.Hx),
-                                                           interior_parent_indices(Y, y_topology(f), f.grid.Ny, f.grid.Hy),
-                                                           interior_parent_indices(Z, z_topology(f), f.grid.Nz, f.grid.Hz)]
+@inline interiorparent(f::Field{X, Y, Z}) where {X, Y, Z} = 
+    @inbounds f.data.parent[interior_parent_indices(X, x_topology(f), f.grid.Nx, f.grid.Hx),
+                            interior_parent_indices(Y, y_topology(f), f.grid.Ny, f.grid.Hy),
+                            interior_parent_indices(Z, z_topology(f), f.grid.Nz, f.grid.Hz)]
 
 iterate(f::Field, state=1) = iterate(f.data, state)
 
@@ -222,17 +223,17 @@ iterate(f::Field, state=1) = iterate(f.data, state)
 @inline znode(k, ψ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
 # Dispatch insanity
-xnodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.xC, ψ.grid.Nx, 1, 1)
-ynodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.yC, 1, ψ.grid.Ny, 1)
-znodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.zC, 1, 1, ψ.grid.Nz)
+xnodes(::Type{Cell}, topo, grid) = reshape(grid.xC, grid.Nx, 1, 1)
+ynodes(::Type{Cell}, topo, grid) = reshape(grid.yC, 1, grid.Ny, 1)
+znodes(::Type{Cell}, topo, grid) = reshape(grid.zC, 1, 1, grid.Nz)
 
-xnodes(::Type{Face}, topo, grid) = reshape(ψ.grid.xF[1:end-1], ψ.grid.Nx, 1, 1)
-ynodes(::Type{Face}, topo, grid) = reshape(ψ.grid.yF[1:end-1], 1, ψ.grid.Ny, 1)
-znodes(::Type{Face}, topo, grid) = reshape(ψ.grid.zF[1:end-1], 1, 1, ψ.grid.Nz)
+xnodes(::Type{Face}, topo, grid) = reshape(grid.xF[1:end-1], grid.Nx, 1, 1)
+ynodes(::Type{Face}, topo, grid) = reshape(grid.yF[1:end-1], 1, grid.Ny, 1)
+znodes(::Type{Face}, topo, grid) = reshape(grid.zF[1:end-1], 1, 1, grid.Nz)
 
-xnodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.xF, ψ.grid.Nx+1, 1, 1)
-ynodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.yF, 1, ψ.grid.Ny+1, 1)
-znodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.zF, 1, 1, ψ.grid.Nz+1)
+xnodes(::Type{Face}, ::Bounded, grid) = reshape(grid.xF, grid.Nx+1, 1, 1)
+ynodes(::Type{Face}, ::Bounded, grid) = reshape(grid.yF, 1, grid.Ny+1, 1)
+znodes(::Type{Face}, ::Bounded, grid) = reshape(grid.zF, 1, 1, grid.Nz+1)
 
 xnodes(ψ::AbstractField) = xnodes(x_location(ψ), x_topology(ψ), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(y_location(ψ), y_topology(ψ), ψ.grid)
@@ -285,7 +286,7 @@ Returns an `OffsetArray` of zeros of float type `FT`, with
 parent data in CPU memory and indices corresponding to a field on a 
 `grid` of `size(grid)` and located at `loc`.
 """
-function Base.zeros(FT, ::CPU, grid, loc)
+function Base.zeros(FT, ::CPU, grid, loc=(Cell, Cell, Cell))
     underlying_data = zeros(FT, length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
                                 length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
                                 length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
@@ -300,7 +301,7 @@ Returns an `OffsetArray` of zeros of float type `FT`, with
 parent data in GPU memory and indices corresponding to a field on a `grid`
 of `size(grid)` and located at `loc`.
 """
-function Base.zeros(FT, ::GPU, grid, loc)
+function Base.zeros(FT, ::GPU, grid, loc=(Cell, Cell, Cell))
     underlying_data = CuArray{FT}(undef, length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
                                          length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
                                          length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
@@ -311,12 +312,12 @@ function Base.zeros(FT, ::GPU, grid, loc)
 end
 
 # Default to type of Grid
-Base.zeros(arch, grid, loc) = zeros(eltype(grid), arch, grid, loc)
+Base.zeros(arch, grid, loc=(Cell, Cell, Cell)) = zeros(eltype(grid), arch, grid, loc)
 
+Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
+Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
 
-
-
-
+Base.zeros(arch, grid, args...) = zeros(eltype(grid), args...)
 
 #Base.zeros(arch, grid::AbstractGrid{FT}, Nx, Ny, Nz, loc=(Cell, Cell, Cell)) where FT = 
 #    zeros(FT, arch, grid, Nx, Ny, Nz)
@@ -334,8 +335,5 @@ function Base.zeros(FT, ::GPU, grid)
     return OffsetArray(underlying_data, grid, loc)
 end
 
-Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
-Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
 =#
-
 
