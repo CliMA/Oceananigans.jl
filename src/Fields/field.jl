@@ -202,7 +202,12 @@ function Base.zeros(T, ::GPU, grid)
 end
 
 Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
-Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+
+function Base.zeros(T, ::GPU, grid, Nx, Ny, Nz)
+    data = CuArray{T}(undef, Nx, Ny, Nz)
+    data .= 0
+    return data
+end
 
 # Default to type of Grid
 Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
