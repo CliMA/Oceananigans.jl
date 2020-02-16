@@ -6,6 +6,7 @@ using OffsetArrays
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
+import Oceananigans.Grids: topology, x_topology, y_topology, z_topology
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -83,50 +84,91 @@ where each of `X, Y, Z` is `Cell` or `Face`.
 Field(X, Y, Z, arch, grid) =  Field((X, Y, Z), arch, grid)
 
 """
-    CellField([T=eltype(grid)], arch, grid)
+    CellField([FT=eltype(grid)], arch, grid)
 
 Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid`.
 Used for tracers and pressure fields.
 """
-CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid, (Cell, Cell, Cell)), grid)
+CellField(FT, arch, grid) = Field{Cell, Cell, Cell}(zeros(FT, arch, grid, (Cell, Cell, Cell)), grid)
 
 """
-    FaceFieldX([T=eltype(grid)], arch, grid)
+    FaceFieldX([FT=eltype(grid)], arch, grid)
 
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid`.
 Used for the x-velocity field.
 """
-FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid, (Face, Cell, Cell)), grid)
+FaceFieldX(FT, arch, grid) = Field{Face, Cell, Cell}(zeros(FT, arch, grid, (Face, Cell, Cell)), grid)
 
 """
-    FaceFieldY([T=eltype(grid)], arch, grid)
+    FaceFieldY([FT=eltype(grid)], arch, grid)
 
 Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid`.
 Used for the y-velocity field.
 """
-FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid, (Cell, Face, Cell)), grid)
+FaceFieldY(FT, arch, grid) = Field{Cell, Face, Cell}(zeros(FT, arch, grid, (Cell, Face, Cell)), grid)
 
 """
-    FaceFieldZ([T=eltype(grid)], arch, grid)
+    FaceFieldZ([FT=eltype(grid)], arch, grid)
 
 Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid`.
 Used for the z-velocity field.
 """
-FaceFieldZ(T, arch, grid) = Field{Cell, Cell, Face}(zeros(T, arch, grid, (Cell, Cell, Face)), grid)
+FaceFieldZ(FT, arch, grid) = Field{Cell, Cell, Face}(zeros(FT, arch, grid, (Cell, Cell, Face)), grid)
 
  CellField(arch, grid) = Field((Cell, Cell, Cell), arch, grid)
 FaceFieldX(arch, grid) = Field((Face, Cell, Cell), arch, grid)
 FaceFieldY(arch, grid) = Field((Cell, Face, Cell), arch, grid)
 FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
 
-location(a) = nothing
-location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
+#####
+##### Functions for querying fields
+#####
 
+location(a) = nothing
+
+"Returns the location `(X, Y, Z)` of an `AbstractLocatedField{X, Y, Z}`."
+location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
+
+"Returns the architecture where the field data `f.data` is stored."
 architecture(f::Field) = architecture(f.data)
+
+"Returns the length of a field's `data`."    
+@inline length(f::Field) = length(f.data)
+
+"Returns the architecture where offset array data `o.parent` is stored."
 architecture(o::OffsetArray) = architecture(o.parent)
 
+"Returns the topology of a fields' `grid`."
+@inline topology(f) = topology(f.grid)
+@inline x_topology(f) = x_topology(f.grid)
+@inline y_topology(f) = y_topology(f.grid)
+@inline z_topology(f) = z_topology(f.grid)
+
+"""
+Returns the length of a field located at `Cell` centers along a grid 
+dimension of length `N` and with halo points `H`.
+"""
+length(loc, topo, N, H=0) = N + 2H
+
+"""
+Returns the length of a field located at cell `Face`s along a grid 
+dimension of length `N` and with halo points `H`.
+"""
+length(::Type{Face}, ::Bounded, N, H=0) = N + 1 + 2H
+
+"Returns the size of `f.grid`."
 @inline size(f::AbstractField) = size(f.grid)
-@inline length(f::Field) = length(f.data)
+
+"""
+    size(f::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
+
+Returns the size of an `AbstractLocatedField{X, Y, Z}` located at `X, Y, Z`.
+This is a 3-tuple of integers corresponding to the number of interior nodes
+of `f` along `x, y, z`.
+"""
+@inline size(f::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (length(X, x_topology(f), f.grid.Nx), 
+                                                                  length(Y, y_topology(f), f.grid.Ny), 
+                                                                  length(Z, z_topology(f), f.grid.Nz))
 
 @propagate_inbounds getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
 @propagate_inbounds setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
@@ -144,99 +186,118 @@ architecture(o::OffsetArray) = architecture(o.parent)
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::Field) = f.data.parent
 
-"Returns a view over the interior points of the `field.data`."
-@inline interior(f::Field) = view(f.data, 1:f.grid.Nx, 1:f.grid.Ny, 1:f.grid.Nz)
+@inline interior_indices(loc, topo, N) = 1:N
+@inline interior_indices(::Type{Face}, ::Bounded, N) = 1:N+1
 
-"Returns a reference to the interior points of `field.data.parent.`"
-@inline interiorparent(f::Field) = @inbounds f.data.parent[1+f.grid.Hx:f.grid.Nx+f.grid.Hx,
-                                                           1+f.grid.Hy:f.grid.Ny+f.grid.Hy,
-                                                           1+f.grid.Hz:f.grid.Nz+f.grid.Hz]
+@inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
+@inline interior_parent_indices(::Type{Face}, ::Bounded, N, H) = 1+H:N+1+H
 
-iterate(f::Field, state=1) = iterate(f.data, state)
+"Returns a view of `f` that excludes halo points."
+@inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, x_topology(f), f.grid.Nx), 
+                                                                   interior_indices(Y, y_topology(f), f.grid.Ny), 
+                                                                   interior_indices(Z, z_topology(f), f.grid.Nz))
 
-@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
-@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
+"Returns a reference (not a view) to the interior points of `field.data.parent.`"
+@inline interiorparent(f::Field) = @inbounds f.data.parent[interior_parent_indices(X, x_topology(f), f.grid.Nx, f.grid.Hx),
+                                                           interior_parent_indices(Y, y_topology(f), f.grid.Ny, f.grid.Hy),
+                                                           interior_parent_indices(Z, z_topology(f), f.grid.Nz, f.grid.Hz)]
 
-@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
-@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
-
-@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
-@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
-
-@inline xnode(i, ϕ::Field{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ϕ.grid)
-@inline ynode(j, ϕ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ϕ.grid)
-@inline znode(k, ϕ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ϕ.grid)
-
-xnodes(ϕ::AbstractField) = reshape(ϕ.grid.xC, ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::AbstractField) = reshape(ϕ.grid.yC, 1, ϕ.grid.Ny, 1)
-znodes(ϕ::AbstractField) = reshape(ϕ.grid.zC, 1, 1, ϕ.grid.Nz)
-
-xnodes(ϕ::Field{Face})                    = reshape(ϕ.grid.xF[1:end-1], ϕ.grid.Nx, 1, 1)
-ynodes(ϕ::Field{X, Face}) where X         = reshape(ϕ.grid.yF[1:end-1], 1, ϕ.grid.Ny, 1)
-znodes(ϕ::Field{X, Y, Face}) where {X, Y} = reshape(ϕ.grid.zF[1:end-1], 1, 1, ϕ.grid.Nz)
-
-nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
-
-# Niceties
+# Nicites (but what for?)
 const AbstractCPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+    AbstractField{A, G} where {A<:OffsetArray{FT, D, <:Array} where {FT, D}, G}
 
 @hascuda const AbstractGPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+    AbstractField{A, G} where {A<:OffsetArray{FT, D, <:CuArray} where {FT, D}, G}
 
 #####
 ##### Creating fields by dispatching on architecture
 #####
 
-field_length(::Type{Cell}, N, H) = N + 2H
-field_length(::Type{Face}, N, H) = N + 1 + 2H
+"""
+Return a range of indices for a field located at `Cell` centers
+`along a grid dimension of length `N` and with halo points `H`.
+"""
+offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 
-field_length(::Cell, N, H) = N + 2H
-field_length(::Face, N, H) = N + 1 + 2H
+"""
+Return a range of indices for a field located at cell `Face`s
+`along a grid dimension of length `N` and with halo points `H`.
+"""
+offset_indices(::Type{Face}, ::Bounded, N, H=0) = 1 - H : N + H + 1
 
-function OffsetArray(underlying_data, grid)
-    # Starting and ending indices for the offset array.
-    i1, i2 = 1 - grid.Hx, grid.Nx + grid.Hx
-    j1, j2 = 1 - grid.Hy, grid.Ny + grid.Hy
-    k1, k2 = 1 - grid.Hz, grid.Nz + grid.Hz
+"""
+    OffsetArray(underlying_data, grid, loc)
 
-    return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
+Returns an `OffsetArray` that maps to `underlying_data` in memory,
+with offset indices appropriate for the `data` of a field on 
+a `grid` of `size(grid)` and located at `loc`.
+"""
+function OffsetArray(underlying_data, grid, loc)
+    ii = offset_indices(loc[1], x_topology(grid), grid.Nx, grid.Hx)
+    jj = offset_indices(loc[2], y_topology(grid), grid.Ny, grid.Hy)
+    kk = offset_indices(loc[3], z_topology(grid), grid.Nz, grid.Hz)
+
+    return OffsetArray(underlying_data, ii, jj, kk)
 end
 
-function Base.zeros(T, ::CPU, grid, loc)
-    underlying_data = zeros(T, field_length(loc[1], grid.Nx, grid.Hx),
-                               field_length(loc[2], grid.Ny, grid.Hy),
-                               field_length(loc[3], grid.Nz, grid.Hz))
+"""
+    zeros([FT=Float64], ::CPU, grid, loc)
 
-    return OffsetArray(underlying_data, grid)
+Returns an `OffsetArray` of zeros of float type `FT`, with
+parent data in CPU memory and indices corresponding to a field on a 
+`grid` of `size(grid)` and located at `loc`.
+"""
+function Base.zeros(FT, ::CPU, grid, loc)
+    underlying_data = zeros(FT, length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
+                                length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
+                                length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+
+    return OffsetArray(underlying_data, grid, loc)
 end
 
-function Base.zeros(T, ::GPU, grid, loc)
-    underlying_data = CuArray{T}(undef, field_length(loc[1], grid.Nx, grid.Hx),
-                                        field_length(loc[2], grid.Ny, grid.Hy),
-                                        field_length(loc[3], grid.Nz, grid.Hz))
+"""
+    zeros([FT=Float64], ::GPU, grid, loc)
+
+Returns an `OffsetArray` of zeros of float type `FT`, with
+parent data in GPU memory and indices corresponding to a field on a `grid`
+of `size(grid)` and located at `loc`.
+"""
+function Base.zeros(FT, ::GPU, grid, loc)
+    underlying_data = CuArray{FT}(undef, length(loc[1], x_topology, grid.Nx, grid.Hx),
+                                         length(loc[2], y_topology, grid.Ny, grid.Hy),
+                                         length(loc[3], z_topology, grid.Nz, grid.Hz))
+
     underlying_data .= 0 # Ensure data is initially 0.
 
-    return OffsetArray(underlying_data, grid)
+    return OffsetArray(underlying_data, grid, loc)
 end
-
-function Base.zeros(T, ::CPU, grid)
-    underlying_data = zeros(T, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
-    return OffsetArray(underlying_data, grid)
-end
-
-function Base.zeros(T, ::GPU, grid)
-    underlying_data = CuArray{T}(undef, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
-    underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
-    return OffsetArray(underlying_data, grid)
-end
-
-Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
-Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
 
 # Default to type of Grid
-Base.zeros(arch, grid::AbstractGrid{T}, loc=(Cell, Cell, Cell)) where T = 
-    zeros(T, arch, grid, loc)
+Base.zeros(arch, grid, loc) = zeros(eltype(grid), arch, grid, loc)
 
-Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz, 
-           loc=(Cell, Cell, Cell)) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+
+
+
+
+
+#Base.zeros(arch, grid::AbstractGrid{FT}, Nx, Ny, Nz, loc=(Cell, Cell, Cell)) where FT = 
+#    zeros(FT, arch, grid, Nx, Ny, Nz)
+           
+
+#=
+function Base.zeros(FT, ::CPU, grid)
+    underlying_data = zeros(FT, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
+    return OffsetArray(underlying_data, grid)
+end
+
+function Base.zeros(FT, ::GPU, grid)
+    underlying_data = CuArray{FT}(undef, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
+    underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
+    return OffsetArray(underlying_data, grid, loc)
+end
+
+Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
+Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
+=#
+
+

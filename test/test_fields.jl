@@ -1,14 +1,13 @@
+using Oceananigans.Grids: halosize
+
 """
     test_init_field(N, L, ftf)
 
 Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
-function correct_field_size(arch, grid, fieldtype)
-    f = fieldtype(arch, grid)
-    return size(f) == size(grid)
-end
-
+correct_field_size(a, g, fieldtype, Tx, Ty, Tz) = size(parent(fieldtype(a, g)))  == (Tx, Ty, Tz)
+    
 """
     test_set_field(N, L, ftf, val)
 
@@ -33,11 +32,13 @@ end
     @testset "Field initialization" begin
         @info "  Testing field initialization..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=N, length=L)
+            grid = RegularCartesianGrid(FT, size=N, length=L, topology=(Periodic, Periodic, Bounded))
+            H = halosize(grid)
 
-            for fieldtype in fieldtypes
-                @test correct_field_size(arch, grid, fieldtype)
-            end
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldX, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldY, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldZ, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
         end
     end
 
@@ -52,7 +53,7 @@ end
         @info "  Testing field setting..."
 
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=N, length=L)
+            grid = RegularCartesianGrid(FT, size=N, length=L, topology=(Periodic, Periodic, Bounded))
 
             for fieldtype in fieldtypes, val in vals
                 @test correct_field_value_was_set(arch, grid, fieldtype, val)

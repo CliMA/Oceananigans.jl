@@ -48,7 +48,12 @@ abstract type AbstractGrid{FT, TX, TY, TZ} end
 eltype(::AbstractGrid{FT}) where FT = FT
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX(), TY(), TZ())
 
+x_topology(::AbstractGrid{FT, TX}) where {FT, TX} = TX()
+y_topology(::AbstractGrid{FT, TX, TY}) where {FT, TX, TY} = TY()
+z_topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = TZ()
+
 size(grid::AbstractGrid)   = (grid.Nx, grid.Ny, grid.Nz)
+halosize(grid::AbstractGrid)   = (grid.Hx, grid.Hy, grid.Hz)
 length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
 include("grid_utils.jl")
