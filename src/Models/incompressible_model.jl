@@ -7,28 +7,26 @@ using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   BCS, S, K, Θ} <: AbstractModel
-
-           architecture :: A         # Computer `Architecture` on which `Model` is run
-                   grid :: G         # Grid of physical points on which `Model` is solved
-                  clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-               buoyancy :: B         # Set of parameters for buoyancy model
-               coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-          surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
-             velocities :: U         # Container for velocity fields `u`, `v`, and `w`
-                tracers :: C         # Container for tracer fields
-              pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
-                forcing :: F         # Container for forcing functions defined by the user
-                closure :: E         # Diffusive 'turbulence closure' for all model fields
-    boundary_conditions :: BCS       # Container for 3d bcs on all fields
-            timestepper :: TS        # Object containing timestepper fields and parameters
-        pressure_solver :: S         # Pressure/Poisson solver
-          diffusivities :: K         # Container for turbulent diffusivities
-             parameters :: Θ         # Container for arbitrary user-defined parameters
+                                   S, K, Θ} <: AbstractModel
+       architecture :: A         # Computer `Architecture` on which `Model` is run
+               grid :: G         # Grid of physical points on which `Model` is solved
+              clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+           buoyancy :: B         # Set of parameters for buoyancy model
+           coriolis :: R         # Set of parameters for the background rotation rate of `Model`
+      surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+         velocities :: U         # Container for velocity fields `u`, `v`, and `w`
+            tracers :: C         # Container for tracer fields
+          pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
+            forcing :: F         # Container for forcing functions defined by the user
+            closure :: E         # Diffusive 'turbulence closure' for all model fields
+        timestepper :: TS        # Object containing timestepper fields and parameters
+    pressure_solver :: S         # Pressure/Poisson solver
+      diffusivities :: K         # Container for turbulent diffusivities
+         parameters :: Θ         # Container for arbitrary user-defined parameters
 end
 
 """
-    IncompressibleModel(;
+   IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,
@@ -39,13 +37,15 @@ end
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
-    boundary_conditions = HorizontallyPeriodicSolutionBCs(),
+    boundary_conditions = NamedTuple(),
              parameters = nothing,
-             velocities = VelocityFields(architecture, grid),
-              pressures = PressureFields(architecture, grid),
+             velocities = VelocityFields(architecture, grid, boundary_conditions),
+          tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions),
+              pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
-            timestepper = :AdamsBashforth,
-        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
+     timestepper_method = :AdamsBashforth,
+            timestepper = TimeStepper(timestepper_method, float_type, architecture, grid, tracernames(tracers)),
+        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
 Construct an incompressible `Oceananigans.jl` model on `grid`.
@@ -59,8 +59,7 @@ Keyword arguments
 - `buoyancy`: Buoyancy model parameters.
 - `coriolis`: Parameters for the background rotation rate of the model.
 - `forcing`: User-defined forcing functions that contribute to solution tendencies.
-- `boundary_conditions`: User-defined boundary conditions for model fields. Can be either`SolutionBoundaryConditions`
-  or `ModelBoundaryConditions`. See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs`, and `ChannelSolutionBCs`.
+- `boundary_conditions`: Named tuple containing field boundary conditions.
 - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
 function IncompressibleModel(;
@@ -74,15 +73,15 @@ function IncompressibleModel(;
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
-    boundary_conditions = SolutionBoundaryConditions(grid),
+    boundary_conditions = NamedTuple(),
              parameters = nothing,
-             velocities = VelocityFields(architecture, grid),
-          tracer_fields = TracerFields(architecture, grid, tracers),
-              pressures = PressureFields(architecture, grid),
+             velocities = VelocityFields(architecture, grid, boundary_conditions),
+          tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions),
+              pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
      timestepper_method = :AdamsBashforth,
             timestepper = TimeStepper(timestepper_method, float_type, architecture, grid, tracernames(tracers)),
-        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions))
+        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
     if architecture == GPU() && !has_cuda()
@@ -94,9 +93,8 @@ function IncompressibleModel(;
     # Regularize forcing, boundary conditions, and closure for given tracer fields
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
-    boundary_conditions = ModelBoundaryConditions(tracernames(tracers), diffusivities, boundary_conditions)
 
     return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
-                               velocities, tracer_fields, pressures, forcing, closure, boundary_conditions,
+                               velocities, tracer_fields, pressures, forcing, closure,
                                timestepper, pressure_solver, diffusivities, parameters)
 end
