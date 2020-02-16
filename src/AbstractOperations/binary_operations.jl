@@ -36,15 +36,15 @@ end
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
 
-"""Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractLocatedField`."""
+"""Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
     return quote
         import Oceananigans.Grids: AbstractGrid
-        import Oceananigans.Fields: AbstractLocatedField
+        import Oceananigans.Fields: AbstractField
 
         local location = Oceananigans.Fields.location
         local FunctionField = Oceananigans.AbstractOperations.FunctionField
-        local ALF = AbstractLocatedField
+        local AF = AbstractField
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
             @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
@@ -65,19 +65,19 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a, b) = $op(Lc, Lc, a, b)
         $op(Lc::Tuple, a::Number, b) = $op(Lc, location(b), a, b)
         $op(Lc::Tuple, a, b::Number) = $op(Lc, location(a), a, b)
-        $op(Lc::Tuple, a::ALF{X, Y, Z}, b::ALF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
+        $op(Lc::Tuple, a::AF{X, Y, Z}, b::AF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
 
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple, a::Function, b::AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
         $op(Lc::Tuple, a::AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
 
         # Sugary versions with default locations
-        $op(a::ALF, b::ALF) = $op(location(a), a, b)
-        $op(a::ALF, b::Number) = $op(location(a), a, b)
-        $op(a::Number, b::ALF) = $op(location(b), a, b)
+        $op(a::AF, b::AF) = $op(location(a), a, b)
+        $op(a::AF, b::Number) = $op(location(a), a, b)
+        $op(a::Number, b::AF) = $op(location(b), a, b)
 
-        $op(a::ALF, b::Function) = $op(location(a), a, FunctionField(location(a), b, a.grid))
-        $op(a::Function, b::ALF) = $op(location(b), FunctionField(location(b), a, b.grid), b)
+        $op(a::AF, b::Function) = $op(location(a), a, FunctionField(location(a), b, a.grid))
+        $op(a::Function, b::AF) = $op(location(b), FunctionField(location(b), a, b.grid), b)
     end
 end
 

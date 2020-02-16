@@ -74,7 +74,7 @@ macro unary(ops...)
     for op in ops
         define_unary_operator = quote
             import Oceananigans.Grids: AbstractGrid
-            import Oceananigans.Fields: AbstractLocatedField
+            import Oceananigans.Fields: AbstractField
 
             local location = Oceananigans.Fields.location
 
@@ -82,17 +82,17 @@ macro unary(ops...)
             @inline $op(i, j, k, grid::AbstractGrid, a::Number) = $op(a)
 
             """
-                $($op)(Lop::Tuple, a::AbstractLocatedField)
+                $($op)(Lop::Tuple, a::AbstractField)
 
             Returns an abstract representation of the operator `$($op)` acting on the Oceananigans `Field`
             `a`, and subsequently interpolated to the location indicated by `Lop`.
             """
-            function $op(Lop::Tuple, a::AbstractLocatedField)
+            function $op(Lop::Tuple, a::AbstractField)
                 L = location(a)
                 return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
             end
 
-            $op(a::AbstractLocatedField) = $op(location(a), a)
+            $op(a::AbstractField) = $op(location(a), a)
 
             push!(Oceananigans.AbstractOperations.operators, Symbol($op))
             push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))

@@ -14,19 +14,12 @@ using Oceananigans.Utils
 @hascuda using CuArrays
 
 """
-    AbstractField{A, G}
-
-Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
-"""
-abstract type AbstractField{A, G} end
-
-"""
-    AbstractLocatedField{X, Y, Z, A, G}
+    AbstractField{X, Y, Z, A, G}
 
 Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
 and defined on a grid `G`.
 """
-abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
+abstract type AbstractField{X, Y, Z, A, G} end
 
 """
     Cell
@@ -43,11 +36,11 @@ A type describing the location at the face of a grid cell.
 struct Face end
 
 """
-    Field{X, Y, Z, A, G} <: AbstractLocatedField{X, Y, Z, A, G}
+    Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
 
 A field defined at the location (`X`, `Y`, `Z`) which can be either `Cell` or `Face`.
 """
-struct Field{X, Y, Z, A, G} <: AbstractLocatedField{X, Y, Z, A, G}
+struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
     data :: A
     grid :: G
     function Field{X, Y, Z}(data, grid) where {X, Y, Z}
@@ -120,7 +113,7 @@ FaceFieldY(arch, grid) = Field((Cell, Face, Cell), arch, grid)
 FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
 
 location(a) = nothing
-location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
+location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
 architecture(f::Field) = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
@@ -179,10 +172,10 @@ nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
 # Niceties
 const AbstractCPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
 
 @hascuda const AbstractGPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 #####
 ##### Creating fields by dispatching on architecture

@@ -2,8 +2,7 @@ module Fields
 
 export
     Face, Cell,
-    AbstractField, AbstractLocatedField,
-    Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    AbstractField, Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
     interior, interiorparent,
     xnode, ynode, znode, location,
     set!,
