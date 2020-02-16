@@ -8,6 +8,9 @@ export
     set!,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 
+using Oceananigans.Grids
+using Oceananigans.BoundaryConditions
+
 include("field.jl")
 include("set!.jl")
 include("field_tuples.jl")

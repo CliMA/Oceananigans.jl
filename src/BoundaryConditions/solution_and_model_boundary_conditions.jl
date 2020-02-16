@@ -25,38 +25,38 @@ default_tracer_bcs(tracer_names, solution_bcs) = DefaultTracerBoundaryConditions
 ##### conditions on their repsective fields.
 #####
 
-TendencyBC(::BC)   = BoundaryCondition(Flux, nothing)
-TendencyBC(::PBC)  = PeriodicBoundaryCondition()
-TendencyBC(::NPBC) = NoPenetrationBoundaryCondition()
-
-TendencyCoordinateBCs(bcs) =
-    CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
-
-TendencyFieldBCs(field_bcs) =
-    FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
-
-TendenciesBoundaryConditions(solution_bcs) =
-    NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBCs(bcs) for bcs in solution_bcs))
+# TendencyBC(::BC)   = BoundaryCondition(Flux, nothing)
+# TendencyBC(::PBC)  = PeriodicBoundaryCondition()
+# TendencyBC(::NPBC) = NoPenetrationBoundaryCondition()
+#
+# TendencyCoordinateBCs(bcs) =
+#     CoordinateBoundaryConditions(TendencyBC(bcs.left), TendencyBC(bcs.right))
+#
+# TendencyFieldBCs(field_bcs) =
+#     FieldBoundaryConditions(Tuple(TendencyCoordinateBCs(bcs) for bcs in field_bcs))
+#
+# TendenciesBoundaryConditions(solution_bcs) =
+#     NamedTuple{propertynames(solution_bcs)}(Tuple(TendencyFieldBCs(bcs) for bcs in solution_bcs))
 
 #####
 ##### Boundary conditions on pressure are derived from boundary conditions
 ##### on the east-west horizontal velocity, u.
 #####
 
-# Pressure boundary conditions are either zero flux (Neumann) or Periodic.
-PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
-PressureBC(::PBC) = PeriodicBoundaryCondition()
-
-function PressureBoundaryConditions(solution_boundary_conditions)
-    ubcs = solution_boundary_conditions.u
-    x = CoordinateBoundaryConditions(PressureBC(ubcs.x.left), PressureBC(ubcs.x.right))
-    y = CoordinateBoundaryConditions(PressureBC(ubcs.y.left), PressureBC(ubcs.y.right))
-    z = CoordinateBoundaryConditions(PressureBC(ubcs.z.left), PressureBC(ubcs.z.right))
-    return FieldBoundaryConditions(x, y, z)
-end
-
-PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
-    PressureBoundaryConditions(model_boundary_conditions.solution)
+# # Pressure boundary conditions are either zero flux (Neumann) or Periodic.
+# PressureBC(::BC)  = BoundaryCondition(Flux, nothing)
+# PressureBC(::PBC) = PeriodicBoundaryCondition()
+#
+# function PressureBoundaryConditions(solution_boundary_conditions)
+#     ubcs = solution_boundary_conditions.u
+#     x = CoordinateBoundaryConditions(PressureBC(ubcs.x.left), PressureBC(ubcs.x.right))
+#     y = CoordinateBoundaryConditions(PressureBC(ubcs.y.left), PressureBC(ubcs.y.right))
+#     z = CoordinateBoundaryConditions(PressureBC(ubcs.z.left), PressureBC(ubcs.z.right))
+#     return FieldBoundaryConditions(x, y, z)
+# end
+#
+# PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
+#     PressureBoundaryConditions(model_boundary_conditions.solution)
 
 #####
 ##### Boundary conditions on diffusivities are derived from boundary conditions

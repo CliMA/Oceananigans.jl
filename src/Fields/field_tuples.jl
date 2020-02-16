@@ -1,30 +1,36 @@
 """
-    VelocityFields(arch, grid; u=zeros(arch, grid), v=zeros(arch, grid), w=zeros(arch, grid))
+    VelocityFields(arch, grid; [u, v, w])
 
 Return a NamedTuple with fields `u`, `v`, `w` initialized on the architecture `arch`
-and `grid`. Data arrays may be passed via the `u`, `v`, and `w` keyword arguments.
+and `grid`. Fields may be passed via the optional keyword arguments `u`, `v`, and `w`.
 """
-function VelocityFields(arch, grid; u=zeros(arch, grid), v=zeros(arch, grid), w=zeros(arch, grid))
-    u = XFaceField(arch, grid, u)
-    v = YFaceField(arch, grid, v)
-    w = ZFaceField(arch, grid, w)
-    return (u=u, v=v, w=w)
-end
+VelocityFields(arch, grid;
+    u = XFaceField(arch, grid, UVelocityBoundaryConditions(grid), zeros(arch, grid)),
+    v = YFaceField(arch, grid, VVelocityBoundaryConditions(grid), zeros(arch, grid)),
+    w = ZFaceField(arch, grid, WVelocityBoundaryConditions(grid), zeros(arch, grid))
+) = (u=u, v=v, w=w)
 
 """
     TracerFields(arch, grid, tracer_names; kwargs...)
 
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
-`CellField`s on the architecture `arch` and `grid`. Optional `kwargs` can be specified
-to assign data arrays to each tracer field.
+`CellField`s on the architecture `arch` and `grid`. Fields may be passed via optional
+keyword arguments `kwargs` for each field.
 """
 function TracerFields(arch, grid, tracer_names; kwargs...)
-    tracer_fields = Tuple(c ∈ keys(kwargs) ? CellField(arch, grid, kwargs[c]) : CellField(arch, grid)
+    for c in keys(kwargs)
+        c ∉ tracer_names && @warn "$c field passed but $c is not in tracer_names."
+    end
+
+    tracer_fields = Tuple(c ∈ keys(kwargs) ?
+                          kwargs[c] :
+                          CellField(arch, grid, TracerBoundaryConditions(grid), zeros(arch, grid))
                           for c in tracer_names)
+
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
-TracerFields(arch, grid, ::Union{Tuple{}, Nothing}) = NamedTuple{()}(())
+TracerFields(arch, grid, ::Union{Tuple{}, Nothing}; kwargs...) = NamedTuple{()}(())
 TracerFields(arch, grid, tracer::Symbol; kwargs...) = TracerFields(arch, grid, tuple(tracer); kwargs...)
 TracerFields(arch, grid, tracers::NamedTuple; kwargs...) = tracers
 
@@ -34,17 +40,16 @@ tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : na
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 """
-    PressureFields(arch, grid; pHY′=zeros(arch, grid), pNHS=zeros(arch, grid))
+    PressureFields(arch, grid; [pHY′, pNHS])
 
 Return a NamedTuple with pressure fields `pHY′` and `pNHS` initialized as
-`CellField`s on the architecture `arch` and `grid`. Data arrays may be passed via
-the ``pHY′` and `pNHS` keyword arguments.
+`CellField`s on the architecture `arch` and `grid`. Fields may be passed via the
+optional keyword arguments `pHY′` and `pNHS`.
 """
-function PressureFields(arch, grid; pHY′=zeros(arch, grid), pNHS=zeros(arch, grid))
-    pHY′ = CellField(arch, grid, pHY′)
-    pNHS = CellField(arch, grid, pNHS)
-    return (pHY′=pHY′, pNHS=pNHS)
-end
+PressureFields(arch, grid;
+    pHY′ = CellField(arch, grid, PressureBoundaryConditions(grid), zeros(arch, grid)),
+    pNHS = CellField(arch, grid, PressureBoundaryConditions(grid), zeros(arch, grid))
+) = (pHY′=pHY′, pNHS=pNHS)
 
 """
     TendencyFields(arch, grid, tracer_names; kwargs...)
@@ -55,9 +60,9 @@ can be specified to assign data arrays to each tendency field.
 """
 function TendencyFields(arch, grid, tracer_names; kwargs...)
     velocities = (
-        u = :u ∈ keys(kwargs) ? XFaceField(arch, grid, kwargs[:u]) : XFaceField(arch, grid),
-        v = :v ∈ keys(kwargs) ? YFaceField(arch, grid, kwargs[:v]) : YFaceField(arch, grid),
-        w = :w ∈ keys(kwargs) ? ZFaceField(arch, grid, kwargs[:w]) : ZFaceField(arch, grid)
+        u = :u ∈ keys(kwargs) ? kwargs[:u] : XFaceField(arch, grid, UVelocityBoundaryConditions(grid), zeros(arch, grid)),
+        v = :v ∈ keys(kwargs) ? kwargs[:v] : YFaceField(arch, grid, VVelocityBoundaryConditions(grid), zeros(arch, grid)),
+        w = :w ∈ keys(kwargs) ? kwargs[:w] : ZFaceField(arch, grid, WVelocityBoundaryConditions(grid), zeros(arch, grid))
     )
     tracers = TracerFields(arch, grid, tracer_names; kwargs...)
     return merge(velocities, tracers)
