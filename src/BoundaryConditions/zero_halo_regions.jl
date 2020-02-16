@@ -1,11 +1,11 @@
-function zero_halo_regions!(fields::NamedTuple, grid)
+function zero_halo_regions!(fields::NamedTuple)
     for field in fields
-      zero_halo_regions!(field, grid)
+      zero_halo_regions!(field)
     end
     return nothing
 end
 
-zero_halo_regions!(field, grid) = zero_halo_regions!(field.data, grid)
+zero_halo_regions!(field) = zero_halo_regions!(field.data, field.grid)
 
 function zero_halo_regions!(c::AbstractArray, grid)
       zero_west_halo!(c, grid.Hx, grid.Nx)

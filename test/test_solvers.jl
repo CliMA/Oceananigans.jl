@@ -165,8 +165,8 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     # Useful for broadcasting z operations
     ΔzC = reshape(ΔzC, (1, 1, Nz))
 
-    # Temporary hack: Useful for reusing fill_halo_regions! and BatchedTridiagonalSolver
-    # which only need Nx, Ny, Nz.
+    # Temporary hack: Useful for reusing fill_halo_regions! and
+    # BatchedTridiagonalSolver which only need Nx, Ny, Nz.
     fake_grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
 
     #####
@@ -205,24 +205,20 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     #####
 
     # Random right hand side
-    Ru = CellField(Float64, arch, fake_grid)
-    Rv = CellField(Float64, arch, fake_grid)
-    Rw = CellField(Float64, arch, fake_grid)
+    Ru = CellField(Float64, arch, fake_grid, UVelocityBoundaryConditions(fake_grid))
+    Rv = CellField(Float64, arch, fake_grid, VVelocityBoundaryConditions(fake_grid))
+    Rw = CellField(Float64, arch, fake_grid, WVelocityBoundaryConditions(fake_grid))
 
     interior(Ru) .= rand(Nx, Ny, Nz)
     interior(Rv) .= rand(Nx, Ny, Nz)
     interior(Rw) .= zeros(Nx, Ny, Nz)
+
     U = (u=Ru, v=Rv, w=Rw)
-
-    uv_bcs = UVelocityBoundaryConditions(fake_grid)
-     w_bcs = WVelocityBoundaryConditions(fake_grid)
-
-    fill_halo_regions!(Ru.data, uv_bcs, arch, fake_grid)
-    fill_halo_regions!(Rv.data, uv_bcs, arch, fake_grid)
+    fill_halo_regions!(U, arch)
 
     _compute_w_from_continuity!(U, fake_grid)
 
-    fill_halo_regions!(Rw.data,  w_bcs, arch, fake_grid)
+    fill_halo_regions!(Rw, arch)
 
     R = zeros(Nx, Ny, Nz)
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
@@ -245,7 +241,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     ϕ̃ = zeros(Complex{Float64}, Nx, Ny, Nz)
     solve_batched_tridiagonal_system!(ϕ̃, arch, btsolver)
 
-    ϕ = CellField(Float64, arch, fake_grid)
+    ϕ = CellField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
     interior(ϕ) .= real.(ifft(ϕ̃, [1, 2]))
     ϕ.data .= ϕ.data .- mean(interior(ϕ))
 
@@ -253,12 +249,9 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     ##### Compute Laplacian of solution ϕ to test that it's correct
     #####
 
-    # Gotta fill halo regions
-    fbcs = TracerBoundaryConditions(fake_grid)
-    fill_halo_regions!(ϕ.data, fbcs, arch, fake_grid)
+    fill_halo_regions!(ϕ, arch)
 
-    ∇²ϕ = CellField(Float64, arch, fake_grid)
-
+    ∇²ϕ = CellField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
         ∇²ϕ.data[i, j, k] = ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, ϕ.data)
     end
