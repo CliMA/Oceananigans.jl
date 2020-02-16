@@ -5,7 +5,7 @@ using CUDAapi: has_cuda
 
 export
     @hascuda,
-    CPU, GPU,
+    AbstractArchitecture, CPU, GPU,
     device, architecture, array_type
 
 """

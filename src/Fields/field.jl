@@ -16,8 +16,8 @@ using Oceananigans.Utils
 """
     AbstractField{X, Y, Z, A, G}
 
-Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
-and defined on a grid `G`.
+Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
+of type `A`. The field is defined on a grid `G`.
 """
 abstract type AbstractField{X, Y, Z, A, G} end
 
@@ -38,7 +38,9 @@ struct Face end
 """
     Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
 
-A field defined at the location (`X`, `Y`, `Z`) which can be either `Cell` or `Face`.
+A field defined at the location (`X`, `Y`, `Z`), each of which can be either `Cell`
+or `Face`, and with data stored in a container of type `A` (typically an array).
+The field is defined on a grid `G`.
 """
 struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
     data :: A
@@ -52,70 +54,63 @@ Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} =
     Field{X, Y, Z}(adapt(to, data), field.grid)
 
 """
-	Field(L::Tuple, data::AbstractArray, grid)
+    Field(L::Tuple, arch, grid, [data=zeros(arch, grid)])
 
-Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L`
-of length 3 whose elements are `Cell` or `Face`.
+Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
+The field's location is defined by a tuple `L` of length 3 whose elements are
+`Cell` or `Face`.
 """
-Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3]}(data, grid)
-
-"""
-    Field(L::Tuple, arch, grid)
-
-Construct a `Field` on architecture `arch` and `grid` at location `L`,
-where `L` is a tuple of `Cell` or `Face` types.
-"""
-Field(L::Tuple, arch, grid) = Field{L[1], L[2], L[3]}(zeros(arch, grid), grid)
+Field(L::Tuple, arch, grid, data=zeros(arch, grid)) = Field{L[1], L[2], L[3]}(data, grid)
 
 """
-    Field(X, Y, Z, arch, grid)
+    Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)])
 
-Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`,
-where each of `X, Y, Z` is `Cell` or `Face`.
+Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
+The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`.
 """
-Field(X, Y, Z, arch, grid) =  Field((X, Y, Z), arch, grid)
-
-"""
-    CellField([T=eltype(grid)], arch, grid)
-
-Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid`.
-Used for tracers and pressure fields.
-"""
-CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid), grid)
+Field(X, Y, Z, arch, grid, data=zeros(arch, grid)) =  Field((X, Y, Z), arch, grid, data)
 
 """
-    FaceFieldX([T=eltype(grid)], arch, grid)
+    CellField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
 
-Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid`.
-Used for the x-velocity field.
+Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
 """
-FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid), grid)
-
-"""
-    FaceFieldY([T=eltype(grid)], arch, grid)
-
-Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid`.
-Used for the y-velocity field.
-"""
-FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid), grid)
+CellField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Cell, arch, grid, data)
 
 """
-    FaceFieldZ([T=eltype(grid)], arch, grid)
+    XFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
 
-Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid`.
-Used for the z-velocity field.
+Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
 """
-FaceFieldZ(T, arch, grid) = Field{Cell, Cell, Face}(zeros(T, arch, grid), grid)
+XFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Face, Cell, Cell, arch, grid, data)
 
- CellField(arch, grid) = Field((Cell, Cell, Cell), arch, grid)
-FaceFieldX(arch, grid) = Field((Face, Cell, Cell), arch, grid)
-FaceFieldY(arch, grid) = Field((Cell, Face, Cell), arch, grid)
-FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
+"""
+    YFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+
+Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`.
+"""
+YFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Face, Cell, arch, grid, data)
+
+"""
+    ZFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+
+Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`.
+"""
+ZFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Face, arch, grid, data)
+
+ CellField(T::DataType, arch, grid) = Field(Cell, Cell, Cell, arch, grid, zeros(T, arch, grid))
+XFaceField(T::DataType, arch, grid) = Field(Face, Cell, Cell, arch, grid, zeros(T, arch, grid))
+YFaceField(T::DataType, arch, grid) = Field(Cell, Face, Cell, arch, grid, zeros(T, arch, grid))
+ZFaceField(T::DataType, arch, grid) = Field(Cell, Cell, Face, arch, grid, zeros(T, arch, grid))
 
 location(a) = nothing
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
-architecture(f::Field) = architecture(f.data)
+architecture(f::Field)       = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
 
 @inline size(f::AbstractField) = size(f.grid)
