@@ -19,9 +19,9 @@ export
     BoundaryCondition,
     Flux, Value, Gradient,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
-    CoordinateBoundaryConditions, FieldBoundaryConditions, UVelocityBoundaryConditions,
-    VVelocityBoundaryConditions, WVelocityBoundaryConditions, TracerBoundaryConditions,
-    PressureBoundaryConditions, SolutionBoundaryConditions,
+    CoordinateBoundaryConditions, FieldBoundaryConditions,
+    UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
+    TracerBoundaryConditions, PressureBoundaryConditions,
     BoundaryFunction,
 
     # Fields and field manipulation
