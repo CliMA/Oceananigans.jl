@@ -53,8 +53,8 @@ function run_thermal_bubble_regression_test(arch)
     field_names = ["u", "v", "w", "T", "S"]
     fields = [interior(model.velocities.u), interior(model.velocities.v), interior(model.velocities.w),
               interior(model.tracers.T), interior(model.tracers.S)]
-    fields_correct = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]
-    summarize_regression_test(field_names, fields, fields_correct)
+    correct_fields = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]
+    summarize_regression_test(field_names, fields, correct_fields)
 
     # Now test that the model state matches the regression output.
     @test all(Array(interior(model.velocities.u)) .≈ uᶜ)
