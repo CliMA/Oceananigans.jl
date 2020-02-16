@@ -16,11 +16,10 @@ mutable struct Checkpointer{I, T, P, A} <: AbstractOutputWriter
 end
 
 """
-    Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint",
-                        force=false, verbose=false,
-                        properties = [:architecture, :boundary_conditions, :grid, :clock,
-                                      :eos, :constants, :closure, :velocities, :tracers,
-                                      :timestepper])
+    Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
+                 prefix="checkpoint", force=false, verbose=false,
+                 properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
+                               :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file every so often as
 specified by `frequency` or `interval`. The `model.clock.iteration` is included in the
@@ -45,19 +44,26 @@ Keyword arguments
                        Default: `false`.
 - `properties::Array`: List of model properties to checkpoint.
 """
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefix="checkpoint", force=false,
-                      verbose=false, properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
-                                                   :buoyancy, :closure, :velocities, :tracers, :timestepper])
+function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
+                      prefix="checkpoint", force=false, verbose=false,
+                      properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
+                                    :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
     validate_interval(frequency, interval)
 
-    # Grid needs to be checkpointed for restoring to work.
-    :grid ∉ properties && push!(properties, :grid)
+    # Certain properties are required for `restore_from_checkpoint` to work.
+    required_properties = (:grid, :architecture, :velocities, :tracers)
+    for rp in required_properties
+        if rp ∉ properties
+            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
+            push!(properties, rp)
+        end
+    end
 
     has_array_refs = Symbol[]
 
     for p in properties
-        isa(p, Symbol) || @error "Property $p to be checkpointed must be a Symbol."
+        p isa Symbol || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
 
         if has_reference(Function, getproperty(model, p))
@@ -73,7 +79,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".", prefi
 end
 
 function write_output(model, c::Checkpointer)
-    filepath = joinpath(c.dir, c.prefix * string(model.clock.iteration) * ".jld2")
+    filepath = joinpath(c.dir, c.prefix * "_iteration" * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."
 
     t0 = time_ns()
@@ -108,7 +114,7 @@ end
     restore_from_checkpoint(filepath; kwargs=Dict())
 
 Restore a model from the checkpoint file stored at `filepath`. `kwargs` can be passed
-to the `Model` constructor, which can be especially useful if you need to manually
+to the model constructor, which can be especially useful if you need to manually
 restore forcing functions or boundary conditions that rely on functions.
 """
 function restore_from_checkpoint(filepath; kwargs=Dict())
