@@ -1,6 +1,6 @@
 using Oceananigans: AbstractTimeStepper
 using Oceananigans.Fields: AbstractField
-using Oceananigans.BoundaryConditions: CoordinateBoundaryConditions
+using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions
 
 #####
 ##### Output writer utilities
@@ -25,13 +25,13 @@ saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", get
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     for endpoint in propertynames(cbcs)
         endpoint_bc = getproperty(cbcs, endpoint)
-        if isa(endpoint_bc.condition, Function)
+        if endpoint_bc.condition isa Function
             @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
-            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(bctype(endpoint_bc))
-            file["boundary_conditions/$field/$coord/$endpoint/condition"] = missing
+            file[location * "/$endpoint/type"] = string(bctype(endpoint_bc))
+            file[location * "/$endpoint/condition"] = missing
         else
-            file["boundary_conditions/$field/$coord/$endpoint/type"] = string(bctype(endpoint_bc))
-            file["boundary_conditions/$field/$coord/$endpoint/condition"] = endpoint_bc.condition
+            file[location * "/$endpoint/type"] = string(bctype(endpoint_bc))
+            file[location * "/$endpoint/condition"] = endpoint_bc.condition
         end
     end
 end
