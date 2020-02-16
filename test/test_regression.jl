@@ -21,15 +21,15 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
     @info "Running regression tests..."
 
     for arch in archs
-        @testset "Thermal bubble [$(typeof(arch))]" begin
-            @info "  Testing thermal bubble regression [$(typeof(arch))]"
-            run_thermal_bubble_regression_test(arch)
-        end
-
-        @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
-            @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]"
-            run_rayleigh_benard_regression_test(arch)
-        end
+        # @testset "Thermal bubble [$(typeof(arch))]" begin
+        #     @info "  Testing thermal bubble regression [$(typeof(arch))]"
+        #     run_thermal_bubble_regression_test(arch)
+        # end
+        #
+        # @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
+        #     @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]"
+        #     run_rayleigh_benard_regression_test(arch)
+        # end
 
         @testset "Ocean large eddy simulation [$(typeof(arch))]" begin
             for closure in (AnisotropicMinimumDissipation(), ConstantSmagorinsky())

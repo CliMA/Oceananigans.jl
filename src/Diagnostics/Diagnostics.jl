@@ -2,7 +2,8 @@ module Diagnostics
 
 export
     HorizontalAverage, TimeSeries, FieldMaximum,
-    CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker
+    CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker,
+    run_diagnostic
 
 using Oceananigans,
       Oceananigans.Operators

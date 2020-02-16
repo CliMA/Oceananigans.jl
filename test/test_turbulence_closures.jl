@@ -104,7 +104,7 @@ function time_step_with_tupled_closure(FT, arch)
     model = Model(architecture=arch, float_type=FT, closure=closure_tuple,
                   grid=RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 2, 3)))
 
-    time_step!(model, 1, 1)
+    time_step!(model, 1, euler=true)
     return true
 end
 
@@ -150,7 +150,7 @@ end
         for FT in [Float64]
             for arch in archs
                 for closure in closures
-                    @info "    Calculating diffusivities for $closure [$FT, $arch]"
+                    @info "    Calculating diffusivities for $closure [$FT, $(typeof(arch))]"
                     @test test_calculate_diffusivities(arch, closure, FT)
                 end
             end

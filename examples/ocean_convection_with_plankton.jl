@@ -41,6 +41,8 @@ nothing # hide
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
+grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz))
+
 buoyancy_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qb),
                                               bottom = BoundaryCondition(Gradient, N²))
 nothing # hide
@@ -55,7 +57,7 @@ growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16))
 
 ## Instantiate the model
 model = Model(
-                   grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz)),
+                   grid = grid,
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),
@@ -74,11 +76,12 @@ set!(model, b=b₀)
 wizard = TimeStepWizard(cfl=0.1, Δt=1.0, max_change=1.1, max_Δt=90.0)
 nothing # hide
 
-# Run the model:
+# Set up and run the simulation:
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=100)
 
 anim = @animate for i = 1:100
-    update_Δt!(wizard, model)
-    walltime = @elapsed time_step!(model, 100, wizard.Δt)
+    simulation.stop_iteration += 100
+    walltime = @elapsed run!(simulation)
 
     ## Print a progress message
     @printf("progress: %.1f %%, i: %04d, t: %s, Δt: %s, wall time: %s\n",

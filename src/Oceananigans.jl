@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Logging
-    ModelLogger, Diagnostic, Setup, Simulation,
+    ModelLogger, Diagnostic, Setup,
 
     # Grids
     Periodic, Bounded, Flat,
@@ -47,6 +47,10 @@ export
 
     # Models
     Model, ChannelModel, NonDimensionalModel,
+
+    # Simulations
+    Simulation, run!,
+    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Utilities
     prettytime, pretty_filesize,
@@ -152,6 +156,7 @@ include("Models/Models.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("TimeSteppers/TimeSteppers.jl")
+include("Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 
 #####
@@ -171,5 +176,6 @@ using .Solvers
 using .Forcing
 using .Models
 using .TimeSteppers
+using .Simulations
 
 end # module

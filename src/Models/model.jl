@@ -7,7 +7,7 @@ using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
 mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                     BCS, S, K, OW, DI, Θ} <: AbstractModel
+                     BCS, S, K, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
                    grid :: G         # Grid of physical points on which `Model` is solved
@@ -24,8 +24,6 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F
             timestepper :: TS        # Object containing timestepper fields and parameters
         pressure_solver :: S         # Pressure/Poisson solver
           diffusivities :: K         # Container for turbulent diffusivities
-         output_writers :: OW        # Objects that write data to disk
-            diagnostics :: DI        # Objects that calc diagnostics on-line during simulation
              parameters :: Θ         # Container for arbitrary user-defined parameters
 end
 
@@ -42,8 +40,6 @@ end
           surface_waves = nothing,
                 forcing = ModelForcing(),
     boundary_conditions = HorizontallyPeriodicSolutionBCs(),
-         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
@@ -79,8 +75,6 @@ function Model(;
           surface_waves = nothing,
                 forcing = ModelForcing(),
     boundary_conditions = SolutionBoundaryConditions(grid),
-         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid),
               pressures = PressureFields(architecture, grid),
@@ -105,5 +99,5 @@ function Model(;
 
     return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
                  pressures, forcing, closure, boundary_conditions, timestepper,
-                 pressure_solver, diffusivities, output_writers, diagnostics, parameters)
+                 pressure_solver, diffusivities, parameters)
 end
