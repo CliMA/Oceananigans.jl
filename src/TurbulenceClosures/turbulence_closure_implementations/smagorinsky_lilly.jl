@@ -106,8 +106,16 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky) =
-    (νₑ=CellField(arch, grid),)
+DiffusivityFields(
+    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky;
+    νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
+    ) = (νₑ=νₑ,)
+
+function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, bcs::NamedTuple, ::AbstractSmagorinsky)
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+    νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
+    return (νₑ=νₑ,)
+end
 
 """
     κ_∂x_c(i, j, k, grid, c, tracer, closure, νₑ)

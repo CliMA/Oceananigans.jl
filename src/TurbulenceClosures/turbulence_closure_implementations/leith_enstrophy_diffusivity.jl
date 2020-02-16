@@ -1,5 +1,13 @@
-DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractLeith) =
-    (νₑ=CellField(arch, grid),)
+DiffusivityFields(
+    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractLeith;
+    νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
+    ) = (νₑ=νₑ,)
+
+function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, bcs::NamedTuple, ::AbstractLeith)
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+    νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
+    return (νₑ=νₑ,)
+end
 
 #####
 ##### The turbulence closure proposed by Leith

@@ -34,8 +34,9 @@ import Oceananigans.Utils: with_tracers
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Fields
 using Oceananigans.Operators
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
 using Oceananigans.Buoyancy
 using Oceananigans.Utils
 
