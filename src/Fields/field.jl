@@ -50,9 +50,6 @@ struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
     end
 end
 
-Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} =
-    Field{X, Y, Z}(adapt(to, data), field.grid)
-
 """
     Field(L::Tuple, arch, grid, [data=zeros(arch, grid)])
 
