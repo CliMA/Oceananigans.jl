@@ -129,6 +129,10 @@ location(a) = nothing
 "Returns the location `(X, Y, Z)` of an `AbstractLocatedField{X, Y, Z}`."
 location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
 
+x_location(::AbstractLocatedField{X}) where X               = X
+y_location(::AbstractLocatedField{X, Y}) where {X, Y}       = Y
+z_location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = Z
+
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::Field) = architecture(f.data)
 
@@ -202,6 +206,40 @@ of `f` along `x, y, z`.
                                                            interior_parent_indices(Y, y_topology(f), f.grid.Ny, f.grid.Hy),
                                                            interior_parent_indices(Z, z_topology(f), f.grid.Nz, f.grid.Hz)]
 
+iterate(f::Field, state=1) = iterate(f.data, state)
+
+@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
+
+@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
+
+@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
+
+@inline xnode(i, ψ::Field{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
+@inline ynode(j, ψ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
+@inline znode(k, ψ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
+
+# Dispatch insanity
+xnodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.xC, ψ.grid.Nx, 1, 1)
+ynodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.yC, 1, ψ.grid.Ny, 1)
+znodes(::Type{Cell}, topo, grid) = reshape(ψ.grid.zC, 1, 1, ψ.grid.Nz)
+
+xnodes(::Type{Face}, topo, grid) = reshape(ψ.grid.xF[1:end-1], ψ.grid.Nx, 1, 1)
+ynodes(::Type{Face}, topo, grid) = reshape(ψ.grid.yF[1:end-1], 1, ψ.grid.Ny, 1)
+znodes(::Type{Face}, topo, grid) = reshape(ψ.grid.zF[1:end-1], 1, 1, ψ.grid.Nz)
+
+xnodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.xF, ψ.grid.Nx+1, 1, 1)
+ynodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.yF, 1, ψ.grid.Ny+1, 1)
+znodes(::Type{Face}, ::Bounded, grid) = reshape(ψ.grid.zF, 1, 1, ψ.grid.Nz+1)
+
+xnodes(ψ::AbstractField) = xnodes(x_location(ψ), x_topology(ψ), ψ.grid)
+ynodes(ψ::AbstractField) = ynodes(y_location(ψ), y_topology(ψ), ψ.grid)
+znodes(ψ::AbstractField) = znodes(z_location(ψ), z_topology(ψ), ψ.grid)
+
+nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
+
 # Nicites (but what for?)
 const AbstractCPUField =
     AbstractField{A, G} where {A<:OffsetArray{FT, D, <:Array} where {FT, D}, G}
@@ -263,9 +301,9 @@ parent data in GPU memory and indices corresponding to a field on a `grid`
 of `size(grid)` and located at `loc`.
 """
 function Base.zeros(FT, ::GPU, grid, loc)
-    underlying_data = CuArray{FT}(undef, length(loc[1], x_topology, grid.Nx, grid.Hx),
-                                         length(loc[2], y_topology, grid.Ny, grid.Hy),
-                                         length(loc[3], z_topology, grid.Nz, grid.Hz))
+    underlying_data = CuArray{FT}(undef, length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
+                                         length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
+                                         length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
 
     underlying_data .= 0 # Ensure data is initially 0.
 
