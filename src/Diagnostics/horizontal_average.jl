@@ -37,7 +37,7 @@ model and you want to save the output to disk by passing it to an output writer.
 """
 function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array)
     arch = architecture(field)
-    result = zeros(arch, field.grid, 1, 1, field.grid.Nz + 2field.grid.Hz)
+    result = zeros(arch, field.grid, 1, 1, size(parent(field))[3])
     return HorizontalAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
 end
 
