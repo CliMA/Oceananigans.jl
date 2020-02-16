@@ -1,10 +1,13 @@
 import Oceananigans.OutputWriters: saveproperty!
 
 """
-    AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ)
+    AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+                              Gⁿ = TendencyFields(arch, grid, tracers),
+                              G⁻ = TendencyFields(arch, grid, tracers))
 
-Return an AdamsBashforthTimeStepper object with tendency
-fields on `arch` and `grid` and AB2 parameter `χ`.
+Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
+`grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
+kwargs.
 """
 struct AdamsBashforthTimeStepper{T, TG}
       Gⁿ :: TG
@@ -12,9 +15,9 @@ struct AdamsBashforthTimeStepper{T, TG}
        χ :: T
 end
 
-function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125)
-   Gⁿ = Tendencies(arch, grid, tracers)
-   G⁻ = Tendencies(arch, grid, tracers)
+function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+                                   Gⁿ = TendencyFields(arch, grid, tracers),
+                                   G⁻ = TendencyFields(arch, grid, tracers))
    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
 end
 

@@ -14,6 +14,7 @@ using Oceananigans.Architectures: @hascuda
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
@@ -24,8 +25,6 @@ using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.Utils
-
-using Oceananigans.Fields: Tendencies, tracernames
 
 using ..TurbulenceClosures: calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 

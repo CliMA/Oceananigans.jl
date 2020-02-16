@@ -6,7 +6,7 @@ export
     interior, interiorparent,
     xnode, ynode, znode, location,
     set!,
-    VelocityFields, TracerFields, tracernames, PressureFields, Tendencies
+    VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 
 include("field.jl")
 include("set!.jl")
