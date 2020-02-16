@@ -106,7 +106,7 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky) =
+DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky) =
     (νₑ=CellField(arch, grid),)
 
 """

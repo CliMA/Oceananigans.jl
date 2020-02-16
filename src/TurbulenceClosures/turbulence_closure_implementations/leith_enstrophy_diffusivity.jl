@@ -1,4 +1,4 @@
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractLeith) =
+DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractLeith) =
     (νₑ=CellField(arch, grid),)
 
 #####
