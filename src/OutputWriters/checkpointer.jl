@@ -108,15 +108,15 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     grid = file["grid"]
 
     # Restore velocity fields
-    u_data = _arr(arch, file["velocities/u"])
-    v_data = _arr(arch, file["velocities/v"])
-    w_data = _arr(arch, file["velocities/w"])
+    u_data = OffsetArray(_arr(arch, file["velocities/u"]), grid)
+    v_data = OffsetArray(_arr(arch, file["velocities/v"]), grid)
+    w_data = OffsetArray(_arr(arch, file["velocities/w"]), grid)
     kwargs[:velocities] = VelocityFields(arch, grid, u=u_data, v=v_data, w=w_data)
     filter!(p -> p ≠ :velocities, cps)
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_data  = Tuple(_arr(arch, file["tracers/$c"]) for c in tracer_names)
+    tracer_data  = Tuple(OffsetArray(_arr(arch, file["tracers/$c"]), grid) for c in tracer_names)
     tracer_field_kwargs = NamedTuple{tracer_names}(tracer_data)
     kwargs[:tracers] = tracer_names
     kwargs[:tracer_fields] = TracerFields(arch, grid, tracer_names; tracer_field_kwargs...)
@@ -124,8 +124,8 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
 
     # Restore time stepper tendency fields
     field_names = (:u, :v, :w, tracer_names...)
-    G⁻_data = Tuple(_arr(arch, file["timestepper/G⁻/$c"]) for c in field_names)
-    Gⁿ_data = Tuple(_arr(arch, file["timestepper/Gⁿ/$c"]) for c in field_names)
+    G⁻_data = Tuple(OffsetArray(_arr(arch, file["timestepper/G⁻/$c"]), grid) for c in field_names)
+    Gⁿ_data = Tuple(OffsetArray(_arr(arch, file["timestepper/Gⁿ/$c"]), grid) for c in field_names)
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_data)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_data)
     kwargs[:timestepper_method] = :AdamsBashforth

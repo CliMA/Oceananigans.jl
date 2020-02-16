@@ -12,6 +12,7 @@ using Oceananigans.Fields
 using Oceananigans.Architectures
 
 using Oceananigans: AbstractOutputWriter, @hascuda
+using Oceananigans.Fields: OffsetArray
 
 @hascuda using CUDAnative, CuArrays
 
