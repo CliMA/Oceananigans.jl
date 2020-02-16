@@ -1,5 +1,3 @@
-import Oceananigans.OutputWriters: saveproperty!
-
 """
     AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
                               Gⁿ = TendencyFields(arch, grid, tracers),
@@ -19,14 +17,6 @@ function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
                                    Gⁿ = TendencyFields(arch, grid, tracers),
                                    G⁻ = TendencyFields(arch, grid, tracers))
    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
-end
-
-# Special savepropety! for AB2 time stepper struct used by the checkpointer so
-# it only saves the fields and not the tendency BCs or χ value (as they can be
-# constructed by the `Model` constructor).
-function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
-    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    saveproperty!(file, location * "/G⁻", ts.G⁻)
 end
 
 #####

@@ -1,6 +1,6 @@
-using Oceananigans: AbstractTimeStepper
 using Oceananigans.Fields: AbstractField
-using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions
+using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions, ModelBoundaryConditions
+using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper
 
 #####
 ##### Output writer utilities
@@ -36,13 +36,23 @@ function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     end
 end
 
+# Special savepropety! for AB2 time stepper struct used by the checkpointer so
+# it only saves the fields and not the tendency BCs or χ value (as they can be
+# constructed by the `Model` constructor).
+function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
+    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
+    saveproperty!(file, location * "/G⁻", ts.G⁻)
+end
+
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
-serializeproperty!(file, location, p) = file[location] = p
+
+serializeproperty!(file, location, p) = (file[location] = p)
+serializeproperty!(file, location, p::ModelBoundaryConditions) = (file[location] = p)
 serializeproperty!(file, location, p::Union{AbstractArray, AbstractField}) = saveproperty!(file, location, p)
-serializeproperty!(file, location, p::Union{NamedTuple, AbstractTimeStepper}) = saveproperty!(file, location, p)
+serializeproperty!(file, location, p::Union{NamedTuple, AdamsBashforthTimeStepper}) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]

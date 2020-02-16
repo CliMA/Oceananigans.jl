@@ -113,13 +113,6 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
-"""
-    AbstractTimeStepper
-
-Abstract supertype for time steppers.
-"""
-abstract type AbstractTimeStepper end
-
 #####
 ##### Place-holder functions
 #####
@@ -160,9 +153,9 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Solvers/Solvers.jl")
 include("Forcing/Forcing.jl")
 include("Models/Models.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("TimeSteppers/TimeSteppers.jl")
 include("Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 
