@@ -83,5 +83,5 @@ end
   VVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:v; kwargs...)
   WVelocityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:w; kwargs...)
      TracerBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:tracer; kwargs...)
-   PressureBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:pressure, kwargs...)
-DiffusivityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:diffusivity, kwargs...)
+   PressureBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:pressure; kwargs...)
+DiffusivityBoundaryConditions(grid; kwargs...) = FieldBoundaryConditions(grid, field_type=:diffusivity; kwargs...)
