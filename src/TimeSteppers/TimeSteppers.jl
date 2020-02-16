@@ -26,7 +26,9 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.Utils
 
-using ..TurbulenceClosures: calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
+using Oceananigans: AbstractTimeStepper
+using Oceananigans.TurbulenceClosures:
+    calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 """
     TimeStepper(name, args...)

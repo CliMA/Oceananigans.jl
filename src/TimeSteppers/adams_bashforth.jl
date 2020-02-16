@@ -9,16 +9,16 @@ Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-struct AdamsBashforthTimeStepper{T, TG}
-      Gⁿ :: TG
-      G⁻ :: TG
-       χ :: T
+struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+     χ :: T
+    Gⁿ :: TG
+    G⁻ :: TG
 end
 
 function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
                                    Gⁿ = TendencyFields(arch, grid, tracers),
                                    G⁻ = TendencyFields(arch, grid, tracers))
-   return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
+   return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 end
 
 # Special savepropety! for AB2 time stepper struct used by the checkpointer so

@@ -151,7 +151,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     checkpointed_model = nothing
 
     model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
-    restored_model = restore_from_checkpoint("checkpoint5.jld2", kwargs=model_kwargs)
+    restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2", kwargs=model_kwargs)
 
     for n in 1:4
         time_step!(restored_model, Δt, euler=false)

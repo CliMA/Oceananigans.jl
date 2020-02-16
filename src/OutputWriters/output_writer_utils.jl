@@ -1,3 +1,4 @@
+using Oceananigans: AbstractTimeStepper
 using Oceananigans.Fields: AbstractField
 using Oceananigans.BoundaryConditions: CoordinateBoundaryConditions
 
@@ -18,7 +19,7 @@ saveproperty!(file, location, p::Function) = @warn "Cannot save Function propert
 saveproperty!(file, location, p::Tuple) = [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
 
 saveproperty!(file, location, p) = [saveproperty!(file, location * "/$subp", getproperty(p, subp))
-                                        for subp in propertynames(p)]
+                                    for subp in propertynames(p)]
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
@@ -41,6 +42,7 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = file[location] = p
 serializeproperty!(file, location, p::Union{AbstractArray, AbstractField}) = saveproperty!(file, location, p)
+serializeproperty!(file, location, p::Union{NamedTuple, AbstractTimeStepper}) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
