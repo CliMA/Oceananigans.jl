@@ -80,15 +80,14 @@ function IncompressibleModel(;
           tracer_fields = TracerFields(architecture, grid, tracers),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
-            timestepper = :AdamsBashforth,
+     timestepper_method = :AdamsBashforth,
+            timestepper = TimeStepper(timestepper_method, float_type, architecture, grid, tracers),
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions))
     )
 
-    if architecture == GPU()
-        !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if architecture == GPU() && !has_cuda()
+         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
-
-    timestepper = TimeStepper(timestepper, float_type, architecture, grid, tracers)
 
     validate_buoyancy(buoyancy, tracers)
 
