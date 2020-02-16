@@ -8,7 +8,7 @@ end
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(100, 100, 100))
-    solver = PressureSolver(CPU(), grid, TracerBoundaryConditions(grid), planner_flag)
+    solver = PressureSolver(CPU(), grid, PressureBoundaryConditions(grid), planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
@@ -16,9 +16,10 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
     fbcs = TracerBoundaryConditions(grid)
+    pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
 
-    RHS = CellField(FT, arch, grid)
+    RHS = CellField(FT, arch, grid, fbcs)
     interior(RHS) .= rand(Nx, Ny, Nz)
     interior(RHS) .= interior(RHS) .- mean(interior(RHS))
 
@@ -26,15 +27,15 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     solver.storage .= interior(RHS)
     solve_poisson_equation!(solver, grid)
 
-    ϕ   = CellField(FT, arch, grid)
-    ∇²ϕ = CellField(FT, arch, grid)
+    ϕ   = CellField(FT, arch, grid, pbcs)
+    ∇²ϕ = CellField(FT, arch, grid, pbcs)
 
     interior(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(ϕ, arch)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(∇²ϕ, arch)
 
     interior(∇²ϕ) ≈ interior(RHS_orig)
 end
@@ -43,9 +44,10 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
     fbcs = TracerBoundaryConditions(grid)
+    pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
 
-    RHS = CellField(FT, arch, grid)
+    RHS = CellField(FT, arch, grid, fbcs)
     interior(RHS) .= rand(Nx, Ny, Nz)
     interior(RHS) .= interior(RHS) .- mean(interior(RHS))
 
@@ -55,15 +57,15 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     solve_poisson_equation!(solver, grid)
 
-    ϕ   = CellField(FT, arch, grid)
-    ∇²ϕ = CellField(FT, arch, grid)
+    ϕ   = CellField(FT, arch, grid, pbcs)
+    ∇²ϕ = CellField(FT, arch, grid, pbcs)
 
     interior(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(ϕ, arch)
     ∇²!(grid, ϕ, ∇²ϕ)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(∇²ϕ, arch)
 
     interior(∇²ϕ) ≈ interior(RHS_orig)
 end
@@ -71,7 +73,7 @@ end
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
-    fbcs = TracerBoundaryConditions(grid)
+    pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
 
     RHS = rand(Nx, Ny, Nz)
@@ -93,22 +95,22 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
                                                       solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
 
-    ϕ   = CellField(FT, arch, grid)
-    ∇²ϕ = CellField(FT, arch, grid)
+    ϕ   = CellField(FT, arch, grid, pbcs)
+    ∇²ϕ = CellField(FT, arch, grid, pbcs)
 
     interior(ϕ) .= real.(solver.storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(ϕ, arch)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(∇²ϕ, arch)
     interior(∇²ϕ) ≈ RHS_orig
 end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
-    fbcs = TracerBoundaryConditions(grid)
+    pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
 
     RHS = rand(Nx, Ny, Nz)
@@ -137,10 +139,10 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
 
     @. ϕ_p = real(storage)
 
-    fill_halo_regions!(ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(ϕ, arch)
     ∇²!(grid, ϕ.data, ∇²ϕ.data)
 
-    fill_halo_regions!(∇²ϕ.data, fbcs, arch, grid)
+    fill_halo_regions!(∇²ϕ, arch)
     interior(∇²ϕ) ≈ RHS_orig
 end
 
