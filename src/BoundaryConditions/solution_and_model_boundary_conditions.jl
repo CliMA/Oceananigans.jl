@@ -1,5 +1,5 @@
 using Oceananigans.Utils: with_tracers
-using Oceananigans.TurbulenceClosures: with_tracers
+# using Oceananigans.TurbulenceClosures: with_tracers
 
 const ModelBoundaryConditions = NamedTuple{(:solution, :tendency, :pressure, :diffusivities)}
 
@@ -63,33 +63,33 @@ PressureBoundaryConditions(model_boundary_conditions::ModelBoundaryConditions) =
 ##### on the east-west horizontal velocity, u.
 #####
 
-# Diffusivity boundary conditions are either zero flux (Neumann) or Periodic.
-DiffusivityBC(::BC)  = BoundaryCondition(Flux, nothing)
-DiffusivityBC(::PBC) = PeriodicBoundaryCondition()
-
-function DiffusivityBoundaryConditions(solution_boundary_conditions)
-    ubcs = solution_boundary_conditions.u
-    x = CoordinateBoundaryConditions(DiffusivityBC(ubcs.x.left), DiffusivityBC(ubcs.x.right))
-    y = CoordinateBoundaryConditions(DiffusivityBC(ubcs.y.left), DiffusivityBC(ubcs.y.right))
-    z = CoordinateBoundaryConditions(DiffusivityBC(ubcs.z.left), DiffusivityBC(ubcs.z.right))
-    return FieldBoundaryConditions(x, y, z)
-end
-
-DiffusivitiesBoundaryConditions(::Nothing, args...) = nothing
-DiffusivitiesBoundaryConditions(::AbstractField, proposal_bcs) = DiffusivityBoundaryConditions(proposal_bcs)
-
-DiffusivitiesBoundaryConditions(diffusivities::Tuple, args...) =
-    Tuple(DiffusivitiesBoundaryConditions(κ, args...) for κ in diffusivities)
-
-function DiffusivitiesBoundaryConditions(diffusivities::NamedTuple, proposal_bcs)
-    κbcs = Dict()
-
-    for κ in propertynames(diffusivities)
-        κbcs[κ] = DiffusivitiesBoundaryConditions(diffusivities[κ], proposal_bcs)
-    end
-
-    return (; κbcs...)
-end
+# # Diffusivity boundary conditions are either zero flux (Neumann) or Periodic.
+# DiffusivityBC(::BC)  = BoundaryCondition(Flux, nothing)
+# DiffusivityBC(::PBC) = PeriodicBoundaryCondition()
+#
+# function DiffusivityBoundaryConditions(solution_boundary_conditions)
+#     ubcs = solution_boundary_conditions.u
+#     x = CoordinateBoundaryConditions(DiffusivityBC(ubcs.x.left), DiffusivityBC(ubcs.x.right))
+#     y = CoordinateBoundaryConditions(DiffusivityBC(ubcs.y.left), DiffusivityBC(ubcs.y.right))
+#     z = CoordinateBoundaryConditions(DiffusivityBC(ubcs.z.left), DiffusivityBC(ubcs.z.right))
+#     return FieldBoundaryConditions(x, y, z)
+# end
+#
+# DiffusivitiesBoundaryConditions(::Nothing, args...) = nothing
+# DiffusivitiesBoundaryConditions(::AbstractField, proposal_bcs) = DiffusivityBoundaryConditions(proposal_bcs)
+#
+# DiffusivitiesBoundaryConditions(diffusivities::Tuple, args...) =
+#     Tuple(DiffusivitiesBoundaryConditions(κ, args...) for κ in diffusivities)
+#
+# function DiffusivitiesBoundaryConditions(diffusivities::NamedTuple, proposal_bcs)
+#     κbcs = Dict()
+#
+#     for κ in propertynames(diffusivities)
+#         κbcs[κ] = DiffusivitiesBoundaryConditions(diffusivities[κ], proposal_bcs)
+#     end
+#
+#     return (; κbcs...)
+# end
 
 #####
 ##### SolutionBoundaryConditions on the tuple of velocity fields and tracer fields

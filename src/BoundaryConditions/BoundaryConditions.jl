@@ -20,7 +20,6 @@ using CUDAnative
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
-using Oceananigans.Fields
 
 include("boundary_condition_types.jl")
 include("boundary_condition.jl")
