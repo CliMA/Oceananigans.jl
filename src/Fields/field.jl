@@ -108,10 +108,10 @@ with field boundary conditions `bcs`.
 ZFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
     Field(Cell, Cell, Face, arch, grid, bcs, data)
 
- CellField(T::DataType, arch, grid, bcs) = Field(Cell, Cell, Cell, arch, grid, bcs, zeros(T, arch, grid))
-XFaceField(T::DataType, arch, grid, bcs) = Field(Face, Cell, Cell, arch, grid, bcs, zeros(T, arch, grid))
-YFaceField(T::DataType, arch, grid, bcs) = Field(Cell, Face, Cell, arch, grid, bcs, zeros(T, arch, grid))
-ZFaceField(T::DataType, arch, grid, bcs) = Field(Cell, Cell, Face, arch, grid, bcs, zeros(T, arch, grid))
+ CellField(FT::DataType, arch, grid, bcs) =  CellField(arch, grid, bcs, zeros(FT, arch, grid))
+XFaceField(FT::DataType, arch, grid, bcs) = XFaceField(arch, grid, bcs, zeros(FT, arch, grid))
+YFaceField(FT::DataType, arch, grid, bcs) = YFaceField(arch, grid, bcs, zeros(FT, arch, grid))
+ZFaceField(FT::DataType, arch, grid, bcs) = ZFaceField(arch, grid, bcs, zeros(FT, arch, grid))
 
 location(a) = nothing
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
@@ -191,25 +191,25 @@ function OffsetArray(underlying_data, grid)
     return OffsetArray(underlying_data, i1:i2, j1:j2, k1:k2)
 end
 
-function Base.zeros(T, ::CPU, grid)
-    underlying_data = zeros(T, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
+function Base.zeros(FT, ::CPU, grid)
+    underlying_data = zeros(FT, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
     return OffsetArray(underlying_data, grid)
 end
 
-function Base.zeros(T, ::GPU, grid)
-    underlying_data = CuArray{T}(undef, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
+function Base.zeros(FT, ::GPU, grid)
+    underlying_data = CuArray{FT}(undef, grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
     underlying_data .= 0  # Gotta do this otherwise you might end up with a few NaN values!
     return OffsetArray(underlying_data, grid)
 end
 
-Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
+Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
 
-function Base.zeros(T, ::GPU, grid, Nx, Ny, Nz)
-    data = CuArray{T}(undef, Nx, Ny, Nz)
+function Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz)
+    data = CuArray{FT}(undef, Nx, Ny, Nz)
     data .= 0
     return data
 end
 
 # Default to type of Grid
-Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)
-Base.zeros(arch, grid::AbstractGrid{T}, Nx, Ny, Nz) where T = zeros(T, arch, grid, Nx, Ny, Nz)
+Base.zeros(arch, grid::AbstractGrid{FT})             where FT = zeros(FT, arch, grid)
+Base.zeros(arch, grid::AbstractGrid{FT}, Nx, Ny, Nz) where FT = zeros(FT, arch, grid, Nx, Ny, Nz)
