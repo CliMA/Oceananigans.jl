@@ -149,18 +149,12 @@ function calculate_diffusivities!(K_tuple::Tuple, arch, grid, closure_tuple::Tup
     return nothing
 end
 
-DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, closure_tuple::Tuple) =
-    Tuple(DiffusivityFields(arch, grid, tracers, closure) for closure in closure_tuple)
-
 with_tracers(tracers, closure_tuple::Tuple) =
     Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
 #####
 ##### Include module code
 #####
-
-# Fallback constructor for diffusivity types without precomputed diffusivities.
-DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
 
 include("turbulence_closure_utils.jl")
 include("closure_operators.jl")
@@ -179,6 +173,7 @@ include("turbulence_closure_implementations/blasius_smagorinsky.jl")
 include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl")
 
+include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
 
 #####

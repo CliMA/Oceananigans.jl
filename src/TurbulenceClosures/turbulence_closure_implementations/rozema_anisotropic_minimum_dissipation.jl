@@ -44,20 +44,6 @@ const Δxᶜᶜᶠ = Δx
 const Δyᶜᶜᶠ = Δy
 const Δzᶜᶜᶠ = Δz
 
-function DiffusivityFields(
-    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::RAMD;
-    νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid)), kwargs...)
-    κₑ = TracerFields(arch, grid, tracers; kwargs...)
-    return (νₑ=νₑ, κₑ=κₑ)
-end
-
-function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, bcs::NamedTuple, ::RAMD)
-    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
-    νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
-    κₑ = TracerFields(arch, grid, tracers, bcs)
-    return (νₑ=νₑ, κₑ=κₑ)
-end
-
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, buoyancy, U, C) where FT
     q = tr_∇uᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
 
