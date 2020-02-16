@@ -9,7 +9,6 @@ export
     set!,
     VelocityFields, TracerFields, tracernames, PressureFields, Tendencies
 
-include("field_utils.jl")
 include("field.jl")
 include("set!.jl")
 include("field_tuples.jl")
