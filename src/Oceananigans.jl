@@ -92,13 +92,6 @@ import Base:
 #####
 
 """
-    AbstractPoissonSolver
-
-Abstract supertype for solvers for Poisson's equation.
-"""
-abstract type AbstractPoissonSolver end
-
-"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current
