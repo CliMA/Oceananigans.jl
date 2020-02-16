@@ -36,73 +36,82 @@ A type describing the location at the face of a grid cell.
 struct Face end
 
 """
-    Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
+    Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
 
 A field defined at the location (`X`, `Y`, `Z`), each of which can be either `Cell`
 or `Face`, and with data stored in a container of type `A` (typically an array).
-The field is defined on a grid `G`.
+The field is defined on a grid `G` and has field boundary conditions `B`.
 """
-struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
-    data :: A
-    grid :: G
-    function Field{X, Y, Z}(data, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(data), typeof(grid)}(data, grid)
+struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
+                   data :: A
+                   grid :: G
+    boundary_conditions :: B
+
+    function Field{X, Y, Z}(data, grid, bcs) where {X, Y, Z}
+        return new{X, Y, Z, typeof(data), typeof(grid), typeof(bcs)}(data, grid, bcs)
     end
 end
 
 """
-    Field(L::Tuple, arch, grid, [data=zeros(arch, grid)])
+    Field(L::Tuple, arch, grid, bcs, [data=zeros(arch, grid)])
 
 Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
 The field's location is defined by a tuple `L` of length 3 whose elements are
-`Cell` or `Face`.
+`Cell` or `Face` and has field boundary conditions `bcs`.
 """
-Field(L::Tuple, arch, grid, data=zeros(arch, grid)) = Field{L[1], L[2], L[3]}(data, grid)
+Field(L::Tuple, arch, grid, bcs, data=zeros(arch, grid)) =
+    Field{L[1], L[2], L[3]}(data, grid, bcs)
 
 """
-    Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)])
+    Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)], bcs)
 
 Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
-The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`.
+The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`
+and has field boundary conditions `bcs`.
 """
-Field(X, Y, Z, arch, grid, data=zeros(arch, grid)) =  Field((X, Y, Z), arch, grid, data)
+Field(X, Y, Z, arch, grid, bcs, data=zeros(arch, grid)) =
+    Field((X, Y, Z), arch, grid, bcs, data)
 
 """
-    CellField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+    CellField(arch::AbstractArchitecture, grid, bcs, [data=zeros(arch, grid)])
 
-Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
+Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`
+with field boundary conditions `bcs`.
 """
-CellField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
-    Field(Cell, Cell, Cell, arch, grid, data)
-
-"""
-    XFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
-
-Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
-"""
-XFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
-    Field(Face, Cell, Cell, arch, grid, data)
+CellField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Cell, arch, grid, bcs, data)
 
 """
-    YFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+    XFaceField(arch::AbstractArchitecture, grid, bcs, [data=zeros(arch, grid)])
 
-Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`.
+Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`
+with field boundary conditions `bcs`.
 """
-YFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
-    Field(Cell, Face, Cell, arch, grid, data)
+XFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+    Field(Face, Cell, Cell, arch, grid, bcs, data)
 
 """
-    ZFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+    YFaceField(arch::AbstractArchitecture, grid, bcs, [data=zeros(arch, grid)])
 
-Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`.
+Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`
+with field boundary conditions `bcs`.
 """
-ZFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
-    Field(Cell, Cell, Face, arch, grid, data)
+YFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+    Field(Cell, Face, Cell, arch, grid, bcs, data)
 
- CellField(T::DataType, arch, grid) = Field(Cell, Cell, Cell, arch, grid, zeros(T, arch, grid))
-XFaceField(T::DataType, arch, grid) = Field(Face, Cell, Cell, arch, grid, zeros(T, arch, grid))
-YFaceField(T::DataType, arch, grid) = Field(Cell, Face, Cell, arch, grid, zeros(T, arch, grid))
-ZFaceField(T::DataType, arch, grid) = Field(Cell, Cell, Face, arch, grid, zeros(T, arch, grid))
+"""
+    ZFaceField(arch::AbstractArchitecture, grid, bcs, [data=zeros(arch, grid)])
+
+Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`
+with field boundary conditions `bcs`.
+"""
+ZFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Face, arch, grid, bcs, data)
+
+ CellField(T::DataType, arch, grid, bcs) = Field(Cell, Cell, Cell, arch, grid, bcs, zeros(T, arch, grid))
+XFaceField(T::DataType, arch, grid, bcs) = Field(Face, Cell, Cell, arch, grid, bcs, zeros(T, arch, grid))
+YFaceField(T::DataType, arch, grid, bcs) = Field(Cell, Face, Cell, arch, grid, bcs, zeros(T, arch, grid))
+ZFaceField(T::DataType, arch, grid, bcs) = Field(Cell, Cell, Face, arch, grid, bcs, zeros(T, arch, grid))
 
 location(a) = nothing
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
@@ -170,7 +179,7 @@ const AbstractCPUField =
     AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 #####
-##### Creating fields by dispatching on architecture
+##### Creating offset arrays for field data by dispatching on architecture.
 #####
 
 function OffsetArray(underlying_data, grid)
