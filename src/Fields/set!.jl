@@ -80,7 +80,7 @@ end
 
 function _set_gpu!(u, v, grid)
 	@loop_xyz i j k grid begin
-        u[i, j, k] = v[i, j, k]
+        @inbounds u[i, j, k] = v[i, j, k]
     end
     return nothing
 end
