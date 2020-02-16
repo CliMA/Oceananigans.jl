@@ -296,7 +296,8 @@ end
         arch = CPU()
         @info "  Testing derivatives..."
         for FT in float_types
-            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
+            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3),
+                                        topology=(Periodic, Periodic, Periodic))
 
             u, v, w = VelocityFields(arch, grid)
             T, S = TracerFields(arch, grid, (:T, :S))
@@ -355,10 +356,10 @@ end
                 @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
 
                 model = Model(
-                    architecture = arch,
-                      float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1))
-                )
+                              architecture = arch,
+                                float_type = FT,
+                                      grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, 1))
+                             )
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! derivatives..."

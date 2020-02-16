@@ -26,18 +26,35 @@ end
 
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
+    H = (1, 1, 1)
 
     fieldtypes = (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
 
     @testset "Field initialization" begin
         @info "  Testing field initialization..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=N, length=L, topology=(Periodic, Periodic, Bounded))
-            H = halosize(grid)
-
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Periodic, Periodic))
             @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, FaceFieldX, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, FaceFieldY, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldZ, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Periodic, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldX, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldY, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldZ, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Bounded, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldX, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldY, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+            @test correct_field_size(arch, grid, FaceFieldZ, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Bounded, Bounded, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, FaceFieldX, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+            @test correct_field_size(arch, grid, FaceFieldY, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
             @test correct_field_size(arch, grid, FaceFieldZ, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
         end
     end
