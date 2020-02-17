@@ -12,17 +12,18 @@ end
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
+function compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
+            # Use params = nothing for now until Oceananigans.jl stops using model.parameters.
+            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, nothing)
+            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.v(i, j, k, grid, time, Ũ, C̃, nothing)
+            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, Ũ, K̃) + forcing.w(i, j, k, grid, time, Ũ, C̃, nothing)
         end
 
         for (tracer_index, C_name) in enumerate(propertynames(C̃))
             C   = getproperty(C̃, C_name)
-            F_C = getproperty(F.tracers, C_name)
+            F_C = getproperty(F, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 F_C[i, j, k] = FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
@@ -30,7 +31,7 @@ function compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.tracers[1].data[i, j, k] += FT(i, j, k, grid, closure, tvar, g, ρ, ρ̃, Ũ, C̃, K̃)
+            F.ρe.data[i, j, k] += FT(i, j, k, grid, closure, tvar, g, ρ, ρ̃, Ũ, C̃, K̃)
         end
 
     end
@@ -49,8 +50,8 @@ function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
 
         for C_name in propertynames(C̃)
             C   = getproperty(C̃, C_name)
-            R_C = getproperty(R.tracers, C_name)
-            F_C = getproperty(F.tracers, C_name)
+            R_C = getproperty(R, C_name)
+            F_C = getproperty(F, C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 R_C[i, j, k] = RC(i, j, k, grid, ρ, Ũ, C, F_C)
@@ -58,7 +59,7 @@ function compute_right_hand_sides!(R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.tracers[1].data[i, j, k] += RT(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃)
+            R.ρe.data[i, j, k] += RT(i, j, k, grid, tvar, g, ρ, ρ̃, Ũ, C̃)
         end
 
     end
@@ -80,8 +81,8 @@ function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, R; Δt)
 
         for C_name in propertynames(C̃ᵗ)
             Cᵗ  = getproperty(C̃ᵗ, C_name)
-            I_C = getproperty(I.tracers,  C_name)
-            R_C = getproperty(R.tracers,  C_name)
+            I_C = getproperty(I,  C_name)
+            R_C = getproperty(R,  C_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
                 I_C[i, j, k] = Cᵗ[i, j, k] + Δt * R_C[i, j, k]
