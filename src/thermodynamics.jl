@@ -102,7 +102,10 @@ end
         numerator = tracers.ρe.data[i,j,k]
         denominator = 0.0
         K = kinetic_energy(i, j, k, grid, momenta, total_density)
-        Φ = gravity * grid.zC[k]
+        k′ = k
+        k < 1 && (k′ = 1)
+        k > grid.Nz && (k′ = grid.Nz)
+        Φ = gravity * grid.zC[k′]
         for ind_gas in 1:length(densities)
             ρ = tracers[ind_gas + 1].data[i,j,k]
             gas = densities[ind_gas]
