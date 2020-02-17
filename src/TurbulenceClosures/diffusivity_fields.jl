@@ -13,7 +13,7 @@ const NuClosures = Union{AbstractSmagorinsky, AbstractLeith}
 DiffusivityFields(
     arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::NuClosures;
     νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
-    ) = (νₑ=νₑ,)
+) = (νₑ=νₑ,)
 
 function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers,
                            bcs::NamedTuple, ::NuClosures)
@@ -28,17 +28,40 @@ end
 
 const NuKappaClosures = Union{VAMD, RAMD}
 
+function KappaFields(arch, grid, tracer_names; kwargs...)
+    κ_fields =
+        Tuple(c ∈ keys(kwargs) ?
+              kwargs[c] :
+              CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
+              for c in tracer_names)
+    return NamedTuple{tracer_names}(κ_fields)
+end
+
+function KappaFields(arch, grid, tracer_names, bcs::NamedTuple)
+    κ_fields =
+        Tuple(c ∈ keys(bcs) ?
+              CellField(arch, grid, bcs[c],                              zeros(arch, grid)) :
+              CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
+              for c in tracer_names)
+    return NamedTuple{tracer_names}(κ_fields)
+end
+
 function DiffusivityFields(
     arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::NuKappaClosures;
     νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid)), kwargs...)
-    κₑ = TracerFields(arch, grid, tracers; kwargs...)
+    κₑ = KappaFields(arch, grid, tracers; kwargs...)
     return (νₑ=νₑ, κₑ=κₑ)
 end
 
 function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers,
                            bcs::NamedTuple, ::NuKappaClosures)
+
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
     νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
-    κₑ = TracerFields(arch, grid, tracers, bcs)
+
+    κₑ = :κₑ ∈ keys(bcs) ?
+        KappaFields(arch, grid, tracers, bcs[:κₑ]) :
+        KappaFields(arch, grid, tracers)
+
     return (νₑ=νₑ, κₑ=κₑ)
 end

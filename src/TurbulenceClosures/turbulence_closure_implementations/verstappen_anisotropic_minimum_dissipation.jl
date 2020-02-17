@@ -109,20 +109,6 @@ function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{
     return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
 
-function DiffusivityFields(
-    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::VAMD;
-    νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid)), kwargs...)
-    κₑ = TracerFields(arch, grid, tracers; kwargs...)
-    return (νₑ=νₑ, κₑ=κₑ)
-end
-
-function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, bcs::NamedTuple, ::VAMD)
-    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
-    νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
-    κₑ = TracerFields(arch, grid, tracers, bcs)
-    return (νₑ=νₑ, κₑ=κₑ)
-end
-
 #####
 ##### Kernel functions
 #####

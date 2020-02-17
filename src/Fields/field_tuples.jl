@@ -42,7 +42,6 @@ function TracerFields(arch, grid, tracer_names; kwargs...)
               kwargs[c] :
               CellField(arch, grid, TracerBoundaryConditions(grid), zeros(arch, grid))
               for c in tracer_names)
-
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
@@ -59,7 +58,6 @@ function TracerFields(arch, grid, tracer_names, bcs::NamedTuple)
               CellField(arch, grid, bcs[c],                         zeros(arch, grid)) :
               CellField(arch, grid, TracerBoundaryConditions(grid), zeros(arch, grid))
               for c in tracer_names)
-
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
@@ -97,7 +95,7 @@ function PressureFields(arch, grid, bcs::NamedTuple)
 
     pHY′ = CellField(arch, grid, pHY′_bcs, zeros(arch, grid))
     pNHS = CellField(arch, grid, pNHS_bcs, zeros(arch, grid))
-
+    
     return (pHY′=pHY′, pNHS=pNHS)
 end
 

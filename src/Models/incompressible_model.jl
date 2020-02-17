@@ -40,7 +40,7 @@ end
     boundary_conditions = NamedTuple(),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
-          tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions),
+          tracer_fields = TracerFields(architecture, grid, tracernames(tracers), boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
      timestepper_method = :AdamsBashforth,
@@ -76,7 +76,7 @@ function IncompressibleModel(;
     boundary_conditions = NamedTuple(),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
-          tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions),
+          tracer_fields = TracerFields(architecture, grid, tracernames(tracers), boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
      timestepper_method = :AdamsBashforth,
@@ -90,7 +90,7 @@ function IncompressibleModel(;
 
     validate_buoyancy(buoyancy, tracernames(tracers))
 
-    # Regularize forcing, boundary conditions, and closure for given tracer fields
+    # Regularize forcing and closure for given tracer fields.
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
 
