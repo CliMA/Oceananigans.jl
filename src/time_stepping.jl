@@ -43,6 +43,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     F  = model.slow_forcings
     R  = model.right_hand_sides
     IV = model.intermediate_vars
+    tfields = model.thermodynamic_fields
 
     g  = model.gravity
 
@@ -64,7 +65,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
         fill_halo_regions!(ρ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
+        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, tfields, forcing, time)
         fill_halo_regions!(F.ρw.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping
@@ -73,13 +74,13 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
             @debug "  Computing right hand sides..."
             if rk3_iter == 1
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F, tfields)
                 update_total_density!(ρ.data, grid, ρ̃, C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F, tfields)
                 update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
