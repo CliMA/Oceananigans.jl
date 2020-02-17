@@ -5,7 +5,7 @@ import Oceananigans.Grids: short_show
 #####
 
 Base.show(io::IO, bc::BC{C, T}) where {C, T} =
-    println(io, "BoundaryCondition: type=$C, condition=$(bc.condition)")
+    print(io, "BoundaryCondition: type=$C, condition=$(bc.condition)")
 
 #####
 ##### FieldBoundaryConditions

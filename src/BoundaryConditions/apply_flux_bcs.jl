@@ -106,5 +106,5 @@ If `bottom_bc.condition` is a function, the function must have the signature
 @inline apply_z_bottom_bc!(Gc, bottom_flux::BC{<:Flux}, i, j, grid, args...) =
     @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) / ΔzF(i, j, 1, grid)
 
-@inline apply_z_left_bc!(Gc, bottom_flux::BC{<:Flux}, i, k, grid, args...) =
+@inline apply_y_left_bc!(Gc, left_flux::BC{<:Flux}, i, k, grid, args...) =
     @inbounds Gc[i, 1, k] += getbc(left_flux, i, k, grid, args...) / Δy(i, 1, k, grid)
