@@ -143,7 +143,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) = -1.57082774272148
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-    return (mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+    return isapprox(mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
 @testset "Time stepping with boundary conditions" begin

@@ -45,7 +45,7 @@ Keyword arguments
 """
 function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
                       prefix="checkpoint", force=false, verbose=false,
-                      properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
+                      properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
     validate_interval(frequency, interval)

@@ -13,7 +13,7 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 saveproperty!(file, location, p::Number)        = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
-saveproperty!(file, location, p::AbstractField) = file[location] = Array(p.data.parent)
+# saveproperty!(file, location, p::AbstractField) = file[location] = Array(p.data.parent)
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
 
 saveproperty!(file, location, p::Tuple) = [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
@@ -36,23 +36,21 @@ function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     end
 end
 
-# Special savepropety! for AB2 time stepper struct used by the checkpointer so
-# it only saves the fields and not the tendency BCs or χ value (as they can be
-# constructed by the `Model` constructor).
-function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
-    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    saveproperty!(file, location * "/G⁻", ts.G⁻)
-end
-
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
-
 serializeproperty!(file, location, p) = (file[location] = p)
-serializeproperty!(file, location, p::Union{AbstractArray, AbstractField}) = saveproperty!(file, location, p)
-serializeproperty!(file, location, p::Union{NamedTuple, AdamsBashforthTimeStepper}) = saveproperty!(file, location, p)
+serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
+
+# Special serializeproperty! for AB2 time stepper struct used by the checkpointer so
+# it only saves the fields and not the tendency BCs or χ value (as they can be
+# constructed by the `Model` constructor).
+function serializeproperty!(file, location, ts::AdamsBashforthTimeStepper)
+    serializeproperty!(file, location * "/Gⁿ", ts.Gⁿ)
+    serializeproperty!(file, location * "/G⁻", ts.G⁻)
+end
 
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
