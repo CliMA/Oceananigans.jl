@@ -1,4 +1,4 @@
-function zero_halo_regions!(fields::NamedTuple)
+function zero_halo_regions!(fields::Union{Tuple,NamedTuple})
     for field in fields
       zero_halo_regions!(field)
     end

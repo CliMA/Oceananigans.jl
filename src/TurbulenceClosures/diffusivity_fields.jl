@@ -1,8 +1,11 @@
 # Fallback constructor for diffusivity types without precomputed diffusivities.
 DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
 
-DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers, closure_tuple::Tuple) =
-    Tuple(DiffusivityFields(arch, grid, tracers, closure) for closure in closure_tuple)
+# For a tuple of closures
+DiffusivityFields(
+    arch::AbstractArchitecture, grid::AbstractGrid, tracers,
+    bcs::NamedTuple, closure_tuple::Tuple
+) = Tuple(DiffusivityFields(arch, grid, tracers, bcs, closure) for closure in closure_tuple)
 
 #####
 ##### For closures that only require an eddy viscosity νₑ field.
