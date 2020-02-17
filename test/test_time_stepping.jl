@@ -3,39 +3,22 @@ using Oceananigans, JULES
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
-    @testset "Modified potential temperature" begin
-        @info "  Testing time stepping with Θᵐ prognostic temperature..."
+    @testset "Energy thermodynamic variable" begin
+        @info "  Testing time stepping with energy thermodynamic variable..."
 
-        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), halo=(2, 2, 2))
-        model = CompressibleModel(grid=grid)
-        time_step!(model; Δt=1)
-        @test model isa CompressibleModel
-    end
-
-    @testset "Entropy" begin
-        @info "  Testing time stepping with S prognostic temperature..."
-
-        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), halo=(2, 2, 2))
-        model = CompressibleModel(grid=grid, thermodynamic_variable=Entropy(), tracers=(:S,))
-        time_step!(model; Δt=1)
-        @test model isa CompressibleModel
-    end
-
-    @testset "VaporPlaceholder" begin
-        @info "  Testing time stepping with VaporPlaceholder microphysics..."
-
-        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), halo=(2, 2, 2))
-        model = CompressibleModel(grid=grid, microphysics=VaporPlaceholder(), tracers=(:Θᵐ, :Qv))
+        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), length=(1, 1, 1))
+        model = CompressibleModel(grid = grid, gases = DryEarth(),
+                                  thermodynamic_variable = Energy())
         time_step!(model, Δt=1)
         @test model isa CompressibleModel
     end
 
-    @testset "VaporLiquidIcePlaceholder" begin
-        @info "  Testing time stepping with VaporLiquidIcePlaceholder microphysics..."
+    @testset "Entropy thermodynamic variable" begin
+        @info "  Testing time stepping with entropy thermodynamic variable..."
 
-        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), halo=(2, 2, 2))
-        model = CompressibleModel(grid=grid, microphysics=VaporLiquidIcePlaceholder(),
-                                  tracers=(:Θᵐ, :Qv, :Ql, :Qi))
+        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), length=(1, 1, 1))
+        model = CompressibleModel(grid = grid, gases = DryEarth(),
+                                  thermodynamic_variable = Entropy())
         time_step!(model, Δt=1)
         @test model isa CompressibleModel
     end
