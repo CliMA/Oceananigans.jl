@@ -28,12 +28,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
 
     time_step!(model, 1e-16, euler=true)
 
-    if fldname ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fldname)
-    else
-        field = getfield(model.tracers, fldname)
-    end
-
+    field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
     return getbc(bcs.z.top) == val && getbc(bcs.z.bottom) == -val
 end
@@ -58,12 +53,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
 
     time_step!(model, 1e-16, euler=true)
 
-    if fldname ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fldname)
-    else
-        field = getfield(model.tracers, fldname)
-    end
-
+    field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
     return bcs.z.top[1, 2] == bcarray[1, 2]
 end
@@ -89,12 +79,7 @@ function test_flux_budget(arch, FT, fldname)
     model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
                                 float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
 
-    if fldname ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fldname)
-    else
-        field = getfield(model.tracers, fldname)
-    end
-
+    field = get_model_field(fldname, model)
     @. field.data = 0
 
     τκ = Lz^2 / κ   # Diffusion time-scale
@@ -141,14 +126,9 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
         time_step!(model, Δt, euler= n==1)
     end
 
-    @show mean_b₀
-    @show mean(interior(b))
-    @show mean(interior(b)) - mean_b₀
-    @show flux * model.clock.time / Lz
-
     # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
     # therefore <ϕ> = bottom_flux * t / Lz
-
+    #
     # Use an atol of 1e-6 so test passes with Float32 as there's a big cancellation
     # error due to buoyancy order of magnitude.
     #
@@ -163,7 +143,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) = -1.57082774272148
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-    return (mean(interior(b)) - mean_b₀, ≈ flux * model.clock.time / Lz, atol=1e-6)
+    return (mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
 @testset "Time stepping with boundary conditions" begin
@@ -172,32 +152,32 @@ end
     funbc(args...) = π
     boundaryfunbc = BoundaryFunction{:z, Face, Cell}((ξ, η, t) -> exp(ξ) * cos(η) * sin(t))
 
-    # @testset "Boundary condition instatiation and time-stepping" begin
-    #     Nx = Ny = 16
-    #     for arch in archs
-    #         for FT in float_types
-    #             @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
-    #
-    #             for fld in (:u, :v, :T, :S)
-    #                 for bctype in (Gradient, Flux, Value)
-    #
-    #                     arraybc = rand(FT, Nx, Ny)
-    #                     if arch == GPU()
-    #                         arraybc = CuArray(arraybc)
-    #                     end
-    #
-    #                     for bc in (FT(0.6), arraybc, funbc, boundaryfunbc)
-    #                         @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
-    #                     end
-    #                 end
-    #
-    #                 @test test_z_boundary_condition_top_bottom_alias(arch, FT, fld)
-    #                 @test test_z_boundary_condition_array(arch, FT, fld)
-    #                 @test test_flux_budget(arch, FT, fld)
-    #             end
-    #         end
-    #     end
-    # end
+    @testset "Boundary condition instatiation and time-stepping" begin
+        Nx = Ny = 16
+        for arch in archs
+            for FT in float_types
+                @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
+
+                for fld in (:u, :v, :T, :S)
+                    for bctype in (Gradient, Flux, Value)
+
+                        arraybc = rand(FT, Nx, Ny)
+                        if arch == GPU()
+                            arraybc = CuArray(arraybc)
+                        end
+
+                        for bc in (FT(0.6), arraybc, funbc, boundaryfunbc)
+                            @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
+                        end
+                    end
+
+                    @test test_z_boundary_condition_top_bottom_alias(arch, FT, fld)
+                    @test test_z_boundary_condition_array(arch, FT, fld)
+                    @test test_flux_budget(arch, FT, fld)
+                end
+            end
+        end
+    end
 
     @testset "Custom diffusivity boundary conditions" begin
         for arch in archs, FT in float_types

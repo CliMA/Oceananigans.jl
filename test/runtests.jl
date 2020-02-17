@@ -73,6 +73,14 @@ end
 ##### Useful utilities
 #####
 
+function get_model_field(field_name, model)
+    if field_name ∈ (:u, :v, :w)
+        return getfield(model.velocities, field_name)
+    else
+        return getfield(model.tracers, field_name)
+    end
+end
+
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
 function get_output_tuple(output, iter, tuplename)
