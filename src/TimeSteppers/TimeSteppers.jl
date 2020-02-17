@@ -111,7 +111,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
 
     calculate_boundary_source_terms!(
         model.timestepper.Gⁿ, model.architecture,
-        model.grid, boundary_condition_function_arguments(model)...
+        boundary_condition_function_arguments(model)...
     )
 
     return nothing

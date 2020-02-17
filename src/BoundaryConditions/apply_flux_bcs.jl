@@ -13,10 +13,10 @@ using Oceananigans.Utils: @loop_xy, @loop_xz, launch_config
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-function apply_z_bcs!(Gc, arch, grid, args...)
-    @launch(device(arch), config=launch_config(grid, :xy),
-            _apply_z_bcs!(Gc, grid, Gc.boundary_conditions.z.left,
-                          Gc.boundary_conditions.z.right, args...))
+function apply_z_bcs!(Gc, arch, args...)
+    @launch(device(arch), config=launch_config(Gc.grid, :xy),
+            _apply_z_bcs!(Gc.data, Gc.grid, Gc.boundary_conditions.z.bottom,
+                          Gc.boundary_conditions.z.top, args...))
     return nothing
 end
 
@@ -26,9 +26,9 @@ end
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-function apply_y_bcs!(Gc, arch, grid, args...)
-    @launch(device(arch), config=launch_config(grid, :xz),
-            _apply_y_bcs!(Gc, grid, Gc.boundary_conditions.y.left,
+function apply_y_bcs!(Gc, arch, args...)
+    @launch(device(arch), config=launch_config(Gc.grid, :xz),
+            _apply_y_bcs!(Gc.data, Gc.grid, Gc.boundary_conditions.y.left,
                           Gc.boundary_conditions.y.right, args...))
     return nothing
 end
