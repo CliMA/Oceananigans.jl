@@ -44,38 +44,33 @@ function compute_w_from_continuity(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 16, 16, 16
 
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    bcs = SolutionBoundaryConditions(grid)
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    U = VelocityFields(arch, grid)
+    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
 
-    u = XFaceField(FT, arch, grid)
-    v = YFaceField(FT, arch, grid)
-    w = ZFaceField(FT, arch, grid)
-    div_u = CellField(FT, arch, grid)
+    interior(U.u) .= rand(FT, Nx, Ny, Nz)
+    interior(U.v) .= rand(FT, Nx, Ny, Nz)
 
-    interior(u) .= rand(FT, Nx, Ny, Nz)
-    interior(v) .= rand(FT, Nx, Ny, Nz)
-
-    fill_halo_regions!(u.data, bcs.u, arch, grid)
-    fill_halo_regions!(v.data, bcs.v, arch, grid)
+    fill_halo_regions!(U, arch)
 
     @launch(device(arch), config=launch_config(grid, :xy),
-            _compute_w_from_continuity!((u=u.data, v=v.data, w=w.data), grid))
+            _compute_w_from_continuity!((u=U.u.data, v=U.v.data, w=U.w.data), grid))
 
-    fill_halo_regions!(w.data, bcs.w, arch, grid)
-    velocity_div!(grid, u.data, v.data, w.data, div_u.data)
+    fill_halo_regions!(U, arch)
+    velocity_div!(grid, U.u.data, U.v.data, U.w.data, div_U.data)
 
-    # Set div_u to zero at the top because the initial velocity field is not divergence-free
-    # so we end up some divergence at the top if we don't do this.
-    interior(div_u)[:, :, Nz] .= zero(FT)
+    # Set div_U to zero at the top because the initial velocity field is not
+    # divergence-free so we end up some divergence at the top if we don't do this.
+    interior(div_U)[:, :, Nz] .= zero(FT)
 
-    min_div = minimum(interior(div_u))
-    max_div = maximum(interior(div_u))
-    sum_div = sum(interior(div_u))
-    abs_sum_div = sum(abs.(interior(div_u)))
+    min_div = minimum(interior(div_U))
+    max_div = maximum(interior(div_U))
+    sum_div = sum(interior(div_U))
+    abs_sum_div = sum(abs.(interior(div_U)))
     @info "Velocity divergence after recomputing w [$(typeof(arch)), $FT]: " *
           "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
-    return all(isapprox.(interior(div_u), 0; atol=5*eps(FT)))
+    return all(isapprox.(interior(div_U), 0, atol=5*eps(FT)))
 end
 
 """
@@ -87,13 +82,13 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     grid = model.grid
-    u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
+    u, v, w = model.velocities
 
-    div_u = CellField(FT, arch, model.grid)
+    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
@@ -102,12 +97,12 @@ function incompressible_in_time(arch, FT, Nt)
         time_step!(model, 0.05, euler = n==1)
     end
 
-    velocity_div!(grid, u, v, w, div_u)
+    velocity_div!(grid, u, v, w, div_U)
 
-    min_div = minimum(interior(div_u))
-    max_div = minimum(interior(div_u))
-    sum_div = sum(interior(div_u))
-    abs_sum_div = sum(abs.(interior(div_u)))
+    min_div = minimum(interior(div_U))
+    max_div = minimum(interior(div_U))
+    sum_div = sum(interior(div_U))
+    abs_sum_div = sum(abs.(interior(div_U)))
     @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
           "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
@@ -218,5 +213,4 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             @test tracer_conserved_in_channel(arch, FT, 10)
         end
     end
-
 end
