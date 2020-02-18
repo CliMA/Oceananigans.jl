@@ -1,5 +1,4 @@
 using Test
-using Dates
 using Printf
 using Random
 using Statistics
@@ -36,6 +35,7 @@ using Oceananigans.AbstractOperations
 using Oceananigans.Logger
 using Oceananigans.Utils
 
+using Dates: DateTime
 using Statistics: mean
 using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
