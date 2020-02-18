@@ -46,7 +46,7 @@ export
     TimeStepWizard, update_Δt!,
 
     # Models
-    Model, ChannelModel, NonDimensionalModel,
+    Model, ChannelModel, NonDimensionalModel, Clock,
 
     # Simulations
     Simulation, run!,

@@ -1,6 +1,8 @@
 module Models
 
-export Model, ChannelModel, NonDimensionalModel, Clock
+export Model, ChannelModel, NonDimensionalModel, Clock, increment_clock!
+
+using Dates
 
 using Oceananigans.Architectures
 using Oceananigans.Fields
