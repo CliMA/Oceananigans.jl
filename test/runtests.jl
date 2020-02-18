@@ -35,7 +35,7 @@ using Oceananigans.AbstractOperations
 using Oceananigans.Logger
 using Oceananigans.Utils
 
-using Dates: DateTime
+using Dates: DateTime, Nanosecond
 using Statistics: mean
 using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
