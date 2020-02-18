@@ -168,6 +168,17 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
+    @testset "Time stepping with DateTimes" begin
+        model = Model(
+             grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+            clock = Clock(time=DateTime(2020))
+        )
+
+        Δt = 7.883
+        time_step!(model, Δt)
+        @test model.clock.time == DateTime(2020) + Nanosecond(round(Int, 1e9 * Δt))
+    end
+
     @testset "Turbulence closures" begin
         for arch in archs, FT in [Float64], Closure in Closures
             @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
