@@ -16,7 +16,7 @@ end
 function test_diffusion_simple(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     value = π
     interior(field) .= value
@@ -29,7 +29,7 @@ end
 function test_diffusion_budget_default(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
     interior(field)[:, :,   1:half_Nz] .= -1
@@ -41,7 +41,7 @@ end
 function test_diffusion_budget_channel(fieldname)
     grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
@@ -60,7 +60,7 @@ function test_diffusion_cosine(fieldname)
     Nz, Lz, κ, m = 128, π/2, 1, 2
     grid = RegularCartesianGrid(size=(1, 1, Nz), length=(1, 1, Lz))
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
     field = getmodelfield(fieldname, model)
 
     zC = model.grid.zC
@@ -113,7 +113,8 @@ function internal_wave_test(; N=128, Nt=10)
     # Create a model where temperature = buoyancy.
     grid = RegularCartesianGrid(size=(N, 1, N), length=(L, L, L))
     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ)
-    model = Model(grid=grid, closure=closure, buoyancy=BuoyancyTracer(), tracers=:b, coriolis=FPlane(f=f))
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=BuoyancyTracer(),
+                                tracers=:b, coriolis=FPlane(f=f))
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -138,7 +139,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
 
     grid = RegularCartesianGrid(size=(N, N, 2), length=(L, L, L))
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
-    model = Model(grid=grid, closure=closure)
+    model = IncompressibleModel(grid=grid, closure=closure)
 
     set!(model, u=u₀, v=v₀, T=T₀)
 
@@ -168,11 +169,12 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    model = Model(architecture = arch,
-                          grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                       closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
-                       tracers = nothing,
-                      buoyancy = nothing)
+    model = IncompressibleModel(
+        architecture = arch,
+                grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+             closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
+             tracers = nothing,
+            buoyancy = nothing)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)

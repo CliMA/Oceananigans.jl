@@ -11,7 +11,7 @@ Example
 
 julia> u_forcing = SimpleForcing((x, y, z, t) -> exp(z) * cos(t))
 
-julia> model = Model(forcing=ModelForcing(u=u_forcing))
+julia> model = IncompressibleModel(forcing=ModelForcing(u=u_forcing))
 """
 function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forcings...)
     u = at_location((Face, Cell, Cell), u)

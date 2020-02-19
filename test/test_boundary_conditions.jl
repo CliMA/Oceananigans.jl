@@ -13,11 +13,11 @@ function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     fieldbcs = TracerBoundaryConditions(grid, top=bc)
     modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     time_step!(model, 1e-16, euler=true)
 
-    return typeof(model) <: Model
+    return model isa IncompressibleModel
 end
 
 function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
@@ -29,7 +29,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     fieldbcs = TracerBoundaryConditions(grid, top=top_bc, bottom=bottom_bc)
     modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -53,7 +53,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
     fieldbcs = TracerBoundaryConditions(grid, top=value_bc)
     modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, boundary_conditions=modelbcs)
 
     bcs = getfield(model.boundary_conditions.solution, fldname)
 
@@ -72,8 +72,8 @@ function test_flux_budget(arch, FT, fldname)
     modelbcs = SolutionBoundaryConditions(grid; Dict(fldname=>fieldbcs)...)
 
     closure = ConstantIsotropicDiffusivity(FT, ν=κ, κ=κ)
-    model = Model(grid=grid, closure=closure, architecture=arch,
-                  float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
+    model = IncompressibleModel(grid=grid, closure=closure, architecture=arch,
+                                float_type=FT, buoyancy=nothing, boundary_conditions=modelbcs)
 
     if fldname ∈ (:u, :v, :w)
         field = getfield(model.velocities, fldname)
@@ -121,8 +121,9 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     model_bcs = ModelBoundaryConditions(tracer_names, diffusivities, solution_bcs;
                                         diffusivities=diffusivities_bcs)
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, tracers=tracer_names, buoyancy=BuoyancyTracer(),
-                  closure=closure, diffusivities=diffusivities, boundary_conditions=model_bcs)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, tracers=tracer_names,
+                                buoyancy=BuoyancyTracer(), closure=closure, diffusivities=diffusivities,
+                                boundary_conditions=model_bcs)
 
     b₀(x, y, z) = z * bz
     set!(model, b=b₀)

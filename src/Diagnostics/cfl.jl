@@ -34,7 +34,7 @@ for advection across a cell.
 Example
 =======
 ```julia
-julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(8, 8, 8)));
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), length=(8, 8, 8)));
 
 julia> cfl = AdvectiveCFL(1.0);
 
@@ -59,7 +59,7 @@ returned.
 Example
 =======
 ```julia
-julia> model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> dcfl = DiffusiveCFL(0.1);
 

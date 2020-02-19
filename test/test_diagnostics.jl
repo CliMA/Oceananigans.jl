@@ -1,6 +1,6 @@
 function horizontal_average_is_correct(arch, FT)
     grid = RegularCartesianGrid(size=(16, 16, 16), length=(100, 100, 100))
-    model = Model(grid=grid, architecture=arch, float_type=FT)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = 20 + 0.01*z
     set!(model; T=T₀)
@@ -14,7 +14,7 @@ end
 
 function nan_checker_aborts_simulation(arch, FT)
     grid=RegularCartesianGrid(size=(16, 16, 2), length=(1, 1, 1))
-    model = Model(grid=grid, architecture=arch, float_type=FT)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
     nc = NaNChecker(model; frequency=1, fields=Dict(:w => model.velocities.w.data.parent))
@@ -26,14 +26,16 @@ function nan_checker_aborts_simulation(arch, FT)
 end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
-    Model(grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
+    IncompressibleModel(
+          grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
        closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
 )
 
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
-    Model(grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
+    IncompressibleModel(
+          grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
        closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = CPU(),
     float_type = FT

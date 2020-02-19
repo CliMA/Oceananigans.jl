@@ -31,7 +31,7 @@ function run_rayleigh_benard_regression_test(arch)
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))
 
-    model = Model(
+    model = IncompressibleModel(
                architecture = arch,
                        grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),

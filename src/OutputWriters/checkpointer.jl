@@ -125,7 +125,7 @@ function restore_from_checkpoint(filepath; kwargs=Dict())
         end
     end
 
-    model = Model(; kwargs...)
+    model = IncompressibleModel(; kwargs...)
 
     # Now restore fields.
     for p in cps

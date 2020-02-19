@@ -6,7 +6,7 @@ using Oceananigans.Simulations:
 
     for arch in archs, Δt in (3, TimeStepWizard(Δt=5.0))
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        model = Model(architecture=arch, grid=grid)
+        model = IncompressibleModel(architecture=arch, grid=grid)
         simulation = Simulation(model, Δt=Δt, stop_iteration=1)
 
         # Just make sure we can construct a simulation without any errors.

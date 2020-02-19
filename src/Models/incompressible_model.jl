@@ -6,8 +6,8 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
-mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                     BCS, S, K, Θ} <: AbstractModel
+mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
+                                   BCS, S, K, Θ} <: AbstractModel
 
            architecture :: A         # Computer `Architecture` on which `Model` is run
                    grid :: G         # Grid of physical points on which `Model` is solved
@@ -28,7 +28,7 @@ mutable struct Model{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F
 end
 
 """
-    Model(;
+    IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,
@@ -48,7 +48,7 @@ end
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions.u))
     )
 
-Construct an `Oceananigans.jl` model on `grid`.
+Construct an incompressible `Oceananigans.jl` model on `grid`.
 
 Keyword arguments
 =================
@@ -63,7 +63,7 @@ Keyword arguments
   or `ModelBoundaryConditions`. See `BoundaryConditions`, `HorizontallyPeriodicSolutionBCs`, and `ChannelSolutionBCs`.
 - `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
-function Model(;
+function IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,
@@ -97,7 +97,7 @@ function Model(;
     closure = with_tracers(tracernames(tracers), closure)
     boundary_conditions = ModelBoundaryConditions(tracernames(tracers), diffusivities, boundary_conditions)
 
-    return Model(architecture, grid, clock, buoyancy, coriolis, surface_waves, velocities, tracers,
-                 pressures, forcing, closure, boundary_conditions, timestepper,
-                 pressure_solver, diffusivities, parameters)
+    return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
+                               velocities, tracers, pressures, forcing, closure, boundary_conditions,
+                               timestepper, pressure_solver, diffusivities, parameters)
 end

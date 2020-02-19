@@ -1,5 +1,5 @@
 function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
-    model = Model(architecture=arch, float_type=eltype(grid), grid=grid)
+    model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
     kwarg = Dict(fieldname=>value)
     set!(model; kwarg...)
 
@@ -13,8 +13,8 @@ function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
 end
 
 function initial_conditions_correctly_set(arch, FT)
-    model = Model(grid=RegularCartesianGrid(FT, size=(16, 16, 8), length=(1, 2, 3)),
-                  architecture=arch, float_type=FT)
+    model = IncompressibleModel(grid=RegularCartesianGrid(FT, size=(16, 16, 8), length=(1, 2, 3)),
+                                architecture=arch, float_type=FT)
 
     # Set initial condition to some basic function we can easily check for.
     # We offset the functions by an integer so that we don't end up comparing
@@ -54,10 +54,10 @@ end
         for arch in archs, FT in float_types
             topology = (Periodic, Periodic, Bounded)
             grid = RegularCartesianGrid(FT, size=(16, 16, 2), length=(1, 2, 3), topology=topology)
-            model = Model(grid=grid, architecture=arch, float_type=FT)
+            model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-            # Just testing that a Model was constructed with no errors/crashes.
-            @test true
+            # Just testing that a horizontally periodic model was constructed with no errors/crashes.
+            @test model isa IncompressibleModel
         end
     end
 
@@ -66,10 +66,10 @@ end
         for arch in archs, FT in float_types
             topology = (Periodic, Bounded, Bounded)
             grid = RegularCartesianGrid(FT, size=(16, 16, 2), length=(1, 2, 3), topology=topology)
-            model = Model(grid=grid, architecture=arch, float_type=FT)
+            model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-            # Just testing that a ChannelModel was constructed with no errors/crashes.
-            @test true
+            # Just testing that a channel model was constructed with no errors/crashes.
+            @test model isa IncompressibleModel
         end
     end
 
@@ -80,7 +80,7 @@ end
             model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
 
             # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
-            @test true
+            @test model isa IncompressibleModel
         end
     end
 
