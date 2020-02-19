@@ -46,6 +46,14 @@ struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
     data :: A
     grid :: G
     function Field{X, Y, Z}(data, grid) where {X, Y, Z}
+        Tx, Ty, Tz = grid.Nx+2grid.Hx, grid.Ny+2grid.Hy, grid.Nz+2grid.Hz
+        
+        if size(data) != (Tx, Ty, Tz)
+            e = "Cannot construct field with size(data)=$(size(data)). " *
+                "Must have the same size as the grid with halos ($Tx, $Ty, $Tz)."
+            throw(ArgumentError(e))
+        end
+
         return new{X, Y, Z, typeof(data), typeof(grid)}(data, grid)
     end
 end
