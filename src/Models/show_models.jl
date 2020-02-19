@@ -9,4 +9,4 @@ Base.show(io::IO, model::IncompressibleModel) =
         "├── tracers: $(tracernames(model.tracers))\n",
         "├── closure: $(typeof(model.closure))\n",
         "├── buoyancy: $(typeof(model.buoyancy))\n",
-        "└── coriolis: $(typeof(model.coriolis))\n")
+        "└── coriolis: $(typeof(model.coriolis))")

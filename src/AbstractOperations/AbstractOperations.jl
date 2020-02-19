@@ -32,13 +32,13 @@ import Oceananigans.Diagnostics: run_diagnostic
 #####
 
 """
-    AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
+    AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G}
 
 Represents an operation performed on grid of type `G` at locations `X`, `Y`, and `Z`.
 """
-abstract type AbstractOperation{X, Y, Z, G} <: AbstractLocatedField{X, Y, Z, Nothing, G} end
+abstract type AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G} end
 
-const ALF = AbstractLocatedField
+const AF = AbstractField
 
 # We (informally) require that all field-like objects define `data` and `parent`:
 data(op::AbstractOperation) = op

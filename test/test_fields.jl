@@ -28,7 +28,7 @@ end
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
 
-    fieldtypes = (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
+    fieldtypes = (CellField, XFaceField, YFaceField, ZFaceField)
 
     @testset "Field initialization" begin
         @info "  Testing field initialization..."

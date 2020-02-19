@@ -16,7 +16,7 @@ export
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Fields and field manipulation
-    Field, CellField, FaceFieldX, FaceFieldY, FaceFieldZ,
+    Field, CellField, XFaceField, YFaceField, ZFaceField,
     interior, set!,
 
     # Forcing functions

@@ -200,7 +200,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     v_rel_err_max = maximum(v_rel_err)
 
     @info "Taylor-Green vortex test [$arch, $FT, Nx=Ny=$N, Nt=$Nt]: " *
-          @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)\n",
+          @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)",
                    u_rel_err_avg, u_rel_err_max, v_rel_err_avg, v_rel_err_max)
 
     u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6

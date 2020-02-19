@@ -14,19 +14,12 @@ using Oceananigans.Utils
 @hascuda using CuArrays
 
 """
-    AbstractField{A, G}
+    AbstractField{X, Y, Z, A, G}
 
-Abstract supertype for fields stored on an architecture `A` and defined on a grid `G`.
+Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
+of type `A`. The field is defined on a grid `G`.
 """
-abstract type AbstractField{A, G} end
-
-"""
-    AbstractLocatedField{X, Y, Z, A, G}
-
-Abstract supertype for fields located at `(X, Y, Z)`, stored on an architecture `A`,
-and defined on a grid `G`.
-"""
-abstract type AbstractLocatedField{X, Y, Z, A, G} <: AbstractField{A, G} end
+abstract type AbstractField{X, Y, Z, A, G} end
 
 """
     Cell
@@ -43,14 +36,24 @@ A type describing the location at the face of a grid cell.
 struct Face end
 
 """
-    Field{X, Y, Z, A, G} <: AbstractLocatedField{X, Y, Z, A, G}
+    Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
 
-A field defined at the location (`X`, `Y`, `Z`) which can be either `Cell` or `Face`.
+A field defined at the location (`X`, `Y`, `Z`), each of which can be either `Cell`
+or `Face`, and with data stored in a container of type `A` (typically an array).
+The field is defined on a grid `G`.
 """
-struct Field{X, Y, Z, A, G} <: AbstractLocatedField{X, Y, Z, A, G}
+struct Field{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G}
     data :: A
     grid :: G
     function Field{X, Y, Z}(data, grid) where {X, Y, Z}
+        Tx, Ty, Tz = grid.Nx+2grid.Hx, grid.Ny+2grid.Hy, grid.Nz+2grid.Hz
+        
+        if size(data) != (Tx, Ty, Tz)
+            e = "Cannot construct field with size(data)=$(size(data)). " *
+                "Must have the same size as the grid with halos ($Tx, $Ty, $Tz)."
+            throw(ArgumentError(e))
+        end
+
         return new{X, Y, Z, typeof(data), typeof(grid)}(data, grid)
     end
 end
@@ -59,70 +62,63 @@ Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} =
     Field{X, Y, Z}(adapt(to, data), field.grid)
 
 """
-	Field(L::Tuple, data::AbstractArray, grid)
+    Field(L::Tuple, arch, grid, [data=zeros(arch, grid)])
 
-Construct a `Field` on `grid` using the array `data` with location defined by the tuple `L`
-of length 3 whose elements are `Cell` or `Face`.
+Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
+The field's location is defined by a tuple `L` of length 3 whose elements are
+`Cell` or `Face`.
 """
-Field(L::Tuple, data::AbstractArray, grid) = Field{L[1], L[2], L[3]}(data, grid)
-
-"""
-    Field(L::Tuple, arch, grid)
-
-Construct a `Field` on architecture `arch` and `grid` at location `L`,
-where `L` is a tuple of `Cell` or `Face` types.
-"""
-Field(L::Tuple, arch, grid) = Field{L[1], L[2], L[3]}(zeros(arch, grid), grid)
+Field(L::Tuple, arch, grid, data=zeros(arch, grid)) = Field{L[1], L[2], L[3]}(data, grid)
 
 """
-    Field(X, Y, Z, arch, grid)
+    Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)])
 
-Construct a `Field` on architecture `arch` and `grid` at location `X`, `Y`, `Z`,
-where each of `X, Y, Z` is `Cell` or `Face`.
+Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
+The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`.
 """
-Field(X, Y, Z, arch, grid) =  Field((X, Y, Z), arch, grid)
-
-"""
-    CellField([T=eltype(grid)], arch, grid)
-
-Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid`.
-Used for tracers and pressure fields.
-"""
-CellField(T, arch, grid) = Field{Cell, Cell, Cell}(zeros(T, arch, grid), grid)
+Field(X, Y, Z, arch, grid, data=zeros(arch, grid)) =  Field((X, Y, Z), arch, grid, data)
 
 """
-    FaceFieldX([T=eltype(grid)], arch, grid)
+    CellField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
 
-Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid`.
-Used for the x-velocity field.
+Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
 """
-FaceFieldX(T, arch, grid) = Field{Face, Cell, Cell}(zeros(T, arch, grid), grid)
-
-"""
-    FaceFieldY([T=eltype(grid)], arch, grid)
-
-Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid`.
-Used for the y-velocity field.
-"""
-FaceFieldY(T, arch, grid) = Field{Cell, Face, Cell}(zeros(T, arch, grid), grid)
+CellField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Cell, arch, grid, data)
 
 """
-    FaceFieldZ([T=eltype(grid)], arch, grid)
+    XFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
 
-Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid`.
-Used for the z-velocity field.
+Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`.
 """
-FaceFieldZ(T, arch, grid) = Field{Cell, Cell, Face}(zeros(T, arch, grid), grid)
+XFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Face, Cell, Cell, arch, grid, data)
 
- CellField(arch, grid) = Field((Cell, Cell, Cell), arch, grid)
-FaceFieldX(arch, grid) = Field((Face, Cell, Cell), arch, grid)
-FaceFieldY(arch, grid) = Field((Cell, Face, Cell), arch, grid)
-FaceFieldZ(arch, grid) = Field((Cell, Cell, Face), arch, grid)
+"""
+    YFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+
+Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`.
+"""
+YFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Face, Cell, arch, grid, data)
+
+"""
+    ZFaceField(arch::AbstractArchitecture, grid, [data=zeros(arch, grid)])
+
+Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`.
+"""
+ZFaceField(arch::AbstractArchitecture, grid, data=zeros(arch, grid)) =
+    Field(Cell, Cell, Face, arch, grid, data)
+
+ CellField(T::DataType, arch, grid) = Field(Cell, Cell, Cell, arch, grid, zeros(T, arch, grid))
+XFaceField(T::DataType, arch, grid) = Field(Face, Cell, Cell, arch, grid, zeros(T, arch, grid))
+YFaceField(T::DataType, arch, grid) = Field(Cell, Face, Cell, arch, grid, zeros(T, arch, grid))
+ZFaceField(T::DataType, arch, grid) = Field(Cell, Cell, Face, arch, grid, zeros(T, arch, grid))
 
 location(a) = nothing
-location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
+location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
 
-architecture(f::Field) = architecture(f.data)
+architecture(f::Field)       = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
 
 @inline size(f::AbstractField) = size(f.grid)
@@ -179,10 +175,10 @@ nodes(ϕ) = (xnodes(ϕ), ynodes(ϕ), znodes(ϕ))
 
 # Niceties
 const AbstractCPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
 
 @hascuda const AbstractGPUField =
-    AbstractField{A, G} where {A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
 
 #####
 ##### Creating fields by dispatching on architecture
@@ -209,7 +205,12 @@ function Base.zeros(T, ::GPU, grid)
 end
 
 Base.zeros(T, ::CPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz)
-Base.zeros(T, ::GPU, grid, Nx, Ny, Nz) = zeros(T, Nx, Ny, Nz) |> CuArray
+
+function Base.zeros(T, ::GPU, grid, Nx, Ny, Nz)
+    data = CuArray{T}(undef, Nx, Ny, Nz)
+    data .= 0
+    return data
+end
 
 # Default to type of Grid
 Base.zeros(arch, grid::AbstractGrid{T}) where T = zeros(T, arch, grid)

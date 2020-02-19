@@ -110,8 +110,8 @@ end
 
 function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
-          @info "Simulation is stopping. Model time $(sim.model.clock.time) " *
-                "has hit or exceeded simulation stop time $(sim.stop_time)."
+          @info "Simulation is stopping. Model time $(prettytime(sim.model.clock.time)) " *
+                "has hit or exceeded simulation stop time $(prettytime(sim.stop_time))."
           return true
     end
     return false
@@ -119,8 +119,8 @@ end
 
 function wall_time_limit_exceeded(sim)
     if sim.run_time >= sim.wall_time_limit
-          @info "Simulation is stopping. Simulation run time $(sim.run_time) " *
-                "has hit or exceeded simulation wall time limit $(sim.wall_time_limit)."
+          @info "Simulation is stopping. Simulation run time $(prettytime(sim.run_time)) " *
+                "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
           return true
     end
     return false
@@ -174,6 +174,6 @@ Base.show(io::IO, s::Simulation) =
             "├── Run time: $(prettytime(s.run_time)), wall time limit: $(s.wall_time_limit)\n",
             "├── Stop time: $(prettytime(s.stop_time)), stop iteration: $(s.stop_iteration)\n",
             "├── Diagnostics: $(ordered_dict_show(s.model.diagnostics, " "))\n",
-            "└── Output writers: $(ordered_dict_show(s.model.output_writers, "│"))\n")
+            "└── Output writers: $(ordered_dict_show(s.model.output_writers, "│"))")
 
 end

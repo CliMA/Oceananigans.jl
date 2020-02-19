@@ -47,9 +47,9 @@ function compute_w_from_continuity(arch, FT)
     grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     bcs = SolutionBoundaryConditions(grid)
 
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
+    u = XFaceField(FT, arch, grid)
+    v = YFaceField(FT, arch, grid)
+    w = ZFaceField(FT, arch, grid)
     div_u = CellField(FT, arch, grid)
 
     interior(u) .= rand(FT, Nx, Ny, Nz)
