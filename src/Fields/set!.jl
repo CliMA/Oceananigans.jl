@@ -1,3 +1,4 @@
+using CUDAnative
 using GPUifyLoops: @launch, @loop
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: @loop_xyz
