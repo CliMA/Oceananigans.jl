@@ -151,14 +151,14 @@ function run_thermal_bubble_checkpointer_tests(arch)
     checkpointed_model = nothing
 
     model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
-    restored_model = restore_from_checkpoint("checkpoint5.jld2", kwargs=model_kwargs)
+    restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2", kwargs=model_kwargs)
 
     for n in 1:4
         time_step!(restored_model, Δt, euler=false)
     end
 
-    rm("checkpoint0.jld2", force=true)
-    rm("checkpoint5.jld2", force=true)
+    rm("checkpoint_iteration0.jld2", force=true)
+    rm("checkpoint_iteration5.jld2", force=true)
 
     # Now the true_model and restored_model should be identical.
     @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)

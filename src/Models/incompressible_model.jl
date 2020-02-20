@@ -77,19 +77,18 @@ function IncompressibleModel(;
     boundary_conditions = SolutionBoundaryConditions(grid),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid),
+          tracer_fields = TracerFields(architecture, grid, tracers),
               pressures = PressureFields(architecture, grid),
           diffusivities = TurbulentDiffusivities(architecture, grid, tracernames(tracers), closure),
-            timestepper = :AdamsBashforth,
+     timestepper_method = :AdamsBashforth,
+            timestepper = TimeStepper(timestepper_method, float_type, architecture, grid, tracernames(tracers)),
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(boundary_conditions))
     )
 
-    if architecture == GPU()
-        !has_cuda() && throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if architecture == GPU() && !has_cuda()
+         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
-    timestepper = TimeStepper(timestepper, float_type, architecture, grid, tracernames(tracers))
-
-    tracers = TracerFields(architecture, grid, tracers)
     validate_buoyancy(buoyancy, tracernames(tracers))
 
     # Regularize forcing, boundary conditions, and closure for given tracer fields
@@ -98,6 +97,6 @@ function IncompressibleModel(;
     boundary_conditions = ModelBoundaryConditions(tracernames(tracers), diffusivities, boundary_conditions)
 
     return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
-                               velocities, tracers, pressures, forcing, closure, boundary_conditions,
+                               velocities, tracer_fields, pressures, forcing, closure, boundary_conditions,
                                timestepper, pressure_solver, diffusivities, parameters)
 end

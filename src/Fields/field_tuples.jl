@@ -47,13 +47,13 @@ function PressureFields(arch, grid; pHY′=zeros(arch, grid), pNHS=zeros(arch, g
 end
 
 """
-    Tendencies(arch, grid, tracer_names; kwargs...)
+    TendencyFields(arch, grid, tracer_names; kwargs...)
 
 Return a NamedTuple with tendencies for all solution fields (velocity fields and
 tracer fields), initialized on the architecture `arch` and `grid`. Optional `kwargs`
 can be specified to assign data arrays to each tendency field.
 """
-function Tendencies(arch, grid, tracer_names; kwargs...)
+function TendencyFields(arch, grid, tracer_names; kwargs...)
     velocities = (
         u = :u ∈ keys(kwargs) ? XFaceField(arch, grid, kwargs[:u]) : XFaceField(arch, grid),
         v = :v ∈ keys(kwargs) ? YFaceField(arch, grid, kwargs[:v]) : YFaceField(arch, grid),

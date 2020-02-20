@@ -101,15 +101,15 @@ abstract type AbstractPoissonSolver end
 """
     AbstractDiagnostic
 
-Abstract supertype for types that compute diagnostic information from the current model
-state.
+Abstract supertype for diagnostics that compute information from the current
+model state.
 """
 abstract type AbstractDiagnostic end
 
 """
     AbstractOutputWriter
 
-Abstract supertype for types that perform input and output.
+Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
@@ -153,9 +153,9 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Solvers/Solvers.jl")
 include("Forcing/Forcing.jl")
 include("Models/Models.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("TimeSteppers/TimeSteppers.jl")
 include("Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 

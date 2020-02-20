@@ -91,6 +91,7 @@ makedocs(
                                      "model_setup/turbulent_diffusivity_closures_and_les_models.md",
                     "Diagnostics" => "model_setup/diagnostics.md",
                  "Output writers" => "model_setup/output_writers.md",
+                  "Checkpointing" => "model_setup/checkpointing.md",
                   "Time stepping" => "model_setup/time_stepping.md",
             "Setting initial conditions" =>
                                      "model_setup/setting_initial_conditions.md"
