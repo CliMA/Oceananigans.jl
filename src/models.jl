@@ -75,8 +75,11 @@ end
 ##### Utilities for constructing compressible models
 #####
 
-function collect_tracers(args...)
-    list = []
+generate_key(tvar::Entropy) = :ρs
+generate_key(tvar::Energy) = :ρe
+
+function collect_tracers(thermodynamic_variable, args...)
+    list = [generate_key(thermodynamic_variable)]
     for arg in args
         if arg !== nothing
             for name in keys(arg)
@@ -93,14 +96,6 @@ end
 
 function DryEarth3(FT = Float64)
     return (ρ₁ = EarthN₂O₂(FT), ρ₂ = EarthN₂O₂(FT), ρ₃ = EarthN₂O₂(FT))
-end
-
-function Entropy()
-    return (ρs = Entropy(),)
-end
-
-function Energy()
-    return (ρe = Energy(),)
 end
 
 function MomentumFields(arch, grid)
