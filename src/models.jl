@@ -43,7 +43,7 @@ function CompressibleModel(;
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
                 densities = DryEarth(float_type),
-   thermodynamic_variable = PrognosticE(),
+   thermodynamic_variable = Energy(),
              microphysics = nothing,
             extra_tracers = nothing,
               tracernames = collect_tracers(thermodynamic_variable, densities, microphysics, extra_tracers),
@@ -95,11 +95,11 @@ function DryEarth3(FT = Float64)
     return (ρ₁ = EarthN₂O₂(FT), ρ₂ = EarthN₂O₂(FT), ρ₃ = EarthN₂O₂(FT))
 end
 
-function PrognosticS()
+function Entropy()
     return (ρs = Entropy(),)
 end
 
-function PrognosticE()
+function Energy()
     return (ρe = Energy(),)
 end
 
