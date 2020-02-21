@@ -1,5 +1,13 @@
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 
+# Legend:
+# ρ  -> density fields
+# ρŨ -> momentum fields
+# ρC̃ -> conservative tracer fields
+# K̃  -> diffusivity fields
+# Ũ  -> velocity fields
+# C̃  -> tracer fields
+
 ####
 #### Element-wise forcing and right-hand-side calculations
 ####
