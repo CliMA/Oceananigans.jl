@@ -6,7 +6,7 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, P, SF, RHS, IV, ATS} <: AbstractModel
+mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, SF, RHS, IV, ATS} <: AbstractModel
              architecture :: A
                      grid :: G
                     clock :: Clock{FT}
@@ -20,7 +20,6 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, P,
                   closure :: TC
             diffusivities :: DF
                   forcing :: F
-               parameters :: P
                   gravity :: FT
             slow_forcings :: SF
          right_hand_sides :: RHS
@@ -50,7 +49,6 @@ function CompressibleModel(;
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),
                   forcing = ModelForcing(),
-               parameters = nothing,
                   gravity = g_Earth,
             slow_forcings = ForcingFields(architecture, grid, tracernames),
          right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
@@ -66,7 +64,7 @@ function CompressibleModel(;
 
     return CompressibleModel(architecture, grid, clock, momenta, gases, thermodynamic_variable,
                              microphysics, tracers, total_density, coriolis, closure, diffusivities,
-                             forcing, parameters, gravity, slow_forcings, right_hand_sides,
+                             forcing, gravity, slow_forcings, right_hand_sides,
                              intermediate_vars, acoustic_time_stepper)
 end
 
