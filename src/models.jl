@@ -43,7 +43,7 @@ function CompressibleModel(;
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
                 densities = DryEarth(float_type),
-   thermodynamic_variable = PrognosticEntropy(),
+   thermodynamic_variable = PrognosticE(),
              microphysics = nothing,
             extra_tracers = nothing,
               tracernames = collect_tracers(thermodynamic_variable, densities, microphysics, extra_tracers),
