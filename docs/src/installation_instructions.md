@@ -3,19 +3,19 @@ You can install the latest version of Oceananigans using the built-in package ma
 Julia command prompt) to add the package and instantiate/build all dependencies
 ```julia
 julia>]
-(v1.1) pkg> add Oceananigans
-(v1.1) pkg> instantiate
+(v1.3) pkg> add Oceananigans
+(v1.3) pkg> instantiate
 ```
 We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged
 release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
 ```julia
-(v1.1) pkg> update Oceananigans
+(v1.3) pkg> update Oceananigans
 ```
-At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the
-user API occur often. But if anything does happen, please open an issue!
+At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
 
-!!! warn "Use Julia 1.1 or newer"
-    Oceananigans requires at least Julia v1.1 to run correctly.
+But if anything does happen or your code stops working, please open an issue and ask! We're more than happy to help with getting your simulations up and running.
 
-    If you try to install Oceananigans with Julia v1.0 then it will install a very old version of Oceananigans (the
-    latest version that is compatible with v1.0).
+!!! warn "Use Julia 1.3 or newer"
+    Oceananigans requires at least Julia v1.3 to run.
+
+    Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).

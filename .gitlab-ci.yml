@@ -1,14 +1,14 @@
 variables:
   CI_IMAGE_TAG: 'cuda'
-  JULIA_NUM_THREADS: '4'
+  JULIA_NUM_THREADS: '1'
 
 # See: https://github.com/JuliaGPU/gitlab-ci
 include:
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/test.yml'
   - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
 
-test:v1.2:
-  extends: .test:v1.2
+test:v1.3:
+  extends: .test:v1.3
 
 test:dev:
   extends: .test:dev
@@ -18,7 +18,7 @@ coverage:
   stage: post
   extends: .root
   variables:
-    CI_VERSION_TAG: 'v1.2'
+    CI_VERSION_TAG: 'v1.3'
   script:
     - julia --project -e 'using Pkg;
                           Pkg.add("Coverage")'
