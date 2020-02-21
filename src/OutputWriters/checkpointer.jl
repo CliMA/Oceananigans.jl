@@ -93,6 +93,23 @@ defaultname(::Checkpointer, nelems) = :checkpointer
 convert_to_arch(::CPU, a) = a
 convert_to_arch(::GPU, a) = CuArray(a)
 
+function restore_if_not_missing(file, location)
+    if haskey(file, location)
+        return file[location]
+    else
+        @warn "Checkpoint file does not contain $location. Returning missing. " *
+              "You might need to restore this manually."
+        return missing
+    end
+end
+
+function restore_field(file, location, arch, grid)
+    field_location = file[location * "/location"]
+    data = OffsetArray(convert_to_arch(arch, file[location * "/data"]), grid)
+    bcs = restore_if_not_missing(file, location * "/boundary_conditions")
+    return Field(field_location, arch, grid, bcs, data)
+end
+
 """
     restore_from_checkpoint(filepath; kwargs=Dict())
 
@@ -108,32 +125,33 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     grid = file["grid"]
 
     # Restore velocity fields
-    u_data = OffsetArray(convert_to_arch(arch, file["velocities/u"]), grid)
-    v_data = OffsetArray(convert_to_arch(arch, file["velocities/v"]), grid)
-    w_data = OffsetArray(convert_to_arch(arch, file["velocities/w"]), grid)
-    kwargs[:velocities] = VelocityFields(arch, grid, u=u_data, v=v_data, w=w_data)
+    kwargs[:velocities] =
+        VelocityFields(arch, grid,
+            u = restore_field(file, "velocities/u", arch, grid),
+            v = restore_field(file, "velocities/v", arch, grid),
+            w = restore_field(file, "velocities/w", arch, grid))
     filter!(p -> p ≠ :velocities, cps)
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_data  = Tuple(OffsetArray(convert_to_arch(arch, file["tracers/$c"]), grid) for c in tracer_names)
-    tracer_field_kwargs = NamedTuple{tracer_names}(tracer_data)
+    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid) for c in tracer_names)
+    tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
     kwargs[:tracers] = tracer_names
-    kwargs[:tracer_fields] = TracerFields(arch, grid, tracer_names; tracer_field_kwargs...)
+    kwargs[:tracer_fields] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
     filter!(p -> p ≠ :tracers, cps)
 
     # Restore time stepper tendency fields
     field_names = (:u, :v, :w, tracer_names...)
-    G⁻_data = Tuple(OffsetArray(convert_to_arch(arch, file["timestepper/G⁻/$c"]), grid) for c in field_names)
-    Gⁿ_data = Tuple(OffsetArray(convert_to_arch(arch, file["timestepper/Gⁿ/$c"]), grid) for c in field_names)
-    G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_data)
-    Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_data)
+    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$f", arch, grid) for f in field_names)
+    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$f", arch, grid) for f in field_names)
+    G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
+    Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
     kwargs[:timestepper_method] = :AdamsBashforth
     kwargs[:timestepper] =
         AdamsBashforthTimeStepper(
             eltype(grid), arch, grid, tracer_names;
-            Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...),
-            G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...))
+            G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
+            Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
     filter!(p -> p ≠ :timestepper, cps)
 
     for p in cps
