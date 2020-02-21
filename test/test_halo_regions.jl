@@ -3,8 +3,7 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 10, 20, 30
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    bcs = TracerBoundaryConditions(grid)  # Placeholder BCs.
-    field = CellField(FT, arch, grid, bcs)
+    field = CellField(FT, arch, grid)
 
     # Fill the interior with random numbers.
     interior(field) .= rand(FT, Nx, Ny, Nz)
@@ -25,8 +24,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 100, 200, 300
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    fbcs = TracerBoundaryConditions(grid)  # Placeholder BCs.
-    field = CellField(FT, arch, grid, fbcs)
+    field = CellField(FT, arch, grid)
 
     interior(field) .= rand(FT, Nx, Ny, Nz)
     fill_halo_regions!(field, arch)

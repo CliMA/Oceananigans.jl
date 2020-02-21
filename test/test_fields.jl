@@ -5,7 +5,7 @@ Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
 function correct_field_size(arch, grid, fieldtype)
-    f = fieldtype(arch, grid, TracerBoundaryConditions(grid))
+    f = fieldtype(arch, grid)
     return size(f) == size(grid)
 end
 
@@ -17,7 +17,7 @@ can be correctly filled with the value `val` using the `set!(f::AbstractField, v
 function.
 """
 function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
-    f = fieldtype(arch, grid, TracerBoundaryConditions(grid))
+    f = fieldtype(arch, grid)
     set!(f, val)
     return interior(f) ≈ val * ones(size(f))
 end

@@ -72,7 +72,7 @@ Field(X, Y, Z, arch, grid, bcs, data=zeros(arch, grid)) =
 Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-CellField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+CellField(arch::AbstractArchitecture, grid, bcs=TracerBoundaryConditions(grid), data=zeros(arch, grid)) =
     Field(Cell, Cell, Cell, arch, grid, bcs, data)
 
 """
@@ -81,7 +81,7 @@ CellField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-XFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+XFaceField(arch::AbstractArchitecture, grid, bcs=UVelocityBoundaryConditions(grid), data=zeros(arch, grid)) =
     Field(Face, Cell, Cell, arch, grid, bcs, data)
 
 """
@@ -90,7 +90,7 @@ XFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
 Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-YFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+YFaceField(arch::AbstractArchitecture, grid, bcs=VVelocityBoundaryConditions(grid), data=zeros(arch, grid)) =
     Field(Cell, Face, Cell, arch, grid, bcs, data)
 
 """
@@ -99,13 +99,20 @@ YFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
 Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-ZFaceField(arch::AbstractArchitecture, grid, bcs, data=zeros(arch, grid)) =
+ZFaceField(arch::AbstractArchitecture, grid, bcs=WVelocityBoundaryConditions(grid), data=zeros(arch, grid)) =
     Field(Cell, Cell, Face, arch, grid, bcs, data)
 
- CellField(FT::DataType, arch, grid, bcs) =  CellField(arch, grid, bcs, zeros(FT, arch, grid))
-XFaceField(FT::DataType, arch, grid, bcs) = XFaceField(arch, grid, bcs, zeros(FT, arch, grid))
-YFaceField(FT::DataType, arch, grid, bcs) = YFaceField(arch, grid, bcs, zeros(FT, arch, grid))
-ZFaceField(FT::DataType, arch, grid, bcs) = ZFaceField(arch, grid, bcs, zeros(FT, arch, grid))
+CellField(FT::DataType, arch, grid, bcs=TracerBoundaryConditions(grid)) =
+    CellField(arch, grid, bcs, zeros(FT, arch, grid))
+
+XFaceField(FT::DataType, arch, grid, bcs=UVelocityBoundaryConditions(grid)) =
+    XFaceField(arch, grid, bcs, zeros(FT, arch, grid))
+
+YFaceField(FT::DataType, arch, grid, bcs=VVelocityBoundaryConditions(grid)) =
+    YFaceField(arch, grid, bcs, zeros(FT, arch, grid))
+
+ZFaceField(FT::DataType, arch, grid, bcs=WVelocityBoundaryConditions(grid)) =
+    ZFaceField(arch, grid, bcs, zeros(FT, arch, grid))
 
 location(a) = nothing
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z)
