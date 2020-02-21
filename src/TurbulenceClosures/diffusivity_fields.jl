@@ -11,15 +11,15 @@ DiffusivityFields(
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-const NuClosures = Union{AbstractSmagorinsky, AbstractLeith}
+const ViscosityClosures = Union{AbstractSmagorinsky, AbstractLeith}
 
 DiffusivityFields(
-    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::NuClosures;
+    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::ViscosityClosures;
     νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid))
 ) = (νₑ=νₑ,)
 
 function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers,
-                           bcs::NamedTuple, ::NuClosures)
+                           bcs::NamedTuple, ::ViscosityClosures)
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
     νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
     return (νₑ=νₑ,)
@@ -29,9 +29,9 @@ end
 ##### For closures that also require tracer diffusivity fields κₑ on each tracer.
 #####
 
-const NuKappaClosures = Union{VAMD, RAMD}
+const ViscosityDiffusivityClosures = Union{VAMD, RAMD}
 
-function KappaFields(arch, grid, tracer_names; kwargs...)
+function TracerDiffusivityFields(arch, grid, tracer_names; kwargs...)
     κ_fields =
         Tuple(c ∈ keys(kwargs) ?
               kwargs[c] :
@@ -40,7 +40,7 @@ function KappaFields(arch, grid, tracer_names; kwargs...)
     return NamedTuple{tracer_names}(κ_fields)
 end
 
-function KappaFields(arch, grid, tracer_names, bcs::NamedTuple)
+function TracerDiffusivityFields(arch, grid, tracer_names, bcs::NamedTuple)
     κ_fields =
         Tuple(c ∈ keys(bcs) ?
               CellField(arch, grid, bcs[c],                              zeros(arch, grid)) :
@@ -50,21 +50,21 @@ function KappaFields(arch, grid, tracer_names, bcs::NamedTuple)
 end
 
 function DiffusivityFields(
-    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::NuKappaClosures;
+    arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::ViscosityDiffusivityClosures;
     νₑ = CellField(arch, grid, DiffusivityBoundaryConditions(grid), zeros(arch, grid)), kwargs...)
-    κₑ = KappaFields(arch, grid, tracers; kwargs...)
+    κₑ = TracerDiffusivityFields(arch, grid, tracers; kwargs...)
     return (νₑ=νₑ, κₑ=κₑ)
 end
 
 function DiffusivityFields(arch::AbstractArchitecture, grid::AbstractGrid, tracers,
-                           bcs::NamedTuple, ::NuKappaClosures)
+                           bcs::NamedTuple, ::ViscosityDiffusivityClosures)
 
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
     νₑ = CellField(arch, grid, νₑ_bcs, zeros(arch, grid))
 
     κₑ = :κₑ ∈ keys(bcs) ?
-        KappaFields(arch, grid, tracers, bcs[:κₑ]) :
-        KappaFields(arch, grid, tracers)
+        TracerDiffusivityFields(arch, grid, tracers, bcs[:κₑ]) :
+        TracerDiffusivityFields(arch, grid, tracers)
 
     return (νₑ=νₑ, κₑ=κₑ)
 end
