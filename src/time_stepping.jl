@@ -21,34 +21,41 @@ function rk3_time_step(rk3_iter, Δt)
     rk3_iter == 3 && return Δt
 end
 
+function acoustic_time_steps(rk3_iter, nₛ, Δt)
+    rk3_iter == 1 && return 1,         Δt/3
+    rk3_iter == 2 && return Int(nₛ/2), Δt/nₛ
+    rk3_iter == 3 && return nₛ,        Δt/nₛ
+end
+
 ####
 #### Time-stepping algorithm
 ####
 
 function time_step!(model::CompressibleModel; Δt, Nt=1)
+
     arch = model.architecture
     grid = model.grid
     time = model.clock.time
     coriolis = model.coriolis
     closure = model.closure
-    tvar = model.thermodynamic_variable
+    tvar = values(model.thermodynamic_variable)[1]
     microphysics = model.microphysics
     forcing = model.forcing
+    params = model.parameters
 
     Ũ  = model.momenta
     ρ = model.total_density
-    ρ̃ = model.gases
+    ρ̃ = model.densities
     C̃  = model.tracers
     K̃ = model.diffusivities
     F  = model.slow_forcings
     R  = model.right_hand_sides
     IV = model.intermediate_vars
-    tfields = model.thermodynamic_fields
 
     g  = model.gravity
 
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
-    Φ⁺ = merge(Ũ, C̃)
+    Φ⁺ = (Ũ..., tracers = C̃)
 
     # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
     Ũ_names = propertynames(Ũ)
@@ -56,7 +63,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     IV_Ũ = NamedTuple{Ũ_names}(IV_Ũ_vals)
 
     C̃_names = propertynames(C̃)
-    IV_C̃_vals = [getproperty(IV, C) for C in C̃_names]
+    IV_C̃_vals = [getproperty(IV.tracers, C) for C in C̃_names]
     IV_C̃ = NamedTuple{C̃_names}(IV_C̃_vals)
 
     for _ in 1:Nt
@@ -65,7 +72,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
         fill_halo_regions!(ρ.data, hpbcs, arch, grid)
         fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
         fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
-        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, tfields, forcing, time)
+        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time, params)
         fill_halo_regions!(F.ρw.data, hpbcs_np, arch, grid)
 
         # RK3 time-stepping
@@ -74,13 +81,13 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
             @debug "  Computing right hand sides..."
             if rk3_iter == 1
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F, tfields)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
                 update_total_density!(ρ.data, grid, ρ̃, C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(Ũ, C̃)), hpbcs, arch, grid)
                 fill_halo_regions!(Ũ.ρw.data, hpbcs_np, arch, grid)
             else
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F, tfields)
+                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
                 update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
                 fill_halo_regions!(ρ.data, hpbcs, arch, grid)
                 fill_halo_regions!(datatuple(merge(IV_Ũ, IV_C̃)), hpbcs, arch, grid)
@@ -88,6 +95,9 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
             end
 
             compute_right_hand_sides!(compute_rhs_args...)
+
+            # n, Δτ = acoustic_time_steps(rk3_iter)
+            # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
 
             @debug "  Advancing variables..."
             LHS = rk3_iter == 3 ? Φ⁺ : IV

@@ -31,8 +31,8 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
 
 model = CompressibleModel(
                       grid = grid,
-                     gases = DryEarth3(),
-    thermodynamic_variable = Energy(),
+                 densities = DryEarth3(),
+    thermodynamic_variable = PrognosticE(),
                    closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
 )
 
@@ -40,7 +40,7 @@ model = CompressibleModel(
 ##### Dry thermal bubble perturbation
 #####
 
-gas = model.gases.ρ₁
+gas = model.densities.ρ₁
 R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
 uref, Tref, ρref = gas.u₀, gas.T₀, gas.ρ₀
 g  = model.gravity
@@ -102,7 +102,7 @@ set!(model.tracers.ρ₁, ρ₁₀)
 set!(model.tracers.ρ₂, ρ₂₀)
 set!(model.tracers.ρ₃, ρ₃₀)
 set!(model.tracers.ρe, ρe₀)
-update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
 ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
 ρ₁ʰᵈ = ρ₁.data[1:Nx, 1, 1:Nz]
 ρ₂ʰᵈ = ρ₂.data[1:Nx, 1, 1:Nz]
@@ -112,7 +112,7 @@ set!(model.tracers.ρ₁, ρ₁ᵢ)
 set!(model.tracers.ρ₂, ρ₂ᵢ)
 set!(model.tracers.ρ₃, ρ₃ᵢ)
 set!(model.tracers.ρe, ρeᵢ)
-update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
     rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ), fill=true, levels=10, xlims=(-5, 5),
@@ -140,12 +140,12 @@ for n in 1:200
     ρ̄ē = sum(ρe.data[1:Nx,1:Ny,1:Nz])/(Nx*Ny*Nz)
     @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄ē = %.2e (rerr = %.2e)\n",
         model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄ē, (ρ̄ē - ρ̄ēᵢ)/ρ̄ē)
-    ∂tρ₁ = maximum(model.slow_forcings.ρ₁[1:Nx,1:Ny,1:Nz])
-    ∂tρ₂ = maximum(model.slow_forcings.ρ₂[1:Nx,1:Ny,1:Nz])
-    ∂tρ₃ = maximum(model.slow_forcings.ρ₃[1:Nx,1:Ny,1:Nz])
-    ∂tρ = maximum(model.slow_forcings.ρ₁[1:Nx,1:Ny,1:Nz] .+
-                  model.slow_forcings.ρ₂[1:Nx,1:Ny,1:Nz] .+
-                  model.slow_forcings.ρ₃[1:Nx,1:Ny,1:Nz])
+    ∂tρ₁ = maximum(model.slow_forcings.tracers.ρ₁[1:Nx,1:Ny,1:Nz])
+    ∂tρ₂ = maximum(model.slow_forcings.tracers.ρ₂[1:Nx,1:Ny,1:Nz])
+    ∂tρ₃ = maximum(model.slow_forcings.tracers.ρ₃[1:Nx,1:Ny,1:Nz])
+    ∂tρ = maximum(model.slow_forcings.tracers.ρ₁[1:Nx,1:Ny,1:Nz] .+
+              model.slow_forcings.tracers.ρ₂[1:Nx,1:Ny,1:Nz] .+
+              model.slow_forcings.tracers.ρ₃[1:Nx,1:Ny,1:Nz])
     @printf("Maximum mass tendencies from diffusion:\n")
     @printf("ρ₁: %.2e\n", ∂tρ₁)
     @printf("ρ₂: %.2e\n", ∂tρ₂)
@@ -156,7 +156,7 @@ for n in 1:200
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
     j = 1
-    update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+    update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
     ρ₁_slice = rotr90(ρ₁[1:Nx, j, 1:Nz])
     ρ₂_slice = rotr90(ρ₂[1:Nx, j, 1:Nz])
     ρ₃_slice = rotr90(ρ₃[1:Nx, j, 1:Nz])
@@ -179,7 +179,6 @@ for n in 1:200
         xlims = (-3, 3), color=:oxy_r, linecolor = nothing, clims = (0, 1200))
 
     p = plot(pρ₁, pρ₂, pρ₃, pρ, pρ′, pe, layout=(2, 3), show=true, dpi = 200)
-    !isdir("frames") && mkdir("frames")
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
 end
 

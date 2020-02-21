@@ -6,7 +6,7 @@ using Oceananigans.TurbulenceClosures:
     ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
 
 export
-    Entropy, Energy,
+    PrognosticS, PrognosticE,
     DryEarth, DryEarth3,
     CompressibleModel,
     time_step!,
