@@ -18,7 +18,7 @@ include("Operators/Operators.jl")
 include("thermodynamics.jl")
 include("pressure_gradients.jl")
 include("microphysics.jl")
-include("models.jl")
+include("compressible_model.jl")
 
 include("right_hand_sides.jl")
 include("time_stepping_kernels.jl")
