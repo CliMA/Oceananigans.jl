@@ -116,12 +116,13 @@ Return a NamedTuple with tendencies for all solution fields (velocity fields and
 tracer fields), initialized on the architecture `arch` and `grid`. Optional `kwargs`
 can be specified to assign data arrays to each tendency field.
 """
-function TendencyFields(arch, grid, tracer_names; kwargs...)
-    velocities = (
-        u = :u ∈ keys(kwargs) ? kwargs[:u] : XFaceField(arch, grid, UVelocityBoundaryConditions(grid), zeros(arch, grid)),
-        v = :v ∈ keys(kwargs) ? kwargs[:v] : YFaceField(arch, grid, VVelocityBoundaryConditions(grid), zeros(arch, grid)),
-        w = :w ∈ keys(kwargs) ? kwargs[:w] : ZFaceField(arch, grid, WVelocityBoundaryConditions(grid), zeros(arch, grid))
-    )
+function TendencyFields(arch, grid, tracer_names;
+    u = XFaceField(arch, grid, UVelocityBoundaryConditions(grid), zeros(arch, grid)),
+    v = YFaceField(arch, grid, VVelocityBoundaryConditions(grid), zeros(arch, grid)),
+    w = ZFaceField(arch, grid, WVelocityBoundaryConditions(grid), zeros(arch, grid)),
+    kwargs...)
+
+    velocities = (u=u, v=v, w=w)
     tracers = TracerFields(arch, grid, tracer_names; kwargs...)
     return merge(velocities, tracers)
 end
