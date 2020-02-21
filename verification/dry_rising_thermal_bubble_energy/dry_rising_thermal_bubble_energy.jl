@@ -30,7 +30,7 @@ grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
 
 model = CompressibleModel(
                       grid = grid,
-                 densities = DryEarth(),
+                 gases = DryEarth(),
     thermodynamic_variable = Energy(),
                    closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
 )

@@ -45,7 +45,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
 
     Ũ  = model.momenta
     ρ = model.total_density
-    ρ̃ = model.densities
+    ρ̃ = model.gases
     C̃  = model.tracers
     K̃ = model.diffusivities
     F  = model.slow_forcings

@@ -5,7 +5,7 @@
         @info "  Testing model construction with energy thermodynamic variable..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        model = CompressibleModel(grid = grid, densities = DryEarth(),
+        model = CompressibleModel(grid = grid, gases = DryEarth(),
                                   thermodynamic_variable = Energy())
         @test model isa CompressibleModel
     end
@@ -14,7 +14,7 @@
         @info "  Testing model construction with entropy thermodynamic variable..."
 
         grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
-        model = CompressibleModel(grid = grid, densities = DryEarth(),
+        model = CompressibleModel(grid = grid, gases = DryEarth(),
                                   thermodynamic_variable = Entropy())
         @test model isa CompressibleModel
     end

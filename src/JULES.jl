@@ -1,6 +1,7 @@
 module JULES
 
 using Oceananigans
+using Oceananigans: AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
     ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers

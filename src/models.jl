@@ -11,7 +11,7 @@ mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, P,
                      grid :: G
                     clock :: Clock{FT}
                   momenta :: M
-                densities :: D
+                    gases :: D
    thermodynamic_variable :: T
              microphysics :: MP
                   tracers :: TS
@@ -41,11 +41,11 @@ function CompressibleModel(;
                float_type = Float64,
                     clock = Clock{float_type}(0, 0),
                   momenta = MomentumFields(architecture, grid),
-                densities = DryEarth(float_type),
+                    gases = DryEarth(float_type),
    thermodynamic_variable = Energy(),
              microphysics = nothing,
             extra_tracers = nothing,
-              tracernames = collect_tracers(thermodynamic_variable, densities, microphysics, extra_tracers),
+              tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
             diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),
@@ -64,10 +64,10 @@ function CompressibleModel(;
     closure = with_tracers(tracernames, closure)
     total_density = CellField(architecture, grid)
 
-    return CompressibleModel(architecture, grid, clock, momenta, densities, thermodynamic_variable,
+    return CompressibleModel(architecture, grid, clock, momenta, gases, thermodynamic_variable,
                              microphysics, tracers, total_density, coriolis, closure, diffusivities,
-                             forcing, parameters, gravity, slow_forcings,
-                             right_hand_sides, intermediate_vars, acoustic_time_stepper)
+                             forcing, parameters, gravity, slow_forcings, right_hand_sides,
+                             intermediate_vars, acoustic_time_stepper)
 end
 
 #####
