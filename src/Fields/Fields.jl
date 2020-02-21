@@ -8,6 +8,7 @@ export
     set!,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 
+using Oceananigans: Cell, Face
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 

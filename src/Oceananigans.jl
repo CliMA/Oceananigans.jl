@@ -92,6 +92,20 @@ import Base:
 #####
 
 """
+    Cell
+
+A type describing the location at the center of a grid cell.
+"""
+struct Cell end
+
+"""
+	Face
+
+A type describing the location at the face of a grid cell.
+"""
+struct Face end
+
+"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current

@@ -15,6 +15,7 @@ export
 
 using CUDAnative
 
+using Oceananigans: Cell, Face
 using Oceananigans.Architectures
 using Oceananigans.Grids
 

@@ -22,20 +22,6 @@ of type `A`. The field is defined on a grid `G`.
 abstract type AbstractField{X, Y, Z, A, G} end
 
 """
-    Cell
-
-A type describing the location at the center of a grid cell.
-"""
-struct Cell end
-
-"""
-	Face
-
-A type describing the location at the face of a grid cell.
-"""
-struct Face end
-
-"""
     Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
 
 A field defined at the location (`X`, `Y`, `Z`), each of which can be either `Cell`
