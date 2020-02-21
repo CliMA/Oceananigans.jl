@@ -39,7 +39,7 @@ model = CompressibleModel(
 ##### Dry thermal bubble perturbation
 #####
 
-gas = model.densities.ρ
+gas = model.gases.ρ
 R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
 uref, Tref, ρref = gas.u₀, gas.T₀, gas.ρ₀
 g  = model.gravity
@@ -74,12 +74,12 @@ Tᵢ(x, y, z) = pᵢ(x, y, z) / (R * ρᵢ(x, y, z))
 xC, zC = grid.xC, grid.zC
 set!(model.tracers.ρ, ρ₀)
 set!(model.tracers.ρe, ρe₀)
-update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
+update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
 ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
 ρeʰᵈ = ρe.data[1:Nx, 1, 1:Nz]
 set!(model.tracers.ρ, ρᵢ)
 set!(model.tracers.ρe, ρeᵢ)
-update_total_density!(model.total_density, model.grid, model.densities, model.tracers)
+update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
     rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ), fill=true, levels=10, xlims=(-5, 5),
@@ -128,6 +128,7 @@ for n in 1:200
         xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims = (0, 1200))
 
     p = plot(pu, pw, pρ, pe, layout=(2, 2), dpi=200, show=true)
+    !isdir("frames") && mkdir("frames")
     savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
 end
 
