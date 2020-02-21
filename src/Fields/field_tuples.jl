@@ -35,6 +35,16 @@ end
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
 `CellField`s on the architecture `arch` and `grid`. Fields may be passed via optional
 keyword arguments `kwargs` for each field.
+
+# Examples
+```julia
+arch = CPU()
+topology = (Periodic, Periodic, Bounded)
+grid = RegularCartesianGrid(topology=topology, size=(16, 16, 16), size=(1, 2, 3))
+tracers = (:T, :S, :random)
+noisy_field = CellField(arch, grid, TracerBoundaryConditions(grid), randn(16, 16))
+tracer_fields = TracerFields(arch, grid, tracers, random=noisy_field)
+```
 """
 function TracerFields(arch, grid, tracer_names; kwargs...)
     tracer_fields =
@@ -95,7 +105,7 @@ function PressureFields(arch, grid, bcs::NamedTuple)
 
     pHY′ = CellField(arch, grid, pHY′_bcs, zeros(arch, grid))
     pNHS = CellField(arch, grid, pNHS_bcs, zeros(arch, grid))
-    
+
     return (pHY′=pHY′, pNHS=pNHS)
 end
 
