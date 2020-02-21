@@ -1,10 +1,10 @@
 import Base: getindex
 
 struct LazyPrimitiveField{X, Y, Z, A, G, C, D} <: AbstractLocatedField{X, Y, Z, A, G}
-    architecture :: A
-    grid :: G
+          architecture :: A
+                  grid :: G
     conservative_field :: C
-    density :: D
+               density :: D
 end
 
 @inline getindex(f::LazyPrimitiveField{Cell, Cell, Cell}, inds...) =
@@ -21,8 +21,8 @@ end
 
 struct LazyTotalDensityField{X, Y, Z, A, G, D} <: AbstractLocatedField{X, Y, Z, A, G}
     architecture :: A
-    grid :: G
-    densities :: D
+            grid :: G
+       densities :: D
 end
 
 @inline getindex(f::LazyTotalDensityField{Cell, Cell, Cell}, inds...) =
