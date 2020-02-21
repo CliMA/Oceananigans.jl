@@ -1,9 +1,9 @@
 using JULES.Operators
 using Oceananigans.Buoyancy: AbstractEquationOfState
 
-####
-#### Universal gas constant and default reference states
-####
+#####
+##### Universal gas constant and default reference states
+#####
 
 const atm = 101325.0         # 1 atmosphere in Pa
 const R⁰ = 8.31446261815324  # Universal gas constant [J/mol/K]
@@ -12,23 +12,25 @@ const p₀ = 1atm              # Reference pressure [Pa]
 const s₀ = 0.0               # Reference entropy [J/kg/K]
 const u₀ = 0.0               # Reference internal energy [J/kg]
 
-####
-#### Molar masses and degrees of freedom for common gases
-####
+#####
+##### Molar masses and degrees of freedom for common gases
+#####
+
 const M_N₂ = 28e-3           # Molar mass of diatomic nitrogen (kg/mol)
 const dof_N₂ = 5.0           # DOF of diatomic nitrogren (nondim)
 const M_O₂ = 32e-3           # Molar mass of diatomic nitrogen (kg/mol)
 const dof_O₂ = 5.0           # DOF of diatomic nitrogren (nondim)
 
-####
-#### Composition information for common atmospheres
-####
+#####
+##### Composition information for common atmospheres
+#####
+
 const η_N₂_earth = 0.7809    # Molar mixing ratio of N₂ on earth (nondim)
 const η_O₂_earth = 0.2095    # Molar mixing ratio of O₂ on earth (nondim)
 
-####
-#### Non-condensible ideal gas
-####
+#####
+##### Non-condensible ideal gas
+#####
 
 struct IdealGas{FT} <: AbstractEquationOfState
      R :: FT
@@ -56,19 +58,19 @@ function IdealGas(FT, M, dof; T₀ = T₀, p₀ = p₀, s₀ = s₀, u₀ = u₀
     return IdealGas{FT}(R, cₚ, cᵥ, T₀, p₀, ρ₀, s₀, u₀)
 end
 
-####
-#### Thermodynamic variables
-####
+#####
+##### Thermodynamic variables
+#####
 
 abstract type AbstractThermodynamicVariable end
 
-# struct ModifiedPotentialTemperature <: AbstractThermodynamicVariable end
 struct Entropy <: AbstractThermodynamicVariable end
 struct Energy  <: AbstractThermodynamicVariable end
 
-###
-### Thermodynamic state diagnostics
-###
+#####
+##### Thermodynamic state diagnostics
+#####
+
 @inline function diagnose_ρs(i, j, k, grid, tvar, tracer_index, gravity, momenta, total_density, densities, tracers)
     @inbounds begin
         T = diagnose_T(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)

@@ -83,9 +83,7 @@ end
     end
 end
 
-@inline function RT(i, j, k, grid, tvar::Entropy, g, ρ, ρ̃, Ũ, C̃)
-    return 0.0
-end
+@inline RT(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, g, ρ, ρ̃, Ũ, C̃) where FT = zero(FT)
 
 @inline function RT(i, j, k, grid, tvar::Energy, g, ρ, ρ̃, Ũ, C̃)
     return -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃)

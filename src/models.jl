@@ -1,5 +1,4 @@
 using Oceananigans
-
 using Oceananigans.Models: AbstractModel, Clock
 using Oceananigans.Forcing: zeroforcing
 
