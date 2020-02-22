@@ -55,7 +55,7 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     for _ in 1:Nt
         @debug "Computing slow forcings..."
         update_total_density!(ρ.data, grid, ρ̃, C̃)
-        fill_halo_regions!(merge((ρ=ρ,), Ũ, C̃), arch)
+        fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
         compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
         fill_halo_regions!(F.ρw, arch)
 
@@ -67,11 +67,11 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
             if rk3_iter == 1
                 compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
                 update_total_density!(ρ.data, grid, ρ̃, C̃)
-                fill_halo_regions!(merge((ρ=ρ,), Ũ, C̃), arch)
+                fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
             else
                 compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
                 update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
-                fill_halo_regions!(merge((ρ=ρ,), IV_Ũ, IV_C̃), arch)
+                fill_halo_regions!(merge((Σρ=ρ,), IV_Ũ, IV_C̃), arch)
             end
 
             compute_right_hand_sides!(compute_rhs_args...)
