@@ -171,14 +171,14 @@ function run!(sim)
 end
 
 Base.show(io::IO, s::Simulation) =
-    print(io, "Oceananigans.Simulation with a model on a $(typeof(s.model.architecture)) architecture \n",
+    print(io, "Simulation{$(typeof(s.model).name){$(typeof(s.model.architecture)), $(eltype(s.model.grid))}}\n",
             "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration) \n",
             "├── Next time step ($(typeof(s.Δt))): $(prettytime(get_Δt(s.Δt))) \n",
             "├── Progress frequency: $(s.progress_frequency)\n",
             "├── Stop criteria: $(s.stop_criteria)\n",
             "├── Run time: $(prettytime(s.run_time)), wall time limit: $(s.wall_time_limit)\n",
             "├── Stop time: $(prettytime(s.stop_time)), stop iteration: $(s.stop_iteration)\n",
-            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, " "))\n",
+            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))\n",
             "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
 
 end
