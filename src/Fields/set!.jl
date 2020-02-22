@@ -67,7 +67,8 @@ end
 
 # Set the GPU field `u` to the array `v`.
 @hascuda function set!(u::AbstractGPUField, v::Array)
-    v_field = Field(location(u), CPU(), u.grid)
+    # Just need a temporary field so we set bcs = nothing.
+    v_field = Field(location(u), CPU(), u.grid, nothing)
     set!(v_field, v)
     set!(u, v_field)
     return nothing
@@ -97,7 +98,8 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u)...)
 
 # Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)
-    u_cpu = Field(location(u), CPU(), u.grid)
+    # Just need a temporary field so we set bcs = nothing.
+    u_cpu = Field(location(u), CPU(), u.grid, nothing)
     set!(u_cpu, f)
     set!(u, u_cpu)
     return nothing
