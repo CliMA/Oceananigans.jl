@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans: AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
-    ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
+    ConstantIsotropicDiffusivity, DiffusivityFields, with_tracers
 
 export
     Entropy, Energy,

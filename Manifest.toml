@@ -358,9 +358,9 @@ version = "0.3.3"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDAapi", "CUDAdrv", "CUDAnative", "CuArrays", "Dates", "FFTW", "GPUifyLoops", "JLD2", "LinearAlgebra", "Logging", "NCDatasets", "OffsetArrays", "OrderedCollections", "Printf", "Random", "Statistics", "Test"]
-git-tree-sha1 = "d1799f890307fdf9ae039fba5237e40202062572"
+git-tree-sha1 = "5b3d58886cdaebc19bf11c581e0b616abd095a37"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.20.0"
+version = "0.23.0"
 
 [[OffsetArrays]]
 git-tree-sha1 = "707e34562700b81e8aa13548eb6b23b18112e49b"

@@ -47,7 +47,7 @@ function CompressibleModel(;
               tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
                  coriolis = nothing,
                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
-            diffusivities = TurbulentDiffusivities(architecture, grid, tracernames, closure),
+            diffusivities = DiffusivityFields(architecture, grid, tracernames, closure),
                   forcing = ModelForcing(),
                   gravity = g_Earth,
             slow_forcings = ForcingFields(architecture, grid, tracernames),
@@ -96,9 +96,9 @@ function DryEarth3(FT = Float64)
 end
 
 function MomentumFields(arch, grid)
-    ρu = FaceFieldX(arch, grid)
-    ρv = FaceFieldY(arch, grid)
-    ρw = FaceFieldZ(arch, grid)
+    ρu = XFaceField(arch, grid)
+    ρv = YFaceField(arch, grid)
+    ρw = ZFaceField(arch, grid)
     return (ρu=ρu, ρv=ρv, ρw=ρw)
 end
 
@@ -108,17 +108,17 @@ function TracerFields(arch, grid, tracernames)
 end
 
 function ForcingFields(arch, grid, tracernames)
-    ρu = FaceFieldX(arch, grid)
-    ρv = FaceFieldY(arch, grid)
-    ρw = FaceFieldZ(arch, grid)
+    ρu = XFaceField(arch, grid)
+    ρv = YFaceField(arch, grid)
+    ρw = ZFaceField(arch, grid)
     tracers = TracerFields(arch, grid, tracernames)
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
 
 function RightHandSideFields(arch, grid, tracernames)
-    ρu = FaceFieldX(arch, grid)
-    ρv = FaceFieldY(arch, grid)
-    ρw = FaceFieldZ(arch, grid)
+    ρu = XFaceField(arch, grid)
+    ρv = YFaceField(arch, grid)
+    ρw = ZFaceField(arch, grid)
     tracers = TracerFields(arch, grid, tracernames)
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
