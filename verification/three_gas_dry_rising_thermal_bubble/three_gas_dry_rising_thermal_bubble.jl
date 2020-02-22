@@ -75,6 +75,7 @@ end
 xᶜ, zᶜ = 0km, 2km
 xʳ, zʳ = 2km, 2km
 L(x, y, z) = sqrt(((x - xᶜ)/xʳ)^2 + ((z - zᶜ)/zʳ)^2)
+
 function ρ′(x, y, z; θᶜ′ = 2.0)
     l = L(x, y, z)
     θ′ = (l <= 1) * θᶜ′ * cos(π/2 * L(x, y, z))^2
@@ -213,7 +214,7 @@ for n in 1:200
 
     p = plot(ρ₁_plot, ρ₂_plot, ρ₃_plot, ρ_plot, ρ′_plot, tvar_plot,
              layout=(2, 3), show=true, dpi=200)
-    !isdir("frames") && mkdir("frames")
+    n == 1 && !isdir("frames") && mkdir("frames")
     savefig(p, @sprintf("frames/thermal_bubble_%s_%03d.png", typeof(tvar), n))
 end
 

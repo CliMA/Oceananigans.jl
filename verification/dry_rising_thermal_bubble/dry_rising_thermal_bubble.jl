@@ -61,7 +61,9 @@ uᵣ, Tᵣ, ρᵣ, sᵣ = gas.u₀, gas.T₀, gas.ρ₀, gas.s₀  # Reference v
 # Define the initial density perturbation
 xᶜ, zᶜ = 0km, 2km
 xʳ, zʳ = 2km, 2km
+
 L(x, y, z) = sqrt(((x - xᶜ)/xʳ)^2 + ((z - zᶜ)/zʳ)^2)
+
 function ρ′(x, y, z; θᶜ′ = 2.0)
     l = L(x, y, z)
     θ′ = (l <= 1) * θᶜ′ * cos(π/2 * L(x, y, z))^2
@@ -140,9 +142,9 @@ for n in 1:200
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
-    u_slice = rotr90(interiorxz(model.momenta.ρu) ./ interiorxz(model.tracers.ρ))
-    w_slice = rotr90(interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
-    ρ_slice = rotr90(interiorxz(model.tracers.ρ) .- ρʰᵈ)
+    u_slice = rotr90(interiorxz(model.momenta.ρu) ./ interiorxz(model.total_density))
+    w_slice = rotr90(interiorxz(model.momenta.ρw) ./ interiorxz(model.total_density))
+    ρ_slice = rotr90(interiorxz(model.total_density) .- ρʰᵈ)
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
     u_plot = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
@@ -153,17 +155,17 @@ for n in 1:200
                      xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
 
     if tvar isa Energy
-        e_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.tracers.ρ))
+        e_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.total_density))
         tvar_plot = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
                             xlims=(-5, 5), color=:oxy_r, linecolor=nothing, clims = (0, 1200))
     elseif tvar isa Entropy
-        s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.tracers.ρ))
+        s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
         tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
                             xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims=(99, 105))
     end
 
     p = plot(u_plot, w_plot, ρ_plot, tvar_plot, layout=(2, 2), dpi=200, show=true)
-    !isdir("frames") && mkdir("frames")
+    n == 1 && !isdir("frames") && mkdir("frames")
     savefig(p, @sprintf("frames/thermal_bubble_%s_%03d.png", typeof(tvar), n))
 end
 
