@@ -18,8 +18,8 @@ end
 #### Time-stepping algorithm
 ####
 
-function time_step!(model::CompressibleModel; Δt, Nt=1)
-
+# Adding kwargs... so this time_step! can work with Oceananigans.Simulation
+function time_step!(model::CompressibleModel, Δt; kwargs...)
     arch = model.architecture
     grid = model.grid
     time = model.clock.time
@@ -52,41 +52,36 @@ function time_step!(model::CompressibleModel; Δt, Nt=1)
     IV_C̃_vals = [getproperty(IV.tracers, C) for C in C̃_names]
     IV_C̃ = NamedTuple{C̃_names}(IV_C̃_vals)
 
-    for _ in 1:Nt
-        @debug "Computing slow forcings..."
-        update_total_density!(ρ.data, grid, ρ̃, C̃)
-        fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
-        compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
-        fill_halo_regions!(F.ρw, arch)
+    @debug "Computing slow forcings..."
+    update_total_density!(ρ.data, grid, ρ̃, C̃)
+    fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
+    compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
+    fill_halo_regions!(F.ρw, arch)
 
-        # RK3 time-stepping
-        for rk3_iter in 1:3
-            @debug "RK3 step #$rk3_iter..."
+    # RK3 time-stepping
+    for rk3_iter in 1:3
+        @debug "RK3 step #$rk3_iter..."
 
-            @debug "  Computing right hand sides..."
-            if rk3_iter == 1
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
-                update_total_density!(ρ.data, grid, ρ̃, C̃)
-                fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
-            else
-                compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
-                update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
-                fill_halo_regions!(merge((Σρ=ρ,), IV_Ũ, IV_C̃), arch)
-            end
-
-            compute_right_hand_sides!(compute_rhs_args...)
-
-            # n, Δτ = acoustic_time_steps(rk3_iter)
-            # acoustic_time_stepping!(Ũ, ρ, C, F, R; n=n, Δτ=Δτ)
-
-            @debug "  Advancing variables..."
-            LHS = rk3_iter == 3 ? Φ⁺ : IV
-            advance_variables!(LHS, grid, Ũ, C̃, R; Δt=rk3_time_step(rk3_iter, Δt))
+        @debug "  Computing right hand sides..."
+        if rk3_iter == 1
+            compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
+            update_total_density!(ρ.data, grid, ρ̃, C̃)
+            fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
+        else
+            compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
+            update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
+            fill_halo_regions!(merge((Σρ=ρ,), IV_Ũ, IV_C̃), arch)
         end
 
-        model.clock.iteration += 1
-        model.clock.time += Δt
+        compute_right_hand_sides!(compute_rhs_args...)
+
+        @debug "  Advancing variables..."
+        LHS = rk3_iter == 3 ? Φ⁺ : IV
+        advance_variables!(LHS, grid, Ũ, C̃, R; Δt=rk3_time_step(rk3_iter, Δt))
     end
+
+    model.clock.iteration += 1
+    model.clock.time += Δt
 
     return nothing
 end
