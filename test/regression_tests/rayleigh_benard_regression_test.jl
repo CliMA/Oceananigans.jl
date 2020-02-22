@@ -37,7 +37,7 @@ function run_rayleigh_benard_regression_test(arch)
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
-        boundary_conditions = SolutionBoundaryConditions(grid, b=bbcs),
+        boundary_conditions = (b=bbcs,),
                     forcing = ModelForcing(c=Fc)
     )
 

@@ -49,7 +49,7 @@ Keyword arguments
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
-the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and 
+the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and
 the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
 
 `Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
@@ -107,16 +107,6 @@ function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{
     κ = tracer_diffusivities(tracers, closure.κ)
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
-end
-
-#####
-##### Constructor
-#####
-
-function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::VAMD)
-    νₑ = CellField(arch, grid)
-    κₑ = TracerFields(arch, grid, tracers)
-    return (νₑ=νₑ, κₑ=κₑ)
 end
 
 #####

@@ -1,14 +1,5 @@
-function getmodelfield(fieldname, model)
-    if fieldname ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fieldname)
-    else
-        field = getfield(model.tracers, fieldname)
-    end
-    return field
-end
-
 function relative_error(u_num, u, time)
-    u_ans = Field(location(u_num), architecture(u_num), u_num.grid)
+    u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
     set!(u_ans, (x, y, z) -> u(x, y, z, time))
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
@@ -17,7 +8,7 @@ function test_diffusion_simple(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
     model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    field = get_model_field(fieldname, model)
     value = π
     interior(field) .= value
     for n in 1:10; time_step!(model, 1, euler= n==1); end
@@ -30,7 +21,7 @@ function test_diffusion_budget_default(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
     model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    field = get_model_field(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
     interior(field)[:, :,   1:half_Nz] .= -1
     interior(field)[:, :, half_Nz:end] .=  1
@@ -42,7 +33,7 @@ function test_diffusion_budget_channel(fieldname)
     grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
     model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    field = get_model_field(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
     interior(field)[:, half_Ny:end, :] .=  1
@@ -61,7 +52,7 @@ function test_diffusion_cosine(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, Nz), length=(1, 1, Lz))
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
     model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    field = get_model_field(fieldname, model)
 
     zC = model.grid.zC
     interior(field)[1, 1, :] .= cos.(m*zC)
@@ -154,7 +145,8 @@ end
 """
 Taylor-Green vortex test
 See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Green_vortex_solution
-     and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application" by Hesthaven & Warburton.
+     and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application"
+     by Hesthaven & Warburton.
 """
 function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     Nx, Ny, Nz = N, N, 2

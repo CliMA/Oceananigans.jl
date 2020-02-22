@@ -51,7 +51,7 @@ end
 
 function x_derivative_cell(FT, arch)
     grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
-    a = Field(Cell, Cell, Cell, arch, grid)
+    a = Field(Cell, Cell, Cell, arch, grid, nothing)
     dx_a = ∂x(a)
 
     for k in 1:3
@@ -234,7 +234,7 @@ end
         arch = CPU()
         grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
         u, v, w = VelocityFields(arch, grid)
-        c = Field(Cell, Cell, Cell, arch, grid)
+        c = Field(Cell, Cell, Cell, arch, grid, nothing)
 
         @testset "Unary operations and derivatives [$FT]" begin
             for ψ in (u, v, w, c)
@@ -315,7 +315,7 @@ end
         Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
             grid = RegularCartesianGrid(FT, size=(Nx, Nx, Nx), length=(Nx, Nx, Nx))
-            a, b = (Field(Cell, Cell, Cell, arch, grid) for i in 1:2)
+            a, b = (Field(Cell, Cell, Cell, arch, grid, nothing) for i in 1:2)
 
             set!(b, 2)
             set!(a, (x, y, z) -> x < 2 ? 3x : 6)

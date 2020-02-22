@@ -9,24 +9,20 @@ export
     FieldBoundaryConditions, UVelocityBoundaryConditions, VVelocityBoundaryConditions,
     WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,
     DiffusivityBoundaryConditions,
-    SolutionBoundaryConditions, TendenciesBoundaryConditions, PressureBoundaryConditions,
-    DiffusivityBoundaryConditions, DiffusivitiesBoundaryConditions,
-    ModelBoundaryConditions,
     BoundaryFunction,
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!
 
 using CUDAnative
 
+using Oceananigans: Cell, Face
 using Oceananigans.Architectures
 using Oceananigans.Grids
-using Oceananigans.Fields
 
 include("boundary_condition_types.jl")
 include("boundary_condition.jl")
 include("coordinate_boundary_conditions.jl")
 include("field_boundary_conditions.jl")
-include("solution_and_model_boundary_conditions.jl")
 include("boundary_function.jl")
 include("show_boundary_conditions.jl")
 

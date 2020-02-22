@@ -64,7 +64,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
-      boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs)
+      boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
     # We will manually change the stop_iteration as needed.
