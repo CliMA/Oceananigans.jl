@@ -9,6 +9,9 @@ function update_total_density!(ρ, grid, ρ̃, C̃)
     end
 end
 
+update_total_density!(model) =
+    update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """

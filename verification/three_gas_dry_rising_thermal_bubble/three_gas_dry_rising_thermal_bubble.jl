@@ -1,8 +1,3 @@
-"""
-This example sets up a dry, warm thermal bubble perturbation in a uniform
-lateral mean flow which buoyantly rises.
-"""
-
 using Printf
 using Plots
 using VideoIO
@@ -10,6 +5,7 @@ using FileIO
 using JULES
 using Oceananigans
 
+using Oceananigans.Operators: ℑzᵃᵃᶠ
 using Oceananigans.Fields: interiorparent
 interiorxz(field) = dropdims(interiorparent(field), dims=2)
 
@@ -32,7 +28,7 @@ tvar = Energy()
 
 model = CompressibleModel(
                       grid = grid,
-                     gases = DryEarth(),
+                     gases = DryEarth3(),
     thermodynamic_variable = tvar,
                    closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
 )
@@ -41,11 +37,16 @@ model = CompressibleModel(
 ##### Dry thermal bubble perturbation
 #####
 
-gas = model.gases.ρ
+gas = model.gases.ρ₁
 R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
 g  = model.gravity
 pₛ = 1000hPa
 Tₛ = 300.0
+
+# Define initial mixing ratios
+q₁(z) = exp(-(4z/Lz)^2)
+q₃(z) = exp(-(4*(z - Lz)/Lz)^2)
+q₂(z) = 1 - q₁(z) - q₃(z)
 
 # Define an approximately hydrostatic background state
 θ₀(x, y, z) = Tₛ
@@ -53,10 +54,22 @@ p₀(x, y, z) = pₛ * (1 - g*z / (cₚ*Tₛ))^(cₚ/R)
 T₀(x, y, z) = Tₛ * (p₀(x, y, z)/pₛ)^(R/cₚ)
 ρ₀(x, y, z) = p₀(x, y, z) / (R*T₀(x, y, z))
 
-# Define both energy and entropy
+ρ₁₀(x, y, z) = q₁(z) * ρ₀(x, y, z)
+ρ₂₀(x, y, z) = q₂(z) * ρ₀(x, y, z)
+ρ₃₀(x, y, z) = q₃(z) * ρ₀(x, y, z)
+
 uᵣ, Tᵣ, ρᵣ, sᵣ = gas.u₀, gas.T₀, gas.ρ₀, gas.s₀  # Reference values
-ρe₀(x, y, z) = ρ₀(x, y, z) * (uᵣ + cᵥ * (T₀(x, y, z) - Tᵣ) + g*z)
-ρs₀(x, y, z) = ρ₀(x, y, z) * (sᵣ + cᵥ * log(T₀(x, y, z)/Tᵣ) - R * log(ρ₀(x, y, z)/ρᵣ))
+ρe₀(x, y, z) = sum(ρ₀(x, y, z) * (uᵣ + cᵥ * (T₀(x, y, z) - Tᵣ) + g*z)
+                   for ρ₀ in (ρ₁₀, ρ₂₀, ρ₃₀))
+
+function ρs₀(x, y, z)
+   ρs = 0.0
+   T = T₀(x, y, z)
+   for ρ in (ρ₁₀(x, y, z), ρ₂₀(x, y, z), ρ₃₀(x, y, z))
+       ρs += ρ > 0 ?  ρ * (sᵣ + cᵥ*log(T/Tᵣ) - R*log(ρ/ρᵣ)) : 0.0
+   end
+   return ρs
+end
 
 # Define the initial density perturbation
 xᶜ, zᶜ = 0km, 2km
@@ -73,22 +86,42 @@ end
 pᵢ(x, y, z) = p₀(x, y, z)
 Tᵢ(x, y, z) = pᵢ(x, y, z) / (R * ρᵢ(x, y, z))
 
-ρeᵢ(x, y, z) = ρᵢ(x, y, z) * (uᵣ + cᵥ * (Tᵢ(x, y, z) - Tᵣ) + g*z)
-ρsᵢ(x, y, z) = ρᵢ(x, y, z) * (sᵣ + cᵥ * log(Tᵢ(x, y, z)/Tᵣ) - R * log(ρᵢ(x, y, z)/ρᵣ))
+ρ₁ᵢ(x, y, z) = q₁(z) * ρᵢ(x, y, z)
+ρ₂ᵢ(x, y, z) = q₂(z) * ρᵢ(x, y, z)
+ρ₃ᵢ(x, y, z) = q₃(z) * ρᵢ(x, y, z)
+
+ρeᵢ(x, y, z) = sum(ρᵢ(x, y, z) * (uᵣ + cᵥ * (Tᵢ(x, y, z) - Tᵣ) + g*z)
+                   for ρᵢ in (ρ₁ᵢ, ρ₂ᵢ, ρ₃ᵢ))
+
+function ρsᵢ(x, y, z)
+    ρs = 0.0
+    T = Tᵢ(x, y, z)
+    for ρ in (ρ₁ᵢ(x, y, z), ρ₂ᵢ(x, y, z), ρ₃ᵢ(x, y, z))
+        ρs += ρ > 0 ?  ρ * (sᵣ + cᵥ*log(T/Tref) - R*log(ρ/ρref)) : 0.0
+    end
+    return ρs
+end
 
 # Set hydrostatic background state
-set!(model.tracers.ρ, ρ₀)
+set!(model.tracers.ρ₁, ρ₁₀)
+set!(model.tracers.ρ₂, ρ₂₀)
+set!(model.tracers.ρ₃, ρ₃₀)
 tvar isa Energy  && set!(model.tracers.ρe, ρe₀)
 tvar isa Entropy && set!(model.tracers.ρs, ρs₀)
 update_total_density!(model)
 
 # Save hydrostatic base state
 ρʰᵈ = interiorxz(model.total_density)
+ρ₁ʰᵈ = interiorxz(model.tracers.ρ₁)
+ρ₂ʰᵈ = interiorxz(model.tracers.ρ₂)
+ρ₃ʰᵈ = interiorxz(model.tracers.ρ₃)
 tvar isa Energy  && (ρeʰᵈ = interiorxz(model.tracers.ρe))
 tvar isa Entropy && (ρsʰᵈ = interiorxz(model.tracers.ρs))
 
 # Set initial state (which includes the thermal perturbation)
-set!(model.tracers.ρ, ρᵢ)
+set!(model.tracers.ρ₁, ρ₁ᵢ)
+set!(model.tracers.ρ₂, ρ₂ᵢ)
+set!(model.tracers.ρ₃, ρ₃ᵢ)
 tvar isa Energy  && set!(model.tracers.ρe, ρeᵢ)
 tvar isa Entropy && set!(model.tracers.ρs, ρsᵢ)
 update_total_density!(model)
@@ -137,42 +170,52 @@ for n in 1:200
                 model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
     end
 
+    ∂tρ₁ = maximum(interior(model.slow_forcings.tracers.ρ₁))
+    ∂tρ₂ = maximum(interior(model.slow_forcings.tracers.ρ₂))
+    ∂tρ₃ = maximum(interior(model.slow_forcings.tracers.ρ₃))
+    ∂tρ  = maximum(interior(model.slow_forcings.tracers.ρ₁) .+
+                   interior(model.slow_forcings.tracers.ρ₂) .+
+                   interior(model.slow_forcings.tracers.ρ₃))
+    @printf("Maximum mass tendencies from diffusion:\n")
+    @printf("ρ₁: %.2e, ρ₂: %.2e, ρ₃: %.2e, ρ: %.2e\n", ∂tρ₁, ∂tρ₂, ∂tρ₃, ∂tρ)
+
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
-    u_slice = rotr90(interiorxz(model.momenta.ρu) ./ interiorxz(model.tracers.ρ))
-    w_slice = rotr90(interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
-    ρ_slice = rotr90(interiorxz(model.tracers.ρ) .- ρʰᵈ)
+    update_total_density!(model)
+    ρ₁_slice = rotr90(interiorxz(model.tracers.ρ₁))
+    ρ₂_slice = rotr90(interiorxz(model.tracers.ρ₂))
+    ρ₃_slice = rotr90(interiorxz(model.tracers.ρ₃))
+    ρ_slice  = rotr90(interiorxz(model.total_density))
+    ρ′_slice = rotr90(interiorxz(model.total_density) .- ρʰᵈ)
 
-    u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
-    u_plot = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
-                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
-    w_plot = heatmap(xC, zC, w_slice, title="w", fill=true, levels=50,
-                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
-    ρ_plot = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
-                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
+    ρ₁_title = @sprintf("rho1, t = %d s", round(Int, model.clock.time))
+    ρ₁_plot = heatmap(xC, zC, ρ₁_slice, title=ρ₁_title, fill=true, levels=50,
+                      xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
+    ρ₂_plot = heatmap(xC, zC, ρ₂_slice, title="rho2", fill=true, levels=50,
+                      xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
+    ρ₃_plot = heatmap(xC, zC, ρ₃_slice, title="rho3", fill=true, levels=50,
+                      xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
+    ρ_plot  = heatmap(xC, zC, ρ_slice, title="rho", fill=true, levels=50,
+                      xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
+    ρ′_plot = heatmap(xC, zC, ρ′_slice, title="rho'", fill=true, levels=50,
+                      xlims=(-3, 3), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
 
     if tvar isa Energy
-        e_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.tracers.ρ))
-        tvar_plot = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
-                            xlims=(-5, 5), color=:oxy_r, linecolor=nothing, clims = (0, 1200))
+        e′_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.total_density))
+        tvar_plot = heatmap(xC, zC, e′_slice, title="e_prime", fill=true, levels=50,
+                            xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(0, 1200))
     elseif tvar isa Entropy
-        s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.tracers.ρ))
+        s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
         tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
-                            xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims=(99, 105))
+                            xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(100, 300))
     end
 
-    p = plot(u_plot, w_plot, ρ_plot, tvar_plot, layout=(2, 2), dpi=200, show=true)
+    p = plot(ρ₁_plot, ρ₂_plot, ρ₃_plot, ρ_plot, ρ′_plot, tvar_plot,
+             layout=(2, 3), show=true, dpi=200)
     !isdir("frames") && mkdir("frames")
     savefig(p, @sprintf("frames/thermal_bubble_%s_%03d.png", typeof(tvar), n))
 end
-
-# Print min/max of ρ′ and w at t = 1000.
-ρ′₁₀₀₀ = (interiorxz(model.tracers.ρ) .- ρʰᵈ)
-w₁₀₀₀  = (interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
-
-@printf("ρ′: min=%.2e, max=%.2e\n", minimum(ρ′₁₀₀₀), maximum(ρ′₁₀₀₀))
-@printf("w:  min=%.2e, max=%.2e\n", minimum(w₁₀₀₀), maximum(w₁₀₀₀))
 
 @printf("Rendering MP4...\n")
 imgs = filter(x -> occursin("$(typeof(tvar))", x) && occursin(".png", x), readdir("frames"))
