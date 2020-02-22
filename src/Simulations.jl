@@ -13,7 +13,7 @@ using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
 
-mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F}
+mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F, Π}
                  model :: M
                     Δt :: Δ
          stop_criteria :: C
@@ -25,6 +25,7 @@ mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F}
         output_writers :: O
               progress :: P
     progress_frequency :: F
+            parameters :: Π
 end
 
 """
@@ -36,7 +37,8 @@ end
            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
               progress = nothing,
-    progress_frequency = 1)
+    progress_frequency = 1,
+            parameters = nothing)
 
 Construct an Oceananigans.jl `Simulation` for a `model` with time step `Δt`.
 
@@ -55,6 +57,7 @@ Keyword arguments
   `progress_frequency` iterations. Useful for logging simulation health.
 - `progress_frequency`: How often to update the time step, check stop criteria, and call
   `progress` function (in number of iterations).
+- `parameters`: Parameters that can be accessed in the `progress` function.
 """
 function Simulation(model; Δt,
         stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
@@ -64,7 +67,8 @@ function Simulation(model; Δt,
           diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
        output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
              progress = nothing,
-   progress_frequency = 1)
+   progress_frequency = 1,
+           parameters = nothing)
 
    if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
@@ -79,7 +83,8 @@ function Simulation(model; Δt,
    run_time = 0.0
 
    return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit,
-                     run_time, diagnostics, output_writers, progress, progress_frequency)
+                     run_time, diagnostics, output_writers, progress, progress_frequency,
+                     parameters)
 end
 
 function stop(sim)
