@@ -7,17 +7,18 @@ using Printf
 using Plots
 using VideoIO
 using FileIO
-using Oceananigans
 using JULES
-using JULES: Π
+using Oceananigans
 
-const km = 1000
-const hPa = 100
+using Oceananigans.Fields: interiorparent
+interiorxz(field) = dropdims(interiorparent(field), dims=2)
+
+const km = 1000.0
+const hPa = 100.0
 
 Lx = 20km
 Lz = 10km
-
-Δ = 0.1km  # grid spacing [m]
+Δ  = 0.2km  # grid spacing [m]
 
 Nx = Int(Lx/Δ)
 Ny = 1
@@ -26,21 +27,36 @@ Nz = Int(Lz/Δ)
 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
                             x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
 
+tvar = Energy()
+# tvar = Entropy()
+
+model = CompressibleModel(
+                      grid = grid,
+                     gases = DryEarth(),
+    thermodynamic_variable = tvar,
+                   closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
+)
+
 #####
 ##### Dry thermal bubble perturbation
 #####
 
-gas = IdealGas()
-Rᵈ, cₚ, cᵥ = gas.Rᵈ, gas.cₚ, gas.cᵥ
-g  = 9.80665
+gas = model.gases.ρ
+R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
+g  = model.gravity
 pₛ = 1000hPa
-Tₛ = 300
+Tₛ = 300.0
 
-# Define an approximately hydrostatic background state
+# Define an approximately hydrostatic background state.
 θ₀(x, y, z) = Tₛ
-p₀(x, y, z) = pₛ * (1 - g*z/(cₚ*Tₛ))^(cₚ/Rᵈ)
-T₀(x, y, z) = Tₛ*(p₀(x, y, z)/pₛ)^(Rᵈ/cₚ)
-ρ₀(x, y, z) = p₀(x, y, z)/(Rᵈ*T₀(x, y, z))
+p₀(x, y, z) = pₛ * (1 - g*z / (cₚ*Tₛ))^(cₚ/R)
+T₀(x, y, z) = Tₛ * (p₀(x, y, z)/pₛ)^(R/cₚ)
+ρ₀(x, y, z) = p₀(x, y, z) / (R*T₀(x, y, z))
+
+# Define both energy and entropy.
+uᵣ, Tᵣ, ρᵣ, sᵣ = gas.u₀, gas.T₀, gas.ρ₀, gas.s₀  # Reference values
+ρe₀(x, y, z) = ρ₀(x, y, z) * (uᵣ + cᵥ * (T₀(x, y, z) - Tᵣ) + g*z)
+ρs₀(x, y, z) = ρ₀(x, y, z) * (sᵣ + cᵥ * log(T₀(x, y, z)/Tᵣ) - R * log(ρ₀(x, y, z)/ρᵣ))
 
 # Define the initial density perturbation
 xᶜ, zᶜ = 0km, 2km
@@ -55,89 +71,115 @@ end
 # Define initial state
 ρᵢ(x, y, z) = ρ₀(x, y, z) + ρ′(x, y, z)
 pᵢ(x, y, z) = p₀(x, y, z)
-Tᵢ(x, y, z) = pᵢ(x, y, z) / (Rᵈ * ρᵢ(x, y, z))
-θᵢ(x, y, z) = Tᵢ(x, y, z) * (pₛ / pᵢ(x, y, z))^(Rᵈ/cₚ)
+Tᵢ(x, y, z) = pᵢ(x, y, z) / (R * ρᵢ(x, y, z))
 
-#####
-##### Set up model
-#####
+ρeᵢ(x, y, z) = ρᵢ(x, y, z) * (uᵣ + cᵥ * (Tᵢ(x, y, z) - Tᵣ) + g*z)
+ρsᵢ(x, y, z) = ρᵢ(x, y, z) * (sᵣ + cᵥ * log(Tᵢ(x, y, z)/Tᵣ) - R * log(ρᵢ(x, y, z)/ρᵣ))
 
-model = CompressibleModel(
-                      grid = grid,
-                  buoyancy = gas,
-        reference_pressure = pₛ,
-    thermodynamic_variable = ModifiedPotentialTemperature(),
-                   tracers = (:Θᵐ,),
-                   closure = ConstantIsotropicDiffusivity(ν=0.5, κ=0.5)
-)
+# Set hydrostatic background state.
+set!(model.tracers.ρ, ρ₀)
+tvar isa Energy  && set!(model.tracers.ρe, ρe₀)
+tvar isa Entropy && set!(model.tracers.ρs, ρs₀)
+update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
 
-# Set initial state after saving perturbation-free background
-ρ, Θ = model.density, model.tracers.Θᵐ
-xC, zC = grid.xC, grid.zC
-set!(model.density, ρ₀)
-set!(model.tracers.Θᵐ, (x, y, z) -> ρ₀(x, y, z) * θ₀(x, y, z))
-ρʰᵈ = ρ.data[1:Nx, 1, 1:Nz]
-Θʰᵈ = Θ.data[1:Nx, 1, 1:Nz]
-set!(model.density, ρᵢ)
-set!(model.tracers.Θᵐ, (x, y, z) -> ρᵢ(x, y, z) * θᵢ(x, y, z))
+# Save hydrostatic base state.
+ρʰᵈ = interiorxz(model.total_density)
+tvar isa Energy  && (ρeʰᵈ = interiorxz(model.tracers.ρe))
+tvar isa Entropy && (ρsʰᵈ = interiorxz(model.tracers.ρs))
+
+# Set initial state (which includes the thermal perturbation).
+set!(model.tracers.ρ, ρᵢ)
+tvar isa Energy  && set!(model.tracers.ρe, ρeᵢ)
+tvar isa Entropy && set!(model.tracers.ρs, ρsᵢ)
+update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
 
 ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
-    rotr90(ρ.data[1:Nx, 1, 1:Nz] .- ρʰᵈ), fill=true, levels=10, xlims=(-5, 5),
-    clims=(-0.008, 0.008), color=:balance, dpi=200)
-savefig(ρ_plot, "rho_prime_initial_condition.png")
+                 rotr90(interiorxz(model.total_density) .- ρʰᵈ),
+                 fill=true, levels=10, xlims=(-5, 5),
+                 clims=(-0.008, 0.008), color=:balance, dpi=200)
+savefig(ρ_plot, "rho_prime_initial_condition_with_$(typeof(tvar)).png")
 
-θ_slice = rotr90(Θ.data[1:Nx, 1, 1:Nz] ./ ρ.data[1:Nx, 1, 1:Nz])
-Θ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, θ_slice,
-                 fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
-savefig(Θ_plot, "theta_initial_condition.png")
+if tvar isa Energy
+    e_slice = rotr90(interiorxz(model.tracers.ρe) ./ interiorxz(model.total_density))
+    e_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, e_slice,
+                     fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
+    savefig(e_plot, "energy_initial_condition.png")
+elseif tvar isa Entropy
+    s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
+    s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
+                     fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
+    savefig(s_plot, "entropy_initial_condition.png")
+end
 
 #####
 ##### Watch the thermal bubble rise!
 #####
 
-Δt=0.1
+# Initial mean ρ, ρe, ρs.
+ρ̄ᵢ  = sum(interior(model.total_density)) / (Nx*Ny*Nz)
+tvar isa Energy  && (ρ̄ēᵢ = sum(interior(model.tracers.ρe)) / (Nx*Ny*Nz))
+tvar isa Entropy && (ρ̄s̄ᵢ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz))
+
+Δt = 0.1
 for n in 1:200
     time_step!(model, Δt=Δt, Nt=50)
 
     CFL = cfl(model, Δt)
-    aCFL = acoustic_cfl(model, Δt)
-    @printf("t = %.2f s, CFL = %.2e, aCFL = %.2e\n", model.clock.time, CFL, aCFL)
+    ρ̄ = sum(interior(model.total_density)) / (Nx*Ny*Nz)
+
+    if tvar isa Energy
+        ρ̄ē = sum(interior(model.tracers.ρe)) / (Nx*Ny*Nz)
+        @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄ē = %.2e (rerr = %.2e)\n",
+                model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄ē, (ρ̄ē - ρ̄ēᵢ)/ρ̄ē)
+    elseif tvar isa Entropy
+        ρ̄s̄ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz)
+        @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄s̄ = %.2e (rerr = %.2e)\n",
+                model.clock.time, CFL, ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
+    end
 
     xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
     xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
-    j = 1
-    u_slice = rotr90(model.momenta.ρu.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
-    w_slice = rotr90(model.momenta.ρw.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
-    ρ_slice = rotr90(model.density.data[1:Nx, j, 1:Nz] .- ρʰᵈ)
-    θ_slice = rotr90(model.tracers.Θᵐ.data[1:Nx, j, 1:Nz] ./ model.density.data[1:Nx, j, 1:Nz])
+    u_slice = rotr90(interiorxz(model.momenta.ρu) ./ interiorxz(model.tracers.ρ))
+    w_slice = rotr90(interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
+    ρ_slice = rotr90(interiorxz(model.tracers.ρ) .- ρʰᵈ)
 
     u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
-    pu = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
-        xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-10, 10))
-    pw = heatmap(xC, zC, w_slice, title="w", fill=true, levels=50,
-        xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-10, 10))
-    pρ = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
-        xlims=(-5, 5), color=:balance, linecolor = nothing, clims=(-0.006, 0.006))
-    pθ = heatmap(xC, zC, θ_slice, title="theta", fill=true, levels=50,
-        xlims=(-5, 5), color=:thermal, linecolor = nothing, clims=(299.9, 302))
+    u_plot = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
+                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
+    w_plot = heatmap(xC, zC, w_slice, title="w", fill=true, levels=50,
+                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
+    ρ_plot = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
+                     xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
 
-    p = plot(pu, pw, pρ, pθ, layout=(2, 2), dpi=200, show=true)
-    savefig(p, @sprintf("frames/thermal_bubble_%03d.png", n))
+    if tvar isa Energy
+        e_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.tracers.ρ))
+        tvar_plot = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
+                            xlims=(-5, 5), color=:oxy_r, linecolor=nothing, clims = (0, 1200))
+    elseif tvar isa Entropy
+        s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.tracers.ρ))
+        tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
+                            xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims=(99, 105))
+    end
+
+    p = plot(u_plot, w_plot, ρ_plot, tvar_plot, layout=(2, 2), dpi=200, show=true)
+    !isdir("frames") && mkdir("frames")
+    savefig(p, @sprintf("frames/thermal_bubble_%s_%03d.png", typeof(tvar), n))
 end
 
-ρ′_1000 = (model.density.data[1:Nx, 1, 1:Nz] .- ρʰᵈ)
-w_1000 = (model.momenta.ρw.data[1:Nx, 1, 1:Nz] ./ model.density.data[1:Nx, 1, 1:Nz])
+# Print min/max of ρ′ and w at t = 1000.
+ρ′₁₀₀₀ = (interiorxz(model.tracers.ρ) .- ρʰᵈ)
+w₁₀₀₀  = (interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
 
-@printf("ρ′: min=%.2f, max=%.2f\n", minimum(ρ′_1000), maximum(ρ′_1000))
-@printf("w:  min=%.2f, max=%.2f\n", minimum(w_1000), maximum(w_1000))
+@printf("ρ′: min=%.2e, max=%.2e\n", minimum(ρ′₁₀₀₀), maximum(ρ′₁₀₀₀))
+@printf("w:  min=%.2e, max=%.2e\n", minimum(w₁₀₀₀), maximum(w₁₀₀₀))
 
-@printf("Rendering MP4\n")
-imgs = filter(x -> occursin(".png", x), readdir("frames"))
+@printf("Rendering MP4...\n")
+imgs = filter(x -> occursin("$(typeof(tvar))", x) && occursin(".png", x), readdir("frames"))
 imgorder = map(x -> split(split(x, ".")[1], "_")[end], imgs)
 p = sortperm(parse.(Int, imgorder))
 frames = []
 for img in imgs[p]
     push!(frames, convert.(RGB, load("frames/$img")))
 end
-encodevideo("thermal_bubble.mp4", frames, framerate = 30)
+encodevideo("thermal_bubble_$(typeof(tvar)).mp4", frames, framerate = 30)
