@@ -173,7 +173,7 @@ Base.show(io::IO, s::Simulation) =
             "├── Stop criteria: $(s.stop_criteria)\n",
             "├── Run time: $(prettytime(s.run_time)), wall time limit: $(s.wall_time_limit)\n",
             "├── Stop time: $(prettytime(s.stop_time)), stop iteration: $(s.stop_iteration)\n",
-            "├── Diagnostics: $(ordered_dict_show(s.model.diagnostics, " "))\n",
-            "└── Output writers: $(ordered_dict_show(s.model.output_writers, "│"))")
+            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, " "))\n",
+            "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
 
 end
