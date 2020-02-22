@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.Models: AbstractModel, Clock
+using Oceananigans.Models: AbstractModel, Clock, tracernames
 using Oceananigans.Forcing: zeroforcing
 
 #####
@@ -67,6 +67,18 @@ function CompressibleModel(;
                              forcing, gravity, slow_forcings, right_hand_sides,
                              intermediate_vars, acoustic_time_stepper)
 end
+
+using Oceananigans.Grids: short_show
+
+Base.show(io::IO, model::CompressibleModel{A, FT}) where {A, FT} =
+    print(io, "CompressibleModel{$A, $FT} with $(length(model.gases)) gas(es) ",
+        "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
+        "├── grid: $(short_show(model.grid))\n",
+        "├── tracers: $(tracernames(model.tracers))\n",
+        "├── closure: $(typeof(model.closure))\n",
+        "├── coriolis: $(typeof(model.coriolis))\n",
+        "├── microphysics: $(typeof(model.microphysics))\n",
+        "└── acoustic time stepper: $(typeof(model.acoustic_time_stepper))")
 
 #####
 ##### Utilities for constructing compressible models

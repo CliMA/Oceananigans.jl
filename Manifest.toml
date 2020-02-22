@@ -358,7 +358,9 @@ version = "0.3.3"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDAapi", "CUDAdrv", "CUDAnative", "CuArrays", "Dates", "FFTW", "GPUifyLoops", "JLD2", "LinearAlgebra", "Logging", "NCDatasets", "OffsetArrays", "OrderedCollections", "Printf", "Random", "Statistics", "Test"]
-git-tree-sha1 = "5b3d58886cdaebc19bf11c581e0b616abd095a37"
+git-tree-sha1 = "a3a5e91c23cc943cab9fd24ccf22c3e44ef6e8c4"
+repo-rev = "ar/simulation-fixes"
+repo-url = "https://github.com/climate-machine/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.23.0"
 
