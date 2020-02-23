@@ -6,25 +6,25 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, G, M, D, T, TS, TD, C, TC, DF, MP, F, SF, RHS, IV, ATS} <: AbstractModel
-             architecture :: A
-                     grid :: G
-                    clock :: Clock{FT}
-                  momenta :: M
-                    gases :: D
-   thermodynamic_variable :: T
-             microphysics :: MP
-                  tracers :: TS
-            total_density :: TD
-                 coriolis :: C
-                  closure :: TC
-            diffusivities :: DF
-                  forcing :: F
-                  gravity :: FT
-            slow_forcings :: SF
-         right_hand_sides :: RHS
-        intermediate_vars :: IV
-    acoustic_time_stepper :: ATS
+mutable struct CompressibleModel{A, FT, Ω, D, M, T, K, Θ, G, X, C, P, F, S, R, I, W} <: AbstractModel
+              architecture :: A
+                      grid :: Ω
+                     clock :: Clock{FT}
+             total_density :: D
+                   momenta :: M
+                   tracers :: T
+             diffusivities :: K
+    thermodynamic_variable :: Θ
+                     gases :: G
+                   gravity :: FT
+                  coriolis :: X
+                   closure :: C
+              microphysics :: P
+                   forcing :: F
+             slow_forcings :: S
+          right_hand_sides :: R
+    intermediate_variables :: I
+     acoustic_time_stepper :: W
 end
 
 #####
@@ -35,26 +35,25 @@ const pₛ_Earth = 100000
 const  g_Earth = 9.80665
 
 function CompressibleModel(;
-                     grid,
-             architecture = CPU(),
-               float_type = Float64,
-                    clock = Clock{float_type}(0, 0),
-                  momenta = MomentumFields(architecture, grid),
-                    gases = DryEarth(float_type),
-   thermodynamic_variable = Energy(),
-             microphysics = nothing,
-            extra_tracers = nothing,
-              tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
-                 coriolis = nothing,
-                  closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
-            diffusivities = DiffusivityFields(architecture, grid, tracernames, closure),
-                  forcing = ModelForcing(),
-                  gravity = g_Earth,
-            slow_forcings = ForcingFields(architecture, grid, tracernames),
-         right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
-        intermediate_vars = RightHandSideFields(architecture, grid, tracernames),
-    acoustic_time_stepper = nothing
-   )
+                      grid,
+              architecture = CPU(),
+                float_type = Float64,
+                     clock = Clock{float_type}(0, 0),
+                   momenta = MomentumFields(architecture, grid),
+                     gases = DryEarth(float_type),
+    thermodynamic_variable = Energy(),
+              microphysics = nothing,
+             extra_tracers = nothing,
+               tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
+                  coriolis = nothing,
+                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
+             diffusivities = DiffusivityFields(architecture, grid, tracernames, closure),
+                   forcing = ModelForcing(),
+                   gravity = g_Earth,
+             slow_forcings = ForcingFields(architecture, grid, tracernames),
+          right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
+    intermediate_variables = RightHandSideFields(architecture, grid, tracernames),
+     acoustic_time_stepper = nothing)
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
@@ -62,10 +61,10 @@ function CompressibleModel(;
     closure = with_tracers(tracernames, closure)
     total_density = CellField(architecture, grid)
 
-    return CompressibleModel(architecture, grid, clock, momenta, gases, thermodynamic_variable,
-                             microphysics, tracers, total_density, coriolis, closure, diffusivities,
-                             forcing, gravity, slow_forcings, right_hand_sides,
-                             intermediate_vars, acoustic_time_stepper)
+    return CompressibleModel(
+        architecture, grid, clock, total_density, momenta, tracers, diffusivities,
+        thermodynamic_variable, gases, gravity, coriolis, closure, microphysics,
+        forcing, slow_forcings, right_hand_sides, intermediate_variables, acoustic_time_stepper)
 end
 
 using Oceananigans.Grids: short_show

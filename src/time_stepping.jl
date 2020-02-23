@@ -36,11 +36,11 @@ function time_step!(model::CompressibleModel, Δt; kwargs...)
     K̃  = model.diffusivities
     F  = model.slow_forcings
     R  = model.right_hand_sides
-    IV = model.intermediate_vars
+    IV = model.intermediate_variables
 
     g  = model.gravity
 
-    # On third RK3 step, we update Φ⁺ instead of model.intermediate_vars
+    # On third RK3 step, we update Φ⁺ instead of model.intermediate_variables
     Φ⁺ = (Ũ..., tracers = C̃)
 
     # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
