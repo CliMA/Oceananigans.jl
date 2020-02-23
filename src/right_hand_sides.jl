@@ -29,7 +29,7 @@ end
 
 @inline function FC(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
     @inbounds begin
-        return ∂ⱼDᶜⱼ(i, j, k, grid, closure, ρ, C, tracer_index, K̃)
+        return ∂ⱼDᶜⱼ(i, j, k, grid, closure, tracer_index, ρ, C, K̃)
     end
 end
 
@@ -49,7 +49,7 @@ end
 
 @inline function FT(i, j, k, grid, closure, tvar::Energy, g, ρ, ρ̃, Ũ, C̃, K̃)
     @inbounds begin
-        return ∂ⱼDᵖⱼ(i, j, k, grid, closure, diagnose_p_over_ρ, tvar, 1, g, Ũ, ρ̃, C̃, ρ, K̃)
+        return ∂ⱼDᵖⱼ(i, j, k, grid, closure, 1, diagnose_p_over_ρ, tvar, ρ̃, g, ρ, Ũ, C̃, K̃)
     end
 end
 
@@ -80,7 +80,7 @@ end
 
 @inline function RC(i, j, k, grid, ρ, Ũ, C, FC)
     @inbounds begin
-        return -div_flux(i, j, k, grid, ρ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+        return -div_uc(i, j, k, grid, ρ, Ũ, C) + FC[i, j, k]
     end
 end
 
