@@ -1,13 +1,5 @@
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 
-# Legend:
-# ρ  -> density fields
-# ρŨ -> momentum fields
-# ρC̃ -> conservative tracer fields
-# K̃  -> diffusivity fields
-# Ũ  -> velocity fields
-# C̃  -> tracer fields
-
 ####
 #### Element-wise forcing and right-hand-side calculations
 ####
@@ -46,9 +38,9 @@ end
         for ind_gas = 1:length(ρ̃)
             tracer_index = ind_gas + 1
             C = C̃[tracer_index]
-            Ṡ += ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tvar, tracer_index, g, Ũ, ρ̃, C̃, ρ, C, K̃)
+            Ṡ += ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tracer_index, tvar, ρ̃, g, ρ, Ũ, C̃, C)
         end
-        T = diagnose_T(i, j, k, grid, tvar, g, Ũ, ρ, ρ̃, C̃)
+        T = diagnose_T(i, j, k, grid, tvar, ρ̃, g, ρ, Ũ, C̃)
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, Ũ) / T
         return Ṡ
     end
@@ -94,5 +86,5 @@ end
 @inline RT(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, g, ρ, ρ̃, Ũ, C̃) where FT = zero(FT)
 
 @inline function RT(i, j, k, grid, tvar::Energy, g, ρ, ρ̃, Ũ, C̃)
-    return -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, g, Ũ, ρ, ρ̃, C̃)
+    return -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, ρ̃, g, ρ, Ũ, C̃)
 end

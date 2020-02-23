@@ -71,76 +71,69 @@ struct Energy  <: AbstractThermodynamicVariable end
 ##### Thermodynamic state diagnostics
 #####
 
-@inline function diagnose_ρs(i, j, k, grid, tvar, tracer_index, gravity, momenta, total_density, densities, tracers)
+@inline function diagnose_ρs(i, j, k, grid::AbstractGrid{FT}, tracer_index, tvar, gases, gravity, total_density, momenta, tracers) where FT
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, total_density, momenta, tracers)
         ρ = tracers[tracer_index].data[i, j, k]
-        gas = densities[tracer_index - 1]
-        return (ρ > 0.0 ? ρ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρ/gas.ρ₀)) : 0.0)
+        gas = gases[tracer_index-1]
+        return ρ > zero(FT) ? ρ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρ/gas.ρ₀)) : zero(FT)
     end
 end
 
-@inline function diagnose_T(i, j, k, grid, tvar::Entropy, gravity, momenta, total_density, densities, tracers)
+@inline function diagnose_T(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, gases, gravity, total_density, momenta, tracers) where FT
     @inbounds begin
-        numerator = tracers.ρs.data[i,j,k]
-        denominator = 0.0
-        for ind_gas in 1:length(densities)
-            ρ = tracers[ind_gas + 1].data[i,j,k]
-            gas = densities[ind_gas]
-            cᵥ = gas.cᵥ
-            R = gas.R
-            ρ₀ = gas.ρ₀
-            T₀ = gas.T₀
-            s₀ = gas.s₀
-            numerator += (ρ > 0 ? (ρ*R*log(ρ/ρ₀) - ρ*s₀) : 0.0)
-            denominator += ρ*cᵥ
+        numerator = tracers.ρs.data[i, j, k]
+        denominator = zero(FT)
+        for (gas_index, gas) in enumerate(gases)
+            ρ = tracers[gas_index+1].data[i, j, k]
+            numerator += ρ > 0 ? (ρ*gas.R*log(ρ/gas.ρ₀) - ρ*gas.s₀) : zero(FT)
+            denominator += ρ*gas.cᵥ
         end
         return T₀*exp(numerator/denominator)
     end
 end
 
-@inline function diagnose_T(i, j, k, grid, tvar::Energy, gravity, momenta, total_density, densities, tracers)
+@inline function diagnose_T(i, j, k, grid::AbstractGrid{FT}, tvar::Energy, gases, gravity, total_density, momenta, tracers) where FT
     @inbounds begin
         numerator = tracers.ρe.data[i,j,k]
-        denominator = 0.0
-        K = kinetic_energy(i, j, k, grid, momenta, total_density)
+        denominator = zero(FT)
+        KE = kinetic_energy(i, j, k, grid, total_density, momenta)
         Φ = gravity * grid.zC[clamp(k, 1, grid.Nz)]
-        for ind_gas in 1:length(densities)
-            ρ = tracers[ind_gas + 1].data[i,j,k]
-            gas = densities[ind_gas]
-            numerator += -ρ*(gas.u₀ + Φ + K - gas.cᵥ*gas.T₀)
+        for (gas_index, gas) in enumerate(gases)
+            ρ = tracers[gas_index+1].data[i,j,k]
+            numerator += -ρ*(gas.u₀ + Φ + KE - gas.cᵥ*gas.T₀)
             denominator += ρ*gas.cᵥ
         end
         return numerator/denominator
     end
 end
 
-@inline function diagnose_p(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+@inline function diagnose_p(i, j, k, grid::AbstractGrid{FT}, tvar, gases, gravity, total_density, momenta, tracers) where FT
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
-        p = 0.0
-        for ind_gas in 1:length(densities)
-            R = densities[ind_gas].R
-            ρ = tracers[ind_gas + 1].data[i, j, k]
+        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, total_density, momenta, tracers)
+        p = zero(FT)
+        for gas_index in 1:length(gases)
+            R = gases[gas_index].R
+            ρ = tracers[gas_index+1].data[i, j, k]
             p += ρ*R*T
         end
         return p
     end
 end
 
-@inline function diagnose_ρ(i, j, k, grid, densities, tracers)
+@inline function diagnose_ρ(i, j, k, grid::AbstractGrid{FT}, gases, tracers) where FT
     @inbounds begin
-        ρ = 0.0
-        for ind_gas in 1:length(densities)
-            ρ += tracers[ind_gas + 1].data[i,j,k]
+        ρ = zero(FT)
+        for gas_index in 1:length(gases)
+            ρ += tracers[gas_index+1].data[i, j, k]
         end
         return ρ
     end
 end
 
-@inline function diagnose_p_over_ρ(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+@inline function diagnose_p_over_ρ(i, j, k, grid, tvar, gases, gravity, total_density, momenta, tracers)
     @inbounds begin
-        p = diagnose_p(i, j, k, grid, tvar, gravity, momenta, total_density, densities, tracers)
+        p = diagnose_p(i, j, k, grid, tvar, gases, gravity, total_density, momenta, tracers)
         ρ = total_density[i, j, k]
         return p/ρ
     end
