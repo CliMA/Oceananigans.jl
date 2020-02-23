@@ -1,4 +1,5 @@
 using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.Coriolis
 
 ####
 #### Element-wise forcing and right-hand-side calculations

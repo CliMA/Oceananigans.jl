@@ -40,13 +40,6 @@
                                     δzᵃᵃᶜ(i, j, k, grid, p∂w∂z, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃))
 end
 
-#####
-##### Coriolis terms
-#####
-
-@inline x_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
-@inline y_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
 
 #####
 ##### Tracer advection
