@@ -20,64 +20,60 @@ end
 
 # Adding kwargs... so this time_step! can work with Oceananigans.Simulation
 function time_step!(model::CompressibleModel, Δt; kwargs...)
-    arch = model.architecture
-    grid = model.grid
-    time = model.clock.time
-    coriolis = model.coriolis
-    closure = model.closure
-    tvar = model.thermodynamic_variable
-    microphysics = model.microphysics
-    forcing = model.forcing
-
-    Ũ  = model.momenta
     ρ  = model.total_density
-    ρ̃  = model.gases
-    C̃  = model.tracers
+    ρũ = model.momenta
+    ρc̃ = model.tracers
     K̃  = model.diffusivities
-    F  = model.slow_forcings
-    R  = model.right_hand_sides
+    F̃  = model.slow_forcings
+    R̃  = model.right_hand_sides
     IV = model.intermediate_variables
 
-    g  = model.gravity
-
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_variables
-    Φ⁺ = (Ũ..., tracers = C̃)
+    Φ⁺ = (ρũ..., tracers = ρc̃)
 
-    # On the first and second RK3 steps we want to update intermediate Ũ and C̃.
-    Ũ_names = propertynames(Ũ)
-    IV_Ũ_vals = [getproperty(IV, U) for U in Ũ_names]
-    IV_Ũ = NamedTuple{Ũ_names}(IV_Ũ_vals)
+    # On the first and second RK3 steps we want to update intermediate ρũ and ρc̃.
+    ρũ_names = propertynames(ρũ)
+    ρc̃_names = propertynames(ρc̃)
 
-    C̃_names = propertynames(C̃)
-    IV_C̃_vals = [getproperty(IV.tracers, C) for C in C̃_names]
-    IV_C̃ = NamedTuple{C̃_names}(IV_C̃_vals)
+    IV_ρũ_fields = [getproperty(IV, ρu)         for ρu in ρũ_names]
+    IV_ρc̃_fields = [getproperty(IV.tracers, ρc) for ρc in ρc̃_names]
+
+    IV_ρũ = NamedTuple{ρũ_names}(IV_ρũ_fields)
+    IV_ρc̃ = NamedTuple{ρc̃_names}(IV_ρc̃_fields)
 
     @debug "Computing slow forcings..."
-    update_total_density!(ρ.data, grid, ρ̃, C̃)
-    fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
-    compute_slow_forcings!(F, grid, tvar, ρ̃, g, coriolis, closure, ρ, Ũ, C̃, K̃, forcing, time)
-    fill_halo_regions!(F.ρw, arch)
+    update_total_density!(ρ, model.grid, model.gases, ρc̃)
+    fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture)
 
-    # RK3 time-stepping
+    compute_slow_forcings!(
+        F̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock.time)
+
+    fill_halo_regions!(F̃.ρw, model.architecture)
+
     for rk3_iter in 1:3
         @debug "RK3 step #$rk3_iter..."
-
         @debug "  Computing right hand sides..."
+
         if rk3_iter == 1
-            compute_rhs_args = (R, grid, tvar, ρ̃, g, ρ, Ũ, C̃, F)
-            update_total_density!(ρ.data, grid, ρ̃, C̃)
-            fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
+            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
+                                model.gases, model.gravity, ρ, ρũ, ρc̃, F̃)
+
+            update_total_density!(ρ, model.grid, model.gases, ρc̃)
+            fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture)
         else
-            compute_rhs_args = (R, grid, tvar, ρ̃, g, ρ, IV_Ũ, IV_C̃, F)
-            update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
-            fill_halo_regions!(merge((Σρ=ρ,), IV_Ũ, IV_C̃), arch)
+            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
+                                model.gases, model.gravity, ρ, IV_ρũ, IV_ρc̃, F̃)
+
+            update_total_density!(ρ, model.grid, model.gases, IV_ρc̃)
+            fill_halo_regions!(merge((Σρ=ρ,), IV_ρũ, IV_ρc̃), model.architecture)
         end
 
         compute_right_hand_sides!(compute_rhs_args...)
 
         @debug "  Advancing variables..."
         LHS = rk3_iter == 3 ? Φ⁺ : IV
-        advance_variables!(LHS, grid, Ũ, C̃, R; Δt=rk3_time_step(rk3_iter, Δt))
+        advance_variables!(LHS, model.grid, ρũ, ρc̃, R̃; Δt=rk3_time_step(rk3_iter, Δt))
     end
 
     model.clock.iteration += 1
