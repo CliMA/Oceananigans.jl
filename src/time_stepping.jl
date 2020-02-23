@@ -4,9 +4,9 @@ using Oceananigans: datatuple
 using Oceananigans.BoundaryConditions
 import Oceananigans: time_step!
 
-####
-#### Utilities for time stepping
-####
+#####
+##### Utilities for time stepping
+#####
 
 function rk3_time_step(rk3_iter, Δt)
     rk3_iter == 1 && return Δt/3
@@ -14,9 +14,9 @@ function rk3_time_step(rk3_iter, Δt)
     rk3_iter == 3 && return Δt
 end
 
-####
-#### Time-stepping algorithm
-####
+#####
+##### Time-stepping algorithm
+#####
 
 # Adding kwargs... so this time_step! can work with Oceananigans.Simulation
 function time_step!(model::CompressibleModel, Δt; kwargs...)
@@ -55,7 +55,7 @@ function time_step!(model::CompressibleModel, Δt; kwargs...)
     @debug "Computing slow forcings..."
     update_total_density!(ρ.data, grid, ρ̃, C̃)
     fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
-    compute_slow_forcings!(F, grid, tvar, g, coriolis, closure, Ũ, ρ, ρ̃, C̃, K̃, forcing, time)
+    compute_slow_forcings!(F, grid, tvar, ρ̃, g, coriolis, closure, ρ, Ũ, C̃, K̃, forcing, time)
     fill_halo_regions!(F.ρw, arch)
 
     # RK3 time-stepping
@@ -64,11 +64,11 @@ function time_step!(model::CompressibleModel, Δt; kwargs...)
 
         @debug "  Computing right hand sides..."
         if rk3_iter == 1
-            compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, Ũ, C̃, F)
+            compute_rhs_args = (R, grid, tvar, ρ̃, g, ρ, Ũ, C̃, F)
             update_total_density!(ρ.data, grid, ρ̃, C̃)
             fill_halo_regions!(merge((Σρ=ρ,), Ũ, C̃), arch)
         else
-            compute_rhs_args = (R, grid, tvar, g, ρ, ρ̃, IV_Ũ, IV_C̃, F)
+            compute_rhs_args = (R, grid, tvar, ρ̃, g, ρ, IV_Ũ, IV_C̃, F)
             update_total_density!(ρ.data, grid, ρ̃, IV_C̃)
             fill_halo_regions!(merge((Σρ=ρ,), IV_Ũ, IV_C̃), arch)
         end
