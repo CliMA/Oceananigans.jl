@@ -1,5 +1,7 @@
 using Test
 
+using Statistics
+using Printf
 using JLD2
 using Oceananigans
 using JULES
