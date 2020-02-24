@@ -107,24 +107,25 @@ mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                       clobber=true, global_attributes=Dict(), output_attributes=nothing,
-                       slice_kw...)
+    NetCDFOutputWriter(model, outputs; frequency=nothing, interval=nothing, filename=".",
+                       global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
+                       clobber=true, compression=0, slice_kw...)
 
-Construct a `NetCDFOutputWriter` that writes `label, field` pairs in `outputs` (which should
-be a `Dict`) to a NC file, where `label` is a symbol that labels the output and `field` is
-a field from the model (e.g. `model.velocities.u`).
+Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
+be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
+either field from the model (e.g. `model.velocities.u`) or a function `f(model)` that returns
+something to be written to disk.
 
 Keyword arguments
 =================
-- `filename`: Filepath to save output to. Default: "." (current working directory).
 - `frequency`: Save output every `n` model iterations.
 - `interval`: Save output every `t` units of model clock time.
-- `clobber`: Remove existing files if their filenames conflict. Default: `true`.
-- `compression`: Determines the compression level of data (0-9, default 0)
+- `filename`: Filepath to save output to. Default: "." (current working directory).
 - `global_attributes`: Dict of model properties to save with every file (deafult: Dict())
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
-  defaults are provided for velocities, temperature, and salinity)
+  defaults are provided for velocities, temperature, and salinity).
+- `clobber`: Remove existing files if their filenames conflict. Default: `true`.
+- `compression`: Determines the compression level of data (0-9, default 0)
 - `slice_kw`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
   All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
   `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
@@ -133,12 +134,11 @@ Keyword arguments
 """
 
 function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing, filename=".",
-                            clobber=true, global_attributes=Dict(), output_attributes=Dict(),
-                            compression=0, slice_kw...)
-
-    validate_interval(interval, frequency)
+                            global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
+                            clobber=true, compression=0, slice_kw...)
 
     mode = clobber ? "c" : "a"
+    validate_interval(interval, frequency)
 
     # Initiates the output file with dimensions
     write_grid_and_attributes(model; filename=filename, compression=compression,
@@ -149,8 +149,6 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
 
     # Creates an unliimited dimension "time"
     defDim(dataset, "time", Inf)
-    sync(dataset)
-
     defVar(dataset, "time", Float64, ("time",))
     sync(dataset)
 
@@ -165,23 +163,29 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     end
 
     # Initiates empty variables for fields from the user-supplied variable outputs
-    for (fieldname, field) in outputs
-        FT = eltype(field.grid)
-        defVar(dataset, fieldname, FT, (netcdf_spatial_dimensions(field)..., "time"),
-               compression=compression, attrib=output_attributes[fieldname])
+    for (name, output) in outputs
+        if output isa Field
+            FT = eltype(output.grid)
+            defVar(dataset, name, FT, (netcdf_spatial_dimensions(output)..., "time"),
+                   compression=compression, attrib=output_attributes[name])
+        else
+            defVar(dataset, name, Float64, (dimensions[name]..., "time"),
+                   compression=compression, attrib=output_attributes[name])
+        end
     end
     sync(dataset)
 
     # Stores slices for the dimensions of each output field
     slices = Dict{String, Vector{Union{OrdinalRange,Colon}}}()
-    for (fieldname, field) in outputs
-        slices[fieldname] = slice(field; slice_kw...)
+    for (name, output) in outputs
+        if output isa Field
+            slices[name] = slice(output; slice_kw...)
+        end
     end
 
     return NetCDFOutputWriter(filename, dataset, outputs, interval, frequency,
                               clobber, slices, len_time_dimension, 0.0)
 end
-
 
 # Closes the outputwriter
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
@@ -209,9 +213,17 @@ Increments the `time` dimension every time an output is written to the file.
 """
 function write_output(model, ow::NetCDFOutputWriter)
     ow.len_time_dimension += 1
-    ow.dataset["time"][ow.len_time_dimension] = model.clock.time
-    for (fieldname, field) in ow.outputs
-        ow.dataset[fieldname][:, :, :, ow.len_time_dimension] = view(interiorparent(field), ow.slices[fieldname]...)
+
+    ds = ow.dataset
+    ds["time"][ow.len_time_dimension] = model.clock.time
+    for (name, output) in ow.outputs
+        if output isa Field
+            ds[name][:, :, :, ow.len_time_dimension] = view(interiorparent(output), ow.slices[name]...)
+        else
+            data = output(model)
+            colons = Tuple(Colon() for _ in 1:ndims(data))
+            ds[name][colons..., ow.len_time_dimension] = data
+        end
     end
     sync(ow.dataset)
     return nothing
