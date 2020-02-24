@@ -95,15 +95,14 @@ const default_output_attributes =
 An output writer for writing to NetCDF files.
 """
 mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
-             filename :: String
-              dataset :: D
-              outputs :: O
-             interval :: I
-            frequency :: F
-              clobber :: Bool
-               slices :: S
-   len_time_dimension :: Int
-             previous :: Float64
+     filename :: String
+      dataset :: D
+      outputs :: O
+     interval :: I
+    frequency :: F
+      clobber :: Bool
+       slices :: S
+     previous :: Float64
 end
 
 """
@@ -124,6 +123,8 @@ Keyword arguments
 - `global_attributes`: Dict of model properties to save with every file (deafult: Dict())
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
   defaults are provided for velocities, temperature, and salinity).
+- `dimensions`: A Dict of dimensions to apply to outputs (useful for function outputs as
+  field dimensions can be inferred).
 - `clobber`: Remove existing files if their filenames conflict. Default: `true`.
 - `compression`: Determines the compression level of data (0-9, default 0)
 - `slice_kw`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
@@ -151,8 +152,6 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     defDim(dataset, "time", Inf)
     defVar(dataset, "time", Float64, ("time",))
     sync(dataset)
-
-    len_time_dimension = 0 # Number of outputs so far
 
     # Ensure we have an attribute for every output. Use reasonable defaults if
     # none were specified by the user.
@@ -184,7 +183,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     end
 
     return NetCDFOutputWriter(filename, dataset, outputs, interval, frequency,
-                              clobber, slices, len_time_dimension, 0.0)
+                              clobber, slices, 0.0)
 end
 
 # Closes the outputwriter
@@ -212,17 +211,16 @@ For internal user only. Writes output to the netcdf file at specified intervals.
 Increments the `time` dimension every time an output is written to the file.
 """
 function write_output(model, ow::NetCDFOutputWriter)
-    ow.len_time_dimension += 1
-
     ds = ow.dataset
-    ds["time"][ow.len_time_dimension] = model.clock.time
+    time_index = length(ds["time"]) + 1
+    ds["time"][time_index] = model.clock.time
     for (name, output) in ow.outputs
         if output isa Field
-            ds[name][:, :, :, ow.len_time_dimension] = view(interiorparent(output), ow.slices[name]...)
+            ds[name][:, :, :, time_index] = view(interiorparent(output), ow.slices[name]...)
         else
             data = output(model)
             colons = Tuple(Colon() for _ in 1:ndims(data))
-            ds[name][colons..., ow.len_time_dimension] = data
+            ds[name][colons..., time_index] = data
         end
     end
     sync(ow.dataset)
