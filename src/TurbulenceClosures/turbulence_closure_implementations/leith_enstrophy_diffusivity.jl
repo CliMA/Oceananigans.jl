@@ -1,6 +1,3 @@
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractLeith) =
-    (νₑ=CellField(arch, grid),)
-
 #####
 ##### The turbulence closure proposed by Leith
 #####

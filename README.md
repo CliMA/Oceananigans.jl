@@ -70,48 +70,54 @@ Our goal is to develop a friendly and intuitive package allowing users to focus 
 You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
 ```julia
 julia>]
-(v1.1) pkg> add Oceananigans
-(v1.1) pkg> instantiate
+(v1.3) pkg> add Oceananigans
+(v1.3) pkg> instantiate
 ```
 We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
 ```julia
-(v1.1) pkg> update Oceananigans
+(v1.3) pkg> update Oceananigans
 ```
 At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
 
-**Note**: Oceananigans requires at least Julia v1.1 to run correctly.
+**Note**: Oceananigans requires at least Julia v1.3 to run. Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).
 
 ## Running your first model
-Let's initialize a 3D model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 10 time steps using steps of 60 seconds each (for a total of 10 minutes of simulation time).
+Let's initialize a 3D horizontally periodic model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 hour using a constant time step of 60 seconds.
 ```julia
 using Oceananigans
-model = Model(grid = RegularCartesianGrid(size=(100, 100, 50), length = (2000, 2000, 1000)))
-time_step!(model; Δt=60, Nt=10)
+topology = (Periodic, Periodic, Bounded)
+grid = RegularCartesianGrid(topology=topology, size=(100, 100, 50), length = (2000, 2000, 1000))
+model = IncompressibleModel(grid=grid)
+simulation = Simulation(model, Δt=60, stop_time=3600)
+run!(simulation)
 ```
 You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
 
 ### More interesting example
-Let's add something to make the dynamics a bit more interesting. We can add a hot bubble in the middle of the domain and watch it rise to the surface. This example shows how to set an initial condition.
+Let's add something to make the dynamics a bit more interesting. We can add a hot bubble in the middle of the domain and watch it rise to the surface. This example also shows how to set an initial condition.
 ```julia
 using Oceananigans
 
-# We'll set up a 2D model with an xz-slice so there's only 1 grid point in y
-# and use an artificially high viscosity ν and diffusivity κ.
-model = Model(architecture = CPU(),
-                      grid = RegularCartesianGrid(size=(128, 128, 128), length=(2000, 2000, 2000)),
-                   closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2))
+N = Nx = Ny = Nz = 128   # Number of grid points in each dimension.
+L = Lx = Ly = Lz = 2000  # Length of each dimension.
+topology = (Periodic, Periodic, Bounded)
 
-# Set a temperature perturbation with a Gaussian profile located at the center
-# of the vertical slice. This will create a buoyant thermal bubble that will
-# rise with time.
-Lx, Lz = model.grid.Lx, model.grid.Lz
+model = IncompressibleModel(
+    architecture = CPU(),
+            grid = RegularCartesianGrid(topology=topology, size=(N, N, N), length=(L, L, L)),
+         closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+)
+
+# Set a temperature perturbation with a Gaussian profile located at the center.
+# This will create a buoyant thermal bubble that will rise with time.
 x₀, z₀ = Lx/2, Lz/2
 T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (Lx^2 + Lz^2))
-set!(model; T=T₀)
+set!(model, T=T₀)
 
-time_step!(model; Δt=10, Nt=5000)
+simulation = Simulation(model, Δt=10, stop_iteration=5000)
+run!(simulation)
 ```
-By changing `arch=CPU()` to `arch=GPU()`, the example will run on an Nvidia GPU!
+By changing `architecture = CPU()` to `architecture = GPU()`, the example will run on an Nvidia GPU!
 
 GPU model output can be plotted on-the-fly and animated using [Makie.jl](https://github.com/JuliaPlots/Makie.jl)! This [NextJournal notebook](https://nextjournal.com/sdanisch/oceananigans) has an example. Thanks [@SimonDanisch](https://github.com/SimonDanisch)! Some Makie.jl isosurfaces from a rising spherical thermal bubble (the GPU example):
 <p align="center">

@@ -87,8 +87,12 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # Finally, we release the packet and watch it go!
 
+simulation = Simulation(model, Δt = 0.001 * 2π/ω, stop_iteration = 0,
+                        progress_frequency = 20)
+
 anim = @animate for i=1:100
-    time_step!(model, Nt = 20, Δt = 0.001 * 2π/ω)
+    simulation.stop_iteration += 20
+    run!(simulation)
 
     x, z = model.grid.xC, model.grid.zF
     w = model.velocities.w

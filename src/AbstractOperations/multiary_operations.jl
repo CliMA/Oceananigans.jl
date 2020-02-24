@@ -21,7 +21,7 @@ end
 fieldify(L, a, grid) = a
 fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
 
-"""Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractLocatedField`."""
+"""Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
         import Oceananigans.Fields: AbstractField

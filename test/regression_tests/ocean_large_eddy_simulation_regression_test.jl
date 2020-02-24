@@ -58,14 +58,17 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
-    model = Model(
+    model = IncompressibleModel(
              architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
-      boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs)
+      boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
+
+    # We will manually change the stop_iteration as needed.
+    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
@@ -83,14 +86,16 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     u₀(x, y, z) = sqrt(abs(Qᵘ)) * 1e-3 * Ξ(z)
     set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
-    time_step!(model, spinup_steps-test_steps, Δt)
+    simulation.stop_iteration = spinup_steps-test_steps
+    run!(simulation)
 
-    checkpointer = Checkpointer(model; frequency = test_steps, prefix = name * "_",
-                                       dir = joinpath(dirname(@__FILE__), "data"))
-    model.output_writers[:checkpointer] = checkpointer
+    checkpointer = Checkpointer(model, frequency = test_steps, prefix = name * "_",
+                                dir = joinpath(dirname(@__FILE__), "data"))
+    simulation.output_writers[:checkpointer] = checkpointer
 
-    time_step!(model, 2test_steps, Δt)
-    pop!(model.output_writers, :checkpointer)
+    simulation.stop_iteration += 2test_steps
+    run!(simulation)
+    pop!(simulation.output_writers, :checkpointer)
     =#
 
     ####
@@ -124,7 +129,9 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
 
-    time_step!(model, test_steps, Δt; init_with_euler=false)
+    for n in 1:test_steps
+      time_step!(model, Δt, euler=false)
+    end
 
     final_filename = joinpath(dirname(@__FILE__), "data", name * "_$(spinup_steps+test_steps).jld2")
 

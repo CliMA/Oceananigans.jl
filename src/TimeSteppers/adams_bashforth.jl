@@ -1,63 +1,34 @@
-import Oceananigans.OutputWriters: saveproperty!
-
 """
-    AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ)
+    AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+                              Gⁿ = TendencyFields(arch, grid, tracers),
+                              G⁻ = TendencyFields(arch, grid, tracers))
 
-Return an AdamsBashforthTimeStepper object with tendency
-fields on `arch` and `grid` and AB2 parameter `χ`.
+Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
+`grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
+kwargs.
 """
-struct AdamsBashforthTimeStepper{T, TG}
-      Gⁿ :: TG
-      G⁻ :: TG
-       χ :: T
+struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+     χ :: T
+    Gⁿ :: TG
+    G⁻ :: TG
 end
 
-function AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125)
-   Gⁿ = Tendencies(arch, grid, tracers)
-   G⁻ = Tendencies(arch, grid, tracers)
-   return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(Gⁿ, G⁻, χ)
-end
-
-# Special savepropety! for AB2 time stepper struct used by the checkpointer so
-# it only saves the fields and not the tendency BCs or χ value (as they can be
-# constructed by the `Model` constructor).
-function saveproperty!(file, location, ts::AdamsBashforthTimeStepper)
-    saveproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    saveproperty!(file, location * "/G⁻", ts.G⁻)
-end
+AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+    Gⁿ = TendencyFields(arch, grid, tracers),
+    G⁻ = TendencyFields(arch, grid, tracers)
+    ) = AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 
 #####
 ##### Time steppping
 #####
 
 """
-    time_step!(model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
+    time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
 
-Step forward `model` `Nt` time steps with step size `Δt` with an Adams-Bashforth
-timestepping method.
+Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
+pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
-function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Nt, Δt; init_with_euler=true)
-
-    if model.clock.iteration == 0
-        [ run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ write_output(model, out)    for out  in values(model.output_writers) ]
-    end
-
-    for n in 1:Nt
-        time_step!(model, Δt; euler=init_with_euler && n==1)
-
-        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ time_to_run(model.clock, out) && write_output(model, out) for out in values(model.output_writers) ]
-    end
-
-    return nothing
-end
-
-"""
-Step forward one time step with a 2nd-order Adams-Bashforth method and pressure-correction
-substep.
-"""
-function time_step!(model::Model{<:AdamsBashforthTimeStepper}, Δt; euler=false)
+function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays

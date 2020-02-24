@@ -152,6 +152,13 @@ Pages   = [
 ]
 ```
 
+## Simulations
+```@autodocs
+Modules = [Oceananigans.Simulations]
+Private = false
+Pages   = ["Simulations.jl"]
+```
+
 ## Tubrulence closures
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]

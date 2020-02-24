@@ -28,7 +28,7 @@ end
     L = (2π, 3π, 5π)
     H = (1, 1, 1)
 
-    fieldtypes = (CellField, FaceFieldX, FaceFieldY, FaceFieldZ)
+    fieldtypes = (CellField, XFaceField, YFaceField, ZFaceField)
 
     @testset "Field initialization" begin
         @info "  Testing field initialization..."
@@ -74,6 +74,14 @@ end
 
             for fieldtype in fieldtypes, val in vals
                 @test correct_field_value_was_set(arch, grid, fieldtype, val)
+            end
+
+            for fieldtype in fieldtypes
+                field = fieldtype(arch, grid)
+                A = rand(FT, N...)
+                arch isa GPU && (A = CuArray(A))
+                set!(field, A)
+                @test field.data[2, 4, 6] == A[2, 4, 6]
             end
         end
     end

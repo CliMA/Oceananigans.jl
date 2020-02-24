@@ -31,20 +31,23 @@ function run_rayleigh_benard_regression_test(arch)
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))
 
-    model = Model(
+    model = IncompressibleModel(
                architecture = arch,
                        grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
-        boundary_conditions = SolutionBoundaryConditions(grid, b=bbcs),
+        boundary_conditions = (b=bbcs,),
                     forcing = ModelForcing(c=Fc)
     )
 
+    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
+
+    # We will manually change the stop_iteration as needed.
+    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
+
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
-
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
 
     spinup_steps = 1000
       test_steps = 100
@@ -55,8 +58,9 @@ function run_rayleigh_benard_regression_test(arch)
     outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
 
     prefix = "data_rayleigh_benard_regression"
-    outputwriter = JLD2OutputWriter(model, outputfields; dir=joinpath(dirname(@__FILE__), "data"),
-                                    prefix=prefix, frequency=test_steps, including=[])
+    output_writer =
+      JLD2OutputWriter(model, outputfields, dir=joinpath(dirname(@__FILE__), "data"),
+                       prefix=prefix, frequency=test_steps, including=[])
 
     #####
     ##### Initial condition and spinup steps for creating regression test data
@@ -71,20 +75,22 @@ function run_rayleigh_benard_regression_test(arch)
     b₀(x, y, z) = (ξ(z) - z) / Lz
     set!(model, b=b₀)
 
-    time_step!(model, spinup_steps-test_steps, Δt)
-    push!(model.output_writers, outputwriter)
-    time_step!(model, 2test_steps, Δt)
-    =#
+    simulation.stop_iteration = spinup_steps-test_steps
+    run!(simulation)
 
+    push!(simulation.output_writers, output_writer)
+    simulation.stop_iteration += 2test_steps
+    run!(simulation)
+    =#
 
     #####
     ##### Regression test
     #####
 
     # Load initial state
-    u₀, v₀, w₀ = get_output_tuple(outputwriter, spinup_steps, :U)
-    b₀, c₀ = get_output_tuple(outputwriter, spinup_steps, :Φ)
-    Gu₀, Gv₀, Gw₀, Gb₀, Gc₀ = get_output_tuple(outputwriter, spinup_steps, :G)
+    u₀, v₀, w₀ = get_output_tuple(output_writer, spinup_steps, :U)
+    b₀, c₀ = get_output_tuple(output_writer, spinup_steps, :Φ)
+    Gu₀, Gv₀, Gw₀, Gb₀, Gc₀ = get_output_tuple(output_writer, spinup_steps, :G)
 
     model.velocities.u.data.parent .= ArrayType(u₀.parent)
     model.velocities.v.data.parent .= ArrayType(v₀.parent)
@@ -100,13 +106,15 @@ function run_rayleigh_benard_regression_test(arch)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
-    length(model.output_writers) > 0 && pop!(model.output_writers)
+    length(simulation.output_writers) > 0 && pop!(Simulation.output_writers)
 
     # Step the model forward and perform the regression test
-    time_step!(model, test_steps, Δt; init_with_euler=false)
+    for n in 1:test_steps
+        time_step!(model, Δt, euler=false)
+    end
 
-    u₁, v₁, w₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :U)
-    b₁, c₁ = get_output_tuple(outputwriter, spinup_steps+test_steps, :Φ)
+    u₁, v₁, w₁ = get_output_tuple(output_writer, spinup_steps+test_steps, :U)
+    b₁, c₁ = get_output_tuple(output_writer, spinup_steps+test_steps, :Φ)
 
     field_names = ["u", "v", "w", "b", "c"]
 

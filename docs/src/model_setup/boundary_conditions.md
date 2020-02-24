@@ -75,18 +75,19 @@ white_noise_T_bc = FluxBoundaryCondition(Q)
 You can also specify the boundary condition via a function. For z boundary conditions the function will be called with
 the signature
 ```
-f(i, j, grid, t, U, C, params)
+f(i, j, grid, time, iteration, U, C, params)
 ```
-where `i, j` is the grid index, `grid` is `model.grid`, `t` is the `model.clock.time`, `U` is the named tuple
-`model.velocities`, `C` is the named tuple `C.tracers`, and `params` is the user-defined `model.parameters`. The
-signature is similar for x and y boundary conditions expect that `i, j` is replaced with `j, k` and `i, k` respectively.
+where `i, j` is the grid index, `grid` is `model.grid`, `time` is the `model.clock.time`, `iteration` is the
+`model.clock.iteration`, `U` is the named tuple `model.velocities`, `C` is the named tuple `C.tracers`, and `params` is
+the user-defined `model.parameters`. The signature is similar for x and y boundary conditions expect that `i, j` is
+replaced with `j, k` and `i, k` respectively.
 
 We can add a fourth example now:
 4. A spatially varying and time-dependent heating representing perhaps a localized source of heating modulated by a
    diurnal cycle.
 ```@example
 using Oceananigans # hide
-@inline Q(i, j, grid, t, U, C, params) = @inbounds exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
+@inline Q(i, j, grid, t, I, U, C, params) = @inbounds exp(-(grid.xC[i]^2 + grid.yC[j]^2)) * sin(2π*t)
 localized_heating_bc = FluxBoundaryCondition(Q)
 ```
 

@@ -14,6 +14,7 @@ using Oceananigans.Architectures: @hascuda
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
@@ -21,15 +22,17 @@ using Oceananigans.SurfaceWaves
 using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
 using Oceananigans.Models
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
 using Oceananigans.Utils
 
-using Oceananigans.Fields: Tendencies, tracernames
-using Oceananigans.Diagnostics: run_diagnostic
-using Oceananigans.OutputWriters: write_output
+using Oceananigans.TurbulenceClosures:
+    calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
-using ..TurbulenceClosures: calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
+"""
+    AbstractTimeStepper
+
+Abstract supertype for time steppers.
+"""
+abstract type AbstractTimeStepper end
 
 """
     TimeStepper(name, args...)
@@ -59,28 +62,13 @@ boundary_condition_function_arguments(model) =
 #####
 
 """
-    time_step!(model; Nt, Δt, kwargs...)
+    calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
-Step forward `model` `Nt` time steps with step size `Δt`.
-
-The kwargs are passed to the `time_step!` function specific to `model.timestepper`.
+Calculate the initial and explicit substep of the two-step fractional step method with pressure correction.
 """
-time_step!(model; Nt, Δt, kwargs...) = time_step!(model, Nt, Δt; kwargs...)
-
-function time_step!(model, Nt, Δt; kwargs...)
-
-    if model.clock.iteration == 0
-        [ run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ write_output(model, out)    for out  in values(model.output_writers) ]
-    end
-
-    for n in 1:Nt
-        time_step!(model, Δt; kwargs...)
-
-        [ time_to_run(model.clock, diag) && run_diagnostic(model, diag) for diag in values(model.diagnostics) ]
-        [ time_to_run(model.clock, out) && write_output(model, out) for out in values(model.output_writers) ]
-    end
-
+function calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
+    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+    calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
     return nothing
 end
 
@@ -91,18 +79,18 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
-    fill_halo_regions!(merge(velocities, tracers), model.boundary_conditions.solution, model.architecture,
-                       model.grid, boundary_condition_function_arguments(model)...)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,
+                       boundary_condition_function_arguments(model)...)
 
-    calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure, model.buoyancy,
-                             velocities, tracers)
+    calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
+                             model.buoyancy, velocities, tracers)
 
-    fill_halo_regions!(diffusivities, model.boundary_conditions.diffusivities, model.architecture, model.grid)
+    fill_halo_regions!(model.diffusivities, model.architecture)
 
     @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
 
-    fill_halo_regions!(pressures.pHY′, model.boundary_conditions.pressure, model.architecture, model.grid)
+    fill_halo_regions!(model.pressures.pHY′, model.architecture)
 
     return nothing
 end
@@ -115,12 +103,16 @@ contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
-    calculate_interior_source_terms!(tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
-                                     model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
-                                     diffusivities, model.forcing, model.parameters, model.clock.time)
+    calculate_interior_source_terms!(
+        tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
+        model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
+        diffusivities, model.forcing, model.parameters, model.clock.time
+    )
 
-    calculate_boundary_source_terms!(tendencies, model.boundary_conditions.solution, model.architecture,
-                                     model.grid, boundary_condition_function_arguments(model)...)
+    calculate_boundary_source_terms!(
+        model.timestepper.Gⁿ, model.architecture, model.velocities,
+        model.tracers, boundary_condition_function_arguments(model)...
+    )
 
     return nothing
 end
@@ -131,36 +123,19 @@ end
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
-    velocity_tendencies = (u=tendencies.u, v=tendencies.v, w=tendencies.w)
+    velocity_tendencies = (u=model.timestepper.Gⁿ.u, v=model.timestepper.Gⁿ.v, w=model.timestepper.Gⁿ.w)
 
-    velocity_tendency_boundary_conditions = (u=model.boundary_conditions.tendency.u,
-                                             v=model.boundary_conditions.tendency.v,
-                                             w=model.boundary_conditions.tendency.w)
-
-    fill_halo_regions!(velocity_tendencies, velocity_tendency_boundary_conditions,
-                       model.architecture, model.grid)
+    fill_halo_regions!(velocity_tendencies, model.architecture)
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
                         model.architecture, model.grid, velocities, tendencies, Δt)
 
-    fill_halo_regions!(nonhydrostatic_pressure, model.boundary_conditions.pressure,
-                       model.architecture, model.grid)
+    fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
     return nothing
 end
 
 calculate_pressure_correction!(::Nothing, args...) = nothing
-
-"""
-    calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
-
-Calculate the initial and explicit substep of the two-step fractional step method with pressure correction.
-"""
-function calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
-    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
-    calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
-    return nothing
-end
 
 """
     complete_pressure_correction_step!(velocities, Δt, tracers, pressures, tendencies, model)
@@ -169,14 +144,11 @@ After calculating the pressure correction, complete the pressure correction step
 the velocity and tracer fields.
 """
 function complete_pressure_correction_step!(velocities, Δt, tracers, pressures, tendencies, model)
-    update_solution!(velocities, tracers, model.architecture, model.grid, Δt, tendencies, pressures.pNHS)
 
-    velocity_boundary_conditions = (u=model.boundary_conditions.solution.u,
-                                    v=model.boundary_conditions.solution.v,
-                                    w=model.boundary_conditions.solution.w)
+    update_solution!(velocities, tracers, model.architecture,
+                     model.grid, Δt, tendencies, pressures.pNHS)
 
-    # Recompute vertical velocity w from continuity equation to ensure incompressibility
-    fill_halo_regions!(velocities, velocity_boundary_conditions, model.architecture, model.grid,
+    fill_halo_regions!(model.velocities, model.architecture,
                        boundary_condition_function_arguments(model)...)
 
     compute_w_from_continuity!(model)

@@ -130,13 +130,10 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
 
-## Instantiate a JLD2OutputWriter to write fields.
+## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
+## running it.
 field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
                                 prefix="ocean_wind_mixing_and_convection", force=true)
-
-## Add the output writer to the models `output_writers`.
-model.output_writers[:fields] = field_writer
-nothing # hide
 
 # ## Running the simulation
 #
@@ -152,14 +149,15 @@ nothing # hide
 wmax = FieldMaximum(abs, model.velocities.w)
 nothing # hide
 
-# Finally, we run the the model in a `while` loop.
+# Finally, we set up and run the the simulation.
+
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=10)
+simulation.output_writers[:fields] = field_writer
 
 anim = @animate for i in 1:100
-    ## Update the time step associated with `wizard`.
-    update_Δt!(wizard, model)
-
-    ## Time step the model forward
-    walltime = @elapsed time_step!(model, 10, wizard.Δt)
+    ## Run the simulation forward
+    simulation.stop_iteration += 10
+    walltime = @elapsed run!(simulation)
 
     ## Print a progress message
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",

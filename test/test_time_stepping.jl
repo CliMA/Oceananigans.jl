@@ -2,8 +2,8 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
 
-    model = Model(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
-    time_step!(model, 1, 1)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
+    time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -14,17 +14,17 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
     eos = RoquetIdealizedNonlinearEquationOfState(eos_type)
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = Model(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
-    time_step!(model, 1, 1)
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
+    time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = Model(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
-                  architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
-    time_step!(model, 1, 1)
+    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+                                architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    time_step!(model, 1, euler=true)
 
     # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
@@ -44,37 +44,33 @@ function compute_w_from_continuity(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 16, 16, 16
 
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    bcs = SolutionBoundaryConditions(grid)
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    U = VelocityFields(arch, grid)
+    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
 
-    u = FaceFieldX(FT, arch, grid)
-    v = FaceFieldY(FT, arch, grid)
-    w = FaceFieldZ(FT, arch, grid)
-    div_u = CellField(FT, arch, grid)
+    interior(U.u) .= rand(FT, Nx, Ny, Nz)
+    interior(U.v) .= rand(FT, Nx, Ny, Nz)
 
-    interior(u) .= rand(FT, Nx, Ny, Nz)
-    interior(v) .= rand(FT, Nx, Ny, Nz)
-
-    fill_halo_regions!(u.data, bcs.u, arch, grid)
-    fill_halo_regions!(v.data, bcs.v, arch, grid)
+    fill_halo_regions!(U, arch)
 
     @launch(device(arch), config=launch_config(grid, :xy),
-            _compute_w_from_continuity!((u=u.data, v=v.data, w=w.data), grid))
+            _compute_w_from_continuity!((u=U.u.data, v=U.v.data, w=U.w.data), grid))
 
-    fill_halo_regions!(w.data, bcs.w, arch, grid)
-    velocity_div!(grid, u.data, v.data, w.data, div_u.data)
+    fill_halo_regions!(U, arch)
+    velocity_div!(grid, U.u.data, U.v.data, U.w.data, div_U.data)
 
-    # Set div_u to zero at the top because the initial velocity field is not divergence-free
-    # so we end up some divergence at the top if we don't do this.
-    interior(div_u)[:, :, Nz] .= zero(FT)
+    # Set div_U to zero at the top because the initial velocity field is not
+    # divergence-free so we end up some divergence at the top if we don't do this.
+    interior(div_U)[:, :, Nz] .= zero(FT)
 
-    min_div = minimum(interior(div_u))
-    max_div = maximum(interior(div_u))
-    sum_div = sum(interior(div_u))
-    abs_sum_div = sum(abs.(interior(div_u)))
-    @info "Velocity divergence after recomputing w [$arch, $FT]: min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+    min_div = minimum(interior(div_U))
+    max_div = maximum(interior(div_U))
+    sum_div = sum(interior(div_U))
+    abs_sum_div = sum(abs.(interior(div_U)))
+    @info "Velocity divergence after recomputing w [$(typeof(arch)), $FT]: " *
+          "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
-    return all(isapprox.(interior(div_u), 0; atol=5*eps(FT)))
+    return all(isapprox.(interior(div_U), 0, atol=5*eps(FT)))
 end
 
 """
@@ -86,34 +82,35 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)), architecture=arch, float_type=FT)
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     grid = model.grid
-    u, v, w = model.velocities.u, model.velocities.v, model.velocities.w
+    u, v, w = model.velocities
 
-    div_u = CellField(FT, arch, model.grid)
+    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
-    time_step!(model, Nt, 0.05)
+    for n in 1:Nt
+        time_step!(model, 0.05, euler = n==1)
+    end
 
-    velocity_div!(grid, u, v, w, div_u)
+    velocity_div!(grid, u, v, w, div_U)
 
-    min_div = minimum(interior(div_u))
-    max_div = minimum(interior(div_u))
-    sum_div = sum(interior(div_u))
-    abs_sum_div = sum(abs.(interior(div_u)))
-    @info "Velocity divergence after $Nt time steps [$arch, $FT]: min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+    min_div = minimum(interior(div_U))
+    max_div = minimum(interior(div_U))
+    sum_div = sum(interior(div_U))
+    abs_sum_div = sum(abs.(interior(div_U)))
+    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
+          "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
     # Nx*Ny*Nz*eps(FT) but it's much higher than the observed abs_sum_div.
-    if FT == Float64
-        return isapprox(abs_sum_div, 0; atol=5e-16)
-    elseif FT == Float32
-        return isapprox(abs_sum_div, 0; atol=1e-7)
-    end
+    FT == Float64 && return isapprox(abs_sum_div, 0, atol=5e-16)
+    FT == Float32 && return isapprox(abs_sum_div, 0, atol=1e-7)
 end
 
 """
@@ -132,8 +129,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    model = Model(architecture = arch, float_type = FT, grid = grid,
-                  closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+    model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
+                                closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
@@ -144,24 +141,24 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     Tavg0 = mean(interior(model.tracers.T))
 
-    time_step!(model; Nt=Nt, Δt=10*60)
+    for n in 1:Nt
+        time_step!(model, 600, euler= n==1)
+    end
 
     Tavg = mean(interior(model.tracers.T))
-    @info "Tracer conservation after $Nt time steps [$arch, $FT]: ⟨T⟩-T₀=$(Tavg-Tavg0) °C"
+    @info "Tracer conservation after $Nt time steps [$(typeof(arch)), $FT]: " *
+          "⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
     # Interestingly, it's very well conserved (almost to machine epsilon) for
     # Float64, but not as close for Float32... But it does seem constant in time
     # for Float32 so at least it is bounded.
-    if FT == Float64
-        return isapprox(Tavg, Tavg0; rtol=2e-14)
-    elseif FT == Float32
-        return isapprox(Tavg, Tavg0; rtol=2e-4)
-    end
+    FT == Float64 && return isapprox(Tavg, Tavg0, rtol=2e-14)
+    FT == Float32 && return isapprox(Tavg, Tavg0, rtol=2e-4)
 end
 
 Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            ConstantSmagorinsky, SmagorinskyLilly,
+            SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
 @testset "Time stepping" begin
@@ -169,7 +166,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 
     @testset "Turbulence closures" begin
         for arch in archs, FT in [Float64], Closure in Closures
-            @info "  Testing that time stepping works [$arch, $FT, $Closure]..."
+            @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
             if Closure === TwoDimensionalLeith
                 # This test is extremely slow; skipping for now.
                 @test_skip time_stepping_works_with_closure(arch, FT, Closure)
@@ -183,7 +180,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
         for arch in archs, FT in [Float64]
             for eos_type in keys(Oceananigans.Buoyancy.optimized_roquet_coeffs)
                 @info "  Testing that time stepping works with " *
-                        "RoquetIdealizedNonlinearEquationOfState [$arch, $FT, $eos_type]"
+                        "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
             end
         end
@@ -216,5 +213,4 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             @test tracer_conserved_in_channel(arch, FT, 10)
         end
     end
-
 end

@@ -18,15 +18,16 @@ end
 
 using Oceananigans
 using Oceananigans.Architectures
-using Oceananigans.Operators
 using Oceananigans.Grids
+using Oceananigans.Operators
+using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
-using Oceananigans.BoundaryConditions
 using Oceananigans.Forcing
 using Oceananigans.Solvers
 using Oceananigans.Models
+using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -54,7 +55,8 @@ using Oceananigans.AbstractOperations: Computation, compute!
 
 @hascuda begin
     gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
-                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev)) for dev in CUDAdrv.devices()]
+                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev))
+                       for dev in CUDAdrv.devices()]
 
     thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
     if thorough
@@ -70,6 +72,14 @@ end
 #####
 ##### Useful utilities
 #####
+
+function get_model_field(field_name, model)
+    if field_name ∈ (:u, :v, :w)
+        return getfield(model.velocities, field_name)
+    else
+        return getfield(model.tracers, field_name)
+    end
+end
 
 datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
 
@@ -107,17 +117,19 @@ closures = (
 with_logger(ModelLogger()) do
     @testset "Oceananigans" begin
         include("test_grids.jl")
+        include("test_operators.jl")
+        include("test_boundary_conditions.jl")
         include("test_fields.jl")
         include("test_halo_regions.jl")
-        include("test_operators.jl")
         include("test_solvers.jl")
         include("test_pressure_solvers.jl")
         include("test_coriolis.jl")
         include("test_buoyancy.jl")
         include("test_surface_waves.jl")
         include("test_models.jl")
+        include("test_simulations.jl")
         include("test_time_stepping.jl")
-        include("test_boundary_conditions.jl")
+        include("test_time_stepping_bcs.jl")
         include("test_forcings.jl")
         include("test_turbulence_closures.jl")
         include("test_dynamics.jl")
