@@ -15,6 +15,7 @@ export
 
 include("Operators/Operators.jl")
 
+include("lazy_fields.jl")
 include("thermodynamics.jl")
 include("pressure_gradients.jl")
 include("microphysics.jl")
