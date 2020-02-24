@@ -1,7 +1,7 @@
 module OutputWriters
 
 export
-    write_output, read_output,
+    write_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
     NetCDFOutputWriter, write_grid,
     Checkpointer, restore_from_checkpoint

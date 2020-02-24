@@ -1,3 +1,5 @@
+using NCDatasets
+
 """
 Run a coarse thermal bubble simulation and save the output to NetCDF at the
 10th time step. Then read back the output and test that it matches the model's
@@ -27,7 +29,7 @@ function run_thermal_bubble_netcdf_tests(arch)
         "S" => model.tracers.S
     )
 
-    nc_writer = NetCDFOutputWriter(model, outputs, filename="dumptest.nc", frequency=10)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename="dump_test.nc", frequency=10)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -38,22 +40,23 @@ function run_thermal_bubble_netcdf_tests(arch)
     zF_slice = 9:11
 
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename="dumptestsliced.nc", frequency=10,
+        NetCDFOutputWriter(model, outputs, filename="dump_test_sliced.nc", frequency=10,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
     run!(simulation)
-
     close(nc_writer)
     close(nc_sliced_writer)
 
-    u = read_output(nc_writer, "u")
-    v = read_output(nc_writer, "v")
-    w = read_output(nc_writer, "w")
-    T = read_output(nc_writer, "T")
-    S = read_output(nc_writer, "S")
+    ds3 = Dataset("dump_test.nc")
+    u = ds3["u"][:, :, :, end]
+    v = ds3["v"][:, :, :, end]
+    w = ds3["w"][:, :, :, end]
+    T = ds3["T"][:, :, :, end]
+    S = ds3["S"][:, :, :, end]
+    close(ds3)
 
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
@@ -61,11 +64,13 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(T .≈ Array(interiorparent(model.tracers.T)))
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
-    u_sliced = read_output(nc_sliced_writer, "u")
-    v_sliced = read_output(nc_sliced_writer, "v")
-    w_sliced = read_output(nc_sliced_writer, "w")
-    T_sliced = read_output(nc_sliced_writer, "T")
-    S_sliced = read_output(nc_sliced_writer, "S")
+    ds2 = Dataset("dump_test_sliced.nc")
+    u_sliced = ds2["u"][:, :, :, end]
+    v_sliced = ds2["v"][:, :, :, end]
+    w_sliced = ds2["w"][:, :, :, end]
+    T_sliced = ds2["T"][:, :, :, end]
+    S_sliced = ds2["S"][:, :, :, end]
+    close(ds2)
 
     @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
     @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
