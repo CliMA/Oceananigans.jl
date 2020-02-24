@@ -63,8 +63,9 @@ end
 
             summarize_regression_test(field_names, fields, correct_fields)
 
+            @test all(isapprox.(interior(model.momenta.ρu), file["ρu"], atol=1e-12))
+
             @test all(interior(model.total_density) .≈ file["ρ"])
-            @test all(interior(model.momenta.ρu)    .≈ file["ρu"])
             @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
             @test all(interior(model.momenta.ρw)    .≈ file["ρw"])
             if tvar isa Energy
@@ -126,8 +127,9 @@ end
 
             summarize_regression_test(field_names, fields, correct_fields)
 
+            @test all(isapprox.(interior(model.momenta.ρu), file["ρu"], atol=1e-12))
+
             @test all(interior(model.total_density) .≈ file["ρ"])
-            @test all(interior(model.momenta.ρu)    .≈ file["ρu"])
             @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
             @test all(interior(model.momenta.ρw)    .≈ file["ρw"])
             @test all(interior(model.tracers.ρ₁)    .≈ file["ρ₁"])
