@@ -31,10 +31,11 @@ get_slice(n::UnitRange) = n
 get_slice(n::Nothing) = Colon()
 
 """
-    write_grid(model; filename="grid.nc", mode="c",
-               compression=0, attributes=Dict(), slice_kw...)
+    write_grid_and_attributes(model; filename="grid.nc", mode="c",
+                              compression=0, attributes=Dict(), slice_kw...)
 
-Writes a grid.nc file that contains all the dimensions of the domain.
+Writes grid and global `attributes` to `filename`. By default writes information
+to a standalone `grid.nc` file.
 
 Keyword arguments
 =================
@@ -43,10 +44,10 @@ Keyword arguments
 - `compression`: Defines the compression level of data from 0-9. Default: 0.
 - `attributes`: Global attributes. Default: Dict().
 """
-function write_grid(model; filename="./grid.nc", mode="c",
-                    compression=0, attributes=Dict(), slice_kw...)
+function write_grid_and_attributes(model; filename="grid.nc", mode="c",
+                                   compression=0, attributes=Dict(), slice_kw...)
 
-    dimensions = Dict(
+    dims = Dict(
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
         "zC" => collect(model.grid.zC),
@@ -55,27 +56,26 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "zF" => collect(model.grid.zF)[1:end-1]
     )
 
-    dim_attrib = Dict(
-        "xC" => ["longname" => "Locations of the cell centers in the x-direction.", "units" => "m"],
-        "yC" => ["longname" => "Locations of the cell centers in the y-direction.", "units" => "m"],
-        "zC" => ["longname" => "Locations of the cell centers in the z-direction.", "units" => "m"],
-        "xF" => ["longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"],
-        "yF" => ["longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"],
-        "zF" => ["longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"]
+    dim_attribs = Dict(
+        "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+        "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+        "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+        "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m")
     )
 
     # Applies slices to the dimensions d
     for (d, slice) in slice_kw
-        if String(d) in keys(dimensions)
-            dimensions[String(d)] = dimensions[String(d)][get_slice(slice)]
+        if String(d) in keys(dims)
+            dims[String(d)] = dims[String(d)][get_slice(slice)]
         end
     end
 
-    # Writes the sliced dimensions to the specified netcdf file
     Dataset(filename, mode, attrib=attributes) do ds
-        for (dimname, dimarray) in dimensions
-            defVar(ds, dimname, dimarray, (dimname,),
-                   compression=compression, attrib=dim_attrib[dimname])
+        for (dim_name, dim_array) in dims
+            defVar(ds, dim_name, dim_array, (dim_name,),
+                   compression=compression, attrib=dim_attribs[dim_name])
         end
     end
 
@@ -141,8 +141,8 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
     mode = clobber ? "c" : "a"
 
     # Initiates the output file with dimensions
-    write_grid(model; filename=filename, compression=compression,
-               attributes=global_attributes, slice_kw...)
+    write_grid_and_attributes(model; filename=filename, compression=compression,
+                              attributes=global_attributes, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
