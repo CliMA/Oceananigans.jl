@@ -16,3 +16,5 @@ show(io::IO, field::Field) =
           "    └── domain: ", show_domain(field.grid), '\n')
 
 short_show(field::AbstractLocatedField) = string("Field at ", show_location(field))
+
+short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
