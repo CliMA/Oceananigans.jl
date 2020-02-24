@@ -1,9 +1,10 @@
 module JULES
 
 using Oceananigans
+using Oceananigans: AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
-    ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
+    ConstantIsotropicDiffusivity, DiffusivityFields, with_tracers
 
 export
     Entropy, Energy,
@@ -14,10 +15,11 @@ export
 
 include("Operators/Operators.jl")
 
+include("lazy_fields.jl")
 include("thermodynamics.jl")
 include("pressure_gradients.jl")
 include("microphysics.jl")
-include("models.jl")
+include("compressible_model.jl")
 
 include("right_hand_sides.jl")
 include("time_stepping_kernels.jl")

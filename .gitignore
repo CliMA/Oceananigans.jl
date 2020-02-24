@@ -25,6 +25,7 @@ notes/*.log
 notes/*.gz
 
 # Various output
+frames
 *.png
 *.gif
 *.mp4
