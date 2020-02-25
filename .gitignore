@@ -1,7 +1,7 @@
 # Julia stuff
 *.jl.cov
 *.jl.*.cov
-*.jl.mem
+*.jl.*.mem
 deps/deps.jl
 
 # Swap files.
@@ -25,6 +25,7 @@ notes/*.log
 notes/*.gz
 
 # Various output
+frames
 *.png
 *.gif
 *.mp4

@@ -1,60 +1,75 @@
+using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.Coriolis
+
 ####
 #### Element-wise forcing and right-hand-side calculations
 ####
 
-@inline function FU(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+@inline FU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+    (- x_f_cross_U(i, j, k, grid, coriolis, ρũ)
+     + ∂ⱼτ₁ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
+
+
+@inline FV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+    (- y_f_cross_U(i, j, k, grid, coriolis, ρũ)
+     + ∂ⱼτ₂ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
+
+@inline FW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+    (- z_f_cross_U(i, j, k, grid, coriolis, ρũ)
+     + ∂ⱼτ₃ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
+
+@inline FC(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃) =
+    ∂ⱼDᶜⱼ(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃)
+
+@inline FT(i, j, k, grid, closure, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃, K̃) =
+    ∂ⱼDᵖⱼ(i, j, k, grid, closure, 1, diagnose_p_over_ρ, tvar, gases, gravity, ρ, ρũ, ρc̃, K̃)
+
+@inline function FT(i, j, k, grid, closure, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃, K̃)
     @inbounds begin
-        return (- x_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
+        Ṡ = 0.0
+        for gas_index = 1:length(gases)
+            tracer_index = gas_index + 1
+            ρc = ρc̃[tracer_index]
+            Ṡ += ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)
+        end
+        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, ρũ) / T
+        return Ṡ
     end
 end
 
-
-@inline function FV(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
+@inline function RU(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
     @inbounds begin
-        return (- y_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
-    end
-end
-
-@inline function FW(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K)
-    @inbounds begin
-        return (- z_f_cross_U(i, j, k, grid, coriolis, Ũ)
-                + ρᵈ[i, j, k] * ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, ρᵈ, Ũ, K))
-    end
-end
-
-@inline FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃) =
-    @inbounds ρᵈ[i, j, k] * ∇_κ_∇c(i, j, k, grid, closure, ρᵈ, C, Val(tracer_index), K̃)
-
-@inline function RU(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C, FU)
-    @inbounds begin
-        return (- div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂x(i, j, k, grid, tvar, b, ρᵈ, C)
+        return (- div_ρuũ(i, j, k, grid, ρ, ρũ)
+                - ∂p∂x(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
                 + FU[i, j, k])
     end
 end
 
-@inline function RV(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C, FV)
+@inline function RV(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
     @inbounds begin
-        return (- div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * ∂p∂y(i, j, k, grid, tvar, b, ρᵈ, C)
+        return (- div_ρvũ(i, j, k, grid, ρ, ρũ)
+                - ∂p∂y(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
                 + FV[i, j, k])
     end
 end
 
-@inline function RW(i, j, k, grid, tvar, b, mp, pₛ, gravity, ρᵈ, Ũ, C, FW)
+@inline function RW(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
     @inbounds begin
-        return (- div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
-                - ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) * (
-                      ∂p∂z(i, j, k, grid, tvar, b, ρᵈ, C)
-                    + buoyancy_perturbation(i, j, k, grid, gravity, mp, ρᵈ, C))
+        return (- div_ρwũ(i, j, k, grid, ρ, ρũ)
+                - ∂p∂z(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+                - gravity * ℑzᵃᵃᶠ(i, j, k, grid, ρ)
                 + FW[i, j, k])
     end
 end
 
-@inline Rρ(i, j, k, grid, Ũ) =
-    -divᶜᶜᶜ(i, j, k, grid, Ũ.ρu, Ũ.ρv, Ũ.ρw)
+@inline function RC(i, j, k, grid, ρ, ρũ, ρc, FC)
+    @inbounds begin
+        return -div_uc(i, j, k, grid, ρ, ρũ, ρc) + FC[i, j, k]
+    end
+end
 
-@inline RC(i, j, k, grid, ρᵈ, Ũ, C, FC) =
-    @inbounds -div_flux(i, j, k, grid, ρᵈ, Ũ.ρu, Ũ.ρv, Ũ.ρw, C) + FC[i, j, k]
+@inline RT(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where FT = zero(FT)
+
+@inline RT(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
+    -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)

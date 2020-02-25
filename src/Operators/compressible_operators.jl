@@ -1,138 +1,222 @@
-using Oceananigans.Operators
-using Oceananigans: AbstractGrid
-
 #####
-##### Moist density
-#####
-
-# ρᵈ = ρᵐ with no moist species (no microphysics)
-# Moist density calculations for other schemes in `microphysics.jl`
-@inline ρᵐ(i, j, k, grid, ::Nothing, ρᵈ, C̃) = @inbounds ρᵈ[i, j, k]
-@inline ρᵈ_over_ρᵐ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, ρᵈ, C̃) where FT = FT(1)
-@inline ρᵈ_over_ρᵐ(i, j, k, grid, mp, ρᵈ, C) = @inbounds ρᵈ[i, j, k] / ρᵐ(i, j, k, grid, mp, ρᵈ, C)
-
-@inline U_over_ρ(i, j, k, grid, U, ρᵈ) = @inbounds U[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, ρᵈ)
-@inline V_over_ρ(i, j, k, grid, V, ρᵈ) = @inbounds V[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, ρᵈ)
-@inline W_over_ρ(i, j, k, grid, W, ρᵈ) = @inbounds W[i, j, k] / ℑzᵃᵃᶠ(i, j, k, grid, ρᵈ)
-@inline C_over_ρ(i, j, k, grid, C, ρᵈ) = @inbounds C[i, j, k] / ρᵈ[i, j, k]
-
-#####
-##### Coriolis terms
+##### Legend:
+##### ρ  -> density fields
+##### ρũ -> momentum fields
+##### ρc̃ -> conservative tracer fields
+##### K̃  -> diffusivity fields
+##### ũ  -> velocity fields
+##### c̃  -> tracer fields
 #####
 
-@inline x_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
-@inline y_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, Ũ) where FT = zero(FT)
+#####
+##### Convert conservative variables to primitive variables
+#####
+
+@inline U_over_ρ(i, j, k, grid, ρ, ρu) = @inbounds ρu[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, ρ)
+@inline V_over_ρ(i, j, k, grid, ρ, ρv) = @inbounds ρv[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, ρ)
+@inline W_over_ρ(i, j, k, grid, ρ, ρw) = @inbounds ρw[i, j, k] / ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+@inline C_over_ρ(i, j, k, grid, ρ, ρc) = @inbounds ρc[i, j, k] / ρ[i, j, k]
+
+#####
+##### Kinetic energy
+#####
+
+@inline kinetic_energy(i, j, k, grid::AbstractGrid{FT}, ρ, ρũ) where FT =
+    @inbounds FT(0.5) * (  (ℑxᶜᵃᵃ(i, j, k, grid, ρũ.ρu) / ρ[i, j, k])^2
+                         + (ℑyᵃᶜᵃ(i, j, k, grid, ρũ.ρv) / ρ[i, j, k])^2
+                         + (ℑzᵃᵃᶜ(i, j, k, grid, ρũ.ρw) / ρ[i, j, k])^2)
+
+#####
+##### Pressure work
+#####
+
+@inline p∂u∂x(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+       (  ℑxᶠᵃᵃ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        * Axᵃᵃᶠ(i, j, k, grid) * U_over_ρ(i, j, k, grid, ρ, ρũ.ρu))
+
+@inline p∂v∂y(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+       (  ℑyᵃᶠᵃ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        * Ayᵃᵃᶠ(i, j, k, grid) * V_over_ρ(i, j, k, grid, ρ, ρũ.ρv))
+
+@inline p∂w∂z(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+       (  ℑzᵃᵃᶠ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        * Azᵃᵃᵃ(i, j, k, grid) * W_over_ρ(i, j, k, grid, ρ, ρũ.ρw))
+
+@inline ∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, p∂u∂x, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)
+           + δyᵃᶜᵃ(i, j, k, grid, p∂v∂y, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)
+           + δzᵃᵃᶜ(i, j, k, grid, p∂w∂z, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)))
 
 #####
 ##### Tracer advection
 #####
 
-@inline advective_tracer_flux_x(i, j, k, grid, U, C, ρᵈ) = Ax_ψᵃᵃᶠ(i, j, k, grid, U) * ℑxᶠᵃᵃ(i, j, k, grid, C) / ℑxᶠᵃᵃ(i, j, k, grid, ρᵈ)
-@inline advective_tracer_flux_y(i, j, k, grid, V, C, ρᵈ) = Ay_ψᵃᵃᶠ(i, j, k, grid, V) * ℑyᵃᶠᵃ(i, j, k, grid, C) / ℑyᵃᶠᵃ(i, j, k, grid, ρᵈ)
-@inline advective_tracer_flux_z(i, j, k, grid, W, C, ρᵈ) = Az_ψᵃᵃᵃ(i, j, k, grid, W) * ℑzᵃᵃᶠ(i, j, k, grid, C) / ℑzᵃᵃᶠ(i, j, k, grid, ρᵈ)
+@inline advective_tracer_flux_x(i, j, k, grid, ρ, ρu, ρc) = Ax_ψᵃᵃᶠ(i, j, k, grid, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρc) / ℑxᶠᵃᵃ(i, j, k, grid, ρ)
+@inline advective_tracer_flux_y(i, j, k, grid, ρ, ρv, ρc) = Ay_ψᵃᵃᶠ(i, j, k, grid, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρc) / ℑyᵃᶠᵃ(i, j, k, grid, ρ)
+@inline advective_tracer_flux_z(i, j, k, grid, ρ, ρw, ρc) = Az_ψᵃᵃᵃ(i, j, k, grid, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρc) / ℑzᵃᵃᶠ(i, j, k, grid, ρ)
 
-@inline function div_flux(i, j, k, grid, ρᵈ, U, V, W, C)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, U, C, ρᵈ) +
-                                    δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, V, C, ρᵈ) +
-                                    δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, W, C, ρᵈ))
-end
+@inline div_uc(i, j, k, grid, ρ, ρũ, ρc) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, ρ, ρũ.ρu, ρc)
+           + δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, ρ, ρũ.ρv, ρc)
+           + δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, ρ, ρũ.ρw, ρc)))
 
 #####
 ##### Diffusion
+##### FIXME: need a better way to enforce boundary conditions on diffusive fluxes at rigid boundaries
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρᵈ, C) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, C_over_ρ, C, ρᵈ)
-@inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρᵈ, C) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, C_over_ρ, C, ρᵈ)
-@inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρᵈ, C) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * δzᵃᵃᶠ(i, j, k, grid, C_over_ρ, C, ρᵈ)
+@inline diffusive_flux_x(i, j, k, grid, κᶠᶜᶜ, ρ, ρc) =
+    ℑxᶠᵃᵃ(i, j, k, grid, ρ) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, ρ, ρc)
 
-@inline function ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κˣ, κʸ, κᶻ, ρᵈ, C)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κˣ, ρᵈ, C) +
-                                    δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κʸ, ρᵈ, C) +
-                                    δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κᶻ, ρᵈ, C))
+@inline diffusive_flux_y(i, j, k, grid, κᶜᶠᶜ, ρ, ρc) =
+    ℑyᵃᶠᵃ(i, j, k, grid, ρ) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, ρ, ρc)
+
+@inline diffusive_flux_z(i, j, k, grid, κᶜᶜᶠ, ρ, ρc) =
+    ℑzᵃᵃᶠ(i, j, k, grid, ρ) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, ρ, ρc)
+
+@inline diffusive_tvar_flux_x(i, j, k, grid, κᶠᶜᶜ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc) =
+    (ℑxᶠᵃᵃ(i, j, k, grid, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃)
+     * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, C_over_ρ, ρ, ρc))
+
+@inline diffusive_tvar_flux_y(i, j, k, grid, κᶜᶠᶜ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc) =
+    (ℑyᵃᶠᵃ(i, j, k, grid, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃)
+     * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, C_over_ρ, ρ, ρc))
+
+@inline diffusive_tvar_flux_z(i, j, k, grid, κᶜᶜᶠ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc) =
+    (ℑzᵃᵃᶠ(i, j, k, grid, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃)
+     * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, C_over_ρ, ρ, ρc))
+
+@inline diffusive_pressure_flux_x(i, j, k, grid, κᶠᶜᶜ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+    (ℑxᶠᵃᵃ(i, j, k, grid, ρ) * κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid)
+     * ∂xᶠᵃᵃ(i, j, k, grid, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃))
+
+@inline diffusive_pressure_flux_y(i, j, k, grid, κᶜᶠᶜ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃) =
+    (ℑyᵃᶠᵃ(i, j, k, grid, ρ) * κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid)
+     * ∂yᵃᶠᵃ(i, j, k, grid, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃))
+
+@inline function diffusive_pressure_flux_z(i, j, k, grid::AbstractGrid{FT}, κᶜᶜᶠ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃) where FT
+    (k <= 1 || k > grid.Nz) && return zero(FT)
+    return (ℑzᵃᵃᶠ(i, j, k, grid, ρ) * κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid)
+            * ∂zᵃᵃᶠ(i, j, k, grid, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃))
 end
 
-@inline ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, ρᵈ, C) = ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, κ, κ, ρᵈ, C)
+@inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tracer_index, ρ, ρc, args...)
+    @inbounds κ = closure.κ[tracer_index]
+    return (1/Vᵃᵃᶜ(i, j, k, grid)
+            * (  δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, ρ, ρc)
+               + δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, κ, ρ, ρc)
+               + δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κ, ρ, ρc)))
+end
 
-@inline function ∇_κ_∇c(i, j, k, grid, closure::ConstantIsotropicDiffusivity,
-                        ρᵈ, C, ::Val{tracer_index}, args...) where tracer_index
+@inline function ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tvar_diag,
+                         tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc, args...)
 
     @inbounds κ = closure.κ[tracer_index]
-    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, κ, ρᵈ, C)
+    return (1/Vᵃᵃᶜ(i, j, k, grid)
+               * (  δxᶜᵃᵃ(i, j, k, grid, diffusive_tvar_flux_x, κ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)
+                  + δyᵃᶜᵃ(i, j, k, grid, diffusive_tvar_flux_y, κ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)
+                  + δzᵃᵃᶜ(i, j, k, grid, diffusive_tvar_flux_z, κ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)))
+end
+
+@inline function ∂ⱼDᵖⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tracer_index,
+                       p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃, args ...)
+
+    @inbounds κ = closure.κ[tracer_index]
+    return (1/Vᵃᵃᶜ(i, j, k, grid)
+               * (  δxᶜᵃᵃ(i, j, k, grid, diffusive_pressure_flux_x, κ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃)
+                  + δyᵃᶜᵃ(i, j, k, grid, diffusive_pressure_flux_y, κ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃)
+                  + δzᵃᵃᶜ(i, j, k, grid, diffusive_pressure_flux_z, κ, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃)))
 end
 
 #####
 ##### Momentum advection
 #####
 
-@inline momentum_flux_ρuu(i, j, k, grid, ρᵈ, U)    = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, U) * ℑxᶜᵃᵃ(i, j, k, grid, U) / ρᵈ[i, j, k]
-@inline momentum_flux_ρuv(i, j, k, grid, ρᵈ, U, V) =           ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, V) * ℑyᵃᶠᵃ(i, j, k, grid, U) / ℑxyᶠᶠᵃ(i, j, k, grid, ρᵈ)
-@inline momentum_flux_ρuw(i, j, k, grid, ρᵈ, U, W) =           ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶠ(i, j, k, grid, U) / ℑxzᶠᵃᶠ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρuu(i, j, k, grid, ρ, ρu) = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶜᵃᵃ(i, j, k, grid, ρu) / ρ[i, j, k]
+@inline momentum_flux_ρvv(i, j, k, grid, ρ, ρv) = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶜᵃ(i, j, k, grid, ρv) / ρ[i, j, k]
+@inline momentum_flux_ρww(i, j, k, grid, ρ, ρw) = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶜ(i, j, k, grid, ρw) / ρ[i, j, k]
 
-@inline momentum_flux_ρvu(i, j, k, grid, ρᵈ, U, V) =           ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, U) * ℑxᶠᵃᵃ(i, j, k, grid, V) / ℑxyᶠᶠᵃ(i, j, k, grid, ρᵈ)
-@inline momentum_flux_ρvv(i, j, k, grid, ρᵈ, V)    = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, V) * ℑyᵃᶜᵃ(i, j, k, grid, V) / ρᵈ[i, j, k]
-@inline momentum_flux_ρvw(i, j, k, grid, ρᵈ, V, W) =           ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶠ(i, j, k, grid, V) / ℑyzᵃᶠᶠ(i, j, k, grid, ρᵈ)
+@inline momentum_flux_ρuv(i, j, k, grid, ρ, ρu, ρv) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρu) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
+@inline momentum_flux_ρuw(i, j, k, grid, ρ, ρu, ρw) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρu) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρvu(i, j, k, grid, ρ, ρu, ρv) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
+@inline momentum_flux_ρvw(i, j, k, grid, ρ, ρv, ρw) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρv) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρwu(i, j, k, grid, ρ, ρu, ρw) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρwv(i, j, k, grid, ρ, ρv, ρw) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
 
-@inline momentum_flux_ρwu(i, j, k, grid, ρᵈ, U, W) =           ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, U) * ℑxᶠᵃᵃ(i, j, k, grid, W) / ℑxzᶠᵃᶠ(i, j, k, grid, ρᵈ)
-@inline momentum_flux_ρwv(i, j, k, grid, ρᵈ, V, W) =           ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, V) * ℑyᵃᶠᵃ(i, j, k, grid, W) / ℑyzᵃᶠᶠ(i, j, k, grid, ρᵈ)
-@inline momentum_flux_ρww(i, j, k, grid, ρᵈ, W)    = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶜ(i, j, k, grid, W) / ρᵈ[i, j, k]
+@inline div_ρuũ(i, j, k, grid, ρ, ρũ) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶠᵃᵃ(i, j, k, grid, momentum_flux_ρuu, ρ, ρũ.ρu)
+           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρuv, ρ, ρũ.ρu, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρuw, ρ, ρũ.ρu, ρũ.ρw)))
 
-@inline function div_ρuũ(i, j, k, grid, ρᵈ, Ũ)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (  δxᶠᵃᵃ(i, j, k, grid, momentum_flux_ρuu, ρᵈ, Ũ.ρu)
-                                    + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρuv, ρᵈ, Ũ.ρu, Ũ.ρv)
-                                    + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρuw, ρᵈ, Ũ.ρu, Ũ.ρw))
-end
+@inline div_ρvũ(i, j, k, grid, ρ, ρũ) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρvu, ρ, ρũ.ρu, ρũ.ρv)
+           + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_ρvv, ρ, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρvw, ρ, ρũ.ρv, ρũ.ρw)))
 
-@inline function div_ρvũ(i, j, k, grid, ρᵈ, Ũ)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρvu, ρᵈ, Ũ.ρu, Ũ.ρv)
-                                    + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_ρvv, ρᵈ, Ũ.ρv)
-                                    + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρvw, ρᵈ, Ũ.ρv, Ũ.ρw))
-end
-
-@inline function div_ρwũ(i, j, k, grid, ρᵈ, Ũ)
-    return 1/Vᵃᵃᶠ(i, j, k, grid) * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρwu, ρᵈ, Ũ.ρu, Ũ.ρw)
-                                    + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, ρᵈ, Ũ.ρv, Ũ.ρw)
-                                    + δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, ρᵈ, Ũ.ρw))
-end
+@inline div_ρwũ(i, j, k, grid, ρ, ρũ) =
+    (1/Vᵃᵃᶠ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρwu, ρ, ρũ.ρu, ρũ.ρw)
+           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, ρ, ρũ.ρv, ρũ.ρw)
+           + δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, ρ, ρũ.ρw)))
 
 #####
 ##### Viscous dissipation
 #####
 
-@inline viscous_flux_ux(i, j, k, grid, νᶜᶜᶜ, ρᵈ, U) = νᶜᶜᶜ * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶜᵃᵃ(i, j, k, grid, U_over_ρ, U, ρᵈ)
-@inline viscous_flux_uy(i, j, k, grid, νᶠᶠᶜ, ρᵈ, U) = νᶠᶠᶜ * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, U_over_ρ, U, ρᵈ)
-@inline viscous_flux_uz(i, j, k, grid, νᶠᶜᶠ, ρᵈ, U) = νᶠᶜᶠ * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶠ(i, j, k, grid, U_over_ρ, U, ρᵈ)
+@inline strain_rate_tensor_ux(i, j, k, grid::AbstractGrid{FT}, ρ, ρu) where FT = FT(1/3) * ∂xᶜᵃᵃ(i, j, k, grid, U_over_ρ, ρ, ρu)
+@inline strain_rate_tensor_vy(i, j, k, grid::AbstractGrid{FT}, ρ, ρv) where FT = FT(1/3) * ∂yᵃᶜᵃ(i, j, k, grid, V_over_ρ, ρ, ρv)
+@inline strain_rate_tensor_wz(i, j, k, grid::AbstractGrid{FT}, ρ, ρw) where FT = FT(1/3) * ∂zᵃᵃᶜ(i, j, k, grid, W_over_ρ, ρ, ρw)
 
-@inline viscous_flux_vx(i, j, k, grid, νᶠᶠᶜ, ρᵈ, V) = νᶠᶠᶜ * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, V_over_ρ, V, ρᵈ)
-@inline viscous_flux_vy(i, j, k, grid, νᶜᶜᶜ, ρᵈ, V) = νᶜᶜᶜ * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶜᵃ(i, j, k, grid, V_over_ρ, V, ρᵈ)
-@inline viscous_flux_vz(i, j, k, grid, νᶜᶠᶠ, ρᵈ, V) = νᶜᶠᶠ * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶠ(i, j, k, grid, V_over_ρ, V, ρᵈ)
+@inline strain_rate_tensor_uy(i, j, k, grid, ρ, ρu, ρv) = ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, ρ, ρu) + ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, ρ, ρv)
+@inline strain_rate_tensor_uz(i, j, k, grid, ρ, ρu, ρw) = ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, ρ, ρu) + ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, ρ, ρw)
+@inline strain_rate_tensor_vx(i, j, k, grid, ρ, ρv, ρu) = ∂xᶠᵃᵃ(i, j, k, grid, V_over_ρ, ρ, ρv) + ∂yᵃᶠᵃ(i, j, k, grid, U_over_ρ, ρ, ρu)
+@inline strain_rate_tensor_vz(i, j, k, grid, ρ, ρv, ρw) = ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, ρ, ρv) + ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, ρ, ρw)
+@inline strain_rate_tensor_wx(i, j, k, grid, ρ, ρw, ρu) = ∂xᶠᵃᵃ(i, j, k, grid, W_over_ρ, ρ, ρw) + ∂zᵃᵃᶠ(i, j, k, grid, U_over_ρ, ρ, ρu)
+@inline strain_rate_tensor_wy(i, j, k, grid, ρ, ρw, ρv) = ∂yᵃᶠᵃ(i, j, k, grid, W_over_ρ, ρ, ρw) + ∂zᵃᵃᶠ(i, j, k, grid, V_over_ρ, ρ, ρv)
 
-@inline viscous_flux_wx(i, j, k, grid, νᶠᶜᶠ, ρᵈ, W) = νᶠᶜᶠ * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * δxᶠᵃᵃ(i, j, k, grid, W_over_ρ, W, ρᵈ)
-@inline viscous_flux_wy(i, j, k, grid, νᶜᶠᶠ, ρᵈ, W) = νᶜᶠᶠ * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * δyᵃᶠᵃ(i, j, k, grid, W_over_ρ, W, ρᵈ)
-@inline viscous_flux_wz(i, j, k, grid, νᶜᶜᶜ, ρᵈ, W) = νᶜᶜᶜ * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * δzᵃᵃᶜ(i, j, k, grid, W_over_ρ, W, ρᵈ)
+@inline viscous_flux_ux(i, j, k, grid, νᶜᶜᶜ, ρ, ρu) = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_ux(i, j, k, grid, ρ, ρu)
+@inline viscous_flux_vy(i, j, k, grid, νᶜᶜᶜ, ρ, ρv) = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vy(i, j, k, grid, ρ, ρv)
+@inline viscous_flux_wz(i, j, k, grid, νᶜᶜᶜ, ρ, ρw) = @inbounds ρ[i, j, k] * νᶜᶜᶜ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_wz(i, j, k, grid, ρ, ρw)
 
-@inline function ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, νˣ, νʸ, νᶻ, ρᵈ, U)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, νˣ, ρᵈ, U) +
-                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, νʸ, ρᵈ, U) +
-                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, νᶻ, ρᵈ, U))
-end
+@inline viscous_flux_uy(i, j, k, grid, νᶠᶠᶜ, ρ, ρu, ρv) = ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Ayᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_uy(i, j, k, grid, ρ, ρu, ρv)
+@inline viscous_flux_uz(i, j, k, grid, νᶠᶜᶠ, ρ, ρu, ρw) = ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_uz(i, j, k, grid, ρ, ρu, ρw)
+@inline viscous_flux_vx(i, j, k, grid, νᶠᶠᶜ, ρ, ρv, ρu) = ℑxyᶠᶠᵃ(i, j, k, grid, ρ) * νᶠᶠᶜ * Axᵃᵃᶜ(i, j, k, grid) * strain_rate_tensor_vx(i, j, k, grid, ρ, ρv, ρu)
+@inline viscous_flux_vz(i, j, k, grid, νᶜᶠᶠ, ρ, ρv, ρw) = ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Azᵃᵃᵃ(i, j, k, grid) * strain_rate_tensor_vz(i, j, k, grid, ρ, ρv, ρw)
+@inline viscous_flux_wx(i, j, k, grid, νᶠᶜᶠ, ρ, ρw, ρu) = ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Axᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wx(i, j, k, grid, ρ, ρw, ρu)
+@inline viscous_flux_wy(i, j, k, grid, νᶜᶠᶠ, ρ, ρw, ρv) = ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Ayᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wy(i, j, k, grid, ρ, ρw, ρv)
 
-@inline function ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, νˣ, νʸ, νᶻ, ρᵈ, V)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, νˣ, ρᵈ, V) +
-                                    δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, νʸ, ρᵈ, V) +
-                                    δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, νᶻ, ρᵈ, V))
-end
+@inline ∂ⱼτ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, closure.ν, ρ, ρũ.ρu)
+           + δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, closure.ν, ρ, ρũ.ρu, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, closure.ν, ρ, ρũ.ρu, ρũ.ρw)))
 
-@inline function ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, νˣ, νʸ, νᶻ, ρᵈ, W)
-    return 1/Vᵃᵃᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, νˣ, ρᵈ, W) +
-                                    δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, νʸ, ρᵈ, W) +
-                                    δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, νᶻ, ρᵈ, W))
-end
+@inline ∂ⱼτ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    (1/Vᵃᵃᶜ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, closure.ν, ρ, ρũ.ρv, ρũ.ρu)
+           + δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, closure.ν, ρ, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, closure.ν, ρ, ρũ.ρv, ρũ.ρw)))
 
-@inline ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, ρᵈ, U) = ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, ν, ν, ν, ρᵈ, U)
-@inline ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, ρᵈ, V) = ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, ν, ν, ν, ρᵈ, V)
-@inline ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, ν, ρᵈ, W) = ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, ν, ν, ν, ρᵈ, W)
+@inline ∂ⱼτ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    (1/Vᵃᵃᶠ(i, j, k, grid)
+        * (  δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, closure.ν, ρ, ρũ.ρw, ρũ.ρu)
+           + δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, closure.ν, ρ, ρũ.ρw, ρũ.ρv)
+           + δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, closure.ν, ρ, ρũ.ρw)))
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρᵈ, Ũ, args...) = ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, closure.ν, ρᵈ, Ũ.ρu)
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρᵈ, Ũ, args...) = ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, closure.ν, ρᵈ, Ũ.ρv)
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρᵈ, Ũ, args...) = ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, closure.ν, ρᵈ, Ũ.ρw)
+@inline u₁∂ⱼτ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    U_over_ρ(i, j, k, grid, ρ, ρũ.ρu) * ∂ⱼτ₁ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
+
+@inline u₂∂ⱼτ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    V_over_ρ(i, j, k, grid, ρ, ρũ.ρv) * ∂ⱼτ₂ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
+
+@inline u₃∂ⱼτ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    W_over_ρ(i, j, k, grid, ρ, ρũ.ρw) * ∂ⱼτ₃ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
+
+@inline Q_dissipation(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+    (  ℑxᶜᵃᵃ(i, j, k, grid, u₁∂ⱼτ₁ⱼ, closure, ρ, ρũ, args...)
+     + ℑyᵃᶜᵃ(i, j, k, grid, u₂∂ⱼτ₂ⱼ, closure, ρ, ρũ, args...)
+     + ℑzᵃᵃᶜ(i, j, k, grid, u₃∂ⱼτ₃ⱼ, closure, ρ, ρũ, args...))

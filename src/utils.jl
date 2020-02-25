@@ -3,7 +3,7 @@ function cfl(model, Δt)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
 
-    ρ = model.density
+    ρ = model.total_density
     ρu, ρv, ρw = model.momenta
 
     ρ, ρu, ρv, ρw = ρ.data, ρu.data, ρv.data, ρw.data
@@ -34,6 +34,6 @@ function acoustic_cfl(model, Δt)
         c = √(gas.γ * R * T / M)
         c_max = max(c_max, c)
     end
-    
+
     return Δt / min(Δx/c_max, Δy/c_max, Δz/c_max)
 end

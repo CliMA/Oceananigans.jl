@@ -1,46 +1,69 @@
 """
-Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
+Compute total density from densities of massive tracers
 """
-function compute_slow_forcings!(F, grid, coriolis, closure, Ũ, ρᵈ, C̃, K̃, forcing, time, params)
+function update_total_density!(ρ, grid, gases, ρc̃)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.u(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.v(i, j, k, grid, time, Ũ, C̃, params)
-            F.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρᵈ, Ũ, K̃) + forcing.w(i, j, k, grid, time, Ũ, C̃, params)
+            ρ[i, j, k] = diagnose_ρ(i, j, k, grid, gases, ρc̃)
+        end
+    end
+end
+
+update_total_density!(model) =
+    update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+
+"""
+Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
+"""
+function compute_slow_forcings!(F̃, grid, tvar, gases, gravity, coriolis, closure, ρ, ρũ, ρc̃, K̃, forcing, time)
+    @inbounds begin
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F̃.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.u(i, j, k, grid, time, ρũ, ρc̃, nothing)
+            F̃.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.v(i, j, k, grid, time, ρũ, ρc̃, nothing)
+            F̃.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.w(i, j, k, grid, time, ρũ, ρc̃, nothing)
         end
 
-        for (tracer_index, C_name) in enumerate(propertynames(C̃))
-            C   = getproperty(C̃, C_name)
-            F_C = getproperty(F, C_name)
+        for (tracer_index, ρc_name) in enumerate(propertynames(ρc̃))
+            ρc   = getproperty(ρc̃, ρc_name)
+            F_ρc = getproperty(F̃.tracers, ρc_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                F_C[i, j, k] = FC(i, j, k, grid, closure, ρᵈ, C, tracer_index, K̃)
+                F_ρc[i, j, k] = FC(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃)
             end
         end
+
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            F̃.tracers[1].data[i, j, k] += FT(i, j, k, grid, closure, tvar, gases, gravity, ρ, ρũ, ρc̃, K̃)
+        end
+
     end
 end
 
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_right_hand_sides!(R, grid, tvar, b, mp, pₛ, g, ρᵈ, Ũ, C̃, F)
+function compute_right_hand_sides!(R̃, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R.ρu[i, j, k] = RU(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C̃, F.ρu)
-            R.ρv[i, j, k] = RV(i, j, k, grid, tvar, b, mp, pₛ, ρᵈ, Ũ, C̃, F.ρv)
-            R.ρw[i, j, k] = RW(i, j, k, grid, tvar, b, mp, pₛ, g, ρᵈ, Ũ, C̃, F.ρw)
-             R.ρ[i, j, k] = Rρ(i, j, k, grid, Ũ)
+            R̃.ρu[i, j, k] = RU(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρu)
+            R̃.ρv[i, j, k] = RV(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρv)
+            R̃.ρw[i, j, k] = RW(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρw)
         end
 
-        for C_name in propertynames(C̃)
-            C   = getproperty(C̃, C_name)
-            R_C = getproperty(R, C_name)
-            F_C = getproperty(F, C_name)
+        for ρc_name in propertynames(ρc̃)
+            ρc   = getproperty(ρc̃, ρc_name)
+            R_ρc = getproperty(R̃.tracers, ρc_name)
+            F_ρc = getproperty(F̃.tracers, ρc_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                R_C[i, j, k] = RC(i, j, k, grid, ρᵈ, Ũ, C, F_C)
+                R_ρc[i, j, k] = RC(i, j, k, grid, ρ, ρũ, ρc, F_ρc)
             end
         end
+
+        for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
+            R̃.tracers[1].data[i, j, k] += RT(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        end
+
     end
 end
 
@@ -50,22 +73,21 @@ Updates variables according to the RK3 time step:
     2. Φ**     = Φᵗ + Δt/2 * R(Φ*)
     3. Φ(t+Δt) = Φᵗ + Δt   * R(Φ**)
 """
-function advance_variables!(I, grid, Ũᵗ, C̃ᵗ, ρᵗ, R; Δt)
+function advance_variables!(Ĩ, grid, ρũᵗ, ρc̃ᵗ, R̃; Δt)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            I.ρu[i, j, k] = Ũᵗ.ρu[i, j, k] + Δt * R.ρu[i, j, k]
-            I.ρv[i, j, k] = Ũᵗ.ρv[i, j, k] + Δt * R.ρv[i, j, k]
-            I.ρw[i, j, k] = Ũᵗ.ρw[i, j, k] + Δt * R.ρw[i, j, k]
-            I.ρ[i, j, k] =     ρᵗ[i, j, k] + Δt *  R.ρ[i, j, k]
+            Ĩ.ρu[i, j, k] = ρũᵗ.ρu[i, j, k] + Δt * R̃.ρu[i, j, k]
+            Ĩ.ρv[i, j, k] = ρũᵗ.ρv[i, j, k] + Δt * R̃.ρv[i, j, k]
+            Ĩ.ρw[i, j, k] = ρũᵗ.ρw[i, j, k] + Δt * R̃.ρw[i, j, k]
         end
 
-        for C_name in propertynames(C̃ᵗ)
-            Cᵗ  = getproperty(C̃ᵗ, C_name)
-            I_C = getproperty(I,  C_name)
-            R_C = getproperty(R,  C_name)
+        for ρc_name in propertynames(ρc̃ᵗ)
+            ρcᵗ  = getproperty(ρc̃ᵗ, ρc_name)
+            I_ρc = getproperty(Ĩ.tracers, ρc_name)
+            R_ρc = getproperty(R̃.tracers, ρc_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                I_C[i, j, k] = Cᵗ[i, j, k] + Δt * R_C[i, j, k]
+                I_ρc[i, j, k] = ρcᵗ[i, j, k] + Δt * R_ρc[i, j, k]
             end
         end
     end

@@ -1,24 +1,25 @@
 module JULES
 
 using Oceananigans
+using Oceananigans: AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
-    ConstantIsotropicDiffusivity, TurbulentDiffusivities, with_tracers
+    ConstantIsotropicDiffusivity, DiffusivityFields, with_tracers
 
 export
-    Temperature, ModifiedPotentialTemperature, Entropy,
-    IdealGas,
+    Entropy, Energy,
+    DryEarth, DryEarth3,
     CompressibleModel,
     time_step!,
-    cfl, acoustic_cfl
+    cfl, update_total_density!
 
 include("Operators/Operators.jl")
 
-include("thermodynamic_variable.jl")
-include("buoyancy.jl")
-include("pressure.jl")
+include("lazy_fields.jl")
+include("thermodynamics.jl")
+include("pressure_gradients.jl")
 include("microphysics.jl")
-include("models.jl")
+include("compressible_model.jl")
 
 include("right_hand_sides.jl")
 include("time_stepping_kernels.jl")
