@@ -146,7 +146,7 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
 
     # Restore time stepper tendency fields
     field_names = (:u, :v, :w, tracer_names...) # field names
-    locs = merge((u_location, v_location, w_location), Tuple(c_location for c in tracer_names)) # name locations
+    locs = (u_location, v_location, w_location, Tuple(c_location for c in tracer_names)...) # name locations
 
     G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
     Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
