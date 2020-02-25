@@ -54,9 +54,9 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
         "zC" => collect(model.grid.zC),
-        "xF" => collect(model.grid.xF)[1:end-1],
-        "yF" => collect(model.grid.yF)[1:end-1],
-        "zF" => collect(model.grid.zF)[1:end-1]
+        "xF" => collect(model.grid.xF),
+        "yF" => collect(model.grid.yF),
+        "zF" => collect(model.grid.zF)
     )
 
     dim_attrib = Dict(
