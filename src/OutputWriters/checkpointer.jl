@@ -104,7 +104,7 @@ function restore_if_not_missing(file, address)
 end
 
 function restore_field(file, address, arch, grid, loc)
-    field_address = file[address * "/address"]
+    field_address = file[address * "/location"]
     data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
     bcs = restore_if_not_missing(file, address * "/boundary_conditions")
     return Field(field_address, arch, grid, bcs, data)
@@ -145,11 +145,11 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     filter!(p -> p ≠ :tracers, cps)
 
     # Restore time stepper tendency fields
-    names = (:u, :v, :w, tracer_names...) # field names
+    field_names = (:u, :v, :w, tracer_names...) # field names
     locs = merge((u_location, v_location, w_location), Tuple(c_location for c in tracer_names)) # name locations
 
-    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(names[i])", arch, grid, locs[i]) for i = 1:length(names))
-    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(names[i])", arch, grid, locs[i]) for i = 1:length(names))
+    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
+    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
 
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
