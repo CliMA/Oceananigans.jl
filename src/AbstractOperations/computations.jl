@@ -1,3 +1,6 @@
+using Oceananigans.Utils: @loop_xyz
+import Oceananigans.Fields: location, total_size
+
 """
     Computation{T, R, O, G}
 
@@ -20,8 +23,11 @@ Returns a `Computation` representing an `operation` performed over the elements 
 Computation(operation, result; return_type=Array) =
     Computation(operation, result, operation.grid, return_type)
 
+# Utilities for limited field-like behavior
 architecture(comp::Computation) = architecture(comp.result)
 Base.parent(comp::Computation) = comp # this enables taking a "horizontal average" of a computation
+location(comp::Computation) = location(comp.operation)
+total_size(comp::Computation) = total_size(comp.result)
 
 """
     compute!(computation::Computation)

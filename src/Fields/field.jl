@@ -6,7 +6,7 @@ using OffsetArrays
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
-import Oceananigans.Grids: halosize, topology, x_topology, y_topology, z_topology
+import Oceananigans.Grids: total_size, topology, x_topology, y_topology, z_topology
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -185,10 +185,6 @@ of `f` along `x, y, z`.
                            length(loc[2], y_topology(grid), grid.Ny), 
                            length(loc[3], z_topology(grid), grid.Nz))
 
-@inline total_size(loc, grid) = (length(loc[1], x_topology(grid), grid.Nx, grid.Hx), 
-                                 length(loc[2], y_topology(grid), grid.Ny, grid.Hy), 
-                                 length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
-
 """
     size(f::AbstractField{X, Y, Z}) where {X, Y, Z}
 
@@ -196,7 +192,20 @@ Returns the size of an `AbstractField{X, Y, Z}` located at `X, Y, Z`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 of `f` along `x, y, z`.
 """
-@inline size(f) = size(location(f), f.grid)
+@inline size(f::AbstractField) = size(location(f), f.grid)
+
+"""
+    total_size(loc, grid)
+
+Returns the "total" size of a field at `loc` on `grid`.
+This is a 3-tuple of integers corresponding to the number of grid points
+contained by `f` along `x, y, z`.
+"""
+@inline total_size(loc, grid) = (length(loc[1], x_topology(grid), grid.Nx, grid.Hx), 
+                                 length(loc[2], y_topology(grid), grid.Ny, grid.Hy), 
+                                 length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+
+@inline total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @propagate_inbounds getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
 @propagate_inbounds setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
