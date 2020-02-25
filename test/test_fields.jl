@@ -1,5 +1,3 @@
-using Oceananigans.Grids: halosize
-
 """
     test_init_field(N, L, ftf)
 
