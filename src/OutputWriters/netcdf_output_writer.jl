@@ -1,5 +1,6 @@
 using NCDatasets
 
+using Oceananigans.Grids: topology
 using Oceananigans.Fields
 using Oceananigans.Utils: validate_interval
 
@@ -33,6 +34,10 @@ get_slice(n::Integer) = n:n
 get_slice(n::UnitRange) = n
 get_slice(n::Nothing) = Colon()
 
+# Possibly should
+collect_face_nodes(topo, ξF) = collect(ξF)[1:end-1]
+collect_face_nodes(::Bounded, ξF) = collect(ξF)
+
 """
     write_grid(model; filename="grid.nc", mode="c",
                compression=0, attributes=Dict(), slice_kw...)
@@ -54,9 +59,9 @@ function write_grid(model; filename="./grid.nc", mode="c",
         "xC" => collect(model.grid.xC),
         "yC" => collect(model.grid.yC),
         "zC" => collect(model.grid.zC),
-        "xF" => collect(model.grid.xF),
-        "yF" => collect(model.grid.yF),
-        "zF" => collect(model.grid.zF)
+        "xF" => collect_face_nodes(topology(model.grid, 1), model.grid.xF),
+        "yF" => collect_face_nodes(topology(model.grid, 2), model.grid.yF),
+        "zF" => collect_face_nodes(topology(model.grid, 3), model.grid.zF)
     )
 
     dim_attrib = Dict(
