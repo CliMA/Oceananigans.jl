@@ -52,9 +52,9 @@ x_topology(::AbstractGrid{FT, TX}) where {FT, TX} = TX()
 y_topology(::AbstractGrid{FT, TX, TY}) where {FT, TX, TY} = TY()
 z_topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = TZ()
 
-size(grid::AbstractGrid)   = (grid.Nx, grid.Ny, grid.Nz)
-halosize(grid::AbstractGrid)   = (grid.Hx, grid.Hy, grid.Hz)
+size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
+halosize(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 include("grid_utils.jl")
 include("regular_cartesian_grid.jl")

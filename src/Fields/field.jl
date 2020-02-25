@@ -6,7 +6,7 @@ using OffsetArrays
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
-import Oceananigans.Grids: topology, x_topology, y_topology, z_topology
+import Oceananigans.Grids: halosize, topology, x_topology, y_topology, z_topology
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -35,11 +35,11 @@ struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
     boundary_conditions :: B
 
     function Field{X, Y, Z}(data, grid, bcs) where {X, Y, Z}
-        Tx, Ty, Tz = grid.Nx+2grid.Hx, grid.Ny+2grid.Hy, grid.Nz+2grid.Hz
+        Tx, Ty, Tz = total_size((X, Y, Z), grid)
 
         if size(data) != (Tx, Ty, Tz)
-            e = "Cannot construct field with size(data)=$(size(data)). " *
-                "Must have the same size as the grid with halos ($Tx, $Ty, $Tz)."
+            e = "Cannot construct field at ($X, $Y, $Z) with size(data)=$(size(data)). " *
+                "`data` must have size ($Tx, $Ty, $Tz)."
             throw(ArgumentError(e))
         end
 
@@ -54,7 +54,7 @@ Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
 The field's location is defined by a tuple `L` of length 3 whose elements are
 `Cell` or `Face` and has field boundary conditions `bcs`.
 """
-Field(L::Tuple, arch, grid, bcs, data=zeros(arch, grid)) =
+Field(L::Tuple, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (L[1], L[2], L[3]))) =
     Field{L[1], L[2], L[3]}(data, grid, bcs)
 
 """
@@ -64,8 +64,8 @@ Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
 The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`
 and has field boundary conditions `bcs`.
 """
-Field(X, Y, Z, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (X, Y, Z)) = 
-     Field((X, Y, Z), arch, grid, bcs, data)
+Field(X, Y, Z, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (X, Y, Z))) =
+    Field((X, Y, Z), arch, grid, bcs, data)
 
 """
     CellField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=TracerBoundaryConditions(grid), 
@@ -74,8 +74,12 @@ Field(X, Y, Z, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (X, Y, Z)) 
 Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-CellField(arch::AbstractArchitecture, grid, bcs=TracerBoundaryConditions(grid), 
-          data=zeros(FT, arch, grid, (Cell, Cell, Cell))) = Field(Cell, Cell, Cell, arch, grid, bcs, data)
+function CellField(arch::AbstractArchitecture, grid, 
+                   bcs=TracerBoundaryConditions(grid),
+                   data=zeros(eltype(grid), arch, grid, (Cell, Cell, Cell)))
+
+    return Field(Cell, Cell, Cell, arch, grid, bcs, data)
+end
 
 """
     XFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=UVelocityBoundaryConditions(grid), 
@@ -84,8 +88,12 @@ CellField(arch::AbstractArchitecture, grid, bcs=TracerBoundaryConditions(grid),
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-XFaceField(arch::AbstractArchitecture, grid, bcs=UVelocityBoundaryConditions(grid), 
-          data=zeros(FT, arch, grid, (Face, Cell, Cell))) = Field(Face, Cell, Cell, arch, grid, bcs, data)
+function XFaceField(arch::AbstractArchitecture, grid, 
+                    bcs=UVelocityBoundaryConditions(grid),
+                    data=zeros(eltype(grid), arch, grid, (Face, Cell, Cell))) 
+
+    return Field(Face, Cell, Cell, arch, grid, bcs, data)
+end
   
 """
     YFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=VVelocityBoundaryConditions(grid), 
@@ -94,8 +102,12 @@ XFaceField(arch::AbstractArchitecture, grid, bcs=UVelocityBoundaryConditions(gri
 Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-YFaceField(arch::AbstractArchitecture, grid, bcs=VVelocityBoundaryConditions(grid), 
-          data=zeros(FT, arch, grid, (Cell, Face, Cell))) = Field(Cell, Face, Cell, arch, grid, bcs, data)
+function YFaceField(arch::AbstractArchitecture, grid, 
+                    bcs=VVelocityBoundaryConditions(grid), 
+                    data=zeros(eltype(grid), arch, grid, (Cell, Face, Cell))) 
+
+    return Field(Cell, Face, Cell, arch, grid, bcs, data)
+end
   
 """
     ZFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=WVelocityBoundaryConditions(grid), 
@@ -104,8 +116,12 @@ YFaceField(arch::AbstractArchitecture, grid, bcs=VVelocityBoundaryConditions(gri
 Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-ZFaceField(arch::AbstractArchitecture, grid, bcs=ZVelocityBoundaryConditions(grid), 
-          data=zeros(FT, arch, grid, (Cell, Cell, Face))) = Field(Cell, Cell, Face, arch, grid, bcs, data)
+function ZFaceField(arch::AbstractArchitecture, grid, 
+                    bcs=WVelocityBoundaryConditions(grid), 
+                    data=zeros(eltype(grid), arch, grid, (Cell, Cell, Face))) 
+
+    return Field(Cell, Cell, Face, arch, grid, bcs, data)
+end
 
 CellField(FT::DataType, arch, grid, bcs=TracerBoundaryConditions(grid)) = 
     CellField(arch, grid, bcs, zeros(FT, arch, grid, (Cell, Cell, Cell)))
@@ -128,18 +144,17 @@ location(a) = nothing
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
 
-x_location(::AbstractLocatedField{X}) where X               = X
-y_location(::AbstractLocatedField{X, Y}) where {X, Y}       = Y
-z_location(::AbstractLocatedField{X, Y, Z}) where {X, Y, Z} = Z
+x_location(::AbstractField{X}) where X               = X
+y_location(::AbstractField{X, Y}) where {X, Y}       = Y
+z_location(::AbstractField{X, Y, Z}) where {X, Y, Z} = Z
 
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::Field) = architecture(f.data)
+architecture(o::OffsetArray) = architecture(o.parent)
 
 "Returns the length of a field's `data`."    
 @inline length(f::Field) = length(f.data)
 
-architecture(f::Field)       = architecture(f.data)
-architecture(o::OffsetArray) = architecture(o.parent)
 
 "Returns the topology of a fields' `grid`."
 @inline topology(f) = topology(f.grid)
@@ -159,19 +174,29 @@ dimension of length `N` and with halo points `H`.
 """
 length(::Type{Face}, ::Bounded, N, H=0) = N + 1 + 2H
 
-"Returns the size of `f.grid`."
-@inline size(f::AbstractField) = size(f.grid)
-
 """
-    size(f::AbstractLocatedField{X, Y, Z}) where {X, Y, Z}
+    size(loc, grid)
 
-Returns the size of an `AbstractLocatedField{X, Y, Z}` located at `X, Y, Z`.
+Returns the size of a field at `loc` on `grid`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 of `f` along `x, y, z`.
 """
-@inline size(f::AbstractField{X, Y, Z}) where {X, Y, Z} = (length(X, x_topology(f), f.grid.Nx), 
-                                                           length(Y, y_topology(f), f.grid.Ny), 
-                                                           length(Z, z_topology(f), f.grid.Nz))
+@inline size(loc, grid) = (length(loc[1], x_topology(grid), grid.Nx), 
+                           length(loc[2], y_topology(grid), grid.Ny), 
+                           length(loc[3], z_topology(grid), grid.Nz))
+
+@inline total_size(loc, grid) = (length(loc[1], x_topology(grid), grid.Nx, grid.Hx), 
+                                 length(loc[2], y_topology(grid), grid.Ny, grid.Hy), 
+                                 length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+
+"""
+    size(f::AbstractField{X, Y, Z}) where {X, Y, Z}
+
+Returns the size of an `AbstractField{X, Y, Z}` located at `X, Y, Z`.
+This is a 3-tuple of integers corresponding to the number of interior nodes
+of `f` along `x, y, z`.
+"""
+@inline size(f) = size(location(f), f.grid)
 
 @propagate_inbounds getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
 @propagate_inbounds setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
