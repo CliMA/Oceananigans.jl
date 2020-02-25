@@ -6,7 +6,7 @@ using OffsetArrays
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
-import Oceananigans.Grids: total_size, topology, x_topology, y_topology, z_topology
+import Oceananigans.Grids: total_size, topology
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -54,8 +54,17 @@ Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
 The field's location is defined by a tuple `L` of length 3 whose elements are
 `Cell` or `Face` and has field boundary conditions `bcs`.
 """
-Field(L::Tuple, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (L[1], L[2], L[3]))) =
-    Field{L[1], L[2], L[3]}(data, grid, bcs)
+function Field(L::Tuple, arch, grid, bcs, 
+               data=zeros(eltype(grid), arch, grid, (typeof(L[1]), typeof(L[2]), typeof(L[3]))))
+      
+    return Field{typeof(L[1]), typeof(L[2]), typeof(L[3])}(data, grid, bcs)
+end
+
+function Field(L::NTuple{3, DataType}, arch, grid, bcs, 
+               data=zeros(eltype(grid), arch, grid, (L[1], L[2], L[3])))
+
+    return Field{L[1], L[2], L[3]}(data, grid, bcs)
+end
 
 """
     Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)], bcs)
@@ -157,10 +166,7 @@ architecture(o::OffsetArray) = architecture(o.parent)
 
 
 "Returns the topology of a fields' `grid`."
-@inline topology(f) = topology(f.grid)
-@inline x_topology(f) = x_topology(f.grid)
-@inline y_topology(f) = y_topology(f.grid)
-@inline z_topology(f) = z_topology(f.grid)
+@inline topology(f, args...) = topology(f.grid, args...)
 
 """
 Returns the length of a field located at `Cell` centers along a grid 
@@ -181,9 +187,9 @@ Returns the size of a field at `loc` on `grid`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 of `f` along `x, y, z`.
 """
-@inline size(loc, grid) = (dimension_length(loc[1], x_topology(grid), grid.Nx), 
-                           dimension_length(loc[2], y_topology(grid), grid.Ny), 
-                           dimension_length(loc[3], z_topology(grid), grid.Nz))
+@inline size(loc, grid) = (dimension_length(loc[1], topology(grid, 1), grid.Nx), 
+                           dimension_length(loc[2], topology(grid, 2), grid.Ny), 
+                           dimension_length(loc[3], topology(grid, 3), grid.Nz))
 
 """
     size(f::AbstractField{X, Y, Z}) where {X, Y, Z}
@@ -201,9 +207,9 @@ Returns the "total" size of a field at `loc` on `grid`.
 This is a 3-tuple of integers corresponding to the number of grid points
 contained by `f` along `x, y, z`.
 """
-@inline total_size(loc, grid) = (dimension_length(loc[1], x_topology(grid), grid.Nx, grid.Hx), 
-                                 dimension_length(loc[2], y_topology(grid), grid.Ny, grid.Hy), 
-                                 dimension_length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+@inline total_size(loc, grid) = (dimension_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx), 
+                                 dimension_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy), 
+                                 dimension_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
 @inline total_size(f::AbstractField) = total_size(location(f), f.grid)
 
@@ -214,7 +220,7 @@ contained by `f` along `x, y, z`.
 @inline lastindex(f::Field, dim) = lastindex(f.data, dim)
 
 "Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
-@inline data(a) = a
+@inline data(a) = a # fallback
 @inline data(f::Field) = f.data
 
 # Endpoint for recursive `datatuple` function:
@@ -230,15 +236,15 @@ contained by `f` along `x, y, z`.
 @inline interior_parent_indices(::Type{Face}, ::Bounded, N, H) = 1+H:N+1+H
 
 "Returns a view of `f` that excludes halo points."
-@inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, x_topology(f), f.grid.Nx), 
-                                                                   interior_indices(Y, y_topology(f), f.grid.Ny), 
-                                                                   interior_indices(Z, z_topology(f), f.grid.Nz))
+@inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx), 
+                                                                   interior_indices(Y, topology(f, 2), f.grid.Ny), 
+                                                                   interior_indices(Z, topology(f, 3), f.grid.Nz))
 
 "Returns a reference (not a view) to the interior points of `field.data.parent.`"
 @inline interiorparent(f::Field{X, Y, Z}) where {X, Y, Z} = 
-    @inbounds f.data.parent[interior_parent_indices(X, x_topology(f), f.grid.Nx, f.grid.Hx),
-                            interior_parent_indices(Y, y_topology(f), f.grid.Ny, f.grid.Hy),
-                            interior_parent_indices(Z, z_topology(f), f.grid.Nz, f.grid.Hz)]
+    @inbounds f.data.parent[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
+                            interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
+                            interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
 
 iterate(f::Field, state=1) = iterate(f.data, state)
 
@@ -268,9 +274,9 @@ xnodes(::Type{Face}, ::Bounded, grid) = reshape(grid.xF, grid.Nx+1, 1, 1)
 ynodes(::Type{Face}, ::Bounded, grid) = reshape(grid.yF, 1, grid.Ny+1, 1)
 znodes(::Type{Face}, ::Bounded, grid) = reshape(grid.zF, 1, 1, grid.Nz+1)
 
-xnodes(ψ::AbstractField) = xnodes(x_location(ψ), x_topology(ψ), ψ.grid)
-ynodes(ψ::AbstractField) = ynodes(y_location(ψ), y_topology(ψ), ψ.grid)
-znodes(ψ::AbstractField) = znodes(z_location(ψ), z_topology(ψ), ψ.grid)
+xnodes(ψ::AbstractField) = xnodes(x_location(ψ), topology(ψ, 1), ψ.grid)
+ynodes(ψ::AbstractField) = ynodes(y_location(ψ), topology(ψ, 2), ψ.grid)
+znodes(ψ::AbstractField) = znodes(z_location(ψ), topology(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
 
@@ -305,9 +311,9 @@ with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
 function OffsetArray(underlying_data, grid, loc)
-    ii = offset_indices(loc[1], x_topology(grid), grid.Nx, grid.Hx)
-    jj = offset_indices(loc[2], y_topology(grid), grid.Ny, grid.Hy)
-    kk = offset_indices(loc[3], z_topology(grid), grid.Nz, grid.Hz)
+    ii = offset_indices(loc[1], topology(grid, 1), grid.Nx, grid.Hx)
+    jj = offset_indices(loc[2], topology(grid, 2), grid.Ny, grid.Hy)
+    kk = offset_indices(loc[3], topology(grid, 3), grid.Nz, grid.Hz)
 
     return OffsetArray(underlying_data, ii, jj, kk)
 end
@@ -320,9 +326,9 @@ parent data in CPU memory and indices corresponding to a field on a
 `grid` of `size(grid)` and located at `loc`.
 """
 function Base.zeros(FT, ::CPU, grid, loc=(Cell, Cell, Cell))
-    underlying_data = zeros(FT, dimension_length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
-                                dimension_length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
-                                dimension_length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+    underlying_data = zeros(FT, dimension_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                                dimension_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                                dimension_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
     return OffsetArray(underlying_data, grid, loc)
 end
@@ -335,9 +341,9 @@ parent data in GPU memory and indices corresponding to a field on a `grid`
 of `size(grid)` and located at `loc`.
 """
 function Base.zeros(FT, ::GPU, grid, loc=(Cell, Cell, Cell))
-    underlying_data = CuArray{FT}(undef, dimension_length(loc[1], x_topology(grid), grid.Nx, grid.Hx),
-                                         dimension_length(loc[2], y_topology(grid), grid.Ny, grid.Hy),
-                                         dimension_length(loc[3], z_topology(grid), grid.Nz, grid.Hz))
+    underlying_data = CuArray{FT}(undef, dimension_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                                         dimension_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                                         dimension_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
     underlying_data .= 0 # Ensure data is initially 0.
 
