@@ -57,6 +57,14 @@ set!(u::Field, v::Number) = @. u.data = v
 set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} =
     @. u.data.parent = v.data.parent
 
+# Niceties
+const AbstractCPUField =
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+
+@hascuda const AbstractGPUField =
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+
+
 "Set the CPU field `u` to the array `v`."
 function set!(u::AbstractCPUField, v::Array)
     for k in 1:u.grid.Nz, j in 1:u.grid.Ny, i in 1:u.grid.Nx

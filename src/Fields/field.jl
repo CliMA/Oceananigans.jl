@@ -280,13 +280,6 @@ znodes(ψ::AbstractField) = znodes(z_location(ψ), topology(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
 
-# Nicites (but what for?)
-const AbstractCPUField =
-    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
-
-@hascuda const AbstractGPUField =
-    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
-
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
 #####
