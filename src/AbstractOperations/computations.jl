@@ -1,9 +1,12 @@
+using Oceananigans.Utils: @loop_xyz
+import Oceananigans.Fields: location, total_size
+
 """
-    Computation{R, T, O, G}
+    Computation{T, R, O, G}
 
 Represents an operation performed over the elements of a field.
 """
-struct Computation{R, T, O, G}
+struct Computation{T, R, O, G}
       operation :: O
          result :: R
            grid :: G
@@ -20,8 +23,11 @@ Returns a `Computation` representing an `operation` performed over the elements 
 Computation(operation, result; return_type=Array) =
     Computation(operation, result, operation.grid, return_type)
 
+# Utilities for limited field-like behavior
 architecture(comp::Computation) = architecture(comp.result)
 Base.parent(comp::Computation) = comp # this enables taking a "horizontal average" of a computation
+location(comp::Computation) = location(comp.operation)
+total_size(comp::Computation) = total_size(comp.result)
 
 """
     compute!(computation::Computation)
@@ -38,12 +44,8 @@ end
 
 """Compute an `operation` over `grid` and store in `result`."""
 function _compute!(result, grid, operation)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds result[i, j, k] = operation[i, j, k]
-            end
-        end
+    @loop_xyz i j k grid begin
+        @inbounds result[i, j, k] = operation[i, j, k]
     end
     return nothing
 end

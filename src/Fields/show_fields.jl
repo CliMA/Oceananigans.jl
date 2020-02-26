@@ -14,3 +14,5 @@ show(io::IO, field::Field) =
           "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
           "├── grid: $(short_show(field.grid))\n",
           "└── boundary conditions: $(short_show(field.boundary_conditions))")
+
+short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")

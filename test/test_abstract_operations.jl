@@ -296,7 +296,8 @@ end
         arch = CPU()
         @info "  Testing derivatives..."
         for FT in float_types
-            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3))
+            grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3, 3, 3),
+                                        topology=(Periodic, Periodic, Periodic))
 
             u, v, w = VelocityFields(arch, grid)
             T, S = TracerFields(arch, grid, (:T, :S))

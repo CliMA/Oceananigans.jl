@@ -4,11 +4,8 @@
 Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
-function correct_field_size(arch, grid, fieldtype)
-    f = fieldtype(arch, grid)
-    return size(f) == size(grid)
-end
-
+correct_field_size(a, g, fieldtype, Tx, Ty, Tz) = size(parent(fieldtype(a, g)))  == (Tx, Ty, Tz)
+    
 """
     test_set_field(N, L, ftf, val)
 
@@ -27,17 +24,36 @@ end
 
     N = (4, 6, 8)
     L = (2π, 3π, 5π)
+    H = (1, 1, 1)
 
     fieldtypes = (CellField, XFaceField, YFaceField, ZFaceField)
 
     @testset "Field initialization" begin
         @info "  Testing field initialization..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=N, length=L)
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Periodic, Periodic))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
-            for fieldtype in fieldtypes
-                @test correct_field_size(arch, grid, fieldtype)
-            end
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Periodic, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Periodic, Bounded, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+
+            grid = RegularCartesianGrid(FT, size=N, length=L, halo=H, topology=(Bounded, Bounded, Bounded))
+            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, XFaceField, N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
         end
     end
 
@@ -52,7 +68,7 @@ end
         @info "  Testing field setting..."
 
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=N, length=L)
+            grid = RegularCartesianGrid(FT, size=N, length=L, topology=(Periodic, Periodic, Bounded))
 
             for fieldtype in fieldtypes, val in vals
                 @test correct_field_value_was_set(arch, grid, fieldtype, val)
