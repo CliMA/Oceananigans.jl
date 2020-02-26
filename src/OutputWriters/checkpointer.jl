@@ -90,9 +90,6 @@ end
 # This is the default name used in the simulation.output_writers ordered dict.
 defaultname(::Checkpointer, nelems) = :checkpointer
 
-convert_to_arch(::CPU, a) = a
-convert_to_arch(::GPU, a) = CuArray(a)
-
 function restore_if_not_missing(file, location)
     if haskey(file, location)
         return file[location]

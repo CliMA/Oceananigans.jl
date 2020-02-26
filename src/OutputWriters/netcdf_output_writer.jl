@@ -208,8 +208,8 @@ end
 """
     write_output(model, OutputWriter)
 
-For internal user only. Writes output to the netcdf file at specified intervals.
-Increments the `time` dimension every time an output is written to the file.
+Writes output to the netcdf file at specified intervals. Increments the `time` dimension
+every time an output is written to the file.
 """
 function write_output(model, ow::NetCDFOutputWriter)
     ds = ow.dataset
@@ -217,7 +217,9 @@ function write_output(model, ow::NetCDFOutputWriter)
     ds["time"][time_index] = model.clock.time
     for (name, output) in ow.outputs
         if output isa Field
-            ds[name][:, :, :, time_index] = view(interiorparent(output), ow.slices[name]...)
+	    data = interiorparent(output)
+	    !isa(output, Array) && (data = Array(data))
+            ds[name][:, :, :, time_index] = view(data, ow.slices[name]...)
         else
             data = output(model)
             colons = Tuple(Colon() for _ in 1:ndims(data))
