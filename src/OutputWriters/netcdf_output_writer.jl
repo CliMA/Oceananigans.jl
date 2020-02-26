@@ -88,7 +88,7 @@ const default_output_attributes = Dict(
     "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
     "b" => Dict("longname" => "Buoyancy",                    "units" => "m/s²"),
     "T" => Dict("longname" => "Conservative temperature",    "units" => "K"),
-    "S" => Dict("longname" => "Absolute aalinity",           "units" => "g/kg")
+    "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
 )
 
 """
