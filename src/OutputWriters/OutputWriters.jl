@@ -1,9 +1,9 @@
 module OutputWriters
 
 export
-    write_output, read_output,
+    write_output,
     JLD2OutputWriter, FieldOutput, FieldOutputs,
-    NetCDFOutputWriter, write_grid,
+    NetCDFOutputWriter, write_grid_and_attributes,
     Checkpointer, restore_from_checkpoint
 
 using Oceananigans
