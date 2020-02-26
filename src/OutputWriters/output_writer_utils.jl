@@ -6,6 +6,9 @@ using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper
 ##### Output writer utilities
 #####
 
+convert_to_arch(::CPU, a) = a
+convert_to_arch(::GPU, a) = CuArray(a)
+
 ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
