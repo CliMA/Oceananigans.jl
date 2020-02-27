@@ -133,6 +133,7 @@ end
 
 get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
+get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
 """
     run!(simulation)
