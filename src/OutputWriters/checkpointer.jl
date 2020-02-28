@@ -73,9 +73,6 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
     return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, force, verbose)
 end
 
-Base.open(c::Checkpointer) = nothing
-Base.close(c::Checkpointer) = nothing
-
 function write_output(model, c::Checkpointer)
     filepath = joinpath(c.dir, c.prefix * "_iteration" * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."

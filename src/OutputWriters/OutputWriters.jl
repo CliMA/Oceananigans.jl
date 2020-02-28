@@ -14,6 +14,9 @@ using Oceananigans.Architectures
 using Oceananigans: AbstractOutputWriter, @hascuda
 using Oceananigans.Fields: OffsetArray
 
+Base.open(ow::AbstractOutputWriter) = nothing
+Base.close(ow::AbstractOutputWriter) = nothing
+
 @hascuda using CUDAnative, CuArrays
 
 include("output_writer_utils.jl")
