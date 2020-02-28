@@ -144,6 +144,8 @@ function run!(sim)
     model = sim.model
     clock = model.clock
 
+    [open(out) for out in values(sim.output_writers)]
+
     while !stop(sim)
         time_before = time()
 
@@ -166,6 +168,8 @@ function run!(sim)
         time_after = time()
         sim.run_time += time_after - time_before
     end
+
+    [close(out) for out in values(sim.output_writers)]
 
     return nothing
 end

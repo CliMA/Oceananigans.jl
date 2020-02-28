@@ -150,7 +150,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
 
     # Initiates the output file with dimensions
     write_grid_and_attributes(model; filename=filename, compression=compression,
-                              attributes=global_attributes, slice_kw...)
+                              attributes=global_attributes, mode=mode, slice_kw...)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
@@ -193,7 +193,7 @@ function NetCDFOutputWriter(model, outputs; interval=nothing, frequency=nothing,
                               clobber, slices, 0.0)
 end
 
-# Closes the outputwriter
+Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filename, "a")
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
 
 """

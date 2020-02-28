@@ -74,6 +74,9 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
                             0.0, part, max_filesize, async, force, verbose, jld2_kw)
 end
 
+Base.open(fw::JLD2OutputWriter) = nothing
+Base.close(fw::JLD2OutputWriter) = nothing
+
 function write_output(model, fw::JLD2OutputWriter)
     verbose = fw.verbose
     verbose && @info @sprintf("Calculating JLD2 output %s...", keys(fw.outputs))
