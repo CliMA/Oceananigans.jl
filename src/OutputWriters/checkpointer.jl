@@ -90,9 +90,6 @@ end
 # This is the default name used in the simulation.output_writers ordered dict.
 defaultname(::Checkpointer, nelems) = :checkpointer
 
-convert_to_arch(::CPU, a) = a
-convert_to_arch(::GPU, a) = CuArray(a)
-
 function restore_if_not_missing(file, address)
     if haskey(file, address)
         return file[address]
@@ -155,7 +152,7 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
 
     kwargs[:timestepper_method] = :AdamsBashforth
-    kwargs[:timestepper] = 
+    kwargs[:timestepper] =
         AdamsBashforthTimeStepper(eltype(grid), arch, grid, tracer_names;
                                   G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
                                   Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
