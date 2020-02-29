@@ -98,7 +98,7 @@ end
 TracerFields(arch, grid, empty_tracer_fields::NamedTuple{(),Tuple{}}, args...; kwargs...) = NamedTuple()
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
-has_velocities(names) = :u == names[1] #&& :v == names[2] && :w == names[3]
+has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
 
 tracernames(::Nothing) = ()
 tracernames(name::Symbol) = tuple(name)
