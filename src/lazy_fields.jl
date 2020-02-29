@@ -1,5 +1,7 @@
-using Base: @propagate_inbounds
 import Base: getindex
+import Oceananigans.Fields: interior, interiorparent
+
+using Base: @propagate_inbounds
 
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
 using Oceananigans.Fields
@@ -42,3 +44,13 @@ function LazyTracerFields(arch, grid, ρ, ρc̃)
 
     return NamedTuple{c_names}(c_fields)
 end
+
+function interior(f::LazyPrimitiveField)
+    data = zeros(size(f.conservative_field))
+    for k in 1:f.grid.Nz, j in 1:f.grid.Ny, i in 1:f.grid.Nx
+        data[i, j, k] = f[i, j, k]
+    end
+    return data
+end
+
+interiorparent(lf::LazyPrimitiveField) = interior(lf)
