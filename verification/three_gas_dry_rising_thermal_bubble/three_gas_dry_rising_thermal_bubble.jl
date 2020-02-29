@@ -118,8 +118,8 @@ function simulate_three_gas_dry_rising_thermal_bubble(;
     ρ₁ʰᵈ = interiorxz(model.tracers.ρ₁)
     ρ₂ʰᵈ = interiorxz(model.tracers.ρ₂)
     ρ₃ʰᵈ = interiorxz(model.tracers.ρ₃)
-    tvar isa Energy  && (ρeʰᵈ = interiorxz(model.tracers.ρe))
-    tvar isa Entropy && (ρsʰᵈ = interiorxz(model.tracers.ρs))
+    tvar isa Energy  && (eʰᵈ = interiorxz(model.lazy_tracers.e))
+    tvar isa Entropy && (sʰᵈ = interiorxz(model.lazy_tracers.s))
 
     # Set initial state (which includes the thermal perturbation)
     set!(model.tracers.ρ₁, ρ₁ᵢ)
@@ -137,12 +137,12 @@ function simulate_three_gas_dry_rising_thermal_bubble(;
         savefig(ρ_plot, "rho_prime_initial_condition_with_$(typeof(tvar)).png")
 
         if tvar isa Energy
-            e_slice = rotr90(interiorxz(model.tracers.ρe) ./ interiorxz(model.total_density))
+            e_slice = rotr90(interiorxz(model.lazy_tracers.e))
             e_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, e_slice,
                              fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
             savefig(e_plot, "energy_initial_condition.png")
         elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
+            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
             s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
                              fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
             savefig(s_plot, "entropy_initial_condition.png")
@@ -159,7 +159,7 @@ function simulate_three_gas_dry_rising_thermal_bubble(;
     tvar isa Entropy && (ρ̄s̄ᵢ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz))
 
     if tvar isa Energy
-        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρeʰᵈ=ρeʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄ēᵢ=ρ̄ēᵢ)
+        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, eʰᵈ=eʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄ēᵢ=ρ̄ēᵢ)
     elseif tvar isa Entropy
         sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄s̄ᵢ=ρ̄s̄ᵢ)
     end
@@ -191,7 +191,7 @@ function print_progress_and_make_plots(simulation)
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
 
     if tvar isa Energy
-        make_plots, ρʰᵈ, ρeʰᵈ, ρ̄ᵢ, ρ̄ēᵢ = simulation.parameters
+        make_plots, ρʰᵈ, eʰᵈ, ρ̄ᵢ, ρ̄ēᵢ = simulation.parameters
     elseif tvar isa Entropy
         make_plots, ρʰᵈ, ρ̄ᵢ, ρ̄s̄ᵢ = simulation.parameters
     end
@@ -241,11 +241,11 @@ function print_progress_and_make_plots(simulation)
                           xlims=(-3, 3), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
 
         if tvar isa Energy
-            e′_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.total_density))
+            e′_slice = rotr90((interiorxz(model.lazy_tracers.e) .- eʰᵈ))
             tvar_plot = heatmap(xC, zC, e′_slice, title="e_prime", fill=true, levels=50,
                                 xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(0, 1200))
         elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
+            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
             tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
                                 xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(100, 300))
         end
