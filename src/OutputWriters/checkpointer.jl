@@ -154,7 +154,6 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
 
     # Restore time stepper
-    kwargs[:timestepper_method] = :AdamsBashforth
     kwargs[:timestepper] =
         AdamsBashforthTimeStepper(eltype(grid), arch, grid, tracer_names;
                                   G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),

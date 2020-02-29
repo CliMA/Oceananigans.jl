@@ -50,7 +50,7 @@ function TimeStepper(name::Symbol, args...)
 end
 
 # Fallback
-TimeStepper(stepper, args...) = stepper
+TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
 """Returns the arguments passed to boundary conditions functions."""
 boundary_condition_function_arguments(model) =
