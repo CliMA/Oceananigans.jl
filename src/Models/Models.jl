@@ -2,8 +2,6 @@ module Models
 
 export IncompressibleModel, NonDimensionalModel, Clock, increment_clock!
 
-using Dates
-
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Coriolis

@@ -1,5 +1,5 @@
 using Printf
-using Dates: DateTime
+using Dates: AbstractTime
 
 """
     prettytime(t)
@@ -32,4 +32,4 @@ function prettytime(t)
     return @sprintf("%.3f", value) * " " * units
 end
 
-prettytime(dt::DateTime) = "$dt"
+prettytime(dt::AbstractTime) = "$dt"

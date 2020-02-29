@@ -1,5 +1,7 @@
 import Base: show
 
+using Dates: AbstractTime, Nanosecond
+
 """
     Clock{T<:Number}
 
@@ -20,9 +22,11 @@ Base.show(io::IO, c::Clock{FT}) where FT =
 function increment_clock!(clock, Δt)
     clock.time += Δt
     clock.iteration += 1
+    return nothing
 end
 
-function increment_clock!(clock::Clock{DateTime}, Δt)
+function increment_clock!(clock::Clock{<:AbstractTime}, Δt)
     clock.time += Nanosecond(round(Int, 1e9 * Δt))
     clock.iteration += 1
+    return nothing
 end
