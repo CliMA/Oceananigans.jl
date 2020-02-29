@@ -2,10 +2,10 @@
 ##### Legend:
 ##### ρ  -> density fields
 ##### ρũ -> momentum fields
+#####  ũ -> velocity fields
 ##### ρc̃ -> conservative tracer fields
-##### K̃  -> diffusivity fields
-##### ũ  -> velocity fields
-##### c̃  -> tracer fields
+#####  c̃ -> tracer fields
+#####  K̃ -> diffusivity fields
 #####
 
 #####
