@@ -164,15 +164,26 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
-    @testset "Time stepping with DateTimes" begin
-        model = Model(
-             grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
-            clock = Clock(time=DateTime(2020))
-        )
+    for arch in archs, FT in float_types
+        @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
+            @info "Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-        Δt = 7.883
-        time_step!(model, Δt)
-        @test model.clock.time == DateTime(2020) + Nanosecond(round(Int, 1e9 * Δt))
+            model = IncompressibleModel(
+                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+                clock = Clock(time=DateTime(2020))
+            )
+
+            time_step!(model, 7.883)
+            @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
+
+            model = IncompressibleModel(
+                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+                clock = Clock(time=TimeDate(2020))
+            )
+
+            time_step!(model, 123e-9)  # 123 nanoseconds
+            @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+        end
     end
 
     @testset "Turbulence closures" begin
