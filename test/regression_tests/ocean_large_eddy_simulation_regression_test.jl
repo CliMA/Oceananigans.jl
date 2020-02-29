@@ -58,13 +58,13 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
-    model = Model(
+    model = IncompressibleModel(
              architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
                   closure = closure,
-      boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs)
+      boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
     # We will manually change the stop_iteration as needed.
@@ -106,21 +106,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
+    Nz = grid.Nz
+
     model.velocities.u.data.parent .= ArrayType(solution₀.u)
     model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
+    model.velocities.w.data.parent[:, :, 1:Nz+2] .= ArrayType(solution₀.w)
     model.tracers.T.data.parent    .= ArrayType(solution₀.T)
     model.tracers.S.data.parent    .= ArrayType(solution₀.S)
 
     model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
     model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
+    model.timestepper.Gⁿ.w.data.parent[:, :, 1:Nz+2] .= ArrayType(Gⁿ₀.w)
     model.timestepper.Gⁿ.T.data.parent .= ArrayType(Gⁿ₀.T)
     model.timestepper.Gⁿ.S.data.parent .= ArrayType(Gⁿ₀.S)
 
     model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
     model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
+    model.timestepper.G⁻.w.data.parent[:, :, 1:Nz+2] .= ArrayType(G⁻₀.w)
     model.timestepper.G⁻.T.data.parent .= ArrayType(G⁻₀.T)
     model.timestepper.G⁻.S.data.parent .= ArrayType(G⁻₀.S)
 
@@ -136,16 +138,24 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [model.velocities.u.data.parent, model.velocities.v.data.parent,
-              model.velocities.w.data.parent, model.tracers.T.data.parent,
-              model.tracers.S.data.parent]
-    fields_correct = [solution₁.u, solution₁.v, solution₁.w,
-                      solution₁.T, solution₁.S]
-    summarize_regression_test(field_names, fields, fields_correct)
+
+    test_fields = (model.velocities.u.data.parent, 
+                   model.velocities.v.data.parent,
+                   model.velocities.w.data.parent[:, :, 1:Nz+2], 
+                   model.tracers.T.data.parent,
+                   model.tracers.S.data.parent)
+
+    correct_fields = (solution₁.u,
+                      solution₁.v, 
+                      solution₁.w[:, :, 1:Nz+2],
+                      solution₁.T, 
+                      solution₁.S)
+
+    summarize_regression_test(field_names, test_fields, correct_fields)
 
     @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
     @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))
-    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)))
+    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)[:, :, 1:Nz]))
     @test all(Array(interior(solution₁.T, model.grid)) .≈ Array(interior(model.tracers.T)))
     @test all(Array(interior(solution₁.S, model.grid)) .≈ Array(interior(model.tracers.S)))
 

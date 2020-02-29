@@ -13,7 +13,7 @@ export
   RozemaAnisotropicMinimumDissipation,
   VerstappenAnisotropicMinimumDissipation,
 
-  TurbulentDiffusivities,
+  DiffusivityFields,
   calculate_diffusivities!,
 
   ∇_κ_∇c,
@@ -34,8 +34,9 @@ import Oceananigans.Utils: with_tracers
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Fields
 using Oceananigans.Operators
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
 using Oceananigans.Buoyancy
 using Oceananigans.Utils
 
@@ -148,18 +149,12 @@ function calculate_diffusivities!(K_tuple::Tuple, arch, grid, closure_tuple::Tup
     return nothing
 end
 
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, closure_tuple::Tuple) =
-    Tuple(TurbulentDiffusivities(arch, grid, tracers, closure) for closure in closure_tuple)
-
 with_tracers(tracers, closure_tuple::Tuple) =
     Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
 #####
 ##### Include module code
 #####
-
-# Fallback constructor for diffusivity types without precomputed diffusivities:
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, args...) = nothing
 
 include("turbulence_closure_utils.jl")
 include("closure_operators.jl")
@@ -178,6 +173,7 @@ include("turbulence_closure_implementations/blasius_smagorinsky.jl")
 include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl")
 
+include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
 
 #####

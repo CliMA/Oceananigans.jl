@@ -1,6 +1,6 @@
 module Models
 
-export Model, ChannelModel, NonDimensionalModel, Clock, increment_clock!
+export IncompressibleModel, NonDimensionalModel, Clock, increment_clock!
 
 using Dates
 
@@ -22,7 +22,7 @@ Abstract supertype for models.
 abstract type AbstractModel end
 
 include("clock.jl")
-include("model.jl")
+include("incompressible_model.jl")
 include("non_dimensional_model.jl")
 include("show_models.jl")
 

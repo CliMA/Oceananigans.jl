@@ -25,17 +25,17 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
-    fbcs = TracerBoundaryConditions(grid)
 
     interior(field) .= rand(FT, Nx, Ny, Nz)
-    fill_halo_regions!(field.data, fbcs, arch, grid)
+    fill_halo_regions!(field, arch)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+    data = field.data
 
-    (all(field.data[1-Hx:0,   1:Ny,   1:Nz] .== field.data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
-     all(field.data[1:Nx,   1-Hy:0,   1:Nz] .== field.data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
-     all(field.data[1:Nx,     1:Ny,     1-Hz:0] .== field.data[1:Nx,        1:Ny,   1:1]) &&
-     all(field.data[1:Nx,     1:Ny, Nz+1:Nz+Hz] .== field.data[1:Nx,        1:Ny, Nz:Nz]))
+    (all(data[1-Hx:0,   1:Ny,       1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
+     all(data[1:Nx,   1-Hy:0,       1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
+     all(data[1:Nx,     1:Ny,     1-Hz:0] .== data[1:Nx,        1:Ny,       1:1]) &&
+     all(data[1:Nx,     1:Ny, Nz+1:Nz+Hz] .== data[1:Nx,        1:Ny,     Nz:Nz]))
 end
 
 @testset "Halo regions" begin

@@ -1,14 +1,5 @@
-function getmodelfield(fieldname, model)
-    if fieldname ∈ (:u, :v, :w)
-        field = getfield(model.velocities, fieldname)
-    else
-        field = getfield(model.tracers, fieldname)
-    end
-    return field
-end
-
 function relative_error(u_num, u, time)
-    u_ans = Field(location(u_num), architecture(u_num), u_num.grid)
+    u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
     set!(u_ans, (x, y, z) -> u(x, y, z, time))
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
@@ -16,8 +7,8 @@ end
 function test_diffusion_simple(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    field = get_model_field(fieldname, model)
     value = π
     interior(field) .= value
     for n in 1:10; time_step!(model, 1, euler= n==1); end
@@ -29,8 +20,8 @@ end
 function test_diffusion_budget_default(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, 16), length=(1, 1, 1))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    field = get_model_field(fieldname, model)
     half_Nz = round(Int, model.grid.Nz/2)
     interior(field)[:, :,   1:half_Nz] .= -1
     interior(field)[:, :, half_Nz:end] .=  1
@@ -41,8 +32,8 @@ end
 function test_diffusion_budget_channel(fieldname)
     grid = RegularCartesianGrid(size=(1, 16, 4), length=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
     closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    field = get_model_field(fieldname, model)
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
     interior(field)[:, half_Ny:end, :] .=  1
@@ -60,8 +51,8 @@ function test_diffusion_cosine(fieldname)
     Nz, Lz, κ, m = 128, π/2, 1, 2
     grid = RegularCartesianGrid(size=(1, 1, Nz), length=(1, 1, Lz))
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
-    model = Model(grid=grid, closure=closure, buoyancy=nothing)
-    field = getmodelfield(fieldname, model)
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    field = get_model_field(fieldname, model)
 
     zC = model.grid.zC
     interior(field)[1, 1, :] .= cos.(m*zC)
@@ -113,7 +104,8 @@ function internal_wave_test(; N=128, Nt=10)
     # Create a model where temperature = buoyancy.
     grid = RegularCartesianGrid(size=(N, 1, N), length=(L, L, L))
     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ)
-    model = Model(grid=grid, closure=closure, buoyancy=BuoyancyTracer(), tracers=:b, coriolis=FPlane(f=f))
+    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=BuoyancyTracer(),
+                                tracers=:b, coriolis=FPlane(f=f))
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -138,7 +130,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
 
     grid = RegularCartesianGrid(size=(N, N, 2), length=(L, L, L))
     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
-    model = Model(grid=grid, closure=closure)
+    model = IncompressibleModel(grid=grid, closure=closure)
 
     set!(model, u=u₀, v=v₀, T=T₀)
 
@@ -153,7 +145,8 @@ end
 """
 Taylor-Green vortex test
 See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Green_vortex_solution
-     and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application" by Hesthaven & Warburton.
+     and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application"
+     by Hesthaven & Warburton.
 """
 function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     Nx, Ny, Nz = N, N, 2
@@ -168,11 +161,12 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    model = Model(architecture = arch,
-                          grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-                       closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
-                       tracers = nothing,
-                      buoyancy = nothing)
+    model = IncompressibleModel(
+        architecture = arch,
+                grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+             closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
+             tracers = nothing,
+            buoyancy = nothing)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -198,7 +192,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     v_rel_err_max = maximum(v_rel_err)
 
     @info "Taylor-Green vortex test [$arch, $FT, Nx=Ny=$N, Nt=$Nt]: " *
-          @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)\n",
+          @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)",
                    u_rel_err_avg, u_rel_err_max, v_rel_err_avg, v_rel_err_max)
 
     u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6

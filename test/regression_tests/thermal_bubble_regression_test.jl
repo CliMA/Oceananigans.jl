@@ -5,7 +5,7 @@ function run_thermal_bubble_regression_test(arch)
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
     closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = Model(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
+    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85
@@ -52,15 +52,20 @@ function run_thermal_bubble_regression_test(arch)
     Sᶜ = ds["S"][:, :, :, end]
 
     field_names = ["u", "v", "w", "T", "S"]
-    fields = [interior(model.velocities.u), interior(model.velocities.v), interior(model.velocities.w),
-              interior(model.tracers.T), interior(model.tracers.S)]
-    fields_correct = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]
-    summarize_regression_test(field_names, fields, fields_correct)
+
+    test_fields = (interior(model.velocities.u), 
+                   interior(model.velocities.v), 
+                   interior(model.velocities.w)[:, :, 1:Nz],
+                   interior(model.tracers.T), 
+                   interior(model.tracers.S))
+
+    correct_fields = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]
+    summarize_regression_test(field_names, test_fields, correct_fields)
 
     # Now test that the model state matches the regression output.
     @test all(Array(interior(model.velocities.u)) .≈ uᶜ)
     @test all(Array(interior(model.velocities.v)) .≈ vᶜ)
-    @test all(Array(interior(model.velocities.w)) .≈ wᶜ)
+    @test all(Array(interior(model.velocities.w)[:, :, 1:Nz]) .≈ wᶜ)
     @test all(Array(interior(model.tracers.T))    .≈ Tᶜ)
     @test all(Array(interior(model.tracers.S))    .≈ Sᶜ)
 

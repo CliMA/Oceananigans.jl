@@ -106,9 +106,6 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::AbstractSmagorinsky) =
-    (νₑ=CellField(arch, grid),)
-
 """
     κ_∂x_c(i, j, k, grid, c, tracer, closure, νₑ)
 

@@ -31,13 +31,13 @@ function run_rayleigh_benard_regression_test(arch)
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))
 
-    model = Model(
+    model = IncompressibleModel(
                architecture = arch,
                        grid = grid,
                     closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
-        boundary_conditions = SolutionBoundaryConditions(grid, b=bbcs),
+        boundary_conditions = (b=bbcs,),
                     forcing = ModelForcing(c=Fc)
     )
 
@@ -94,13 +94,13 @@ function run_rayleigh_benard_regression_test(arch)
 
     model.velocities.u.data.parent .= ArrayType(u₀.parent)
     model.velocities.v.data.parent .= ArrayType(v₀.parent)
-    model.velocities.w.data.parent .= ArrayType(w₀.parent)
+    model.velocities.w.data.parent[:, :, 1:Nz+2] .= ArrayType(w₀.parent)
     model.tracers.b.data.parent    .= ArrayType(b₀.parent)
     model.tracers.c.data.parent    .= ArrayType(c₀.parent)
 
     model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gu₀.parent)
     model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gv₀.parent)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gw₀.parent)
+    model.timestepper.Gⁿ.w.data.parent[:, :, 1:Nz+2] .= ArrayType(Gw₀.parent)
     model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gb₀.parent)
     model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gc₀.parent)
 
@@ -117,17 +117,25 @@ function run_rayleigh_benard_regression_test(arch)
     b₁, c₁ = get_output_tuple(output_writer, spinup_steps+test_steps, :Φ)
 
     field_names = ["u", "v", "w", "b", "c"]
-    fields = [model.velocities.u.data.parent, model.velocities.v.data.parent,
-              model.velocities.w.data.parent, model.tracers.b.data.parent,
-              model.tracers.c.data.parent]
-    fields_correct = [u₁.parent, v₁.parent, w₁.parent,
-                      b₁.parent, c₁.parent]
-    summarize_regression_test(field_names, fields, fields_correct)
+
+    test_fields = (model.velocities.u.data.parent, 
+                   model.velocities.v.data.parent,
+                   model.velocities.w.data.parent[:, :, 1:Nz+2], 
+                   model.tracers.b.data.parent,
+                   model.tracers.c.data.parent)
+
+    correct_fields = (u₁.parent, 
+                      v₁.parent, 
+                      w₁.parent,
+                      b₁.parent, 
+                      c₁.parent)
+
+    summarize_regression_test(field_names, test_fields, correct_fields)
 
     # Now test that the model state matches the regression output.
     @test all(Array(model.velocities.u.data.parent) .≈ u₁.parent)
     @test all(Array(model.velocities.v.data.parent) .≈ v₁.parent)
-    @test all(Array(model.velocities.w.data.parent) .≈ w₁.parent)
+    @test all(Array(model.velocities.w.data.parent)[:, :, 1:Nz+2] .≈ w₁.parent)
     @test all(Array(model.tracers.b.data.parent)    .≈ b₁.parent)
     @test all(Array(model.tracers.c.data.parent)    .≈ c₁.parent)
 

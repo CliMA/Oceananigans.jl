@@ -46,53 +46,53 @@ const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)
 
 """
-    ∂x(L::Tuple, a::Oceananigans.AbstractLocatedField)
+    ∂x(L::Tuple, a::AbstractField)
 
 Return an abstract representation of an x-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂x(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
+∂x(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂x(X), arg, (flip(X), Y, Z), arg.grid)
 
 """
-    ∂y(L::Tuple, a::Oceananigans.AbstractLocatedField)
+    ∂y(L::Tuple, a::AbstractField)
 
 Return an abstract representation of a y-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂y(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
+∂y(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂y(Y), arg, (X, flip(Y), Z), arg.grid)
 
 """
-    ∂z(L::Tuple, a::Oceananigans.AbstractLocatedField)
+    ∂z(L::Tuple, a::AbstractField)
 
 Return an abstract representation of a z-derivative acting on `a` followed by
 interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 """
-∂z(L::Tuple, arg::ALF{X, Y, Z}) where {X, Y, Z} =
+∂z(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂z(Z), arg, (X, Y, flip(Z)), arg.grid)
 
 
 # Defaults
 """
-    ∂x(a::Oceananigans.AbstractLocatedField)
+    ∂x(a::AbstractField)
 
 Return an abstract representation of a x-derivative acting on `a`.
 """
-∂x(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
+∂x(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
 
 """
-    ∂y(a::Oceananigans.AbstractLocatedField)
+    ∂y(a::AbstractField)
 
 Return an abstract representation of a y-derivative acting on `a`.
 """
-∂y(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
+∂y(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
 """
-    ∂z(a::Oceananigans.AbstractLocatedField)
+    ∂z(a::AbstractField)
 
 Return an abstract representation of a z-derivative acting on `a`.
 """
-∂z(arg::ALF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
+∂z(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
 
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =

@@ -1,3 +1,4 @@
+using CUDAnative
 using GPUifyLoops: @launch, @loop
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: @loop_xyz
@@ -14,7 +15,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 Example
 =======
 ```julia
-model = Model(grid=RegularCartesianGrid(size=(32, 32, 32), length=(1, 1, 1))
+model = IncompressibleModel(grid=RegularCartesianGrid(size=(32, 32, 32), length=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -56,6 +57,14 @@ set!(u::Field, v::Number) = @. u.data = v
 set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} =
     @. u.data.parent = v.data.parent
 
+# Niceties
+const AbstractCPUField =
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+
+@hascuda const AbstractGPUField =
+    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+
+
 "Set the CPU field `u` to the array `v`."
 function set!(u::AbstractCPUField, v::Array)
     for k in 1:u.grid.Nz, j in 1:u.grid.Ny, i in 1:u.grid.Nx
@@ -66,7 +75,8 @@ end
 
 # Set the GPU field `u` to the array `v`.
 @hascuda function set!(u::AbstractGPUField, v::Array)
-    v_field = Field(location(u), CPU(), u.grid)
+    # Just need a temporary field so we set bcs = nothing.
+    v_field = Field(location(u), CPU(), u.grid, nothing)
     set!(v_field, v)
     set!(u, v_field)
     return nothing
@@ -80,7 +90,7 @@ end
 
 function _set_gpu!(u, v, grid)
 	@loop_xyz i j k grid begin
-        u[i, j, k] = v[i, j, k]
+        @inbounds u[i, j, k] = v[i, j, k]
     end
     return nothing
 end
@@ -96,7 +106,8 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u)...)
 
 # Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)
-    u_cpu = Field(location(u), CPU(), u.grid)
+    # Just need a temporary field so we set bcs = nothing.
+    u_cpu = Field(location(u), CPU(), u.grid, nothing)
     set!(u_cpu, f)
     set!(u, u_cpu)
     return nothing

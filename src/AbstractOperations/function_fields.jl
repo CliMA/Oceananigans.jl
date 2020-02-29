@@ -1,10 +1,10 @@
 """
-    FunctionField{X, Y, Z, C, F, G} <: AbstractLocatedField{X, Y, Z, F, G}
+    FunctionField{X, Y, Z, C, F, G} <: AbstractField{X, Y, Z, F, G}
 
-An `AbstractLocatedField` that returns a function evaluated at location `(X, Y, Z)` (and time, if
+An `AbstractField` that returns a function evaluated at location `(X, Y, Z)` (and time, if
 `C` is not `Nothing`) when indexed at `i, j, k`.
 """
-struct FunctionField{X, Y, Z, C, F, G} <: AbstractLocatedField{X, Y, Z, F, G}
+struct FunctionField{X, Y, Z, C, F, G} <: AbstractField{X, Y, Z, F, G}
      func :: F
      grid :: G
     clock :: C
@@ -12,7 +12,7 @@ struct FunctionField{X, Y, Z, C, F, G} <: AbstractLocatedField{X, Y, Z, F, G}
     """
         FunctionField{X, Y, Z}(func, grid; clock=nothing) where {X, Y, Z}
 
-    Returns a `FunctionField` on `grid` and at location `X, Y, Z`. 
+    Returns a `FunctionField` on `grid` and at location `X, Y, Z`.
 
     If `clock` is not specified, then `func` must be a function with signature
     `func(x, y, z)`. If clock is specified, `func` must be a function with signature

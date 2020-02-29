@@ -44,12 +44,6 @@ const Δxᶜᶜᶠ = Δx
 const Δyᶜᶜᶠ = Δy
 const Δzᶜᶜᶠ = Δz
 
-function TurbulentDiffusivities(arch::AbstractArchitecture, grid::AbstractGrid, tracers, ::RAMD)
-    νₑ = CellField(arch, grid)
-    κₑ = TracerFields(arch, grid, tracers)
-    return (νₑ=νₑ, κₑ=κₑ)
-end
-
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::RAMD, buoyancy, U, C) where FT
     q = tr_∇uᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
 

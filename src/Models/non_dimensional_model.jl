@@ -18,7 +18,7 @@ forcing.
 
 Note that `N`, `L`, and `Re` are required.
 
-Additional `kwargs` are passed to the regular `Model` constructor.
+Additional `kwargs` are passed to the regular `IncompressibleModel` constructor.
 """
 function NonDimensionalModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
     buoyancy = BuoyancyTracer(),
@@ -26,6 +26,6 @@ function NonDimensionalModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
      closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
     kwargs...)
 
-    return Model(; float_type=float_type, grid=grid, closure=closure,
-                   coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
+    return IncompressibleModel(; float_type=float_type, grid=grid, closure=closure,
+                               coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
 end
