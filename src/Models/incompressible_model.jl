@@ -42,7 +42,6 @@ end
                            w=WVelocityBoundaryConditions(grid)),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
-          tracer_fields = TracerFields(architecture, grid, tracernames(tracers), boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
      timestepper_method = :AdamsBashforth,
@@ -80,7 +79,6 @@ function IncompressibleModel(;
                            w=WVelocityBoundaryConditions(grid)),
              parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
-          tracer_fields = TracerFields(architecture, grid, tracernames(tracers), boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
      timestepper_method = :AdamsBashforth,
@@ -97,6 +95,9 @@ function IncompressibleModel(;
     # Regularize forcing and closure for given tracer fields.
     forcing = ModelForcing(tracernames(tracers), forcing)
     closure = with_tracers(tracernames(tracers), closure)
+
+    # Instantiate tracer fields if not already instantiated
+    tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
 
     return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
                                velocities, tracer_fields, pressures, forcing, closure,

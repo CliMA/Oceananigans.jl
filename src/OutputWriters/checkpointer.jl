@@ -95,7 +95,7 @@ function restore_if_not_missing(file, address)
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *
-              "You might need to restore this manually."
+              "You might need to restore $address manually."
         return missing
     end
 end
@@ -131,15 +131,17 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
         VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location),
                                    v = restore_field(file, "velocities/v", arch, grid, v_location),
                                    w = restore_field(file, "velocities/w", arch, grid, w_location))
-    filter!(p -> p ≠ :velocities, cps)
+    filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
     tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location) for c in tracer_names)
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
-    kwargs[:tracers] = tracer_names
-    kwargs[:tracer_fields] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
-    filter!(p -> p ≠ :tracers, cps)
+    kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
+
+    @show cps
+    filter!(p -> p ≠ :tracers, cps) # pop :tracers from checkpointed properties
+    @show cps
 
     # Restore time stepper tendency fields
     field_names = (:u, :v, :w, tracer_names...) # field names
@@ -151,14 +153,16 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
 
+    # Restore time stepper
     kwargs[:timestepper_method] = :AdamsBashforth
     kwargs[:timestepper] =
         AdamsBashforthTimeStepper(eltype(grid), arch, grid, tracer_names;
                                   G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
                                   Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
 
-    filter!(p -> p ≠ :timestepper, cps)
+    filter!(p -> p ≠ :timestepper, cps) # pop :timestepper from checkpointed properties
 
+    # Restore the remaining checkpointed properties
     for p in cps
         kwargs[p] = file["$p"]
     end
