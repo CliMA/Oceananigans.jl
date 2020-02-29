@@ -27,16 +27,16 @@ LazyPrimitiveField(LX, LY, LZ, arch, grid, ρϕ, ρ) =
     @inbounds f.conservative_field[I...] / ℑzᵃᵃᶠ(I..., f.grid, f.density)
 
 LazyVelocityFields(arch, grid, ρ, ρũ) =
-    (u = LazyPrimitiveField(Face, Cell, Cell, arch, grid, ρũ.ρu.data, ρ.data),
-     v = LazyPrimitiveField(Cell, Face, Cell, arch, grid, ρũ.ρv.data, ρ.data),
-     w = LazyPrimitiveField(Cell, Cell, Face, arch, grid, ρũ.ρw.data, ρ.data))
+    (u = LazyPrimitiveField(Face, Cell, Cell, arch, grid, ρũ.ρu, ρ),
+     v = LazyPrimitiveField(Cell, Face, Cell, arch, grid, ρũ.ρv, ρ),
+     w = LazyPrimitiveField(Cell, Cell, Face, arch, grid, ρũ.ρw, ρ))
 
 function LazyTracerFields(arch, grid, ρ, ρc̃)
     c_names = [filter(c -> c != 'ρ', string(c)) for c in keys(ρc̃)]
     c_names = filter(s -> s != "", c_names) .|> Symbol |> Tuple  # Don't include the ρ tracer.
 
     c_fields = Tuple(
-        LazyPrimitiveField(Cell, Cell, Cell, arch, grid, getproperty(ρc̃, Symbol(:ρ, c)).data, ρ.data)
+        LazyPrimitiveField(Cell, Cell, Cell, arch, grid, getproperty(ρc̃, Symbol(:ρ, c)), ρ)
         for c in c_names
     )
 
