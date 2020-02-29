@@ -48,7 +48,7 @@ end
 
             field_names = [:ρ, :ρu, :ρv, :ρw]
             fields = [interior(model.total_density), interior(model.momenta.ρu),
-                      interior(model.momenta.ρv), interior(model.momenta.ρw)]
+                      interior(model.momenta.ρv), interior(model.momenta.ρw)[:, :, 1:end-1]]
             correct_fields = [file["ρ"], file["ρu"], file["ρv"], file["ρw"]]
 
             if tvar isa Energy
@@ -67,7 +67,7 @@ end
 
             @test all(interior(model.total_density) .≈ file["ρ"])
             @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
-            @test all(interior(model.momenta.ρw)    .≈ file["ρw"])
+            @test all(interior(model.momenta.ρw)[:, :, 1:end-1]    .≈ file["ρw"])
             if tvar isa Energy
                 @test all(interior(model.tracers.ρe) .≈ file["ρe"])
             elseif tvar isa Entropy
@@ -109,7 +109,7 @@ end
 
             field_names = [:ρ, :ρu, :ρv, :ρw, :ρ₁, :ρ₂, :ρ₃]
             fields = [interior(model.total_density), interior(model.momenta.ρu),
-                      interior(model.momenta.ρv), interior(model.momenta.ρw),
+                      interior(model.momenta.ρv), interior(model.momenta.ρw)[:, :, 1:end-1],
                       interior(model.tracers.ρ₁), interior(model.tracers.ρ₂),
                       interior(model.tracers.ρ₃)]
             correct_fields = [file["ρ"], file["ρu"], file["ρv"], file["ρw"],
@@ -131,7 +131,7 @@ end
 
             @test all(interior(model.total_density) .≈ file["ρ"])
             @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
-            @test all(interior(model.momenta.ρw)    .≈ file["ρw"])
+            @test all(interior(model.momenta.ρw)[:, :, 1:end-1]    .≈ file["ρw"])
             @test all(interior(model.tracers.ρ₁)    .≈ file["ρ₁"])
             @test all(interior(model.tracers.ρ₂)    .≈ file["ρ₂"])
             @test all(interior(model.tracers.ρ₃)    .≈ file["ρ₃"])
