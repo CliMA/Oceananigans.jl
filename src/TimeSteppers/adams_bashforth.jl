@@ -46,8 +46,7 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     complete_pressure_correction_step!(velocities, Δt, tracers, pressures, Gⁿ, model)
 
-    model.clock.time += Δt
-    model.clock.iteration += 1
+    tick!(model.clock, Δt)
 
     return nothing
 end

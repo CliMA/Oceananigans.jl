@@ -46,7 +46,7 @@ export
     TimeStepWizard, update_Δt!,
 
     # Models
-    IncompressibleModel, NonDimensionalModel,
+    IncompressibleModel, NonDimensionalModel, Clock,
 
     # Simulations
     Simulation, run!,
