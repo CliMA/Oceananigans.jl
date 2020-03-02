@@ -140,7 +140,6 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
 
     filter!(p -> p ≠ :tracers, cps) # pop :tracers from checkpointed properties
-    @show cps
 
     # Restore time stepper tendency fields
     field_names = (:u, :v, :w, tracer_names...) # field names
