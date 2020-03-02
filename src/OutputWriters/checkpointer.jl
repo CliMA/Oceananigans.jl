@@ -139,7 +139,6 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
     kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
 
-    @show cps
     filter!(p -> p ≠ :tracers, cps) # pop :tracers from checkpointed properties
     @show cps
 
