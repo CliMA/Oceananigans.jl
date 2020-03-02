@@ -46,7 +46,8 @@ noisy_field = CellField(arch, grid, TracerBoundaryConditions(grid), randn(16, 16
 tracer_fields = TracerFields(arch, grid, tracers, random=noisy_field)
 ```
 """
-function TracerFields(arch, grid, tracer_names; kwargs...)
+function TracerFields(arch, grid, names; kwargs...)
+    tracer_names = tracernames(names) # filter `names` if it contains velocity fields
     tracer_fields =
         Tuple(c ∈ keys(kwargs) ?
               kwargs[c] :
@@ -56,13 +57,14 @@ function TracerFields(arch, grid, tracer_names; kwargs...)
 end
 
 """
-    TracerFields(arch, grid, tracer_names, bcs::NamedTuple)
+    TracerFields(arch, grid, tracer_names, bcs)
 
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
 `CellField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(arch, grid, tracer_names, bcs::NamedTuple)
+function TracerFields(arch, grid, names, bcs)
+    tracer_names = tracernames(names) # filter `names` if it contains velocity fields
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
               CellField(arch, grid, bcs[c]) :
@@ -71,13 +73,36 @@ function TracerFields(arch, grid, tracer_names, bcs::NamedTuple)
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
-TracerFields(arch, grid, ::Union{Tuple{}, Nothing}; kwargs...) = NamedTuple()
+TracerFields(arch, grid, ::Union{Tuple{}, Nothing}, args...; kwargs...) = NamedTuple()
 TracerFields(arch, grid, tracer::Symbol; kwargs...) = TracerFields(arch, grid, tuple(tracer); kwargs...)
-TracerFields(arch, grid, tracers::NamedTuple; kwargs...) = tracers
+
+"""
+    TracerFields(arch, grid, tracer_fields::NamedTuple; kwargs...)
+
+Convenience method for restoring checkpointed models that returns the already-instantiated
+`tracer_fields` with non-default boundary conditions.
+"""
+function TracerFields(arch, grid, proposed_tracer_fields::NamedTuple, bcs; kwargs...)
+    grid = proposed_tracer_fields[1].grid
+
+    tracer_fields = 
+        Tuple(c ∈ keys(bcs) ?
+              Field{Cell, Cell, Cell}(proposed_tracer_fields[c].data, grid, bcs[c]) :
+              Field{Cell, Cell, Cell}(proposed_tracer_fields[c].data, grid, TracerBoundaryConditions(grid))
+              for c in tracernames(proposed_tracer_fields))
+
+    return NamedTuple{tracernames(proposed_tracer_fields)}(tracer_fields)
+end
+
+"Shortcut constructor for empty tracer fields."
+TracerFields(arch, grid, empty_tracer_fields::NamedTuple{(),Tuple{}}, args...; kwargs...) = NamedTuple()
+
+"Returns true if the first three elements of `names` are `(:u, :v, :w)`."
+has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
 
 tracernames(::Nothing) = ()
 tracernames(name::Symbol) = tuple(name)
-tracernames(names::NTuple{N, Symbol}) where N = :u ∈ names ? names[4:end] : names
+tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 """
