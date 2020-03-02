@@ -1,6 +1,6 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, increment_clock!
+export IncompressibleModel, NonDimensionalModel, Clock, tick!
 
 using Oceananigans.Architectures
 using Oceananigans.Fields

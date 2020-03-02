@@ -19,13 +19,13 @@ Clock(; time, iteration=0) = Clock(time, iteration)
 Base.show(io::IO, c::Clock{FT}) where FT =
     println(io, "Clock{$FT}: time = ", prettytime(c.time), ", iteration = ", c.iteration)
 
-function increment_clock!(clock, Δt)
+function tick!(clock, Δt)
     clock.time += Δt
     clock.iteration += 1
     return nothing
 end
 
-function increment_clock!(clock::Clock{<:AbstractTime}, Δt)
+function tick!(clock::Clock{<:AbstractTime}, Δt)
     clock.time += Nanosecond(round(Int, 1e9 * Δt))
     clock.iteration += 1
     return nothing
