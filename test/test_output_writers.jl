@@ -48,6 +48,9 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     run!(simulation)
 
+    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
+    @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
+
     ds3 = Dataset("dump_test.nc")
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
@@ -75,7 +78,6 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
     @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
     @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
-    @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
 end
 
 function run_netcdf_function_output_tests(arch)
