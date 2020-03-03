@@ -28,8 +28,8 @@ function run_thermal_bubble_netcdf_tests(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-
-    nc_writer = NetCDFOutputWriter(model, outputs, filename="dump_test.nc", frequency=10)
+    nc_filename = "dump_test_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -39,8 +39,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     zC_slice = 10
     zF_slice = 9:11
 
+    nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename="dump_test_sliced.nc", frequency=10,
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
@@ -51,7 +52,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
     @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
 
-    ds3 = Dataset("dump_test.nc")
+    ds3 = Dataset(nc_filename)
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
@@ -65,7 +66,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(T .≈ Array(interiorparent(model.tracers.T)))
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
-    ds2 = Dataset("dump_test_sliced.nc")
+    ds2 = Dataset(nc_sliced_filename)
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
     w_sliced = ds2["w"][:, :, :, end]
