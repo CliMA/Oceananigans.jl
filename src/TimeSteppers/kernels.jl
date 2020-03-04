@@ -155,12 +155,38 @@ end
 function update_solution!(U, C, arch, grid, Δt, G, pNHS)
     @launch device(arch) config=launch_config(grid, :xyz) update_velocities!(U, grid, Δt, G, pNHS)
 
+    #=
     for i in 1:length(C)
         @inbounds c = C[i]
         @inbounds Gc = G[i+3]
         @launch device(arch) config=launch_config(grid, :xyz) update_tracer!(c, grid, Δt, Gc)
     end
+    =#
 
+    return nothing
+end
+
+function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
+    for i in 1:length(C)
+        @inbounds c = C[i]
+        @inbounds Gcⁿ = Gⁿ[i+3]
+        @inbounds Gc⁻ = G⁻[i+3]
+        @launch device(arch) config=launch_config(grid, :xyz) ab2_time_step_tracer!(c, grid, Δt, χ, Gcⁿ, Gc⁻)
+    end
+
+    return nothing
+end
+
+"""
+Time step tracers via
+
+    `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
+
+"""
+function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
+    @loop_xyz i j k grid begin
+        @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
+    end
     return nothing
 end
 
