@@ -98,7 +98,7 @@ function IncompressibleModel(;
     tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, float_type, architecture, grid, tracernames(tracers))
+    timestepper = TimeStepper(timestepper, float_type, architecture, grid, velocities, tracernames(tracers))
 
     return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
                                velocities, tracer_fields, pressures, forcing, closure,

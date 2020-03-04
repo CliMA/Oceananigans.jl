@@ -7,16 +7,25 @@ Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+struct AdamsBashforthTimeStepper{T, TG, P} <: AbstractTimeStepper
      χ :: T
     Gⁿ :: TG
     G⁻ :: TG
+    predictor_velocities :: P
 end
 
-AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.1;
-    Gⁿ = TendencyFields(arch, grid, tracers),
-    G⁻ = TendencyFields(arch, grid, tracers)
-    ) = AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
+function AdamsBashforthTimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
+                                   Gⁿ = TendencyFields(arch, grid, tracers),
+                                   G⁻ = TendencyFields(arch, grid, tracers))
+
+    u★ = Field{Face, Cell, Cell}(data(velocities.u), grid, velocities.u.boundary_conditions)
+    v★ = Field{Cell, Face, Cell}(data(velocities.v), grid, velocities.v.boundary_conditions)
+    w★ = Field{Cell, Cell, Face}(data(velocities.w), grid, velocities.w.boundary_conditions)
+
+    U★ = (u=u★, v=v★, w=w★)
+
+    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ), typeof(U★)}(χ, Gⁿ, G⁻, U★)
+end
 
 #####
 ##### Time steppping
@@ -42,7 +51,15 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     calculate_pressure_correction!(pressures.pNHS, Δt, Gⁿ, velocities, model)
 
-    complete_pressure_correction_step!(velocities, Δt, tracers, pressures, Gⁿ, model)
+    #complete_pressure_correction_step!(velocities, Δt, tracers, pressures, Gⁿ, model)
+
+    update_solution!(velocities, tracers, model.architecture,
+                     model.grid, Δt, Gⁿ, pressures.pNHS)
+
+    fill_halo_regions!(model.velocities, model.architecture,
+                       boundary_condition_function_arguments(model)...)
+
+    compute_w_from_continuity!(model)
 
     ab2_store_source_terms!(G⁻, model.architecture, model.grid, χ, Gⁿ)
 
