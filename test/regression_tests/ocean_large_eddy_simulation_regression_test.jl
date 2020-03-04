@@ -1,41 +1,5 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
 
-interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
-                            grid.Hy+1:grid.Ny+grid.Hy,
-                            grid.Hz+1:grid.Nz+grid.Hz)
-
-function get_fields_from_checkpoint(filename)
-    file = jldopen(filename)
-
-    solution = (
-        u = file["velocities/u"],
-        v = file["velocities/v"],
-        w = file["velocities/w"],
-        T = file["tracers/T"],
-        S = file["tracers/S"]
-    )
-
-    Gⁿ = (
-        u = file["timestepper/Gⁿ/u"],
-        v = file["timestepper/Gⁿ/v"],
-        w = file["timestepper/Gⁿ/w"],
-        T = file["timestepper/Gⁿ/T"],
-        S = file["timestepper/Gⁿ/S"]
-    )
-
-    G⁻ = (
-        u = file["timestepper/G⁻/u"],
-        v = file["timestepper/G⁻/v"],
-        w = file["timestepper/G⁻/w"],
-        T = file["timestepper/G⁻/T"],
-        S = file["timestepper/G⁻/S"]
-    )
-
-    close(file)
-
-    return solution, Gⁿ, G⁻
-end
-
 function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
 
@@ -77,8 +41,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     #### Uncomment the block below to generate regression data.
     ####
 
-    #=
-    @warn ("You are generating new data for the ocean LES regression test.")
+    @warn "Generating new data for the ocean LES regression test."
 
     # Initialize model: random noise damped at top and bottom
     Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
@@ -89,20 +52,20 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    checkpointer = Checkpointer(model, frequency = test_steps, prefix = name * "_",
+    checkpointer = Checkpointer(model, frequency = test_steps, prefix = name,
                                 dir = joinpath(dirname(@__FILE__), "data"))
+
     simulation.output_writers[:checkpointer] = checkpointer
 
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     pop!(simulation.output_writers, :checkpointer)
-    =#
 
     ####
     #### Regression test
     ####
 
-    initial_filename = joinpath(dirname(@__FILE__), "data", name * "_$spinup_steps.jld2")
+    initial_filename = joinpath(dirname(@__FILE__), "data", name * "_iteration$spinup_steps.jld2")
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
@@ -110,19 +73,19 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     model.velocities.u.data.parent .= ArrayType(solution₀.u)
     model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent[:, :, 1:Nz+2] .= ArrayType(solution₀.w)
+    model.velocities.w.data.parent .= ArrayType(solution₀.w)
     model.tracers.T.data.parent    .= ArrayType(solution₀.T)
     model.tracers.S.data.parent    .= ArrayType(solution₀.S)
 
     model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
     model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent[:, :, 1:Nz+2] .= ArrayType(Gⁿ₀.w)
+    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
     model.timestepper.Gⁿ.T.data.parent .= ArrayType(Gⁿ₀.T)
     model.timestepper.Gⁿ.S.data.parent .= ArrayType(Gⁿ₀.S)
 
     model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
     model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent[:, :, 1:Nz+2] .= ArrayType(G⁻₀.w)
+    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
     model.timestepper.G⁻.T.data.parent .= ArrayType(G⁻₀.T)
     model.timestepper.G⁻.S.data.parent .= ArrayType(G⁻₀.S)
 
@@ -130,10 +93,10 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     model.clock.iteration = spinup_steps
 
     for n in 1:test_steps
-      time_step!(model, Δt, euler=false)
+        time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(dirname(@__FILE__), "data", name * "_$(spinup_steps+test_steps).jld2")
+    final_filename = joinpath(dirname(@__FILE__), "data", name * "_iteration$(spinup_steps+test_steps).jld2")
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
@@ -141,13 +104,13 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     test_fields = (model.velocities.u.data.parent, 
                    model.velocities.v.data.parent,
-                   model.velocities.w.data.parent[:, :, 1:Nz+2], 
+                   model.velocities.w.data.parent, 
                    model.tracers.T.data.parent,
                    model.tracers.S.data.parent)
 
     correct_fields = (solution₁.u,
                       solution₁.v, 
-                      solution₁.w[:, :, 1:Nz+2],
+                      solution₁.w,
                       solution₁.T, 
                       solution₁.S)
 

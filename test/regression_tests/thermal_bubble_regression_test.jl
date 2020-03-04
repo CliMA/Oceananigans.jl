@@ -24,7 +24,6 @@ function run_thermal_bubble_regression_test(arch)
     #### Uncomment the block below to generate regression data.
     ####
 
-    #=
     @warn ("You are generating new data for the thermal bubble regression test.")
 
     outputs = Dict("v" => model.velocities.v,
@@ -35,7 +34,6 @@ function run_thermal_bubble_regression_test(arch)
 
     nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
     push!(simulation.output_writers, nc_writer)
-    =#
 
     ####
     #### Regression test
@@ -55,7 +53,7 @@ function run_thermal_bubble_regression_test(arch)
 
     test_fields = (interior(model.velocities.u), 
                    interior(model.velocities.v), 
-                   interior(model.velocities.w)[:, :, 1:Nz],
+                   interior(model.velocities.w),
                    interior(model.tracers.T), 
                    interior(model.tracers.S))
 
@@ -65,7 +63,7 @@ function run_thermal_bubble_regression_test(arch)
     # Now test that the model state matches the regression output.
     @test all(Array(interior(model.velocities.u)) .≈ uᶜ)
     @test all(Array(interior(model.velocities.v)) .≈ vᶜ)
-    @test all(Array(interior(model.velocities.w)[:, :, 1:Nz]) .≈ wᶜ)
+    @test all(Array(interior(model.velocities.w)) .≈ wᶜ)
     @test all(Array(interior(model.tracers.T))    .≈ Tᶜ)
     @test all(Array(interior(model.tracers.S))    .≈ Sᶜ)
 
