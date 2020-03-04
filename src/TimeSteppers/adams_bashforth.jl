@@ -53,10 +53,8 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     calculate_pressure_correction!(pressures.pNHS, Δt, Gⁿ, velocities, model)
 
-    #complete_pressure_correction_step!(velocities, Δt, tracers, pressures, Gⁿ, model)
-
-    update_solution!(velocities, tracers, model.architecture,
-                     model.grid, Δt, Gⁿ, pressures.pNHS)
+    ab2_time_step_velocities!(velocities, tracers, model.architecture,
+                              model.grid, Δt, Gⁿ, pressures.pNHS)
 
     fill_halo_regions!(model.velocities, model.architecture,
                        boundary_condition_function_arguments(model)...)
@@ -105,7 +103,7 @@ end
 """ Store previous source terms for a tracer before updating them. """
 function ab2_store_tracer_source_term!(Gc⁻, grid::AbstractGrid{FT}, χ, Gcⁿ) where FT
     @loop_xyz i j k grid begin
-        @inbounds Gc⁻[i, j, k] = ((FT(0.5) + χ) * Gc⁻[i, j, k] + Gcⁿ[i, j, k]) / (FT(1.5) + χ)
+        @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
     end
     return nothing
 end
@@ -118,14 +116,6 @@ function ab2_update_source_terms!(Gⁿ, arch, grid, χ, G⁻)
     # Velocity fields
     @launch(device(arch), config=launch_config(grid, :xyz),
             ab2_update_velocity_source_terms!(Gⁿ, grid, χ, G⁻))
-
-    # Tracer fields
-    for i in 4:length(Gⁿ)
-        @inbounds Gcⁿ = Gⁿ[i]
-        @inbounds Gc⁻ = G⁻[i]
-        @launch(device(arch), config=launch_config(grid, :xyz),
-                ab2_update_tracer_source_term!(Gcⁿ, grid, χ, Gc⁻))
-    end
 
     return nothing
 end
@@ -155,6 +145,51 @@ Adams-Bashforth method
 function ab2_update_tracer_source_term!(Gcⁿ, grid::AbstractGrid{FT}, χ, Gc⁻) where FT
     @loop_xyz i j k grid begin
         @inbounds Gcⁿ[i, j, k] = (FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k]
+    end
+    return nothing
+end
+
+"""
+Update the horizontal velocities u and v via
+
+    `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
+
+Note that the vertical velocity is not explicitly time stepped.
+"""
+function _ab2_time_step_velocities!(U, grid, Δt, G, pNHS)
+    @loop_xyz i j k grid begin
+        @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂xᶠᵃᵃ(i, j, k, grid, pNHS)) * Δt
+        @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂yᵃᶠᵃ(i, j, k, grid, pNHS)) * Δt
+    end
+    return nothing
+end
+
+"Update the solution variables (velocities and tracers)."
+function ab2_time_step_velocities!(U, C, arch, grid, Δt, G, pNHS)
+    @launch device(arch) config=launch_config(grid, :xyz) _ab2_time_step_velocities!(U, grid, Δt, G, pNHS)
+    return nothing
+end
+
+function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
+    for i in 1:length(C)
+        @inbounds c = C[i]
+        @inbounds Gcⁿ = Gⁿ[i+3]
+        @inbounds Gc⁻ = G⁻[i+3]
+        @launch device(arch) config=launch_config(grid, :xyz) ab2_time_step_tracer!(c, grid, Δt, χ, Gcⁿ, Gc⁻)
+    end
+
+    return nothing
+end
+
+"""
+Time step tracers via
+
+    `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
+
+"""
+function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
+    @loop_xyz i j k grid begin
+        @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
     end
     return nothing
 end
