@@ -135,27 +135,6 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies
     return nothing
 end
 
-calculate_pressure_correction!(::Nothing, args...) = nothing
-
-"""
-    complete_pressure_correction_step!(velocities, Δt, tracers, pressures, tendencies, model)
-
-After calculating the pressure correction, complete the pressure correction step by updating
-the velocity and tracer fields.
-"""
-function complete_pressure_correction_step!(velocities, Δt, tracers, pressures, tendencies, model)
-
-    update_solution!(velocities, tracers, model.architecture,
-                     model.grid, Δt, tendencies, pressures.pNHS)
-
-    fill_halo_regions!(model.velocities, model.architecture,
-                       boundary_condition_function_arguments(model)...)
-
-    compute_w_from_continuity!(model)
-
-    return nothing
-end
-
 include("kernels.jl")
 include("adams_bashforth.jl")
 
