@@ -62,6 +62,7 @@ function run_rayleigh_benard_regression_test(arch)
     ##### Initial condition and spinup steps for creating regression test data
     #####
 
+    #=
     @warn "Generating new data for the Rayleigh-Benard regression test."
 
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
@@ -74,6 +75,7 @@ function run_rayleigh_benard_regression_test(arch)
     push!(simulation.output_writers, checkpointer)
     simulation.stop_iteration += 2test_steps
     run!(simulation)
+    =#
 
     #####
     ##### Regression test

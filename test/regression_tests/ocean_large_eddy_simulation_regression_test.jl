@@ -41,6 +41,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     #### Uncomment the block below to generate regression data.
     ####
 
+    #=
     @warn "Generating new data for the ocean LES regression test."
 
     # Initialize model: random noise damped at top and bottom
@@ -60,6 +61,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     pop!(simulation.output_writers, :checkpointer)
+    =#
 
     ####
     #### Regression test

@@ -24,6 +24,7 @@ function run_thermal_bubble_regression_test(arch)
     #### Uncomment the block below to generate regression data.
     ####
 
+    #=
     @warn ("You are generating new data for the thermal bubble regression test.")
 
     outputs = Dict("v" => model.velocities.v,
@@ -34,6 +35,7 @@ function run_thermal_bubble_regression_test(arch)
 
     nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
     push!(simulation.output_writers, nc_writer)
+    =#
 
     ####
     #### Regression test
