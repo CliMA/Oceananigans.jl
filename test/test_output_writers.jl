@@ -28,8 +28,8 @@ function run_thermal_bubble_netcdf_tests(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-
-    nc_writer = NetCDFOutputWriter(model, outputs, filename="dump_test.nc", frequency=10)
+    nc_filename = "dump_test_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -39,24 +39,27 @@ function run_thermal_bubble_netcdf_tests(arch)
     zC_slice = 10
     zF_slice = 9:11
 
+    nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename="dump_test_sliced.nc", frequency=10,
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
     run!(simulation)
-    close(nc_writer)
-    close(nc_sliced_writer)
 
-    ds3 = Dataset("dump_test.nc")
+    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
+    @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
+
+    ds3 = Dataset(nc_filename)
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
     T = ds3["T"][:, :, :, end]
     S = ds3["S"][:, :, :, end]
     close(ds3)
+    @test repr(ds3) == "closed NetCDF NCDataset"
 
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
@@ -64,13 +67,14 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(T .≈ Array(interiorparent(model.tracers.T)))
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
-    ds2 = Dataset("dump_test_sliced.nc")
+    ds2 = Dataset(nc_sliced_filename)
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
     w_sliced = ds2["w"][:, :, :, end]
     T_sliced = ds2["T"][:, :, :, end]
     S_sliced = ds2["S"][:, :, :, end]
     close(ds2)
+    @test repr(ds2) == "closed NetCDF NCDataset"
 
     @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
     @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
@@ -101,15 +105,16 @@ function run_netcdf_function_output_tests(arch)
 
     global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
+    nc_filename = "test_function_outputs_$(typeof(arch)).nc"
     simulation.output_writers[:fruits] =
         NetCDFOutputWriter(
-            model, outputs; frequency=1, filename="test_function_outputs.nc", dimensions=dims,
+            model, outputs; frequency=1, filename=nc_filename, dimensions=dims,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
-    close(simulation.output_writers[:fruits])
+    @test repr(simulation.output_writers[:fruits].dataset) == "closed NetCDF NCDataset"
 
-    ds = Dataset("test_function_outputs.nc", "r")
+    ds = Dataset(nc_filename, "r")
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -135,6 +140,7 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     close(ds)
+    @test repr(ds) == "closed NetCDF NCDataset"
     return nothing
 end
 
