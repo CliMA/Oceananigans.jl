@@ -1,3 +1,4 @@
+
 function run_rayleigh_benard_regression_test(arch)
 
     #####
@@ -52,24 +53,17 @@ function run_rayleigh_benard_regression_test(arch)
     spinup_steps = 1000
       test_steps = 100
 
-    output_U(model) = datatuple(model.velocities)
-    output_Φ(model) = datatuple(model.tracers)
-    output_G(model) = datatuple(model.timestepper.Gⁿ)
-    outputfields = Dict(:U=>output_U, :Φ=>output_Φ, :G=>output_G)
+    prefix = "rayleigh_benard"
 
-    prefix = "data_rayleigh_benard_regression"
-    output_writer =
-      JLD2OutputWriter(model, outputfields, dir=joinpath(dirname(@__FILE__), "data"),
-                       prefix=prefix, frequency=test_steps, including=[])
+    checkpointer = Checkpointer(model, frequency=test_steps, prefix=prefix,
+                                dir=joinpath(dirname(@__FILE__), "data"))
 
     #####
     ##### Initial condition and spinup steps for creating regression test data
     #####
 
     #=
-    @warn ("Generating new data for the Rayleigh-Benard regression test.
-           New regression test data generation will fail unless the JLD2
-           file $prefix.jld2 is manually deleted.")
+    @warn "Generating new data for the Rayleigh-Benard regression test."
 
     ξ(z) = a * rand() * z * (Lz + z) # noise, damped at the walls
     b₀(x, y, z) = (ξ(z) - z) / Lz
@@ -78,7 +72,7 @@ function run_rayleigh_benard_regression_test(arch)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    push!(simulation.output_writers, output_writer)
+    push!(simulation.output_writers, checkpointer)
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     =#
@@ -88,56 +82,63 @@ function run_rayleigh_benard_regression_test(arch)
     #####
 
     # Load initial state
-    u₀, v₀, w₀ = get_output_tuple(output_writer, spinup_steps, :U)
-    b₀, c₀ = get_output_tuple(output_writer, spinup_steps, :Φ)
-    Gu₀, Gv₀, Gw₀, Gb₀, Gc₀ = get_output_tuple(output_writer, spinup_steps, :G)
+    initial_filename = joinpath(dirname(@__FILE__), "data", prefix * "_iteration$spinup_steps.jld2")
 
-    model.velocities.u.data.parent .= ArrayType(u₀.parent)
-    model.velocities.v.data.parent .= ArrayType(v₀.parent)
-    model.velocities.w.data.parent[:, :, 1:Nz+2] .= ArrayType(w₀.parent)
-    model.tracers.b.data.parent    .= ArrayType(b₀.parent)
-    model.tracers.c.data.parent    .= ArrayType(c₀.parent)
+    solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gu₀.parent)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gv₀.parent)
-    model.timestepper.Gⁿ.w.data.parent[:, :, 1:Nz+2] .= ArrayType(Gw₀.parent)
-    model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gb₀.parent)
-    model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gc₀.parent)
+    model.velocities.u.data.parent .= ArrayType(solution₀.u)
+    model.velocities.v.data.parent .= ArrayType(solution₀.v)
+    model.velocities.w.data.parent .= ArrayType(solution₀.w)
+    model.tracers.b.data.parent    .= ArrayType(solution₀.b)
+    model.tracers.c.data.parent    .= ArrayType(solution₀.c)
+
+    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
+    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
+    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
+    model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gⁿ₀.b)
+    model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gⁿ₀.c)
+
+    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
+    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
+    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
+    model.timestepper.G⁻.b.data.parent .= ArrayType(G⁻₀.b)
+    model.timestepper.G⁻.c.data.parent .= ArrayType(G⁻₀.c)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
-    length(simulation.output_writers) > 0 && pop!(Simulation.output_writers)
+    length(simulation.output_writers) > 0 && pop!(simulation.output_writers)
 
     # Step the model forward and perform the regression test
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end
 
-    u₁, v₁, w₁ = get_output_tuple(output_writer, spinup_steps+test_steps, :U)
-    b₁, c₁ = get_output_tuple(output_writer, spinup_steps+test_steps, :Φ)
+    final_filename = joinpath(dirname(@__FILE__), "data", prefix * "_iteration$(spinup_steps+test_steps).jld2")
+
+    solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
     field_names = ["u", "v", "w", "b", "c"]
 
     test_fields = (model.velocities.u.data.parent, 
                    model.velocities.v.data.parent,
-                   model.velocities.w.data.parent[:, :, 1:Nz+2], 
+                   model.velocities.w.data.parent, 
                    model.tracers.b.data.parent,
                    model.tracers.c.data.parent)
 
-    correct_fields = (u₁.parent, 
-                      v₁.parent, 
-                      w₁.parent,
-                      b₁.parent, 
-                      c₁.parent)
+    correct_fields = (solution₁.u, 
+                      solution₁.v, 
+                      solution₁.w,
+                      solution₁.b, 
+                      solution₁.c)
 
     summarize_regression_test(field_names, test_fields, correct_fields)
 
     # Now test that the model state matches the regression output.
-    @test all(Array(model.velocities.u.data.parent) .≈ u₁.parent)
-    @test all(Array(model.velocities.v.data.parent) .≈ v₁.parent)
-    @test all(Array(model.velocities.w.data.parent)[:, :, 1:Nz+2] .≈ w₁.parent)
-    @test all(Array(model.tracers.b.data.parent)    .≈ b₁.parent)
-    @test all(Array(model.tracers.c.data.parent)    .≈ c₁.parent)
+    @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
+    @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))
+    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)[:, :, 1:Nz]))
+    @test all(Array(interior(solution₁.b, model.grid)) .≈ Array(interior(model.tracers.b)))
+    @test all(Array(interior(solution₁.c, model.grid)) .≈ Array(interior(model.tracers.c)))
 
     return nothing
 end
