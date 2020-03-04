@@ -41,9 +41,9 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
-    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ =
+    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻, predictor_velocities =
         datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
-                   model.timestepper.Gⁿ, model.timestepper.G⁻)
+                   model.timestepper.Gⁿ, model.timestepper.G⁻, model.timestepper.predictor_velocities)
 
     calculate_explicit_substep!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
 
@@ -52,6 +52,8 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     ab2_update_source_terms!(Gⁿ, model.architecture, model.grid, χ, G⁻)
 
     calculate_pressure_correction!(pressures.pNHS, Δt, Gⁿ, velocities, model)
+
+    ab2_update_predictor_velocities!(predictor_velocities, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
 
     ab2_time_step_velocities!(velocities, tracers, model.architecture,
                               model.grid, Δt, Gⁿ, pressures.pNHS)
@@ -158,8 +160,8 @@ Note that the vertical velocity is not explicitly time stepped.
 """
 function _ab2_time_step_velocities!(U, grid, Δt, G, pNHS)
     @loop_xyz i j k grid begin
-        @inbounds U.u[i, j, k] += (G.u[i, j, k] - ∂xᶠᵃᵃ(i, j, k, grid, pNHS)) * Δt
-        @inbounds U.v[i, j, k] += (G.v[i, j, k] - ∂yᵃᶠᵃ(i, j, k, grid, pNHS)) * Δt
+        @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
+        @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
     end
     return nothing
 end
@@ -190,6 +192,35 @@ Time step tracers via
 function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
     @loop_xyz i j k grid begin
         @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
+    end
+    return nothing
+end
+
+function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
+    @launch(device(arch), config=launch_config(grid, :xyz), 
+            _ab2_update_predictor_velocities!(U★, grid, Δt, χ, Gⁿ, G⁻))
+    return nothing
+end
+
+""" Update predictor velocity field. """
+function _ab2_update_predictor_velocities!(U★, grid::AbstractGrid{FT}, Δt, χ, Gⁿ, G⁻) where FT
+    @loop_xyz i j k grid begin
+        @inbounds begin
+            U★.u[i, j, k] += Δt * Gⁿ.u[i, j, k]
+            U★.v[i, j, k] += Δt * Gⁿ.v[i, j, k]
+            U★.w[i, j, k] += Δt * Gⁿ.w[i, j, k]
+
+            #=
+            U★.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
+                                    - (FT(0.5) + χ) * G⁻.u[i, j, k] )
+
+            U★.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
+                                    - (FT(0.5) + χ) * G⁻.v[i, j, k] )
+
+            U★.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
+                                    - (FT(0.5) + χ) * G⁻.w[i, j, k] )
+            =#
+        end
     end
     return nothing
 end
