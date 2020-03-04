@@ -100,7 +100,7 @@ function incompressible_in_time(arch, FT, Nt)
     velocity_div!(grid, u, v, w, div_U)
 
     min_div = minimum(interior(div_U))
-    max_div = minimum(interior(div_U))
+    max_div = maximum(interior(div_U))
     sum_div = sum(interior(div_U))
     abs_sum_div = sum(abs.(interior(div_U)))
     @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
