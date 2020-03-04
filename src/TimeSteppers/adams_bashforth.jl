@@ -36,8 +36,6 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
         datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
                    model.timestepper.Gⁿ, model.timestepper.G⁻)
 
-    ab2_store_previous_source_terms!(G⁻, model.architecture, model.grid, Gⁿ)
-
     calculate_explicit_substep!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
 
     ab2_update_source_terms!(Gⁿ, model.architecture, model.grid, χ, G⁻)
@@ -45,6 +43,8 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     calculate_pressure_correction!(pressures.pNHS, Δt, Gⁿ, velocities, model)
 
     complete_pressure_correction_step!(velocities, Δt, tracers, pressures, Gⁿ, model)
+
+    ab2_store_source_terms!(G⁻, model.architecture, model.grid, χ, Gⁿ)
 
     tick!(model.clock, Δt)
 
@@ -56,37 +56,37 @@ end
 #####
 
 """ Store previous source terms before updating them. """
-function ab2_store_previous_source_terms!(G⁻, arch, grid, Gⁿ)
+function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
 
     # Velocity fields
     @launch(device(arch), config=launch_config(grid, :xyz),
-            ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ))
+            ab2_store_velocity_source_terms!(G⁻, grid, χ, Gⁿ))
 
     # Tracer fields
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
         @launch(device(arch), config=launch_config(grid, :xyz),
-                ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ))
+                ab2_store_tracer_source_term!(Gc⁻, grid, χ, Gcⁿ))
     end
 
     return nothing
 end
 
-""" Store previous source terms for `u`, `v`, and `w` before updating them. """
-function ab2_store_previous_velocity_source_terms!(G⁻, grid, Gⁿ)
+""" Store source terms for `u`, `v`, and `w`. """
+function ab2_store_velocity_source_terms!(G⁻, grid::AbstractGrid{FT}, χ, Gⁿ) where FT
     @loop_xyz i j k grid begin
-        @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
-        @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
-        @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
+        @inbounds G⁻.u[i, j, k] = ((FT(0.5) + χ) * G⁻.u[i, j, k] + Gⁿ.u[i, j, k]) / (FT(1.5) + χ)
+        @inbounds G⁻.v[i, j, k] = ((FT(0.5) + χ) * G⁻.v[i, j, k] + Gⁿ.v[i, j, k]) / (FT(1.5) + χ)
+        @inbounds G⁻.w[i, j, k] = ((FT(0.5) + χ) * G⁻.w[i, j, k] + Gⁿ.w[i, j, k]) / (FT(1.5) + χ)
     end
     return nothing
 end
 
 """ Store previous source terms for a tracer before updating them. """
-function ab2_store_previous_tracer_source_term!(Gc⁻, grid, Gcⁿ)
+function ab2_store_tracer_source_term!(Gc⁻, grid::AbstractGrid{FT}, χ, Gcⁿ) where FT
     @loop_xyz i j k grid begin
-        @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
+        @inbounds Gc⁻[i, j, k] = ((FT(0.5) + χ) * Gc⁻[i, j, k] + Gcⁿ[i, j, k]) / (FT(1.5) + χ)
     end
     return nothing
 end
