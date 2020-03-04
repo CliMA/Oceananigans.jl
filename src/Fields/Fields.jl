@@ -3,7 +3,7 @@ module Fields
 export
     Face, Cell,
     AbstractField, Field, CellField, XFaceField, YFaceField, ZFaceField,
-    interior, interiorparent,
+    interior, interiorparent, data,
     xnode, ynode, znode, location,
     set!,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
