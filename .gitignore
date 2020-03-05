@@ -2,6 +2,7 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
+*.mem
 deps/deps.jl
 
 # Swap files.
