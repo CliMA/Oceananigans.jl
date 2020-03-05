@@ -24,7 +24,7 @@ using Oceananigans: Face, Cell
 # `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
 # model with a simple isotropic diffusivity.
 
-model = Model(
+model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), length=(2π, 2π, 2π)),
     buoyancy = nothing,
      tracers = nothing,
@@ -59,7 +59,7 @@ nothing # hide
 # `vorticity_operation` we create a field `ω` to store the result of the operation, and a
 # `Computation` object for coordinate the computation of vorticity and storage in `ω`:
 
-ω = Field(Face, Face, Cell, model.architecture, model.grid)
+ω = Field(Face, Face, Cell, model.architecture, model.grid, TracerBoundaryConditions(model.grid))
 
 vorticity_computation = Computation(vorticity_operation, ω)
 nothing # hide

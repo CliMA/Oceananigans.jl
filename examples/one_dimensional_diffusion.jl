@@ -4,7 +4,7 @@
 # the diffusion of a one-dimensional Gaussian. This example demonstrates
 #
 #   * how to load `Oceananigans.jl`;
-#   * how to instantiate an `Oceananigans.jl` `Model`;
+#   * how to instantiate an `Oceananigans.jl` model;
 #   * how to set an initial condition with a function;
 #   * how to time-step a model forward, and finally
 #   * how to look at results.
@@ -20,12 +20,12 @@ using Oceananigans
 
 using Plots, Printf
 
-# ## Instantiating and configuring a `Model`
+# ## Instantiating and configuring a model
 #
-# To begin using Oceananigans, we instantiate a `Model` by calling the
-# `Model` constructor:
+# To begin using Oceananigans, we instantiate an incompressible model by calling
+# the `IncompressibleModel` constructor:
 
-model = Model(
+model = IncompressibleModel(
     grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )

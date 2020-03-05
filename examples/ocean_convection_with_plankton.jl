@@ -56,14 +56,14 @@ nothing # hide
 growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16))
 
 ## Instantiate the model
-model = Model(
+model = IncompressibleModel(
                    grid = grid,
                 closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
                 forcing = ModelForcing(plankton=growth_and_decay),
-    boundary_conditions = SolutionBoundaryConditions(grid, b=buoyancy_bcs)
+    boundary_conditions = (b=buoyancy_bcs,)
 )
 nothing # hide
 
@@ -89,7 +89,7 @@ anim = @animate for i = 1:100
             prettytime(model.clock.time), prettytime(wizard.Δt), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = model.grid.zC, model.grid.zF[1:Nz], model.grid.zC
+    xC, zF, zC = model.grid.zC, model.grid.zF, model.grid.zC
 
     ## Fields to plot (converted to 2D arrays).
     w = Array(interior(model.velocities.w))[:, 1, :]

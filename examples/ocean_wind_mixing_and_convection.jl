@@ -84,13 +84,13 @@ nothing # hide
 # model.parameters for use in the boundary condition function that calculates the salinity
 # flux.
 
-model = Model(
+model = IncompressibleModel(
          architecture = CPU(),
                  grid = grid,
              coriolis = FPlane(f=f),
              buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
               closure = AnisotropicMinimumDissipation(),
-  boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, T=T_bcs, S=S_bcs),
+  boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs),
            parameters = (evaporation = evaporation,)
 )
 nothing # hide
@@ -165,7 +165,7 @@ anim = @animate for i in 1:100
             wmax(model), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = model.grid.zC, model.grid.zF[1:Nz], model.grid.zC
+    xC, zF, zC = model.grid.zC, model.grid.zF, model.grid.zC
 
     ## Slices to plots.
     jhalf = floor(Int, model.grid.Ny/2)
