@@ -33,7 +33,7 @@ macro loop_xz(i, k, grid, expr)
         end)
 end
 
-macro loop_yz(i, k, grid, expr)
+macro loop_yz(j, k, grid, expr)
     return esc(
         quote
             @loop for $k in (1:$grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
