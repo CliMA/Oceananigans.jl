@@ -125,7 +125,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
     velocity_tendencies = (u=model.timestepper.Gⁿ.u, v=model.timestepper.Gⁿ.v, w=model.timestepper.Gⁿ.w)
 
-    fill_halo_regions!(velocity_tendencies, model.architecture)
+    fill_halo_regions!(velocity_tendencies, model.architecture, boundary_condition_function_arguments(model)...)
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
                         model.architecture, model.grid, velocities, tendencies, Δt)
