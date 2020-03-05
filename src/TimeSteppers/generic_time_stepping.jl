@@ -51,19 +51,24 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     #
     # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
     # tendency data.
-    #
-    tendency_args = (tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
-                     model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
-                     diffusivities, model.forcing, model.parameters, model.clock.time)
+    
+    # Arguments needed to calculate tendencies for momentum and tracers
+    tendency_calculation_args = (tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
+                                 model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
+                                 diffusivities, model.forcing, model.parameters, model.clock.time)
 
-    calculate_interior_tendency_contributions!(tendency_args...)
+    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
+    # interior of the domain
+    calculate_interior_tendency_contributions!(tendency_calculation_args...)
 
+    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
+    # boundaries of the domain
     calculate_boundary_tendency_contributions!(
         model.timestepper.Gⁿ, model.architecture, model.velocities,
         model.tracers, boundary_condition_function_arguments(model)...)
 
-    # Calculate
-    #calculate_tendencies_on_boundaries!(tendency_args...)
+    # Calculate momentum tendencies on boundaries in `Bounded` directions.
+    #calculate_momentum_tendencies_on_boundaries!(tendency_calculation_args...)
 
     return nothing
 end
