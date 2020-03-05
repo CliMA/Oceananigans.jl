@@ -68,7 +68,7 @@ Calculates the 2D divergence ∂y v + ∂z w via
 
 which will end up at the location `acc`.
 """
-@inline function div_yzᵃᶜᶜ(i, j, k, grid, u, w)
+@inline function div_yzᵃᶜᶜ(i, j, k, grid, v, w)
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w))
 end
