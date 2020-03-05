@@ -76,7 +76,7 @@ function _fill_north_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xz i k grid begin
         @inbounds ∇c = north_gradient(bc, c[i, grid.Ny, k], grid.Δy, i, k, grid, args...)
         @unroll for j in (grid.Ny + 1) : (grid.Ny + grid.Hy)
-            Δ = (k - grid.Ny) * grid.Δy
+            Δ = (j - grid.Ny) * grid.Δy
             @inbounds c[i, j, k] = linearly_extrapolate(c[i, grid.Ny, k], ∇c, Δ)
         end
     end
