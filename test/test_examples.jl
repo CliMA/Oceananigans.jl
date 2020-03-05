@@ -42,7 +42,7 @@ end
             ("mp4(", "# mp4(")
         ]
 
-        @test_skip run_example(replace_strings, "one_dimensional_diffusion")
+        @test run_example(replace_strings, "one_dimensional_diffusion")
     end
 
     @testset "Two-dimensional turbulence example" begin
@@ -55,7 +55,7 @@ end
             ("mp4(", "# mp4(")
         ]
 
-        @test_skip run_example(replace_strings, "two_dimensional_turbulence")
+        @test run_example(replace_strings, "two_dimensional_turbulence")
     end
 
     for arch in archs
@@ -74,7 +74,7 @@ end
                 push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
             end
 
-            @test_skip run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
+            @test run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
 
             rm("ocean_wind_mixing_and_convection.jld2", force=true)
         end
@@ -91,7 +91,7 @@ end
             ("mp4(", "# mp4(")
         ]
 
-        @test_skip run_example(replace_strings, "ocean_convection_with_plankton")
+        @test run_example(replace_strings, "ocean_convection_with_plankton")
     end
 
     @testset "Internal wave example" begin
@@ -105,7 +105,7 @@ end
             ("mp4(", "# mp4(")
         ]
 
-        @test_skip run_example(replace_strings, "internal_wave")
+        @test run_example(replace_strings, "internal_wave")
     end
 
     @testset "Eady turbulence" begin
