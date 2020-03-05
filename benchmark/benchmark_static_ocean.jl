@@ -26,13 +26,13 @@ for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
 
-    model = Model(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)))
-    time_step!(model, Ni, 1)
+    model = IncompressibleModel(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)))
+    time_step!(model, 1)
 
     bname =  benchmark_name(N, "", arch, float_type)
     @printf("Running static ocean benchmark: %s...\n", bname)
     for i in 1:Nt
-        @timeit timer bname time_step!(model, 1, 1)
+        @timeit timer bname time_step!(model, 1)
     end
 end
 
