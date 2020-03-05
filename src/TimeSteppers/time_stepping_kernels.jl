@@ -45,13 +45,8 @@ end
 """ Calculate the right-hand-side of the u-momentum equation. """
 function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gu[i, j, k] = ( - div_ũu(i, j, k, grid, U)
-                                  - x_f_cross_U(i, j, k, grid, coriolis, U)
-                                  - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
-                                  + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
-                                  + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  + ∂t_uˢ(i, j, k, grid, surface_waves, time)
-                                  + F.u(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gu[i, j, k] = x_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                                                    closure, U, C, K, F, pHY′, parameters, time)
     end
     return nothing
 end
@@ -59,13 +54,8 @@ end
 """ Calculate the right-hand-side of the v-momentum equation. """
 function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gv[i, j, k] = ( - div_ũv(i, j, k, grid, U)
-                                  - y_f_cross_U(i, j, k, grid, coriolis, U)
-                                  - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
-                                  + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
-                                  + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  + ∂t_vˢ(i, j, k, grid, surface_waves, time)
-                                  + F.v(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gv[i, j, k] = y_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                                                    closure, U, C, K, F, pHY′, parameters, time)
     end
     return nothing
 end
@@ -73,12 +63,8 @@ end
 """ Calculate the right-hand-side of the w-momentum equation. """
 function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gw[i, j, k] = ( - div_ũw(i, j, k, grid, U)
-                                  - z_f_cross_U(i, j, k, grid, coriolis, U)
-                                  + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
-                                  + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-                                  + ∂t_wˢ(i, j, k, grid, surface_waves, time)
-                                  + F.w(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gw[i, j, k] = z_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                                                    closure, U, C, K, F, parameters, time)
     end
     return nothing
 end
@@ -86,9 +72,8 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
     @loop_xyz i j k grid begin
-        @inbounds Gc[i, j, k] = (- div_uc(i, j, k, grid, U, c)
-                                 + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
-                                 + Fc(i, j, k, grid, time, U, C, parameters))
+        @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, c, tracer_index,
+                                                closure, buoyancy, U, C, K, Fc, parameters, time)
     end
     return nothing
 end
