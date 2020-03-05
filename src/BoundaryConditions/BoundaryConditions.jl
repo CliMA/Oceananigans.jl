@@ -31,5 +31,6 @@ include("zero_halo_regions.jl")
 
 include("apply_flux_bcs.jl")
 include("apply_value_gradient_bcs.jl")
+include("apply_no_penetration_bcs.jl")
 
 end

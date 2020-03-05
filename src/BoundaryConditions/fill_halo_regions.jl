@@ -10,7 +10,7 @@ fill_halo_regions!(::Nothing, args...) = nothing
 Fill halo regions for each field in the tuple `fields` according to their boundary
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
-function fill_halo_regions!(fields::Union{Tuple,NamedTuple}, arch, args...)
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
     for field in fields
         fill_halo_regions!(field, arch, args...)
     end
@@ -57,18 +57,7 @@ _fill_bottom_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, 1:H] = c.parent[:,
 _fill_north_halo!(c, ::PBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
   _fill_top_halo!(c, ::PBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
-# Recall that, by convention, the first grid point (k=1) in an array with a no-penetration boundary
-# condition lies on the boundary, where as the last grid point (k=Nz) lies in the domain.
-
-  _fill_west_halo!(c, ::NPBC, H, N) = @views @. c.parent[1:1+H, :, :] = 0
- _fill_south_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, 1:1+H, :] = 0
-_fill_bottom_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, 1:1+H] = 0
-
- _fill_east_halo!(c, ::NPBC, H, N) = @views @. c.parent[N+H+1:N+2H, :, :] = 0
-_fill_north_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, N+H+1:N+2H, :] = 0
-  _fill_top_halo!(c, ::NPBC, H, N) = @views @. c.parent[:, :, N+H+1:N+2H] = 0
-
-# Generate functions that implement flux, periodic, and no-penetration boundary conditions
+# Generate functions that implement flux and periodic boundary conditions
 sides = (:west, :east, :south, :north, :top, :bottom)
 coords = (:x, :x, :y, :y, :z, :z)
 
@@ -78,7 +67,7 @@ for (x, side) in zip(coords, sides)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
     @eval begin
-        $outername(c, bc::Union{FBC, PBC, NPBC}, arch, grid, args...) =
+        $outername(c, bc::Union{FBC, PBC}, arch, grid, args...) =
             $innername(c, bc, grid.$(H), grid.$(N))
     end
 end

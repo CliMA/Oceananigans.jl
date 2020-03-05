@@ -3,7 +3,7 @@ module Utils
 export
     second, minute, hour, day, meter, kilometer,
     KiB, MiB, GiB, TiB,
-    @loop_xyz, @loop_xy, @loop_xz,
+    @loop_xyz, @loop_xy, @loop_xz, @loop_yz,
     launch_config,
     cell_advection_timescale,
     TimeStepWizard, update_Δt!,
