@@ -1,6 +1,6 @@
 """
-    x_velocity_tendency(i, j, k, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′,
-                        parameters, time)
+    x_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                        closure, U, C, K, F, pHY′, parameters, time)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
 direction, ``u``, at grid point `i, j, k`.
@@ -34,8 +34,8 @@ and `time` is the physical time of the model.
 end
 
 """
-    y_velocity_tendency(i, j, k, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′,
-                        parameters, time)
+    y_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                        closure, U, C, K, F, pHY′, parameters, time)
 
 Return the tendency for the horizontal velocity in the y-direction, or the north-south 
 direction, ``v``, at grid point `i, j, k`.
@@ -69,9 +69,9 @@ and `time` is the physical time of the model.
 end
 
 """
-    z_velocity_tendency(i, j, k, grid, coriolis, surface_waves, closure, U, C, K, F,
-                        parameters, time)
-
+    z_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+                        closure, U, C, K, F, parameters, time)
+                        
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 The tendency for ``w`` is called ``G_w`` and defined via
 
