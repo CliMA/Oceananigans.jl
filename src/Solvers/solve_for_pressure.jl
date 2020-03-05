@@ -1,6 +1,6 @@
 using Oceananigans.Operators
 
-function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
+function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
     if solver.type isa Channel && arch isa GPU
         ϕ = RHS = solver.storage.storage1
     else
@@ -8,7 +8,7 @@ function solve_for_pressure!(pressure, solver, arch, grid, U, G, Δt)
     end
 
     @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_pressure_right_hand_side!(RHS, solver.type, arch, grid, U, G, Δt))
+            calculate_pressure_right_hand_side!(RHS, solver.type, arch, grid, Δt, U★))
 
     solve_poisson_equation!(solver, grid)
 
@@ -26,12 +26,11 @@ pressure and in the process apply the permutation
 
 along any direction we need to perform a GPU fast cosine transform algorithm.
 """
-function calculate_pressure_right_hand_side!(RHS, solver_type, arch, grid, U, G, Δt)
+function calculate_pressure_right_hand_side!(RHS, solver_type, arch, grid, Δt, U★)
     @loop_xyz i j k grid begin
         i′, j′, k′ = permute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
 
-        @inbounds RHS[i′, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w) / Δt +
-                                    divᶜᶜᶜ(i, j, k, grid, G.u, G.v, G.w)
+        @inbounds RHS[i′, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
     end
     return nothing
 end
