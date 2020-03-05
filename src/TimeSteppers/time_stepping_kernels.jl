@@ -3,7 +3,9 @@
 #####
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_source_terms!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, U, C, pHY′, K, F, parameters, time)
+function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, 
+                                          U, C, pHY′, K, F, parameters, time)
+
     # Manually choose thread-block layout here as it's ~20% faster.
     # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -92,7 +94,7 @@ function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_source_terms!(Gⁿ, arch, U, C, args...)
+function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, args...)
 
     # Velocity fields
     for i in 1:3
