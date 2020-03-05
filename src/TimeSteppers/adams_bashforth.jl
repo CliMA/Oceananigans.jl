@@ -51,9 +51,9 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     ab2_update_source_terms!(Gⁿ, model.architecture, model.grid, χ, G⁻)
 
-    calculate_pressure_correction!(pressures.pNHS, Δt, Gⁿ, velocities, model)
-
     ab2_update_predictor_velocities!(predictor_velocities, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
+
+    calculate_pressure_correction!(pressures.pNHS, Δt, predictor_velocities, model)
 
     ab2_time_step_velocities!(velocities, tracers, model.architecture,
                               model.grid, Δt, Gⁿ, pressures.pNHS)

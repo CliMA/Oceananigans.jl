@@ -122,13 +122,13 @@ end
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
-    velocity_tendencies = (u=model.timestepper.Gⁿ.u, v=model.timestepper.Gⁿ.v, w=model.timestepper.Gⁿ.w)
-
-    fill_halo_regions!(velocity_tendencies, model.architecture)
+#function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
+function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
+    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture,
+                       boundary_condition_function_arguments(model)...)
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
-                        model.architecture, model.grid, velocities, tendencies, Δt)
+                        model.architecture, model.grid, Δt, predictor_velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
