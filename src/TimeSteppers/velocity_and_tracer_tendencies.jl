@@ -1,5 +1,5 @@
 """
-    x_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                         closure, U, C, K, F, pHY′, parameters, time)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
@@ -21,7 +21,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `time` is the physical time of the model.
 """
-@inline function x_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, parameters, time)
 
     return ( - div_ũu(i, j, k, grid, U)
@@ -34,7 +34,7 @@ and `time` is the physical time of the model.
 end
 
 """
-    y_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                         closure, U, C, K, F, pHY′, parameters, time)
 
 Return the tendency for the horizontal velocity in the y-direction, or the north-south 
@@ -56,7 +56,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `time` is the physical time of the model.
 """
-@inline function y_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, parameters, time)
 
     return ( - div_ũv(i, j, k, grid, U)
@@ -69,7 +69,7 @@ and `time` is the physical time of the model.
 end
 
 """
-    z_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                         closure, U, C, K, F, parameters, time)
                         
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
@@ -89,7 +89,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `time` is the physical time of the model.
 """
-@inline function z_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
                                      closure, U, C, K, F, parameters, time)
 
     return ( - div_ũw(i, j, k, grid, U)
