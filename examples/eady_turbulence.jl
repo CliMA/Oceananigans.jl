@@ -135,13 +135,13 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 # Our use of biharmonic diffusivity means we must instantiate the model grid
 # with halos of size `(2, 2, 2)` in `(x, y, z)`.
 
-model = Model( grid = grid,
+model = IncompressibleModel( grid = grid,
        architecture = CPU(),
            coriolis = FPlane(f=f),
            buoyancy = BuoyancyTracer(), tracers = :b,
             forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
             closure = closure,
-boundary_conditions = SolutionBoundaryConditions(grid, u=ubcs, v=vbcs, b=bbcs),
+boundary_conditions = (u=ubcs, v=vbcs, b=bbcs),
 # "parameters" is a NamedTuple of user-defined parameters that can be used in boundary condition and forcing functions.
          parameters = merge(bc_parameters, forcing_parameters))
 
@@ -187,8 +187,8 @@ wizard = TimeStepWizard(cfl=0.05, Δt=20.0, max_change=1.1, max_Δt=min(1/10f, �
 # for plotting purposes.
 
 u, v, w = model.velocities
-ζ = Field(Face, Face, Cell, model.architecture, model.grid)
-δ = Field(Cell, Cell, Cell, model.architecture, model.grid)
+ζ = Field(Face, Face, Cell, model.architecture, model.grid, TracerBoundaryConditions(grid))
+δ = Field(Cell, Cell, Cell, model.architecture, model.grid, TracerBoundaryConditions(grid))
 
 vertical_vorticity = Computation(∂x(v) - ∂y(u), ζ)
         divergence = Computation(-∂z(w), δ)
@@ -269,7 +269,11 @@ while model.clock.time < end_time
     update_Δt!(wizard, model)
 
     ## Time step the model forward
-    walltime = Base.@elapsed time_step!(model, 10, wizard.Δt)
+    walltime = Base.@elapsed begin
+        for n in 1:10
+            time_step!(model, wizard.Δt, euler = n==1)
+        end
+    end
 
     ## Print a progress message
     @printf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
