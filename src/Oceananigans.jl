@@ -105,6 +105,11 @@ A type describing the location at the face of a grid cell.
 """
 struct Face end
 
+# placeholders
+function xnode end
+function ynode end
+function znode end
+
 """
     AbstractDiagnostic
 

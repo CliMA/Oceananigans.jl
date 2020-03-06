@@ -4,6 +4,7 @@ using Base: @propagate_inbounds
 import Adapt
 using OffsetArrays
 
+import Oceananigans: xnode, ynode, znode
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
 import Oceananigans.Grids: total_size, topology
