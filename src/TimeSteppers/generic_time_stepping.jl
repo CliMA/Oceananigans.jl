@@ -44,16 +44,31 @@ contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
 
-    calculate_interior_source_terms!(
-        tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
-        model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
-        diffusivities, model.forcing, model.parameters, model.clock.time
-    )
+    # Note:
+    #
+    # "tendencies" is a NamedTuple of OffsetArrays corresponding to the tendency data for use
+    # in GPU computations.
+    #
+    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
+    # tendency data.
+    
+    # Arguments needed to calculate tendencies for momentum and tracers
+    tendency_calculation_args = (tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
+                                 model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
+                                 diffusivities, model.forcing, model.parameters, model.clock.time)
 
-    calculate_boundary_source_terms!(
+    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
+    # interior of the domain
+    calculate_interior_tendency_contributions!(tendency_calculation_args...)
+
+    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
+    # boundaries of the domain
+    calculate_boundary_tendency_contributions!(
         model.timestepper.Gⁿ, model.architecture, model.velocities,
-        model.tracers, boundary_condition_function_arguments(model)...
-    )
+        model.tracers, boundary_condition_function_arguments(model)...)
+
+    # Calculate momentum tendencies on boundaries in `Bounded` directions.
+    calculate_velocity_tendencies_on_boundaries!(tendency_calculation_args...)
 
     return nothing
 end
