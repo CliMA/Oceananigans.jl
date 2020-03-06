@@ -68,7 +68,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
         model.tracers, boundary_condition_function_arguments(model)...)
 
     # Calculate momentum tendencies on boundaries in `Bounded` directions.
-    #calculate_momentum_tendencies_on_boundaries!(tendency_calculation_args...)
+    calculate_velocity_tendencies_on_boundaries!(tendency_calculation_args...)
 
     return nothing
 end
