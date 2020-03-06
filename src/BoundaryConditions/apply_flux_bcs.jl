@@ -33,6 +33,13 @@ function apply_y_bcs!(Gc, c, arch, args...)
     return nothing
 end
 
+# Avoid some computation / memory accesses for Value, Gradient, Periodic, NoPenetration,
+# and no-flux boundary conditions --- every boundary condition that does *not* prescribe
+# a non-trivial flux.
+const NotFluxBC = Union{VBC, GBC, PBC, NPBC, NFBC}
+@inline _apply_z_bcs!(Gc, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
+@inline _apply_y_bcs!(Gc, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
+
 """
     _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
 
