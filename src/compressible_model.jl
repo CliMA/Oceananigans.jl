@@ -6,13 +6,15 @@ using Oceananigans.Forcing: zeroforcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, Ω, D, M, T, K, Θ, G, X, C, P, F, S, R, I, W} <: AbstractModel
+mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, P, F, S, R, I, W} <: AbstractModel
               architecture :: A
                       grid :: Ω
                      clock :: Clock{FT}
              total_density :: D
                    momenta :: M
+                velocities :: V
                    tracers :: T
+              lazy_tracers :: L
              diffusivities :: K
     thermodynamic_variable :: Θ
                      gases :: G
@@ -61,10 +63,14 @@ function CompressibleModel(;
     closure = with_tracers(tracernames, closure)
     total_density = CellField(architecture, grid)
 
+    velocities = LazyVelocityFields(architecture, grid, total_density, momenta)
+    lazy_tracers = LazyTracerFields(architecture, grid, total_density, tracers)
+
     return CompressibleModel(
-        architecture, grid, clock, total_density, momenta, tracers, diffusivities,
-        thermodynamic_variable, gases, gravity, coriolis, closure, microphysics,
-        forcing, slow_forcings, right_hand_sides, intermediate_variables, acoustic_time_stepper)
+        architecture, grid, clock, total_density, momenta, velocities, tracers,
+        lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
+        coriolis, closure, microphysics, forcing, slow_forcings, right_hand_sides,
+        intermediate_variables, acoustic_time_stepper)
 end
 
 using Oceananigans.Grids: short_show

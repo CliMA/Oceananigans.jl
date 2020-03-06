@@ -86,8 +86,8 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
 
     # Save hydrostatic base state
     ρʰᵈ = interiorxz(model.total_density)
-    tvar isa Energy  && (ρeʰᵈ = interiorxz(model.tracers.ρe))
-    tvar isa Entropy && (ρsʰᵈ = interiorxz(model.tracers.ρs))
+    tvar isa Energy  && (eʰᵈ = interiorxz(model.lazy_tracers.e))
+    tvar isa Entropy && (sʰᵈ = interiorxz(model.lazy_tracers.s))
 
     # Set initial state (which includes the thermal perturbation)
     set!(model.tracers.ρ, ρᵢ)
@@ -103,12 +103,12 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
         savefig(ρ_plot, "rho_prime_initial_condition_with_$(typeof(tvar)).png")
 
         if tvar isa Energy
-            e_slice = rotr90(interiorxz(model.tracers.ρe) ./ interiorxz(model.total_density))
+            e_slice = rotr90(interiorxz(model.lazy_tracers.e))
             e_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, e_slice,
                              fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
             savefig(e_plot, "energy_initial_condition.png")
         elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
+            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
             s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
                              fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
             savefig(s_plot, "entropy_initial_condition.png")
@@ -125,7 +125,7 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
     tvar isa Entropy && (ρ̄s̄ᵢ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz))
 
     if tvar isa Energy
-        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρeʰᵈ=ρeʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄ēᵢ=ρ̄ēᵢ)
+        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, eʰᵈ=eʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄ēᵢ=ρ̄ēᵢ)
     elseif tvar isa Entropy
         sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄s̄ᵢ=ρ̄s̄ᵢ)
     end
@@ -135,8 +135,8 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
     run!(simulation)
 
     # Print min/max of ρ′ and w at t = 1000.
-    ρ′₁₀₀₀ = (interiorxz(model.tracers.ρ) .- ρʰᵈ)
-    w₁₀₀₀  = (interiorxz(model.momenta.ρw) ./ interiorxz(model.tracers.ρ))
+    ρ′₁₀₀₀ = interiorxz(model.tracers.ρ) .- ρʰᵈ
+    w₁₀₀₀  = interiorxz(model.velocities.w)
 
     @printf("ρ′(t=1000): min=%.2e, max=%.2e\n", minimum(ρ′₁₀₀₀), maximum(ρ′₁₀₀₀))
     @printf(" w(t=1000): min=%.2e, max=%.2e\n", minimum(w₁₀₀₀), maximum(w₁₀₀₀))
@@ -164,7 +164,7 @@ function print_progress_and_make_plots(simulation)
     Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
 
     if tvar isa Energy
-        make_plots, ρʰᵈ, ρeʰᵈ, ρ̄ᵢ, ρ̄ēᵢ = simulation.parameters
+        make_plots, ρʰᵈ, eʰᵈ, ρ̄ᵢ, ρ̄ēᵢ = simulation.parameters
     elseif tvar isa Entropy
         make_plots, ρʰᵈ, ρ̄ᵢ, ρ̄s̄ᵢ = simulation.parameters
     end
@@ -185,24 +185,24 @@ function print_progress_and_make_plots(simulation)
         xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
         xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
 
-        u_slice = rotr90(interiorxz(model.momenta.ρu) ./ interiorxz(model.total_density))
-        w_slice = rotr90(interiorxz(model.momenta.ρw) ./ interiorxz(model.total_density))
+        u_slice = rotr90(interiorxz(model.velocities.u))
+        w_slice = rotr90(interiorxz(model.velocities.w))
         ρ_slice = rotr90(interiorxz(model.total_density) .- ρʰᵈ)
 
         u_title = @sprintf("u, t = %d s", round(Int, model.clock.time))
         u_plot = heatmap(xC, zC, u_slice, title=u_title, fill=true, levels=50,
                          xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
-        w_plot = heatmap(xC, zC, w_slice, title="w", fill=true, levels=50,
+        w_plot = heatmap(xC, zF, w_slice, title="w", fill=true, levels=50,
                          xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-10, 10))
         ρ_plot = heatmap(xC, zC, ρ_slice, title="rho_prime", fill=true, levels=50,
                          xlims=(-5, 5), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
 
         if tvar isa Energy
-            e_slice = rotr90((interiorxz(model.tracers.ρe) .- ρeʰᵈ) ./ interiorxz(model.total_density))
+            e_slice = rotr90((interiorxz(model.lazy_tracers.e) .- eʰᵈ) ./ interiorxz(model.total_density))
             tvar_plot = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
                                 xlims=(-5, 5), color=:oxy_r, linecolor=nothing, clims = (0, 1200))
         elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.tracers.ρs) ./ interiorxz(model.total_density))
+            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
             tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
                                 xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims=(99, 105))
         end
