@@ -223,11 +223,11 @@ function makeplot!(axs, model)
     yC_xy = repeat(reshape(model.grid.yC, 1, ny), nx, 1)
     yF_xy = repeat(reshape(model.grid.yF[1:end-1], 1, ny), nx, 1)
 
-    xC_xz = repeat(reshape(model.grid.xC, nx, 1), 1, nz)
+    xC_xz = repeat(reshape(model.grid.xC, nx, 1), 1, nz+1)
     xF_xz = repeat(reshape(model.grid.xF[1:end-1], nx, 1), 1, nz)
 
-    zC_xz = repeat(reshape(model.grid.zC, 1, nz), nx, 1)
-    zF_xz = repeat(reshape(model.grid.zF[1:end-1], 1, nz), nx, 1)
+    zC_xz = repeat(reshape(model.grid.zC, 1, nz),   nx, 1)
+    zF_xz = repeat(reshape(model.grid.zF, 1, nz+1), nx, 1)
 
     compute!(vertical_vorticity)
     compute!(divergence)
