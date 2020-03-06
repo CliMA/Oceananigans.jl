@@ -69,7 +69,7 @@ nothing # hide
 # use temperature as a buoyancy tracer, and use a small constant viscosity
 # and diffusivity to stabilize the model.
 
-model = Model(
+model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(Nx, 1, Nx), length=(Lx, Lx, Lx)),
      closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
     coriolis = FPlane(f=f),
