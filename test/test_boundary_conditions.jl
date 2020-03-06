@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: PBC, NFBC, NPBC
 
-function test_boundary_function(B, X1, X2, func)
+function instantiate_boundary_function(B, X1, X2, func)
     boundary_function = BoundaryFunction{B, X1, X2}(func)
     return true
 end
@@ -14,7 +14,7 @@ end
         simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
         for B in (:x, :y, :z)
             for X1 in (:Face, :Cell)
-                @test test_boundary_function(B, X1, Cell, simple_bc)
+                @test instantiate_boundary_function(B, X1, Cell, simple_bc)
             end
         end
     end
