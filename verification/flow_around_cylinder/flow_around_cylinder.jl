@@ -19,8 +19,8 @@ domain = (x=(-3R, 3R), y=(-1, 1), z=(-3R, 3R))
 N = Nx = Nz = 256
 grid = RegularCartesianGrid(topology=topology, size=(Nx, 1, Nz); domain...)
 
-@inline radius(x, y) = x^2 + y^2
-@inline boundary(x, y, z) = radius(x, y) <= R ? 1.0 : 0.0
+@inline radius(x, z) = x^2 + z^2
+@inline boundary(x, y, z) = radius(x, z) <= R ? 1.0 : 0.0
 
 # Continuous forcing immersed boundary method
 @inline u_immersed_boundary(i, j, k, grid, t, U, C, p) = @inbounds - boundary(grid.xF[i], grid.yC[j], grid.zC[k]) * p.K * U.u[i, j, k]
@@ -29,7 +29,7 @@ grid = RegularCartesianGrid(topology=topology, size=(Nx, 1, Nz); domain...)
 
 @inline w_immersed_boundary(i, j, k, grid, t, U, C, p) = @inbounds - boundary(grid.xC[i], grid.yC[j], grid.zF[k]) * p.K * U.w[i, j, k]
 
-K = 10.0 # "Spring constant" for immersed boundary method
+K = 1.0 # "Spring constant" for immersed boundary method
 parameters = (K=K, U∞=U)
 forcing = ModelForcing(u=u_forcing, w=w_immersed_boundary)
 
@@ -42,9 +42,7 @@ model = IncompressibleModel(
     closure = ConstantIsotropicDiffusivity(ν=0)
 )
 
-set!(model, u=U)
-
-Δt = 0.2 * model.grid.Δx / U
+Δt = 0.1 * model.grid.Δx / U
 cfl = AdvectiveCFL(Δt)
 
 function print_progress(simulation)
@@ -62,11 +60,12 @@ function print_progress(simulation)
             progress, i, t, umax, wmax, cfl(model), simulation.Δt)
 end
 
-simulation = Simulation(model, Δt=Δt, stop_time=1, progress=print_progress)
+simulation = Simulation(model, Δt=Δt, stop_time=100, progress=print_progress, progress_frequency=10)
 
-fields = Dict("u" => model.velocities.u, "v" => model.velocities.v)
+fields = Dict("u" => model.velocities.u, "w" => model.velocities.w)
 simulation.output_writers[:fields] =
     NetCDFOutputWriter(model, fields, interval=0.1, filename="flow_around_cylinder.nc")
 
+print_progress(simulation)
 run!(simulation)
 
