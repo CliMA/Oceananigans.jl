@@ -11,7 +11,7 @@ using Oceananigans.OutputWriters
 
 const U = 1.0  # Mean flow
 const R = 1.0  # Radius of the cylinder
-const Re = 100.0  # Reynolds number
+const Re = 1000.0  # Reynolds number
 
 topology = (Periodic, Flat, Bounded)
 domain = (x=(-3R, 15R), y=(-1, 1), z=(-3R, 3R))
@@ -51,6 +51,7 @@ function print_progress(simulation)
 
     # Hack? Set u = U on the left to satisfy far field boundary conditions.
     model.velocities.u.data[1, :, 1:model.grid.Nz] .= U
+    model.velocities.w.data[1, :, 1:model.grid.Nz+1] .= 0
 
     # Calculate simulation progress in %.
     progress = 100 * (model.clock.time / simulation.stop_time)
