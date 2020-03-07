@@ -1,8 +1,3 @@
-"""
-Potential flow around a circular cylinder using a continuous forcing immersed boundary method
-See: https://en.wikipedia.org/wiki/Potential_flow_around_a_circular_cylinder
-"""
-
 using Printf
 
 using Oceananigans
