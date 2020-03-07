@@ -25,14 +25,11 @@ grid = RegularCartesianGrid(topology=topology, size=(Nx, 1, Nz); domain...)
 
 # Continuous forcing immersed boundary method
 @inline u_immersed_boundary(i, j, k, grid, t, U, C, p) = @inbounds -boundary(grid.xF[i], grid.yC[j], grid.zC[k]) * p.K * U.u[i, j, k]
-@inline u_far_field(i, j, k, grid, t, U, C, p) = @inbounds ifelse(grid.xF[i] <= -2R || grid.xF[i] >= 12R, -p.K * (U.u[i, j, k] - p.U∞), 0)
-@inline u_forcing(args...) = u_immersed_boundary(args...) + u_far_field(args...)
-
 @inline w_immersed_boundary(i, j, k, grid, t, U, C, p) = @inbounds -boundary(grid.xC[i], grid.yC[j], grid.zF[k]) * p.K * U.w[i, j, k]
 
-K = 10.0 # "Spring constant" for immersed boundary method
-parameters = (K=K, U∞=U)
-forcing = ModelForcing(u=u_forcing, w=w_immersed_boundary)
+K = 50.0 # "Spring constant" for immersed boundary method
+parameters = (K=K,)
+forcing = ModelForcing(u=u_immersed_boundary, w=w_immersed_boundary)
 
 model = IncompressibleModel(
           grid = grid,
@@ -52,6 +49,9 @@ cfl = AdvectiveCFL(Δt)
 function print_progress(simulation)
     model = simulation.model
 
+    # Hack? Set u = U on the left to satisfy far field boundary conditions.
+    model.velocities.u.data[1, :, 1:model.grid.Nz] .= U
+
     # Calculate simulation progress in %.
     progress = 100 * (model.clock.time / simulation.stop_time)
 
@@ -64,7 +64,7 @@ function print_progress(simulation)
             progress, i, t, umax, wmax, cfl(model), simulation.Δt)
 end
 
-simulation = Simulation(model, Δt=Δt, stop_time=100, progress=print_progress, progress_frequency=10)
+simulation = Simulation(model, Δt=Δt, stop_time=100, progress=print_progress, progress_frequency=1)
 
 fields = Dict("u" => model.velocities.u, "w" => model.velocities.w)
 simulation.output_writers[:fields] =
