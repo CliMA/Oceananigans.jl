@@ -25,7 +25,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 Adapt = "^1"
 CUDAapi = "^1.1, ^2"
-CUDAdrv = "^3.1, ^5"
+CUDAdrv = "^3.1, ^5, 6.0"
 CUDAnative = "^2.3"
 CuArrays = "^1.2"
 FFTW = "^1"
