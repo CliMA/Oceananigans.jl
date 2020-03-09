@@ -32,7 +32,7 @@ end
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
-    if length(closure.κ) == 0
+    if length(closure.κh) == 0
         return min(Δz^4 / closure.νv, Δh^4 / closure.νh)
     else
         max_κh = maximum(closure.κh)
