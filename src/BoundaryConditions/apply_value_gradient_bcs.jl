@@ -36,8 +36,8 @@ end
 @inline bottom_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 @inline    top_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
-@inline  left_gradient(bc::VBC, c¹, Δ, i, k, args...) = ( c¹ - getbc(bc, i, k, args...) ) / (Δ/2)
-@inline right_gradient(bc::VBC, cᴺ, Δ, i, k, args...) = ( getbc(bc, i, k, args...) - cᴺ ) / (Δ/2)
+@inline south_gradient(bc::VBC, c¹, Δ, i, k, args...) = ( c¹ - getbc(bc, i, k, args...) ) / (Δ/2)
+@inline north_gradient(bc::VBC, cᴺ, Δ, i, k, args...) = ( getbc(bc, i, k, args...) - cᴺ ) / (Δ/2)
 
 function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, args...)
     @loop_xy i j grid begin
