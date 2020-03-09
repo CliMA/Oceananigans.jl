@@ -26,6 +26,7 @@ function cell_diffusion_timescale(closure::ConstantAnisotropicDiffusivity, diffu
         max_κv = maximum(closure.κv)
         return min(Δz^2 / closure.νv, Δh^2 / closure.νh,
                    Δz^2 / max_κv, Δh^2 / max_κh)
+    end
 end
 
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
