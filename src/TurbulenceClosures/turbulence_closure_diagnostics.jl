@@ -8,26 +8,37 @@ cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.
 "Returns the time-scale for diffusion on a regular grid across a single grid cell."
 function cell_diffusion_timescale(closure::ConstantIsotropicDiffusivity, diffusivities, grid)
     Δ = min_Δxyz(grid)
-    max_κ = maximum(closure.κ)
-    return min(Δ^2 / closure.ν, Δ^2 / max_κ)
+    if length(closure.κ) == 0
+        return Δ^2 / closure.ν
+    else
+        max_κ = maximum(closure.κ)
+        return min(Δ^2 / closure.ν, Δ^2 / max_κ)
+    end
 end
 
 function cell_diffusion_timescale(closure::ConstantAnisotropicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
-    max_κh = maximum(closure.κh)
-    max_κv = maximum(closure.κv)
-    return min(Δz^2 / closure.νv, Δh^2 / closure.νh,
-               Δz^2 / max_κv, Δh^2 / max_κh)
+    if length(closure.κ) == 0
+        return min(Δz^2 / closure.νv, Δh^2 / closure.νh)
+    else
+        max_κh = maximum(closure.κh)
+        max_κv = maximum(closure.κv)
+        return min(Δz^2 / closure.νv, Δh^2 / closure.νh,
+                   Δz^2 / max_κv, Δh^2 / max_κh)
 end
 
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
-    max_κh = maximum(closure.κh)
-    max_κv = maximum(closure.κv)
-    return min(Δz^4 / closure.νv, Δh^4 / closure.νh,
-               Δz^4 / max_κv, Δh^4 / max_κh)
+    if length(closure.κ) == 0
+        return min(Δz^4 / closure.νv, Δh^4 / closure.νh)
+    else
+        max_κh = maximum(closure.κh)
+        max_κv = maximum(closure.κv)
+        return min(Δz^4 / closure.νv, Δh^4 / closure.νh,
+                   Δz^4 / max_κv, Δh^4 / max_κh)
+    end
 end
 
 function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivities, grid)
