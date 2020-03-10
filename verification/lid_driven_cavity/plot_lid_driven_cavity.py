@@ -35,6 +35,8 @@ y_ζ_Ghia = [0.0000, 0.0625, 0.1250, 0.1875, 0.2500, 0.3125, 0.3750, 0.4375, 0.5
 
 def plot_velocity_frame(Re, n):
     ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
+    Ny = ds.yC.size
+    Nz = ds.zC.size
 
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(16, 9), dpi=200)
     plt.subplots_adjust(hspace=0.25)
@@ -43,7 +45,7 @@ def plot_velocity_frame(Re, n):
     ax_v_line, ax_v_mesh = axes[0, 0], axes[0, 1]
     ax_w_line, ax_w_mesh = axes[1, 0], axes[1, 1]
 
-    v_line = ds.v.isel(time=n, yF=64)
+    v_line = ds.v.isel(time=n, yF=Ny//2)
     ax_v_line.plot(y_Ghia, v_Ghia[Re], label="Ghia et al. (1982)", color="tab:blue", linestyle="", marker="o", fillstyle="none")
     ax_v_line.plot(ds.zC, v_line.values.flatten(), label="Oceananigans.jl", color="tab:blue")
     ax_v_line.legend(loc="lower left", bbox_to_anchor=(0, 1.01, 1, 0.2), ncol=2, frameon=False)
@@ -51,7 +53,7 @@ def plot_velocity_frame(Re, n):
     ax_v_line.set_ylabel("v")
     ax_v_line.set_xlim([0, 1])
 
-    w_line = ds.w.isel(time=n, zF=64)
+    w_line = ds.w.isel(time=n, zF=Nz//2)
     ax_w_line.plot(z_Ghia, w_Ghia[Re], label="Ghia et al. (1982)", color="tab:orange", linestyle="", marker="o", fillstyle="none")
     ax_w_line.plot(ds.yC, w_line.values.flatten(), label="Oceananigans.jl", color="tab:orange")
     ax_w_line.legend(loc="lower left", bbox_to_anchor=(0, 1.01, 1, 0.2), ncol=2, frameon=False)
@@ -83,13 +85,15 @@ def plot_velocity_frame(Re, n):
 
 def plot_vorticity_frame(Re, n):
     ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
+    Ny = ds.yC.size
+    Nz = ds.zC.size
 
     fig, axes = plt.subplots(ncols=2, figsize=(16, 9), dpi=200)
     fig.suptitle(f"Lid-driven cavity, Re = {Re}, t = {ds.time[n].values:.2f}", fontsize=16)
 
     ax_line, ax_mesh = axes[0], axes[1]
 
-    ζ_line = -ds.ζ.isel(time=n, zF=127)
+    ζ_line = -ds.ζ.isel(time=n, zF=Nz-1)
     ax_line.plot(y_ζ_Ghia, ζ_Ghia[Re], label="Ghia et al. (1982)", color="tab:red", linestyle="", marker="o", fillstyle="none")
     ax_line.plot(ds.yF, ζ_line.values.flatten(), label="Oceananigans.jl", color="tab:red")
     ax_line.legend(loc="lower left", bbox_to_anchor=(0, 1.01, 1, 0.2), ncol=2, frameon=False)
@@ -102,7 +106,7 @@ def plot_vorticity_frame(Re, n):
     img_ζ = ζ.plot.pcolormesh(ax=ax_mesh, cmap=cmocean.cm.curl, extend="both", add_colorbar=False,
                               norm=colors.SymLogNorm(linthresh=1e-2, vmin=-1e2, vmax=1e2))
     fig.colorbar(img_ζ, ax=ax_mesh, extend="both")
-    ax_mesh.axhline(y=ds.zF[127], color="tab:orange", alpha=0.5)
+    ax_mesh.axhline(y=ds.zF[Nz-1], color="tab:red", alpha=0.5)
     ax_mesh.set_title("vorticity")
     ax_mesh.set_xlabel("y")
     ax_mesh.set_ylabel("z")
@@ -114,5 +118,29 @@ def plot_vorticity_frame(Re, n):
 
 Re = 100
 ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
-# plot_velocity_frame(Re, ds.time.size-1)
-plot_vorticity_frame(Re, ds.time.size-1)
+
+joblib.Parallel(n_jobs=-1)(
+    joblib.delayed(plot_velocity_frame)(Re, n)
+    for n in range(ds.time.size)
+)
+
+joblib.Parallel(n_jobs=-1)(
+    joblib.delayed(plot_vorticity_frame)(Re, n)
+    for n in range(ds.time.size)
+)
+
+(
+    ffmpeg
+    .input(f"lid_driven_cavity_velocity_Re{Re}_%05d.png", framerate=30)
+    .output(f"lid_driven_cavity_velocity_Re{Re}.mp4", crf=15, pix_fmt='yuv420p')
+    .overwrite_output()
+    .run()
+)
+
+(
+    ffmpeg
+    .input(f"lid_driven_cavity_vorticity_Re{Re}_%05d.png", framerate=30)
+    .output(f"lid_driven_cavity_vorticity_Re{Re}.mp4", crf=15, pix_fmt='yuv420p')
+    .overwrite_output()
+    .run()
+)
