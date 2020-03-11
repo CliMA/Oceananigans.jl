@@ -113,10 +113,17 @@ end
 function compute_closure_specific_diffusive_cfl(closurename)
     grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
+
     model = IncompressibleModel(grid=grid, closure=closure)
     dcfl = DiffusiveCFL(0.1)
-    dcfl(model)
-    return true  # Just make sure dcfl(model) does not error.
+    @test dcfl(model) isa Number
+
+    tracerless_model = IncompressibleModel(grid=grid, closure=closure,
+                                           buoyancy=nothing, tracers=nothing)
+    dcfl = DiffusiveCFL(0.2)
+    @test dcfl(tracerless_model) isa Number
+
+    return nothing
 end
 
 @testset "Turbulence closures" begin
@@ -171,7 +178,7 @@ end
     @testset "Diagnostics" begin
         @info "  Testing turbulence closure diagnostics..."
         for closure in closures
-            @test compute_closure_specific_diffusive_cfl(closure)
+            compute_closure_specific_diffusive_cfl(closure)
         end
     end
 end
