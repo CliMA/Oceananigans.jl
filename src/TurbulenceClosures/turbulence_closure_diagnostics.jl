@@ -42,21 +42,10 @@ end
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
     Δh = min_Δxy(grid)
     Δz = min_Δz(grid)
-<<<<<<< HEAD
-    if length(closure.κh) == 0
-        return min(Δz^4 / closure.νv, Δh^4 / closure.νh)
-    else
-        max_κh = maximum(closure.κh)
-        max_κv = maximum(closure.κv)
-        return min(Δz^4 / closure.νv, Δh^4 / closure.νh,
-                   Δz^4 / max_κv, Δh^4 / max_κh)
-    end
-=======
     max_κh = maximum(closure.κh)
     max_κv = maximum(closure.κv)
     return min(Δh^4 / closure.νh, Δz^4 / closure.νv,
                Δh^4 / max_κh, Δz^4 / max_κv)
->>>>>>> dispatch on whether `closure.κ` is an empty named tuple or not
 end
 
 function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{()}},
