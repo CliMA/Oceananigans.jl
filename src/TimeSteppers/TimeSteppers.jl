@@ -3,7 +3,8 @@ module TimeSteppers
 export
     AdamsBashforthTimeStepper,
     time_step!,
-    compute_w_from_continuity!
+    compute_w_from_continuity!,
+    tendencies
 
 using GPUifyLoops: @launch, @loop, @unroll
 
@@ -49,13 +50,11 @@ function TimeStepper(name::Symbol, args...)
     return eval(Expr(:call, fullname, args...))
 end
 
-# Fallback
+# Fallbacks
 TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
 """Returns the arguments passed to boundary conditions functions."""
-boundary_condition_function_arguments(model) =
-    (model.clock.time, model.clock.iteration, datatuple(model.velocities),
-     datatuple(model.tracers), model.parameters)
+@inline boundary_condition_function_arguments(model) = (model.clock, state(model))
 
 include("generic_time_stepping.jl")
 include("velocity_and_tracer_tendencies.jl")

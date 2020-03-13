@@ -4,39 +4,45 @@ using Oceananigans.Operators: Δx, Δy, ΔzC, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, 
 ##### Outer functions for setting velocity on boundary and filling halo beyond boundary.
 #####
 
-function fill_west_halo!(u, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. u.parent[1+grid.Hx, :, :] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :yz) _fill_west_halo!(u, bc, grid, U.v, U.w)
+function fill_west_halo!(u, bc::NPBC, arch, grid, clock, state)
+    @views @. u.parent[1 + grid.Hx, :, :] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :yz), 
+            _fill_west_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
     return nothing
 end
 
-function fill_south_halo!(v, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. v.parent[:, 1+grid.Hy, :] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :xz) _fill_south_halo!(v, bc, grid, U.u, U.w)
+function fill_south_halo!(v, bc::NPBC, arch, grid, clock, state)
+    @views @. v.parent[:, 1 + grid.Hy, :] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :xz),
+            _fill_south_halo!(v, bc, grid, state.velocities.u, state.velocities.w))
     return nothing
 end
 
-function fill_bottom_halo!(w, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. w.parent[:, :, 1+grid.Hz] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(w, bc, grid, U.u, U.v)
+function fill_bottom_halo!(w, bc::NPBC, arch, grid, clock, state)
+    @views @. w.parent[:, :, 1 + grid.Hz] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :xy),
+            _fill_bottom_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 
-function fill_east_halo!(u, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. u.parent[grid.Nx+1+grid.Hx, :, :] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :yz) _fill_east_halo!(u, bc, grid, U.v, U.w)
+function fill_east_halo!(u, bc::NPBC, arch, grid, clock, state)
+    @views @. u.parent[grid.Nx + 1 + grid.Hx, :, :] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :yz),
+            _fill_east_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
     return nothing
 end
 
-function fill_north_halo!(v, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. v.parent[:, grid.Ny+1+grid.Hy, :] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :xz) _fill_north_halo!(v, bc, grid, U.u, U.v)
+function fill_north_halo!(v, bc::NPBC, arch, grid, clock, state)
+    @views @. v.parent[:, grid.Ny + 1 + grid.Hy, :] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :xz),
+            _fill_north_halo!(v, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 
-function fill_top_halo!(w, bc::NPBC, arch, grid, time, iter, U, args...)
-    @views @. w.parent[:, :, grid.Nz+1+grid.Hz] = 0 # fix velocity on boundary
-    @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(w, bc, grid, U.u, U.v)
+function fill_top_halo!(w, bc::NPBC, arch, grid, clock, state)
+    @views @. w.parent[:, :, grid.Nz + 1 + grid.Hz] = 0 # fix velocity on boundary
+    @launch(device(arch), config=launch_config(grid, :xy),
+            _fill_bottom_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 

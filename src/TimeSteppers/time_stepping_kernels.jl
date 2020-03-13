@@ -4,7 +4,7 @@
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, 
-                                                    U, C, pHY′, K, F, parameters, time)
+                                                    U, C, pHY′, K, F, parameters, clock)
 
     # Manually choose thread-block layout here as it's ~20% faster.
     # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
@@ -22,13 +22,13 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
     end
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
+            calculate_Gu!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, clock))
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time))
+            calculate_Gv!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, clock))
 
     @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-            calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time))
+            calculate_Gw!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, clock))
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
@@ -36,7 +36,7 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
         @inbounds  c = C[tracer_index]
 
         @launch(device(arch), threads=(Tx, Ty), blocks=(Bx, By, Bz),
-                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, parameters, time))
+                calculate_Gc!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, parameters, clock))
     end
 
     return nothing
@@ -65,17 +65,17 @@ end
 """
     calculate_east_boundary_Gu!(G, arch, grid::AbstractGrid{FT, <:Bounded},
                                 coriolis, buoyancy, surface_waves, closure,
-                                U, C, pHY′, K, F, parameters, time) where FT
+                                U, C, pHY′, K, F, parameters, clock) where FT
 
 Calculate `Gu` on east boundaries when the x-direction has `Bounded` topology.
 """
 function calculate_east_boundary_Gu!(G, arch, grid::AbstractGrid{FT, <:Bounded},
                                      coriolis, buoyancy, surface_waves, closure,
-                                     U, C, pHY′, K, F, parameters, time) where FT
+                                     U, C, pHY′, K, F, parameters, clock) where FT
 
     @launch(device(arch), config=launch_config(grid, :yz), 
             _calculate_east_boundary_Gu!(G.u, grid, coriolis, surface_waves, 
-                                         closure, U, C, K, F, pHY′, parameters, time))
+                                         closure, U, C, K, F, pHY′, parameters, clock))
 
     return nothing
 end
@@ -83,17 +83,17 @@ end
 """
     calculate_north_boundary_Gu!(G, arch, grid::AbstractGrid{FT, <:Bounded},
                                  coriolis, buoyancy, surface_waves, closure,
-                                 U, C, pHY′, K, F, parameters, time) where FT
+                                 U, C, pHY′, K, F, parameters, clock) where FT
 
 Calculate `Gv` on north boundaries when the y-direction has `Bounded` topology.
 """
 function calculate_north_boundary_Gv!(G, arch, grid::AbstractGrid{FT, TX, <:Bounded},
                                       coriolis, buoyancy, surface_waves, closure,
-                                      U, C, pHY′, K, F, parameters, time) where {FT, TX}
+                                      U, C, pHY′, K, F, parameters, clock) where {FT, TX}
 
     @launch(device(arch), config=launch_config(grid, :xz), 
             _calculate_north_boundary_Gv!(G.v, grid, coriolis, surface_waves, 
-                                          closure, U, C, K, F, pHY′, parameters, time))
+                                          closure, U, C, K, F, pHY′, parameters, clock))
 
     return nothing
 end
@@ -101,17 +101,17 @@ end
 """
     calculate_top_boundary_Gw!(G, arch, grid::AbstractGrid{FT, <:Bounded},
                                coriolis, buoyancy, surface_waves, closure,
-                               U, C, pHY′, K, F, parameters, time) where FT
+                               U, C, pHY′, K, F, parameters, clock) where FT
 
 Calculate `Gw` on top boundaries when the z-direction has `Bounded` topology.
 """
 function calculate_top_boundary_Gw!(G, arch, grid::AbstractGrid{FT, TX, TY, <:Bounded},
                                     coriolis, buoyancy, surface_waves, closure,
-                                    U, C, pHY′, K, F, parameters, time) where {FT, TX, TY}
+                                    U, C, pHY′, K, F, parameters, clock) where {FT, TX, TY}
 
     @launch(device(arch), config=launch_config(grid, :xy), 
             _calculate_top_boundary_Gw!(G.w, grid, coriolis, surface_waves, 
-                                        closure, U, C, K, F, parameters, time))
+                                        closure, U, C, K, F, parameters, clock))
 
     return nothing
 end
@@ -121,21 +121,21 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
+function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, clock)
     @loop_xyz i j k grid begin
         @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, pHY′, parameters, time)
+                                                    closure, U, C, K, F, pHY′, parameters, clock)
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the u-velocity equation on the east boundary. """
 function _calculate_east_boundary_Gu!(Gu, grid, coriolis, surface_waves,
-                                      closure, U, C, K, F, pHY′, parameters, time)
+                                      closure, U, C, K, F, pHY′, parameters, clock)
     i = grid.Nx + 1
     @loop_yz j k grid begin
         @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, pHY′, parameters, time)
+                                                    closure, U, C, K, F, pHY′, parameters, clock)
     end
     return nothing
 end
@@ -145,21 +145,21 @@ end
 #####
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, time)
+function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, parameters, clock)
     @loop_xyz i j k grid begin
         @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, pHY′, parameters, time)
+                                                    closure, U, C, K, F, pHY′, parameters, clock)
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the v-velocity equation on the north boundary. """
 function _calculate_north_boundary_Gv!(Gv, grid, coriolis, surface_waves,
-                                       closure, U, C, K, F, pHY′, parameters, time)
+                                       closure, U, C, K, F, pHY′, parameters, clock)
     j = grid.Ny + 1
     @loop_xz i k grid begin
         @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, pHY′, parameters, time)
+                                                    closure, U, C, K, F, pHY′, parameters, clock)
     end
     return nothing
 end
@@ -169,20 +169,20 @@ end
 #####
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time)
+function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, clock)
     @loop_xyz i j k grid begin
         @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, parameters, time)
+                                                    closure, U, C, K, F, parameters, clock)
     end
     return nothing
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-function _calculate_top_boundary_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, time)
+function _calculate_top_boundary_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, parameters, clock)
     k = grid.Nz + 1
     @loop_xy i j grid begin
         @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                                    closure, U, C, K, F, parameters, time)
+                                                    closure, U, C, K, F, parameters, clock)
     end
     return nothing
 end
@@ -192,10 +192,10 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, time)
+function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, parameters, clock)
     @loop_xyz i j k grid begin
         @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, c, tracer_index,
-                                                closure, buoyancy, U, C, K, Fc, parameters, time)
+                                                closure, buoyancy, U, C, K, Fc, parameters, clock)
     end
     return nothing
 end
