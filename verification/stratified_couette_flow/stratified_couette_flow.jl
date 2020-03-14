@@ -47,7 +47,7 @@ end
 
 struct NusseltNumber{H, T}
     Tavg :: H
-    θ_wall :: T
+    Θ_wall :: T
 end
 
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
@@ -58,15 +58,15 @@ function (Reτ::FrictionReynoldsNumber)(model)
 
     return h * uτ_top / ν, h * uτ_bottom / ν
 end
-
+ 
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
     κ = model.closure.κ.T
     h = model.grid.Lz / 2
 
-    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.θ_wall)
+    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.Θ_wall)
 
-    return (q_wall_top * h)/(κ * Θ_wall), (q_wall_bottom * h)/(κ * Θ_wall)
+    return (q_wall_top * h)/(κ * Nu.Θ_wall), (q_wall_bottom * h)/(κ * Nu.Θ_wall)
 end
 
 """
@@ -214,7 +214,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
 
     Reτ = FrictionReynoldsNumber(Uavg, U_wall)
-     Nu = NusseltNumber(Tavg, θ_wall)
+     Nu = NusseltNumber(Tavg, Θ_wall)
 
     statistics = Dict(
         :Re_tau => model -> Reτ(model),
