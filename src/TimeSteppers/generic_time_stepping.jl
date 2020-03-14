@@ -55,7 +55,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # Arguments needed to calculate tendencies for momentum and tracers
     tendency_calculation_args = (tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
                                  model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
-                                 diffusivities, model.forcing, model.parameters, model.clock)
+                                 diffusivities, model.forcing, model.clock)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
