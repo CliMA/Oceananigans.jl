@@ -7,9 +7,8 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
-function uτ(model, Uavg)
+function uτ(model, Uavg, U_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    U_wall = model.parameters.U_wall
     ν = model.closure.ν
 
     U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
@@ -26,9 +25,8 @@ function uτ(model, Uavg)
 end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
-function q_wall(model, Tavg)
+function q_wall(model, Tavg, Θ_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
-    Θ_wall = model.parameters.Θ_wall
     κ = model.closure.κ.T
 
     Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
@@ -42,19 +40,21 @@ function q_wall(model, Tavg)
     return q_wall_top, q_wall_bottom
 end
 
-struct FrictionReynoldsNumber{H}
+struct FrictionReynoldsNumber{H, U}
     Uavg :: H
+    U_wall :: U
 end
 
-struct NusseltNumber{H}
+struct NusseltNumber{H, T}
     Tavg :: H
+    θ_wall :: T
 end
 
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Reτ::FrictionReynoldsNumber)(model)
     ν = model.closure.ν
     h = model.grid.Lz / 2
-    uτ_top, uτ_bottom = uτ(model, Reτ.Uavg)
+    uτ_top, uτ_bottom = uτ(model, Reτ.Uavg, Reτ.U_wall)
 
     return h * uτ_top / ν, h * uτ_bottom / ν
 end
@@ -63,9 +63,8 @@ end
 function (Nu::NusseltNumber)(model)
     κ = model.closure.κ.T
     h = model.grid.Lz / 2
-    Θ_wall = model.parameters.Θ_wall
 
-    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg)
+    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.θ_wall)
 
     return (q_wall_top * h)/(κ * Θ_wall), (q_wall_bottom * h)/(κ * Θ_wall)
 end
@@ -92,8 +91,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     Θ_wall = Ri * U_wall^2 / h  # From Ri = L Θ_wall / U_wall²
          κ = ν / Pr             # From Pr = ν / κ
 
-    parameters = (U_wall=U_wall, Θ_wall=Θ_wall, Re=Re, Pr=Pr, Ri=Ri)
-
     #####
     ##### Impose boundary conditions
     #####
@@ -118,8 +115,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
                        grid = grid,
                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
                     closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
-        boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs),
-                 parameters = parameters
+        boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs)
     )
 
     #####
@@ -217,8 +213,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up statistic output writer
     #####
 
-    Reτ = FrictionReynoldsNumber(Uavg)
-     Nu = NusseltNumber(Tavg)
+    Reτ = FrictionReynoldsNumber(Uavg, U_wall)
+     Nu = NusseltNumber(Tavg, θ_wall)
 
     statistics = Dict(
         :Re_tau => model -> Reτ(model),
