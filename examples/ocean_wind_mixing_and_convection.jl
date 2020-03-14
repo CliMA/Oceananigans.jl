@@ -14,6 +14,7 @@
 # some nice features for writing output data to disk.
 
 using Random, Printf, Plots
+
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils,
       Oceananigans.BoundaryConditions
 
@@ -70,7 +71,7 @@ T_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵀ),
                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
 
 ## Salinity flux: Qˢ = - E * S
-@inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
+@inline Qˢ(i, j, grid, clock, state, p) = @inbounds -p.evaporation * state.tracers.S[i, j, 1]
 
 S_bcs = TracerBoundaryConditions(grid, top = ParameterizedBoundaryCondition(Flux, Qˢ, (evaporation=evaporation,)))
 nothing # hide
