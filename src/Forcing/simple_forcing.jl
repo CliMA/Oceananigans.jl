@@ -45,8 +45,8 @@ SimpleForcing(func::Function; kwargs...) = SimpleForcing((Cell, Cell, Cell), fun
 
 SimpleForcing(location::Tuple, forcing::SimpleForcing) = SimpleForcing(location, forcing.func)
 
-@inline (f::SimpleForcing{X, Y, Z})(i, j, k, grid, time, U, C, params) where {X, Y, Z} =
-    @inbounds f.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), time, f.parameters)
+@inline (f::SimpleForcing{X, Y, Z})(i, j, k, grid, clock, state) where {X, Y, Z} =
+    @inbounds f.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), clock.time, f.parameters)
 
-@inline (f::SimpleForcing{X, Y, Z, F, <:Nothing})(i, j, k, grid, time, U, C, params) where {X, Y, Z, F} =
-    @inbounds f.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), time)
+@inline (f::SimpleForcing{X, Y, Z, F, <:Nothing})(i, j, k, grid, clock, state) where {X, Y, Z, F} =
+    @inbounds f.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), clock.time)
