@@ -8,8 +8,10 @@
 #   * How to implement a background flow (a background geostrophic shear)
 
 using Random, Printf
+
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
-      Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions
+      Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions,
+      Oceananigans.Forcing
 
 # These imports from Oceananigans's `TurbuleneClosures` module are needed for imposing
 # a background flow as a user-defined forcing.
