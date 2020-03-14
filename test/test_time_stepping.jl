@@ -51,12 +51,13 @@ function compute_w_from_continuity(arch, FT)
     interior(U.u) .= rand(FT, Nx, Ny, Nz)
     interior(U.v) .= rand(FT, Nx, Ny, Nz)
 
-    fill_halo_regions!(U, arch, 0, 0, datatuple(U))
+    state = (velocities=datatuple(U), tracers=(), diffusivities=nothing)
+    fill_halo_regions!(U, arch, nothing, state)
 
     @launch(device(arch), config=launch_config(grid, :xy),
             _compute_w_from_continuity!((u=U.u.data, v=U.v.data, w=U.w.data), grid))
 
-    fill_halo_regions!(U, arch, 0, 0, datatuple(U))
+    fill_halo_regions!(U, arch, nothing, state)
     velocity_div!(grid, U.u.data, U.v.data, U.w.data, div_U.data)
 
     # Set div_U to zero at the top because the initial velocity field is not
