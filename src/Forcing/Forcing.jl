@@ -1,6 +1,6 @@
 module Forcing
 
-export ModelForcing, SimpleForcing
+export ModelForcing, SimpleForcing, ParameterizedForcing
 
 using Oceananigans.Fields
 
