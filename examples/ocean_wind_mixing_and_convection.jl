@@ -14,7 +14,8 @@
 # some nice features for writing output data to disk.
 
 using Random, Printf, Plots
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils,
+      Oceananigans.BoundaryConditions
 
 # ## Model parameters
 #
@@ -71,7 +72,7 @@ T_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵀ),
 ## Salinity flux: Qˢ = - E * S
 @inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
 
-S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qˢ))
+S_bcs = TracerBoundaryConditions(grid, top = ParameterizedBoundaryCondition(Flux, Qˢ, (evaporation=evaporation,)))
 nothing # hide
 
 # ## Model instantiation
@@ -84,15 +85,12 @@ nothing # hide
 # model.parameters for use in the boundary condition function that calculates the salinity
 # flux.
 
-model = IncompressibleModel(
-         architecture = CPU(),
-                 grid = grid,
-             coriolis = FPlane(f=f),
-             buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
-              closure = AnisotropicMinimumDissipation(),
-  boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs),
-           parameters = (evaporation = evaporation,)
-)
+model = IncompressibleModel(       architecture = CPU(),
+                                           grid = grid,
+                                       coriolis = FPlane(f=f),
+                                       buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
+                                        closure = AnisotropicMinimumDissipation(),
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 nothing # hide
 
 # Notes:
