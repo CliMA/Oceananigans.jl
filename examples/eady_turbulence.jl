@@ -120,7 +120,7 @@ end
 # is applied at location `(c, c, c)`.
 
 function Fb_eady_func(i, j, k, grid, clock, state, p) 
-    return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, C.b)
+    return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.tracers.b)
                       + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
 end
 
