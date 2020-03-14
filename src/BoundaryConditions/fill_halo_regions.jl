@@ -21,13 +21,13 @@ fill_halo_regions!(field, arch, args...) =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 "Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
-      fill_west_halo!(c, fieldbcs.x.left,   arch, grid, args...)
-      fill_east_halo!(c, fieldbcs.x.right,  arch, grid, args...)
-     fill_south_halo!(c, fieldbcs.y.left,   arch, grid, args...)
-     fill_north_halo!(c, fieldbcs.y.right,  arch, grid, args...)
-    fill_bottom_halo!(c, fieldbcs.z.bottom, arch, grid, args...)
-       fill_top_halo!(c, fieldbcs.z.top,    arch, grid, args...)
+function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, args...)
+      fill_west_halo!(c, fieldbcs.x.left,   arch, args...)
+      fill_east_halo!(c, fieldbcs.x.right,  arch, args...)
+     fill_south_halo!(c, fieldbcs.y.left,   arch, args...)
+     fill_north_halo!(c, fieldbcs.y.right,  arch, args...)
+    fill_bottom_halo!(c, fieldbcs.z.bottom, arch, args...)
+       fill_top_halo!(c, fieldbcs.z.top,    arch, args...)
     return nothing
 end
 
