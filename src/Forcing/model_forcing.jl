@@ -21,7 +21,7 @@ function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forc
     return merge((u=u, v=v, w=w), tracer_forcings)
 end
 
-at_location(location, u::Function) = u
+at_location(location, u) = u # Fallback
 at_location(location, u::SimpleForcing) =
     SimpleForcing{location[1], location[2], location[3]}(u.func, u.parameters)
 
