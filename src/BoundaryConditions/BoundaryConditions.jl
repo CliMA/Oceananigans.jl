@@ -10,6 +10,7 @@ export
     WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,
     DiffusivityBoundaryConditions,
     BoundaryFunction,
+    ParameterizedBoundaryCondition, ParameterizedBoundaryConditionFunction,
     apply_z_bcs!, apply_y_bcs!,
     fill_halo_regions!, zero_halo_regions!
 
@@ -24,6 +25,7 @@ include("boundary_condition.jl")
 include("coordinate_boundary_conditions.jl")
 include("field_boundary_conditions.jl")
 include("boundary_function.jl")
+include("parameterized_boundary_condition.jl")
 include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
