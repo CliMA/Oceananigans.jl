@@ -2,6 +2,8 @@ module Models
 
 export IncompressibleModel, NonDimensionalModel, Clock, tick!, state
 
+using Adapt
+
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Coriolis
