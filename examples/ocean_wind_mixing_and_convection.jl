@@ -6,7 +6,6 @@
 #   * how to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state;
 #   * how to use a turbulence closure for large eddy simulation;
 #   * how to use a function to impose a boundary condition;
-#   * how to use user-defined `model.parameters` in a boundary condition function.
 #
 # In addition to `Oceananigans.jl` we need `Plots` for plotting, `Random` for
 # generating random initial conditions, and `Printf` for printing progress messages.
@@ -82,9 +81,7 @@ nothing # hide
 # using a `FPlane` model for rotation (constant rotation rate), a linear equation
 # of state for temperature and salinity, the Anisotropic Minimum Dissipation closure
 # to model the effects of unresolved turbulence, and the previously defined boundary
-# conditions for `u`, `T`, and `S`. We also pass the evaporation rate to the container
-# model.parameters for use in the boundary condition function that calculates the salinity
-# flux.
+# conditions for `u`, `T`, and `S`.
 
 model = IncompressibleModel(       architecture = CPU(),
                                            grid = grid,
