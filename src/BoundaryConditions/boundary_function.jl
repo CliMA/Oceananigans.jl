@@ -49,9 +49,9 @@ end
 #####
 
 """ Returns the location of `loc` on the boundary `:x`, `:y`, or `:z`. """
-BoundaryLocation(::Val{:x}, loc) = (loc[2], loc[3])
-BoundaryLocation(::Val{:y}, loc) = (loc[1], loc[3])
-BoundaryLocation(::Val{:z}, loc) = (loc[1], loc[2])
+boundary_location(::Val{:x}, loc) = (loc[2], loc[3])
+boundary_location(::Val{:y}, loc) = (loc[1], loc[3])
+boundary_location(::Val{:z}, loc) = (loc[1], loc[2])
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for a tracer field. """
@@ -60,21 +60,21 @@ TracerBoundaryFunction(B, args...) = BoundaryFunction{B, Cell, Cell}(args...)
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for u, the x-velocity field. """
 function UVelocityBoundaryFunction(B, args...)
-    loc = BoundaryLocation(Val(B), (Face, Cell, Cell))
+    loc = boundary_location(Val(B), (Face, Cell, Cell))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for v, the y-velocity field. """
 function VVelocityBoundaryFunction(B, args...)
-    loc = BoundaryLocation(Val(B), (Cell, Face, Cell))
+    loc = boundary_location(Val(B), (Cell, Face, Cell))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for w, the z-velocity field. """
 function WVelocityBoundaryFunction(B, args...)
-    loc = BoundaryLocation(Val(B), (Cell, Cell, Face))
+    loc = boundary_location(Val(B), (Cell, Cell, Face))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
