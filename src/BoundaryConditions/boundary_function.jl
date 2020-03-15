@@ -31,23 +31,17 @@ struct BoundaryFunction{B, X1, X2, P, F} <: Function
     end
 end
 
-@inline (bc::BoundaryFunction{:x, Y, Z, Nothing})(j, k, grid, clock, state) where {Y, Z} =
-    bc.func(ynode(Y, j, grid), znode(Z, k, grid), clock.time)
-
-@inline (bc::BoundaryFunction{:y, X, Z, Nothing})(i, k, grid, clock, state) where {X, Z} =
-    bc.func(xnode(X, i, grid), znode(Z, k, grid), clock.time)
-
-@inline (bc::BoundaryFunction{:z, X, Y, Nothing})(i, j, grid, clock, state) where {X, Y} =
-    bc.func(xnode(X, i, grid), ynode(Y, j, grid), clock.time)
+@inline call_boundary_function(func, ξ, η, t, ::Nothing) = func(ξ, η, t)
+@inline call_boundary_function(func, ξ, η, t, parameters) = func(ξ, η, t, parameters)
 
 @inline (bc::BoundaryFunction{:x, Y, Z})(j, k, grid, clock, state) where {Y, Z} =
-    bc.func(ynode(Y, j, grid), znode(Z, k, grid), clock.time, bc.parameters)
+    call_boundary_function(bc.func, ynode(Y, j, grid), znode(Z, k, grid), clock.time, bc.parameters)
 
 @inline (bc::BoundaryFunction{:y, X, Z})(i, k, grid, clock, state) where {X, Z} =
-    bc.func(xnode(X, i, grid), znode(Z, k, grid), clock.time, bc.parameters)
+    call_boundary_function(bc.func, xnode(X, i, grid), znode(Z, k, grid), clock.time, bc.parameters)
 
 @inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, clock, state) where {X, Y} =
-    bc.func(xnode(X, i, grid), ynode(Y, j, grid), clock.time, bc.parameters)
+    call_boundary_function(bc.func, xnode(X, i, grid), ynode(Y, j, grid), clock.time, bc.parameters)
 
 #####
 ##### Convenience constructors
