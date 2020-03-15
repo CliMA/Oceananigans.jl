@@ -1,33 +1,32 @@
 """
         BoundaryFunction{B, X1, X2}(func, parameters=nothing)
 
-    A wrapper for user-defined boundary condition functions on the
-    boundary specified by symbol `B` and at location `(X1, X2)`.
+A wrapper for user-defined boundary condition functions on the
+boundary specified by symbol `B` and at location `(X1, X2)`.
 
-    Example
-    =======
-    julia> using Oceananigans: BoundaryCondition, BoundaryFunction, Flux, Cell
+Example
+=======
+julia> using Oceananigans: BoundaryCondition, BoundaryFunction, Flux, Cell
 
-    julia> top_tracer_flux = BoundaryFunction{:z, Cell, Cell}((x, y, t) -> cos(2π*x) * cos(t))
-    (::BoundaryFunction{:z,Cell,Cell,getfield(Main, Symbol("##7#8"))}) (generic function with 1 method)
+julia> top_tracer_flux = BoundaryFunction{:z, Cell, Cell}((x, y, t) -> cos(2π*x) * cos(t))
+(::BoundaryFunction{:z,Cell,Cell,getfield(Main, Symbol("##7#8"))}) (generic function with 1 method)
 
-    julia> top_tracer_bc = BoundaryCondition(Flux, top_tracer_flux);
+julia> top_tracer_bc = BoundaryCondition(Flux, top_tracer_flux);
 
-    julia> momentum_flux_func(x, y, t, p) = cos(p.k * x) * cos(p.ω * t);
+julia> momentum_flux_func(x, y, t, p) = cos(p.k * x) * cos(p.ω * t);
 
-    julia> parameterized_u_velocity_flux = BoundaryFunction{:z, Face, Cell}(flux_func, (k=4π, ω=3.0))
+julia> parameterized_u_velocity_flux = BoundaryFunction{:z, Face, Cell}(flux_func, (k=4π, ω=3.0))
 
-    julia> top_u_bc = BoundaryCondition(Flux, parameterized_u_velocity_flux)
-
+julia> top_u_bc = BoundaryCondition(Flux, parameterized_u_velocity_flux);
 """
-struct BoundaryFunction{B, X1, X2, P, F} <: Function
+struct BoundaryFunction{B, X1, X2, F, P} <: Function
     func :: F
     parameters :: P
 
     function BoundaryFunction{B, X1, X2}(func, parameters=nothing) where {B, X1, X2}
         B ∈ (:x, :y, :z) || throw(ArgumentError("The boundary B at which the BoundaryFunction is
                                                 to be applied must be either :x, :y, or :z."))
-        return new{B, X1, X2, typeof(parameters), typeof(func)}(func, parameters)
+        return new{B, X1, X2, typeof(func), typeof(parameters)}(func, parameters)
     end
 end
 
@@ -47,17 +46,10 @@ end
 ##### Convenience constructors
 #####
 
-UVelocityBoundaryLocation(::Val{:x}) = (Cell, Cell) # yz boundary coordinates
-UVelocityBoundaryLocation(::Val{:y}) = (Face, Cell) # xz boundary coordinates
-UVelocityBoundaryLocation(::Val{:z}) = (Face, Cell) # xy boundary coordinates
-
-VVelocityBoundaryLocation(::Val{:x}) = (Face, Cell) # yz boundary coordinates
-VVelocityBoundaryLocation(::Val{:y}) = (Cell, Cell) # xz boundary coordinates
-VVelocityBoundaryLocation(::Val{:z}) = (Cell, Face) # xy boundary coordinates
-
-WVelocityBoundaryLocation(::Val{:x}) = (Cell, Face) # yz boundary coordinates
-WVelocityBoundaryLocation(::Val{:y}) = (Cell, Face) # xz boundary coordinates
-WVelocityBoundaryLocation(::Val{:z}) = (Cell, Cell) # xy boundary coordinates
+""" Returns the location of `loc` on the boundary `:x`, `:y`, or `:z`. """
+BoundaryLocation(::Val{:x}, loc) = (loc[2], loc[3])
+BoundaryLocation(::Val{:y}, loc) = (loc[1], loc[3])
+BoundaryLocation(::Val{:z}, loc) = (loc[1], loc[2])
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for a tracer field. """
@@ -66,21 +58,21 @@ TracerBoundaryFunction(B, args...) = BoundaryFunction{B, Cell, Cell}(args...)
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for u, the x-velocity field. """
 function UVelocityBoundaryFunction(B, args...)
-    loc = UVelocityBoundaryLocation(Val(B))
+    loc = BoundaryLocation(Val(B), (Face, Cell, Cell))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for v, the y-velocity field. """
 function VVelocityBoundaryFunction(B, args...)
-    loc = VVelocityBoundaryLocation(Val(B))
+    loc = BoundaryLocation(Val(B), (Cell, Face, Cell))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
 """ Returns a boundary function at on the boundary `B` at the appropriate
     location for w, the z-velocity field. """
 function WVelocityBoundaryFunction(B, args...)
-    loc = WVelocityBoundaryLocation(Val(B))
+    loc = BoundaryLocation(Val(B), (Cell, Cell, Face))
     return BoundaryFunction{B, loc[1], loc[2]}(args...)
 end
 
