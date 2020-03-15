@@ -1,21 +1,23 @@
 """
         BoundaryFunction{B, X1, X2}(func, parameters=nothing)
 
-A wrapper for user-defined boundary condition functions on the
-boundary specified by symbol `B` and at location `(X1, X2)`.
+A wrapper for the user-defined boundary condition function `func`, on the
+boundary specified by symbol `B` and at location `(X1, X2)`, and with `parameters`.
 
 Example
 =======
-julia> using Oceananigans: BoundaryCondition, BoundaryFunction, Flux, Cell
+
+julia> using Oceananigans, Oceananigans.BoundaryConditions, Oceananigans.Fields
 
 julia> top_tracer_flux = BoundaryFunction{:z, Cell, Cell}((x, y, t) -> cos(2π*x) * cos(t))
-(::BoundaryFunction{:z,Cell,Cell,getfield(Main, Symbol("##7#8"))}) (generic function with 1 method)
+(::BoundaryFunction{:z,Cell,Cell,var"#7#8",Nothing}) (generic function with 1 method)
 
 julia> top_tracer_bc = BoundaryCondition(Flux, top_tracer_flux);
 
-julia> momentum_flux_func(x, y, t, p) = cos(p.k * x) * cos(p.ω * t);
+julia> flux_func(x, y, t, p) = cos(p.k * x) * cos(p.ω * t); # function with parameters
 
 julia> parameterized_u_velocity_flux = BoundaryFunction{:z, Face, Cell}(flux_func, (k=4π, ω=3.0))
+(::BoundaryFunction{:z,Face,Cell,typeof(flux_func),NamedTuple{(:k, :ω),Tuple{Float64,Float64}}}) (generic function with 1 method)
 
 julia> top_u_bc = BoundaryCondition(Flux, parameterized_u_velocity_flux);
 """
