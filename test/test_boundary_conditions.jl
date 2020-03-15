@@ -5,6 +5,26 @@ function instantiate_boundary_function(B, X1, X2, func)
     return true
 end
 
+function instantiate_tracer_boundary_condition(bctype, B, func)
+    boundary_condition = TracerBoundaryCondition(bctype, B, func)
+    return true
+end
+
+function instantiate_u_boundary_condition(bctype, B, func)
+    boundary_condition = UVelocityBoundaryCondition(bctype, B, func)
+    return true
+end
+
+function instantiate_v_boundary_condition(bctype, B, func)
+    boundary_condition = VVelocityBoundaryCondition(bctype, B, func)
+    return true
+end
+
+function instantiate_w_boundary_condition(bctype, B, func)
+    boundary_condition = WVelocityBoundaryCondition(bctype, B, func)
+    return true
+end
+
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
 
@@ -15,6 +35,13 @@ end
         for B in (:x, :y, :z)
             for X1 in (:Face, :Cell)
                 @test instantiate_boundary_function(B, X1, Cell, simple_bc)
+            end
+
+            for bctype in (Value, Gradient)
+                @test instantiate_tracer_boundary_condition(bctype, B, simple_bc)
+                @test instantiate_u_boundary_condition(bctype, B, simple_bc)
+                @test instantiate_v_boundary_condition(bctype, B, simple_bc)
+                @test instantiate_w_boundary_condition(bctype, B, simple_bc)
             end
         end
     end
