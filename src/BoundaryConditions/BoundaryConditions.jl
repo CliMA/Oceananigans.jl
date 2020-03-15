@@ -2,16 +2,26 @@ module BoundaryConditions
 
 export
     BCType, Flux, Gradient, Value, NoPenetration,
+
     BoundaryCondition, bctype, getbc, setbc!,
+
     PeriodicBoundaryCondition, NoPenetrationBoundaryCondition, NoFluxBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
+
     CoordinateBoundaryConditions,
+
     FieldBoundaryConditions, UVelocityBoundaryConditions, VVelocityBoundaryConditions,
     WVelocityBoundaryConditions, TracerBoundaryConditions, PressureBoundaryConditions,
+
     DiffusivityBoundaryConditions,
-    BoundaryFunction,
+
+    BoundaryFunction, TracerBoundaryCondition,
+    UVelocityBoundaryCondition, VVelocityBoundaryCondition, WVelocityBoundaryCondition,
+
     ParameterizedBoundaryCondition, ParameterizedBoundaryConditionFunction,
+
     apply_z_bcs!, apply_y_bcs!,
+
     fill_halo_regions!, zero_halo_regions!
 
 using CUDAnative
