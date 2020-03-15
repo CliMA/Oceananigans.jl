@@ -10,8 +10,8 @@ using Dates: AbstractTime, Nanosecond
 Keeps track of the current `time` and `iteration` number. The `time::T` can be either a number of a `DateTime` object.
 """
 mutable struct Clock{T}
-       time :: T
-  iteration :: Int
+         time :: T
+    iteration :: Int
 end
 
 Clock(; time, iteration=0) = Clock(time, iteration)
@@ -30,3 +30,6 @@ function tick!(clock::Clock{<:AbstractTime}, Δt)
     clock.iteration += 1
     return nothing
 end
+
+"Adapt `Clock` to work on the GPU via CUDAnative and CUDAdrv."
+Adapt.adapt_structure(to, clock::Clock) = (time=clock.time, iteration=clock.iteration)

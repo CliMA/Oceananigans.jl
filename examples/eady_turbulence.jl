@@ -8,8 +8,10 @@
 #   * How to implement a background flow (a background geostrophic shear)
 
 using Random, Printf
+
 using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
-      Oceananigans.AbstractOperations, Oceananigans.Utils
+      Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions,
+      Oceananigans.Forcing
 
 # These imports from Oceananigans's `TurbuleneClosures` module are needed for imposing
 # a background flow as a user-defined forcing.
@@ -55,11 +57,11 @@ grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
 
 bc_parameters = (μ=μ, H=Lz)
 
-@inline τ₁₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.u[i, j, 1]
-@inline τ₂₃_linear_drag(i, j, grid, time, iter, U, C, p) = @inbounds p.μ * p.H * U.v[i, j, 1]
+@inline τ₁₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.u[i, j, 1]
+@inline τ₂₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.v[i, j, 1]
 
-ubcs = UVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₁₃_linear_drag))
-vbcs = VVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₂₃_linear_drag))
+ubcs = UVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₁₃_linear_drag, bc_parameters))
+vbcs = VVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₂₃_linear_drag, bc_parameters))
 bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0),
                                       bottom = BoundaryCondition(Value, -N² * Lz))
 
@@ -86,8 +88,10 @@ forcing_parameters = (α=α, f=f, H=Lz)
 #
 # is applied at location `(f, c, c)`.
 
-Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
-                                                   - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, U.u))
+function Fu_eady_func(i, j, k, grid, clock, state, p) 
+    return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, state.velocities.w)
+                      - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, state.velocities.u))
+end
 
 # The $y$-momentum forcing
 #
@@ -95,7 +99,9 @@ Fu_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j,
 #
 # is applied at location `(c, f, c)`.
 
-Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, U.v)
+function Fv_eady_func(i, j, k, grid, clock, state, p) 
+    return @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.v)
+end
 
 # The $z$-momentum forcing
 #
@@ -103,7 +109,9 @@ Fv_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zC[k] + p.H) * �
 #
 # is applied at location `(c, c, f)`.
 
-Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, U.w)
+function Fw_eady_func(i, j, k, grid, clock, state, p) 
+    return @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.w)
+end
 
 # The buoyancy forcing
 #
@@ -111,8 +119,15 @@ Fw_eady(i, j, k, grid, time, U, C, p) = @inbounds -p.α * (grid.zF[k] + p.H) * �
 #
 # is applied at location `(c, c, c)`.
 
-Fb_eady(i, j, k, grid, time, U, C, p) = @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, C.b)
-                                                   + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+function Fb_eady_func(i, j, k, grid, clock, state, p) 
+    return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.tracers.b)
+                      + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
+end
+
+Fu_eady = ParameterizedForcing(Fu_eady_func, forcing_parameters)
+Fv_eady = ParameterizedForcing(Fv_eady_func, forcing_parameters)
+Fw_eady = ParameterizedForcing(Fw_eady_func, forcing_parameters)
+Fb_eady = ParameterizedForcing(Fb_eady_func, forcing_parameters)
 
 # # Turbulence closures
 #
@@ -135,15 +150,13 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 # Our use of biharmonic diffusivity means we must instantiate the model grid
 # with halos of size `(2, 2, 2)` in `(x, y, z)`.
 
-model = IncompressibleModel( grid = grid,
-       architecture = CPU(),
-           coriolis = FPlane(f=f),
-           buoyancy = BuoyancyTracer(), tracers = :b,
-            forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
-            closure = closure,
-boundary_conditions = (u=ubcs, v=vbcs, b=bbcs),
-# "parameters" is a NamedTuple of user-defined parameters that can be used in boundary condition and forcing functions.
-         parameters = merge(bc_parameters, forcing_parameters))
+model = IncompressibleModel(               grid = grid,
+                                   architecture = CPU(),
+                                       coriolis = FPlane(f=f),
+                                       buoyancy = BuoyancyTracer(), tracers = :b,
+                                        forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
+                                        closure = closure,
+                            boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))
 
 # # Initial conditions
 #

@@ -1,6 +1,8 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, tick!
+export IncompressibleModel, NonDimensionalModel, Clock, tick!, state
+
+using Adapt
 
 using Oceananigans.Architectures
 using Oceananigans.Fields
@@ -18,6 +20,16 @@ using Oceananigans.Utils
 Abstract supertype for models.
 """
 abstract type AbstractModel end
+
+"""
+    state(model)
+
+Returns a `NamedTuple` with fields `velocities, tracers, diffusivities, tendencies` 
+corresponding to `NamedTuple`s of `OffsetArray`s that reference each of the field's data.
+"""
+@inline state(model) = (   velocities = datatuple(model.velocities),
+                              tracers = datatuple(model.tracers),
+                        diffusivities = datatuple(model.diffusivities))
 
 include("clock.jl")
 include("incompressible_model.jl")

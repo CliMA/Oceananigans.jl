@@ -23,11 +23,11 @@ struct BoundaryFunction{B, X1, X2, F} <: Function
     end
 end
 
-@inline (bc::BoundaryFunction{:x, Y, Z})(j, k, grid, time, args...) where {Y, Z} =
-    bc.func(ynode(Y, j, grid), znode(Z, k, grid), time)
+@inline (bc::BoundaryFunction{:x, Y, Z})(j, k, grid, clock, state) where {Y, Z} =
+    bc.func(ynode(Y, j, grid), znode(Z, k, grid), clock.time)
 
-@inline (bc::BoundaryFunction{:y, X, Z})(i, k, grid, time, args...) where {X, Z} =
-    bc.func(xnode(X, i, grid), znode(Z, k, grid), time)
+@inline (bc::BoundaryFunction{:y, X, Z})(i, k, grid, clock, state) where {X, Z} =
+    bc.func(xnode(X, i, grid), znode(Z, k, grid), clock.time)
 
-@inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, time, args...) where {X, Y} =
-    bc.func(xnode(X, i, grid), ynode(Y, j, grid), time)
+@inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, clock, state) where {X, Y} =
+    bc.func(xnode(X, i, grid), ynode(Y, j, grid), clock.time)

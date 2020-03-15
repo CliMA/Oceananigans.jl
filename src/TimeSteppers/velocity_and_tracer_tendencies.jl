@@ -1,6 +1,6 @@
 """
     u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                        closure, U, C, K, F, pHY′, parameters, time)
+                        closure, U, C, K, F, pHY′, clock)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
 direction, ``u``, at grid point `i, j, k`.
@@ -19,23 +19,23 @@ tracer fields, and precalculated diffusivities where applicable. `F` is a named 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `time` is the physical time of the model.
+and `clock` is the physical clock of the model.
 """
 @inline function u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                     closure, U, C, K, F, pHY′, parameters, time)
+                                     closure, U, C, K, F, pHY′, clock)
 
     return ( - div_ũu(i, j, k, grid, U)
              - x_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
-             + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-             + ∂t_uˢ(i, j, k, grid, surface_waves, time)
-             + F.u(i, j, k, grid, time, U, C, parameters))
+             + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
+             + ∂t_uˢ(i, j, k, grid, surface_waves, clock.time)
+             + F.u(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end
 
 """
     v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                        closure, U, C, K, F, pHY′, parameters, time)
+                        closure, U, C, K, F, pHY′, clock)
 
 Return the tendency for the horizontal velocity in the y-direction, or the north-south 
 direction, ``v``, at grid point `i, j, k`.
@@ -54,23 +54,23 @@ tracer fields, and precalculated diffusivities where applicable. `F` is a named 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `time` is the physical time of the model.
+and `clock` is the physical clock of the model.
 """
 @inline function v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                     closure, U, C, K, F, pHY′, parameters, time)
+                                     closure, U, C, K, F, pHY′, clock)
 
     return ( - div_ũv(i, j, k, grid, U)
              - y_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
-             + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-             + ∂t_vˢ(i, j, k, grid, surface_waves, time)
-             + F.v(i, j, k, grid, time, U, C, parameters))
+             + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
+             + ∂t_vˢ(i, j, k, grid, surface_waves, clock.time)
+             + F.v(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end
 
 """
     w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                        closure, U, C, K, F, parameters, time)
+                        closure, U, C, K, F, clock)
                         
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 The tendency for ``w`` is called ``G_w`` and defined via
@@ -87,22 +87,22 @@ tracer fields, and precalculated diffusivities where applicable. `F` is a named 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `time` is the physical time of the model.
+and `clock` is the physical clock of the model.
 """
 @inline function w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
-                                     closure, U, C, K, F, parameters, time)
+                                     closure, U, C, K, F, clock)
 
     return ( - div_ũw(i, j, k, grid, U)
              - z_f_cross_U(i, j, k, grid, coriolis, U)
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
-             + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, time)
-             + ∂t_wˢ(i, j, k, grid, surface_waves, time)
-             + F.w(i, j, k, grid, time, U, C, parameters))
+             + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
+             + ∂t_wˢ(i, j, k, grid, surface_waves, clock.time)
+             + F.w(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end
 
 """
-    tracer_tendency(i, j, k, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc,
-                    parameters, time)
+    tracer_tendency(i, j, k, grid, c, tracer_index, 
+                    closure, buoyancy, U, C, K, Fc, clock)
 
 Return the tendency for a tracer field `c` with index `tracer_index` 
 at grid point `i, j, k`.
@@ -118,13 +118,12 @@ The arguments `U`, `C`, and `K` are `NamedTuple`s with the three velocity compon
 tracer fields, and  precalculated diffusivities where applicable. 
 `Fc` is the user-defined forcing function for tracer `c`.
 
-`parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `time` is the physical time of the model.
+`clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function tracer_tendency(i, j, k, grid, c, tracer_index, 
-                                 closure, buoyancy, U, C, K, Fc, parameters, time)
+                                 closure, buoyancy, U, C, K, Fc, clock)
 
     return ( - div_uc(i, j, k, grid, U, c)
              + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
-             + Fc(i, j, k, grid, time, U, C, parameters))
+             + Fc(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end

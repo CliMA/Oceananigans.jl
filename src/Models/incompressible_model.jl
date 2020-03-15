@@ -7,7 +7,7 @@ using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   S, K, Θ} <: AbstractModel
+                                   S, K} <: AbstractModel
        architecture :: A         # Computer `Architecture` on which `Model` is run
                grid :: G         # Grid of physical points on which `Model` is solved
               clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -22,7 +22,6 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
         timestepper :: TS        # Object containing timestepper fields and parameters
     pressure_solver :: S         # Pressure/Poisson solver
       diffusivities :: K         # Container for turbulent diffusivities
-         parameters :: Θ         # Container for arbitrary user-defined parameters
 end
 
 """
@@ -40,7 +39,6 @@ end
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
-             parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
@@ -60,7 +58,6 @@ Keyword arguments
 - `coriolis`: Parameters for the background rotation rate of the model.
 - `forcing`: User-defined forcing functions that contribute to solution tendencies.
 - `boundary_conditions`: Named tuple containing field boundary conditions.
-- `parameters`: User-defined parameters for use in user-defined forcing functions and boundary condition functions.
 """
 function IncompressibleModel(;
                    grid,
@@ -76,7 +73,6 @@ function IncompressibleModel(;
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
-             parameters = nothing,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
@@ -102,5 +98,5 @@ function IncompressibleModel(;
 
     return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
                                velocities, tracer_fields, pressures, forcing, closure,
-                               timestepper, pressure_solver, diffusivities, parameters)
+                               timestepper, pressure_solver, diffusivities)
 end

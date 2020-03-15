@@ -6,7 +6,6 @@
 #   * how to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state;
 #   * how to use a turbulence closure for large eddy simulation;
 #   * how to use a function to impose a boundary condition;
-#   * how to use user-defined `model.parameters` in a boundary condition function.
 #
 # In addition to `Oceananigans.jl` we need `Plots` for plotting, `Random` for
 # generating random initial conditions, and `Printf` for printing progress messages.
@@ -14,7 +13,9 @@
 # some nice features for writing output data to disk.
 
 using Random, Printf, Plots
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils
+
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils,
+      Oceananigans.BoundaryConditions
 
 # ## Model parameters
 #
@@ -69,9 +70,9 @@ T_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵀ),
                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
 
 ## Salinity flux: Qˢ = - E * S
-@inline Qˢ(i, j, grid, time, iter, U, C, p) = @inbounds -p.evaporation * C.S[i, j, 1]
+@inline Qˢ(i, j, grid, clock, state, p) = @inbounds -p.evaporation * state.tracers.S[i, j, 1]
 
-S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qˢ))
+S_bcs = TracerBoundaryConditions(grid, top = ParameterizedBoundaryCondition(Flux, Qˢ, (evaporation=evaporation,)))
 nothing # hide
 
 # ## Model instantiation
@@ -80,19 +81,14 @@ nothing # hide
 # using a `FPlane` model for rotation (constant rotation rate), a linear equation
 # of state for temperature and salinity, the Anisotropic Minimum Dissipation closure
 # to model the effects of unresolved turbulence, and the previously defined boundary
-# conditions for `u`, `T`, and `S`. We also pass the evaporation rate to the container
-# model.parameters for use in the boundary condition function that calculates the salinity
-# flux.
+# conditions for `u`, `T`, and `S`.
 
-model = IncompressibleModel(
-         architecture = CPU(),
-                 grid = grid,
-             coriolis = FPlane(f=f),
-             buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
-              closure = AnisotropicMinimumDissipation(),
-  boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs),
-           parameters = (evaporation = evaporation,)
-)
+model = IncompressibleModel(       architecture = CPU(),
+                                           grid = grid,
+                                       coriolis = FPlane(f=f),
+                                       buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=α, β=β)),
+                                        closure = AnisotropicMinimumDissipation(),
+                            boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 nothing # hide
 
 # Notes:

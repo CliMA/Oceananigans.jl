@@ -214,11 +214,12 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     interior(Rw) .= zeros(Nx, Ny, Nz)
 
     U = (u=Ru, v=Rv, w=Rw)
-    fill_halo_regions!(U, arch, 0, 0, datatuple(U))
+    state = (velocities=datatuple(U), tracers=(), diffusivities=nothing)
+    fill_halo_regions!(U, arch, nothing, state)
 
     _compute_w_from_continuity!(U, fake_grid)
 
-    fill_halo_regions!(Rw, arch, 0, 0, datatuple(U))
+    fill_halo_regions!(Rw, arch, nothing, state)
 
     R = zeros(Nx, Ny, Nz)
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
@@ -249,7 +250,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     ##### Compute Laplacian of solution ϕ to test that it's correct
     #####
 
-    fill_halo_regions!(ϕ, arch)
+    fill_halo_regions!(ϕ, arch, nothing, state)
 
     ∇²ϕ = CellField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
