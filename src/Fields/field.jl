@@ -49,101 +49,110 @@ struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
 end
 
 """
-    Field(L::Tuple, arch, grid, bcs, [data=zeros(arch, grid)])
+    Field(X, Y, Z, arch, grid, [  bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
+                                 data = zeros(arch, grid, (X, Y, Z)) ] )
 
-Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
-The field's location is defined by a tuple `L` of length 3 whose elements are
-`Cell` or `Face` and has field boundary conditions `bcs`.
+Construct a `Field` on `grid` with `data` on architecture `arch` with
+boundary conditions `bcs`. Each of `(X, Y, Z)` is either `Cell` or `Face` and determines 
+the field's location in `(x, y, z)`.
+
+Example
+=======
+
+julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianmodel.grid)
+
 """
-function Field(L::Tuple, arch, grid, bcs, 
-               data=zeros(eltype(grid), arch, grid, (typeof(L[1]), typeof(L[2]), typeof(L[3]))))
-      
-    return Field{typeof(L[1]), typeof(L[2]), typeof(L[3])}(data, grid, bcs)
+function Field(X, Y, Z, arch, grid, 
+                bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
+               data = zeros(eltype(grid), arch, grid, (X, Y, Z)))
+
+    return Field{X, Y, Z}(data, grid, bcs)
 end
 
-function Field(L::NTuple{3, DataType}, arch, grid, bcs, 
-               data=zeros(eltype(grid), arch, grid, (L[1], L[2], L[3])))
+#####
+##### Convenience constructor for Field that uses a 3-tuple of locations rather than a list of locations:
+#####
 
-    return Field{L[1], L[2], L[3]}(data, grid, bcs)
-end
-
-"""
-    Field(X, Y, Z, arch, grid, [data=zeros(arch, grid)], bcs)
-
-Construct a `Field` on some architecture `arch` and a `grid` with some `data`.
-The field's location is defined by `X`, `Y`, `Z` where each is either `Cell` or `Face`
-and has field boundary conditions `bcs`.
-"""
-Field(X, Y, Z, arch, grid, bcs, data=zeros(eltype(grid), arch, grid, (X, Y, Z))) =
-    Field((X, Y, Z), arch, grid, bcs, data)
+# Type "destantiation": convert Face() to Face and Cell() to Cell if needed.
+destantiate(X) = typeof(X)
+destantiate(X::DataType) = X
 
 """
-    CellField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=TracerBoundaryConditions(grid), 
-              data=zeros(FT, arch, grid, (Cell, Cell, Cell)))
+    Field(L::Tuple, arch, grid, data, bcs)
+
+Construct a `Field` at the location defined by the 3-tuple `L`,
+whose elements are `Cell` or `Face`.
+"""
+Field(L::Tuple, args...) = Field(destantiate.(L)..., args...)
+
+#####
+##### Special constructors for tracers and velocity fields
+#####
+
+"""
+    CellField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid, 
+              [  bcs = TracerBoundaryConditions(grid),
+                data = zeros(FT, arch, grid, (Cell, Cell, Cell) ] )
 
 Return a `Field{Cell, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function CellField(arch::AbstractArchitecture, grid, 
-                   bcs=TracerBoundaryConditions(grid),
-                   data=zeros(eltype(grid), arch, grid, (Cell, Cell, Cell)))
+function CellField(FT::DataType, arch, grid,
+                    bcs = TracerBoundaryConditions(grid),
+                   data = zeros(FT, arch, grid, (Cell, Cell, Cell)))
 
-    return Field(Cell, Cell, Cell, arch, grid, bcs, data)
+    return Field{Cell, Cell, Cell}(data, grid, bcs)
 end
 
 """
-    XFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=UVelocityBoundaryConditions(grid), 
-              data=zeros(FT, arch, grid, (Face, Cell, Cell)))
+    XFaceField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
+               [  bcs = UVelocityBoundaryConditions(grid),
+                 data = zeros(FT, arch, grid, (Face, Cell, Cell) ] )
 
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function XFaceField(arch::AbstractArchitecture, grid, 
-                    bcs=UVelocityBoundaryConditions(grid),
-                    data=zeros(eltype(grid), arch, grid, (Face, Cell, Cell))) 
+function XFaceField(FT::DataType, arch, grid, 
+                     bcs = UVelocityBoundaryConditions(grid),
+                    data = zeros(FT, arch, grid, (Face, Cell, Cell)))
 
-    return Field(Face, Cell, Cell, arch, grid, bcs, data)
+    return Field{Face, Cell, Cell}(data, grid, bcs)
 end
   
 """
-    YFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=VVelocityBoundaryConditions(grid), 
-              data=zeros(FT, arch, grid, (Cell, Face, Cell)))
+    YFaceField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
+               [  bcs = VVelocityBoundaryConditions(grid),
+                 data = zeros(FT, arch, grid, (Cell, Face, Cell)) ] )
 
 Return a `Field{Cell, Face, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function YFaceField(arch::AbstractArchitecture, grid, 
-                    bcs=VVelocityBoundaryConditions(grid), 
-                    data=zeros(eltype(grid), arch, grid, (Cell, Face, Cell))) 
+function YFaceField(FT::DataType, arch, grid,
+                     bcs = VVelocityBoundaryConditions(grid),
+                    data = zeros(FT, arch, grid, (Cell, Face, Cell)))
 
-    return Field(Cell, Face, Cell, arch, grid, bcs, data)
+    return Field{Cell, Face, Cell}(data, grid, bcs)
 end
   
 """
-    ZFaceField([FT=eltype(grid)], arch::AbstractArchitecture, grid, bcs=WVelocityBoundaryConditions(grid), 
-              data=zeros(FT, arch, grid, (Cell, Cell, Face))
+    ZFaceField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
+               [  bcs = WVelocityBoundaryConditions(grid),
+                 data = zeros(FT, arch, grid, (Cell, Cell, Face)) ] )
 
 Return a `Field{Cell, Cell, Face}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function ZFaceField(arch::AbstractArchitecture, grid, 
-                    bcs=WVelocityBoundaryConditions(grid), 
-                    data=zeros(eltype(grid), arch, grid, (Cell, Cell, Face))) 
+function ZFaceField(FT::DataType, arch, grid,
+                     bcs = WVelocityBoundaryConditions(grid),
+                    data = zeros(FT, arch, grid, (Cell, Cell, Face)))
 
-    return Field(Cell, Cell, Face, arch, grid, bcs, data)
+    return Field{Cell, Cell, Face}(data, grid, bcs)
 end
 
-CellField(FT::DataType, arch, grid, bcs=TracerBoundaryConditions(grid)) = 
-    CellField(arch, grid, bcs, zeros(FT, arch, grid, (Cell, Cell, Cell)))
-
-XFaceField(FT::DataType, arch, grid, bcs=UVelocityBoundaryConditions(grid)) =
-    XFaceField(arch, grid, bcs, zeros(FT, arch, grid, (Face, Cell, Cell)))
-
-YFaceField(FT::DataType, arch, grid, bcs=VVelocityBoundaryConditions(grid)) =
-    YFaceField(arch, grid, bcs, zeros(FT, arch, grid, (Cell, Face, Cell)))
-
-ZFaceField(FT::DataType, arch, grid, bcs=WVelocityBoundaryConditions(grid)) =
-    ZFaceField(arch, grid, bcs, zeros(FT, arch, grid, (Cell, Cell, Face)))
+ CellField(arch::AbstractArchitecture, grid, args...) =  CellField(eltype(grid), arch, grid, args...)
+XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid), arch, grid, args...)
+YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
+ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
 
 #####
 ##### Functions for querying fields
