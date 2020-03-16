@@ -1,5 +1,5 @@
 """
-    test_init_field(N, L, ftf)
+    correct_field_size(N, L, ftf)
 
 Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
@@ -7,7 +7,7 @@ has the correct size.
 correct_field_size(a, g, fieldtype, Tx, Ty, Tz) = size(parent(fieldtype(a, g)))  == (Tx, Ty, Tz)
     
 """
-    test_set_field(N, L, ftf, val)
+    correct_field_value_was_set(N, L, ftf, val)
 
 Test that the field initialized by the field type function `ftf` on the grid g
 can be correctly filled with the value `val` using the `set!(f::AbstractField, v)`
@@ -82,5 +82,11 @@ end
                 @test field.data[2, 4, 6] == A[2, 4, 6]
             end
         end
+    end
+
+    @testset "Miscellaneous field functionality" begin
+        @info "  Testing miscellaneous field functionality..."
+        @test Fields.has_velocities(()) == false
+        @test Fields.has_velocities((:u, :v, :w, :c)) == true
     end
 end
