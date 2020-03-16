@@ -16,8 +16,8 @@ FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
 DefaultBoundaryCondition(::Union{Grids.Periodic, Flat}, loc) = PeriodicBoundaryCondition()
 
-DefaultBoundaryCondition(::Bounded, ::Type{Cell}) = NoFluxBoundaryCondition()
-DefaultBoundaryCondition(::Bounded, ::Type{Face}) = NoPenetrationBoundaryCondition()
+DefaultBoundaryCondition(::Bounded, ::Cell) = NoFluxBoundaryCondition()
+DefaultBoundaryCondition(::Bounded, ::Face) = NoPenetrationBoundaryCondition()
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)
@@ -69,9 +69,9 @@ function FieldBoundaryConditions(grid, loc;
     return FieldBoundaryConditions(x, y, z)
 end
 
-  UVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Face, Cell, Cell); user_defined_bcs...)
-  VVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Face, Cell); user_defined_bcs...)
-  WVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Face); user_defined_bcs...)
-     TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Cell); user_defined_bcs...)
-   PressureBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Cell); user_defined_bcs...)
-DiffusivityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Cell); user_defined_bcs...)
+  UVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Face(), Cell(), Cell()); user_defined_bcs...)
+  VVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell(), Face(), Cell()); user_defined_bcs...)
+  WVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell(), Cell(), Face()); user_defined_bcs...)
+     TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell(), Cell(), Cell()); user_defined_bcs...)
+   PressureBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell(), Cell(), Cell()); user_defined_bcs...)
+DiffusivityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell(), Cell(), Cell()); user_defined_bcs...)
