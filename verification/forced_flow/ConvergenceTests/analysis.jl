@@ -7,14 +7,15 @@ function extract_two_solutions(analytical_solution, filename)
     u_data = field_data(filename, :u, iters[end])
     u_simulation = Field{Face, Cell, Cell}(u_data, grid, 
                                            FieldBoundaryConditions(grid, (Face(), Cell(), Cell())))
-    u_simulation = interior(u_simulation)[:, 1, :]
+    u_simulation = interior(u_simulation)
 
     Nx, Ny, Nz = size(grid)
-    XU = repeat(grid.xF[1:end-1], 1, Nz)
-    ZU = repeat(reshape(grid.zC, 1, Nz), Nx, 1)
+    XU = repeat(grid.xF[1:end-1], 1, Ny, Nz)
+    YU = repeat(reshape(grid.yC, 1, Ny, 1), Nx, 1, Nz)
+    ZU = repeat(reshape(grid.zC, 1, 1, Nz), Nx, Ny, 1)
     t = iteration_time(filename, iters[end])
 
-    u_analytical = analytical_solution.(XU, 0, ZU, t)
+    u_analytical = analytical_solution.(XU, YU, ZU, t)
 
     return u_simulation, u_analytical
 end
