@@ -1,13 +1,13 @@
 using PyPlot, Glob
 
-include("ForcedFlow/ForcedFlow.jl")
+include("ConvergenceTests/ConvergenceTests.jl")
 
-free_slip_simulation_files = glob("data/forced_free_slip*CFL1e-03.jld2")
+free_slip_simulation_files = glob("data/forced_free_slip_xy*CFL2e-03.jld2")
 
-errors = ForcedFlow.compute_errors(ForcedFlow.FreeSlip.u, 
-                                   free_slip_simulation_files...)
+errors = ConvergenceTests.compute_errors((x, y, z, t) -> ConvergenceTests.ForcedFlowFreeSlip.u(x, y, t), 
+                                         free_slip_simulation_files...)
 
-sizes = ForcedFlow.extract_sizes(free_slip_simulation_files...)
+sizes = ConvergenceTests.extract_sizes(free_slip_simulation_files...)
 
 Nx = map(sz -> sz[1], sizes)
 L₁ = map(err -> err.L₁, errors)
