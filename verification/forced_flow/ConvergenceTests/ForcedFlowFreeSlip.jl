@@ -23,9 +23,9 @@ v(x, y, t) = -fₓ(x, t) * sin(y)
 ##### x, z
 #####
 
-function setup_xz_simulation(; Nx, Nz, CFL, architecture=CPU(), dir="data")
+function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
 
-    grid = RegularCartesianGrid(size=(Nx, 1, Nz), x=(0, 2π), y=(0, 1), z=(0, π), 
+    grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π), 
                                 topology=(Periodic, Periodic, Bounded))
 
     model = IncompressibleModel(architecture = architecture,
@@ -41,21 +41,19 @@ function setup_xz_simulation(; Nx, Nz, CFL, architecture=CPU(), dir="data")
     set!(model, u = (x, y, z) -> u(x, z, 0), 
                 w = (x, y, z) -> v(x, z, 0))
 
-    h = min(2π/Nx, 1/Nz)
-    Δt = h * CFL # Velocity scale = 1
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
 
-    simulation = Simulation(model, Δt=Δt, stop_time=π, progress_frequency=1)
-
-    prefix = @sprintf("forced_free_slip_xz_Nx%d_Nz%d_CFL%.0e", Nx, Nz, CFL)
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
-                                                          dir=dir, interval=π/16, prefix=prefix, force=true)
+                                                          dir = dir, force = true,
+                                                          prefix = @sprintf("forced_free_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
+                                                          interval = stop_iteration * Δt / 2)
 
     return simulation
 end
 
 function setup_and_run_xz(; setup...)
     simulation = setup_xz_simulation(; setup...)
-    println("Running free slip simulation in x, z with Nx = $(setup[:Nx]), Nz = $(setup[:Nz]), CFL = $(setup[:CFL])")
+    println("Running free slip simulation in x, z with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
     @time run!(simulation)
     return nothing
 end
@@ -64,9 +62,9 @@ end
 ##### x, y
 #####
 
-function setup_xy_simulation(; Nx, Ny, CFL, architecture=CPU(), dir="data")
+function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, 1), x=(0, 2π), y=(0, π), z=(0, 1), 
+    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1), 
                                 topology=(Periodic, Bounded, Bounded))
 
     model = IncompressibleModel(architecture = architecture,
@@ -82,21 +80,19 @@ function setup_xy_simulation(; Nx, Ny, CFL, architecture=CPU(), dir="data")
     set!(model, u = (x, y, z) -> u(x, y, 0), 
                 v = (x, y, z) -> v(x, y, 0))
 
-    h = min(2π/Nx, 1/Ny)
-    Δt = h * CFL # Velocity scale = 1
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
 
-    simulation = Simulation(model, Δt=Δt, stop_time=π, progress_frequency=1)
-
-    prefix = @sprintf("forced_free_slip_xy_Nx%d_Ny%d_CFL%.0e", Nx, Ny, CFL)
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
-                                                          dir=dir, interval=π/16, prefix=prefix, force=true)
+                                                          dir = dir, force = true,
+                                                          prefix = @sprintf("forced_free_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
+                                                          interval=stop_iteration * Δt / 2)
 
     return simulation
 end
 
 function setup_and_run_xy(; setup...)
     simulation = setup_xy_simulation(; setup...)
-    println("Running free slip simulation in x, y with Nx = $(setup[:Nx]), Ny = $(setup[:Ny]), CFL = $(setup[:CFL])")
+    println("Running free slip simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
     @time run!(simulation)
     return nothing
 end

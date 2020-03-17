@@ -10,6 +10,7 @@ include("file_wrangling.jl")
 include("analysis.jl")
 
 include("ForcedFlowFreeSlip.jl")
+include("DoublyPeriodicFreeDecay.jl")
 include("GaussianAdvectionDiffusion.jl")
 
 end

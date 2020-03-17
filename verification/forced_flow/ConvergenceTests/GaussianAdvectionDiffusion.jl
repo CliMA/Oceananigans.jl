@@ -10,10 +10,9 @@ include("analysis.jl")
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
 c(x, y, z, t, U, κ, t₀) = 1 / √(4π*κ*(t+t₀)) * exp(-(x - U * t)^2 / σ(t, κ, t₀))
 
-function run_advection_diffusion_test(; Nx, CFL, architecture = CPU(), 
-                                      topo = (Periodic, Periodic, Bounded),
-                                      U = 1, κ = 1e-4, width = 0.05)
-                
+function run_advection_diffusion_test(; Nx, Δt, stop_time, U = 1, κ = 1e-4, width = 0.05,
+                                      architecture = CPU(), topo = (Periodic, Periodic, Bounded))
+                                      
     t₀ = width^2 / 4κ
 
     grid = RegularCartesianGrid(size=(Nx, 1, 1), x=(-1, 1.5), y=(0, 1), z=(0, 1), topology=topo)
@@ -28,9 +27,6 @@ function run_advection_diffusion_test(; Nx, CFL, architecture = CPU(),
     set!(model, u = U, 
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
                 c = (x, y, z) -> c(x, y, z, 0, U, κ, t₀))
-
-    h = 1/Nx
-    Δt = min(h / U, h^2 / κ) * CFL
 
     simulation = Simulation(model, Δt=Δt, stop_time=0.25, progress_frequency=1)
 
