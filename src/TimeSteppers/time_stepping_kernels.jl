@@ -209,14 +209,16 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, args...)
 
     # Velocity fields
     for i in 1:3
-        apply_z_bcs!(Gⁿ[i], U[i], arch, args...)
+        apply_x_bcs!(Gⁿ[i], U[i], arch, args...)
         apply_y_bcs!(Gⁿ[i], U[i], arch, args...)
+        apply_z_bcs!(Gⁿ[i], U[i], arch, args...)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        apply_z_bcs!(Gⁿ[i], C[i-3], arch, args...)
+        apply_x_bcs!(Gⁿ[i], C[i-3], arch, args...)
         apply_y_bcs!(Gⁿ[i], C[i-3], arch, args...)
+        apply_z_bcs!(Gⁿ[i], C[i-3], arch, args...)
     end
 
     return nothing
