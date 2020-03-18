@@ -2,14 +2,19 @@ using Oceananigans
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+run_xy = ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xy
+run_xz = ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xz
+
 # Run 4 simulations:
+Nx = [32, 64, 128, 256]
+stop_time = 0.01
 
-#ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xz(Nx=16,  Nz=16,  CFL=1e-3)
-#ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xz(Nx=32,  Nz=32,  CFL=1e-3)
-#ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xz(Nx=64,  Nz=64,  CFL=1e-3)
-#ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xz(Nx=128, Nz=128, CFL=1e-3)
+h = π / maximum(Nx)
+Δt = 0.01 * h^2
+Nt = round(Int, stop_time / Δt)
+Δt = stop_time / Nt
 
-ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xy(Nx=16,  Ny=16,  CFL=2e-3)
-ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xy(Nx=32,  Ny=32,  CFL=2e-3)
-ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xy(Nx=64,  Ny=64,  CFL=2e-3)
-ConvergenceTests.ForcedFlowFreeSlip.setup_and_run_xy(Nx=128, Ny=128, CFL=2e-3)
+for N in Nx
+    run_xy(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
+    run_xz(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
+end
