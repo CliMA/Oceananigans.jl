@@ -18,9 +18,9 @@ function run_convergence_test(κ, U, resolutions...)
     h = 2.5 / maximum(resolutions)
     Δt = min(0.1 * h / U, 0.01 * h^2 / κ)
     stop_time = 0.25
-    Nt = round(Int, stop_time / Δt)
-    Δt = stop_time / Nt
-    results = [run_test(Nx=Nx, Δt=Δt, stop_time=stop_time, U=U, κ=κ, width=0.1) for Nx in resolutions]
+    stop_iteration = round(Int, stop_time / Δt)
+    Δt = stop_time / stop_iteration
+    results = [run_test(Nx=Nx, Δt=Δt, stop_iteration=stop_iteration, U=U, κ=κ, width=0.1) for Nx in resolutions]
     return results
 end
 
@@ -32,9 +32,10 @@ function unpack_solutions(results)
 end
 
 function unpack_errors(results)
-    c_L₁ = map(r -> r.c.L₁, results)
+    u_L₁ = map(r -> r.u.L₁, results)
     v_L₁ = map(r -> r.v.L₁, results)
-    return c_L₁, v_L₁
+    c_L₁ = map(r -> r.c.L₁, results)
+    return u_L₁, v_L₁, c_L₁
 end
 
 
@@ -112,14 +113,15 @@ fig, axs = subplots()
 for j = 1:length(all_results)
     results = all_results[j]
     name = names[j]
-    c_L₁, v_L₁ = unpack_errors(results)
+    u_L₁, v_L₁, c_L₁ = unpack_errors(results)
 
-    loglog(Nx, c_L₁, "o", color=defaultcolors[j], alpha=0.2, label="\$L_1\$-norm, tracer $name")
+    loglog(Nx, u_L₁, "s", color=defaultcolors[j], mfc="None", alpha=0.8, label="\$L_1\$-norm, \$u\$ $name")
     loglog(Nx, v_L₁, "*", color=defaultcolors[j], alpha=0.8, label="\$L_1\$-norm, \$v\$ $name")
+    loglog(Nx, c_L₁, "o", color=defaultcolors[j], alpha=0.2, label="\$L_1\$-norm, tracer $name")
 end
 
 # Guide line to confirm second-order scaling
-c_L₁, v_L₁ = unpack_errors(all_results[1])
+u_L₁, v_L₁, u_L₁= unpack_errors(all_results[1])
 loglog(Nx, c_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
 
 xlabel(L"N_x")
