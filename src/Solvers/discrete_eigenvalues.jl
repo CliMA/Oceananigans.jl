@@ -1,8 +1,8 @@
 using Oceananigans.Grids: unpack_grid
-using Oceananigans.BoundaryConditions: PBC, NFBC
+using Oceananigans.BoundaryConditions: PBC, ZFBC
 
 const PeriodicBC = PBC
-const NoFluxBC = NFBC
+const NoFluxBC = ZFBC
 
 function generate_discrete_eigenvalues(grid, pressure_bcs)
     kx² = λi(grid, pressure_bcs.x.left)
