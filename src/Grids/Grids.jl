@@ -6,6 +6,8 @@ export
 
 import Base: size, length, eltype, show
 
+using OffsetArrays
+
 using Oceananigans
 
 """
