@@ -53,6 +53,7 @@ Make sure to specify the desired `FT` if not using `Float64`.
 
 Grid properties
 ===============
+
 - `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
 - `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
 - `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
@@ -60,6 +61,7 @@ Grid properties
 
 Examples
 ========
+
 ```julia
 julia> grid = RegularCartesianGrid(size=(32, 32, 32), length=(1, 2, 3))
 RegularCartesianGrid{Float64}
