@@ -157,7 +157,7 @@ k²(::Bounded, n) = (n/2)^2
 k²(::Periodic, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
-    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(2π, 2π, 2π), topology=topo)
+    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
 
     Nx, Ny, Nz = size(grid)
@@ -186,7 +186,7 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64)
     rate = log(error¹ / error²) / log(N² / N¹)
 
     Tx, Ty, Tz = topo
-    @info "Convergence of L¹-normed error, $FT, (($N¹)³ -> $(N²)³), topology=($Tx, $Ty, $Tz): $rate"
+    @info "Convergence of L¹-normed error, $FT, ($(N¹)³ -> $(N²)³), topology=($Tx, $Ty, $Tz): $rate"
 
     return isapprox(rate, 2, rtol=5e-3)
 end
@@ -245,7 +245,7 @@ end
 
     @testset "Convergence to analytical solution" begin
         @info "  Testing convergence to analytical solution..."
-        @test_skip poisson_solver_convergence(CPU(), (Periodic, Periodic, Periodic), 2^6, 2^7)
+        @test poisson_solver_convergence(CPU(), (Periodic, Periodic, Periodic), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Periodic, Periodic, Bounded), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Periodic, Bounded, Bounded), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Bounded, Bounded, Bounded), 2^6, 2^7)
