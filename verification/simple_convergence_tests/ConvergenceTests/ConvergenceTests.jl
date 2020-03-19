@@ -10,6 +10,8 @@ using JLD2, Statistics
 
 using Oceananigans, Oceananigans.Fields
 
+using Oceananigans: Face, Cell
+
 import Oceananigans: RegularCartesianGrid
 
 include("file_wrangling.jl")
@@ -38,6 +40,12 @@ include("GaussianAdvectionDiffusion.jl")
 # Tests x-advection and y-advection.
 #
 include("CosineAdvectionDiffusion.jl")
+
+# Free decay of a 2D sinusoidal tracer patch
+#
+# c(x, y, t) = exp(-2t) * cos(x) * cos(y)
+#
+include("TwoDimensionalDiffusion.jl")
 
 # Free decay of a horizontally-advected Taylor-Green vortex:
 #

@@ -1,4 +1,4 @@
-module DoublyPeriodicDiffusion
+module TwoDimensionalDiffusion
 
 using Printf
 
@@ -7,11 +7,15 @@ using Oceananigans, Oceananigans.OutputWriters
 # 2D diffusing sinuosoid
 c(x, y, t) = exp(-2t) * cos(x) * cos(y)
 
-Lx(::Tuple{Type{Periodic}, Y}) where Y = 2π
-Lx(::Tuple{Type{Bounded},  Y}) where Y = π
+instantiate(t) = Tuple(ti() for ti in t)
+Lx(topo) = Lx(instantiate(topo))
+Ly(topo) = Ly(instantiate(topo))
 
-Ly(::Tuple{X, Type{Periodic}}) where X = 2π
-Ly(::Tuple{X, Type{Bounded}})  where X = π
+Lx(::Tuple{Periodic, Y, Z}) where {Y, Z} = 2π
+Lx(::Tuple{Bounded,  Y, Z}) where {Y, Z} = π
+
+Ly(::Tuple{X, Periodic, Z}) where {X, Z} = 2π
+Ly(::Tuple{X, Bounded,  Z}) where {X, Z} = π
 
 #####
 ##### x, y
@@ -36,14 +40,14 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="da
 
     simulation.output_writers[:fields] = 
         JLD2OutputWriter(model, FieldOutputs(model.velocities); dir = dir, force = true, 
-                         prefix = @sprintf("doubly_periodic_diffusion_Nx%d_Δt%.1e", Nx, Δt),
+                         prefix = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
                          interval = stop_iteration * Δt / 100)
 
     return simulation
 end
 
 function run_simulation(; setup...)
-    simulation = setup_xy_simulation(; setup...)
+    simulation = setup_simulation(; setup...)
     println("Running free decay simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
     @time run!(simulation)
     return nothing
