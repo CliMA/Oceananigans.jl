@@ -59,12 +59,6 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     ab2_store_source_terms!(G⁻, model.architecture, model.grid, χ, Gⁿ)
 
-    # Compute w from recontinuity
-    fill_halo_regions!(model.velocities, model.architecture,
-                       boundary_condition_function_arguments(model)...)
-
-    compute_w_from_continuity!(model)
-
     tick!(model.clock, Δt)
 
     return nothing
