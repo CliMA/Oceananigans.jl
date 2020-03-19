@@ -5,12 +5,12 @@ include("ConvergenceTests/ConvergenceTests.jl")
 setup_and_run = ConvergenceTests.DoublyPeriodicFreeDecay.setup_and_run_xy
 
 # Run 4 simulations:
-Nx = [32, 64, 128, 256, 512]
-stop_time = 0.01
+Nx = [32, 64, 128]
+stop_time = 0.5
 
 # Calculate time step
- h = 2π / maximum(Nx)
-Δt = 0.01 * h^2 # satisfy diffusive constraint
+max_h = 2π / maximum(Nx)
+Δt = 0.01 * max_h^2 # satisfy diffusive constraint for finest resolution
 Nt = round(Int, stop_time / Δt)
 Δt = stop_time / Nt
 
