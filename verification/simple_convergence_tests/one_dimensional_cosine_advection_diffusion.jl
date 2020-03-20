@@ -4,13 +4,13 @@ using PyPlot
 
 # Define a few utilities for running tests and unpacking and plotting results
 
-include("ConvergenceTests/ConvergenceTests.jl") # we use the GaussianAdvectionDiffusion module here.
+include("ConvergenceTests/ConvergenceTests.jl")
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-run_single_test = ConvergenceTests.CosineAdvectionDiffusion.run_test
+run_test = ConvergenceTests.OneDimensionalCosineAdvectionDiffusion.run_test
 
 """ Run advection-diffusion test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions...)
@@ -26,23 +26,31 @@ function run_convergence_test(κ, U, resolutions...)
                 Δt = stop_time / stop_iteration
 
     # Run the tests
-    results = [run_single_test(Nx=Nx, Δt=Δt, stop_iteration=stop_iteration, U=U, κ=κ) for Nx in resolutions]
+    results = [run_test(Nx=Nx, Δt=Δt, stop_iteration=stop_iteration, U=U, κ=κ) for Nx in resolutions]
 
     return results
 end
 
 """ Unpack a vector of results associated with a convergence test. """
 function unpack_solutions(results)
-    c_ana = map(r -> r.c.analytical, results)
-    c_sim = map(r -> r.c.simulation, results)
+    c_ana = map(r -> r.cx.analytical, results)
+    c_sim = map(r -> r.cx.simulation, results)
     return c_ana, c_sim
 end
 
 function unpack_errors(results)
-    u_L₁ = map(r -> r.u.L₁, results)
-    v_L₁ = map(r -> r.v.L₁, results)
-    c_L₁ = map(r -> r.c.L₁, results)
-    return u_L₁, v_L₁, c_L₁
+     u_L₁ = map(r -> r.u.L₁, results)
+     v_L₁ = map(r -> r.v.L₁, results)
+    cx_L₁ = map(r -> r.cx.L₁, results)
+    cy_L₁ = map(r -> r.cy.L₁, results)
+
+     u_L∞ = map(r ->  r.u.L∞, results)
+     v_L∞ = map(r ->  r.v.L∞, results)
+    cx_L∞ = map(r -> r.cx.L∞, results)
+    cy_L∞ = map(r -> r.cy.L∞, results)
+
+    return (u_L₁, v_L₁, cx_L₁, cy_L₁,
+            u_L∞, v_L∞, cx_L∞, cy_L∞)
 end
 
 """ Unpack a vector of grids associated with a convergence test. """
@@ -52,16 +60,16 @@ unpack_grids(results) = map(r -> r.grid, results)
 ##### Run test
 #####
 
-Nx = 2 .^ (6:8) # N = 64 through N = 256
+Nx = 2 .^ (3:9) # N = 64 through N = 256
 diffusion_results = run_convergence_test(1e-1, 0, Nx...)
-advection_results = run_convergence_test(1e-6, 3, Nx...)
-advection_diffusion_results = run_convergence_test(1e-2, 1, Nx...)
+#advection_results = run_convergence_test(1e-6, 3, Nx...)
+#advection_diffusion_results = run_convergence_test(1e-2, 1, Nx...)
 
 #####
 ##### Plot solution and error profile
 #####
 
-all_results = (diffusion_results, advection_results, advection_diffusion_results)
+all_results = (diffusion_results,) #advection_results, advection_diffusion_results)
 names = ("diffusion only",  "advection only",  "advection-diffusion")
 linestyles = ("-", "--", ":")
 specialcolors = ("xkcd:black", "xkcd:indigo", "xkcd:wine red")
@@ -69,7 +77,7 @@ specialcolors = ("xkcd:black", "xkcd:indigo", "xkcd:wine red")
 close("all")
 fig, axs = subplots(nrows=2, figsize=(12, 6), sharex=true)
 
-for j = 1:length(all_results)
+for j = 1:1 #length(all_results)
 
     results = all_results[j]
     name = names[j]
@@ -119,17 +127,25 @@ fig, axs = subplots()
 for j = 1:length(all_results)
     results = all_results[j]
     name = names[j]
-    u_L₁, v_L₁, c_L₁ = unpack_errors(results)
+    u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(results)
 
-    loglog(Nx, u_L₁, "s", color=defaultcolors[j], mfc="None", alpha=0.8, label="\$L_1\$-norm, \$u\$ $name")
-    loglog(Nx, v_L₁, "*", color=defaultcolors[j], alpha=0.8, label="\$L_1\$-norm, \$v\$ $name")
-    loglog(Nx, c_L₁, "o", color=defaultcolors[j], alpha=0.2, label="\$L_1\$-norm, tracer $name")
+    @show u_L₁, u_L∞
+
+    common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
+    loglog(Nx,  u_L₁; marker="o", label="\$L_1\$-norm, \$u\$ $name",  common_kwargs...)
+    loglog(Nx,  v_L₁; marker="2", label="\$L_1\$-norm, \$v\$ $name",  common_kwargs...)
+    loglog(Nx, cx_L₁; marker="*", label="\$L_1\$-norm, \$ x \$ tracer $name", common_kwargs...)
+    loglog(Nx, cy_L₁; marker="+", label="\$L_1\$-norm, \$ y \$ tracer $name", common_kwargs...)
+
+    loglog(Nx,  u_L∞; marker="1", label="\$L_\\infty\$-norm, \$u\$ $name",  common_kwargs...)
+    loglog(Nx,  v_L∞; marker="_", label="\$L_\\infty\$-norm, \$v\$ $name",  common_kwargs...)
+    loglog(Nx, cx_L∞; marker="^", label="\$L_\\infty\$-norm, \$ x \$ tracer $name", common_kwargs...)
+    loglog(Nx, cy_L∞; marker="s", label="\$L_\\infty\$-norm, \$ y \$ tracer $name", common_kwargs...)
 end
 
 # Guide line to confirm second-order scaling
-u_L₁, v_L₁, c_L₁= unpack_errors(all_results[1])
-
-loglog(Nx, c_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
+u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(all_results[1])
+loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
 
 axs.grid(which="both")
 xlabel(L"N_x")

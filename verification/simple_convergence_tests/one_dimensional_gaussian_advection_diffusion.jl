@@ -10,7 +10,7 @@ defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-run_test = ConvergenceTests.GaussianAdvectionDiffusion.run_test
+run_test = ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion.run_test
 
 """ Run advection-diffusion test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions...)
@@ -26,16 +26,17 @@ end
 
 """ Unpack a vector of results associated with a convergence test. """
 function unpack_solutions(results)
-    c_ana = map(r -> r.c.analytical, results)
-    c_sim = map(r -> r.c.simulation, results)
+    c_ana = map(r -> r.cx.analytical, results)
+    c_sim = map(r -> r.cx.simulation, results)
     return c_ana, c_sim
 end
 
 function unpack_errors(results)
-    u_L₁ = map(r -> r.u.L₁, results)
-    v_L₁ = map(r -> r.v.L₁, results)
-    c_L₁ = map(r -> r.c.L₁, results)
-    return u_L₁, v_L₁, c_L₁
+     u_L₁ = map(r -> r.u.L₁, results)
+     v_L₁ = map(r -> r.v.L₁, results)
+    cx_L₁ = map(r -> r.cx.L₁, results)
+    cy_L₁ = map(r -> r.cy.L₁, results)
+    return u_L₁, v_L₁, cx_L₁, cy_L₁
 end
 
 
@@ -113,16 +114,18 @@ fig, axs = subplots()
 for j = 1:length(all_results)
     results = all_results[j]
     name = names[j]
-    u_L₁, v_L₁, c_L₁ = unpack_errors(results)
+    u_L₁, v_L₁, cx_L₁, cy_L₁ = unpack_errors(results)
 
-    loglog(Nx, u_L₁, "s", color=defaultcolors[j], mfc="None", alpha=0.8, label="\$L_1\$-norm, \$u\$ $name")
-    loglog(Nx, v_L₁, "*", color=defaultcolors[j], alpha=0.8, label="\$L_1\$-norm, \$v\$ $name")
-    loglog(Nx, c_L₁, "o", color=defaultcolors[j], alpha=0.2, label="\$L_1\$-norm, tracer $name")
+    common_kwargs = (color=defaultcolors[j], mfc="None", alpha=0.8)
+    loglog(Nx, u_L₁;  linestyle="None", marker="o", label="\$L_1\$-norm, \$u\$ $name",  common_kwargs...)
+    loglog(Nx, v_L₁;  linestyle="None", marker="2", label="\$L_1\$-norm, \$v\$ $name",  common_kwargs...)
+    loglog(Nx, cx_L₁; linestyle="None", marker="*", label="\$L_1\$-norm, \$ x \$ tracer $name", common_kwargs...)
+    loglog(Nx, cy_L₁; linestyle="None", marker="+", label="\$L_1\$-norm, \$ y \$ tracer $name", common_kwargs...)
 end
 
 # Guide line to confirm second-order scaling
-u_L₁, v_L₁, c_L₁= unpack_errors(all_results[1])
-loglog(Nx, c_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
+u_L₁, v_L₁, cx_L₁, cy_L₁ = unpack_errors(all_results[1])
+loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
 
 axs.grid(which="both")
 xlabel(L"N_x")

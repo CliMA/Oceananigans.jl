@@ -6,13 +6,16 @@
 
 module ConvergenceTests
 
-using JLD2, Statistics
+using JLD2, Statistics, Printf
 
 using Oceananigans, Oceananigans.Fields
 
 using Oceananigans: Face, Cell
+using Oceananigans.Fields: Face, Cell, nodes
 
 import Oceananigans: RegularCartesianGrid
+
+import Oceananigans.Fields: location
 
 include("file_wrangling.jl")
 include("analysis.jl")
@@ -31,7 +34,7 @@ include("PointExponentialDecay.jl")
 #
 # Tests x-advection and y-advection.
 #
-include("GaussianAdvectionDiffusion.jl")
+include("OneDimensionalGaussianAdvectionDiffusion.jl")
 
 # Advection and diffusion of a 1D cosine:
 #
@@ -39,7 +42,7 @@ include("GaussianAdvectionDiffusion.jl")
 #
 # Tests x-advection and y-advection.
 #
-include("CosineAdvectionDiffusion.jl")
+include("OneDimensionalCosineAdvectionDiffusion.jl")
 
 # Free decay of a 2D sinusoidal tracer patch
 #
