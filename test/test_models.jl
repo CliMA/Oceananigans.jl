@@ -13,7 +13,7 @@ function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
 end
 
 function initial_conditions_correctly_set(arch, FT)
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT, size=(16, 16, 8), length=(1, 2, 3)),
+    model = IncompressibleModel(grid=RegularCartesianGrid(FT, size=(16, 16, 8), extent=(1, 2, 3)),
                                 architecture=arch, float_type=FT)
 
     # Set initial condition to some basic function we can easily check for.
@@ -53,7 +53,7 @@ end
         @info "  Testing doubly periodic model construction..."
         for arch in archs, FT in float_types
             topology = (Periodic, Periodic, Bounded)
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), length=(1, 2, 3), topology=topology)
+            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3), topology=topology)
             model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
             # Just testing that a horizontally periodic model was constructed with no errors/crashes.
@@ -65,7 +65,7 @@ end
         @info "  Testing reentrant channel model construction..."
         for arch in archs, FT in float_types
             topology = (Periodic, Bounded, Bounded)
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), length=(1, 2, 3), topology=topology)
+            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3), topology=topology)
             model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
             # Just testing that a channel model was constructed with no errors/crashes.
@@ -76,7 +76,7 @@ end
     @testset "Non-dimensional model" begin
         @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), length=(3, 2, 1))
+            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
             model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
 
             # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
@@ -90,7 +90,7 @@ end
             N = (16, 16, 8)
             L = (2π, 3π, 5π)
 
-            grid = RegularCartesianGrid(FT, size=N, length=L)
+            grid = RegularCartesianGrid(FT, size=N, extent=L)
             xF = reshape(grid.xF[1:end-1], N[1], 1, 1)
             yC = reshape(grid.yC, 1, N[2], 1)
             zC = reshape(grid.zC, 1, 1, N[3])

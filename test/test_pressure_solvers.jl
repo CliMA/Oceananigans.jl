@@ -7,14 +7,14 @@ function ∇²!(grid, f, ∇²f)
 end
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(100, 100, 100))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = PressureSolver(CPU(), grid, PressureBoundaryConditions(grid), planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
     fbcs = TracerBoundaryConditions(grid)
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
@@ -42,7 +42,7 @@ end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
     fbcs = TracerBoundaryConditions(grid)
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
@@ -72,7 +72,7 @@ end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, pbcs)
 
@@ -109,7 +109,7 @@ end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, pbcs)
 
@@ -160,7 +160,7 @@ by giving it the source term or right hand side (RHS), which is
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     solver = PressureSolver(CPU(), grid, TracerBoundaryConditions(grid))
 
     xC, yC, zC = grid.xC, grid.yC, grid.zC
