@@ -6,7 +6,7 @@
 
 module ConvergenceTests
 
-using JLD2, Statistics, Printf
+using JLD2, Statistics, Printf, OffsetArrays
 
 using Oceananigans, Oceananigans.Fields
 

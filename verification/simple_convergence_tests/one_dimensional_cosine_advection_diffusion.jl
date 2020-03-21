@@ -17,9 +17,9 @@ function run_convergence_test(κ, U, resolutions...)
 
     # Determine save time-step
              Lx = 2π
-      stop_time = 0.25 * 2π # advection across 1/4 the domain when U=1
+      stop_time = 0.01
               h = Lx / maximum(resolutions)
-    proposal_Δt = min(0.1 * h / U, 0.01 * h^2 / κ)
+    proposal_Δt = 1e-3 * min(h / U, h^2 / κ)
 
     # Adjust time-step
     stop_iteration = round(Int, stop_time / proposal_Δt)
@@ -60,7 +60,7 @@ unpack_grids(results) = map(r -> r.grid, results)
 ##### Run test
 #####
 
-Nx = 2 .^ (3:9) # N = 64 through N = 256
+Nx = 2 .^ (3:7) # N = 64 through N = 256
 diffusion_results = run_convergence_test(1e-1, 0, Nx...)
 #advection_results = run_convergence_test(1e-6, 3, Nx...)
 #advection_diffusion_results = run_convergence_test(1e-2, 1, Nx...)
@@ -111,9 +111,10 @@ axs[1].tick_params(bottom=false, labelbottom=false)
 legend(loc="upper left", prop=Dict(:size=>7), bbox_to_anchor=(0.01, 0.3, 1.5, 1.0))
 
 sca(axs[2])
+axs[2].set_yscale("log")
 removespines("top", "right")
 xlabel(L"x")
-ylabel("Absolute error \$ | c_\\mathrm{simulation} - c_\\mathrm{analytical} | \$")
+ylabel("Absolute error \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} | \$")
 legend(loc="upper left", prop=Dict(:size=>10), bbox_to_anchor=(0.01, 0.3, 1.5, 1.0))
 
 savefig("figs/cosine_advection_diffusion_solutions.png", dpi=480)
@@ -132,25 +133,26 @@ for j = 1:length(all_results)
     @show u_L₁, u_L∞
 
     common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
-    loglog(Nx,  u_L₁; marker="o", label="\$L_1\$-norm, \$u\$ $name",  common_kwargs...)
-    loglog(Nx,  v_L₁; marker="2", label="\$L_1\$-norm, \$v\$ $name",  common_kwargs...)
-    loglog(Nx, cx_L₁; marker="*", label="\$L_1\$-norm, \$ x \$ tracer $name", common_kwargs...)
-    loglog(Nx, cy_L₁; marker="+", label="\$L_1\$-norm, \$ y \$ tracer $name", common_kwargs...)
+    loglog(Nx,  u_L₁; marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
+    loglog(Nx,  v_L₁; marker="2", label="\$L_1\$-norm, \$v\$ $name", common_kwargs...)
+    loglog(Nx, cx_L₁; marker="*", label="\$L_1\$-norm, \$x\$ tracer $name", common_kwargs...)
+    loglog(Nx, cy_L₁; marker="+", label="\$L_1\$-norm, \$y\$ tracer $name", common_kwargs...)
 
-    loglog(Nx,  u_L∞; marker="1", label="\$L_\\infty\$-norm, \$u\$ $name",  common_kwargs...)
-    loglog(Nx,  v_L∞; marker="_", label="\$L_\\infty\$-norm, \$v\$ $name",  common_kwargs...)
-    loglog(Nx, cx_L∞; marker="^", label="\$L_\\infty\$-norm, \$ x \$ tracer $name", common_kwargs...)
-    loglog(Nx, cy_L∞; marker="s", label="\$L_\\infty\$-norm, \$ y \$ tracer $name", common_kwargs...)
+    loglog(Nx,  u_L∞; marker="1", label="\$L_\\infty\$-norm, \$u\$ $name", common_kwargs...)
+    loglog(Nx,  v_L∞; marker="_", label="\$L_\\infty\$-norm, \$v\$ $name", common_kwargs...)
+    loglog(Nx, cx_L∞; marker="^", label="\$L_\\infty\$-norm, \$x\$ tracer $name", common_kwargs...)
+    loglog(Nx, cy_L∞; marker="s", label="\$L_\\infty\$-norm, \$y\$ tracer $name", common_kwargs...)
 end
 
 # Guide line to confirm second-order scaling
 u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(all_results[1])
-loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim (N_1/N)^2")
+loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", alpha=0.8, label=L"\sim N_x^{-2}")
 
-axs.grid(which="both")
+axs.grid(which="both", linewidth=1)
 xlabel(L"N_x")
-ylabel("\$L\$-norms of the absolute error \$ | c_\\mathrm{simulation} - c_\\mathrm{analytical} | \$")
+ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
 removespines("top", "right")
 legend(loc="upper right", prop=Dict(:size=>6))
+xticks(Nx, ["\$ 2^{$(round(Int, log2(n)))} \$" for n in Nx])
 
 savefig("figs/cosine_advection_diffusion_error_convergence.png", dpi=480)
