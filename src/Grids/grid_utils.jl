@@ -36,14 +36,14 @@ function validate_tupled_argument(arg, argtype, argname)
     return nothing
 end
 
-function validate_grid_size_and_extent(FT, sz, len, halo, x, y, z)
+function validate_grid_size_and_extent(FT, sz, extent, halo, x, y, z)
     validate_tupled_argument(sz, Integer, "size")
     validate_tupled_argument(halo, Integer, "halo")
 
     # Find domain endpoints or domain extent, depending on user input:
     if !isnothing(extent) # the user has specified an extent!
 
-        !isnothing(x) || !isnothing(y) || !isnothing(z) &&
+        (!isnothing(x) || !isnothing(y) || !isnothing(z)) &&
             throw(ArgumentError("Cannot specify both length and x, y, z keyword arguments."))
 
         validate_tupled_argument(extent, Number, "extent")
@@ -57,7 +57,7 @@ function validate_grid_size_and_extent(FT, sz, len, halo, x, y, z)
 
     else # isnothing(extent) === true implies that user has not specified a length
 
-        isnothing(x) || isnothing(y) || isnothing(z) &&
+        (isnothing(x) || isnothing(y) || isnothing(z)) &&
             throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
 
         function coord2xyz(c)
@@ -78,7 +78,7 @@ function validate_grid_size_and_extent(FT, sz, len, halo, x, y, z)
         Lz = z[2] - z[1]
     end
 
-    return convert.(FT, (Lx, Ly, Lz, x, y, z))
+    return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
 end
 
 @inline get_grid_spacing(z::Function, k) = z(k)

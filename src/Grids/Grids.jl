@@ -8,6 +8,8 @@ import Base: size, length, eltype, show
 
 using Oceananigans
 
+using OffsetArrays
+
 """
     AbstractTopology
 

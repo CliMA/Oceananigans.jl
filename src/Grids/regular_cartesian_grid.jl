@@ -150,9 +150,9 @@ function RegularCartesianGrid(FT=Float64;
     yC = OffsetArray(yC, 1 - Hy : Ny + Hy)
     zC = OffsetArray(zC, 1 - Hz : Nz + Hz)
 
-    xF = OffsetArray(xC, 1 - Hx : Nx + 1 + Hx)
-    yF = OffsetArray(yC, 1 - Hy : Ny + 1 + Hy)
-    zF = OffsetArray(zC, 1 - Hz : Nz + 1 + Hz)
+    xF = OffsetArray(xF, 1 - Hx : Nx + 1 + Hx)
+    yF = OffsetArray(yF, 1 - Hy : Ny + 1 + Hy)
+    zF = OffsetArray(zF, 1 - Hz : Nz + 1 + Hz)
 
     # Reshape coordinate arrays
     xC = reshape(xC, Nx + 2Hx, 1, 1)

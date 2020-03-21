@@ -45,7 +45,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     length = Base.length
 
     TX, TY, TZ = validate_topology(topology)
-    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
+    Lx, Ly, Lz, x, y, z = validate_grid_size_and_extent(FT, sz, len, halo, x, y, z)
 
     Nx, Ny, Nz = sz
     Hx, Hy, Hz = halo
