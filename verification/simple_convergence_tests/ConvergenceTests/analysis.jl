@@ -11,7 +11,9 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
     iters = iterations(filename)
     loc = location(name)
 
-    ψ_data = field_data(filename, name, iters[end])
+    ψ_raw = field_data(filename, name, iters[end])
+    tx, ty, tz = size(ψ_raw)
+    ψ_data = OffsetArray(ψ_raw, 0:tx-1, 0:ty-1, 0:tz-1)
     ψ_simulation = Field{loc[1], loc[2], loc[3]}(ψ_data, grid, FieldBoundaryConditions(grid, loc))
 
     x, y, z = nodes(ψ_simulation)
@@ -30,9 +32,9 @@ end
 function compute_error(u_simulation, u_analytical)
     absolute_error = @. abs(u_simulation - u_analytical)
     absolute_truth = abs.(u_analytical)
-    L₁ = mean(absolute_error) / mean(absolute_truth)
-    L₂ = mean(absolute_error.^2) / mean(absolute_truth.^2)
-    L∞ = maximum(absolute_error) / maximum(absolute_truth)
+    L₁ = mean(absolute_error)
+    L₂ = mean(absolute_error.^2)
+    L∞ = maximum(absolute_error)
 
     return (L₁=L₁, L∞=L∞)
 end
