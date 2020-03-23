@@ -57,7 +57,6 @@ Grid properties
 - `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
 - `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
 - `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
-- `(Tx, Ty, Tz)::Int`: "Total" grid size (interior + halo points) in the (x, y, z)-direction
 
 Examples
 ========
