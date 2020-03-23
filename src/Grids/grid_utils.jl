@@ -2,6 +2,36 @@
 ##### Convinience functions
 #####
 
+"""
+Returns the total extent, including halo regions, of constant-spaced
+`Periodic` and `Flat` dimensions with number of halo points `H`, 
+constant grid spacing `Δ`, and interior extent `L`.
+"""
+total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
+
+"""
+Returns the total extent of, including halo regions, of constant-spaced
+`Bounded` and `Flat` dimensions with number of halo points `H`,
+constant grid spacing `Δ`, and interior extent `L`.
+"""
+total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
+
+"""
+Returns the total length, including halo points, of a field located at 
+`Cell` centers along a grid dimension of length `N` and with halo points `H`.
+"""
+total_length(loc, topo, N, H=0) = N + 2H
+
+"""
+Returns the total length, including halo points, of a field located at 
+cell `Face`s along a grid dimension of length `N` and with halo points `H`.
+"""
+total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
+
+#####
+##### Convinience functions
+#####
+
 unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
 #####
@@ -36,8 +66,18 @@ function validate_tupled_argument(arg, argtype, argname)
     return nothing
 end
 
-function validate_grid_size_and_extent(FT, sz, extent, halo, x, y, z)
-    validate_tupled_argument(sz, Integer, "size")
+coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
+
+function validate_dimension_specification(i, c)
+    name = coordinate_name(i)
+    length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
+    all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
+    c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
+    return nothing
+end
+
+function validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
+    validate_tupled_argument(size, Integer, "size")
     validate_tupled_argument(halo, Integer, "halo")
 
     # Find domain endpoints or domain extent, depending on user input:
@@ -51,26 +91,17 @@ function validate_grid_size_and_extent(FT, sz, extent, halo, x, y, z)
         Lx, Ly, Lz = extent
 
         # An "oceanic" default domain:
-        x = (0, Lx)
-        y = (0, Ly)
-        z = (-Lz, 0)
+        x = (  0, Lx)
+        y = (  0, Ly)
+        z = (-Lz,  0)
 
     else # isnothing(extent) === true implies that user has not specified a length
 
         (isnothing(x) || isnothing(y) || isnothing(z)) &&
             throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
 
-        function coord2xyz(c)
-            c == 1 && return "x"
-            c == 2 && return "y"
-            c == 3 && return "z"
-        end
-
         for (i, c) in enumerate((x, y, z))
-            name = coord2xyz(i)
-            length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
-            all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
-            c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
+            validate_dimension_specification(i, c)
         end
 
         Lx = x[2] - x[1]
@@ -81,38 +112,17 @@ function validate_grid_size_and_extent(FT, sz, extent, halo, x, y, z)
     return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
 end
 
-@inline get_grid_spacing(z::Function, k) = z(k)
-@inline get_grid_spacing(z::AbstractArray{T,1}, k) where T = z[k]
+function validate_vertically_stretched_grid_size_and_xy(FT, size, halo, x, y)
+    validate_tupled_argument(size, Integer, "size")
+    validate_tupled_argument(halo, Integer, "halo")
 
-function generate_variable_grid_spacings_from_zF(FT, zF_source, Nz)
-    zF  = zeros(FT, Nz+1)
-    zC  = zeros(FT, Nz)
-    ΔzF = zeros(FT, Nz)
-    ΔzC = zeros(FT, Nz-1)
+    for (i, c) in enumerate((x, y))
+            validate_dimension_specification(i, c)
+        end
 
-    for k in 1:Nz+1
-        zF[k] = get_grid_spacing(zF_source, k)
-    end
+        Lx = x[2] - x[1]
+        Ly = y[2] - y[1]
 
-    for k in 1:Nz
-        zC[k] = (zF[k] + zF[k+1]) / 2
-        ΔzF[k] = zF[k+1] - zF[k]
-    end
-
-    for k in 1:Nz-1
-        ΔzC[k] = zC[k+1] - zC[k]
-    end
-
-    return zF, zC, ΔzF, ΔzC
+    return FT(Lx), FT(Ly), FT.(x), FT.(y)
 end
 
-function validate_and_generate_variable_grid_spacing(FT, zF_source, Nz, z₁, z₂)
-    isnothing(zF_source) && throw(ArgumentError("Must pass zF to VerticallyStretchedCartesianGrid"))
-
-    zF, zC, ΔzF, ΔzC = generate_variable_grid_spacings_from_zF(FT, zF_source, Nz)
-
-    !isapprox(zF[1],   z₁) && throw(ArgumentError("Bottom face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
-    !isapprox(zF[end], z₂) && throw(ArgumentError("Top face zF[end]=$(zF[end]) must equal top endpoint z₂=$z₂"))
-
-    return zF, zC, ΔzF, ΔzC
-end

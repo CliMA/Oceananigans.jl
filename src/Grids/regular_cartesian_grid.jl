@@ -117,51 +117,52 @@ function RegularCartesianGrid(FT=Float64;
                               )
 
     TX, TY, TZ = validate_topology(topology)
-    Lx, Ly, Lz, x, y, z = validate_grid_size_and_extent(FT, size, extent, halo, x, y, z)
+    Lx, Ly, Lz, x, y, z = validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
 
-    Nx, Ny, Nz = size
-    Hx, Hy, Hz = halo
+    # Unpacking
+    Nx, Ny, Nz = N = size
+    Hx, Hy, Hz = H = halo
+                 L = (Lx, Ly, Lz)
+    Δx, Δy, Δz = Δ = L ./ N
+                X₁ = (x[1], y[1], z[1])
 
-    # Cell widths
-    Δx = Lx / Nx
-    Δy = Ly / Ny
-    Δz = Lz / Nz
+    # Face-node limits in x, y, z
+    xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ 
+    xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L) 
 
-    # End points of the total domain including halo regions
-    x₋ = x[1] - Hx * Δx
-    y₋ = y[1] - Hy * Δy
-    z₋ = z[1] - Hz * Δz
+    # Cell-node limits in x, y, z
+    xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
+    xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + 2 * Δ * H
 
-    x₊ = x[2] + Hx * Δx
-    y₊ = y[2] + Hy * Δy
-    z₊ = z[2] + Hz * Δz
+    TFx, TFy, TFz = total_length.(Face, topology, N, H)
+    TCx, TCy, TCz = total_length.(Cell, topology, N, H) 
 
     # Include halo points in coordinate arrays
-    xC = range(x₋ + Δx/2, x₊ - Δx/2; length = Nx + 2Hx)
-    yC = range(y₋ + Δy/2, y₊ - Δy/2; length = Ny + 2Hy)
-    zC = range(z₋ + Δz/2, z₊ - Δz/2; length = Nz + 2Hz)
+    xF = range(xF₋, xF₊; length = TFx)
+    yF = range(yF₋, yF₊; length = TFy)
+    zF = range(zF₋, zF₊; length = TFz)
 
-    xF = range(x₋, x₊; length = Nx + 1 + 2Hx)
-    yF = range(y₋, y₊; length = Ny + 1 + 2Hy)
-    zF = range(z₋, z₊; length = Nz + 1 + 2Hz)
+    xC = range(xC₋, xC₊; length = TCx)
+    yC = range(yC₋, yC₊; length = TCy)
+    zC = range(zC₋, zC₊; length = TCz)
 
-    # Offset coordinate arrays
-    xC = OffsetArray(xC, 1 - Hx : Nx + Hx)
-    yC = OffsetArray(yC, 1 - Hy : Ny + Hy)
-    zC = OffsetArray(zC, 1 - Hz : Nz + Hz)
+    # Reshape coordinate arrays first...
+    xC = reshape(xC, TCx, 1, 1)
+    yC = reshape(yC, 1, TCy, 1)
+    zC = reshape(zC, 1, 1, TCz)
 
-    xF = OffsetArray(xF, 1 - Hx : Nx + 1 + Hx)
-    yF = OffsetArray(yF, 1 - Hy : Ny + 1 + Hy)
-    zF = OffsetArray(zF, 1 - Hz : Nz + 1 + Hz)
+    xF = reshape(xF, TFx, 1, 1)
+    yF = reshape(yF, 1, TFy, 1)
+    zF = reshape(zF, 1, 1, TFz)
 
-    # Reshape coordinate arrays
-    xC = reshape(xC, Nx + 2Hx, 1, 1)
-    yC = reshape(yC, 1, Ny + 2Hy, 1)
-    zC = reshape(zC, 1, 1, Nz + 2Hz)
+    # Then offset.
+    xC = OffsetArray(xC, -Hx, 0, 0)
+    yC = OffsetArray(yC, 0, -Hy, 0)
+    zC = OffsetArray(zC, 0, 0, -Hz)
 
-    xF = reshape(xF, Nx + 1 + 2Hx, 1, 1)
-    yF = reshape(yF, 1, Ny + 1 + 2Hy, 1)
-    zF = reshape(zF, 1, 1, Nz + 1 + 2Hz)
+    xF = OffsetArray(xF, -Hx, 0, 0)
+    yF = OffsetArray(yF, 0, -Hy, 0)
+    zF = OffsetArray(zF, 0, 0, -Hz)
 
     return RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
