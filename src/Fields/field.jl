@@ -13,7 +13,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Utils
 
-using Oceananigans.Grids: total_length
+using Oceananigans.Grids: total_length, interior_indices, interior_parent_indices
 
 @hascuda using CuArrays
 
@@ -164,10 +164,7 @@ location(a) = nothing
 
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
 location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
-
-x_location(::AbstractField{X}) where X               = X
-y_location(::AbstractField{X, Y}) where {X, Y}       = Y
-z_location(::AbstractField{X, Y, Z}) where {X, Y, Z} = Z
+location(f, i) = location(f)[i]
 
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::Field) = architecture(f.data)
@@ -229,12 +226,6 @@ contained by `f` along `x, y, z`.
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::Field) = f.data.parent
 
-@inline interior_indices(loc, topo, N) = 1:N
-@inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
-
-@inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
-@inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
-
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx), 
                                                                    interior_indices(Y, topology(f, 2), f.grid.Ny), 
@@ -261,22 +252,9 @@ iterate(f::Field, state=1) = iterate(f.data, state)
 @inline ynode(j, ψ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
 @inline znode(k, ψ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-# Dispatch insanity
-xnodes(::Type{Cell}, topo, grid) = view(grid.xC, 1:grid.Nx, 1, 1)
-ynodes(::Type{Cell}, topo, grid) = view(grid.yC, 1, 1:grid.Ny, 1)
-znodes(::Type{Cell}, topo, grid) = view(grid.zC, 1, 1, 1:grid.Nz)
-
-xnodes(::Type{Face}, topo, grid) = view(grid.xF, 1:grid.Nx, 1, 1)
-ynodes(::Type{Face}, topo, grid) = view(grid.yF, 1, 1:grid.Ny, 1)
-znodes(::Type{Face}, topo, grid) = view(grid.zF, 1, 1, 1:grid.Nz)
-
-xnodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.xF, 1:grid.Nx+1, 1, 1)
-ynodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.yF, 1, 1:grid.Ny+1, 1)
-znodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.zF, 1, 1, 1:grid.Nz+1)
-
-xnodes(ψ::AbstractField) = xnodes(x_location(ψ), topology(ψ, 1), ψ.grid)
-ynodes(ψ::AbstractField) = ynodes(y_location(ψ), topology(ψ, 2), ψ.grid)
-znodes(ψ::AbstractField) = znodes(z_location(ψ), topology(ψ, 3), ψ.grid)
+xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), topology(ψ, 1), ψ.grid)
+ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), topology(ψ, 2), ψ.grid)
+znodes(ψ::AbstractField) = znodes(location(ψ, 3), topology(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
 

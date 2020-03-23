@@ -29,6 +29,29 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
 #####
+##### << Nodes >> 
+#####
+#
+@inline interior_indices(loc, topo, N) = 1:N
+@inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
+
+@inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
+@inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
+
+# Dispatch insanity
+xnodes(::Type{Cell}, topo, grid) = view(grid.xC, 1:grid.Nx, 1, 1)
+ynodes(::Type{Cell}, topo, grid) = view(grid.yC, 1, 1:grid.Ny, 1)
+znodes(::Type{Cell}, topo, grid) = view(grid.zC, 1, 1, 1:grid.Nz)
+
+xnodes(::Type{Face}, topo, grid) = view(grid.xF, interior_indices(Face, topo, grid.Nx), 1, 1)
+ynodes(::Type{Face}, topo, grid) = view(grid.yF, 1, interior_indices(Face, topo, grid.Ny), 1)
+znodes(::Type{Face}, topo, grid) = view(grid.zF, 1, 1, interior_indices(Face, topo, grid.Nz))
+
+nodes(loc, grid) = (xnodes(loc[1], topology(grid, 1), grid),
+                    ynodes(loc[2], topology(grid, 2), grid),
+                    znodes(loc[3], topology(grid, 3), grid))
+
+#####
 ##### Convinience functions
 #####
 
