@@ -56,29 +56,16 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     ΔzC = convert(array_type(arch), ΔzC)
 
     # Construct uniform horizontal grid
-    Lh = (Lx, Ly)
-    Nh = (Nx, Ny)
-    Δh = (Nx, Ny)
+    Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
+    Δx, Δy = Δh = Lh ./ Nh
 
-    # Cell widths
-    Δx = Lx / Nx
-    Δy = Ly / Ny
+    # West-, south-, and bottom-most cell and face nodes
+    xF₋, yF₋ = XF₋ = @. X₁ - Hh * Δh
+    xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
 
-    # West-, south-, and bottom-most face nodes
-    xF₋ = x[1] - Hx * Δx
-    yF₋ = y[1] - Hy * Δy
-
-    # West-, south-, and bottom-most cell nodes
-    xC₋ = xF₋ + Δx / 2
-    yC₋ = yF₋ + Δy / 2
-
-    # East-, north-, and top-most face nodes
-    xF₊ = xF₋ + total_extent(topology[1], Hx, Δx, Lx)
-    yF₊ = yF₋ + total_extent(topology[2], Hy, Δy, Ly)
-
-    # East-, north-, and top-most cell nodes
-    xC₊ = xC₋ + Lx + 2 * Δx * Hx
-    yC₊ = yC₋ + Ly + 2 * Δy * Hy
+    # East-, north-, and top-most cell and face nodes
+    xF₊, yF₊ = XF₊ = @. XF₋ + total_extent(topology[1:2], Hh, Δh, Lh)
+    xC₊, yC₊ = XC₊ = @. XC₋ + Lh + 2 * Δh * Hh
     
     # Total length of Cell and Face quantities
     TFx, TFy, TFz = total_length.(Face, topology, size, halo)
