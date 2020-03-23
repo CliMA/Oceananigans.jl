@@ -230,10 +230,10 @@ contained by `f` along `x, y, z`.
 @inline Base.parent(f::Field) = f.data.parent
 
 @inline interior_indices(loc, topo, N) = 1:N
-@inline interior_indices(::Type{Face}, ::Bounded, N) = 1:N+1
+@inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
 
 @inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
-@inline interior_parent_indices(::Type{Face}, ::Bounded, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
 
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx), 
@@ -270,9 +270,9 @@ xnodes(::Type{Face}, topo, grid) = view(grid.xF, 1:grid.Nx, 1, 1)
 ynodes(::Type{Face}, topo, grid) = view(grid.yF, 1, 1:grid.Ny, 1)
 znodes(::Type{Face}, topo, grid) = view(grid.zF, 1, 1, 1:grid.Nz)
 
-xnodes(::Type{Face}, ::Bounded, grid) = view(grid.xF, 1:grid.Nx+1, 1, 1)
-ynodes(::Type{Face}, ::Bounded, grid) = view(grid.yF, 1, 1:grid.Ny+1, 1)
-znodes(::Type{Face}, ::Bounded, grid) = view(grid.zF, 1, 1, 1:grid.Nz+1)
+xnodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.xF, 1:grid.Nx+1, 1, 1)
+ynodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.yF, 1, 1:grid.Ny+1, 1)
+znodes(::Type{Face}, ::Type{Bounded}, grid) = view(grid.zF, 1, 1, 1:grid.Nz+1)
 
 xnodes(ψ::AbstractField) = xnodes(x_location(ψ), topology(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(y_location(ψ), topology(ψ, 2), ψ.grid)
@@ -294,7 +294,7 @@ offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 Return a range of indices for a field located at cell `Face`s
 `along a grid dimension of length `N` and with halo points `H`.
 """
-offset_indices(::Type{Face}, ::Bounded, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
 
 """
     OffsetArray(underlying_data, grid, loc)
