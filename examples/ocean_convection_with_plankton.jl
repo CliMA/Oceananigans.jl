@@ -41,7 +41,7 @@ nothing # hide
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz))
+grid = RegularCartesianGrid(size=(Nz, 1, Nz), extent=(Lz, Lz, Lz))
 
 buoyancy_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qb),
                                               bottom = BoundaryCondition(Gradient, N²))

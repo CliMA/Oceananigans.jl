@@ -70,7 +70,7 @@ nothing # hide
 # and diffusivity to stabilize the model.
 
 model = IncompressibleModel(
-        grid = RegularCartesianGrid(size=(Nx, 1, Nx), length=(Lx, Lx, Lx)),
+        grid = RegularCartesianGrid(size=(Nx, 1, Nx), extent=(Lx, Lx, Lx)),
      closure = ConstantIsotropicDiffusivity(ν=1e-6, κ=1e-6),
     coriolis = FPlane(f=f),
      tracers = :b,

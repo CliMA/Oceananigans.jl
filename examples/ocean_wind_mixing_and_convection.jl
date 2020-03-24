@@ -62,7 +62,7 @@ nothing # hide
 # at the bottom. Our flux boundary condition for salinity uses a function that calculates
 # the salinity flux in terms of the evaporation rate.
 
-grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz))
+grid = RegularCartesianGrid(size=(Nz, Nz, Nz), extent=(Δz*Nz, Δz*Nz, Δz*Nz))
 
 u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 
