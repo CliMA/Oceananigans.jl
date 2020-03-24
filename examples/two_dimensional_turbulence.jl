@@ -12,14 +12,14 @@
 # For this example, we need `Plots` for plotting and `Statistics` for setting up
 # a random initial condition with zero mean velocity.
 
-using Oceananigans, Oceananigans.AbstractOperations
 using Plots, Statistics
 
 # In addition to importing plotting and statistics packages, we import
-# some types from `Oceananigans` that will aid in the calculation
+# `Oceananigans`, its `AbstractOperations` and `Grids` submodules,
+# and the `Face` and `Cell` types to will aid in the calculation
 # and visualization of voriticty.
 
-using Oceananigans: Face, Cell
+using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
 
 # `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
 # model with a simple isotropic diffusivity.
@@ -78,7 +78,7 @@ anim = @animate for i=1:100
 
     compute!(vorticity_computation)
 
-    x, y = model.grid.xF, model.grid.yF
+    x, y = xnodes(ω)[:], ynodes(ω)[:]
     heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
             color=:balance, clims=(-0.1, 0.1))
 end
