@@ -47,9 +47,9 @@ xnodes(::Type{Face}, topo, grid) = view(grid.xF, interior_indices(Face, topo, gr
 ynodes(::Type{Face}, topo, grid) = view(grid.yF, :, interior_indices(Face, topo, grid.Ny), :)
 znodes(::Type{Face}, topo, grid) = view(grid.zF, :, :, interior_indices(Face, topo, grid.Nz))
 
-nodes(loc, grid) = (xnodes(loc[1], topology(grid, 1), grid),
-                    ynodes(loc[2], topology(grid, 2), grid),
-                    znodes(loc[3], topology(grid, 3), grid))
+nodes(loc, grid::AbstractGrid) = (xnodes(loc[1], topology(grid, 1), grid),
+                                  ynodes(loc[2], topology(grid, 2), grid),
+                                  znodes(loc[3], topology(grid, 3), grid))
 
 #####
 ##### Convinience functions
@@ -61,24 +61,16 @@ unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 ##### Input validation
 #####
 
-instantiate_datatype(t::DataType) = t()
-instantiate_datatype(t) = t
-
 function validate_topology(topology)
-    TX, TY, TZ = topology
-    TX = instantiate_datatype(TX)
-    TY = instantiate_datatype(TY)
-    TZ = instantiate_datatype(TZ)
-
-    for t in (TX, TY, TZ)
-        if !isa(t, AbstractTopology)
-            e = "$(typeof(t)) is not a valid topology! " *
+    for T in topology
+        if !isa(T(), AbstractTopology)
+            e = "$T is not a valid topology! " *
                 "Valid topologies are: Periodic, Bounded, Flat."
             throw(ArgumentError(e))
         end
     end
 
-    return TX, TY, TZ
+    return topology
 end
 
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
