@@ -93,8 +93,6 @@ end
             grid = RegularCartesianGrid(FT, size=N, extent=L)
             x, y, z = nodes((Face, Cell, Cell), grid)
 
-            @show size(x), size(y), size(z)
-
             u₀(x, y, z) = x * y^2 * z^3
             u_answer = @. x * y^2 * z^3
 
