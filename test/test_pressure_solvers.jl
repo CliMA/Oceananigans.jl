@@ -160,26 +160,25 @@ by giving it the source term or right hand side (RHS), which is
     -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
 """
 function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+
+    Ψ(x, y, z) = cos(π * mz * z / Lz) * sin(2π * my * y / Ly) * sin(2π * mx * x / Lx)
+    f(x, y, z) = -((π * mz / Lz)^2 + (2π * my / Ly)^2 + (2π * mx / Lx)^2) * Ψ(x, y, z)
+
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
+
+    xC, yC, zC = nodes((Cell, Cell, Cell), grid)
+
     solver = PressureSolver(CPU(), grid, TracerBoundaryConditions(grid))
-
-    xC, yC, zC = grid.xC, grid.yC, grid.zC
-    xC = reshape(xC, (Nx, 1, 1))
-    yC = reshape(yC, (1, Ny, 1))
-    zC = reshape(zC, (1, 1, Nz))
-
-    Ψ(x, y, z) = cos(π*mz*z/Lz) * sin(2π*my*y/Ly) * sin(2π*mx*x/Lx)
-    f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
     solve_poisson_equation!(solver, grid)
     ϕ = real.(solver.storage)
 
-    error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
+    error = norm(ϕ - Ψ.(xC, yC, zC)) / max(norm(ϕ), norm(Ψ.(xC, yC, zC)))
 
     @info "Error (ℓ²-norm), $FT, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
 
-    isapprox(ϕ, Ψ.(xC, yC, zC), rtol=5e-2)
+    return isapprox(ϕ, Ψ.(xC, yC, zC), rtol=5e-2)
 end
 
 @testset "Pressure solvers" begin
@@ -217,9 +216,9 @@ end
         end
     end
 
+    @hascuda begin
     @testset "Divergence-free solution [GPU]" begin
         @info "  Testing divergence-free solution [GPU]..."
-        @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
                 @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
@@ -237,7 +236,7 @@ end
     @testset "Analytic solution reconstruction" begin
         @info "  Testing analytic solution reconstruction..."
         for N in [32, 48, 64], m in [1, 2, 3]
-            @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
+            @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 192, 192, 192, m, m, m)
         end
     end
 end
