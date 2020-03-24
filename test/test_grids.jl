@@ -3,12 +3,17 @@ using Oceananigans.Grids: total_extent
 total_periodic_extent_is_correct() = total_extent(Periodic, 1, 0.2, 1.0) == 1.2
 total_bounded_extent_is_correct() = total_extent(Bounded,  1, 0.2, 1.0) == 1.4
 
-function regular_cartesian_correct_grid_size(FT)
+function regular_cartesian_correct_size(FT)
     grid = RegularCartesianGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
 
     # Checking ≈ as the grid could be storing Float32 values.
     return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
             grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
+end
+
+function regular_cartesian_correct_extent(FT)
+    grid = RegularCartesianGrid(FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
+    return (grid.Lx ≈ 1 && grid.Ly ≈ 2π  && grid.Lz ≈ 4)
 end
 
 function regular_cartesian_correct_coordinate_sizes(FT)
@@ -31,11 +36,18 @@ function regular_cartesian_correct_halo_size(FT)
     return (grid.Hx == 1  && grid.Hy == 2  && grid.Hz == 3)
 end
 
-function regular_cartesian_correct_first_faces(FT)
+function regular_cartesian_correct_halo_faces(FT)
     N, H, L = 4, 1, 2.0
     Δ = L / N
     grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
-    return grid.xF[1] == - H * Δ && grid.yF[1] == - H * Δ && grid.zF[1] == - H * Δ
+    return grid.xF[0, 1, 1] == - H * Δ && grid.yF[1, 0, 1] == - H * Δ && grid.zF[1, 1, 0] == - H * Δ
+end
+
+function regular_cartesian_correct_first_cells(FT)
+    N, H, L = 4, 1, 4.0
+    Δ = L / N
+    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+    return grid.xC[1, 1, 1] == Δ/2 && grid.yC[1, 1, 1] == Δ/2 && grid.zC[1, 1, 1] == Δ/2
 end
 
 function regular_cartesian_correct_end_faces(FT)
@@ -142,10 +154,12 @@ end
             @info "    Testing grid initialization..."
 
             for FT in float_types
-                @test regular_cartesian_correct_grid_size(FT)
+                @test regular_cartesian_correct_size(FT)
+                @test regular_cartesian_correct_extent(FT)
                 @test regular_cartesian_correct_coordinate_sizes(FT)
                 @test regular_cartesian_correct_halo_size(FT)
-                @test regular_cartesian_correct_first_faces(FT)
+                @test regular_cartesian_correct_halo_faces(FT)
+                @test regular_cartesian_correct_first_cells(FT)
                 @test regular_cartesian_correct_end_faces(FT)
                 @test regular_cartesian_ranges_have_correct_length(FT)
                 @test regular_cartesian_no_roundoff_error_in_ranges(FT)
