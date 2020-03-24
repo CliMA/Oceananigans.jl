@@ -38,6 +38,16 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
 
+# Node by node
+@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i, 1, 1]
+@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i, 1, 1]
+
+@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[1, j, 1]
+@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[1, j, 1]
+
+@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[1, 1, k]
+@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[1, 1, k]
+
 # Dispatch insanity
 xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
 ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)

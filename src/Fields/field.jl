@@ -13,7 +13,7 @@ import Adapt
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
 import Oceananigans: xnode, ynode, znode
-import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes
+import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 
 
 @hascuda using CuArrays
@@ -239,15 +239,6 @@ contained by `f` along `x, y, z`.
                             interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
 
 iterate(f::Field, state=1) = iterate(f.data, state)
-
-@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
-@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
-
-@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
-@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
-
-@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
-@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
 
 @inline xnode(i, ψ::Field{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
 @inline ynode(j, ψ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
