@@ -1,19 +1,20 @@
-import Base: size, length, iterate, getindex, setindex!, lastindex
 using Base: @propagate_inbounds
 
-import Adapt
 using OffsetArrays
 
-import Oceananigans: xnode, ynode, znode
+using Oceananigans.Architectures
+using Oceananigans.Utils
+using Oceananigans.Grids
+using Oceananigans.Grids: total_length, interior_indices, interior_parent_indices
+
+import Base: size, length, iterate, getindex, setindex!, lastindex
+import Adapt
+
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
-import Oceananigans.Grids: total_size, topology
+import Oceananigans: xnode, ynode, znode
+import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Utils
-
-using Oceananigans.Grids: total_length, interior_indices, interior_parent_indices
 
 @hascuda using CuArrays
 
