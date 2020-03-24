@@ -156,9 +156,11 @@ function horizontal_average_of_plus(model)
 
     ST = HorizontalAverage(S + T, model)
     computed_profile = ST(model)
-    correct_profile = @. sin(π*model.grid.zC) + 42 * model.grid.zC
 
-    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+    zC = znodes(Cell, model.grid)
+    correct_profile = @. sin(π * zC) + 42 * zC
+
+    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
 end
 
 function horizontal_average_of_minus(model)
@@ -170,9 +172,10 @@ function horizontal_average_of_minus(model)
     ST = HorizontalAverage(S - T, model)
     computed_profile = ST(model)
 
-    correct_profile = @. sin(π*model.grid.zC) - 42 * model.grid.zC
+    zC = znodes(Cell, model.grid)
+    correct_profile = @. sin(π * zC) - 42 * zC
 
-    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
 end
 
 function horizontal_average_of_times(model)
@@ -183,14 +186,16 @@ function horizontal_average_of_times(model)
 
     ST = HorizontalAverage(S * T, model)
     computed_profile = ST(model)
-    correct_profile = @. sin(π*model.grid.zC) * 42 * model.grid.zC
 
-    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+    zC = znodes(Cell, model.grid)
+    correct_profile = @. sin(π * zC) * 42 * zC
+
+    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
 end
 
 function multiplication_and_derivative_ccf(model)
-    w₀(x, y, z) = sin(π*z)
-    T₀(x, y, z) = 42*z
+    w₀(x, y, z) = sin(π * z)
+    T₀(x, y, z) = 42 * z
     set!(model; w=w₀, T=T₀)
 
     w = model.velocities.w
@@ -198,10 +203,12 @@ function multiplication_and_derivative_ccf(model)
 
     wT = HorizontalAverage(w * ∂z(T), model)
     computed_profile = wT(model)
-    correct_profile = @. sin(π*model.grid.zF) * 42
 
-    # Computed profile includes halos
-    return all(computed_profile[:][3:end-1] .≈ correct_profile[2:end-1])
+    zF = znodes(Face, model.grid)
+    correct_profile = @. 42 * sin(π * zF)
+
+    # Omit bottom halo, keep top boundary.
+    return all(computed_profile[:, :, 2:end] .≈ correct_profile)
 end
 
 const C = Cell
@@ -219,7 +226,8 @@ function multiplication_and_derivative_ccc(model)
     wT_ccc_avg = HorizontalAverage(wT_ccc, model)
     computed_profile_ccc = wT_ccc_avg(model)
 
-    sinusoid = sin.(π*model.grid.zF)
+    zF = znodes(Face, model.grid)
+    sinusoid = sin.(π * zF)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
     correct_profile = interped_sin .* 42
 
@@ -358,7 +366,8 @@ end
                 model = IncompressibleModel(
                     architecture = arch,
                       float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1))
+                            grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1),
+                                                        topology=(Periodic, Periodic, Bounded))
                 )
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
