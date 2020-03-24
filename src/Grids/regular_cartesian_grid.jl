@@ -132,7 +132,7 @@ function RegularCartesianGrid(FT=Float64;
 
     # Cell-node limits in x, y, z
     xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
-    xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + 2 * Δ * H
+    xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + Δ * (2H - 1)
 
     TFx, TFy, TFz = total_length.(Face, topology, N, H)
     TCx, TCy, TCz = total_length.(Cell, topology, N, H) 
@@ -164,7 +164,7 @@ function RegularCartesianGrid(FT=Float64;
     yF = OffsetArray(yF, 0, -Hy, 0)
     zF = OffsetArray(zF, 0, 0, -Hz)
 
-    return RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xC)}(
+    return RegularCartesianGrid{FT, TX, TY, TZ, typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 

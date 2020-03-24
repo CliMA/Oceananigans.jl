@@ -59,13 +59,13 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
     Δx, Δy = Δh = Lh ./ Nh
 
-    # West-, south-, and bottom-most cell and face nodes
+    # Face-node limits in x, y, z
     xF₋, yF₋ = XF₋ = @. X₁ - Hh * Δh
-    xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
-
-    # East-, north-, and top-most cell and face nodes
     xF₊, yF₊ = XF₊ = @. XF₋ + total_extent(topology[1:2], Hh, Δh, Lh)
-    xC₊, yC₊ = XC₊ = @. XC₋ + Lh + 2 * Δh * Hh
+
+    # Cell-node limits in x, y, z
+    xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
+    xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
     
     # Total length of Cell and Face quantities
     TFx, TFy, TFz = total_length.(Face, topology, size, halo)
@@ -100,7 +100,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
      zF = OffsetArray(zF,  0, 0, -Hz)
     ΔzF = OffsetArray(ΔzF, 0, 0, -Hz)
 
-    return VerticallyStretchedCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
+    return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
 
