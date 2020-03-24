@@ -1,6 +1,7 @@
 module Grids
 
 export
+    Cell, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes
@@ -9,9 +10,25 @@ import Base: size, length, eltype, show
 
 using Oceananigans, Oceananigans.Architectures
 
-using Oceananigans: Cell, Face
-
 using OffsetArrays
+
+#####
+##### Abstract types
+#####
+
+"""
+    Cell
+
+A type describing the location at the center of a grid cell.
+"""
+struct Cell end
+
+"""
+	Face
+
+A type describing the location at the face of a grid cell.
+"""
+struct Face end
 
 """
     AbstractTopology

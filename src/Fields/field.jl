@@ -4,7 +4,6 @@ using OffsetArrays
 
 using Oceananigans.Architectures
 using Oceananigans.Utils
-using Oceananigans.Grids
 using Oceananigans.Grids: total_length, interior_indices, interior_parent_indices
 
 import Base: size, length, iterate, getindex, setindex!, lastindex
@@ -12,9 +11,7 @@ import Adapt
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
-import Oceananigans: xnode, ynode, znode
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
-
 
 @hascuda using CuArrays
 
