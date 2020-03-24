@@ -39,17 +39,17 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
 
 # Dispatch insanity
-xnodes(::Type{Cell}, topo, grid) = view(grid.xC, 1:grid.Nx, :, :)
-ynodes(::Type{Cell}, topo, grid) = view(grid.yC, :, 1:grid.Ny, :)
-znodes(::Type{Cell}, topo, grid) = view(grid.zC, :, :, 1:grid.Nz)
+xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
+ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)
+znodes(::Type{Cell}, grid) = view(grid.zC, :, :, 1:grid.Nz)
 
-xnodes(::Type{Face}, topo, grid) = view(grid.xF, interior_indices(Face, topo, grid.Nx), :, :)
-ynodes(::Type{Face}, topo, grid) = view(grid.yF, :, interior_indices(Face, topo, grid.Ny), :)
-znodes(::Type{Face}, topo, grid) = view(grid.zF, :, :, interior_indices(Face, topo, grid.Nz))
+xnodes(::Type{Face}, grid) = view(grid.xF, interior_indices(Face, topology(grid, 1), grid.Nx), :, :)
+ynodes(::Type{Face}, grid) = view(grid.yF, :, interior_indices(Face, topology(grid, 2), grid.Ny), :)
+znodes(::Type{Face}, grid) = view(grid.zF, :, :, interior_indices(Face, topology(grid, 3), grid.Nz))
 
-nodes(loc, grid::AbstractGrid) = (xnodes(loc[1], topology(grid, 1), grid),
-                                  ynodes(loc[2], topology(grid, 2), grid),
-                                  znodes(loc[3], topology(grid, 3), grid))
+nodes(loc, grid::AbstractGrid) = (xnodes(loc[1], grid),
+                                  ynodes(loc[2], grid),
+                                  znodes(loc[3], grid))
 
 #####
 ##### Convinience functions

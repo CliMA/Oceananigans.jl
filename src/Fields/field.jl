@@ -253,9 +253,9 @@ iterate(f::Field, state=1) = iterate(f.data, state)
 @inline ynode(j, ψ::Field{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
 @inline znode(k, ψ::Field{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), topology(ψ, 1), ψ.grid)
-ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), topology(ψ, 2), ψ.grid)
-znodes(ψ::AbstractField) = znodes(location(ψ, 3), topology(ψ, 3), ψ.grid)
+xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
+ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
+znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
 
