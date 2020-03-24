@@ -3,7 +3,7 @@ module Grids
 export
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
-    xnodes, ynodes, znode, nodes
+    xnodes, ynodes, znodes, nodes
 
 import Base: size, length, eltype, show
 
