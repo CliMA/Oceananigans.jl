@@ -5,23 +5,30 @@ function relative_error(u_num, u, time)
 end
 
 function test_diffusion_simple(fieldname)
-    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1))
-    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
+                                buoyancy = nothing)
     field = get_model_field(fieldname, model)
+
     value = π
     interior(field) .= value
-    for n in 1:10; time_step!(model, 1, euler= n==1); end
+
+    for n in 1:10
+        time_step!(model, 1, euler= n==1)
+    end
+
     field_data = interior(field)
 
     return !any(@. !isapprox(value, field_data))
 end
 
 function test_diffusion_budget_default(fieldname)
-    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1))
-    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
+                                buoyancy = nothing)
+
     field = get_model_field(fieldname, model)
+
     half_Nz = round(Int, model.grid.Nz/2)
     interior(field)[:, :,   1:half_Nz] .= -1
     interior(field)[:, :, half_Nz:end] .=  1
@@ -30,10 +37,13 @@ function test_diffusion_budget_default(fieldname)
 end
 
 function test_diffusion_budget_channel(fieldname)
-    grid = RegularCartesianGrid(size=(1, 16, 4), extent=(1, 1, 1), topology=(Periodic, Bounded, Bounded))
-    closure = ConstantIsotropicDiffusivity(ν=1, κ=1)
-    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 16, 4), extent=(1, 1, 1),
+                                                                topology=(Periodic, Bounded, Bounded)),
+                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
+                                buoyancy = nothing)
+
     field = get_model_field(fieldname, model)
+
     half_Ny = round(Int, model.grid.Ny/2)
     interior(field)[:, 1:half_Ny,   :] .= -1
     interior(field)[:, half_Ny:end, :] .=  1
@@ -43,27 +53,40 @@ end
 
 function test_diffusion_budget(field, model, κ, L)
     mean_init = mean(interior(field))
-    for n in 1:100; time_step!(model, 1e-4 * L^2 / κ, euler= n==1); end
+
+    for n in 1:100
+        time_step!(model, 1e-4 * L^2 / κ, euler= n==1)
+    end
+
     return isapprox(mean_init, mean(interior(field)))
 end
 
 function test_diffusion_cosine(fieldname)
     Nz, Lz, κ, m = 128, π/2, 1, 2
-    grid = RegularCartesianGrid(size=(1, 1, Nz), extent=(1, 1, Lz))
-    closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
-    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=nothing)
+
+    grid = RegularCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+
+    model = IncompressibleModel(    grid = grid,
+                                 closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ),
+                                buoyancy = nothing)
+
     field = get_model_field(fieldname, model)
 
-    zC = model.grid.zC
-    interior(field)[1, 1, :] .= cos.(m*zC)
+    zC = znodes(Cell, grid)
+    interior(field) .= cos.(m * zC)
 
-    diffusing_cosine(κ, m, z, t) = exp(-κ*m^2*t) * cos(m*z)
+    diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
 
-    # Use small time-step relative to diff. time-scale
-    for n in 1:100; time_step!(model, 1e-6 * Lz^2 / κ, euler= n==1); end
-    field_numerical = dropdims(interior(field), dims=(1, 2))
+    # Step forward with small time-step relative to diff. time-scale
+    Δt = 1e-6 * Lz^2 / κ
+    for n in 1:100
+        time_step!(model, Δt, euler=n==1)
+    end
 
-    return !any(@. !isapprox(field_numerical, diffusing_cosine(κ, m, zC, model.clock.time), atol=1e-6, rtol=1e-6))
+     numerical = interior(field)
+    analytical = diffusing_cosine.(κ, m, zC, model.clock.time)
+
+    return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
 end
 
 function internal_wave_test(; N=128, Nt=10)
@@ -101,11 +124,11 @@ function internal_wave_test(; N=128, Nt=10)
     w₀(x, y, z) = w(x, y, z, 0)
     b₀(x, y, z) = b(x, y, z, 0)
 
-    # Create a model where temperature = buoyancy.
-    grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L))
-    closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ)
-    model = IncompressibleModel(grid=grid, closure=closure, buoyancy=BuoyancyTracer(),
-                                tracers=:b, coriolis=FPlane(f=f))
+    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
+                                 closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+                                buoyancy = BuoyancyTracer(),
+                                 tracers = :b,
+                                coriolis = FPlane(f=f))
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -176,8 +199,8 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
         time_step!(model, Δt, euler = n==1)
     end
 
-    xC, yC, zC = reshape(model.grid.xC, (Nx, 1, 1)), reshape(model.grid.yC, (1, Ny, 1)), reshape(model.grid.zC, (1, 1, Nz))
-    xF, yF = reshape(model.grid.xF[1:end-1], (Nx, 1, 1)), reshape(model.grid.yF[1:end-1], (1, Ny, 1))
+    xF, yC, zC = nodes(model.velocities.u)
+    xC, yF, zC = nodes(model.velocities.v)
 
     t = model.clock.time
     i = model.clock.iteration
