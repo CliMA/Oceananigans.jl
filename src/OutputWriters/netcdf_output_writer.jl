@@ -52,13 +52,15 @@ Keyword arguments
 function write_grid_and_attributes(model; filename="grid.nc", mode="c",
                                    compression=0, attributes=Dict(), slice_kw...)
 
+    Nx, Ny, Nz = size(model.grid)
+
     dims = Dict(
-        "xC" => collect(model.grid.xC),
-        "yC" => collect(model.grid.yC),
-        "zC" => collect(model.grid.zC),
-        "xF" => collect_face_nodes(topology(model.grid, 1), model.grid.xF),
-        "yF" => collect_face_nodes(topology(model.grid, 2), model.grid.yF),
-        "zF" => collect_face_nodes(topology(model.grid, 3), model.grid.zF)
+        "xC" => collect(model.grid.xC[1:Nx, 1, 1]),
+        "yC" => collect(model.grid.yC[1, 1:Ny, 1]),
+        "zC" => collect(model.grid.zC[1, 1, 1:Nz]),
+        "xF" => collect_face_nodes(topology(model.grid, 1), model.grid.xF[1:Nx+1, 1, 1]),
+        "yF" => collect_face_nodes(topology(model.grid, 2), model.grid.yF[1, 1:Ny+1, 1]),
+        "zF" => collect_face_nodes(topology(model.grid, 3), model.grid.zF[1, 1, 1:Nz+1])
     )
 
     dim_attribs = Dict(
