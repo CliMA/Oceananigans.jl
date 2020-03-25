@@ -218,6 +218,11 @@ contained by `f` along `x, y, z`.
 @inline data(a) = a # fallback
 @inline data(f::Field) = f.data
 
+@inline cpudata(a) = data(a)
+
+@hascuda @inline cpudata(f::Field{X, Y, Z, <:CuArray}) where {X, Y, Z} =
+    OffsetArray(Array(parent(f)), f.grid, location(f))
+
 # Endpoint for recursive `datatuple` function:
 @inline datatuple(obj::AbstractField) = data(obj)
 
