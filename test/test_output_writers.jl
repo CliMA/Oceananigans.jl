@@ -88,11 +88,12 @@ function run_netcdf_function_output_tests(arch)
     L = 1
     model = IncompressibleModel(grid=RegularCartesianGrid(size=(N, N, N), extent=(L, 2L, 3L)))
     simulation = Simulation(model, Δt=1.25, stop_iteration=3)
+    grid = model.grid
 
     # Define scalar, vector, 2D slice, and 3D field outputs
     f(model) = model.clock.time^2
-    g(model) = @. model.clock.time * exp(model.grid.zC)
-    h(model) = @. model.clock.time * sin(model.grid.xC) * cos(model.grid.yC')
+    g(model) = model.clock.time .* exp.(znodes(Cell, grid)[:])
+    h(model) = model.clock.time .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
 
     outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
     dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
@@ -129,13 +130,13 @@ function run_netcdf_function_output_tests(arch)
 
     @test ds["profile"].attrib["longname"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
-    @test ds["profile"][:, end] == @. 3.75 * exp(model.grid.zC)
+    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid)[:])
     @test size(ds["profile"]) == (N, 4)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     @test ds["slice"].attrib["longname"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
-    @test ds["slice"][:, :, end] == @. 3.75 * sin(model.grid.xC) * cos(model.grid.yC')
+    @test ds["slice"][:, :, end] == 3.75 .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
     @test size(ds["slice"]) == (N, N, 4)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
