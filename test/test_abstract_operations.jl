@@ -207,8 +207,8 @@ function multiplication_and_derivative_ccf(model)
     zF = znodes(Face, model.grid)
     correct_profile = @. 42 * sin(π * zF)
 
-    # Omit bottom halo, keep top boundary.
-    return all(computed_profile[:, :, 2:end] .≈ correct_profile)
+    # Omit both halos and boundary points
+    return all(computed_profile[:, :, 3:end-1] .≈ correct_profile[:, :, 2:end-1])
 end
 
 const C = Cell
