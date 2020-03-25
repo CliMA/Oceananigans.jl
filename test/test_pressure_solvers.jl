@@ -150,11 +150,11 @@ end
 ##### Test that Poisson solver error converges as error ~ N⁻²
 #####
 
-ψ(::Bounded, n, x) = cos(n*x/2)
-ψ(::Periodic, n, x) = cos(n*x)
+ψ(::Type{Bounded}, n, x) = cos(n*x/2)
+ψ(::Type{Periodic}, n, x) = cos(n*x)
 
-k²(::Bounded, n) = (n/2)^2
-k²(::Periodic, n) = n^2
+k²(::Type{Bounded}, n) = (n/2)^2
+k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
