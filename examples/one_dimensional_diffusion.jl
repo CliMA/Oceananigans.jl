@@ -76,12 +76,14 @@ run!(simulation)
 tracer_label(model) = @sprintf("t = %.3f", model.clock.time)
 
 ## Plot initial condition
-zC = znodes(Cell, model.grid)[:]
+T = model.tracers.T
+
+zC = znodes(T)[:]
+
 p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
          xlabel="Tracer concentration", ylabel="z")
 
 ## Plot current solution
-T = model.tracers.T
 plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
 
 # Interesting! We can keep running the simulation and animate the tracer
