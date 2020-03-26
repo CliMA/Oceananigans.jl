@@ -52,9 +52,31 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[1, 1, k]
 @inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[1, 1, k]
 
-# Dispatch insanity
+"""
+    xnodes(loc, grid)
+
+Returns a view over the interior `loc=Cell` or loc=Face` nodes
+on `grid` in the x-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
+"""
 xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
+
+"""
+    ynodes(loc, grid)
+
+Returns a view over the interior `loc=Cell` or loc=Face` nodes
+on `grid` in the y-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
+"""
 ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)
+
+"""
+    znodes(loc, grid)
+
+Returns a view over the interior `loc=Cell` or loc=Face` nodes
+on `grid` in the z-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
+"""
 znodes(::Type{Cell}, grid) = view(grid.zC, :, :, 1:grid.Nz)
 
 xnodes(::Type{Face}, grid) = view(grid.xF, interior_indices(Face, topology(grid, 1), grid.Nx), :, :)
