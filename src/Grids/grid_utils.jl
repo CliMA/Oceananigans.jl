@@ -58,6 +58,8 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 Returns a view over the interior `loc=Cell` or loc=Face` nodes
 on `grid` in the x-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
+
+See `znodes` for examples.
 """
 xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
 
@@ -67,6 +69,8 @@ xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
 Returns a view over the interior `loc=Cell` or loc=Face` nodes
 on `grid` in the y-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
+
+See `znodes` for examples.
 """
 ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)
 
@@ -76,6 +80,41 @@ ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)
 Returns a view over the interior `loc=Cell` or loc=Face` nodes
 on `grid` in the z-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
+
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans, Oceananigans.Grids
+
+julia> horz_periodic_grid = RegularCartesianGrid(size=(3, 3, 3), extent=(2π, 2π, 1), 
+                                                 topology=(Periodic, Periodic, Bounded));
+
+julia> zC = znodes(Cell, horz_periodic_grid)
+1×1×3 view(OffsetArray(reshape(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}, 1, 1, 5), 1:1, 1:1, 0:4), :, :, 1:3) with eltype Float64 with indices 1:1×1:1×Base.OneTo(3):
+[:, :, 1] =
+ -0.8333333333333331
+
+[:, :, 2] =
+ -0.4999999999999999
+
+[:, :, 3] =
+ -0.16666666666666652
+
+julia> zF = znodes(Face, horz_periodic_grid)
+1×1×4 view(OffsetArray(reshape(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}, 1, 1, 6), 1:1, 1:1, 0:5), :, :, 1:4) with eltype Float64 with indices 1:1×1:1×Base.OneTo(4):
+[:, :, 1] =
+ -1.0
+
+[:, :, 2] =
+ -0.6666666666666666
+
+[:, :, 3] =
+ -0.33333333333333337
+
+[:, :, 4] =
+ -4.44089209850063e-17
+```
 """
 znodes(::Type{Cell}, grid) = view(grid.zC, :, :, 1:grid.Nz)
 
@@ -83,6 +122,14 @@ xnodes(::Type{Face}, grid) = view(grid.xF, interior_indices(Face, topology(grid,
 ynodes(::Type{Face}, grid) = view(grid.yF, :, interior_indices(Face, topology(grid, 2), grid.Ny), :)
 znodes(::Type{Face}, grid) = view(grid.zF, :, :, interior_indices(Face, topology(grid, 3), grid.Nz))
 
+"""
+    nodes(loc, grid)
+
+Returns a 3-tuple of views over the interior nodes
+at the locations in `loc` in `x, y, z`.
+
+See `xnodes`, `ynodes`, and `znodes`.
+"""
 nodes(loc, grid::AbstractGrid) = (xnodes(loc[1], grid),
                                   ynodes(loc[2], grid),
                                   znodes(loc[3], grid))
