@@ -3,6 +3,8 @@
 #####
 
 """
+    total_extent(topology, H, Δ, L)
+
 Returns the total extent, including halo regions, of constant-spaced
 `Periodic` and `Flat` dimensions with number of halo points `H`, 
 constant grid spacing `Δ`, and interior extent `L`.
@@ -10,6 +12,8 @@ constant grid spacing `Δ`, and interior extent `L`.
 total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
 
 """
+    total_extent(::Type{Bounded}, H, Δ, L)
+
 Returns the total extent of, including halo regions, of constant-spaced
 `Bounded` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
@@ -17,12 +21,16 @@ constant grid spacing `Δ`, and interior extent `L`.
 total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 
 """
-Returns the total length, including halo points, of a field located at 
-`Cell` centers along a grid dimension of length `N` and with halo points `H`.
+    total_length(loc, topo, N, H=0)
+
+Returns the total length (number of nodes), including halo points, of a field 
+located at `Cell` centers along a grid dimension of length `N` and with halo points `H`.
 """
 total_length(loc, topo, N, H=0) = N + 2H
 
 """
+    total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
+
 Returns the total length, including halo points, of a field located at 
 cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
