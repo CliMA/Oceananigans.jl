@@ -60,6 +60,16 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[1, 1, k]
 @inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[1, 1, k]
 
+# Convenience is king
+@inline xC(i, grid) = xnode(Cell, i, grid)
+@inline xF(i, grid) = xnode(Face, i, grid)
+
+@inline yC(j, grid) = ynode(Cell, j, grid)
+@inline yF(j, grid) = ynode(Face, j, grid)
+
+@inline zC(k, grid) = znode(Cell, k, grid)
+@inline zF(k, grid) = znode(Face, k, grid)
+
 """
     xnodes(loc, grid)
 

@@ -1,7 +1,39 @@
 using Oceananigans.Grids: total_extent
 
+#####
+##### Grid utilities and such
+#####
+
 total_periodic_extent_is_correct() = total_extent(Periodic, 1, 0.2, 1.0) == 1.2
-total_bounded_extent_is_correct() = total_extent(Bounded,  1, 0.2, 1.0) == 1.4
+total_bounded_extent_is_correct() = total_extent(Bounded, 1, 0.2, 1.0) == 1.4
+
+function test_xnode_ynode_znode_are_correct(FT, N=3)
+
+    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
+                                topology=(Periodic, Periodic, Bounded))
+
+    @test xnode(Cell, 2, grid) ≈ FT(π/2)
+    @test ynode(Cell, 2, grid) ≈ FT(π/2)
+    @test znode(Cell, 2, grid) ≈ FT(π/2)
+
+    @test xnode(Face, 2, grid) ≈ FT(π/3)
+    @test ynode(Face, 2, grid) ≈ FT(π/3)
+    @test znode(Face, 2, grid) ≈ FT(π/3)
+
+    @test xC(2, grid) == xnode(Cell, 2, grid)
+    @test yC(2, grid) == ynode(Cell, 2, grid)
+    @test zC(2, grid) == znode(Cell, 2, grid)
+
+    @test xF(2, grid) == xnode(Face, 2, grid)
+    @test yF(2, grid) == ynode(Face, 2, grid)
+    @test zF(2, grid) == znode(Face, 2, grid)
+
+    return nothing
+end
+
+#####
+##### Regular Cartesian grids
+#####
 
 function regular_cartesian_correct_size(FT)
     grid = RegularCartesianGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
@@ -83,6 +115,10 @@ function regular_cartesian_grid_properties_are_same_type(FT)
            all(eltype.([grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
+#####
+##### Vertically stretched grids
+#####
+
 function correct_constant_grid_spacings(FT)
     grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 1), zF=collect(0:16))
     return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
@@ -138,6 +174,10 @@ function vertically_stretched_grid_properties_are_same_type(FT)
            all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
+#####
+##### Test the tests
+#####
+
 @testset "Grids" begin
     @info "Testing grids..."
 
@@ -145,6 +185,9 @@ end
         @info "  Testing grid utilities..."
         @test total_periodic_extent_is_correct()
         @test total_bounded_extent_is_correct()
+        for FT in float_types
+            test_xnode_ynode_znode_are_correct(FT)
+        end
     end
 
     @testset "Regular Cartesian grid" begin

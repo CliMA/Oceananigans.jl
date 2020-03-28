@@ -4,7 +4,8 @@ export
     Cell, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
-    xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+    xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
+    xC, xF, yC, yF, zC, zF
 
 import Base: size, length, eltype, show
 
