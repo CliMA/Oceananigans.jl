@@ -359,4 +359,5 @@ Base.zeros(arch, grid, loc=(Cell, Cell, Cell)) = zeros(eltype(grid), arch, grid,
 Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
 Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
 
-Base.zeros(arch, grid, args...) = zeros(eltype(grid), args...)
+Base.zeros(::CPU, grid, args...) = zeros(eltype(grid), args...)
+Base.zeros(::GPU, grid, args...) = zeros(eltype(grid), args...) |> CuArray
