@@ -356,7 +356,7 @@ end
 # Default to type of Grid
 Base.zeros(arch, grid, loc=(Cell, Cell, Cell)) = zeros(eltype(grid), arch, grid, loc)
 
-Base.zeros(FT, ::CPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
-Base.zeros(FT, ::GPU, grid, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
+Base.zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
+Base.zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
 
-Base.zeros(arch, grid, args...) = zeros(eltype(grid), args...)
+Base.zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
