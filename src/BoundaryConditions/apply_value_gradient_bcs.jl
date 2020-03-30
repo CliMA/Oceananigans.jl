@@ -5,12 +5,12 @@ using Oceananigans.Utils: @loop_xy, @loop_xz, @loop_yz, launch_config
 ##### Halo filling for value and gradient boundary conditions
 #####
 
-  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :yz)   _fill_west_halo!(c, bc, grid, args...)
-  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :yz)   _fill_east_halo!(c, bc, grid, args...)
- fill_south_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xz)  _fill_south_halo!(c, bc, grid, args...)
- fill_north_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xz)  _fill_north_halo!(c, bc, grid, args...)
-fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(c, bc, grid, args...)
-   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xy)    _fill_top_halo!(c, bc, grid, args...)
+  @inline fill_west_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :yz)   _fill_west_halo!(c, bc, grid, args...)
+  @inline fill_east_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :yz)   _fill_east_halo!(c, bc, grid, args...)
+ @inline fill_south_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xz)  _fill_south_halo!(c, bc, grid, args...)
+ @inline fill_north_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xz)  _fill_north_halo!(c, bc, grid, args...)
+@inline fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xy) _fill_bottom_halo!(c, bc, grid, args...)
+   @inline fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, args...) = @launch device(arch) config=launch_config(grid, :xy)    _fill_top_halo!(c, bc, grid, args...)
 
 @inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
 
