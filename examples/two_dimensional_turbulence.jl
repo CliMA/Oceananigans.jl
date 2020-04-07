@@ -59,7 +59,7 @@ nothing # hide
 # `vorticity_operation` we create a field `ω` to store the result of the operation, and a
 # `Computation` object for coordinate the computation of vorticity and storage in `ω`:
 
-ω = Field(Face, Face, Cell, model.architecture, model.grid, TracerBoundaryConditions(model.grid))
+ω = Field(Face, Face, Cell, model.architecture, model.grid)
 
 vorticity_computation = Computation(vorticity_operation, ω)
 nothing # hide

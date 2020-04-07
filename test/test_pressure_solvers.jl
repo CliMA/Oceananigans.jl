@@ -146,40 +146,49 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     interior(∇²ϕ) ≈ RHS_orig
 end
 
-"""
-    poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
+#####
+##### Test that Poisson solver error converges as error ~ N⁻²
+#####
 
-Test that the Poisson solver can recover an analytic solution. In this test, we
-are trying to see if the solver can recover the solution
+ψ(::Bounded, n, x) = cos(n*x/2)
+ψ(::Periodic, n, x) = cos(n*x)
 
-    ``\\Psi(x, y, z) = cos(\\pi m_z z / L_z) sin(2\\pi m_y y / L_y) sin(2\\pi m_x x / L_x)``
+k²(::Bounded, n) = (n/2)^2
+k²(::Periodic, n) = n^2
 
-by giving it the source term or right hand side (RHS), which is
+function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
+    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
+    solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
 
-    ``f(x, y, z) = \\nabla^2 \\Psi(x, y, z) =
-    -((\\pi m_z / L_z)^2 + (2\\pi m_y / L_y)^2 + (2\\pi m_x/L_x)^2) \\Psi(x, y, z)``.
-"""
-function poisson_ppn_recover_sine_cosine_solution(FT, Nx, Ny, Nz, Lx, Ly, Lz, mx, my, mz)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
-    solver = PressureSolver(CPU(), grid, TracerBoundaryConditions(grid))
-
+    Nx, Ny, Nz = size(grid)
     xC, yC, zC = grid.xC, grid.yC, grid.zC
     xC = reshape(xC, (Nx, 1, 1))
     yC = reshape(yC, (1, Ny, 1))
     zC = reshape(zC, (1, 1, Nz))
 
-    Ψ(x, y, z) = cos(π*mz*z/Lz) * sin(2π*my*y/Ly) * sin(2π*mx*x/Lx)
-    f(x, y, z) = -((mz*π/Lz)^2 + (2π*my/Ly)^2 + (2π*mx/Lx)^2) * Ψ(x, y, z)
+    Tx, Ty, Tz = topology(grid)
+    Ψ(x, y, z) = ψ(Tx, mode, x) * ψ(Ty, mode, y) * ψ(Tz, mode, z)
+    f(x, y, z) = -(k²(Tx, mode) + k²(Ty, mode) + k²(Tz, mode)) * Ψ(x, y, z)
 
     @. solver.storage = f(xC, yC, zC)
     solve_poisson_equation!(solver, grid)
     ϕ = real.(solver.storage)
 
-    error = norm(ϕ - Ψ.(xC, yC, zC)) / √(Nx*Ny*Nz)
+    L¹_error = mean(abs, ϕ - Ψ.(xC, yC, zC))
 
-    @info "Error (ℓ²-norm), $FT, N=($Nx, $Ny, $Nz), m=($mx, $my, $mz): $error"
+    return L¹_error
+end
 
-    isapprox(ϕ, Ψ.(xC, yC, zC), rtol=5e-2)
+function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64)
+    error¹ = analytical_poisson_solver_test(arch, N¹, topo; FT=FT)
+    error² = analytical_poisson_solver_test(arch, N², topo; FT=FT)
+
+    rate = log(error¹ / error²) / log(N² / N¹)
+
+    Tx, Ty, Tz = topo
+    @info "Convergence of L¹-normed error, $FT, ($(N¹)³ -> $(N²)³), topology=($Tx, $Ty, $Tz): $rate"
+
+    return isapprox(rate, 2, rtol=5e-3)
 end
 
 @testset "Pressure solvers" begin
@@ -234,10 +243,11 @@ end
         end
     end
 
-    @testset "Analytic solution reconstruction" begin
-        @info "  Testing analytic solution reconstruction..."
-        for N in [32, 48, 64], m in [1, 2, 3]
-            @test poisson_ppn_recover_sine_cosine_solution(Float64, N, N, N, 100, 100, 100, m, m, m)
-        end
+    @testset "Convergence to analytical solution" begin
+        @info "  Testing convergence to analytical solution..."
+        @test_skip poisson_solver_convergence(CPU(), (Periodic, Periodic, Periodic), 2^6, 2^7)
+        @test poisson_solver_convergence(CPU(), (Periodic, Periodic, Bounded), 2^6, 2^7)
+        @test poisson_solver_convergence(CPU(), (Periodic, Bounded, Bounded), 2^6, 2^7)
+        @test poisson_solver_convergence(CPU(), (Bounded, Bounded, Bounded), 2^6, 2^7)
     end
 end

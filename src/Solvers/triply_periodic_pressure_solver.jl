@@ -19,7 +19,7 @@ function TriplyPeriodicPressureSolver(::CPU, grid, pressure_bcs, planner_flag=FF
 
     transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxyz!)
 
-    return PressureSolver(HorizontallyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
+    return PressureSolver(TriplyPeriodic(), CPU(), wavenumbers, storage, transforms, nothing)
 end
 
 function solve_poisson_equation!(solver::PressureSolver{TriplyPeriodic, CPU}, grid)
