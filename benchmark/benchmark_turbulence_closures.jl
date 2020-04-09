@@ -11,34 +11,30 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Run benchmark across these parameters.
             Ns = [(32, 32, 32), (128, 128, 128)]
-      closures = [ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity, ConstantSmagorinsky]
    float_types = [Float64]       # Float types to benchmark.
          archs = [CPU()]         # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
+      closures = [ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity, SmagorinskyLilly,
+	              VerstappenAnisotropicMinimumDissipation]
 
 #####
 ##### Run benchmarks
 #####
 
 for arch in archs, FT in float_types, N in Ns, Closure in closures
-    Nx, Ny, Nz = N
-    Lx, Ly, Lz = 1, 1, 1
+	grid = RegularCartesianGrid(FT, size=N, length=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, closure=Closure(FT))
 
-    model = Model(architecture = arch, float_type = FT,
-                  grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
-		  closure = Closure(FT))
-    
-    time_step!(model, Ni, 1)
+    time_step!(model, 1)  # precompile
 
-    bn =  benchmark_name(N, string(Closure), arch, FT; npad=3)
+    bn =  benchmark_name(N, string(Closure), arch, FT)
     @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
-        @timeit timer bn time_step!(model, 1, 1)
+        @timeit timer bn time_step!(model, 1)
     end
 end
 
