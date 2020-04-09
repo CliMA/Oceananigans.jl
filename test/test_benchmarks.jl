@@ -47,6 +47,39 @@ end
 
             @test run_benchmark(replace_strings, "static_ocean")
         end
+
+        @testset "Channel benchmark" begin
+            @info "    Running channel benchmarks..."
+
+            replace_strings = [
+                ("Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]",
+                 "Ns = [(32, 32, 32)]")
+            ]
+
+            @test run_benchmark(replace_strings, "channel")
+        end
+
+        @testset "Turbulence closures benchmark" begin
+            @info "    Running turbulence closures benchmark..."
+
+            replace_strings = [
+                ("Ns = [(32, 32, 32), (128, 128, 128)]",
+                 "Ns = [(32, 32, 32)]")
+            ]
+
+            @test run_benchmark(replace_strings, "turbulence_closures")
+        end
+
+        @testset "Tracers benchmark" begin
+            @info "    Running tracers benchmark..."
+
+            replace_strings = [
+                ("test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]",
+                 "test_cases = [(0, 0), (2, 0), (2, 3)]")
+            ]
+
+            @test run_benchmark(replace_strings, "tracers")
+        end
     end
 
     @testset "Selected performance benchmarks" begin
