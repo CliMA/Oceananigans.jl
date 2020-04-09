@@ -23,12 +23,10 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
 #####
 
 for arch in archs, float_type in float_types, N in Ns
-    Nx, Ny, Nz = N
-    Lx, Ly, Lz = 1, 1, 1
-
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(size=N, length=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=float_type, grid=grid)
-    time_step!(model, 1)
+
+    time_step!(model, 1)  # precompile
 
     bname =  benchmark_name(N, "", arch, float_type)
     @printf("Running static ocean benchmark: %s...\n", bname)
