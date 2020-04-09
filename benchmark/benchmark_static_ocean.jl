@@ -1,4 +1,5 @@
-using Printf, TimerOutputs
+using Printf
+using TimerOutputs
 using Oceananigans
 
 include("benchmark_utils.jl")
@@ -9,7 +10,6 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-Ni = 2   # Number of iterations before benchmarking starts.
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks. Focusing on 3D models for GPU benchmarking.
@@ -26,7 +26,8 @@ for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
 
-    model = IncompressibleModel(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    model = IncompressibleModel(architecture=arch, float_type=float_type, grid=grid)
     time_step!(model, 1)
 
     bname =  benchmark_name(N, "", arch, float_type)
