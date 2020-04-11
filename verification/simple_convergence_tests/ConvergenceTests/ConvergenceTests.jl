@@ -59,4 +59,6 @@ include("DoublyPeriodicTaylorGreen.jl")
 
 include("ForcedFlowFreeSlip.jl")
 
+include("ForcedFlowFixedSlip.jl")
+
 end
