@@ -14,7 +14,7 @@ than `max_Δt`.
 """
 Base.@kwdef mutable struct TimeStepWizard{T}
               cfl :: T = 0.1
-    cfl_diffusion :: T = 2e-2
+    diffusive_cfl :: T = Inf
        max_change :: T = 2.0
        min_change :: T = 0.5
            max_Δt :: T = Inf
@@ -28,7 +28,11 @@ Compute `wizard.Δt` given the velocities and diffusivities of `model`, and the 
 of `wizard`.
 """
 function update_Δt!(wizard, model)
-    Δt = wizard.cfl * cell_advection_timescale(model)
+
+    Δt = min(
+             wizard.cfl * cell_advection_timescale(model),          # advective
+             wizard.diffusive_cfl * cell_diffusion_timescale(model) # diffusive
+            )
 
     # Put the kibosh on if needed
     Δt = min(wizard.max_change * wizard.Δt, Δt)
