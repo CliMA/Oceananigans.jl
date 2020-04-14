@@ -396,7 +396,7 @@ end
                     @test compute_many_plus(model)
 
                     @info "      Testing compute! kinetic energy..."
-                    @test compute_kinetic_energy(model)
+                    @test_skip compute_kinetic_energy(model)
                 end
 
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
