@@ -40,7 +40,7 @@ const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 # More readable BC constructors for the public API.
     PeriodicBoundaryCondition() = BoundaryCondition(Periodic,   nothing)
       NoFluxBoundaryCondition() = BoundaryCondition(Flux,       nothing)
-ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, 0)
+ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
 
       FluxBoundaryCondition(val) = BoundaryCondition(Flux, val)
      ValueBoundaryCondition(val) = BoundaryCondition(Value, val)
@@ -48,6 +48,7 @@ ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, 0)
 NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
 
 # Multiple dispatch on the type of boundary condition
+@inline getbc(bc::BC{<:NormalFlow, <:Nothing}, args...)          = 0
 @inline getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
 @inline getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
 @inline getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
