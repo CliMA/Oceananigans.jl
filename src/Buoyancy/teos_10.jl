@@ -1,3 +1,8 @@
+#####
+##### The TEOS-10 polynomial approximation implemented in this file has been translated
+##### into Julia from https://github.com/fabien-roquet/polyTEOS/blob/master/polyTEOS10.py
+#####
+
 struct TEOS10{FT} <: AbstractNonlinearEquationOfState end
 
 #####
@@ -10,7 +15,7 @@ const Zᵤ  = 1e4
 const ΔS  = 32.0
 
 #####
-##### Coordinate transformations
+##### Coordinate transformations from (Θ, S, p) to (τ, s, ζ)
 #####
 
 @inline τ(Θ) = Θ / Θᵤ
@@ -111,7 +116,28 @@ const R₀₁₃ =  3.7969820455e-01
 ##### Full density
 #####
 
-@inline ρ(τ, s, ζ) = r₀(ζ) + r′(τ, s, ζ)
+"""
+    ρ(Θ, S, p)
+
+Returns the in-situ density of seawater with state (Θ, S, p) using the 55-term
+polynomial approximation TEOS-10 described in Roquet et al. (§3.1, 2014).
+
+# Inputs
+    `Θ`: conservative temperature (ITS-90) [°C]
+    `S`: absolute salinity [g/kg]
+    `p`: sea pressure [dbar] (i.e. absolute pressure - 10.1325 dbar)
+
+# Output
+    `ρ`: in-situ density [kg/m³]
+
+# References
+Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomial
+    expressions for the density and specific volume of seawater using the TEOS-10
+    standard. Ocean Modelling.
+"""
+@inline ρ(Θ, S, p) = _ρ(τ(Θ), s(S), ζ(p))
+
+@inline _ρ(τ, s, ζ) = r₀(ζ) + r′(τ, s, ζ)
 
 #####
 ##### Thermal expansion fit
@@ -153,7 +179,28 @@ const α₁₀₂ =  5.3278413794e-03
 const α₀₁₂ =  6.2099915132e-02
 const α₀₀₃ = -9.4924551138e-03
 
-@inline α(τ, s, ζ) =
+"""
+    α(Θ, S, p)
+
+Returns the Boussinesq thermal expansion coefficient -∂ρ/∂Θ [kg/m³/K] computed using
+the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
+
+# Inputs
+    `Θ`: conservative temperature (ITS-90) [°C]
+    `S`: absolute salinity [g/kg]
+    `p`: sea pressure [dbar] (i.e. absolute pressure - 10.1325 dbar)
+
+# Output
+    `α`: Boussinesq thermal expansion coefficient -∂ρ/∂Θ [kg/m³/K]
+
+# References
+Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomial
+    expressions for the density and specific volume of seawater using the TEOS-10
+    standard. Ocean Modelling.
+"""
+@inline α(Θ, S, p) = _α(τ(Θ), s(S), ζ(p))
+
+@inline _α(τ, s, ζ) =
     ((α₀₀₃ * ζ + α₀₁₂ * τ + α₁₀₂ * s + α₀₀₂) * ζ +
      ((α₀₃₁ * τ + α₁₂₁ * s + α₀₂₁) * τ +
       (α₂₁₁ * s + α₁₁₁) * s + α₀₁₁) * τ +
@@ -204,7 +251,28 @@ const β₁₀₂ =  6.2255521644e-02
 const β₀₁₂ = -2.6514181169e-03
 const β₀₀₃ = -2.3025968587e-04
 
-@inline β(τ, s, ζ) =
+"""
+    β(Θ, S, p)
+
+Returns the Boussinesq haline contraction coefficient ∂ρ/∂S [kg/m³/(g/kg)] computed using
+the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
+
+# Inputs
+    `Θ`: conservative temperature (ITS-90) [°C]
+    `S`: absolute salinity [g/kg]
+    `p`: sea pressure [dbar] (i.e. absolute pressure - 10.1325 dbar)
+
+# Output
+    `β`: Boussinesq haline contraction coefficient ∂ρ/∂S [kg/m³/(g/kg)]
+
+# References
+Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomial
+    expressions for the density and specific volume of seawater using the TEOS-10
+    standard. Ocean Modelling.
+"""
+@inline β(Θ, S, p) = _β(τ(Θ), s(S), ζ(p)) / s(S)
+
+@inline _β(τ, s, ζ) =
     ((β₀₀₃ * ζ + β₀₁₂ * τ + β₁₀₂ * s + β₀₀₂) * ζ +
      ((β₀₃₁ * τ + β₁₂₁ * s + β₀₂₁) * τ +
       (β₂₁₁ * s + β₁₁₁) * s + β₀₁₁) * τ +
