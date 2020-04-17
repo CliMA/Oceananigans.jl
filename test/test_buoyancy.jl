@@ -76,6 +76,7 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
     @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
+        @info "  Testing equations of state..."
         for FT in float_types
             @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
 
@@ -110,6 +111,26 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                     @test thermal_expansion_works(arch, FT, EOS())
                     @test haline_contraction_works(arch, FT, EOS())
                 end
+            end
+
+            @testset "TEOS-10" begin
+                @info "  Testing TEOS-10..."
+
+                # Test/check values from Roquet et al. (2014).
+                Θ = 10   # [C]
+                S = 30   # [g/kg]
+                p = 1e3  # [dbar]
+
+                τ = Buoyancy.τ(Θ)
+                s = Buoyancy.s(S)
+                ζ = Buoyancy.ζ(p)
+
+                @test Buoyancy.r₀(ζ) ≈ 4.59763035
+                @test Buoyancy.r′(τ, s, ζ) ≈ 1022.85377
+
+                @test Buoyancy.ρ(Θ, S, p) ≈ 1027.45140
+                @test Buoyancy.α(Θ, S, p) ≈ 0.179646281
+                @test Buoyancy.β(Θ, S, p) ≈ 0.765555368
             end
         end
     end
