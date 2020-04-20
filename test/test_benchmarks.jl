@@ -94,9 +94,9 @@ end
 
             for sz in sizes
                 grid = RegularCartesianGrid(size=sz, length=(1, 1, 1))
-                model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
+                model = IncompressibleModel(architecture=arch, grid=grid)
 
-                @info "Benchmarking [$arch, $FT, $sz]..."
+                @info "Benchmarking [$arch, Float64, $sz]..."
                 b = @benchmark time_step!($model, 1)
                 display(b)
                 println()
