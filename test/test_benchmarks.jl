@@ -87,7 +87,7 @@ end
 
         for arch in archs
             if arch isa CPU
-                sizes = [(32, 32, 32), (64, 64, 64)]
+                sizes = [(16, 16, 16), (32, 32, 32)]
             elseif arch isa GPU
                 sizes = [(128, 128, 128), (256, 256, 256)]
             end
