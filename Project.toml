@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.27.1"
+version = "0.27.2"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -26,8 +26,8 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Adapt = "^1"
 CUDAapi = "^1.1, ^2, ^3, ^4"
 CUDAdrv = "^3.1, ^5, ^6"
-CUDAnative = "^2.3"
-CuArrays = "^1.2"
+CUDAnative = "^2.3, 3.0"
+CuArrays = "^1.2, 2.0"
 FFTW = "^1"
 GPUifyLoops = "^0.2.8, ^1"
 JLD2 = "^0.1.2, ^1"
