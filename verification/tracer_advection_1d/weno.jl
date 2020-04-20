@@ -43,4 +43,3 @@ function weno5_flux(i, f)
     w₀, w₁, w₂ = weno5_weights(i, f)
     return w₀ * p₀(i, f) + w₁ * p₁(i, f) + w₂ * p₂(i, f)
 end
-

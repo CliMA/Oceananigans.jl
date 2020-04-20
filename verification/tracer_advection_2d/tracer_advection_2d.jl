@@ -14,7 +14,7 @@ const day  = 24hour
 const month = 30day
 
 #####
-##### Advection or flux-reconstruction schemes
+##### 2nd-order centered Advection scheme
 #####
 
 abstract type AbstractAdvectionScheme end
@@ -26,11 +26,25 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
 
 @inline ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) =
     (advective_flux_x(i+1, j, u, ϕ, scheme) - advective_flux_x(i, j, u, ϕ, scheme)) / Δx
+
 @inline ∂y_advective_flux(i, j, Δy, v, ϕ, scheme) =
     (advective_flux_y(i, j+1, v, ϕ, scheme) - advective_flux_y(i, j, v, ϕ, scheme)) / Δy
 
 @inline div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme) =
     ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) + ∂y_advective_flux(i, j, Δy, v, ϕ, scheme)
+
+#####
+##### WENO-5 advection scheme
+#####
+
+include("weno_2d.jl")
+struct WENO5 <: AbstractAdvectionScheme end
+
+@inline ∂x_advective_flux(i, j, Δx, u, ϕ, ::WENO5) =
+    u[i, j] * (weno5_flux_x(i+1, j, ϕ) - weno5_flux_x(i, j, ϕ)) / Δx
+
+@inline ∂y_advective_flux(i, j, Δy, v, ϕ, ::WENO5) =
+    v[i, j] * (weno5_flux_y(i, j+1, ϕ) - weno5_flux_y(i, j, ϕ)) / Δy
 
 #####
 ##### Right hand side evaluation of the 2D tracer advection equation
@@ -143,7 +157,8 @@ end
 
 Nx = Ny = 64
 L = 1000km
-T = 14month
-CFL = 0.3
-create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
+T = 3month
+CFL = 0.1
+# create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
 
+create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), WENO5(), u=u_Stommel, v=v_Stommel)

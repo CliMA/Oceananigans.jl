@@ -19,7 +19,7 @@ struct SecondOrderCentered <: AbstractAdvectionScheme end
     (advective_flux(i+1, u, ϕ, scheme) - advective_flux(i, u, ϕ, scheme)) / Δx
 
 include("weno.jl")
-struct WENO5 end
+struct WENO5 <: AbstractAdvectionScheme end
 @inline ∂x_advective_flux(i, Δx, u, ϕ, ::WENO5) = u[i] * (weno5_flux(i+1, ϕ) - weno5_flux(i, ϕ)) / Δx
 
 #####
@@ -147,4 +147,3 @@ create_animation(32, L, 1.8, ϕ_Gaussian, CarpenterKennedy2N54(), WENO5())
 create_animation(64, L, 0.6, ϕ_Square, AB3(), SecondOrderCentered())
 create_animation(32, L, 1.8, ϕ_Square, CarpenterKennedy2N54(), WENO5())
 create_animation(256, L, 1.8, ϕ_Square, CarpenterKennedy2N54(), WENO5())
-
