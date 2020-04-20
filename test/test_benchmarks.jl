@@ -42,7 +42,7 @@ end
 
             replace_strings = [
                 ("Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]",
-                 "Ns = [(32, 32, 32)]")
+                 "Ns = [(16, 16, 16)]")
             ]
 
             @test run_benchmark(replace_strings, "static_ocean")
@@ -53,7 +53,7 @@ end
 
             replace_strings = [
                 ("Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]",
-                 "Ns = [(32, 32, 32)]")
+                 "Ns = [(16, 16, 16)]")
             ]
 
             @test run_benchmark(replace_strings, "channel")
@@ -64,7 +64,7 @@ end
 
             replace_strings = [
                 ("Ns = [(32, 32, 32), (128, 128, 128)]",
-                 "Ns = [(32, 32, 32)]")
+                 "Ns = [(16, 16, 16)]")
             ]
 
             @test run_benchmark(replace_strings, "turbulence_closures")
@@ -85,7 +85,7 @@ end
     @testset "Selected performance benchmarks" begin
         @info "  Running selected performance benchmarks..."
 
-        for arch in archs, FT in float_types
+        for arch in archs
             if arch isa CPU
                 sizes = [(32, 32, 32), (64, 64, 64)]
             elseif arch isa GPU
@@ -96,7 +96,7 @@ end
                 grid = RegularCartesianGrid(size=sz, length=(1, 1, 1))
                 model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
 
-                @info "Benchmarking [$arch, $FT, $sz]"
+                @info "Benchmarking [$arch, $FT, $sz]..."
                 b = @benchmark time_step!($model, 1)
                 display(b)
                 println()
