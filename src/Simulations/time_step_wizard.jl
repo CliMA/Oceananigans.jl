@@ -43,3 +43,5 @@ function update_Δt!(wizard, model)
 
     return nothing
 end
+
+(c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)

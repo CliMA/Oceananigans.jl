@@ -168,7 +168,7 @@ include("Models/Models.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("Simulations.jl")
+include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 
 #####

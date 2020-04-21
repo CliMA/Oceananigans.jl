@@ -1,5 +1,5 @@
 using Oceananigans.Simulations:
-    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded
+    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded, TimeStepWizard
 
 @testset "Simulations" begin
     @info "Testing simulations..."
