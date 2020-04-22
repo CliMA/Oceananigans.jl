@@ -7,14 +7,14 @@ function ∇²!(grid, f, ∇²f)
 end
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(100, 100, 100))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = PressureSolver(CPU(), grid, PressureBoundaryConditions(grid), planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
 function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
     fbcs = TracerBoundaryConditions(grid)
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
@@ -42,7 +42,7 @@ end
 
 function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
     fbcs = TracerBoundaryConditions(grid)
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
@@ -72,7 +72,7 @@ end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, pbcs)
 
@@ -109,7 +109,7 @@ end
 
 function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, pbcs)
 
@@ -150,21 +150,17 @@ end
 ##### Test that Poisson solver error converges as error ~ N⁻²
 #####
 
-ψ(::Bounded, n, x) = cos(n*x/2)
-ψ(::Periodic, n, x) = cos(n*x)
+ψ(::Type{Bounded}, n, x) = cos(n*x/2)
+ψ(::Type{Periodic}, n, x) = cos(n*x)
 
-k²(::Bounded, n) = (n/2)^2
-k²(::Periodic, n) = n^2
+k²(::Type{Bounded}, n) = (n/2)^2
+k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
 
-    Nx, Ny, Nz = size(grid)
-    xC, yC, zC = grid.xC, grid.yC, grid.zC
-    xC = reshape(xC, (Nx, 1, 1))
-    yC = reshape(yC, (1, Ny, 1))
-    zC = reshape(zC, (1, 1, Nz))
+    xC, yC, zC = nodes((Cell, Cell, Cell), grid)
 
     Tx, Ty, Tz = topology(grid)
     Ψ(x, y, z) = ψ(Tx, mode, x) * ψ(Ty, mode, y) * ψ(Tz, mode, z)
@@ -226,9 +222,9 @@ end
         end
     end
 
+    @hascuda begin
     @testset "Divergence-free solution [GPU]" begin
         @info "  Testing divergence-free solution [GPU]..."
-        @hascuda begin
             for FT in [Float64]
                 @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
                 @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)

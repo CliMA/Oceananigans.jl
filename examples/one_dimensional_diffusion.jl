@@ -16,6 +16,11 @@
 
 using Oceananigans
 
+# In addition, we import the submodule `Grids`, and the types `Cell` and
+# `Face` to use for plotting.
+
+using Oceananigans.Grids
+
 # We also use `Plots.jl` for plotting and `Printf` to format plot legends:
 
 using Plots, Printf
@@ -26,7 +31,7 @@ using Plots, Printf
 # the `IncompressibleModel` constructor:
 
 model = IncompressibleModel(
-    grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
+       grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = ConstantIsotropicDiffusivity(κ = 1.0)
 )
 nothing # hide
@@ -71,12 +76,14 @@ run!(simulation)
 tracer_label(model) = @sprintf("t = %.3f", model.clock.time)
 
 ## Plot initial condition
-zC = model.grid.zC
+T = model.tracers.T
+
+zC = znodes(T)[:]
+
 p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
          xlabel="Tracer concentration", ylabel="z")
 
 ## Plot current solution
-T = model.tracers.T
 plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
 
 # Interesting! We can keep running the simulation and animate the tracer

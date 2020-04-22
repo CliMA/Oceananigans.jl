@@ -9,7 +9,7 @@
 
 using Random, Printf
 
-using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
+using Oceananigans, Oceananigans.Grids, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
       Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions,
       Oceananigans.Forcing
 
@@ -17,8 +17,6 @@ using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
 # a background flow as a user-defined forcing.
 
 using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂xᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ
-
-using Oceananigans.Fields: Face, Cell
 
 # # Parameters
 #
