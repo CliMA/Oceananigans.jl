@@ -10,6 +10,7 @@ using FFTW
 using OffsetArrays
 
 using Oceananigans.Architectures: @hascuda
+
 @hascuda begin
     import CUDAdrv
     using CuArrays
