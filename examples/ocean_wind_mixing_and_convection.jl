@@ -15,7 +15,7 @@
 using Random, Printf, Plots
 
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils,
-      Oceananigans.BoundaryConditions
+      Oceananigans.BoundaryConditions, Oceananigans.Grids
 
 # ## Model parameters
 #
@@ -62,7 +62,7 @@ nothing # hide
 # at the bottom. Our flux boundary condition for salinity uses a function that calculates
 # the salinity flux in terms of the evaporation rate.
 
-grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz))
+grid = RegularCartesianGrid(size=(Nz, Nz, Nz), extent=(Δz*Nz, Δz*Nz, Δz*Nz))
 
 u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 
@@ -161,7 +161,7 @@ anim = @animate for i in 1:100
             wmax(model), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = model.grid.zC, model.grid.zF, model.grid.zC
+    xC, zF, zC = xnodes(Cell, grid)[:], znodes(Face, grid)[:], znodes(Cell, grid)[:]
 
     ## Slices to plots.
     jhalf = floor(Int, model.grid.Ny/2)

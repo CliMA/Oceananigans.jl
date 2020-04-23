@@ -1,6 +1,6 @@
 function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))
 
     bc = BoundaryCondition(bctype, bc)
     field_bcs = TracerBoundaryConditions(grid, top=bc)
@@ -16,7 +16,7 @@ end
 
 function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
     N, val = 16, 1.0
-    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(0.1, 0.2, 0.3))
+    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(0.1, 0.2, 0.3))
 
     top_bc    = BoundaryCondition(Value,  val)
     bottom_bc = BoundaryCondition(Value, -val)
@@ -42,7 +42,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
         bcarray = CuArray(bcarray)
     end
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(0.1, 0.2, 0.3))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))
 
     value_bc = BoundaryCondition(Value, bcarray)
     field_bcs = TracerBoundaryConditions(grid, top=value_bc)
@@ -60,7 +60,7 @@ end
 
 function test_flux_budget(arch, FT, fldname)
     N, κ, Lz = 16, 1, 0.7
-    grid = RegularCartesianGrid(FT, size=(N, N, N), length=(1, 1, Lz))
+    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, Lz))
 
     bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
@@ -101,7 +101,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     bz = FT(π)
     flux = - κ₀ * bz
 
-    grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(1, 1, Lz))
+    grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
     κₑ_bcs = DiffusivityBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))

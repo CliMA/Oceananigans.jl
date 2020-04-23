@@ -7,41 +7,62 @@ of type `R`.
 """
 struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
-    Nx::Int
-    Ny::Int
-    Nz::Int
+    Nx :: Int
+    Ny :: Int
+    Nz :: Int
     # Halo size in (x,y,z).
-    Hx::Int
-    Hy::Int
-    Hz::Int
+    Hx :: Int
+    Hy :: Int
+    Hz :: Int
     # Domain size [m].
-    Lx::FT
-    Ly::FT
-    Lz::FT
+    Lx :: FT
+    Ly :: FT
+    Lz :: FT
     # Grid spacing [m].
-    Δx::FT
-    Δy::FT
-    Δz::FT
+    Δx :: FT
+    Δy :: FT
+    Δz :: FT
     # Range of coordinates at the centers of the cells.
-    xC::R
-    yC::R
-    zC::R
+    xC :: R
+    yC :: R
+    zC :: R
     # Range of grid coordinates at the faces of the cells.
-    # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
-    xF::R
-    yF::R
-    zF::R
+    xF :: R
+    yF :: R
+    zF :: R
 end
 
 """
-    RegularCartesianGrid([FT=Float64]; size, length, topology=(Periodic, Periodic, Bounded),
-                         x=nothing, y=nothing, z=nothing)
+    RegularCartesianGrid([FT=Float64]; size,
+                         extent = nothing, x = nothing, y = nothing, z = nothing,
+                         topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
 
 Creates a `RegularCartesianGrid` with `size = (Nx, Ny, Nz)` grid points.
 
-The physical length of the domain can be specified via `x`, `y`, and `z` keyword arguments
+Keyword arguments
+=================
+
+- `size` (required): A 3-tuple `(Nx, Ny, Nz)` prescribing the number of grid points in `x, y, z`
+
+- `extent`: A 3-tuple `(Lx, Ly, Lz)` prescribing the physical extent of the grid.
+                     The origin is the oceanic default `(0, 0, -Lz)`.
+
+- `x`, `y`, and `z`: Each of `x, y, z` are 2-tuples that specify the end points of the domain
+                     in their respect directions.  
+
+*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
+
+- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain. 
+              `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
+              `Periodic`, `Bounded`, or `Flat`. In a `Flat` direction, derivatives are 
+              zero. The default is `(Periodic, Periodic, Bounded)`.
+
+- `halo`: A 3-tuple of integers that specifies the size of the halo region of cells surrounding
+          the physical interior in `x`, `y`, and `z`.
+
+The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
 indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` or via
-the `length` argument, e.g. `length=(Lx, Ly, Lz)` which specifies the length of each dimension
+the `extent` argument, e.g. `extent=(Lx, Ly, Lz)` which specifies the extent of each dimension
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
 A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
@@ -53,21 +74,31 @@ Make sure to specify the desired `FT` if not using `Float64`.
 
 Grid properties
 ===============
-- `(xC, yC, zC)::AbstractRange`: (x, y, z) coordinates of cell centers
-- `(xF, yF, zF)::AbstractRange`: (x, y, z) coordinates of cell faces
-- `(Hx, Hy, Hz)::Int`: Halo size in the (x, y, z)-direction
-- `(Tx, Ty, Tz)::Int`: "Total" grid size (interior + halo points) in the (x, y, z)-direction
+
+- `(Nx, Ny, Nz)::Int`: Number of physical points in the (x, y, z)-direction
+
+- `(Hx, Hy, Hz)::Int`: Number of halo points in the (x, y, z)-direction
+
+- `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
+
+- `(Δx, Δy, Δz)::FT`: Cell width in the (x, y, z)-direction
+
+- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers, reshaped for broadcasting.
+
+- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces, rehsaped for broadcasting.
 
 Examples
 ========
+
 ```julia
-julia> grid = RegularCartesianGrid(size=(32, 32, 32), length=(1, 2, 3))
+julia> grid = RegularCartesianGrid(size=(32, 32, 32), extent=(1, 2, 3))
 RegularCartesianGrid{Float64}
 domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
   resolution (Nx, Ny, Nz) = (32, 32, 32)
    halo size (Hx, Hy, Hz) = (1, 1, 1)
 grid spacing (Δx, Δy, Δz) = (0.03125, 0.0625, 0.09375)
 ```
+
 ```julia
 julia> grid = RegularCartesianGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 RegularCartesianGrid{Float32}
@@ -77,37 +108,63 @@ domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.1415
 grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
-function RegularCartesianGrid(FT=Float64; size, halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded),
-                              length=nothing, x=nothing, y=nothing, z=nothing)
-
-    # Hack that allows us to use `size` and `length` as keyword arguments but then also
-    # use the `length` function.
-    sz, len = size, length
-    length = Base.length
+function RegularCartesianGrid(FT=Float64; 
+                                  size, 
+                                     x = nothing, y = nothing, z = nothing,
+                                extent = nothing, 
+                              topology = (Periodic, Periodic, Bounded),
+                                  halo = (1, 1, 1),
+                              )
 
     TX, TY, TZ = validate_topology(topology)
-    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
+    Lx, Ly, Lz, x, y, z = validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
 
-    Nx, Ny, Nz = sz
-    Hx, Hy, Hz = halo
+    # Unpacking
+    Nx, Ny, Nz = N = size
+    Hx, Hy, Hz = H = halo
+                 L = (Lx, Ly, Lz)
+    Δx, Δy, Δz = Δ = L ./ N
+                X₁ = (x[1], y[1], z[1])
 
-    Δx = convert(FT, Lx / Nx)
-    Δy = convert(FT, Ly / Ny)
-    Δz = convert(FT, Lz / Nz)
+    # Face-node limits in x, y, z
+    xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ 
+    xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L) 
 
-    x₁, x₂ = convert.(FT, [x[1], x[2]])
-    y₁, y₂ = convert.(FT, [y[1], y[2]])
-    z₁, z₂ = convert.(FT, [z[1], z[2]])
+    # Cell-node limits in x, y, z
+    xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
+    xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + Δ * (2H - 1)
 
-    xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
-    yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
-    zC = range(z₁ + Δz/2, z₂ - Δz/2; length=Nz)
+    TFx, TFy, TFz = total_length.(Face, topology, N, H)
+    TCx, TCy, TCz = total_length.(Cell, topology, N, H) 
 
-    xF = range(x₁, x₂; length=Nx+1)
-    yF = range(y₁, y₂; length=Ny+1)
-    zF = range(z₁, z₂; length=Nz+1)
+    # Include halo points in coordinate arrays
+    xF = range(xF₋, xF₊; length = TFx)
+    yF = range(yF₋, yF₊; length = TFy)
+    zF = range(zF₋, zF₊; length = TFz)
 
-    RegularCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xC)}(
+    xC = range(xC₋, xC₊; length = TCx)
+    yC = range(yC₋, yC₊; length = TCy)
+    zC = range(zC₋, zC₊; length = TCz)
+
+    # Reshape coordinate arrays first...
+    xC = reshape(xC, TCx, 1, 1)
+    yC = reshape(yC, 1, TCy, 1)
+    zC = reshape(zC, 1, 1, TCz)
+
+    xF = reshape(xF, TFx, 1, 1)
+    yF = reshape(yF, 1, TFy, 1)
+    zF = reshape(zF, 1, 1, TFz)
+
+    # Then offset.
+    xC = OffsetArray(xC, -Hx, 0, 0)
+    yC = OffsetArray(yC, 0, -Hy, 0)
+    zC = OffsetArray(zC, 0, 0, -Hz)
+
+    xF = OffsetArray(xF, -Hx, 0, 0)
+    yF = OffsetArray(yF, 0, -Hy, 0)
+    zF = OffsetArray(zF, 0, 0, -Hz)
+
+    return RegularCartesianGrid{FT, TX, TY, TZ, typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
@@ -120,7 +177,8 @@ show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
 
 show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
-              "domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[1]), $(g.zF[end])]", '\n',
-              "  resolution (Nx, Ny, Nz) = ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz) = ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δx, Δy, Δz) = ", (g.Δx, g.Δy, g.Δz))
+              "                   domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[1]), $(g.zF[end])]", '\n',
+              "                 topology: ", (TX, TY, TZ), '\n',
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))

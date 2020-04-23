@@ -92,25 +92,6 @@ import Base:
 #####
 
 """
-    Cell
-
-A type describing the location at the center of a grid cell.
-"""
-struct Cell end
-
-"""
-	Face
-
-A type describing the location at the face of a grid cell.
-"""
-struct Face end
-
-# placeholders
-function xnode end
-function ynode end
-function znode end
-
-"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current
@@ -168,7 +149,7 @@ include("Models/Models.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("Simulations.jl")
+include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 
 #####

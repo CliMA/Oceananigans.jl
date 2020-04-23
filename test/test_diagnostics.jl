@@ -1,19 +1,21 @@
 function horizontal_average_is_correct(arch, FT)
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(100, 100, 100))
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-    T₀(x, y, z) = 20 + 0.01*z
+    T₀(x, y, z) = z
     set!(model; T=T₀)
 
     T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
-    computed_profile = T̅(model)
-    correct_profile = @. 20 + 0.01 * model.grid.zC
+    computed_profile = dropdims(T̅(model), dims=(1, 2))
 
-    return all(computed_profile[:][2:end-1] .≈ correct_profile)
+    zC = znodes(Cell, grid)
+    correct_profile = dropdims(zC, dims=(1, 2))
+
+    return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
-    grid=RegularCartesianGrid(size=(16, 16, 2), length=(1, 1, 1))
+    grid=RegularCartesianGrid(size=(16, 16, 2), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
@@ -27,7 +29,7 @@ end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularCartesianGrid(FT, size=(16, 16, 16), length=(16Δx, 16Δx, 16Δx)),
+          grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(16Δx, 16Δx, 16Δx)),
        closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
@@ -35,7 +37,7 @@ TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
 
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularCartesianGrid(FT, size=(3, 3, 3), length=(3Δx, 3Δx, 3Δx)),
+          grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = CPU(),
     float_type = FT
