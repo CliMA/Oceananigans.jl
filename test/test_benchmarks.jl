@@ -90,7 +90,7 @@ end
         for arch in archs
             sizes = [(16, 16, 16), (32, 32, 32)]
             for sz in sizes
-                grid = RegularCartesianGrid(size=sz, length=(1, 1, 1))
+                grid = RegularCartesianGrid(size=sz, extent=(1, 1, 1))
                 model = IncompressibleModel(architecture=arch, grid=grid)
 
                 @info "Benchmarking [$arch, Float64, $sz]..."
