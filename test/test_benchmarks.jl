@@ -74,6 +74,8 @@ end
             @info "    Running tracers benchmark..."
 
             replace_strings = [
+                ("(32, 32, 32)", "(16, 16, 16)"),
+                ("(256, 256, 256)", "(16, 16, 16)"),
                 ("test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]",
                  "test_cases = [(0, 0), (2, 0), (2, 3)]")
             ]
@@ -86,12 +88,7 @@ end
         @info "  Running selected performance benchmarks..."
 
         for arch in archs
-            if arch isa CPU
-                sizes = [(16, 16, 16), (32, 32, 32)]
-            elseif arch isa GPU
-                sizes = [(128, 128, 128), (256, 256, 256)]
-            end
-
+            sizes = [(16, 16, 16), (32, 32, 32)]
             for sz in sizes
                 grid = RegularCartesianGrid(size=sz, length=(1, 1, 1))
                 model = IncompressibleModel(architecture=arch, grid=grid)
