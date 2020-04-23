@@ -30,7 +30,7 @@ for arch in archs, float_type in float_types, N in Ns
     ##### Horizontally periodic pressure solve on CPU
     #####
 
-    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), length=(1.0, 2.5, 3.6))
+    grid = RegularCartesianGrid(FT; size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
     solver = PoissonSolver(arch, PPN(), grid)
     fbcs = HorizontallyPeriodicBCs()
 
@@ -45,7 +45,7 @@ for arch in archs, float_type in float_types, N in Ns
     Nx, Ny, Nz = N
     Lx, Ly, Lz = 1, 1, 1
 
-    model = Model(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)))
+    model = Model(architecture=arch, float_type=float_type, grid=RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)))
     time_step!(model, Ni, 1)
 
     bname =  benchmark_name(N, "", arch, float_type)

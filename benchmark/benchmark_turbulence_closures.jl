@@ -26,7 +26,7 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
 #####
 
 for arch in archs, FT in float_types, N in Ns, Closure in closures
-	grid = RegularCartesianGrid(FT, size=N, length=(1, 1, 1))
+	grid = RegularCartesianGrid(FT, size=N, extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, closure=Closure(FT))
 
     time_step!(model, 1)  # precompile
