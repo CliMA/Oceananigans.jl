@@ -53,7 +53,7 @@ for arch in archs, test_case in test_cases
     na, np = test_case
     tracers = tracer_list(na, np)
 
-    grid = RegularCartesianGrid(size=N, length=(1, 1, 1))
+    grid = RegularCartesianGrid(size=N, extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
                                 buoyancy=na2buoyancy(na), tracers=tracers)
 

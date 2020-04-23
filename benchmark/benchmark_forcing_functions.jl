@@ -57,9 +57,9 @@ for arch in archs, FT in float_types, N in Ns
     Lx, Ly, Lz = 1, 1, 1
 
     forced_model_params = Model(architecture = arch, float_type = FT,
-		                grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+		                grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
                                 forcing=ModelForcing(Fu=Fu_params, FT=FT_params), parameters=(K=0.1, λ=1e-4))
-    
+
     time_step!(forced_model_params, Ni, 1)  # First 1-2 iterations usually slower.
 
     bn =  benchmark_name(N, "with forcing (params)", arch, FT)
@@ -69,7 +69,7 @@ for arch in archs, FT in float_types, N in Ns
     end
 
     forced_model_consts = Model(architecture = arch, float_type = FT,
-		                grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)),
+		                grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
                                 forcing=ModelForcing(Fu=Fu_consts, FT=FT_consts))
 
     time_step!(forced_model_consts, Ni, 1)  # First 1-2 iterations usually slower.
@@ -81,8 +81,8 @@ for arch in archs, FT in float_types, N in Ns
     end
 
     unforced_model = Model(architecture = arch, float_type = FT,
-			   grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz)))
-    
+			   grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)))
+
     time_step!(unforced_model, Ni, 1)  # First 1-2 iterations usually slower.
 
     bn =  benchmark_name(N, "  no forcing         ", arch, FT)
