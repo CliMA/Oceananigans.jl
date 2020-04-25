@@ -69,13 +69,14 @@ function haline_contraction_works(arch, FT, eos)
     return true
 end
 
-EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState)
+EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10)
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
 @testset "Buoyancy" begin
     @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
+        @info "  Testing equations of state..."
         for FT in float_types
             @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
 
@@ -95,10 +96,12 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                 @test density_perturbation_works(arch, FT, RoquetIdealizedNonlinearEquationOfState())
             end
 
-            for arch in archs
-                for buoyancy in (BuoyancyTracer(), nothing, SeawaterBuoyancy(FT),
-                                 SeawaterBuoyancy(FT, equation_of_state=RoquetIdealizedNonlinearEquationOfState(FT)))
+            buoyancies =
+                (nothing, BuoyancyTracer(), SeawaterBuoyancy(FT),
+                 (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
 
+            for arch in archs
+                for buoyancy in buoyancies
                     @test ∂x_b_works(arch, FT, buoyancy)
                     @test ∂y_b_works(arch, FT, buoyancy)
                     @test ∂z_b_works(arch, FT, buoyancy)
@@ -110,6 +113,27 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                     @test thermal_expansion_works(arch, FT, EOS())
                     @test haline_contraction_works(arch, FT, EOS())
                 end
+            end
+
+            @testset "TEOS-10 [$FT]" begin
+                @info "  Testing TEOS-10 [$FT]..."
+
+                # Test/check values from Roquet et al. (2014).
+                Θ = 10   # [C]
+                S = 30   # [g/kg]
+                Z = 1e3  # [m]
+
+                τ = Buoyancy.τ(Θ)
+                s = Buoyancy.s(S)
+                ζ = Buoyancy.ζ(Z)
+
+                @test Buoyancy.r₀(ζ) ≈ 4.59763035
+                @test Buoyancy.r′(τ, s, ζ) ≈ 1022.85377
+
+                eos = TEOS10{FT}()
+                @test Buoyancy.ρ′(Θ, S, Z, eos) ≈ 1027.45140
+                @test Buoyancy.thermal_expansion(Θ, S, Z, eos) ≈ 0.179646281
+                @test Buoyancy.haline_contraction(Θ, S, Z, eos) ≈ 0.765555368
             end
         end
     end
