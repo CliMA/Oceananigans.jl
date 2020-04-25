@@ -2,7 +2,7 @@ module Buoyancy
 
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
 
 using Printf

@@ -5,6 +5,8 @@
 
 struct TEOS10{FT} <: AbstractNonlinearEquationOfState end
 
+TEOS10(FT=Float64) = TEOS10{FT}()
+
 #####
 ##### Reference values chosen using TEOS-10 recommendation
 #####
@@ -117,7 +119,7 @@ const R₀₁₃ =  3.7969820455e-01
 #####
 
 """
-    ρ(Θ, Sᴬ, Z)
+    ρ′(Θ, Sᴬ, Z, ::TEOS10) = _ρ′(τ(Θ), s(Sᴬ), ζ(Z))
 
 Returns the in-situ density of seawater with state (Θ, Sᴬ, Z) using the 55-term
 polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
@@ -135,9 +137,9 @@ Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomia
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline ρ(Θ, Sᴬ, Z) = _ρ(τ(Θ), s(Sᴬ), ζ(Z))
+@inline ρ′(Θ, Sᴬ, Z, ::TEOS10) = _ρ′(τ(Θ), s(Sᴬ), ζ(Z))
 
-@inline _ρ(τ, s, ζ) = r₀(ζ) + r′(τ, s, ζ)
+@inline _ρ′(τ, s, ζ) = r₀(ζ) + r′(τ, s, ζ)
 
 #####
 ##### Thermal expansion fit
@@ -180,7 +182,7 @@ const α₀₁₂ =  6.2099915132e-02
 const α₀₀₃ = -9.4924551138e-03
 
 """
-    α(Θ, Sᴬ, Z)
+    thermal_expansion(Θ, Sᴬ, Z, ::TEOS10)
 
 Returns the Boussinesq thermal expansion coefficient -∂ρ/∂Θ [kg/m³/K] computed using
 the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
@@ -198,7 +200,7 @@ Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomia
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline α(Θ, Sᴬ, Z) = _α(τ(Θ), s(Sᴬ), ζ(Z))
+@inline thermal_expansion(Θ, Sᴬ, Z, ::TEOS10) = _α(τ(Θ), s(Sᴬ), ζ(Z))
 
 @inline _α(τ, s, ζ) =
     ((α₀₀₃ * ζ + α₀₁₂ * τ + α₁₀₂ * s + α₀₀₂) * ζ +
@@ -252,7 +254,7 @@ const β₀₁₂ = -2.6514181169e-03
 const β₀₀₃ = -2.3025968587e-04
 
 """
-    β(Θ, Sᴬ, Z)
+    haline_contraction(Θ, Sᴬ, Z, ::TEOS10)
 
 Returns the Boussinesq haline contraction coefficient ∂ρ/∂Sᴬ [kg/m³/(g/kg)] computed using
 the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
@@ -270,7 +272,7 @@ Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomia
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline β(Θ, Sᴬ, Z) = _β(τ(Θ), s(Sᴬ), ζ(Z)) / s(Sᴬ)
+@inline haline_contraction(Θ, Sᴬ, Z, ::TEOS10) = _β(τ(Θ), s(Sᴬ), ζ(Z)) / s(Sᴬ)
 
 @inline _β(τ, s, ζ) =
     ((β₀₀₃ * ζ + β₀₁₂ * τ + β₁₀₂ * s + β₀₀₂) * ζ +
