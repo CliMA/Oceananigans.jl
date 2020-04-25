@@ -15,11 +15,11 @@ const Zᵤ  = 1e4
 const ΔS  = 32.0
 
 #####
-##### Coordinate transformations from (Θ, S, p) to (τ, s, ζ)
+##### Coordinate transformations from (Θ, Sᴬ, p) to (τ, s, ζ)
 #####
 
 @inline τ(Θ) = Θ / Θᵤ
-@inline s(S) = √((S + ΔS) / Sₐᵤ)
+@inline s(Sᴬ) = √((Sᴬ + ΔS) / Sₐᵤ)
 @inline ζ(Z) = Z / Zᵤ
 
 #####
@@ -117,14 +117,14 @@ const R₀₁₃ =  3.7969820455e-01
 #####
 
 """
-    ρ(Θ, S, Z)
+    ρ(Θ, Sᴬ, Z)
 
-Returns the in-situ density of seawater with state (Θ, S, Z) using the 55-term
+Returns the in-situ density of seawater with state (Θ, Sᴬ, Z) using the 55-term
 polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
 
 # Inputs
     `Θ`: conservative temperature (ITS-90) [°C]
-    `S`: absolute salinity [g/kg]
+    `Sᴬ`: absolute salinity [g/kg]
     `Z`: geopotential depth [m]
 
 # Output
@@ -135,7 +135,7 @@ Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomia
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline ρ(Θ, S, Z) = _ρ(τ(Θ), s(S), ζ(Z))
+@inline ρ(Θ, Sᴬ, Z) = _ρ(τ(Θ), s(Sᴬ), ζ(Z))
 
 @inline _ρ(τ, s, ζ) = r₀(ζ) + r′(τ, s, ζ)
 
@@ -180,14 +180,14 @@ const α₀₁₂ =  6.2099915132e-02
 const α₀₀₃ = -9.4924551138e-03
 
 """
-    α(Θ, S, Z)
+    α(Θ, Sᴬ, Z)
 
 Returns the Boussinesq thermal expansion coefficient -∂ρ/∂Θ [kg/m³/K] computed using
 the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
 
 # Inputs
     `Θ`: conservative temperature (ITS-90) [°C]
-    `S`: absolute salinity [g/kg]
+    `Sᴬ`: absolute salinity [g/kg]
     `Z`: geopotential depth [m]
 
 # Output
@@ -198,7 +198,7 @@ Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomia
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline α(Θ, S, Z) = _α(τ(Θ), s(S), ζ(Z))
+@inline α(Θ, Sᴬ, Z) = _α(τ(Θ), s(Sᴬ), ζ(Z))
 
 @inline _α(τ, s, ζ) =
     ((α₀₀₃ * ζ + α₀₁₂ * τ + α₁₀₂ * s + α₀₀₂) * ζ +
@@ -252,25 +252,25 @@ const β₀₁₂ = -2.6514181169e-03
 const β₀₀₃ = -2.3025968587e-04
 
 """
-    β(Θ, S, Z)
+    β(Θ, Sᴬ, Z)
 
-Returns the Boussinesq haline contraction coefficient ∂ρ/∂S [kg/m³/(g/kg)] computed using
+Returns the Boussinesq haline contraction coefficient ∂ρ/∂Sᴬ [kg/m³/(g/kg)] computed using
 the 55-term polynomial approximation to TEOS-10 described in Roquet et al. (§3.1, 2014).
 
 # Inputs
     `Θ`: conservative temperature (ITS-90) [°C]
-    `S`: absolute salinity [g/kg]
+    `Sᴬ`: absolute salinity [g/kg]
     `Z`: geopotential depth [m]
 
 # Output
-    `β`: Boussinesq haline contraction coefficient ∂ρ/∂S [kg/m³/(g/kg)]
+    `β`: Boussinesq haline contraction coefficient ∂ρ/∂Sᴬ [kg/m³/(g/kg)]
 
 # References
 Roquet, F., Madec, G., McDougall, T. J., Barker, P. M., 2014: Accurate polynomial
     expressions for the density and specific volume of seawater using the TEOS-10
     standard. Ocean Modelling.
 """
-@inline β(Θ, S, Z) = _β(τ(Θ), s(S), ζ(Z)) / s(S)
+@inline β(Θ, Sᴬ, Z) = _β(τ(Θ), s(Sᴬ), ζ(Z)) / s(Sᴬ)
 
 @inline _β(τ, s, ζ) =
     ((β₀₀₃ * ζ + β₀₁₂ * τ + β₁₀₂ * s + β₀₀₂) * ζ +
