@@ -9,6 +9,8 @@ using Printf
 using Oceananigans.Grids
 using Oceananigans.Operators
 
+import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
+
 # Physical constants
 # https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)
 const g_Earth = 9.80665
