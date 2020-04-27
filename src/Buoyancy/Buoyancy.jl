@@ -27,13 +27,6 @@ Abstract supertype for equations of state.
 """
 abstract type AbstractEquationOfState end
 
-"""
-    AbstractNonlinearEquationOfState
-
-Abstract supertype for nonlinar equations of state.
-"""
-abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
-
 function validate_buoyancy(buoyancy, tracers)
     req_tracers = required_tracers(buoyancy)
 
@@ -71,8 +64,6 @@ required_tracers(::BuoyancyTracer) = (:b,)
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
-include("roquet_idealized_nonlinear_eos.jl")
-include("teos_10.jl")
 
 Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
     println(io, "SeawaterBuoyancy{$FT}: g = $(b.gravitational_acceleration)", '\n',
