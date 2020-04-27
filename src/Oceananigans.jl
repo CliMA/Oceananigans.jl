@@ -36,7 +36,7 @@ export
 
     # Buoyancy and equations of state
     BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
