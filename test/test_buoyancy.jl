@@ -63,9 +63,7 @@ function haline_contraction_works(arch, FT, eos)
     return true
 end
 
-using SeawaterPolynomials.SecondOrderSeawaterPolynomials, SeawaterPolynomials.TEOS10
-
-EquationsOfState = (LinearEquationOfState, RoquetEquationOfState, TEOS10EquationOfState)
+EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
 @testset "Buoyancy" begin
@@ -83,7 +81,7 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
             end
 
             for arch in archs
-                @test density_perturbation_works(arch, FT, RoquetEquationOfState())
+                @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
             end
 
             buoyancies =

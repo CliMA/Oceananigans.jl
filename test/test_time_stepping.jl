@@ -8,10 +8,10 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
+function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3))
 
-    eos = RoquetIdealizedNonlinearEquationOfState(eos_type)
+    eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
@@ -201,7 +201,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
-            for eos_type in keys(Oceananigans.Buoyancy.optimized_roquet_coeffs)
+            for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
                 @info "  Testing that time stepping works with " *
                         "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)

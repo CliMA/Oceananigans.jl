@@ -251,11 +251,11 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SeawaterPolynomials]]
 deps = ["Test"]
-git-tree-sha1 = "7647f0fddb0ef9e069afc5476a0a5ba5c4088281"
-repo-rev = "glw/second-order-fix"
+git-tree-sha1 = "3719c0c269f679a39332633acf812ce2dbf8aaa8"
+repo-rev = "master"
 repo-url = "https://github.com/glwagner/SeawaterPolynomials.jl.git"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.2.1"
+version = "0.2.2"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
