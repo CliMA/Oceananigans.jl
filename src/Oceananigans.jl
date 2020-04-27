@@ -29,7 +29,7 @@ export
     interior, set!,
 
     # Forcing functions
-    ModelForcing, SimpleForcing,
+    ModelForcing, SimpleForcing, ParameterizedForcing,
 
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane,
