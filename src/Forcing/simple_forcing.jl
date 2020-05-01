@@ -79,9 +79,9 @@ julia> v_forcing = SimpleForcing(parameterized_forcing, parameters = (μ=42, λ=
 * Multplicative forcing with no parameters:
 
 ```julia
-julia> tracer_damping(x, y, z, t, c) = exp(z) * c
+julia> growth_in_sunlight(x, y, z, t, P) = exp(z) * P
 
-julia> c_forcing = SimpleForcing(tracer_damping, multiplicative=true)
+julia> plankton_forcing = SimpleForcing(growth_in_sunlight, multiplicative=true)
 ```
 
 * Multiplicative forcing with parameters. This example relaxes a tracer to some reference
