@@ -13,7 +13,7 @@ struct SimpleForcing{X, Y, Z, M, P, F}
 
     function SimpleForcing{X, Y, Z}(field_name, forcing, parameters, multiplicative) where {X, Y, Z}
 
-        # Deduce the container that `field_name` is found. This is only needed
+        # Deduce the container where `field_name` is found. This is only needed
         # if multiplicative=true.
         field_container = field_name ∈ (:u, :v, :w) ? :velocities : :tracers
 
