@@ -1,5 +1,3 @@
-using SeawaterPolynomials: reference_density
-
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
 
