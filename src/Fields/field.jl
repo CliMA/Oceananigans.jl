@@ -224,7 +224,7 @@ contained by `f` along `x, y, z`.
     OffsetArray(Array(parent(f)), f.grid, location(f))
 
 # Endpoint for recursive `datatuple` function:
-@inline datatuple(obj::AbstractField) = data(obj)
+@inline datatuple(obj::AbstractField) = obj #data(obj)
 
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::Field) = f.data.parent

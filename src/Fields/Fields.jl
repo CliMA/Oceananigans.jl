@@ -12,6 +12,7 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
 include("field.jl")
+include("adapt_field.jl")
 include("set!.jl")
 include("field_tuples.jl")
 include("show_fields.jl")

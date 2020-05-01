@@ -35,3 +35,6 @@ getbc(cbc::CBC, ::Val{:bottom}) = getfield(cbc, :left)
 getbc(cbc::CBC, ::Val{:top})    = getfield(cbc, :right)
 getbc(cbc::CBC, ::Val{:south})  = getfield(cbc, :left)
 getbc(cbc::CBC, ::Val{:north})  = getfield(cbc, :right)
+
+Adapt.adapt_structure(to, cbc::CoordinateBoundaryConditions) =
+    CoordinateBoundaryConditions(Adapt.adapt(to, cbc.left), Adapt.adapt(to, cbc.right))
