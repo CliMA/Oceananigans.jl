@@ -4,7 +4,7 @@
 A callable object that implements a 'simple' forcing function
 on a field at the location `X, Y, Z`.
 """
-struct SimpleForcing{X, Y, Z, M, N, C, P, F}
+struct SimpleForcing{X, Y, Z, M, P, N, C, F}
             forcing :: F
          parameters :: P
      multiplicative :: Bool
