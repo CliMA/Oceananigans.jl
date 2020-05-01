@@ -4,11 +4,9 @@
 A callable object that implements a 'simple' forcing function
 on a field at the location `X, Y, Z`.
 """
-struct SimpleForcing{X, Y, Z, M, P, F}
+struct SimpleForcing{X, Y, Z, M, N, C, P, F}
             forcing :: F
          parameters :: P
-         field_name :: Symbol
-    field_container :: Symbol
      multiplicative :: Bool
 
     function SimpleForcing{X, Y, Z}(field_name, forcing, parameters, multiplicative) where {X, Y, Z}
@@ -17,8 +15,8 @@ struct SimpleForcing{X, Y, Z, M, P, F}
         # if multiplicative=true.
         field_container = field_name ∈ (:u, :v, :w) ? :velocities : :tracers
 
-        return new{X, Y, Z, multiplicative, typeof(parameters),
-                   typeof(forcing)}(forcing, parameters, field_name, field_container, multiplicative)
+        return new{X, Y, Z, multiplicative, typeof(parameters), field_name, field_container,
+                   typeof(forcing)}(forcing, parameters, multiplicative)
     end
 end
 
@@ -117,9 +115,9 @@ end
 end
 
 # Simple multiplicative forcing without parameters
-@inline function (f::SimpleForcing{X, Y, Z, true, <:Nothing})(i, j, k, grid, clock, state) where {X, Y, Z}
-    container = getproperty(state, f.field_container)
-    field = getproperty(container, f.field_name)
+@inline function (f::SimpleForcing{X, Y, Z, true, <:Nothing, N, C})(i, j, k, grid, clock, state) where {X, Y, Z, N, C}
+    container = getproperty(state, C)
+    field = getproperty(container, N)
 
     return @inbounds f.forcing(xnode(X, i, grid),
                                ynode(Y, j, grid),
@@ -129,9 +127,9 @@ end
 end
 
 # Simple multiplicative forcing with parameters
-@inline function (f::SimpleForcing{X, Y, Z, true})(i, j, k, grid, clock, state) where {X, Y, Z}
-    container = getproperty(state, f.field_container)
-    field = getproperty(container, f.field_name)
+@inline function (f::SimpleForcing{X, Y, Z, true, P, N, C})(i, j, k, grid, clock, state) where {X, Y, Z, P, N, C}
+    container = getproperty(state, C)
+    field = getproperty(container, N)
 
     return @inbounds f.forcing(xnode(X, i, grid),
                                ynode(Y, j, grid),
