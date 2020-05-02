@@ -25,10 +25,10 @@ end
 end
 
 # Dispatch shenanigans
-@inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
-@inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::AbstractArray) = @inbounds θ, sᴬ[i, j, k]
-@inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::Number)        = @inbounds θ[i, j, k], sᴬ
-@inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::Number)        = @inbounds θ, sᴬ
+@inline θ_and_sᴬ(i, j, k, θ,         sᴬ)         = @inbounds θ[i, j, k], sᴬ[i, j, k]
+@inline θ_and_sᴬ(i, j, k, θ::Number, sᴬ)         = @inbounds θ, sᴬ[i, j, k]
+@inline θ_and_sᴬ(i, j, k, θ,         sᴬ::Number) = @inbounds θ[i, j, k], sᴬ
+@inline θ_and_sᴬ(i, j, k, θ::Number, sᴬ::Number) = @inbounds θ, sᴬ
 
 # Basic functionality
 @inline ρ′(i, j, k, grid, eos, θ, sᴬ) = @inbounds ρ′(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Dᵃᵃᶜ(i, j, k, grid), eos)
