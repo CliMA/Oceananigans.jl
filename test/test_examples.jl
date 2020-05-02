@@ -1,4 +1,4 @@
-EXAMPLES_DIR = "../examples/"
+const EXAMPLES_DIR = "../examples/"
 
 function run_example(replace_strings, example_name, module_suffix="")
     example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")

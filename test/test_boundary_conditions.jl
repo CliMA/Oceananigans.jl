@@ -92,7 +92,7 @@ end
 
         # Doubly periodic. Engineers call this a "Channel geometry".
         ppb_topology = (Periodic, Periodic, Bounded)
-        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=ppb_topology)
+        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppb_topology)
 
         u_bcs = UVelocityBoundaryConditions(ppb_grid)
         v_bcs = VVelocityBoundaryConditions(ppb_grid)
@@ -133,7 +133,7 @@ end
 
         # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
         pbb_topology = (Periodic, Bounded, Bounded)
-        pbb_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=pbb_topology)
+        pbb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=pbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(pbb_grid)
         v_bcs = VVelocityBoundaryConditions(pbb_grid)

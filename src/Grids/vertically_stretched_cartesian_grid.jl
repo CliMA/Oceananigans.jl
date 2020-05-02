@@ -12,12 +12,12 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT
      Nx :: Int
      Ny :: Int
      Nz :: Int
- 
+
     # Halo size in (x,y,z).
      Hx :: Int
      Hy :: Int
      Hz :: Int
- 
+
     # Domain size [m].
      Lx :: FT
      Ly :: FT
@@ -33,103 +33,128 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT
      xC :: R
      yC :: R
      zC :: A
- 
+
     # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
      xF :: R
      yF :: R
      zF :: A
-
 end
 
-"""
-    VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
-                                     size, halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded),
-                                     length=nothing, x=nothing, y=nothing, z=nothing, zF=nothing)
-
-"""
-function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU(); size, zF, halo=(1, 1, 1),
-                                          topology=(Periodic, Periodic, Bounded),
-                                          length=nothing, x=nothing, y=nothing, z=nothing)
-                                          
-
-    # Hack that allows us to use `size` and `length` as keyword arguments but then also
-    # use the `size` and `length` functions.
-    sz, len = size, length
-    length = Base.length
+function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
+                                              size, x, y, zF,
+                                              halo = (1, 1, 1), 
+                                          topology = (Periodic, Periodic, Bounded))
 
     TX, TY, TZ = validate_topology(topology)
-    Lx, Ly, Lz, x, y, z = validate_grid_size_and_length(sz, len, halo, x, y, z)
+    Lx, Ly, x, y = validate_vertically_stretched_grid_size_and_xy(FT, size, halo, x, y)
 
-    Nx, Ny, Nz = sz
+    Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    Δx = convert(FT, Lx / Nx)
-    Δy = convert(FT, Ly / Ny)
+    # Initialize vertically-stretched arrays on CPU
+    Lz, zF, zC, ΔzF, ΔzC = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
 
-    x₁, x₂ = convert.(FT, [x[1], x[2]])
-    y₁, y₂ = convert.(FT, [y[1], y[2]])
-    z₁, z₂ = convert.(FT, [z[1], z[2]])
+    # Convert to appropriate array type for arch
+     zF = convert(array_type(arch), zF)
+     zC = convert(array_type(arch), zC)
+    ΔzF = convert(array_type(arch), ΔzF)
+    ΔzC = convert(array_type(arch), ΔzC)
 
-    xF = range(x₁, x₂; length=Nx+1)
-    yF = range(y₁, y₂; length=Ny+1)
+    # Construct uniform horizontal grid
+    Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
+    Δx, Δy = Δh = Lh ./ Nh
 
-    xC = range(x₁ + Δx/2, x₂ - Δx/2; length=Nx)
-    yC = range(y₁ + Δy/2, y₂ - Δy/2; length=Ny)
+    # Face-node limits in x, y, z
+    xF₋, yF₋ = XF₋ = @. X₁ - Hh * Δh
+    xF₊, yF₊ = XF₊ = @. XF₋ + total_extent(topology[1:2], Hh, Δh, Lh)
 
-    zF, zC, ΔzF, ΔzC = validate_and_generate_variable_grid_spacing(FT, zF, z₁, z₂, Nz, Hz)
+    # Cell-node limits in x, y, z
+    xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
+    xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
+    
+    # Total length of Cell and Face quantities
+    TFx, TFy, TFz = total_length.(Face, topology, size, halo)
+    TCx, TCy, TCz = total_length.(Cell, topology, size, halo)
 
-    return VerticallyStretchedCartesianGrid{FT, typeof(TX), typeof(TY), typeof(TZ), typeof(xF), typeof(zF)}(
+    # Include halo points in coordinate arrays
+    xF = range(xF₋, xF₊; length = TFx)
+    yF = range(yF₋, yF₊; length = TFy)
+
+    xC = range(xC₋, xC₊; length = TCx)
+    yC = range(yC₋, yC₊; length = TCy)
+
+    # Reshape first...
+     xC = reshape(xC,  TCx, 1, 1) 
+     yC = reshape(yC,  1, TCy, 1)
+     zC = reshape(zC,  1, 1, TCz)
+    ΔzC = reshape(ΔzC, 1, 1, TCz - 1)
+
+     xF = reshape(xF,  TFx, 1, 1) 
+     yF = reshape(yF,  1, TFy, 1)
+     zF = reshape(zF,  1, 1, TFz)
+    ΔzF = reshape(ΔzF, 1, 1, TFz - 1)
+
+    # Then Offset.
+     xC = OffsetArray(xC,  -Hx, 0, 0)
+     yC = OffsetArray(yC,  0, -Hy, 0)
+     zC = OffsetArray(zC,  0, 0, -Hz)
+    ΔzC = OffsetArray(ΔzC, 0, 0, 1 - Hz)
+
+     xF = OffsetArray(xF,  -Hx, 0, 0)
+     yF = OffsetArray(yF,  0, -Hy, 0)
+     zF = OffsetArray(zF,  0, 0, -Hz)
+    ΔzF = OffsetArray(ΔzF, 0, 0, -Hz)
+
+    return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
 
-get_grid_spacing(z::Function, k) = z(k)
-get_grid_spacing(z::AbstractVector{T}, k) where T = z[k]
+#####
+##### Vertically stretched grid utilities
+#####
 
-function set_halo_zF!(zF, Nz, Hz)
-    Δ_bottom = zF[2] - zF[1]
-    for k = 0 : -1 : 1 - Hz
-        zF[k] = zF[k+1] - Δ_bottom
+get_z_face(z::Function, k) = z(k)
+get_z_face(z::AbstractVector, k) = z[k]
+
+lower_exterior_ΔzF(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
+lower_exterior_ΔzF(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
+
+upper_exterior_ΔzF(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
+upper_exterior_ΔzF(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
+
+function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
+
+    # Ensure correct type for zF and derived quantities
+    interior_zF = zeros(FT, Nz+1)
+
+    for k = 1:Nz+1
+        interior_zF[k] = get_z_face(zF_generator, k)
     end
 
-    Δ_top = zF[Nz+1] - zF[Nz]
-    for k = Nz + 2 : Nz + 1 + Hz
-        zF[k] = zF[k-1] + Δ_bottom
-    end
+    Lz = interior_zF[Nz+1] - interior_zF[1]
 
-    return nothing
-end
+    # Build halo regions 
+    ΔzF₋ = lower_exterior_ΔzF(z_topo, interior_zF, Hz)
+    ΔzF₊ = upper_exterior_ΔzF(z_topo, interior_zF, Hz)
 
-function generate_variable_grid_spacings_from_zF(FT, zF_source, Nz, Hz)
-    zF  = OffsetArray(zeros(FT, Nz + 1 + 2Hz), 1 - Hz : Nz + 1 + Hz)
-    ΔzF = OffsetArray(zeros(FT, Nz + 2Hz),     1 - Hz : Nz + Hz) 
+    z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
-    zC  = OffsetArray(zeros(FT, Nz + 2Hz),     1 - Hz : Nz + Hz)
-    ΔzC = OffsetArray(zeros(FT, Nz + 2Hz - 1), 2 - Hz : Nz + Hz) # index downshift
+    zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
+    zF₊ = [zᴺ⁺¹ + ΔzF₊[k]         for k = 1:Hz] # locations of faces in width of top halo region
 
-    for k in 1:Nz+1
-        zF[k] = get_grid_spacing(zF_source, k)
-    end
+    zF = vcat(zF₋, interior_zF, zF₊)
 
-    set_halo_zF!(zF, Nz, Hz)
+    # Build cell centers, cell center spacings, and cell interface spacings
+    TCz = total_length(Cell, z_topo, Nz, Hz)
+     zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
+    ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
 
-    for k in eachindex(zC)
-        zC[k] = (zF[k] + zF[k+1]) / 2
-        ΔzF[k] = zF[k+1] - zF[k]
-    end
+    # Trim face locations for periodic domains
+    TFz = total_length(Face, z_topo, Nz, Hz)
+    zF = zF[1:TFz]
 
-    for k in eachindex(ΔzC)
-        ΔzC[k] = zC[k] - zC[k-1]
-    end
+    ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
 
-    return zF, zC, ΔzF, ΔzC
-end
-
-function validate_and_generate_variable_grid_spacing(FT, zF_source, z₁, z₂, Nz, Hz)
-    zF, zC, ΔzF, ΔzC = generate_variable_grid_spacings_from_zF(FT, zF_source, Nz, Hz)
-
-    !isapprox(zF[1],   z₁) && throw(ArgumentError("Bottom face zF[1]=$(zF[1]) must equal bottom endpoint z₁=$z₁"))
-    !isapprox(zF[Nz+1], z₂) && throw(ArgumentError("Top face zF[Nz+1]=$(zF[Nz+1]) must equal top endpoint z₂=$z₂"))
-
-    return zF, zC, ΔzF, ΔzC
+    return Lz, zF, zC, ΔzF, ΔzC
 end

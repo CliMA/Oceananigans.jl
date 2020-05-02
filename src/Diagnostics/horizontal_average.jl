@@ -43,7 +43,7 @@ function HorizontalAverage(field; frequency=nothing, interval=nothing, return_ty
 end
 
 # Normalize a horizontal sum to get the horizontal average.
-normalize_horizontal_sum!(havg, grid) = havg.result /= (grid.Nx * grid.Ny)
+normalize_horizontal_sum!(havg, grid) = havg.result ./= (grid.Nx * grid.Ny)
 
 """
     run_diagnostic(model, havg::HorizontalAverage{NTuple{1}})

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: TimeStepWizard, cell_advection_timescale
+using Oceananigans.Utils: cell_advection_timescale
 using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 
 """
@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 An object for computing the Courant-Freidrichs-Lewy (CFL) number.
 """
 struct CFL{D, S}
-           Δt :: D
+            Δt :: D
     timescale :: S
 end
 
@@ -21,8 +21,7 @@ See also `AdvectiveCFL` and `DiffusiveCFL`.
 """
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
-(c::CFL{<:Number})(model) = c.Δt / c.timescale(model)
-(c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
+(c::CFL)(model) = c.Δt / c.timescale(model)
 
 """
     AdvectiveCFL(Δt)
