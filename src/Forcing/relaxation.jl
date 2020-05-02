@@ -2,19 +2,19 @@
 @inline onefunction(args...) = 1
 
 """
-    struct RestoringFunction{R, M, T}
+    struct RelaxingFunction{R, M, T}
 
 Callable object for restoring fields to a `target` at
 some `rate` and within a `mask`ed region in `x, y, z`. 
 """
-struct RestoringFunction{R, M, T}
+struct RelaxingFunction{R, M, T}
       rate :: R
       mask :: M
     target :: T
 end
 
 """
-    RestoringForce(; rate, mask=onefunction, target=zerofunction)
+    Relaxation(; rate, mask=onefunction, target=zerofunction)
 
 Returns a `SimpleForcing` that restores a field to `target(x, y, z, t)`
 at the specified `rate`, in the region `mask(x, y, z)`.
@@ -25,13 +25,13 @@ Example
 * Restore a field to a linear z-gradient everywhere on a timescale of one minute.
 
 ```julia
-julia> restore_stratification = RestoringForce(; rate = 1/60, target = (x, y, z, t) -> z)
+julia> restore_stratification = Relaxation(; rate = 1/60, target = (x, y, z, t) -> z)
 ```
 """
-RestoringForce(; rate, mask=onefunction, target=zerofunction) =
-    SimpleForcing(RestoringFunction(rate, mask, target); multiplicative=true)
+Relaxation(; rate, mask=onefunction, target=zerofunction) =
+    SimpleForcing(RelaxingFunction(rate, mask, target); multiplicative=true)
 
-@inline (f::RestoringFunction)(x, y, z, t, field) =
+@inline (f::RelaxingFunction)(x, y, z, t, field) =
     f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
 
 #####
