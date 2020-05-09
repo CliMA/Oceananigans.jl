@@ -161,7 +161,7 @@ anim = @animate for i in 1:100
             wmax(model), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = xnodes(Cell, grid)[:], znodes(Face, grid)[:], znodes(Cell, grid)[:]
+    xC, zF, zC = xnodes(Cell, grid), znodes(Face, grid), znodes(Cell, grid)
 
     ## Slices to plots.
     jhalf = floor(Int, model.grid.Ny/2)

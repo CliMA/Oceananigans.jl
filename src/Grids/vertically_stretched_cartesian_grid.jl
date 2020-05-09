@@ -78,27 +78,16 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xC = range(xC₋, xC₊; length = TCx)
     yC = range(yC₋, yC₊; length = TCy)
 
-    # Reshape first...
-     xC = reshape(xC,  TCx, 1, 1) 
-     yC = reshape(yC,  1, TCy, 1)
-     zC = reshape(zC,  1, 1, TCz)
-    ΔzC = reshape(ΔzC, 1, 1, TCz - 1)
+    # Offset.
+     xC = OffsetArray(xC,  -Hx)
+     yC = OffsetArray(yC,  -Hy)
+     zC = OffsetArray(zC,  -Hz)
+    ΔzC = OffsetArray(ΔzC, 1 - Hz)
 
-     xF = reshape(xF,  TFx, 1, 1) 
-     yF = reshape(yF,  1, TFy, 1)
-     zF = reshape(zF,  1, 1, TFz)
-    ΔzF = reshape(ΔzF, 1, 1, TFz - 1)
-
-    # Then Offset.
-     xC = OffsetArray(xC,  -Hx, 0, 0)
-     yC = OffsetArray(yC,  0, -Hy, 0)
-     zC = OffsetArray(zC,  0, 0, -Hz)
-    ΔzC = OffsetArray(ΔzC, 0, 0, 1 - Hz)
-
-     xF = OffsetArray(xF,  -Hx, 0, 0)
-     yF = OffsetArray(yF,  0, -Hy, 0)
-     zF = OffsetArray(zF,  0, 0, -Hz)
-    ΔzF = OffsetArray(ΔzF, 0, 0, -Hz)
+     xF = OffsetArray(xF,  -Hx)
+     yF = OffsetArray(yF,  -Hy)
+     zF = OffsetArray(zF,  -Hz)
+    ΔzF = OffsetArray(ΔzF, -Hz)
 
     return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)

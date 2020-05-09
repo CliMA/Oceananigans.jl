@@ -72,7 +72,7 @@ function test_diffusion_cosine(fieldname)
 
     field = get_model_field(fieldname, model)
 
-    zC = znodes(Cell, grid)
+    zC = znodes(Cell, grid, reshape=true)
     interior(field) .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
@@ -199,8 +199,8 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
         time_step!(model, Δt, euler = n==1)
     end
 
-    xF, yC, zC = nodes(model.velocities.u)
-    xC, yF, zC = nodes(model.velocities.v)
+    xF, yC, zC = nodes(model.velocities.u, reshape=true)
+    xC, yF, zC = nodes(model.velocities.v, reshape=true)
 
     t = model.clock.time
     i = model.clock.iteration

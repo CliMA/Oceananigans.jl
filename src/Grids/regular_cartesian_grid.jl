@@ -83,9 +83,9 @@ Grid properties
 
 - `(Δx, Δy, Δz)::FT`: Cell width in the (x, y, z)-direction
 
-- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers, reshaped for broadcasting.
+- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
 
-- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces, rehsaped for broadcasting.
+- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces.
 
 Examples
 ========
@@ -146,23 +146,14 @@ function RegularCartesianGrid(FT=Float64;
     yC = range(yC₋, yC₊; length = TCy)
     zC = range(zC₋, zC₊; length = TCz)
 
-    # Reshape coordinate arrays first...
-    xC = reshape(xC, TCx, 1, 1)
-    yC = reshape(yC, 1, TCy, 1)
-    zC = reshape(zC, 1, 1, TCz)
+    # Offset.
+    xC = OffsetArray(xC, -Hx)
+    yC = OffsetArray(yC, -Hy)
+    zC = OffsetArray(zC, -Hz)
 
-    xF = reshape(xF, TFx, 1, 1)
-    yF = reshape(yF, 1, TFy, 1)
-    zF = reshape(zF, 1, 1, TFz)
-
-    # Then offset.
-    xC = OffsetArray(xC, -Hx, 0, 0)
-    yC = OffsetArray(yC, 0, -Hy, 0)
-    zC = OffsetArray(zC, 0, 0, -Hz)
-
-    xF = OffsetArray(xF, -Hx, 0, 0)
-    yF = OffsetArray(yF, 0, -Hy, 0)
-    zF = OffsetArray(zF, 0, 0, -Hz)
+    xF = OffsetArray(xF, -Hx)
+    yF = OffsetArray(yF, -Hy)
+    zF = OffsetArray(zF, -Hz)
 
     return RegularCartesianGrid{FT, TX, TY, TZ, typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)

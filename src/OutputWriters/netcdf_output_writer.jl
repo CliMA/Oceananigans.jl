@@ -223,13 +223,13 @@ function write_grid_and_attributes(model;
                                     slice_keywords...)
                                                                        
     dims = Dict(
-                "xC" => collect(model.grid.xC[:, 1, 1]),
-                "yC" => collect(model.grid.yC[1, :, 1]),
-                "zC" => collect(model.grid.zC[1, 1, :]),
+                "xC" => collect(model.grid.xC),
+                "yC" => collect(model.grid.yC),
+                "zC" => collect(model.grid.zC),
 
-                "xF" => collect(model.grid.xF[:, 1, 1]),
-                "yF" => collect(model.grid.yF[1, :, 1]),
-                "zF" => collect(model.grid.zF[1, 1, :]),
+                "xF" => collect(model.grid.xF),
+                "yF" => collect(model.grid.yF),
+                "zF" => collect(model.grid.zF),
                )
 
     dim_attribs = Dict(
