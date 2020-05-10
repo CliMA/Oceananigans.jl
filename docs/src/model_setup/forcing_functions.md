@@ -19,7 +19,7 @@ e-folding length scale of 1% of the domain height.
 ```@example
 using Oceananigans # hide
 N, L = 16, 100
-grid = RegularCartesianGrid(size=(N, N, N), length=(L, L, L))
+grid = RegularCartesianGrid(size=(N, N, N), extent=(L, L, L))
 
 const τ⁻¹ = 1 / 60  # Damping/relaxation time scale [s⁻¹].
 const Δμ = 0.01L    # Sponge layer width [m] set to 1% of the domain height.
@@ -39,7 +39,7 @@ nothing # hide
 using Oceananigans # hide
 Nx = Ny = Nz = 16
 Lx = Ly = Lz = 1000
-grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
 λ = 1/(1minute)  # Relaxation timescale [s⁻¹].
 
@@ -76,7 +76,7 @@ v_forcing = SimpleForcing(parameterized_forcing, parameters=(μ=42, λ=0.1, ω=�
 
 forcing = ModelForcing(u=u_forcing, v=v_forcing)
 
-grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 model = Model(grid=grid, forcing=forcing)
 nothing # hide
 ```
