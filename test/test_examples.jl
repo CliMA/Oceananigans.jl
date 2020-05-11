@@ -20,7 +20,11 @@ function run_example(replace_strings, example_name, module_suffix="")
         include(test_script_filepath)
     catch err
         @error sprint(showerror, err)
+
+        @show read(test_script_filepath)
+
         rm(test_script_filepath)
+
         return false
     end
 
@@ -59,11 +63,11 @@ end
     end
 
     for arch in archs
-        @testset "Wind and convection mixing example [$(typeof(arch))]" begin
-            @info "  Testing wind and convection-driving mixing example [$(typeof(arch))]"
+        @testset "Wind and convection-driven mixing example [$(typeof(arch))]" begin
+            @info "  Testing wind and convection-driven mixing example [$(typeof(arch))]"
 
             replace_strings = [
-                ("Nz = 48", "Nz = 16"),
+                ("Nz = 32", "Nz = 16"),
                 ("progress_frequency=10", "progress_frequency=1"),
                 ("for i in 1:100", "for i in 1:1"),
                 ("stop_iteration += 10", "stop_iteration += 1"),
