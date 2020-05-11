@@ -1,5 +1,5 @@
 """
-    struct SimpleForcing{X, Y, Z, M, F, P}
+    SimpleForcing{X, Y, Z, M, F, P}
 
 A callable object that implements a 'simple' forcing function
 on a field at the location `X, Y, Z`.
