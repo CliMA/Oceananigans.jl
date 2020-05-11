@@ -50,8 +50,8 @@ nothing # hide
 # ## Define a forcing function
 #
 # Our forcing function roughly corresponds to the growth of phytoplankton in light
-# (with a penetration depth of 16 meters here), and death due to grazing
-# at a rate of 1 phytoplankton unit per second.
+# (with a penetration depth of 16 meters here), and death due to viruses and grazing
+# by zooplankton at a rate of 1 phytoplankton unit per second (which is shockingly fast).
 
 growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
 
