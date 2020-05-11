@@ -2,33 +2,48 @@ const EXAMPLES_DIR = "../examples/"
 
 function run_example(replace_strings, example_name, module_suffix="")
     example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")
-    txt = read(example_filepath, String)
+    file_content = read(example_filepath, String)
 
     for strs in replace_strings
-        txt = replace(txt, strs[1] => strs[2])
+        file_content = replace(file_content, strs[1] => strs[2])
     end
 
     test_script_filepath = example_name * "_example_test.jl"
 
     open(test_script_filepath, "w") do f
         write(f, "module Test_$example_name" * "_$module_suffix\n")
-        write(f, txt)
+        write(f, file_content)
         write(f, "\nend # module")
     end
 
     try
         include(test_script_filepath)
     catch err
+        # Throw the error
         @error sprint(showerror, err)
+
+        # Print the content of the file to the test log, with line numbers, for debugging
+        delineated_file_content = split(file_content, '\n')
+
+        @printf "% 3d module Test_%s_%s\n" 1 example_name module_suffix
+
+        for (line, number) in enumerate(delinated_file_content)
+            @printf "% 3d %s\n" number line
+        end
+
+        @printf("% 3d end # module", number+2)
 
         @show read(test_script_filepath)
 
+        # Delete the test script
         rm(test_script_filepath)
 
         return false
     end
 
+    # Delete the test script (if it hasn't been deleted already)
     rm(test_script_filepath)
+
     return true
 end
 
