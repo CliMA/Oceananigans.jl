@@ -33,8 +33,6 @@ function run_example(replace_strings, example_name, module_suffix="")
 
         @printf("% 3d end # module", number+2)
 
-        @show read(test_script_filepath)
-
         # Delete the test script
         rm(test_script_filepath)
 
