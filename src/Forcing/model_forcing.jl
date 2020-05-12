@@ -40,7 +40,7 @@ function for_field_name(field_name, f::SimpleForcing)
     X, Y, Z = field_name ∈ (:u, :v, :w) ? assumed_field_locations[field_name] :
                                           assumed_field_locations[:tracer]
 
-    return SimpleForcing{X, Y, Z}(field_name, f.forcing, f.parameters, f.multiplicative)
+    return SimpleForcing{X, Y, Z}(field_name, f.forcing, f.parameters, f.field_in_signature)
 end
 
 default_tracer_forcing(args...) = zeroforcing
