@@ -27,7 +27,7 @@ function run_example(replace_strings, example_name, module_suffix="")
 
         @printf "% 3d module Test_%s_%s\n" 1 example_name module_suffix
 
-        for (line, number) in enumerate(delineated_file_content)
+        for (number, line) in enumerate(delineated_file_content)
             @printf "% 3d %s\n" number line
         end
 
