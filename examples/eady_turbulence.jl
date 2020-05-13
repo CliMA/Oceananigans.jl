@@ -9,16 +9,16 @@
 
 using Random, Printf
 
-using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
+using Oceananigans, Oceananigans.Grids, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
       Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions,
       Oceananigans.Forcing
+
+using Oceananigans.Simulations: update_Δt!
 
 # These imports from Oceananigans's `TurbuleneClosures` module are needed for imposing
 # a background flow as a user-defined forcing.
 
 using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂xᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ
-
-using Oceananigans.Fields: Face, Cell
 
 # # Parameters
 #

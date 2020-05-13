@@ -10,6 +10,7 @@ using FFTW
 using OffsetArrays
 
 using Oceananigans.Architectures: @hascuda
+
 @hascuda begin
     import CUDAdrv
     using CuArrays
@@ -141,5 +142,6 @@ with_logger(ModelLogger()) do
         include("test_regression.jl")
         include("test_examples.jl")
         include("test_verification.jl")
+        include("test_benchmarks.jl")
     end
 end

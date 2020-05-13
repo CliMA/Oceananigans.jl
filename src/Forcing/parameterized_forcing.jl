@@ -13,7 +13,9 @@ function cool_forcing_function(i, j, k, grid, clock, state, parameters) =
     return @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * state.velocities.u[i, j, k]
 end
 
-cool_forcing = ParameterizedForcing(cool_forcing_function, parameters=(μ=42, λ=π))
+parameters = (μ=42, λ=π)
+
+cool_forcing = ParameterizedForcing(cool_forcing_function, parameters)
 """
 struct ParameterizedForcing{F, P}
     func :: F

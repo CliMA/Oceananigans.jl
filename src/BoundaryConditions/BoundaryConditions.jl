@@ -26,7 +26,6 @@ export
 
 using CUDAnative
 
-using Oceananigans: Cell, Face, xnode, ynode, znode
 using Oceananigans.Architectures
 using Oceananigans.Grids
 

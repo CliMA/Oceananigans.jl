@@ -1,11 +1,11 @@
-import Pkg
+using InteractiveUtils
 
 using Oceananigans: @hascuda, AbstractArchitecture
 
 @hascuda using CUDAdrv
 
 function print_benchmark_info()
-    versioninfo()
+    InteractiveUtils.versioninfo(verbose=true)
     @hascuda begin
         dev = device(CuCurrentContext()) |> string
         gpu_name = split(dev, ":")[end] |> strip

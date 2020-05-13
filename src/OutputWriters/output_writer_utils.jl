@@ -15,7 +15,7 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 # converts Julia objects to language-agnostic objects.
 saveproperty!(file, location, p::Union{Number,Array}) = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
-saveproperty!(file, location, p::AbstractArray) = file[location] = Array(p)
+saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
 
 saveproperty!(file, location, p::Tuple) =

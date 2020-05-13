@@ -50,7 +50,7 @@ end
         @info "  Testing field boundary functions..."
 
         ppb_topology = (Periodic, Periodic, Bounded)
-        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=ppb_topology)
+        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppb_topology)
 
         u_bcs = UVelocityBoundaryConditions(ppb_grid)
         @test u_bcs isa FieldBoundaryConditions
@@ -89,7 +89,7 @@ end
         @test Tbcs.z.right isa NFBC
 
         pbb_topology = (Periodic, Bounded, Bounded)
-        pbb_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=pbb_topology)
+        pbb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=pbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(pbb_grid)
         @test u_bcs isa FieldBoundaryConditions

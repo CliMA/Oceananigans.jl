@@ -10,7 +10,7 @@
 # To begin, we load Oceananigans, a plotting package, and a few miscellaneous useful packages.
 
 using Random, Printf, Plots
-using Oceananigans, Oceananigans.Utils
+using Oceananigans, Oceananigans.Utils, Oceananigans.Grids
 
 # ## Parameters
 #
@@ -41,7 +41,7 @@ nothing # hide
 # Create boundary conditions. Note that temperature is buoyancy in our problem.
 #
 
-grid = RegularCartesianGrid(size = (Nz, 1, Nz), length = (Lz, Lz, Lz))
+grid = RegularCartesianGrid(size=(Nz, 1, Nz), extent=(Lz, Lz, Lz))
 
 buoyancy_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qb),
                                               bottom = BoundaryCondition(Gradient, N²))
@@ -50,10 +50,10 @@ nothing # hide
 # ## Define a forcing function
 #
 # Our forcing function roughly corresponds to the growth of phytoplankton in light
-# (with a penetration depth of 16 meters here), and death due to natural mortality
-# at a rate of 1 phytoplankton unit per second.
+# (with a penetration depth of 16 meters here), and death due to viruses and grazing
+# by zooplankton at a rate of 1 phytoplankton unit per second (which is shockingly fast).
 
-growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16))
+growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
 
 ## Instantiate the model
 model = IncompressibleModel(
@@ -89,7 +89,7 @@ anim = @animate for i = 1:100
             prettytime(model.clock.time), prettytime(wizard.Δt), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = model.grid.zC, model.grid.zF, model.grid.zC
+    xC, zF, zC = xnodes(Cell, grid)[:], znodes(Face, grid)[:], znodes(Cell, grid)[:]
 
     ## Fields to plot (converted to 2D arrays).
     w = Array(interior(model.velocities.w))[:, 1, :]

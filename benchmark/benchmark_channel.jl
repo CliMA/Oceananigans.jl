@@ -1,4 +1,5 @@
-using TimerOutputs, Printf
+using Printf
+using TimerOutputs
 using Oceananigans
 
 include("benchmark_utils.jl")
@@ -9,8 +10,7 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
-Ni = 2  # Number of iterations before benchmarking starts.
-Nt = 5  # Number of iterations to use for benchmarking time stepping.
+Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks. Focusing on 3D models for GPU benchmarking.
             Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
@@ -23,27 +23,16 @@ Nt = 5  # Number of iterations to use for benchmarking time stepping.
 #####
 
 for arch in archs, FT in float_types, N in Ns
-    Nx, Ny, Nz = N
-    Lx, Ly, Lz = 250e3, 250e3, 1000
+	topology = (Periodic, Bounded, Bounded)
+	grid = RegularCartesianGrid(topology=topology, size=N, extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
 
-    model = ChannelModel(architecture = arch, float_type = FT,
-			 grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Lx, Lz)),
-			 closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2))
-
-    # Eddying channel model setup.
-    Ty = 4e-5  # Meridional temperature gradient [K/m].
-    Tz = 2e-3  # Vertical temperature gradient [K/m].
-
-    # Initial temperature field [°C].
-    T₀(x, y, z) = 10 + Ty*y + Tz*z + 1e-4*randn()
-    set!(model; T=T₀)
-
-    time_step!(model, Ni, 1)  # First 1~2 iterations are usually slower.
+    time_step!(model, 1)  # precompile
 
     bname =  benchmark_name(N, "", arch, FT)
-    @printf("Running eddying channel benchmark: %s...\n", bname)
+    @printf("Running channel benchmark: %s...\n", bname)
     for i in 1:Nt
-        @timeit timer bname time_step!(model, 1, 1)
+        @timeit timer bname time_step!(model, 1)
     end
 end
 

@@ -1,3 +1,4 @@
+using Oceananigans.Grids: xnode, znode
 
 function run_rayleigh_benard_regression_test(arch)
 
@@ -23,11 +24,11 @@ function run_rayleigh_benard_regression_test(arch)
     ##### Model setup
     #####
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, state) = 1/10 * (c★(grid.xC[i], grid.zC[k]) - state.tracers.c[i, j, k])
+    Fc(i, j, k, grid, clock, state) = 1/10 * (c★(xnode(Cell, i, grid), znode(Cell, k, grid)) - state.tracers.c[i, j, k])
 
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))

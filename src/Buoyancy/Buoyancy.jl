@@ -2,7 +2,7 @@ module Buoyancy
 
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
 
 using Printf
@@ -72,6 +72,7 @@ include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
 include("roquet_idealized_nonlinear_eos.jl")
+include("teos_10.jl")
 
 Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
     println(io, "SeawaterBuoyancy{$FT}: g = $(b.gravitational_acceleration)", '\n',

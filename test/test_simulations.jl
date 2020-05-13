@@ -1,11 +1,11 @@
 using Oceananigans.Simulations:
-    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded
+    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded, TimeStepWizard
 
 @testset "Simulations" begin
     @info "Testing simulations..."
 
     for arch in archs, Δt in (3, TimeStepWizard(Δt=5.0))
-        grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+        grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
         simulation = Simulation(model, Δt=Δt, stop_iteration=1)
 
