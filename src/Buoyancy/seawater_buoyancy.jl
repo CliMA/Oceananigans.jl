@@ -131,5 +131,6 @@ end
 
 @inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy{FT}, C) where FT
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ) / reference_density(b.equation_of_state)
+    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ) 
+              / b.equation_of_state.reference_density)
 end

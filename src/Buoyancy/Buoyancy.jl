@@ -11,8 +11,6 @@ using Oceananigans.Operators
 
 import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 
-using SeawaterPolynomials: reference_density
-
 # Physical constants
 # https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)
 const g_Earth = 9.80665
