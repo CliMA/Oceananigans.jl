@@ -73,7 +73,7 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 """
     xnodes(loc, grid)
 
-Returns a view over the interior `loc=Cell` or loc=Face` nodes
+Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the x-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
 
@@ -84,7 +84,7 @@ xnodes(::Type{Cell}, grid) = view(grid.xC, 1:grid.Nx, :, :)
 """
     ynodes(loc, grid)
 
-Returns a view over the interior `loc=Cell` or loc=Face` nodes
+Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the y-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
 
@@ -95,7 +95,7 @@ ynodes(::Type{Cell}, grid) = view(grid.yC, :, 1:grid.Ny, :)
 """
     znodes(loc, grid)
 
-Returns a view over the interior `loc=Cell` or loc=Face` nodes
+Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the z-direction. For `Bounded` directions,
 `Face` nodes include the boundary points.
 

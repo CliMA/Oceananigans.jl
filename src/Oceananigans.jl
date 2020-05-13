@@ -29,14 +29,14 @@ export
     interior, set!,
 
     # Forcing functions
-    ModelForcing, SimpleForcing,
+    ModelForcing, SimpleForcing, ParameterizedForcing,
 
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane,
 
     # Buoyancy and equations of state
     BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
