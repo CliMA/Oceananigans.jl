@@ -57,7 +57,7 @@ struct GaussianMask{D, T}
     center :: T
      width :: T
 
-    function GaussianMask{D}(center, width)
+    function GaussianMask{D}(center, width) where D
         T = promote_type(typeof(center), typeof(width))
         return new{D, T}(center, width)
     end
@@ -91,7 +91,7 @@ struct LinearTarget{D, T}
     intercept :: T
      gradient :: T
 
-    function LinearTarget{D}(intercept, gradient)
+    function LinearTarget{D}(intercept, gradient) where D
         T = promote_type(typeof(gradient), typeof(intercept))
         return new{D, T}(intercept, gradient)
     end
