@@ -37,7 +37,7 @@ julia> restore_stratification = Relaxation(; rate = 1/60, target = (x, y, z, t) 
 ```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction) =
-    SimpleForcing(RelaxingFunction(rate, mask, target); multiplicative=true)
+    SimpleForcing(RelaxingFunction(rate, mask, target); field_in_signature=true)
 
 
 #####
