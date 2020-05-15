@@ -43,6 +43,8 @@ using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
+using SeawaterPolynomials
+
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: datatuple
 
