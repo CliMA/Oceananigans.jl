@@ -13,6 +13,13 @@ struct RelaxingFunction{R, M, T}
     target :: T
 end
 
+@inline (f::RelaxingFunction)(x, y, z, t, field) =
+    f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
+
+#####
+##### Relaxing forcing
+#####
+
 """
     Relaxation(; rate, mask=onefunction, target=zerofunction)
 
@@ -22,7 +29,8 @@ at the specified `rate`, in the region `mask(x, y, z)`.
 Example
 =======
 
-* Restore a field to a linear z-gradient everywhere on a timescale of one minute.
+* Restore a field to a linear z-gradient everywhere on a timescale of "60" (equal
+  to one minute if the time units of the simulation are seconds).
 
 ```julia
 julia> restore_stratification = Relaxation(; rate = 1/60, target = (x, y, z, t) -> z)
@@ -31,8 +39,6 @@ julia> restore_stratification = Relaxation(; rate = 1/60, target = (x, y, z, t) 
 Relaxation(; rate, mask=onefunction, target=zerofunction) =
     SimpleForcing(RelaxingFunction(rate, mask, target); multiplicative=true)
 
-@inline (f::RelaxingFunction)(x, y, z, t, field) =
-    f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
 
 #####
 ##### Sponge layer functions

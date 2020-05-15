@@ -92,6 +92,18 @@ function time_step_with_simple_field_dependent_forcing_parameters(arch)
     return true
 end
 
+function relaxed_time_stepping(arch)
+    x_relax = Relaxation(rate=1/60, mask=GaussianMask{:x}(0.5, 0.1), target=LinearTarget{:x}(π, ℯ))
+    y_relax = Relaxation(rate=1/60, mask=GaussianMask{:y}(0.5, 0.1), target=LinearTarget{:y}(π, ℯ))
+    z_relax = Relaxation(rate=1/60, mask=GaussianMask{:z}(0.5, 0.1), target=LinearTarget{:z}(π, ℯ))
+
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+
+    model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=x_relax, v=y_relax, w=z_relax))
+    time_step!(model, 1, euler=true)
+    return true
+end
+
 @testset "Forcing" begin
     @info "Testing forcings..."
 
@@ -112,6 +124,7 @@ end
             @test time_step_with_simple_forcing_parameters(arch)
             @test time_step_with_simple_field_dependent_forcing(arch)
             @test time_step_with_simple_field_dependent_forcing_parameters(arch)
+            @test relaxed_time_stepping(arch)
         end
     end
 end
