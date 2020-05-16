@@ -23,7 +23,7 @@ nothing # hide
 
 ## Non-dimensional internal wave parameters
 m = 16      # vertical wavenumber
-k = 1       # horizontal wavenumber
+k = 8       # horizontal wavenumber
 N = 1       # buoyancy frequency
 f = 0.2     # inertial frequency
 nothing # hide
@@ -88,14 +88,23 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 simulation = Simulation(model, Δt = 0.001 * 2π/ω, stop_iteration = 0,
                         progress_frequency = 20)
 
-anim = @animate for i=1:100
-    simulation.stop_iteration += 20
-    run!(simulation)
-
+anim = @animate for i=0:100
     x, z = xnodes(Cell, model.grid)[:], znodes(Face, model.grid)[:]
     w = model.velocities.w
-    heatmap(x, z, w.data[1:Nx, 1, 1:Nx+1]', title=@sprintf("t = %.2f", model.clock.time),
-            xlabel="x", ylabel="z", c=:balance, clims=(-1e-8, 1e-8))
+    
+    contourf(x, z, w.data[1:Nx, 1, 1:Nx+1]',
+             title=@sprintf("ωt = %.2f", ω*model.clock.time),
+             levels=range(-1e-8, stop=1e-8, length=10),
+             clims=(-1e-8, 1e-8),
+             xlabel="x", ylabel="z",
+             xlims=(0, Lx), ylims=(-Lx, 0),
+             linewidth=0,
+             c=:balance,
+             legend=false,
+             aspectratio=:equal)
+            
+    simulation.stop_iteration += 20
+    run!(simulation)
 end
 
 mp4(anim, "internal_wave.mp4", fps = 15) # hide
