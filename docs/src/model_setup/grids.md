@@ -22,7 +22,7 @@ By default, the `RegularCartesianGrid` constructor assumes a horizontally period
 in the y- and z-dimensions:
 ```@example
 using Oceananigans # hide
-grid = RegularCartesianGrid(size=(64, 32, 16), length=(200, 100, 100), topology=(Periodic, Bounded, Bounded))
+grid = RegularCartesianGrid(size=(64, 32, 16), extent=(200, 100, 100), topology=(Periodic, Bounded, Bounded))
 ```
 
 ## Specifying the domain

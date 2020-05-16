@@ -125,6 +125,7 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
