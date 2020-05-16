@@ -93,9 +93,14 @@ function time_step_with_simple_field_dependent_forcing_parameters(arch)
 end
 
 function relaxed_time_stepping(arch)
-    x_relax = Relaxation(rate=1/60, mask=GaussianMask{:x}(0.5, 0.1), target=LinearTarget{:x}(π, ℯ))
-    y_relax = Relaxation(rate=1/60, mask=GaussianMask{:y}(0.5, 0.1), target=LinearTarget{:y}(π, ℯ))
-    z_relax = Relaxation(rate=1/60, mask=GaussianMask{:z}(0.5, 0.1), target=LinearTarget{:z}(π, ℯ))
+    x_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:x}(center=0.5, width=0.1), 
+                                      target = LinearTarget{:x}(intercept=π, gradient=ℯ))
+
+    y_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:y}(center=0.5, width=0.1),
+                                      target = LinearTarget{:y}(intercept=π, gradient=ℯ))
+
+    z_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:z}(center=0.5, width=0.1),
+                                      target = LinearTarget{:z}(intercept=π, gradient=ℯ))
 
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
