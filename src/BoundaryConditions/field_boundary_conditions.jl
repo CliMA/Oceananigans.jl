@@ -14,10 +14,10 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 """
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
-DefaultBoundaryCondition(::Union{Grids.Periodic, Flat}, loc) = PeriodicBoundaryCondition()
+DefaultBoundaryCondition(::Union{Type{Grids.Periodic}, Type{Flat}}, loc) = PeriodicBoundaryCondition()
 
-DefaultBoundaryCondition(::Bounded, ::Type{Cell}) = NoFluxBoundaryCondition()
-DefaultBoundaryCondition(::Bounded, ::Type{Face}) = NoPenetrationBoundaryCondition()
+DefaultBoundaryCondition(::Type{Bounded}, ::Type{Cell}) = NoFluxBoundaryCondition()
+DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face}) = NoPenetrationBoundaryCondition()
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)

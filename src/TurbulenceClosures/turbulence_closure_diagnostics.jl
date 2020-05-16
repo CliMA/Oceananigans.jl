@@ -96,3 +96,6 @@ function cell_diffusion_timescale(closure::AbstractLeith, diffusivities, grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν
 end
+
+cell_diffusion_timescale(closure::Tuple, diffusivities, grid) =
+    min(Tuple(cell_diffusion_timescale(c, diffusivities, grid) for c in closure)...)

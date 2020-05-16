@@ -15,7 +15,7 @@
 using Random, Printf, Plots
 
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Diagnostics, Oceananigans.Utils,
-      Oceananigans.BoundaryConditions
+      Oceananigans.BoundaryConditions, Oceananigans.Grids
 
 # ## Model parameters
 #
@@ -62,7 +62,7 @@ nothing # hide
 # at the bottom. Our flux boundary condition for salinity uses a function that calculates
 # the salinity flux in terms of the evaporation rate.
 
-grid = RegularCartesianGrid(size=(Nz, Nz, Nz), length=(Δz*Nz, Δz*Nz, Δz*Nz))
+grid = RegularCartesianGrid(size=(Nz, Nz, Nz), extent=(Δz*Nz, Δz*Nz, Δz*Nz))
 
 u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 
@@ -125,6 +125,7 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
@@ -161,7 +162,7 @@ anim = @animate for i in 1:100
             wmax(model), prettytime(walltime))
 
     ## Coordinate arrays for plotting
-    xC, zF, zC = model.grid.zC, model.grid.zF, model.grid.zC
+    xC, zF, zC = xnodes(Cell, grid)[:], znodes(Face, grid)[:], znodes(Cell, grid)[:]
 
     ## Slices to plots.
     jhalf = floor(Int, model.grid.Ny/2)
@@ -171,8 +172,8 @@ anim = @animate for i in 1:100
 
     ## Plot the slices.
     w_plot = heatmap(xC, zF, w', xlabel="x (m)", ylabel="z (m)", color=:balance, clims=(-3e-2, 3e-2))
-    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20))
-    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline, clims=(34.99, 35.01))
+    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20.0))
+    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline,  clims=(34.99, 35.01))
 
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1600, 400),

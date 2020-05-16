@@ -129,7 +129,8 @@ and cell centers in `x` and `y`.
         - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
 end
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy{FT, <:AbstractNonlinearEquationOfState}, C) where FT
+@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy{FT}, C) where FT
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ) / b.equation_of_state.ρ₀
+    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ) 
+              / b.equation_of_state.reference_density)
 end

@@ -1,6 +1,6 @@
 function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), length=(1, 2, 3))
+    grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, euler=true)
@@ -8,10 +8,10 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)
-    grid = RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3))
+function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
+    grid = RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3))
 
-    eos = RoquetIdealizedNonlinearEquationOfState(eos_type)
+    eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
@@ -22,7 +22,7 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), length=(1, 2, 3)),
+    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3)),
                                 architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
@@ -44,7 +44,7 @@ function compute_w_from_continuity(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 16, 16, 16
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     U = VelocityFields(arch, grid)
     div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
 
@@ -83,7 +83,7 @@ function incompressible_in_time(arch, FT, Nt)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     grid = model.grid
@@ -129,7 +129,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νv, κv = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), length=(Lx, Ly, Lz))
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
                                 closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
 
@@ -170,7 +170,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             @info "Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
             model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+                 grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)),
                 clock = Clock(time=DateTime(2020))
             )
 
@@ -178,7 +178,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
             model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)),
+                 grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)),
                 clock = Clock(time=TimeDate(2020))
             )
 
@@ -201,7 +201,7 @@ Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
 
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
-            for eos_type in keys(Oceananigans.Buoyancy.optimized_roquet_coeffs)
+            for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
                 @info "  Testing that time stepping works with " *
                         "RoquetIdealizedNonlinearEquationOfState [$(typeof(arch)), $FT, $eos_type]"
                 @test time_stepping_works_with_nonlinear_eos(arch, FT, eos_type)

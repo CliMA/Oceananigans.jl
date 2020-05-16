@@ -2,12 +2,14 @@ module Buoyancy
 
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState,
+    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
 
 using Printf
 using Oceananigans.Grids
 using Oceananigans.Operators
+
+import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 
 # Physical constants
 # https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)
@@ -26,13 +28,6 @@ abstract type AbstractBuoyancy{EOS} end
 Abstract supertype for equations of state.
 """
 abstract type AbstractEquationOfState end
-
-"""
-    AbstractNonlinearEquationOfState
-
-Abstract supertype for nonlinar equations of state.
-"""
-abstract type AbstractNonlinearEquationOfState <: AbstractEquationOfState end
 
 function validate_buoyancy(buoyancy, tracers)
     req_tracers = required_tracers(buoyancy)
@@ -71,7 +66,6 @@ required_tracers(::BuoyancyTracer) = (:b,)
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
-include("roquet_idealized_nonlinear_eos.jl")
 
 Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
     println(io, "SeawaterBuoyancy{$FT}: g = $(b.gravitational_acceleration)", '\n',
