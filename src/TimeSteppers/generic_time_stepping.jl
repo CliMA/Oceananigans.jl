@@ -63,12 +63,14 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
                                                
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(
-        model.timestepper.Gⁿ, model.architecture, model.velocities,
-        model.tracers, model.clock, state(model))
+    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ, model.architecture, model.velocities,
+                                               model.tracers, model.clock, state(model))
 
     # Calculate momentum tendencies on boundaries in `Bounded` directions.
-    #calculate_velocity_tendencies_on_boundaries!(tendency_calculation_args...)
+    calculate_velocity_tendencies_on_boundaries!(tendencies, model.architecture, model.grid,
+                                                 model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
+                                                 velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
+                                                 model.clock)
 
     return nothing
 end

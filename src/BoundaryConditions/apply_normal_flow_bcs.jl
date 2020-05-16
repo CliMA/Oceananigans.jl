@@ -105,23 +105,23 @@ function _fill_top_halo!(w, ::NFBC, grid, u, v)
     return nothing
 end
 
-function set_east_west_u_velocity!(u, i_boundary, bc, grid, args...)
+function set_east_west_u_velocity!(u, i_boundary, bc, grid, clock, state)
     @loop_yz j k grid begin
-        @inbounds u[i_boundary, j, k] = getbc(bc, j, k, grid, args...)
+        @inbounds u[i_boundary, j, k] = getbc(bc, j, k, grid, clock, state)
     end
     return nothing
 end
 
-function set_north_south_v_velocity!(v, j_boundary, bc, grid, args...)
+function set_north_south_v_velocity!(v, j_boundary, bc, grid, clock, state)
     @loop_xz i k grid begin
-        @inbounds v[i, j_boundary, k] = getbc(bc, i, k, grid, args...)
+        @inbounds v[i, j_boundary, k] = getbc(bc, i, k, grid, clock, state)
     end
     return nothing
 end
 
-function set_top_bottom_w_velocity!(w, k_boundary, bc, grid, args...)
+function set_top_bottom_w_velocity!(w, k_boundary, bc, grid, clock, state)
     @loop_xy i j grid begin
-        @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
+        @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, clock, state)
     end
     return nothing
 end

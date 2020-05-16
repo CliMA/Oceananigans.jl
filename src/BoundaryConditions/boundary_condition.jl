@@ -6,7 +6,7 @@ import Adapt
 Construct a boundary condition of type `C` with a `condition` that may be given by a
 number, an array, or a function with signature:
 
-    condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition
+    condition(i, j, grid, clock, state) = # function definition
 
 that returns a number and where `i` and `j` are indices along the boundary.
 
@@ -47,10 +47,11 @@ ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
   GradientBoundaryCondition(val) = BoundaryCondition(Gradient, val)
 NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
 
-# Multiple dispatch on the type of boundary condition
-@inline getbc(bc::BC{<:NormalFlow, <:Nothing}, args...)          = 0
-@inline getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
+# Support for various types of boundary conditions
+@inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
+@inline getbc(bc::BC{C, <:Number},        i, j, grid, clock, state) where C = bc.condition
+@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = bc.condition[i, j]
+@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C =
+    bc.condition(i, j, grid, clock, state)
 
-@inline Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
+@inline Base.getindex(bc::BC{C, <:AbstractArray}, i, j) where C = getindex(bc.condition, i, j)
