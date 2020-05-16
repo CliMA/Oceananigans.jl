@@ -101,7 +101,7 @@ To, for example, create a set of horizontally periodic field boundary conditions
 ```@example
 using Oceananigans # hide
 topology = (Periodic, Periodic, Bounded)
-grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=topology)
+grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
 T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01))
 ```
@@ -114,7 +114,7 @@ conditions on all fields. To, for example, impose non-default boundary condition
 ```@example
 using Oceananigans # hide
 topology = (Periodic, Periodic, Bounded)
-grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=topology)
+grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
 
 u_bcs = UVelocityBoundaryConditions(grid,   top = ValueBoundaryCondition(+0.1),
                                          bottom = ValueBoundaryCondition(-0.1))

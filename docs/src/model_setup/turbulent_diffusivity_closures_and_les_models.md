@@ -1,5 +1,5 @@
 # Turbulent diffusivity closures and large eddy simulation models
-A turbulent diffusivty closure representing the effects of viscous dissipation and diffusion can be passed via the
+A turbulent diffusivity closure representing the effects of viscous dissipation and diffusion can be passed via the
 `closure` keyword.
 
 See [turbulence closures](@ref numerical_closures) and [large eddy simulation](@ref numerical_les) for more details
@@ -20,7 +20,7 @@ closure = ConstantAnisotropicDiffusivity(νh=1e-3, νv=5e-2, κh=2e-3, κv=1e-1)
 ## Smagorinsky-Lilly
 To use the Smagorinsky-Lilly LES closure, no parameters are required
 ```@example
-closure = SmagorinskyLilly()
+closure = Oceananigans.TurbulenceClosures.SmagorinskyLilly()
 ```
 although they may be specified. By default, the background viscosity and diffusivity are assumed to be the molecular
 values for seawater. For more details see [`SmagorinskyLilly`](@ref).

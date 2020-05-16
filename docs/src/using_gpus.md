@@ -11,7 +11,7 @@ Oceananigans does not yet support distributed parallelism (multi-CPU or multi-GP
 
 !!! tip "Running on GPUs"
     If you are having issues with running Oceananigans on a GPU or setting things up,
-    please [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new)
+    please [open an issue](https://github.com/CLiMA/Oceananigans.jl/issues/new)
     and we'll do our best to help out!
 
 ## When to use a GPU
