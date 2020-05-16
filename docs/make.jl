@@ -3,6 +3,7 @@ push!(LOAD_PATH, "..")
 using
     Documenter,
     Literate,
+    Plots,  # to avoid capturing precompilation output by Literate
     Oceananigans,
     Oceananigans.Operators,
     Oceananigans.Grids,
@@ -144,4 +145,5 @@ makedocs(
      ]
 )
 
-deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git")
+deploydocs(repo = "github.com/climate-machine/Oceananigans.jl.git",
+           push_preview = true)
