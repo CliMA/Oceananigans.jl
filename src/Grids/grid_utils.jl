@@ -227,3 +227,18 @@ function validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
 
     return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
 end
+
+function validate_vertically_stretched_grid_size_and_xy(FT, size, halo, x, y)
+    validate_tupled_argument(size, Integer, "size")
+    validate_tupled_argument(halo, Integer, "halo")
+
+    for (i, c) in enumerate((x, y))
+            validate_dimension_specification(i, c)
+        end
+
+        Lx = x[2] - x[1]
+        Ly = y[2] - y[1]
+
+    return FT(Lx), FT(Ly), FT.(x), FT.(y)
+end
+

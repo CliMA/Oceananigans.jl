@@ -51,7 +51,7 @@ end
 
         # Triply periodic
         ppp_topology = (Periodic, Periodic, Periodic)
-        ppp_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=ppp_topology)
+        ppp_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppp_topology)
 
         u_bcs = UVelocityBoundaryConditions(ppp_grid)
         v_bcs = VVelocityBoundaryConditions(ppp_grid)
@@ -174,7 +174,7 @@ end
 
         # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
         bbb_topology = (Bounded, Bounded, Bounded)
-        bbb_grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1), topology=bbb_topology)
+        bbb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=bbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(bbb_grid)
         v_bcs = VVelocityBoundaryConditions(bbb_grid)

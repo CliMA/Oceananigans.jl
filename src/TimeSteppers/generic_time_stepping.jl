@@ -26,7 +26,7 @@ function time_step_precomputations!(diffusivities, pressures, velocities, tracer
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, velocities, tracers)
 
-    fill_halo_regions!(model.diffusivities, model.architecture)
+    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
     @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))

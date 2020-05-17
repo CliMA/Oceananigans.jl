@@ -49,7 +49,7 @@ NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
 
 # Support for various types of boundary conditions
 @inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
-@inline getbc(bc::BC{C, <:Number},        i, j, grid, clock, state) where C = bc.condition
+@inline getbc(bc::BC{C, <:Number},        args...)                  where C = bc.condition
 @inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = bc.condition[i, j]
 @inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C =
     bc.condition(i, j, grid, clock, state)
