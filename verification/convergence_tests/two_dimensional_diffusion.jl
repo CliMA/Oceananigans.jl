@@ -42,7 +42,6 @@ errors = [convergence_test(Nx, Δt, stop_iteration, topo) for topo in topologies
 fig, axs = subplots()
 
 for (itopo, topo) in enumerate(topologies)
-
     L₁ = errors[itopo].L₁
     L∞ = errors[itopo].L∞
     name ="$(topo[1]), $(topo[2])"
