@@ -145,5 +145,4 @@ makedocs(
      ]
 )
 
-deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git",
-           push_preview = true)
+deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git")
