@@ -17,7 +17,7 @@ as [`TimeSeries`](@ref), [`FieldMaximum`](@ref), [`CFL`](@ref), and [`NaNChecker
 ## Horizontal averages
 You can create a `HorizontalAverage` diagnostic by passing a field to the constructor, e.g.
 ```@example
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=6, stop_iteration=10)
 T_avg = HorizontalAverage(model.tracers.T)
 push!(simulation.diagnostics, T_avg)
@@ -26,7 +26,7 @@ which can then be called on-demand via `T_avg(model)` to return the horizontally
 the GPU you may want it to return an `Array` instead of a `CuArray` in case you want to save the horizontal average to
 disk in which case you'd want to construct it like
 ```@example
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=6, stop_iteration=10)
 T_avg = HorizontalAverage(model.tracers.T, return_type=Array)
 push!(simulation.diagnostics, T_avg)
@@ -35,7 +35,7 @@ push!(simulation.diagnostics, T_avg)
 You can also use pass an abstract operator to take the horizontal average of any diagnosed quantity. For example, to
 compute the horizontal average of the vertical component of vorticity:
 ```@example
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=6, stop_iteration=10)
 u, v, w = model.velocities
 ζ = ∂x(v) - ∂y(u)

@@ -125,6 +125,7 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
@@ -171,8 +172,8 @@ anim = @animate for i in 1:100
 
     ## Plot the slices.
     w_plot = heatmap(xC, zF, w', xlabel="x (m)", ylabel="z (m)", color=:balance, clims=(-3e-2, 3e-2))
-    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20))
-    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline, clims=(34.99, 35.01))
+    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20.0))
+    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline,  clims=(34.99, 35.01))
 
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1600, 400),

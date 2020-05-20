@@ -9,7 +9,7 @@ A regular Cartesian grid with $N_x \times N_y \times N_z = 64 \times 32 \times 1
 $L_x = 200$ meters, $L_y = 100$ meters, and $L_z = 100$ meters is constructed using
 ```@example
 using Oceananigans # hide
-grid = RegularCartesianGrid(size=(64, 32, 16), length=(200, 100, 100))
+grid = RegularCartesianGrid(size=(64, 32, 16), extent=(200, 100, 100))
 ```
 
 !!! info "Default domain"
@@ -22,7 +22,7 @@ By default, the `RegularCartesianGrid` constructor assumes a horizontally period
 in the y- and z-dimensions:
 ```@example
 using Oceananigans # hide
-grid = RegularCartesianGrid(size=(64, 32, 16), length=(200, 100, 100), topology=(Periodic, Bounded, Bounded))
+grid = RegularCartesianGrid(size=(64, 32, 16), extent=(200, 100, 100), topology=(Periodic, Bounded, Bounded))
 ```
 
 ## Specifying the domain
@@ -38,7 +38,7 @@ Two-dimensional grids can be constructed by setting the number of grid points al
 two-dimensional grid in the $xz$-plane can be constructed using
 ```@example
 using Oceananigans # hide
-grid = RegularCartesianGrid(size=(64, 1, 16), length=(200, 1, 100), topology=(Periodic, Flat, Bounded))
+grid = RegularCartesianGrid(size=(64, 1, 16), extent=(200, 1, 100), topology=(Periodic, Flat, Bounded))
 ```
 
 In this case the length of the $y$ dimension must be specified but does not matter so we just set it to 1.
@@ -50,7 +50,7 @@ One-dimensional grids can be constructed in a similar manner, most commonly used
 example, to set up a 1D model with $N_z$ grid points
 ```@example
 using Oceananigans # hide
-grid = RegularCartesianGrid(size=(1, 1, 90), length=(1, 1, 1000), topology=(Flat, Flat, Bounded))
+grid = RegularCartesianGrid(size=(1, 1, 90), extent=(1, 1, 1000), topology=(Flat, Flat, Bounded))
 ```
 The length of the $x$ and $y$ dimensions must be specified but do not matter.
 
