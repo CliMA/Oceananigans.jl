@@ -1,6 +1,6 @@
 using FFTW
 
-using Oceananigans.BoundaryConditions: PBC, NFBC
+using Oceananigans.BoundaryConditions: PBC, ZFBC
 
 #=
 These functions return the transforms required to solve Poisson's equation with
@@ -18,16 +18,16 @@ efficient transforms. `A` will be mutated.
 plan_forward_transform(A::Array, ::PBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_fft!(A, dims, flags=planner_flag)
 
-plan_forward_transform(A::Array, ::NFBC, dims, planner_flag=FFTW.PATIENT) =
+plan_forward_transform(A::Array, ::ZFBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag)
 
 plan_backward_transform(A::Array, ::PBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_ifft!(A, dims, flags=planner_flag)
 
-plan_backward_transform(A::Array, ::NFBC, dims, planner_flag=FFTW.PATIENT) =
+plan_backward_transform(A::Array, ::ZFBC, dims, planner_flag=FFTW.PATIENT) =
     FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 
 @hascuda begin
-     plan_forward_transform(A::CuArray, ::Union{PBC, NFBC}, dims) = plan_fft!(A, dims)
-    plan_backward_transform(A::CuArray, ::Union{PBC, NFBC}, dims) = plan_ifft!(A, dims)
+     plan_forward_transform(A::CuArray, ::Union{PBC, ZFBC}, dims) = plan_fft!(A, dims)
+    plan_backward_transform(A::CuArray, ::Union{PBC, ZFBC}, dims) = plan_ifft!(A, dims)
 end

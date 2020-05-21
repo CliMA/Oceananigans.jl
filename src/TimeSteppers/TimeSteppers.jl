@@ -53,9 +53,6 @@ end
 # Fallbacks
 TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
-"""Returns the arguments passed to boundary conditions functions."""
-@inline boundary_condition_function_arguments(model) = (model.clock, state(model))
-
 include("generic_time_stepping.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("time_stepping_kernels.jl")

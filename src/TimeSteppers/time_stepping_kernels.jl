@@ -49,11 +49,9 @@ Calculate the velocity tendencies *on* east, north, and top boundaries, when the
 x-, y-, or z- directions have a `Bounded` topology.
 """
 function calculate_velocity_tendencies_on_boundaries!(tendency_calculation_args...)
-
     calculate_east_boundary_Gu!(tendency_calculation_args...)
     calculate_north_boundary_Gv!(tendency_calculation_args...)
     calculate_top_boundary_Gw!(tendency_calculation_args...)
-
     return nothing
 end
 
@@ -205,18 +203,20 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, args...)
+function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, state)
 
     # Velocity fields
     for i in 1:3
-        apply_z_bcs!(Gⁿ[i], U[i], arch, args...)
-        apply_y_bcs!(Gⁿ[i], U[i], arch, args...)
+        apply_x_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        apply_y_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        apply_z_bcs!(Gⁿ[i], U[i], arch, clock, state)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        apply_z_bcs!(Gⁿ[i], C[i-3], arch, args...)
-        apply_y_bcs!(Gⁿ[i], C[i-3], arch, args...)
+        apply_x_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        apply_y_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        apply_z_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
     end
 
     return nothing

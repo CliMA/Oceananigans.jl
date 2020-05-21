@@ -1,11 +1,11 @@
 module BoundaryConditions
 
 export
-    BCType, Flux, Gradient, Value, NoPenetration,
+    BCType, Flux, Gradient, Value, NormalFlow,
 
     BoundaryCondition, bctype, getbc, setbc!,
 
-    PeriodicBoundaryCondition, NoPenetrationBoundaryCondition, NoFluxBoundaryCondition,
+    PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
 
     CoordinateBoundaryConditions,
@@ -20,7 +20,7 @@ export
 
     ParameterizedBoundaryCondition, ParameterizedBoundaryConditionFunction,
 
-    apply_z_bcs!, apply_y_bcs!,
+    apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
 
     fill_halo_regions!, zero_halo_regions!
 
@@ -42,6 +42,6 @@ include("zero_halo_regions.jl")
 
 include("apply_flux_bcs.jl")
 include("apply_value_gradient_bcs.jl")
-include("apply_no_penetration_bcs.jl")
+include("apply_normal_flow_bcs.jl")
 
 end

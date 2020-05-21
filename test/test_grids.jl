@@ -149,9 +149,11 @@ function correct_tanh_grid_spacings(FT)
     Nx = Ny = Nz = 16
 
     S = 3  # Stretching factor
+
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
     grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
