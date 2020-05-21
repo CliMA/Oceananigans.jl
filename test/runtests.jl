@@ -102,7 +102,7 @@ end
 float_types = (Float32, Float64)
 
          archs = (CPU(),)
-@hascuda archs = (CPU(), GPU())
+@hascuda archs = (GPU(),)
 
 closures = (
     :ConstantIsotropicDiffusivity,
