@@ -20,13 +20,13 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,
-                       boundary_condition_function_arguments(model)...)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
+                       model.clock, state(model))
 
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, velocities, tracers)
 
-    fill_halo_regions!(model.diffusivities, model.architecture)
+    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
     @launch(device(model.architecture), config=launch_config(model.grid, :xy),
             update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
@@ -53,22 +53,24 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # tendency data.
     
     # Arguments needed to calculate tendencies for momentum and tracers
-    tendency_calculation_args = (tendencies, model.architecture, model.grid, model.coriolis, model.buoyancy,
-                                 model.surface_waves, model.closure, velocities, tracers, pressures.pHY′,
-                                 diffusivities, model.forcing, model.clock)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(tendency_calculation_args...)
-
+    calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, 
+                                               model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
+                                               velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
+                                               model.clock)
+                                               
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(
-        model.timestepper.Gⁿ, model.architecture, model.velocities,
-        model.tracers, boundary_condition_function_arguments(model)...)
+    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ, model.architecture, model.velocities,
+                                               model.tracers, model.clock, state(model))
 
     # Calculate momentum tendencies on boundaries in `Bounded` directions.
-    calculate_velocity_tendencies_on_boundaries!(tendency_calculation_args...)
+    #calculate_velocity_tendencies_on_boundaries!(tendencies, model.architecture, model.grid,
+    #                                             model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
+    #                                             velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
+    #                                             model.clock)
 
     return nothing
 end
@@ -80,7 +82,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 """
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
     fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture,
-                       boundary_condition_function_arguments(model)...)
+                       model.clock, state(model))
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
                         model.architecture, model.grid, Δt, predictor_velocities)

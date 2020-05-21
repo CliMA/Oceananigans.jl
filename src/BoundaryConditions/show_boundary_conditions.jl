@@ -13,10 +13,10 @@ Base.show(io::IO, bc::BC{C, T}) where {C, T} =
 
 bctype_str(::FBC)  = "Flux"
 bctype_str(::PBC)  = "Periodic"
-bctype_str(::NPBC) = "NoPenetration"
+bctype_str(::NFBC) = "NormalFlow"
 bctype_str(::VBC)  = "Value"
 bctype_str(::GBC)  = "Gradient"
-bctype_str(::NFBC) = "NoFlux"
+bctype_str(::ZFBC) = "ZeroFlux"
 
 short_show(fbcs::FieldBoundaryConditions) =
     string("x=(west=$(bctype_str(fbcs.x.left)), east=$(bctype_str(fbcs.x.right))), ",

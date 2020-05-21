@@ -7,27 +7,33 @@ topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be
 `A` (where an array is needed).
 """
 struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+
     # Number of grid points in (x,y,z).
      Nx :: Int
      Ny :: Int
      Nz :: Int
+
     # Halo size in (x,y,z).
      Hx :: Int
      Hy :: Int
      Hz :: Int
+
     # Domain size [m].
      Lx :: FT
      Ly :: FT
      Lz :: FT
+
     # Grid spacing [m].
      Δx :: FT
      Δy :: FT
     ΔzF :: A
     ΔzC :: A
+
     # Range of coordinates at the centers of the cells.
      xC :: R
      yC :: R
      zC :: A
+
     # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
      xF :: R
