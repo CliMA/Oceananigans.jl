@@ -67,10 +67,10 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
                                                model.tracers, model.clock, state(model))
 
     # Calculate momentum tendencies on boundaries in `Bounded` directions.
-    calculate_velocity_tendencies_on_boundaries!(tendencies, model.architecture, model.grid,
-                                                 model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
-                                                 velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
-                                                 model.clock)
+    #calculate_velocity_tendencies_on_boundaries!(tendencies, model.architecture, model.grid,
+    #                                             model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
+    #                                             velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
+    #                                             model.clock)
 
     return nothing
 end

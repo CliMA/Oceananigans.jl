@@ -6,38 +6,38 @@ using Oceananigans.Operators: Δx, Δy, ΔzC, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, 
 
 @inline function fill_west_halo!(u, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :yz), set_east_west_u_velocity!(u, 1, bc, grid, clock, state))
-    @launch(device(arch), config=launch_config(grid, :yz), _fill_west_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
+    #@launch(device(arch), config=launch_config(grid, :yz), _fill_west_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
     return nothing
 end
 
 @inline function fill_east_halo!(u, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :yz), set_east_west_u_velocity!(u, grid.Nx + 1, bc, grid, clock, state)) 
-    @launch(device(arch), config=launch_config(grid, :yz), _fill_east_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
+    #@launch(device(arch), config=launch_config(grid, :yz), _fill_east_halo!(u, bc, grid, state.velocities.v, state.velocities.w))
     return nothing
 end
 
 @inline function fill_south_halo!(v, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :xz), set_north_south_v_velocity!(v, 1, bc, grid, clock, state))
-    @launch(device(arch), config=launch_config(grid, :xz), _fill_south_halo!(v, bc, grid, state.velocities.u, state.velocities.w))
+    #@launch(device(arch), config=launch_config(grid, :xz), _fill_south_halo!(v, bc, grid, state.velocities.u, state.velocities.w))
     return nothing
 end
 
 @inline function fill_north_halo!(v, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :xz), set_north_south_v_velocity!(v, grid.Ny + 1, bc, grid, clock, state))
-    @launch(device(arch), config=launch_config(grid, :xz), _fill_north_halo!(v, bc, grid, state.velocities.u, state.velocities.v))
+    #@launch(device(arch), config=launch_config(grid, :xz), _fill_north_halo!(v, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 
 
 @inline function fill_bottom_halo!(w, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :xy), set_top_bottom_w_velocity!(w, 1, bc, grid, clock, state))
-    @launch(device(arch), config=launch_config(grid, :xy), _fill_bottom_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
+    #@launch(device(arch), config=launch_config(grid, :xy), _fill_bottom_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 
 @inline function fill_top_halo!(w, bc::NFBC, arch, grid, clock, state)
     @launch(device(arch), config=launch_config(grid, :xy), set_top_bottom_w_velocity!(w, grid.Nz + 1, bc, grid, clock, state))
-    @launch(device(arch), config=launch_config(grid, :xy), _fill_top_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
+    #@launch(device(arch), config=launch_config(grid, :xy), _fill_top_halo!(w, bc, grid, state.velocities.u, state.velocities.v))
     return nothing
 end
 
