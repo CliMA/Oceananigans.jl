@@ -255,10 +255,8 @@ end
 
     for arch in archs
          @testset "NetCDF [$(typeof(arch))]" begin
-             @info "  Testing NetCDF output writer [$(typeof(arch))] (thermal bubble)..."
+             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
              run_thermal_bubble_netcdf_tests(arch)
-
-             @info "  Testing NetCDF output writer [$(typeof(arch))] (function output)..."
              run_netcdf_function_output_tests(arch)
          end
 
