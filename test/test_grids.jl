@@ -48,18 +48,17 @@ function regular_cartesian_correct_extent(FT)
     return (grid.Lx ≈ 1 && grid.Ly ≈ 2π  && grid.Lz ≈ 4)
 end
 
-function regular_cartesian_correct_coordinate_sizes(FT)
+function regular_cartesian_correct_coordinate_lengths(FT)
     grid = RegularCartesianGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
                                 topology=(Periodic, Bounded, Flat))
 
-    # Checking ≈ as the grid could be storing Float32 values.
     return (
-            size(grid.xC) == (4, 1, 1) &&
-            size(grid.yC) == (1, 5, 1) &&
-            size(grid.zC) == (1, 1, 6) &&
-            size(grid.xF) == (4, 1, 1) &&
-            size(grid.yF) == (1, 6, 1) &&
-            size(grid.zF) == (1, 1, 6)
+            length(grid.xC) == 4 &&
+            length(grid.yC) == 5 &&
+            length(grid.zC) == 6 &&
+            length(grid.xF) == 4 &&
+            length(grid.yF) == 6 &&
+            length(grid.zF) == 6
            )
 end
 
@@ -72,14 +71,14 @@ function regular_cartesian_correct_halo_faces(FT)
     N, H, L = 4, 1, 2.0
     Δ = L / N
     grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
-    return grid.xF[0, 1, 1] == - H * Δ && grid.yF[1, 0, 1] == - H * Δ && grid.zF[1, 1, 0] == - H * Δ
+    return grid.xF[0] == - H * Δ && grid.yF[0] == - H * Δ && grid.zF[0] == - H * Δ
 end
 
 function regular_cartesian_correct_first_cells(FT)
     N, H, L = 4, 1, 4.0
     Δ = L / N
     grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
-    return grid.xC[1, 1, 1] == Δ/2 && grid.yC[1, 1, 1] == Δ/2 && grid.zC[1, 1, 1] == Δ/2
+    return grid.xC[1] == Δ/2 && grid.yC[1] == Δ/2 && grid.zC[1] == Δ/2
 end
 
 function regular_cartesian_correct_end_faces(FT)
@@ -134,13 +133,13 @@ function correct_quadratic_grid_spacings(FT)
     ΔzF(k) = k^2 - (k-1)^2
     ΔzC(k) = 2k - 2
 
-     zF_is_correct = all(isapprox.(  grid.zF[1, 1, 1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1, 1, 1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1, 1, 1:Nz],   ΔzF.(1:Nz)   ))
+     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
+     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
+    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
 
     # Note that ΔzC[1, 1, 1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[1, 1, 2:Nz-1], ΔzC.(2:Nz-1) ))
+    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
 
     return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
 end
@@ -159,12 +158,12 @@ function correct_tanh_grid_spacings(FT)
     ΔzF(k) = zF(k+1) - zF(k)
     ΔzC(k) = zC(k) - zC(k-1)
 
-     zF_is_correct = all(isapprox.(  grid.zF[1, 1, 1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1, 1, 1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1, 1, 1:Nz],   ΔzF.(1:Nz)   ))
+     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
+     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
+    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
 
     # See correct_quadratic_grid_spacings for an explanation of this test component
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[1, 1, 2:Nz-1], ΔzC.(2:Nz-1) ))
+    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
 
    return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
 end
@@ -201,7 +200,7 @@ end
             for FT in float_types
                 @test regular_cartesian_correct_size(FT)
                 @test regular_cartesian_correct_extent(FT)
-                @test regular_cartesian_correct_coordinate_sizes(FT)
+                @test regular_cartesian_correct_coordinate_lengths(FT)
                 @test regular_cartesian_correct_halo_size(FT)
                 @test regular_cartesian_correct_halo_faces(FT)
                 @test regular_cartesian_correct_first_cells(FT)

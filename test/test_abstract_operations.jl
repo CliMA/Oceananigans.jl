@@ -160,7 +160,7 @@ function horizontal_average_of_plus(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 
-    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
+    return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
 function horizontal_average_of_minus(model)
@@ -175,7 +175,7 @@ function horizontal_average_of_minus(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) - 42 * zC
 
-    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
+    return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
 function horizontal_average_of_times(model)
@@ -190,7 +190,7 @@ function horizontal_average_of_times(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) * 42 * zC
 
-    return all(computed_profile[:, :, 2:end-1] .≈ correct_profile)
+    return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
 function multiplication_and_derivative_ccf(model)
@@ -208,7 +208,7 @@ function multiplication_and_derivative_ccf(model)
     correct_profile = @. 42 * sin(π * zF)
 
     # Omit both halos and boundary points
-    return all(computed_profile[:, :, 3:end-1] .≈ correct_profile[:, :, 2:end-1])
+    return all(computed_profile[3:end-1] .≈ correct_profile[2:end-1])
 end
 
 const C = Cell
@@ -396,7 +396,7 @@ end
                     @test compute_many_plus(model)
 
                     @info "      Testing compute! kinetic energy..."
-                    @test_skip compute_kinetic_energy(model)
+                    @test compute_kinetic_energy(model)
                 end
 
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
