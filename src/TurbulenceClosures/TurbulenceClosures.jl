@@ -27,8 +27,8 @@ export
 
 using Oceananigans.Architectures: @hascuda
 
+using CUDA
 using GPUifyLoops
-@hascuda using CUDAdrv, CUDAnative
 
 import Oceananigans.Utils: with_tracers
 

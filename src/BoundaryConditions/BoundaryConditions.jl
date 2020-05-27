@@ -24,7 +24,7 @@ export
 
     fill_halo_regions!, zero_halo_regions!
 
-using CUDAnative
+using CUDA
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

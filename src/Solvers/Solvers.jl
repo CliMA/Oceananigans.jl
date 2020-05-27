@@ -5,7 +5,7 @@ export
     PressureSolver, solve_for_pressure!
 
 using Oceananigans.Architectures
-@hascuda using CUDAnative, CuArrays
+using CUDA
 using GPUifyLoops: @launch, @loop, @unroll
 
 using Oceananigans.Grids

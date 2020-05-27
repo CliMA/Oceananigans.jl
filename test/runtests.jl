@@ -5,17 +5,12 @@ using Statistics
 using LinearAlgebra
 using Logging
 
+using CUDA
 using JLD2
 using FFTW
 using OffsetArrays
 
 using Oceananigans.Architectures: @hascuda
-
-@hascuda begin
-    import CUDAdrv
-    using CuArrays
-    using CUDAnative
-end
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -59,9 +54,9 @@ using Oceananigans.AbstractOperations: Computation, compute!
 #####
 
 @hascuda begin
-    gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
-                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev))
-                       for dev in CUDAdrv.devices()]
+    gpu_candidates = [(dev=dev, cap=CUDA.capability(dev),
+                       mem=CUDA.CuContext(ctx -> CUDA.available_memory(), dev))
+                       for dev in CUDA.devices()]
 
     thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
     if thorough

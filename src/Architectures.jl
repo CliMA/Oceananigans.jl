@@ -1,7 +1,7 @@
 module Architectures
 
+using CUDA
 import GPUifyLoops
-using CUDAapi: has_cuda
 
 export
     @hascuda,
@@ -41,8 +41,6 @@ end
 
 device(::CPU) = GPUifyLoops.CPU()
 device(::GPU) = GPUifyLoops.CUDA()
-
-@hascuda using CuArrays
 
          architecture(::Array)   = CPU()
 @hascuda architecture(::CuArray) = GPU()

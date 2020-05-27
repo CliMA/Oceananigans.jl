@@ -6,10 +6,10 @@ import Base: identity
 using Base: @propagate_inbounds
 
 import Adapt
+using CUDA
 using GPUifyLoops: @launch, @loop
 
 using Oceananigans.Architectures: @hascuda
-@hascuda using CUDAnative, CUDAdrv, CuArrays
 
 using Oceananigans
 using Oceananigans.Grids

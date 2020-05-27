@@ -11,7 +11,7 @@ using GPUifyLoops: @launch, @loop, @unroll
 import Oceananigans: TimeStepper
 
 using Oceananigans.Architectures: @hascuda
-@hascuda using CUDAnative, CuArrays
+using CUDA
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

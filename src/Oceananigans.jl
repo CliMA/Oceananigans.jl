@@ -67,13 +67,13 @@ using Statistics
 using LinearAlgebra
 
 # Third-party modules
+using CUDA
 using Adapt
 using OffsetArrays
 using FFTW
 using JLD2
 using NCDatasets
 
-import CUDAapi
 import GPUifyLoops
 
 using Base: @propagate_inbounds
@@ -122,13 +122,8 @@ include("Architectures.jl")
 
 using Oceananigans.Architectures: @hascuda
 @hascuda begin
-    # Import CUDA utilities if it's detected.
-    using CUDAdrv
-    using CUDAnative
-    using CuArrays
-
     println("CUDA-enabled GPU(s) detected:")
-    for (gpu, dev) in enumerate(CUDAnative.devices())
+    for (gpu, dev) in enumerate(CUDA.devices())
         println(dev)
     end
 end
