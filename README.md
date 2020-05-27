@@ -5,7 +5,7 @@
 
 <!-- description -->
 <p align="center">
-  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/oceananigans</strong>
+  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/Oceananigans</strong>
 </p>
 
 <!-- Information badges -->
