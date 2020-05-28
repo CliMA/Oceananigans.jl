@@ -1,12 +1,13 @@
 module Architectures
 
-using CUDA
-import GPUifyLoops
-
 export
     @hascuda,
     AbstractArchitecture, CPU, GPU,
     device, architecture, array_type
+
+using CUDA
+
+import GPUifyLoops
 
 """
     AbstractArchitecture

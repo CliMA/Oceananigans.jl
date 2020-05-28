@@ -10,8 +10,6 @@ using JLD2
 using FFTW
 using OffsetArrays
 
-using Oceananigans.Architectures: @hascuda
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -30,6 +28,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
 using Oceananigans.Logger
 using Oceananigans.Utils
+using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
 
 using Dates: DateTime, Nanosecond
 using TimesDates: TimeDate

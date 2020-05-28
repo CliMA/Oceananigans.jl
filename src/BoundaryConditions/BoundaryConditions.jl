@@ -26,7 +26,7 @@ export
 
 using CUDA
 
-using Oceananigans.Architectures
+using Oceananigans.Architectures: device
 using Oceananigans.Grids
 
 include("boundary_condition_types.jl")
