@@ -16,7 +16,8 @@ import Oceananigans: RegularCartesianGrid
 
 import Oceananigans.Fields: location
 
-mkpath(joinpath("..", "figs"))
+figspath = abspath(joinpath(@__FILE__, "..", "..", "figs"))
+ispath(figspath) || mkpath(figspath)
 
 include("file_wrangling.jl")
 include("analysis.jl")

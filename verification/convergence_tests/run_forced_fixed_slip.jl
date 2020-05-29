@@ -2,7 +2,7 @@ using Oceananigans
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
-run_xz = ConvergenceTests.ForcedFlowFixedSlip.setup_and_run_xz
+run_xy = ConvergenceTests.ForcedFlowFixedSlip.setup_and_run_xy
 
 # Run 4 simulations:
 Nx = [32, 64, 128, 256]
@@ -14,7 +14,7 @@ stop_iteration = round(Int, stop_time / Δt)
 Δt = stop_time / stop_iteration
 
 for N in Nx
-    run_xz(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
+    run_xy(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
 end
 
 include("analyze_forced_fixed_slip.jl")
