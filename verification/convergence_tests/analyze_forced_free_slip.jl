@@ -14,7 +14,7 @@ xz_filenames = glob("data/forced_free_slip_xz*.jld2")
 xy_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), xy_filenames...)
 xz_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, z, t), xz_filenames...)
 
-sizes = ConvergenceTests.extract_sizes(filenames...)
+sizes = ConvergenceTests.extract_sizes(xy_filenames...)
 
 Nx = map(sz -> sz[1], sizes)
 
