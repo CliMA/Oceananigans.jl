@@ -3,7 +3,6 @@
 # This module implements a few simple convergence tests for verifying
 # the expected numerical behavior of the spatial discretization 
 # and time-stepping.
-
 module ConvergenceTests
 
 using JLD2, Statistics, Printf, OffsetArrays
@@ -27,6 +26,11 @@ include("analysis.jl")
 # Tests time-stepper convergence.
 #
 include("PointExponentialDecay.jl")
+
+# Utilities for analyzing and plotting the results
+# of 1D convergence tests.
+#
+include("OneDimensionalUtils.jl")
 
 # Advection and diffusion of a 1D Gaussian:
 #

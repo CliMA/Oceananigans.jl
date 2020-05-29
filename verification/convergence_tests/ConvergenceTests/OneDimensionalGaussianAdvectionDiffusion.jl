@@ -2,7 +2,7 @@ module OneDimensionalGaussianAdvectionDiffusion
 
 using Printf, Statistics
 
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Grids
 
 include("analysis.jl")
 
@@ -37,7 +37,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     println("Running Gaussian advection diffusion test for v and c with Nx = $Nx and Δt = $Δt...")
     run!(simulation)
 
-    c_analytical = c.(grid.xC, 0, 0, model.clock.time, U, κ, t₀)
+    x = xnodes(model.tracers.c)
+    c_analytical = c.(x, 0, 0, model.clock.time, U, κ, t₀)
 
     # Calculate errors
     cx_simulation = model.tracers.c

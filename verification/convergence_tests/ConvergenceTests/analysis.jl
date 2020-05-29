@@ -16,7 +16,7 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
     ψ_data = OffsetArray(ψ_raw, 0:tx-1, 0:ty-1, 0:tz-1)
     ψ_simulation = Field{loc[1], loc[2], loc[3]}(ψ_data, grid, FieldBoundaryConditions(grid, loc))
 
-    x, y, z = nodes(ψ_simulation)
+    x, y, z = nodes(ψ_simulation, reshape=true)
 
     ψ_simulation = interior(ψ_simulation)
 
