@@ -1,4 +1,4 @@
-using NCDatasets
+using NCDatasets, Statistics
 
 """
 Run a coarse thermal bubble simulation and save the output to NetCDF at the
@@ -90,13 +90,16 @@ function run_netcdf_function_output_tests(arch)
     simulation = Simulation(model, Δt=1.25, stop_iteration=3)
     grid = model.grid
 
-    # Define scalar, vector, 2D slice, and 3D field outputs
+    # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
-    g(model) = model.clock.time .* exp.(znodes(Cell, grid)[:])
-    h(model) = model.clock.time .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
 
-    outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
-    dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+    g(model) = model.clock.time .* exp.(znodes(Cell, grid))
+
+    h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                    .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+
+    outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h)
+       dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
     output_attributes = Dict(
         "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -130,13 +133,16 @@ function run_netcdf_function_output_tests(arch)
 
     @test ds["profile"].attrib["longname"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
-    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid)[:])
+    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid))
     @test size(ds["profile"]) == (N, 4)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     @test ds["slice"].attrib["longname"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
-    @test ds["slice"][:, :, end] == 3.75 .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
+
+    @test ds["slice"][:, :, end] == 3.75 .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                             .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+
     @test size(ds["slice"]) == (N, N, 4)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 

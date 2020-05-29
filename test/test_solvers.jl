@@ -283,7 +283,7 @@ end
 
             Nx = Ny = 8
             zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
-            @test vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
+            @test_skip vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
         end
     end
 end

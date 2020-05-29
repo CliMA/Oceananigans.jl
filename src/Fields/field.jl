@@ -250,7 +250,7 @@ xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
 znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
-nodes(ψ::AbstractField) = (xnodes(ψ), ynodes(ψ), znodes(ψ))
+nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.

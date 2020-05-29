@@ -7,8 +7,7 @@ using Oceananigans, Oceananigans.Grids, Plots, Printf
 
 # ## Numerical, domain, and internal wave parameters
 #
-# First, we pick some numerical and physical parameters for our model
-# and its rotation rate.
+# First, we pick a resolution and domain size,
 
 Nx = 128 # resolution
 Lx = 2π  # domain extent
@@ -16,10 +15,10 @@ nothing # hide
 
 # We set up an internal wave with the pressure field
 #
-# $ p(x, y, z, t) = a(x, z) cos(kx + mz - ω t) $.
+# $ p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t) $.
 #
-# where `m` is the vertical wavenumber, `k` is the horizontal wavenumber,
-# `ω` is the wave frequncy, and `a(x, z)` is a Gaussian envelope.
+# where $m$ is the vertical wavenumber, $k$ is the horizontal wavenumber,
+# $ω$ is the wave frequncy, and $a(x, z)$ is a Gaussian envelope.
 
 ## Non-dimensional internal wave parameters
 m = 16      # vertical wavenumber
@@ -93,15 +92,17 @@ anim = @animate for i=0:100
     w = model.velocities.w
     
     contourf(x, z, w.data[1:Nx, 1, 1:Nx+1]',
-             title=@sprintf("ωt = %.2f", ω*model.clock.time),
-             levels=range(-1e-8, stop=1e-8, length=10),
-             clims=(-1e-8, 1e-8),
-             xlabel="x", ylabel="z",
-             xlims=(0, Lx), ylims=(-Lx, 0),
-             linewidth=0,
-             c=:balance,
-             legend=false,
-             aspectratio=:equal)
+                   title = @sprintf("ωt = %.2f", ω * model.clock.time),
+                  levels = range(-1e-8, stop=1e-8, length=10),
+                   clims = (-1e-8, 1e-8),
+                  xlabel = "x",
+                  ylabel = "z",
+                   xlims = (0, Lx),
+                   ylims = (-Lx, 0),
+               linewidth = 0,
+                   color = :balance,
+                  legend = false,
+             aspectratio = :equal)
             
     simulation.stop_iteration += 20
     run!(simulation)

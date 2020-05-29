@@ -30,7 +30,8 @@ examples = [
     "two_dimensional_turbulence.jl",
     "ocean_wind_mixing_and_convection.jl",
     "ocean_convection_with_plankton.jl",
-    "internal_wave.jl"
+    "internal_wave.jl",
+    "langmuir_turbulence.jl",
 ]
 
 for example in examples
@@ -77,7 +78,8 @@ makedocs(
              "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
              "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
              "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
-             "Internal wave"                    => "generated/internal_wave.md"
+             "Internal wave"                    => "generated/internal_wave.md",
+             "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
          ],
 
          "Model setup" => [
@@ -145,5 +147,4 @@ makedocs(
      ]
 )
 
-deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git",
-           push_preview = true)
+deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git")

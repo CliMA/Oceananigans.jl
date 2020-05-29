@@ -22,6 +22,10 @@ function launch_config(grid, dims)
             t = floor(Int, sqrt(config.threads))
             threads = [t, t]
             blocks  = ceil.(Int, [grid.Nx, grid.Nz] ./ t)
+        elseif dims == :yz
+            t = floor(Int, sqrt(config.threads))
+            threads = [t, t]
+            blocks  = ceil.(Int, [grid.Ny, grid.Nz] ./ t)
         else
             error("Unsupported launch configuration: $dims")
         end

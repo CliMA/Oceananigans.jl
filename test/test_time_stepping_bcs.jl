@@ -30,7 +30,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
 
     field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
-    return getbc(bcs.z.top) == val && getbc(bcs.z.bottom) == -val
+    return bcs.z.top.condition == val && bcs.z.bottom.condition == -val
 end
 
 function test_z_boundary_condition_array(arch, FT, fldname)

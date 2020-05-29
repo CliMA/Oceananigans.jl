@@ -91,7 +91,7 @@ end
             L = (2π, 3π, 5π)
 
             grid = RegularCartesianGrid(FT, size=N, extent=L)
-            x, y, z = nodes((Face, Cell, Cell), grid)
+            x, y, z = nodes((Face, Cell, Cell), grid, reshape=true)
 
             u₀(x, y, z) = x * y^2 * z^3
             u_answer = @. x * y^2 * z^3
