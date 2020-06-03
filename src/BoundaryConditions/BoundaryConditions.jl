@@ -24,9 +24,9 @@ export
 
     fill_halo_regions!, zero_halo_regions!
 
-using CUDAnative
+using CUDA
 
-using Oceananigans.Architectures
+using Oceananigans.Architectures: device
 using Oceananigans.Grids
 
 include("boundary_condition_types.jl")

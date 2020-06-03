@@ -1,5 +1,6 @@
 using Base: @propagate_inbounds
 
+using CUDA
 using OffsetArrays
 
 using Oceananigans.Architectures
@@ -12,8 +13,6 @@ import Adapt
 import Oceananigans.Architectures: architecture
 import Oceananigans.Utils: datatuple
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
-
-@hascuda using CuArrays
 
 """
     AbstractField{X, Y, Z, A, G}

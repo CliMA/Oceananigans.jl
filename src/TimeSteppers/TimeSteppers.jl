@@ -6,13 +6,12 @@ export
     compute_w_from_continuity!,
     tendencies
 
+using CUDA
 using GPUifyLoops: @launch, @loop, @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans.Architectures: @hascuda
-@hascuda using CUDAnative, CuArrays
-
+using Oceananigans.Architectures: @hascuda, device
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields

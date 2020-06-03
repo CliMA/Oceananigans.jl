@@ -1,5 +1,5 @@
+using CUDA
 using OrderedCollections: OrderedDict
-using CUDAapi: has_cuda
 
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
 using Oceananigans.Architectures: AbstractArchitecture
