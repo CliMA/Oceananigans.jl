@@ -75,13 +75,24 @@ function time_step_with_simple_forcing_parameters(arch)
 end
 
 """ Take one time step with a SimpleForcing forcing function with parameters. """
-function time_step_with_simple_field_dependent_forcing(arch)
+function time_step_with_simple_u_dependent_forcing(arch)
     u_forcing = SimpleForcing((x, y, z, t, u) -> -u, field_in_signature=true)
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
 end
+
+""" Take one time step with a SimpleForcing forcing function with parameters. """
+function time_step_with_simple_tracer_dependent_forcing(arch)
+    u_forcing = SimpleForcing((x, y, z, t, u) -> -u, field_in_signature=true)
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
+    time_step!(model, 1, euler=true)
+    return true
+end
+
+
 
 """ Take one time step with a SimpleForcing forcing function with parameters. """
 function time_step_with_simple_field_dependent_forcing_parameters(arch)
@@ -127,7 +138,8 @@ end
             @test time_step_with_forcing_functions_sin_exp(arch)
             @test time_step_with_simple_forcing(arch)
             @test time_step_with_simple_forcing_parameters(arch)
-            @test time_step_with_simple_field_dependent_forcing(arch)
+            @test time_step_with_simple_u_dependent_forcing(arch)
+            @test time_step_with_simple_tracer_dependent_forcing(arch)
             @test time_step_with_simple_field_dependent_forcing_parameters(arch)
             @test relaxed_time_stepping(arch)
         end
