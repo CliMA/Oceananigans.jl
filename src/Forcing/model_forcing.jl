@@ -25,8 +25,9 @@ function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forc
     v = for_field_name(:v, v)
     w = for_field_name(:w, w)
 
-    tracer_names = Tuple(kw.first for kw in tracer_forcings)
-    tracer_functions = Tuple(for_field_name(kw.first, kw.second) in tracer_forcings)
+    # Re-build tracer forcings
+    tracer_names = Tuple(f.first for f in tracer_forcings)
+    tracer_functions = Tuple(for_field_name(f.first, f.second) for f in tracer_forcings)
     tracer_forcings = NamedTuple{tracer_names}(tracer_functions)
 
     return merge((u=u, v=v, w=w), tracer_forcings)
