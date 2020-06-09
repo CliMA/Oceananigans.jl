@@ -5,11 +5,11 @@ include("ConvergenceTests/ConvergenceTests.jl")
 run_xy = ConvergenceTests.ForcedFlowFixedSlip.setup_and_run_xy
 
 # Run 4 simulations:
-Nx = [32, 64, 128, 256]
+Nx = [16, 32, 64, 128]
 stop_time = 0.01
 
 h = π / maximum(Nx)
-Δt = 0.01 * h^2
+Δt = 0.001 * h^2
 stop_iteration = round(Int, stop_time / Δt)
 Δt = stop_time / stop_iteration
 

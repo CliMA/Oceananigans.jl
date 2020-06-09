@@ -41,6 +41,14 @@ produces
 * `figs/gaussian_advection_diffusion_solutions.png`
 * `figs/gaussian_advection_diffusion_error_convergence.png`
 
+## Two-dimensional diffusion
+
+```
+julia --project two_dimensional_diffusion.jl
+```
+
+produces `figs/two_dimensional_diffusion_convergence.png`.
+
 ## Two-dimensional Taylor-Green vortex
 
 ```

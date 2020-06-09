@@ -12,6 +12,13 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
     loc = location(name)
 
     ψ_raw = field_data(filename, name, iters[end])
+
+    ψ_raw = ψ_raw[
+                  1 : grid.Nx + 2 * grid.Hx,
+                  1 : grid.Ny + 2 * grid.Hy,
+                  1 : grid.Nz + 2 * grid.Hz
+                 ]
+
     tx, ty, tz = size(ψ_raw)
     ψ_data = OffsetArray(ψ_raw, 0:tx-1, 0:ty-1, 0:tz-1)
     ψ_simulation = Field{loc[1], loc[2], loc[3]}(ψ_data, grid, FieldBoundaryConditions(grid, loc))

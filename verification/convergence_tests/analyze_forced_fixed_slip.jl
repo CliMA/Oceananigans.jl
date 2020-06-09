@@ -8,17 +8,15 @@ removespines(sides...) = [removespine(side) for side in sides]
 
 u = ConvergenceTests.ForcedFlowFixedSlip.u
 
-filenames = glob("data/forced_fixed_slip_xz*.jld2")
+filenames = glob("data/forced_fixed_slip_xy*.jld2")
 
-errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, z, t), filenames...)
+errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), filenames...)
 
 sizes = ConvergenceTests.extract_sizes(filenames...)
 
 Nx = map(sz -> sz[1], sizes)
 
-#names = (L"(x, y)", L"(x, z)")
-names = (L"(x, z)",)
-#@show errors = (xy_errors, xz_errors)
+names = (L"(x, y)",)
 errors = (errors,)
 
 close("all")

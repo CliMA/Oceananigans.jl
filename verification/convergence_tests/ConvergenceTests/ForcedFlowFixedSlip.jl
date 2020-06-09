@@ -30,15 +30,15 @@ v(x, y, t) = - fₓ(x, t) * g(y)
 
 function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
 
-    u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t))
-    v_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t))
+    u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t))
+    v_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, y, t))
 
     grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1), 
                                 topology=(Periodic, Bounded, Bounded))
 
-    # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."
-    u_bcs = UVelocityBoundaryConditions(grid, top = UVelocityBoundaryCondition(Value, :z, (x, y, t) -> f(x, t)),
-                                              bottom = BoundaryCondition(Value, 0))
+    # "Fixed slip" boundary conditions (eg, no-slip on south wall, finite slip on north wall)."
+    u_bcs = UVelocityBoundaryConditions(grid, north = UVelocityBoundaryCondition(Value, :y, (x, y, t) -> f(x, t)),
+                                              south = BoundaryCondition(Value, 0))
 
     model = IncompressibleModel(       architecture = CPU(),
                                                grid = grid,
@@ -64,6 +64,46 @@ end
 
 function setup_and_run_xy(args...; kwargs...)
     simulation = setup_xy_simulation(args...; kwargs...)
+    @time run!(simulation)
+    return simulation
+end
+
+function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
+
+    u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t))
+    w_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t))
+
+    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1), 
+                                topology=(Periodic, Bounded, Bounded))
+
+    # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."
+    u_bcs = UVelocityBoundaryConditions(grid, top = UVelocityBoundaryCondition(Value, :z, (x, z, t) -> f(x, t)),
+                                              bottom = BoundaryCondition(Value, 0))
+
+    model = IncompressibleModel(       architecture = CPU(),
+                                               grid = grid,
+                                           coriolis = nothing,
+                                           buoyancy = nothing,
+                                            tracers = nothing,
+                                            closure = ConstantIsotropicDiffusivity(ν=1),
+                                boundary_conditions = (u=u_bcs,),
+                                            forcing = ModelForcing(u=u_forcing, w=w_forcing))
+
+    set!(model, u = (x, y, z) -> u(x, z, 0),
+                w = (x, y, z) -> v(x, z, 0))
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
+                                                          dir = dir, force = true,
+                                                          prefix = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
+                                                          interval = stop_iteration * Δt / 2)
+
+    return simulation
+end
+
+function setup_and_run_xz(args...; kwargs...)
+    simulation = setup_xz_simulation(args...; kwargs...)
     @time run!(simulation)
     return simulation
 end
