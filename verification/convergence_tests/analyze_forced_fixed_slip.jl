@@ -1,4 +1,4 @@
-using PyPlot, Glob
+using PyPlot, Glob, Printf
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
@@ -8,39 +8,57 @@ removespines(sides...) = [removespine(side) for side in sides]
 
 u = ConvergenceTests.ForcedFlowFixedSlip.u
 
-filenames = glob("data/forced_fixed_slip_xy*.jld2")
+filenameses = [
+             glob("data/forced_fixed_slip_xy*Δt6.0e-06.jld2"),
+             glob("data/forced_fixed_slip_xy*Δt6.0e-07.jld2"),
+             glob("data/forced_fixed_slip_xy*Δt6.0e-08.jld2"),
+            ]
 
-errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), filenames...)
-
-sizes = ConvergenceTests.extract_sizes(filenames...)
-
-Nx = map(sz -> sz[1], sizes)
-
-names = (L"(x, y)",)
-errors = (errors,)
+Δt = [
+      6.0e-05,
+      6.0e-06,
+      6.0e-07,
+      6.0e-08,
+     ]
 
 close("all")
 fig, ax = subplots()
 
-for i = 1:length(errors)
+for (j, filenames) in enumerate(filenameses)
 
-    @show error = errors[i]
-    name = names[i]
+    errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), filenames...)
 
-    L₁ = map(err -> err.L₁, error)
-    L∞ = map(err -> err.L∞, error)
+    sizes = ConvergenceTests.extract_sizes(filenames...)
 
-    @show size(L₁) size(Nx)
+    Nx = map(sz -> sz[1], sizes)
 
-    loglog(Nx, L₁, color=defaultcolors[i], alpha=0.6, mfc="None",
-           linestyle="None", marker="o", label="\$L_1\$-norm, $name")
+    names = (L"(x, y)",)
+    errors = (errors,)
 
-    loglog(Nx, L∞, color=defaultcolors[i], alpha=0.6, mfc="None",
-           linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
+
+    for i = 1:length(errors)
+
+        @show error = errors[i]
+        name = @sprintf("%s, \$ \\Delta t \$ = %.0e", names[i], Δt[j])
+
+        L₁ = map(err -> err.L₁, error)
+        L∞ = map(err -> err.L∞, error)
+
+        @show size(L₁) size(Nx)
+
+        loglog(Nx, L₁, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
+               linestyle="None", marker="o", label="\$L_1\$-norm, $name")
+
+        #loglog(Nx, L∞, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
+        #       linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
+    end
+
+    if j == 1
+        L₁ = map(err -> err.L₁, errors[1])
+        loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+    end
 end
 
-L₁ = map(err -> err.L₁, errors[1])
-loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
 
 legend()
 xlabel(L"N_x")
