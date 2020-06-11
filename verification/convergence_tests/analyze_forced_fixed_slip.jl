@@ -49,11 +49,11 @@ for (j, filenames) in enumerate(filenameses)
         loglog(Nx, L₁, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
                linestyle="None", marker="o", label="\$L_1\$-norm, $name")
 
-        #loglog(Nx, L∞, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
-        #       linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
+        loglog(Nx, L∞, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
+               linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
     end
 
-    if j == 1
+    if j == length(filenameses)
         L₁ = map(err -> err.L₁, errors[1])
         loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
     end
