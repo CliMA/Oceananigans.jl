@@ -25,8 +25,10 @@ function ModelForcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forc
     v = for_field_name(:v, v)
     w = for_field_name(:w, w)
 
-    # The SimpleForcing API currently assumes the field is a tracer. Therefore,
-    # no action is requried to adapt SimpleForcing to work for tracers.
+    # Re-build tracer forcings
+    tracer_names = Tuple(f.first for f in tracer_forcings)
+    tracer_functions = Tuple(for_field_name(f.first, f.second) for f in tracer_forcings)
+    tracer_forcings = NamedTuple{tracer_names}(tracer_functions)
 
     return merge((u=u, v=v, w=w), tracer_forcings)
 end
