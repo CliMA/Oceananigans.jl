@@ -5,7 +5,7 @@
 
 <!-- description -->
 <p align="center">
-  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/oceananigans</strong>
+  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/Oceananigans</strong>
 </p>
 
 <!-- Information badges -->
@@ -16,7 +16,7 @@
   <a href="https://mit-license.org">
     <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
   </a>
-  <a href="https://github.com/climate-machine/Oceananigans.jl/issues/new">
+  <a href="https://github.com/clima/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
   <a href="https://clima.github.io/Oceananigans.jl/stable/">
@@ -29,7 +29,7 @@
 
 <!-- CI/CD badges -->
 <p align="center">
-  <a href="https://travis-ci.com/climate-machine/Oceananigans.jl">
+  <a href="https://travis-ci.com/clima/Oceananigans.jl">
     <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
   </a>
   <a href="https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master">
@@ -42,7 +42,7 @@
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
   <a href="https://codecov.io/gh/clima/Oceananigans.jl">
-    <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
+    <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/clima/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
   </a>
   <a href="https://coveralls.io/github/clima/Oceananigans.jl?branch=master">
     <img alt="Coveralls coverage" src="https://img.shields.io/coveralls/github/clima/Oceananigans.jl/master?label=Coveralls&style=flat-square">
@@ -126,7 +126,7 @@ GPU model output can be plotted on-the-fly and animated using [Makie.jl](https:/
 You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 
 ## Getting help
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
+If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
 
 ## Contributing
 If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developers have missed.

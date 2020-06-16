@@ -69,14 +69,14 @@ const USD = UniformStokesDrift
 @inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
 
 @inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    @inbounds ℑzᵃᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(Cell, k, grid), time)
+    @inbounds ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(Cell, k, grid), time)
 
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    @inbounds ℑzᵃᵃᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(Cell, k, grid), time)
+    @inbounds ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(Cell, k, grid), time)
 
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds begin (
-    - ℑzᵃᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(Face, k, grid), time)
-    - ℑzᵃᵃᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(Face, k, grid), time) )
+    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(Face, k, grid), time)
+    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(Face, k, grid), time) )
 end
 
 end # module

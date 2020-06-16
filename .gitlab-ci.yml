@@ -1,30 +1,35 @@
+include:
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v6.yml'
+
+image: ubuntu:bionic
+
 variables:
   CI_IMAGE_TAG: 'cuda'
   JULIA_NUM_THREADS: '1'
 
-# See: https://github.com/JuliaGPU/gitlab-ci
-include:
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/test.yml'
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
+# Julia versions
 
-test:v1.3:
-  extends: .test:v1.3
+# the "primary" target, where we require a new GPU to make sure all tests are run
+julia:1.4:
+  extends:
+    - .julia:1.4
+    - .test
+  tags:
+    - nvidia
+    - sm_70
+  variables:
+    CI_THOROUGH: 'true'
 
-test:dev:
-  extends: .test:dev
+julia:nightly:
+  extends:
+    - .julia:nightly
+    - .test
+  tags:
+    - nvidia
   allow_failure: true
+
 
 coverage:
-  stage: post
-  extends: .root
-  variables:
-    CI_VERSION_TAG: 'v1.3'
-  script:
-    - julia --project -e 'using Pkg;
-                          Pkg.add("Coverage")'
-    - julia --project -e 'using Coverage;
-                          cl, tl = get_summary(process_folder());
-                          println("(", cl/tl*100, "%) covered");
-                          Codecov.submit_local(process_folder(), ".")'
-  coverage: '/\(\d+.\d+\%\) covered/'
-  allow_failure: true
+  extends:
+    - .julia:1.4
+    - .coverage
