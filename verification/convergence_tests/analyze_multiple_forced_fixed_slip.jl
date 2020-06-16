@@ -2,6 +2,8 @@ using PyPlot, Glob, Statistics
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+RegularCartesianGrid = ConvergenceTests.RegularCartesianGrid 
+
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]

@@ -53,8 +53,12 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                 v = (x, y, z) -> v(x, y, 0))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    
+    outputs = Dict()
+    outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    outputs = merge(outputs, FieldOutputs(model.velocities))
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, force = true,
                                                           prefix = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
                                                           interval = stop_iteration * Δt / 2)
@@ -94,7 +98,11 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
+    outputs = Dict()
+    outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    outputs = merge(outputs, FieldOutputs(model.velocities))
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, force = true,
                                                           prefix = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
                                                           interval = stop_iteration * Δt / 2)

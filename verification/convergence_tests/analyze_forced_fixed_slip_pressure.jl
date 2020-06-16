@@ -7,11 +7,15 @@ removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
 u = ConvergenceTests.ForcedFlowFixedSlip.u
+ξ = ConvergenceTests.ForcedFlowFixedSlip.ξ
+ξ′ = ConvergenceTests.ForcedFlowFixedSlip.ξ′
+f = ConvergenceTests.ForcedFlowFixedSlip.f
+fₓ = ConvergenceTests.ForcedFlowFixedSlip.fₓ
 
 filenameses = [
-             glob("data/forced_fixed_slip_xz*Δt6.0e-06.jld2"),
-             glob("data/forced_fixed_slip_xz*Δt6.0e-07.jld2"),
-             glob("data/forced_fixed_slip_xz*Δt6.0e-08.jld2"),
+             glob("data/forced_fixed_slip_xy*Δt6.0e-06.jld2"),
+             glob("data/forced_fixed_slip_xy*Δt6.0e-07.jld2"),
+             glob("data/forced_fixed_slip_xy*Δt6.0e-08.jld2"),
             ]
 
 Δt = [
@@ -19,6 +23,12 @@ filenameses = [
       6.0e-07,
       6.0e-08,
      ]
+
+p̆(y) = - 1/4 * y^4 + 1/3 * y^3 + 143/144 * y^2 - 35/18 * y + 1/2 - 289/72 * cosh(y)/sinh(1)
+p̃(y) =   1/4 * y^4 - 1/3 * y^3 - 575/144 * y^2 + 71/18 * y + 2   - 721/72 * cosh(y)/sinh(1) + 4 * cosh(y-1)/sinh(1)
+p̂(y) = - 10/4 * y^3 - 15/4 * y + 90/16 * cosh(2y)/sinh(2)
+
+p(x, y, t) = p̂(y) * cos(2*(x - ξ(t))) + p̆(y) * ξ′(t) * cos(x - ξ(t)) + p̃(y) * sin(x - ξ(t))
 
 close("all")
 fig, ax = subplots()
