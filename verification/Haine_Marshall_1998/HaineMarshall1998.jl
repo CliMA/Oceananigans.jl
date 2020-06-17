@@ -61,7 +61,8 @@ model = IncompressibleModel(
 
 Tₛ  = 12.0     # Surface temperature [°C]
 Nₜₕ = 8.37e-4  # Uniform vertical stratification [s⁻¹]
-B₀(x, y, z) = Nₜₕ^2 * z
+ε(σ) = σ * randn()
+B₀(x, y, z) = Nₜₕ^2 * z + ε(1e-8)
 
 set!(model, b=B₀)
 # set!(model, b=B₀, C=0.0)
