@@ -35,14 +35,14 @@ buoyancy = BuoyancyTracer()
 κv = νv = 0.02  # Vertical diffusivity and viscosity [m²/s]
 closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=κh, κv=κv)
 
-B_params = (
+bc_params = (
     Ly = Ly,
     B½ = 1.96e-7,    # Buoyancy flux at midchannel [m²/s³]
     Lᶠ = 10kilometer # Characteristic length scale of the forcing [m]
 )
-B(x, y, t, p) = p.B½ * (tanh(2 * (y - p.Ly/2) / p.Lᶠ) + 1)  # Surface buoyancy flux [m²/s³]
-B_bf = BoundaryFunction{:z, Cell, Cell}(B, B_params)
-top_b_bc = FluxBoundaryCondition(B_bf)
+buoyancy_flux(x, y, t, p) = p.B½ * (tanh(2 * (y - p.Ly/2) / p.Lᶠ) + 1)  # Surface buoyancy flux [m²/s³]
+buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(B, B_params)
+top_b_bc = FluxBoundaryCondition(buoyancy_flux_bf)
 b_bcs = TracerBoundaryConditions(grid, top=top_b_bc)
 
 top_C_bc = ValueBoundaryCondition(1.0)
