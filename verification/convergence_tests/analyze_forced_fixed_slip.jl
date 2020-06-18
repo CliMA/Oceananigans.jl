@@ -8,64 +8,68 @@ removespines(sides...) = [removespine(side) for side in sides]
 
 u = ConvergenceTests.ForcedFlowFixedSlip.u
 
-filenameses = [
-             glob("data/forced_fixed_slip_xz*Δt6.0e-06.jld2"),
-             glob("data/forced_fixed_slip_xz*Δt6.0e-07.jld2"),
-             glob("data/forced_fixed_slip_xz*Δt6.0e-08.jld2"),
-            ]
+xy_filenames = glob("data/forced_fixed_slip_xy*")
+xz_filenames = glob("data/forced_fixed_slip_xz*")
 
-Δt = [
-      6.0e-06,
-      6.0e-07,
-      6.0e-08,
-     ]
+labels = ["(x, y)", "(x, z)"]
+
+filenameses = [ xy_filenames,
+                xz_filenames ]
+
+errorses = [ ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), xy_filenames...),
+             ConvergenceTests.compute_errors((x, y, z, t) -> u(x, z, t), xz_filenames...) ]
+
+sizeses = [ ConvergenceTests.extract_sizes(xy_filenames...),
+            ConvergenceTests.extract_sizes(xz_filenames...) ]
 
 close("all")
 fig, ax = subplots()
 
-for (j, filenames) in enumerate(filenameses)
+for j = 1:2
 
-    errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), filenames...)
-
-    sizes = ConvergenceTests.extract_sizes(filenames...)
+    filenames = filenameses[j]
+    errors = errorses[j]
+    sizes = sizeses[j]
 
     Nx = map(sz -> sz[1], sizes)
 
-    names = (L"(x, y)",)
-    errors = (errors,)
+    L₁ = map(err -> err.L₁, errors)
+    L∞ = map(err -> err.L∞, errors)
 
+    @show size(L₁) size(Nx)
 
-    for i = 1:length(errors)
+    ax.plot(Nx, L₁, color=defaultcolors[j], alpha=0.6, mfc="None",
+            linestyle="None", marker="o", label="\$L_1\$-norm, $(labels[j])")
 
-        @show error = errors[i]
-        name = @sprintf("%s, \$ \\Delta t \$ = %.0e", names[i], Δt[j])
+    ax.plot(Nx, L∞, color=defaultcolors[j], alpha=0.6, mfc="None",
+            linestyle="None", marker="^", label="\$L_\\infty\$-norm, $(labels[j])")
 
-        L₁ = map(err -> err.L₁, error)
-        L∞ = map(err -> err.L∞, error)
-
-        @show size(L₁) size(Nx)
-
-        loglog(Nx, L₁, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
-               linestyle="None", marker="o", label="\$L_1\$-norm, $name")
-
-        loglog(Nx, L∞, color=defaultcolors[i + j - 1], alpha=0.6, mfc="None",
-               linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
-    end
-
-    if j == length(filenameses)
-        L₁ = map(err -> err.L₁, errors[1])
-        loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+    if j == 2
+        L₁ = map(err -> err.L₁, errors)
+        ii = sortperm(Nx)
+        Nx = Nx[ii]
+        L₁ = L₁[ii]
+        ax.plot(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
     end
 end
 
+filenames = filenameses[1]
+errors = errorses[1]
+sizes = sizeses[1]
+Nx = map(sz -> sz[1], sizes)
 
 legend()
+
 xlabel(L"N_x")
 ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}} | \$")
+
 removespines("top", "right")
 title("Convergence for forced fixed slip")
+
+ax.set_xscale("log")
+ax.set_yscale("log")
+
 xticks(sort(Nx), ["\$ 2^{$(round(Int, log2(n)))} \$" for n in sort(Nx)])
 
 savefig("figs/forced_fixed_slip_convergence.png", dpi=480)
-
 

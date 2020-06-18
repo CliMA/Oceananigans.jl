@@ -17,12 +17,11 @@ fₓ(x, t) = - sin(x - ξ(t))
 g′(y) = 3y^2 - 2y
 
 H₁(y) = y^4 / 4 - y^3 / 3 - 3y^2 + 2y
-H₂(y) = 3y^4 - 2y^3 - 2y^2
+H₂(y) = 3y^4 - 4y^3 + 2y^2
 H₃(y) = y^4 / 4 - y^3 / 3 - 6y^2 + 4y
 
-Fᵘ(x, y, t) = 
-    ξ′(t) * fₓ(x, t) * H₁(y) + f(x, t) * fₓ(x, t) * H₂(y) - f(x, t) * H₃(y)
-                
+Fᵘ(x, y, t) = ξ′(t) * fₓ(x, t) * H₁(y) + f(x, t) * fₓ(x, t) * H₂(y) - f(x, t) * H₃(y)
+
 Fᵛ(x, y, t) = 3y^5 - 5y^4 + 2y^3
 
 u(x, y, t) = f(x, t) * g′(y)
@@ -77,7 +76,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t))
     w_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t))
 
-    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1), 
+    grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1), 
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."

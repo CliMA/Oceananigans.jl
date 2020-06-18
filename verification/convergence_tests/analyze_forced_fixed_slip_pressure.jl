@@ -13,10 +13,10 @@ f = ConvergenceTests.ForcedFlowFixedSlip.f
 fₓ = ConvergenceTests.ForcedFlowFixedSlip.fₓ
 
 filenameses = [
-             glob("data/forced_fixed_slip_xy*Δt6.0e-06.jld2"),
-             glob("data/forced_fixed_slip_xy*Δt6.0e-07.jld2"),
-             glob("data/forced_fixed_slip_xy*Δt6.0e-08.jld2"),
-            ]
+               glob("data/forced_fixed_slip_xy*Δt6.0e-06.jld2"),
+               glob("data/forced_fixed_slip_xy*Δt6.0e-07.jld2"),
+               glob("data/forced_fixed_slip_xy*Δt6.0e-08.jld2"),
+              ]  
 
 Δt = [
       6.0e-06,
@@ -68,6 +68,13 @@ for (j, filenames) in enumerate(filenameses)
     end
 end
 
+filenames = filenameses[1]
+
+errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), filenames...)
+
+sizes = ConvergenceTests.extract_sizes(filenames...)
+
+Nx = map(sz -> sz[1], sizes)
 
 legend()
 xlabel(L"N_x")

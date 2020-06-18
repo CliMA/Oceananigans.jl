@@ -10,15 +10,14 @@ Nx = [16, 32, 64, 128]
 stop_time = 0.01
 h = π / maximum(Nx)
 
-for Δt in [0.0001, 0.001, 0.01] .* h^2
-#for Δt in [0.01] .* h^2
-    stop_iteration = round(Int, stop_time / Δt)
-    Δt = stop_time / stop_iteration
+Δt = 0.01 .* h^2 # Initial guess
 
-    for N in Nx
-#        run_xy(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
-        run_xz(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
-    end
+# Modify so simulations stop on a dime
+stop_iteration = round(Int, stop_time / Δt)
+Δt = stop_time / stop_iteration
+
+# Run (x, y) and (x, z) simulations
+for N in Nx
+    run_xy(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
+    run_xz(Nx=N, Δt=Δt, stop_iteration=stop_iteration)
 end
-
-#include("analyze_forced_fixed_slip.jl")
