@@ -9,11 +9,13 @@ using Oceananigans.Utils
 arch = CPU()
 FT   = Float64
 
-Lx = 50kilometer
-Ly = 30kilometer
-Lz = 2kilometer
+filename_1 = "Windstress_Convection_Example_Constant"
+const scale = 20;
+Lx = scale*50kilometer # 2000km
+Ly = scale*50kilometer # 1000km
+Lz = 2kilometer  # 3km
 
-Δx = Δy = 250meter
+Δx = Δy = scale * 250meter # 8x larger?
 Δz = 40meter
 
 Nx = Int(Lx / Δx)
@@ -33,19 +35,36 @@ eos = LinearEquationOfState(FT, α=α, β=0)
 buoyancy = BuoyancyTracer()
 # buoyancy = SeawaterBuoyancy(FT, equation_of_state=eos, constant_salinity=true)
 
-κh = νh = 5.0   # Horizontal diffusivity and viscosity [m²/s]
+κh = νh = scale * 5.0   # Horizontal diffusivity and viscosity [m²/s]
 κv = νv = 0.02  # Vertical diffusivity and viscosity [m²/s]
-closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=κh, κv=κv)
+#closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=κh, κv=κv)
+closure = AnisotropicMinimumDissipation(FT)
 
 bc_params = (
     Ly = Ly,
-    B½ = 1.96e-7,    # Buoyancy flux at midchannel [m²/s³]
-    Lᶠ = 10kilometer # Characteristic length scale of the forcing [m]
+    B½ = 1.96e-7 / 10,    # Buoyancy flux at midchannel [m²/s³]
+    Lᶠ = 10kilometer, # Characteristic length scale of the forcing [m]
+	τ = 0.1, # [N m⁻²] Zonal stress
+	ρ = 1024 # [kg / m³]
 )
-buoyancy_flux(x, y, t, p) = p.B½ * (tanh(2 * (y - p.Ly/2) / p.Lᶠ) + 1)  # Surface buoyancy flux [m²/s³]
-buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(B, B_params)
+
+@inline wind_stress(x, y, t, p) = p.τ / p.ρ * sin( π*y / p.Ly)
+@inline buoyancy_flux(x, y, t, p) = p.B½ * (tanh(2 * (y - p.Ly/2) / p.Lᶠ) + 0.0)  # Surface buoyancy flux [m²/s³], + 1.0 for HM
+
+# Buoyancy
+buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(buoyancy_flux, bc_params)
 top_b_bc = FluxBoundaryCondition(buoyancy_flux_bf)
 b_bcs = TracerBoundaryConditions(grid, top=top_b_bc)
+
+# Zonal Velocity
+v_velocity_flux_bf = BoundaryFunction{:z, Cell, Face}(wind_stress, bc_params)
+top_v_bc = FluxBoundaryCondition(v_velocity_flux_bf)
+bottom_v_bc = ValueBoundaryCondition(-0.0)
+v_bcs = VVelocityBoundaryConditions(grid, top = top_v_bc, bottom = bottom_v_bc)
+
+# Meridional Velocity
+bottom_u_bc = ValueBoundaryCondition(-0.0)
+u_bcs = UVelocityBoundaryConditions(grid, bottom = bottom_u_bc)
 
 top_C_bc = ValueBoundaryCondition(1.0)
 C_bcs = TracerBoundaryConditions(grid, top=top_C_bc)
@@ -58,10 +77,10 @@ model = IncompressibleModel(
                buoyancy = buoyancy,
                 closure = closure,
                 tracers = (:b,),
-    boundary_conditions = (b=b_bcs,)
+    boundary_conditions = (b = b_bcs, v = v_bcs, u = u_bcs)
 )
 
-T_s  = 12.0     # Surface temperature [°C]
+T_s  = 12.0    # Surface temperature [°C]
 N_s = 8.37e-4  # Uniform vertical stratification [s⁻¹]
 ε(σ) = σ * randn()
 B₀(x, y, z) = N_s^2 * z + ε(1e-8)
@@ -76,24 +95,25 @@ fields = Dict(
     "b" => model.tracers.b
 )
 
+
 surface_output_writer =
-    NetCDFOutputWriter(model, fields, filename="HaineMarshall1998_surface.nc",
+    NetCDFOutputWriter(model, fields, filename= filename_1 * "_surface.nc",
 			           interval=1hour, zC=Nz, zF=Nz)
 
 middepth_output_writer =
-    NetCDFOutputWriter(model, fields, filename="HaineMarshall1998_middepth.nc",
+    NetCDFOutputWriter(model, fields, filename= filename_1 * "_middepth.nc",
                        interval=1hour, zC=Int(Nz/2), zF=Int(Nz/2))
 
 zonal_output_writer =
-    NetCDFOutputWriter(model, fields, filename="HaineMarshall1998_zonal.nc",
+    NetCDFOutputWriter(model, fields, filename= filename_1 * "_zonal.nc",
                        interval=1hour, yC=Int(Ny/2), yF=Int(Ny/2))
 
 meridional_output_writer =
-    NetCDFOutputWriter(model, fields, filename="HaineMarshall1998_meridional.nc",
+    NetCDFOutputWriter(model, fields, filename= filename_1 * "_meridional.nc",
                        interval=1hour, xC=Int(Nx/2), xF=Int(Nx/2))
 
 
-Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt=600.0)
+Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt= 2*600.0)
 cfl = AdvectiveCFL(Δt_wizard)
 
 
