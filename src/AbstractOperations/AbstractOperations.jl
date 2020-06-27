@@ -20,7 +20,8 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Diagnostics: HorizontalAverage, normalize_horizontal_sum!
+using Oceananigans.Diagnostics: VolumeAverage, HorizontalAverage
+using Oceananigans.Diagnostics: ZonalAverage, normalize_sum!
 using Oceananigans.Utils: launch_config
 
 import Oceananigans.Architectures: architecture

@@ -94,7 +94,7 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
-
+    println("hello")
     # Creates an unliimited dimension "time"
     defDim(dataset, "time", Inf)
     defVar(dataset, "time", Float64, ("time",))
@@ -159,7 +159,7 @@ zdim(::Type{Cell}) = "zC"
 
 # This function allows users to specify slices with integers; eg xC=3.
 # Note: size(a[3:3, :, :]) = (1, Ny, Nz) versus size(a[3, :, :]) = (Ny, Nz)
-get_slice(n::Integer) = n:n 
+get_slice(n::Integer) = n:n
 get_slice(n::UnitRange) = n
 
 """
@@ -221,7 +221,7 @@ function write_grid_and_attributes(model;
                                    compression = 0,
                                     attributes = Dict(),
                                     slice_keywords...)
-                                                                       
+
     dims = Dict(
                 "xC" => collect(model.grid.xC[:, 1, 1]),
                 "yC" => collect(model.grid.yC[1, :, 1]),
@@ -256,4 +256,3 @@ function write_grid_and_attributes(model;
 
     return nothing
 end
-

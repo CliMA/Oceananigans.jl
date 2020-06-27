@@ -100,6 +100,14 @@ model state.
 abstract type AbstractDiagnostic end
 
 """
+    AbstractAverage
+
+Abstract subtype for averagesthat compute information from the current
+model state.
+"""
+abstract type AbstractAverage <: AbstractDiagnostic end
+
+"""
     AbstractOutputWriter
 
 Abstract supertype for output writers that write data to disk.

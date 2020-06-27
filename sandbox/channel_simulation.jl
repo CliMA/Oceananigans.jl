@@ -11,8 +11,8 @@ FT   = Float64
 
 filename_1 = "Windstress_Convection_Example_Constant"
 const scale = 20;
-Lx = scale*50kilometer # 2000km
-Ly = scale*50kilometer # 1000km
+Lx = scale * 50kilometer # 1000km
+Ly = scale * 50kilometer # 1000km
 Lz = 2kilometer  # 3km
 
 Δx = Δy = scale * 250meter # 8x larger?
@@ -96,6 +96,7 @@ fields = Dict(
 )
 
 
+
 surface_output_writer =
     NetCDFOutputWriter(model, fields, filename= filename_1 * "_surface.nc",
 			           interval=1hour, zC=Nz, zF=Nz)
@@ -111,9 +112,25 @@ zonal_output_writer =
 meridional_output_writer =
     NetCDFOutputWriter(model, fields, filename= filename_1 * "_meridional.nc",
                        interval=1hour, xC=Int(Nx/2), xF=Int(Nx/2))
+###
 
+#bouyancy profile
+Uz = ZonalAverage(model.velocities.u; return_type=Array)
+Bz = ZonalAverage(model.tracers.b; return_type=Array)
+# Create output writer that writes vertical profiles to JLD2 output files.
+zonal_averages = Dict(
+	"Uz" => model -> Uz(model),
+	"Bz" => model -> Bz(model),
+)
 
-Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt= 2*600.0)
+output_attributes = Dict(
+    "Uz" => Dict("longname" => "Zonal Average Velocity in the x-direction", "units" => "m/s"),
+    "Bz" => Dict("longname" => "Zonal Average Buoyancy", "units" => "m/s²"),
+)
+
+zonal_average_output_writer = NetCDFOutputWriter(model, zonal_averages, filename =  filename_1 * "_zonal_average_5.nc", interval=1hour, output_attributes=output_attributes)
+###
+Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt= 2 * 600.0)
 cfl = AdvectiveCFL(Δt_wizard)
 
 
@@ -142,5 +159,30 @@ simulation.output_writers[:surface] = surface_output_writer
 simulation.output_writers[:middepth] = middepth_output_writer
 simulation.output_writers[:zonal] = zonal_output_writer
 simulation.output_writers[:meridional] = meridional_output_writer
-
+# simulation.output_writers[:zonal_average] = zonal_average_output_writer
+###
 run!(simulation)
+
+
+###
+# Define horizontal average diagnostics.
+Up = HorizontalAverage(model.velocities.u;       return_type=Array)
+Vp = HorizontalAverage(model.velocities.v;       return_type=Array)
+Wp = HorizontalAverage(model.velocities.w;       return_type=Array)
+
+u = model.velocities.u
+v = model.velocities.v
+w = model.velocities.w
+
+uu = HorizontalAverage(u*u, model; return_type=Array)
+vv = HorizontalAverage(v*v, model; return_type=Array)
+ww = HorizontalAverage(w*w, model; return_type=Array)
+uv = HorizontalAverage(u*v, model; return_type=Array)
+uw = HorizontalAverage(u*w, model; return_type=Array)
+vw = HorizontalAverage(v*w, model; return_type=Array)
+# Create output writer that writes vertical profiles to JLD2 output files.
+profiles = Dict(
+    :vv => model -> vv(model),
+)
+
+profile_writer = NetCDFOutputWriter(model, profiles, filename= filename_1 * "_test.nc", interval=1hour)
