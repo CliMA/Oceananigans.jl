@@ -67,8 +67,19 @@ function (computation::Computation{<:Nothing})(args...)
 end
 
 #####
-##### Functionality for using computations with HorizontalAverage
+##### Functionality for using computations with AbstractAverage
 #####
+
+"""
+    VolumeAverage(op::AbstractOperation, result; kwargs...)
+
+Returns the representation of a `VolumeAverage` over the operation `op`, using
+`result` as a temporary array to store the result of `operation` computed on `op.grid`.
+"""
+function VolumeAverage(op::AbstractOperation, result; kwargs...)
+    computation = Computation(op, result)
+    return VolumeAverage(computation; kwargs...)
+end
 
 """
     HorizontalAverage(op::AbstractOperation, result; kwargs...)
@@ -82,6 +93,25 @@ function HorizontalAverage(op::AbstractOperation, result; kwargs...)
 end
 
 """
+    ZonalAverage(op::AbstractOperation, result; kwargs...)
+
+Returns the representation of a `ZonalAverage` over the operation `op`, using
+`result` as a temporary array to store the result of `operation` computed on `op.grid`.
+"""
+function ZonalAverage(op::AbstractOperation, result; kwargs...)
+    computation = Computation(op, result)
+    return ZonalAverage(computation; kwargs...)
+end
+
+"""
+    VolumeAverage(op::AbstractOperation, model; kwargs...)
+Returns the representation of a `VolumeAverage` over the operation `op`, using
+`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on
+`op.grid`.
+"""
+VolumeAverage(op::AbstractOperation, model::AbstractModel; kwargs...) = VolumeAverage(op, model.pressures.pHY′; kwargs...)
+
+"""
     HorizontalAverage(op::AbstractOperation, model; kwargs...)
 
 Returns the representation of a `HorizontalAverage` over the operation `op`, using
@@ -91,11 +121,38 @@ Returns the representation of a `HorizontalAverage` over the operation `op`, usi
 HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) =
     HorizontalAverage(op, model.pressures.pHY′; kwargs...)
 
-"""Compute the horizontal average of a computation."""
+
+"""
+    ZonalAverage(op::AbstractOperation, model; kwargs...)
+Returns the representation of a `ZonalAverage` over the operation `op`, using
+`model.pressures.pHY′` as a temporary array to store the result of `operation` computed on
+`op.grid`.
+"""
+ZonalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) = ZonalAverage(op, model.pressures.pHY′; kwargs...)
+
+"""Compute the average of a computation."""
+function run_diagnostic(model, havg::VolumeAverage{<:Computation})
+    compute!(havg.field)
+    zero_halo_regions!(parent(havg.field.result), model.grid)
+    sum!(havg.result, parent(havg.field.result))
+    normalize_sum!(havg, model.grid)
+    return nothing
+end
+
+"""Compute the average of a computation."""
 function run_diagnostic(model, havg::HorizontalAverage{<:Computation})
     compute!(havg.field)
     zero_halo_regions!(parent(havg.field.result), model.grid)
     sum!(havg.result, parent(havg.field.result))
-    normalize_horizontal_sum!(havg, model.grid)
+    normalize_sum!(havg, model.grid)
+    return nothing
+end
+
+"""Compute the average of a computation."""
+function run_diagnostic(model, havg::ZonalAverage{<:Computation})
+    compute!(havg.field)
+    zero_halo_regions!(parent(havg.field.result), model.grid)
+    sum!(havg.result, parent(havg.field.result))
+    normalize_sum!(havg, model.grid)
     return nothing
 end
