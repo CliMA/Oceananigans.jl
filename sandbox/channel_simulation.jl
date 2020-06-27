@@ -127,8 +127,13 @@ output_attributes = Dict(
     "Uz" => Dict("longname" => "Zonal Average Velocity in the x-direction", "units" => "m/s"),
     "Bz" => Dict("longname" => "Zonal Average Buoyancy", "units" => "m/s²"),
 )
+# Should probably output error if this is not supplied for nonfield objects
+dimensions = Dict(
+	"Uz" => ("xF", "yC", "zC"),
+	"Bz" => ("xC", "yC", "zC"),
+)
 
-zonal_average_output_writer = NetCDFOutputWriter(model, zonal_averages, filename =  filename_1 * "_zonal_average_5.nc", interval=1hour, output_attributes=output_attributes)
+zonal_average_output_writer = NetCDFOutputWriter(model, zonal_averages, filename =  filename_1 * "_zonal_average.nc", interval=1hour, output_attributes=output_attributes, dimensions = dimensions)
 ###
 Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt= 2 * 600.0)
 cfl = AdvectiveCFL(Δt_wizard)
@@ -159,7 +164,7 @@ simulation.output_writers[:surface] = surface_output_writer
 simulation.output_writers[:middepth] = middepth_output_writer
 simulation.output_writers[:zonal] = zonal_output_writer
 simulation.output_writers[:meridional] = meridional_output_writer
-# simulation.output_writers[:zonal_average] = zonal_average_output_writer
+simulation.output_writers[:zonal_average] = zonal_average_output_writer
 ###
 run!(simulation)
 
@@ -186,3 +191,95 @@ profiles = Dict(
 )
 
 profile_writer = NetCDFOutputWriter(model, profiles, filename= filename_1 * "_test.nc", interval=1hour)
+
+
+###
+using Oceananigans.Fields
+using Oceananigans.Utils: validate_interval
+using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices
+using Oceananigans.Fields: cpudata
+using NCDatasets
+model = model
+outputs = zonal_averages
+filename =filename_1 * "_zonal_average_9.nc"
+
+interval = nothing
+frequency = nothing
+global_attributes = Dict()
+# utput_attributes = Dict()
+dimensions = Dict()
+const zonal_dims = size(Uz(model))
+dimensions = Dict(
+	"Uz" => ("xC", "yC", "zC"),
+	"Bz" => ("xC", "yC", "zC"),
+)
+clobber = true
+compression = 0
+xC = interior_x_indices(Cell, model.grid)
+xF = interior_x_indices(Face, model.grid)
+yC = interior_y_indices(Cell, model.grid)
+yF = interior_y_indices(Face, model.grid)
+zC = interior_z_indices(Cell, model.grid)
+zF = interior_z_indices(Face, model.grid)
+###
+mode = clobber ? "c" : "a"
+validate_interval(interval, frequency)
+
+# Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
+slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
+                                                         ( xC,   yC,   zC,   xF,   yF,   zF )))
+
+# Initiates the output file with dimensions
+write_grid_and_attributes(model; filename=filename, compression=compression,
+                              attributes=global_attributes, mode=mode,
+                              xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
+
+# Opens the same output file for writing fields from the user-supplied variable outputs
+dataset = Dataset(filename, "a")
+
+    # Creates an unliimited dimension "time"
+defDim(dataset, "time", Inf)
+defVar(dataset, "time", Float64, ("time",))
+sync(dataset)
+###
+# Ensure we have an attribute for every output. Use reasonable defaults if
+# none were specified by the user.
+for c in keys(outputs)
+    if !haskey(output_attributes, c)
+        output_attributes[c] = default_output_attributes[c]
+    end
+end
+
+# Initiates empty variables for fields from the user-supplied variable outputs
+for (name, output) in outputs
+	println(name)
+	println(output)
+    if output isa Field
+        FT = eltype(output.grid)
+        defVar(dataset, name, FT, (netcdf_spatial_dimensions(output)..., "time"),
+                   compression=compression, attrib=output_attributes[name])
+    else
+        defVar(dataset, name, Float64, (dimensions[name]..., "time"),
+                   compression=compression, attrib=output_attributes[name])
+    end
+end
+sync(dataset)
+
+field_outputs = filter(o -> o.second isa Field, outputs) # extract outputs whose values are Fields
+
+# Store a slice specification for each field.
+slices = Dict(name => slice_indices(field; xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF) for (name, field) in field_outputs)
+
+NetCDFOutputWriter(filename, dataset, outputs, interval, frequency, clobber, slices, 0.0)
+
+
+###
+netcdf_spatial_dimensions(::Field{LX, LY, LZ}) where {LX, LY, LZ} = xdim(LX), ydim(LY), zdim(LZ)
+
+xdim(::Type{Face}) = "xF"
+ydim(::Type{Face}) = "yF"
+zdim(::Type{Face}) = "zF"
+
+xdim(::Type{Cell}) = "xC"
+ydim(::Type{Cell}) = "yC"
+zdim(::Type{Cell}) = "zC"

@@ -79,7 +79,6 @@ function NetCDFOutputWriter(model, outputs; filename,
                                            zF = interior_z_indices(Face, model.grid)
                            )
 
-
     mode = clobber ? "c" : "a"
     validate_interval(interval, frequency)
 
@@ -94,7 +93,7 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
-    println("hello")
+
     # Creates an unliimited dimension "time"
     defDim(dataset, "time", Inf)
     defVar(dataset, "time", Float64, ("time",))
