@@ -5,11 +5,12 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 using Oceananigans.Diagnostics
 using Oceananigans.Utils
+using Oceananigans.AbstractOperations
 
 arch = CPU()
 FT   = Float64
 
-filename_1 = "Windstress_Convection_Example_Constant"
+filename_1 = "Windstress_Convection"
 const scale = 20;
 Lx = scale * 50kilometer # 1000km
 Ly = scale * 50kilometer # 1000km
@@ -56,36 +57,56 @@ buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(buoyancy_flux, bc_params)
 top_b_bc = FluxBoundaryCondition(buoyancy_flux_bf)
 b_bcs = TracerBoundaryConditions(grid, top=top_b_bc)
 
-# Zonal Velocity
-v_velocity_flux_bf = BoundaryFunction{:z, Cell, Face}(wind_stress, bc_params)
-top_v_bc = FluxBoundaryCondition(v_velocity_flux_bf)
+# Meridonal Velocity
 bottom_v_bc = ValueBoundaryCondition(-0.0)
-v_bcs = VVelocityBoundaryConditions(grid, top = top_v_bc, bottom = bottom_v_bc)
+v_bcs = VVelocityBoundaryConditions(grid, bottom = bottom_v_bc)
 
-# Meridional Velocity
+# Zonal Velocity
+u_velocity_flux_bf = BoundaryFunction{:z, Face, Cell}(wind_stress, bc_params)
+top_u_bc = FluxBoundaryCondition(u_velocity_flux_bf)
 bottom_u_bc = ValueBoundaryCondition(-0.0)
-u_bcs = UVelocityBoundaryConditions(grid, bottom = bottom_u_bc)
+u_bcs = UVelocityBoundaryConditions(grid, top = top_u_bc, bottom = bottom_u_bc)
 
 top_C_bc = ValueBoundaryCondition(1.0)
 C_bcs = TracerBoundaryConditions(grid, top=top_C_bc)
 
-model = IncompressibleModel(
-           architecture = arch,
-             float_type = FT,
-                   grid = grid,
-               coriolis = coriolis,
-               buoyancy = buoyancy,
-                closure = closure,
-                tracers = (:b,),
-    boundary_conditions = (b = b_bcs, v = v_bcs, u = u_bcs)
-)
+
 
 T_s  = 12.0    # Surface temperature [°C]
 N_s = 8.37e-4  # Uniform vertical stratification [s⁻¹]
 ε(σ) = σ * randn()
 B₀(x, y, z) = N_s^2 * z + ε(1e-8)
+# boundary conditions
+bcs = (b = b_bcs, v = v_bcs, u = u_bcs)
 
-set!(model, b=B₀)
+# checkpointing
+searchdir(path, key) = filter(x -> occursin(key, x), readdir(path))
+checkpoints = searchdir(pwd(), "iteration")
+if length(checkpoints) > 0
+    checkpointed = true
+    checkpoint_filepath = joinpath(pwd(), checkpoints[end])
+    @info "Restoring from checkpoint: $checkpoint_filepath"
+    kwargs = Dict{Symbol,Any}(:boundary_conditions => bcs)
+    model = restore_from_checkpoint(checkpoint_filepath, kwargs=kwargs)
+else
+    checkpointed = false
+	model = IncompressibleModel(
+	           architecture = arch,
+	             float_type = FT,
+	                   grid = grid,
+	               coriolis = coriolis,
+	               buoyancy = buoyancy,
+	                closure = closure,
+	                tracers = (:b,),
+	    boundary_conditions = bcs
+	)
+end
+
+
+
+if !checkpointed
+	set!(model, b=B₀)
+end
 # set!(model, b=B₀, C=0.0)
 
 fields = Dict(
@@ -112,15 +133,18 @@ zonal_output_writer =
 meridional_output_writer =
     NetCDFOutputWriter(model, fields, filename= filename_1 * "_meridional.nc",
                        interval=1hour, xC=Int(Nx/2), xF=Int(Nx/2))
-###
 
+checkpointer = Checkpointer(model, prefix = filename_1 * "_checkpoint", interval = 1day/2, force = true)
+###
+# kinetic_energy = @at (Cell, Cell, Cell) (u^2 + v^2 + w^2) / 2 where u = models.velocities.u, etc
 #bouyancy profile
 Uz = ZonalAverage(model.velocities.u; return_type=Array)
 Bz = ZonalAverage(model.tracers.b; return_type=Array)
+# Example = ZonalAverage(∂x(model.tracers.b) * ∂y(model.tracers.u); return_type = Array)
 # Create output writer that writes vertical profiles to JLD2 output files.
 zonal_averages = Dict(
-	"Uz" => model -> Uz(model),
-	"Bz" => model -> Bz(model),
+	"Uz" => model -> Uz(model)[1, 2:end-1, 2:end-1],
+	"Bz" => model -> Bz(model)[1, 2:end-1, 2:end-1],
 )
 
 output_attributes = Dict(
@@ -129,19 +153,25 @@ output_attributes = Dict(
 )
 # Should probably output error if this is not supplied for nonfield objects
 dimensions = Dict(
-	"Uz" => ("xF", "yC", "zC"),
-	"Bz" => ("xC", "yC", "zC"),
+	"Uz" => ("yC", "zC"),
+	"Bz" => ("yC", "zC"),
 )
 
 zonal_average_output_writer = NetCDFOutputWriter(model, zonal_averages, filename =  filename_1 * "_zonal_average.nc", interval=1hour, output_attributes=output_attributes, dimensions = dimensions)
+# close(zonal_average_output_writer)
 ###
+if !checkpointed
+	Δt=10.0
+else
+	Δt=1200.0
+end
 Δt_wizard = TimeStepWizard(cfl=0.3, Δt=10.0, max_change=1.2, max_Δt= 2 * 600.0)
 cfl = AdvectiveCFL(Δt_wizard)
 
 
 # Take Ni "intermediate" time steps at a time before printing a progress
 # statement and updating the time step.
-Ni = 10
+Ni = 20
 
 function print_progress(simulation)
     model = simulation.model
@@ -165,11 +195,11 @@ simulation.output_writers[:middepth] = middepth_output_writer
 simulation.output_writers[:zonal] = zonal_output_writer
 simulation.output_writers[:meridional] = meridional_output_writer
 simulation.output_writers[:zonal_average] = zonal_average_output_writer
+# simulation.output_writers[:checkpoint] = checkpointer
 ###
 run!(simulation)
-
-
-###
+write_output(model, checkpointer)
+#=
 # Define horizontal average diagnostics.
 Up = HorizontalAverage(model.velocities.u;       return_type=Array)
 Vp = HorizontalAverage(model.velocities.v;       return_type=Array)
@@ -194,6 +224,8 @@ profile_writer = NetCDFOutputWriter(model, profiles, filename= filename_1 * "_te
 
 
 ###
+
+
 using Oceananigans.Fields
 using Oceananigans.Utils: validate_interval
 using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices
@@ -283,3 +315,4 @@ zdim(::Type{Face}) = "zF"
 xdim(::Type{Cell}) = "xC"
 ydim(::Type{Cell}) = "yC"
 zdim(::Type{Cell}) = "zC"
+=#
