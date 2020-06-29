@@ -6,7 +6,7 @@ using Oceananigans.OutputWriters
 using Oceananigans.Diagnostics
 using Oceananigans.Utils
 
-arch = CPU()
+arch = GPU()
 FT   = Float64
 
 Lx = 50kilometer
@@ -41,7 +41,7 @@ bc_params = (
     Lᶠ = 10kilometer # Characteristic length scale of the forcing [m]
 )
 buoyancy_flux(x, y, t, p) = p.B½ * (tanh(2 * (y - p.Ly/2) / p.Lᶠ) + 1)  # Surface buoyancy flux [m²/s³]
-buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(B, B_params)
+buoyancy_flux_bf = BoundaryFunction{:z, Cell, Cell}(buoyancy_flux, bc_params)
 top_b_bc = FluxBoundaryCondition(buoyancy_flux_bf)
 b_bcs = TracerBoundaryConditions(grid, top=top_b_bc)
 
