@@ -187,7 +187,7 @@ function print_progress(simulation)
     	    progress, i, t / day, umax, vmax, wmax, cfl(model), Δt_wizard.Δt)
 end
 
-end_time = 10day
+end_time = 20day
 simulation = Simulation(model, Δt=Δt_wizard, stop_time=end_time, progress=print_progress, progress_frequency=Ni)
 
 simulation.output_writers[:surface] = surface_output_writer
