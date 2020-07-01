@@ -9,7 +9,7 @@ function horizontal_average_is_correct(arch, FT)
     computed_profile = dropdims(T̅(model), dims=(1, 2))
 
     zC = znodes(Cell, grid)
-    correct_profile = dropdims(zC, dims=(1, 2))
+    correct_profile = zC
 
     return all(computed_profile[2:end-1] .≈ correct_profile)
 end

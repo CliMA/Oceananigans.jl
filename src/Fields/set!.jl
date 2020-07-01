@@ -1,4 +1,4 @@
-using CUDAnative
+using CUDA
 using GPUifyLoops: @launch, @loop
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: @loop_xyz
@@ -102,7 +102,7 @@ end
 @hascuda set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
 
 "Set the CPU field `u` data to the function `f(x, y, z)`."
-set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u)...)
+set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u; reshape=true)...)
 
 # Set the GPU field `u` data to the function `f(x, y, z)`.
 @hascuda function set!(u::AbstractGPUField, f::Function)

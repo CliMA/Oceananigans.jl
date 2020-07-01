@@ -10,12 +10,6 @@ function instantiate_linear_equation_of_state(FT, α, β)
     return eos.α == FT(α) && eos.β == FT(β)
 end
 
-function instantiate_roquet_equations_of_state(FT, flavor; coeffs=nothing)
-    eos = (coeffs == nothing ? RoquetIdealizedNonlinearEquationOfState(FT, flavor) :
-                               RoquetIdealizedNonlinearEquationOfState(FT, flavor, polynomial_coeffs=coeffs))
-    return typeof(eos.polynomial_coeffs.R₁₀₀) == FT
-end
-
 function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
     buoyancy = SeawaterBuoyancy(FT, equation_of_state=EquationOfState(FT); kwargs...)
     return typeof(buoyancy.gravitational_acceleration) == FT
@@ -69,7 +63,7 @@ function haline_contraction_works(arch, FT, eos)
     return true
 end
 
-EquationsOfState = (LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10)
+EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
 @testset "Buoyancy" begin
@@ -80,12 +74,6 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
         for FT in float_types
             @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
 
-            testcoeffs = (R₀₁₀ = π, R₁₀₀ = ℯ, R₀₂₀ = 2π, R₀₁₁ = 2ℯ, R₂₀₀ = 3π, R₁₀₁ = 3ℯ, R₁₁₀ = 4π)
-            for flavor in (:linear, :cabbeling, :cabbeling_thermobaricity, :freezing, :second_order)
-                @test instantiate_roquet_equations_of_state(FT, flavor)
-                @test instantiate_roquet_equations_of_state(FT, flavor, coeffs=testcoeffs)
-            end
-
             for EOS in EquationsOfState
                 for kwargs in buoyancy_kwargs
                     @test instantiate_seawater_buoyancy(FT, EOS; kwargs...)
@@ -93,7 +81,7 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
             end
 
             for arch in archs
-                @test density_perturbation_works(arch, FT, RoquetIdealizedNonlinearEquationOfState())
+                @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
             end
 
             buoyancies =
@@ -113,27 +101,6 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                     @test thermal_expansion_works(arch, FT, EOS())
                     @test haline_contraction_works(arch, FT, EOS())
                 end
-            end
-
-            @testset "TEOS-10 [$FT]" begin
-                @info "  Testing TEOS-10 [$FT]..."
-
-                # Test/check values from Roquet et al. (2014).
-                Θ = 10   # [C]
-                S = 30   # [g/kg]
-                Z = 1e3  # [m]
-
-                τ = Buoyancy.τ(Θ)
-                s = Buoyancy.s(S)
-                ζ = Buoyancy.ζ(Z)
-
-                @test Buoyancy.r₀(ζ) ≈ 4.59763035
-                @test Buoyancy.r′(τ, s, ζ) ≈ 1022.85377
-
-                eos = TEOS10{FT}()
-                @test Buoyancy.ρ′(Θ, S, Z, eos) ≈ 1027.45140
-                @test Buoyancy.thermal_expansion(Θ, S, Z, eos) ≈ 0.179646281
-                @test Buoyancy.haline_contraction(Θ, S, Z, eos) ≈ 0.765555368
             end
         end
     end

@@ -15,7 +15,7 @@ The following example shows how to construct NetCDF output writers for two diffe
 slices) along with output attributes
 ```@example
 Nx = Ny = Nz = 16
-model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
 fields = Dict(
@@ -49,7 +49,7 @@ functions have a single input `model`. Whenever output needs to be written, the 
 of the function will be saved to the JLD2 file. For example, to write out 3D fields for w and T and a horizontal average
 of T every 1 hour of simulation time to a file called `some_data.jld2`
 ```@example
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
 function init_save_some_metadata(file, model)

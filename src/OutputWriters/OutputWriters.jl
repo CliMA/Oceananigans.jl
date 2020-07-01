@@ -6,6 +6,8 @@ export
     NetCDFOutputWriter, write_grid_and_attributes,
     Checkpointer, restore_from_checkpoint
 
+using CUDA
+
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Fields
@@ -16,8 +18,6 @@ using Oceananigans.Fields: OffsetArray
 
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
-
-@hascuda using CUDAnative, CuArrays
 
 include("output_writer_utils.jl")
 include("jld2_output_writer.jl")

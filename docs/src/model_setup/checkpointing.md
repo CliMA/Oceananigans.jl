@@ -6,7 +6,7 @@ cluster time limits, but also if you'd like to restore from a checkpoint and try
 For example, to periodically checkpoint the model state to disk every 1,000,000 seconds of simulation time to files of
 the form `model_checkpoint_iteration12500.jld2` where `12500` is the iteration number (automatically filled in)
 ```@example
-model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1)))
+model = Model(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 model.output_writers[:checkpointer] = Checkpointer(model; interval=1e6, prefix="model_checkpoint")
 ```
 

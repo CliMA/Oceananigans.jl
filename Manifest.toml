@@ -8,35 +8,29 @@ version = "0.5.0"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "c88cfc7f9c1f9f8633cddf0b56e86302b70f64c5"
+git-tree-sha1 = "9e31b9f5d3f9b5ec32c1d01fd8c05270bad10dc0"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "1.0.1"
+version = "2.0.0"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
-[[BenchmarkTools]]
-deps = ["JSON", "Logging", "Printf", "Statistics", "UUIDs"]
-git-tree-sha1 = "9e62e66db34540a0c919d72172cc2f642ac71260"
-uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-version = "0.5.0"
-
 [[BinDeps]]
 deps = ["Libdl", "Pkg", "SHA", "URIParser", "Unicode"]
-git-tree-sha1 = "66158ad56b4bf6cc8413b37d0b7bc52402682764"
+git-tree-sha1 = "46cf2c1668ad07aba5a9d331bdeea994a1f13856"
 uuid = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
-version = "1.0.0"
+version = "1.0.1"
 
 [[BinaryProvider]]
-deps = ["Libdl", "SHA"]
-git-tree-sha1 = "5b08ed6036d9d3f0ee6369410b830f8873d4024c"
+deps = ["Libdl", "Logging", "SHA"]
+git-tree-sha1 = "ecdec412a9abc8db54c0efc5548c64dfce072058"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.8"
+version = "0.5.10"
 
 [[CEnum]]
-git-tree-sha1 = "62847acab40e6855a9b5905ccb99c2b5cf6b3ebb"
+git-tree-sha1 = "215a9aa4a1f23fbd05b92769fdd62559488d70e9"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
-version = "0.2.0"
+version = "0.4.1"
 
 [[CFTime]]
 deps = ["Dates", "Printf"]
@@ -44,34 +38,22 @@ git-tree-sha1 = "143ef231a14c2ab1ac7e838c559ee1e45c0d1b57"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
 version = "0.1.0"
 
-[[CUDAapi]]
-deps = ["Libdl", "Logging"]
-git-tree-sha1 = "d7ceadd8f821177d05b897c0517e94633db535fe"
-uuid = "3895d2a7-ec45-59b8-82bb-cfc6a382f9b3"
-version = "3.1.0"
-
-[[CUDAdrv]]
-deps = ["CEnum", "CUDAapi", "Printf"]
-git-tree-sha1 = "01e90fa34e25776bc7c8661183d4519149ebfe59"
-uuid = "c5f51814-7f29-56b8-a69c-e4d8f6be1fde"
-version = "6.0.0"
-
-[[CUDAnative]]
-deps = ["Adapt", "CEnum", "CUDAapi", "CUDAdrv", "DataStructures", "InteractiveUtils", "LLVM", "Libdl", "Printf", "TimerOutputs"]
-git-tree-sha1 = "f86269ff60ebe082a2806ecbce51f3cadc68afe9"
-uuid = "be33ccc6-a3ff-5ff2-a52e-74243cff1e17"
-version = "2.10.2"
+[[CUDA]]
+deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "DataStructures", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "Libdl", "LinearAlgebra", "Logging", "MacroTools", "NNlib", "Pkg", "Printf", "Random", "Reexport", "Requires", "SparseArrays", "Statistics", "TimerOutputs"]
+git-tree-sha1 = "e0f4849d30f574b568a2710c609842f308c0b7ff"
+uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
+version = "1.0.0"
 
 [[Cassette]]
-git-tree-sha1 = "f6a148cadd38ba328bd2c03442037ef801a6aa05"
+git-tree-sha1 = "ff6f5109371926beb67ec3101be17d2c211e497d"
 uuid = "7057c7e9-c182-5462-911a-8362d720325c"
-version = "0.3.1"
+version = "0.3.3"
 
 [[CodecZlib]]
-deps = ["BinaryProvider", "Libdl", "TranscodingStreams"]
-git-tree-sha1 = "05916673a2627dd91b4969ff8ba6941bc85a960e"
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "ded953804d019afa9a3f98981d99b33e3db7b6da"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
-version = "0.6.0"
+version = "0.7.0"
 
 [[Conda]]
 deps = ["JSON", "VersionParsing"]
@@ -85,17 +67,11 @@ git-tree-sha1 = "25f750df2893991f2c9b18425bfac6f2ce855154"
 uuid = "a9693cdc-2bc8-5703-a9cd-1da358117377"
 version = "0.2.0"
 
-[[CuArrays]]
-deps = ["AbstractFFTs", "Adapt", "CEnum", "CUDAapi", "CUDAdrv", "CUDAnative", "DataStructures", "GPUArrays", "Libdl", "LinearAlgebra", "MacroTools", "NNlib", "Printf", "Random", "Requires", "SparseArrays", "TimerOutputs"]
-git-tree-sha1 = "7fa1331a0e0cd10e43b94b280027bda45990cb63"
-uuid = "3a865a2d-5b23-5a0f-bc46-62713ec82fae"
-version = "1.7.3"
-
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "73eb18320fe3ba58790c8b8f6f89420f0a622773"
+git-tree-sha1 = "be680f1ad03c0a03796aa3fda5a2180df7f83b46"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.11"
+version = "0.17.18"
 
 [[Dates]]
 deps = ["Printf"]
@@ -105,11 +81,16 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
+[[ExprTools]]
+git-tree-sha1 = "6f0517056812fd6aa3af23d4b70d5325a2ae4e95"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.1"
+
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "IntelOpenMP_jll", "Libdl", "LinearAlgebra", "MKL_jll", "Reexport"]
-git-tree-sha1 = "109d82fa4b00429f9afcce873e9f746f11f018d3"
+git-tree-sha1 = "14536c95939aadcee44014728a459d2fe3ca9acf"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.2.0"
+version = "1.2.2"
 
 [[FFTW_jll]]
 deps = ["Libdl", "Pkg"]
@@ -119,15 +100,21 @@ version = "3.3.9+5"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "3d7cb2c4c850439f19c4d6d3fbe1dce6481cddb1"
+git-tree-sha1 = "202335fd24c2776493e198d6c66a6d910400a895"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.2.4"
+version = "1.3.0"
 
 [[GPUArrays]]
 deps = ["AbstractFFTs", "Adapt", "LinearAlgebra", "Printf", "Random", "Serialization"]
-git-tree-sha1 = "e756da6cee76a5f1436a05827fa8fdf3badc577f"
+git-tree-sha1 = "ae20accf251c6da038fe33cbc2c53d5af7f51344"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "2.0.1"
+version = "4.0.0"
+
+[[GPUCompiler]]
+deps = ["DataStructures", "InteractiveUtils", "LLVM", "Libdl", "TimerOutputs", "UUIDs"]
+git-tree-sha1 = "65f7395a1245635f0c2279649fdbef09a1b0aa7b"
+uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "0.4.0"
 
 [[GPUifyLoops]]
 deps = ["Cassette", "Requires", "StaticArrays"]
@@ -147,9 +134,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JLD2]]
 deps = ["CodecZlib", "DataStructures", "FileIO", "Mmap", "Pkg", "Printf", "UUIDs"]
-git-tree-sha1 = "d6cfa7c24e27d7eaa2290372739c8298257dae16"
+git-tree-sha1 = "e03e697cf84c275ece9cbefd1eabaf49bf5e7254"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.1.12"
+version = "0.1.13"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -159,11 +146,12 @@ version = "0.21.0"
 
 [[LLVM]]
 deps = ["CEnum", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "b6b86801ae2f2682e0a4889315dc76b68db2de71"
+git-tree-sha1 = "dd3f584c3dbefe39b2a8fbafa1a3b77e31e21255"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "1.3.4"
+version = "1.5.1"
 
 [[LibGit2]]
+deps = ["Printf"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
 [[Libdl]]
@@ -178,9 +166,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MKL_jll]]
 deps = ["IntelOpenMP_jll", "Libdl", "Pkg"]
-git-tree-sha1 = "720629cc8cbd12c146ca01b661fd1a6cf66e2ff4"
+git-tree-sha1 = "0ce9a7fa68c70cf83c49d05d2c04d91b47404b08"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2019.0.117+2"
+version = "2020.1.216+0"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
@@ -197,9 +185,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[NCDatasets]]
 deps = ["BinDeps", "CFTime", "CondaBinDeps", "DataStructures", "Dates", "Libdl", "Printf"]
-git-tree-sha1 = "89d5c2259694a459194983105be10b43f6fbefc8"
+git-tree-sha1 = "271e4670a6b30ec1e5daf6ba8b30240b7d85f535"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.10.1"
+version = "0.10.2"
 
 [[NNlib]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "Requires", "Statistics"]
@@ -208,21 +196,20 @@ uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.6.6"
 
 [[OffsetArrays]]
-git-tree-sha1 = "6a35d9446b40ae5004cd7bd0f1ae3505528c7fd6"
+git-tree-sha1 = "930db8ef90483570107f2396b1ffc6680f08e8b7"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.0.3"
+version = "1.0.4"
 
 [[OrderedCollections]]
-deps = ["Random", "Serialization", "Test"]
-git-tree-sha1 = "c4c13474d23c60d20a67b217f1d7f22a40edf8f1"
+git-tree-sha1 = "12ce190210d278e12644bcadf5b21cbdcf225cd3"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.1.0"
+version = "1.2.0"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "75d07cb840c300084634b4991761886d0d762724"
+git-tree-sha1 = "eb3e09940c0d7ae01b01d9291ebad7b081c844d3"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "1.0.1"
+version = "1.0.5"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -255,6 +242,12 @@ version = "1.0.1"
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
+[[SeawaterPolynomials]]
+deps = ["Test"]
+git-tree-sha1 = "6db1b6004791962cb12d425cd12691506ad7d2b6"
+uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
+version = "0.2.0"
+
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -267,9 +260,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "5a3bcb6233adabde68ebc97be66e95dcb787424c"
+git-tree-sha1 = "5c06c0aeb81bef54aed4b3f446847905eb6cbda0"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.12.1"
+version = "0.12.3"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -281,9 +274,9 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TimerOutputs]]
 deps = ["Printf"]
-git-tree-sha1 = "311765af81bbb48d7bad01fb016d9c328c6ede03"
+git-tree-sha1 = "f458ca23ff80e46a630922c555d838303e4b9603"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.3"
+version = "0.5.6"
 
 [[TranscodingStreams]]
 deps = ["Random", "Test"]
@@ -292,10 +285,10 @@ uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 version = "0.9.5"
 
 [[URIParser]]
-deps = ["Test", "Unicode"]
-git-tree-sha1 = "6ddf8244220dfda2f17539fa8c9de20d6c575b69"
+deps = ["Unicode"]
+git-tree-sha1 = "53a9f49546b8d2dd2e688d216421d050c9a31d0d"
 uuid = "30578b45-9adc-5946-b283-645ec420af67"
-version = "0.4.0"
+version = "0.4.1"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -308,3 +301,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 git-tree-sha1 = "80229be1f670524750d905f8fc8148e5a8c4537f"
 uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
 version = "1.2.0"
+
+[[Zlib_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "a2e0d558f6031002e380a90613b199e37a8565bf"
+uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+version = "1.2.11+10"

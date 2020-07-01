@@ -6,11 +6,11 @@ import Adapt
 Construct a boundary condition of type `C` with a `condition` that may be given by a
 number, an array, or a function with signature:
 
-    condition(i, j, grid, time, iteration, U, Φ, parameters) = # function definition
+    condition(i, j, grid, clock, state) = # function definition
 
 that returns a number and where `i` and `j` are indices along the boundary.
 
-Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NoPenetration`.
+Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NormalFlow`.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition :: T
@@ -32,23 +32,26 @@ Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:Abstr
 const BC   = BoundaryCondition
 const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
-const NPBC = BoundaryCondition{<:NoPenetration}
+const NFBC = BoundaryCondition{<:NormalFlow}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
-const NFBC = BoundaryCondition{Flux, Nothing}
+const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 
 # More readable BC constructors for the public API.
-     PeriodicBoundaryCondition() = BoundaryCondition(Periodic,      nothing)
-NoPenetrationBoundaryCondition() = BoundaryCondition(NoPenetration, nothing)
-       NoFluxBoundaryCondition() = BoundaryCondition(Flux,          nothing)
+    PeriodicBoundaryCondition() = BoundaryCondition(Periodic,   nothing)
+      NoFluxBoundaryCondition() = BoundaryCondition(Flux,       nothing)
+ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
 
-    FluxBoundaryCondition(val) = BoundaryCondition(Flux, val)
-   ValueBoundaryCondition(val) = BoundaryCondition(Value, val)
-GradientBoundaryCondition(val) = BoundaryCondition(Gradient, val)
+      FluxBoundaryCondition(val) = BoundaryCondition(Flux, val)
+     ValueBoundaryCondition(val) = BoundaryCondition(Value, val)
+  GradientBoundaryCondition(val) = BoundaryCondition(Gradient, val)
+NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
 
-# Multiple dispatch on the type of boundary condition
-getbc(bc::BC{C, <:Number}, args...)              where C = bc.condition
-getbc(bc::BC{C, <:AbstractArray}, i, j, args...) where C = bc.condition[i, j]
-getbc(bc::BC{C, <:Function}, args...)            where C = bc.condition(args...)
+# Support for various types of boundary conditions
+@inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
+@inline getbc(bc::BC{C, <:Number},        args...)                  where C = bc.condition
+@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = bc.condition[i, j]
+@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C =
+    bc.condition(i, j, grid, clock, state)
 
-Base.getindex(bc::BC{C, <:AbstractArray}, inds...) where C = getindex(bc.condition, inds...)
+@inline Base.getindex(bc::BC{C, <:AbstractArray}, i, j) where C = getindex(bc.condition, i, j)

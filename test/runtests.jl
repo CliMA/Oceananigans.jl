@@ -5,17 +5,10 @@ using Statistics
 using LinearAlgebra
 using Logging
 
+using CUDA
 using JLD2
 using FFTW
 using OffsetArrays
-
-using Oceananigans.Architectures: @hascuda
-
-@hascuda begin
-    import CUDAdrv
-    using CuArrays
-    using CUDAnative
-end
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -35,6 +28,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
 using Oceananigans.Logger
 using Oceananigans.Utils
+using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
 
 using Dates: DateTime, Nanosecond
 using TimesDates: TimeDate
@@ -42,6 +36,8 @@ using Statistics: mean
 using LinearAlgebra: norm
 using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
+
+using SeawaterPolynomials
 
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: datatuple
@@ -57,9 +53,9 @@ using Oceananigans.AbstractOperations: Computation, compute!
 #####
 
 @hascuda begin
-    gpu_candidates = [(dev=dev, cap=CUDAdrv.capability(dev),
-                       mem=CUDAdrv.CuContext(ctx->CUDAdrv.available_memory(), dev))
-                       for dev in CUDAdrv.devices()]
+    gpu_candidates = [(dev=dev, cap=CUDA.capability(dev),
+                       mem=CUDA.CuContext(ctx -> CUDA.available_memory(), dev))
+                       for dev in CUDA.devices()]
 
     thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
     if thorough
@@ -100,7 +96,7 @@ end
 float_types = (Float32, Float64)
 
          archs = (CPU(),)
-@hascuda archs = (CPU(), GPU())
+@hascuda archs = (GPU(),)
 
 closures = (
     :ConstantIsotropicDiffusivity,

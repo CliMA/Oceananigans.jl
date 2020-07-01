@@ -5,7 +5,7 @@
 
 <!-- description -->
 <p align="center">
-  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/oceananigans</strong>
+  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. http://bit.ly/Oceananigans</strong>
 </p>
 
 <!-- Information badges -->
@@ -16,21 +16,21 @@
   <a href="https://mit-license.org">
     <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
   </a>
-  <a href="https://github.com/climate-machine/Oceananigans.jl/issues/new">
+  <a href="https://github.com/clima/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
-  <a href="https://climate-machine.github.io/Oceananigans.jl/stable/">
+  <a href="https://clima.github.io/Oceananigans.jl/stable/">
     <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
   </a>
-  <a href="https://climate-machine.github.io/Oceananigans.jl/latest">
+  <a href="https://clima.github.io/Oceananigans.jl/latest">
     <img alt="Latest documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
   </a>
 </p>
 
 <!-- CI/CD badges -->
 <p align="center">
-  <a href="https://travis-ci.com/climate-machine/Oceananigans.jl">
-    <img alt="CPU build status" src="https://img.shields.io/travis/com/climate-machine/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
+  <a href="https://travis-ci.com/clima/Oceananigans.jl">
+    <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
   </a>
   <a href="https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master">
     <img alt="GPU build status" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
@@ -41,11 +41,11 @@
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
-  <a href="https://codecov.io/gh/climate-machine/Oceananigans.jl">
-    <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/climate-machine/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
+  <a href="https://codecov.io/gh/clima/Oceananigans.jl">
+    <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/clima/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
   </a>
-  <a href="https://coveralls.io/github/climate-machine/Oceananigans.jl?branch=master">
-    <img alt="Coveralls coverage" src="https://img.shields.io/coveralls/github/climate-machine/Oceananigans.jl/master?label=Coveralls&style=flat-square">
+  <a href="https://coveralls.io/github/clima/Oceananigans.jl?branch=master">
+    <img alt="Coveralls coverage" src="https://img.shields.io/coveralls/github/clima/Oceananigans.jl/master?label=Coveralls&style=flat-square">
   </a>
 </p>
 
@@ -85,7 +85,7 @@ At this time, updating should be done with care, as Oceananigans is under rapid 
 Let's initialize a 3D horizontally periodic model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 hour using a constant time step of 60 seconds.
 ```julia
 using Oceananigans
-grid = RegularCartesianGrid(size=(100, 100, 50), length=(2000, 2000, 1000))
+grid = RegularCartesianGrid(size=(100, 100, 50), extent=(2000, 2000, 1000))
 model = IncompressibleModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
@@ -103,7 +103,7 @@ topology = (Periodic, Periodic, Bounded)
 
 model = IncompressibleModel(
     architecture = CPU(),
-            grid = RegularCartesianGrid(topology=topology, size=(N, N, N), length=(L, L, L)),
+            grid = RegularCartesianGrid(topology=topology, size=(N, N, N), extent=(L, L, L)),
          closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
 )
 
@@ -123,17 +123,17 @@ GPU model output can be plotted on-the-fly and animated using [Makie.jl](https:/
   <img src="https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/Rising%20spherical%20thermal%20bubble%20Makie.png">
 </p>
 
-You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/climate-machine/Oceananigans.jl#performance-benchmarks).
+You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 
 ## Getting help
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/climate-machine/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
+If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/master/examples) and [open an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you have any questions, comments, suggestions, etc.
 
 ## Contributing
 If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developers have missed.
 
-Let us know by [opening an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
+Let us know by [opening an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
 
-For more information, check out our [contributor's guide](https://github.com/climate-machine/Oceananigans.jl/blob/master/CONTRIBUTING.md).
+For more information, check out our [contributor's guide](https://github.com/clima/Oceananigans.jl/blob/master/CONTRIBUTING.md).
 
 ## Movies
 
@@ -150,8 +150,8 @@ For more information, check out our [contributor's guide](https://github.com/cli
 [![Watch free convection with wind stress in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_unstable_7500.png)](https://www.youtube.com/watch?v=ob6OMQgPfI4)
 
 ## Performance benchmarks
-We've performed some preliminary performance benchmarks (see the [`benchmarks.jl`](https://github.com/climate-machine/Oceananigans.jl/blob/master/benchmark/benchmarks.jl) file) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step). The CPU used was a single core of an Intel Xeon CPU E5-2680 v4 @ 2.40GHz while the GPU used was an Nvidia Tesla V100-SXM2-16GB. This isn't really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
-![Performance benchmark plots](https://raw.githubusercontent.com/climate-machine/Oceananigans.jl/master/benchmark/oceananigans_benchmarks.png)
+We've performed some preliminary performance benchmarks (see the [`benchmarks.jl`](https://github.com/clima/Oceananigans.jl/blob/master/benchmark/benchmarks.jl) file) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step). The CPU used was a single core of an Intel Xeon CPU E5-2680 v4 @ 2.40GHz while the GPU used was an Nvidia Tesla V100-SXM2-16GB. This isn't really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
+![Performance benchmark plots](https://raw.githubusercontent.com/clima/Oceananigans.jl/master/benchmark/oceananigans_benchmarks.png)
 
 ## Development team
 * [Ali Ramadhan](http://aliramadhan.me/) ([@ali-ramadhan](https://github.com/ali-ramadhan))
