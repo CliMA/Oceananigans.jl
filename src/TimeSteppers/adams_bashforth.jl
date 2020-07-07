@@ -45,7 +45,9 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
         datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
                    model.timestepper.Gⁿ, model.timestepper.G⁻, model.timestepper.predictor_velocities)
 
-    calculate_explicit_substep!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
+    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+    
+    calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
 
     ab2_time_step_tracers!(tracers, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
 

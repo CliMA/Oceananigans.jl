@@ -3,17 +3,6 @@
 #####
 
 """
-    calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
-
-Calculate the initial and explicit substep of the two-step fractional step method with pressure correction.
-"""
-function calculate_explicit_substep!(tendencies, velocities, tracers, pressures, diffusivities, model)
-    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
-    calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
-    return nothing
-end
-
-"""
     time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
 Perform precomputations necessary for an explicit timestep or substep.
@@ -52,8 +41,6 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
     # tendency data.
     
-    # Arguments needed to calculate tendencies for momentum and tracers
-
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, 
@@ -65,12 +52,6 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ, model.architecture, model.velocities,
                                                model.tracers, model.clock, state(model))
-
-    # Calculate momentum tendencies on boundaries in `Bounded` directions.
-    #calculate_velocity_tendencies_on_boundaries!(tendencies, model.architecture, model.grid,
-    #                                             model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
-    #                                             velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
-    #                                             model.clock)
 
     return nothing
 end
@@ -116,4 +97,3 @@ function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
     @launch device(arch) config=launch_config(grid, :xyz) _fractional_step_velocities!(U, grid, Δt, pNHS)
     return nothing
 end
-
