@@ -111,7 +111,7 @@ function relaxed_time_stepping(arch)
                                       target = LinearTarget{:y}(intercept=π, gradient=ℯ))
 
     z_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:z}(center=0.5, width=0.1),
-                                      target = LinearTarget{:z}(intercept=π, gradient=ℯ))
+                                      target = π)
 
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
