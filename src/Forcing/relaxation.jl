@@ -16,6 +16,9 @@ end
 @inline (f::RelaxingFunction)(x, y, z, t, field) =
     f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
 
+@inline (f::RelaxingFunction{R, M, <:Number})(x, y, z, t, field) where {R, M} =
+    f.rate * f.mask(x, y, z) * (f.target - field)
+
 #####
 ##### Relaxing forcing
 #####
