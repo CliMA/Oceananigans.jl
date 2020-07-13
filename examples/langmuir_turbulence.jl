@@ -249,6 +249,7 @@ using JLD2, Plots
 file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
+nothing # hide
 
 # This utility is handy for calculating nice contour intervals:
 
