@@ -1,8 +1,8 @@
 # Taylor-Green vortex
-An exact solution to the two-dimensional incompressible Navier-Stokes equations is given by \citet{Taylor37} describing
+An exact solution to the two-dimensional incompressible Navier-Stokes equations is given by [Taylor37](@cite) describing
 the unsteady flow of a vortex decaying under viscous dissipation. The viscous terms balance the time derivatives while
 the nonlinear advection terms balance the pressure gradient term. We use the doubly-periodic solution described by
-\citet[p. 310]{Hesthaven07}
+(p. 310) [Hesthaven07](@cite)
 
 ```math
 \begin{aligned}
