@@ -1,6 +1,7 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
+using Bibliography
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
 using Oceananigans
@@ -10,7 +11,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
-using Oceananigans.AbstractOperation
+using Oceananigans.AbstractOperations
 
 const BIBLIOGRAPHY = import_bibtex("oceananigans.bib")
 include("bibliography.jl")
