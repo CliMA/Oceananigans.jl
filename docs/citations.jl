@@ -38,30 +38,29 @@ function expand_citation(link::Markdown.Link, meta, page, doc)
         citation_name = link.text[1]
         @info "Expanding citation: $citation_name."
 
-        # TODO: Inefficient search through a set!
-        # See: https://github.com/Azzaare/Bibliography.jl/issues/2
-        for entry in BIBLIOGRAPHY
-            if entry.id == citation_name
-                headers = doc.internal.headers
-                if Anchors.exists(headers, entry.id)
-                    if Anchors.isunique(headers, entry.id)
-                        # Replace the `@cite` url with a path to the referenced header.
-                        anchor   = Anchors.anchor(headers, entry.id)
-                        path     = relpath(anchor.file, dirname(page.build))
-                        link.text = xnames(entry) * " (" * xyear(entry) * ")"
-                        link.url = string(path, Anchors.fragment(anchor))
-                        return true
-                    else
-                        push!(doc.internal.errors, :citations)
-                        @warn "'$(entry.id)' is not unique in $(Utilities.locrepr(page.source))."
-                    end
+        if haskey(BIBLIOGRAPHY, citation_name)
+            entry = BIBLIOGRAPHY[citation_name]
+            @info "$entry"
+            headers = doc.internal.headers
+            if Anchors.exists(headers, entry.id)
+                if Anchors.isunique(headers, entry.id)
+                    # Replace the `@cite` url with a path to the referenced header.
+                    anchor   = Anchors.anchor(headers, entry.id)
+                    path     = relpath(anchor.file, dirname(page.build))
+                    link.text = xnames(entry) * " (" * xyear(entry) * ")"
+                    link.url = string(path, Anchors.fragment(anchor))
+                    return true
                 else
                     push!(doc.internal.errors, :citations)
-                    @warn "reference for '$(entry.id)' could not be found in $(Utilities.locrepr(page.source))."
+                    @warn "'$(entry.id)' is not unique in $(Utilities.locrepr(page.source))."
                 end
+            else
+                push!(doc.internal.errors, :citations)
+                @warn "reference for '$(entry.id)' could not be found in $(Utilities.locrepr(page.source))."
             end
+        else
+            error("Citation not found in bibliography: $(citation_name)")
         end
-        error("Citation not found in bibliography: $(citation_name)")
     else
         error("Invalid citation: $(link.text)")
     end

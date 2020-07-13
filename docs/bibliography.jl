@@ -14,15 +14,15 @@ Selectors.matcher(::Type{BibliographyBlock}, node, page, doc) = Expanders.iscode
 function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
     @info "Expanding bibliography."
     raw_bib = "<dl>"
-    for entry in BIBLIOGRAPHY
-        @info "Expanding bibliography entry: $(entry.id)."
+    for (id, entry) in BIBLIOGRAPHY
+        @info "Expanding bibliography entry: $id."
 
         # Add anchor that citations can link to from anywhere in the docs.
         Anchors.add!(doc.internal.headers, entry, entry.id, page.build)
 
-        entry_text = """<dt>$(entry.id)</dt>
+        entry_text = """<dt>$id</dt>
         <dd>
-          <div id="$(entry.id)">$(xnames(entry)) ($(xyear(entry))), <a href="$(xlink(entry))">$(xtitle(entry))</a>, $(xin(entry))</a>
+          <div id="$id">$(xnames(entry)) ($(xyear(entry))), <a href="$(xlink(entry))">$(xtitle(entry))</a>, $(xin(entry))</a>
         </dd>"""
         raw_bib *= entry_text
     end

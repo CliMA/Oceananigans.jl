@@ -14,6 +14,8 @@ using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
 const BIBLIOGRAPHY = import_bibtex("oceananigans.bib")
+@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
+
 include("bibliography.jl")
 include("citations.jl")
 
