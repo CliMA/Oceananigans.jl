@@ -20,10 +20,12 @@ function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
         # Add anchor that citations can link to from anywhere in the docs.
         Anchors.add!(doc.internal.headers, entry, entry.id, page.build)
 
-        entry_text = """<dt>$id</dt>
+        entry_text = """<div id="$id">
+        <dt>$id</dt>
         <dd>
-          <div id="$id">$(xnames(entry)) ($(xyear(entry))), <a href="$(xlink(entry))">$(xtitle(entry))</a>, $(xin(entry))</a>
-        </dd>"""
+          $(xnames(entry)) ($(xyear(entry))), <a href="$(xlink(entry))">$(xtitle(entry))</a>, $(xin(entry))</a>
+        </dd>
+        </div>"""
         raw_bib *= entry_text
     end
     raw_bib *= "\n</dl>"
