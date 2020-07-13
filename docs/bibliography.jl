@@ -14,7 +14,7 @@ Selectors.matcher(::Type{BibliographyBlock}, node, page, doc) = Expanders.iscode
 function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
     @info "Expanding bibliography."
     raw_bib = "<dl>"
-    for (id, entry) in BIBLIOGRAPHY
+    for (id, entry) in sort(BIBLIOGRAPHY)
         @info "Expanding bibliography entry: $id."
 
         # Add anchor that citations can link to from anywhere in the docs.
