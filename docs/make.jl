@@ -146,7 +146,8 @@ makedocs(
              "Fractional step method" => "appendix/fractional_step.md",
          ],
 
-         "Function index" => "function_index.md"
+         "Function index" => "function_index.md",
+         "References"     => "references.md"
      ]
 )
 
