@@ -34,13 +34,14 @@ function expand_citation(elem, page, doc)
 end
 
 function expand_citation(link::Markdown.Link, meta, page, doc)
+    link.url !== "@cite" && return false
+
     if length(link.text) === 1 && isa(link.text[1], String)
         citation_name = link.text[1]
         @info "Expanding citation: $citation_name."
 
         if haskey(BIBLIOGRAPHY, citation_name)
             entry = BIBLIOGRAPHY[citation_name]
-            @info "$entry"
             headers = doc.internal.headers
             if Anchors.exists(headers, entry.id)
                 if Anchors.isunique(headers, entry.id)
@@ -64,6 +65,7 @@ function expand_citation(link::Markdown.Link, meta, page, doc)
     else
         error("Invalid citation: $(link.text)")
     end
+
     return false
 end
 
