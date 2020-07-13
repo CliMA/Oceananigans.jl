@@ -61,15 +61,15 @@ C_s = \left( \frac{3}{2}C_K\pi^\frac{4}{3} \right)^{-\frac{3}{4}} \approx 0.16
 using an empirical value of $C_K \approx 1.6$ for the Kolmogorov constant. This seems reasonable for isotropic
 turbulence if the grid spacing $\Delta$ falls in the inertial range. In practice, $C_s$ is a tunable parameter.
 
-Due to the presence of the constant $C_s$, the model is sometimes referred to as the \emph{constant Smagorinsky} model
-in contrast to \emph{dynamic Smagorinsky} models that dynamically compute $C_s$ to account for effects such as buoyant
+Due to the presence of the constant $C_s$, the model is sometimes referred to as the *constant Smagorinsky* model
+in contrast to *dynamic Smagorinsky* models that dynamically compute $C_s$ to account for effects such as buoyant
 convection.
 
 ## Anisotropic minimum dissipation models
 
 Minimum-dissipation eddy-viscosity models are a class of LES closures that use the minimum eddy dissipation required to
 dissipate the energy of sub-grid scale motion. \citet{Rozema15} proposed the first minimum-dissipation model appropriate
-for use on anisotropic grids, termed the \emph{anisotropic minimum dissipation} (AMD) model.
+for use on anisotropic grids, termed the *anisotropic minimum dissipation* (AMD) model.
 
 It has a number of desirable properties over Smagorinsky-type closures: it is more cost-effective than dynamic
 Smagorinsky, it appropriately switches off in laminar and transitional flows, and it is consistent with the exact SGS
@@ -82,7 +82,7 @@ which entail normalising the displacement, the velocity, and the velocity gradie
 the resulting eddy dissipation properly counteracts the spurious kinetic energy transferred by convective nonlinearity,
 to derive a modified AMD model.
 
-The eddy viscosity and diffusivity are defined in terms of eddy viscosity and diffusivity \emph{predictors}
+The eddy viscosity and diffusivity are defined in terms of eddy viscosity and diffusivity *predictors*
 $\nu_e^\dagger$ and $\kappa_e^\dagger$, such that
 ```math
 \nu_e = \text{max} \lbrace 0, \nu_e^\dagger \rbrace
