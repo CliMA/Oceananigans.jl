@@ -263,6 +263,7 @@ function nice_divergent_levels(c, clim)
 
     return levels
 end
+nothing # hide
 
 # Finally, we're ready to animate.
 
