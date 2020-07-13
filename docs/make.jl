@@ -1,17 +1,20 @@
 push!(LOAD_PATH, "..")
 
-using
-    Documenter,
-    Literate,
-    Plots,  # to avoid capturing precompilation output by Literate
-    Oceananigans,
-    Oceananigans.Operators,
-    Oceananigans.Grids,
-    Oceananigans.Diagnostics,
-    Oceananigans.OutputWriters,
-    Oceananigans.TurbulenceClosures,
-    Oceananigans.TimeSteppers,
-    Oceananigans.AbstractOperations
+using Documenter
+using Literate
+using Plots  # to avoid capturing precompilation output by Literate
+using Oceananigans
+using Oceananigans.Operators
+using Oceananigans.Grids
+using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+using Oceananigans.TurbulenceClosures
+using Oceananigans.TimeSteppers
+using Oceananigans.AbstractOperation
+
+const BIBLIOGRAPHY = import_bibtex("oceananigans.bib")
+include("bibliography.jl")
+include("citations.jl")
 
 #####
 ##### Generate examples
