@@ -13,7 +13,8 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
-const BIBLIOGRAPHY = import_bibtex("oceananigans.bib")
+bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
+const BIBLIOGRAPHY = import_bibtex(bib_filepath)
 @info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
 
 include("bibliography.jl")
