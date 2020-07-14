@@ -1,5 +1,6 @@
 function horizontal_average_is_correct(arch, FT)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(100, 100, 100))
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = z
@@ -12,6 +13,32 @@ function horizontal_average_is_correct(arch, FT)
     correct_profile = zC
 
     return all(computed_profile[2:end-1] .≈ correct_profile)
+end
+
+function zonal_average_is_correct(arch, FT)
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+
+    T₀(x, y, z) = z
+    set!(model; T=T₀)
+
+    T̅ = ZonalAverage(model.tracers.T; interval=0.5second)
+    computed_slice = dropdims(T̅(model), dims=(1,))
+    zC = znodes(Cell, grid)
+    return all([all(computed_slice[i, 2:end-1] .≈ zC) for i in 2:Ny+1])
+end
+
+function volume_average_is_correct(arch, FT)
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+
+    T₀(x, y, z) = z
+    set!(model; T=T₀)
+
+    T̅ = VolumeAverage(model.tracers.T; interval=0.5second)
+    return all(T̅(model) .≈ -50.0)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
@@ -132,6 +159,20 @@ end
             @info "  Testing horizontal average [$(typeof(arch))]"
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
+            end
+        end
+
+        @testset "Zonal average [$(typeof(arch))]" begin
+            @info "  Testing zonal average [$(typeof(arch))]"
+            for FT in float_types
+                @test zonal_average_is_correct(arch, FT)
+            end
+        end
+
+        @testset "Volume average [$(typeof(arch))]" begin
+            @info "  Testing volume average [$(typeof(arch))]"
+            for FT in float_types
+                @test zonal_average_is_correct(arch, FT)
             end
         end
     end
