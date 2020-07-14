@@ -14,7 +14,7 @@ using Oceananigans: AbstractAverage
 
 include("diagnostics_kernels.jl")
 include("nan_checker.jl")
-include("horizontal_average.jl")
+include("averages.jl")
 include("time_series.jl")
 include("field_maximum.jl")
 include("cfl.jl")
