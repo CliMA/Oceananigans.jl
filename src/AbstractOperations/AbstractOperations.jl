@@ -18,6 +18,7 @@ using Oceananigans.Fields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 
+using Oceananigans: AbstractAverage
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: VolumeAverage, HorizontalAverage

@@ -1,4 +1,5 @@
 using Oceananigans.Utils: @loop_xyz
+using Oceananigans: AbstractAverage
 import Oceananigans.Fields: location, total_size
 
 """

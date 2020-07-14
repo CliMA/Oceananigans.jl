@@ -4,11 +4,11 @@ using Oceananigans.Utils
 using Oceananigans.Grids: total_size
 
 """
-    VolumeAverage{F, R, P, I, Ω} <: AbstractDiagnostic
+    VolumeAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic{F}
 
 A diagnostic for computing the volume average of a field.
 """
-mutable struct VolumeAverage{F, R, P, I, Ω, G} <: AbstractAverage{T}
+mutable struct VolumeAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
           field :: F
          result :: P
       frequency :: Ω
@@ -19,11 +19,11 @@ mutable struct VolumeAverage{F, R, P, I, Ω, G} <: AbstractAverage{T}
 end
 
 """
-    HorizontalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
+    HorizontalAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic{F}
 
 A diagnostic for computing horizontal average of a field.
 """
-mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractAverage{T}
+mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
           field :: F
          result :: P
       frequency :: Ω
@@ -38,7 +38,7 @@ end
 
 A diagnostic for computing the zonal average of a field.
 """
-mutable struct ZonalAverage{F, R, P, I, Ω, G} <: AbstractAverage{T}
+mutable struct ZonalAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
           field :: F
          result :: P
       frequency :: Ω
