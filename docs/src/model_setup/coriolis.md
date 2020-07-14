@@ -8,7 +8,13 @@ three options are available: no rotation, $f$-plane, and $\beta$-plane.
     Coriolis and centripetal forces, both of which arise in non-inertial reference frames. But here the model only
     considers the Coriolis force.
 
-To use no rotation, pass
+## No rotation
+
+By default there is no rotation. This can be made explicit by passing `coriolis = nothing` to a model constructor.
+
+## $f$-plane
+
+To set up an $f$-plane with, for example, Coriolis parameter $f = 10^{-4} \text{s}^{-1}$
 
 ```@meta
 DocTestSetup = quote
@@ -16,19 +22,8 @@ DocTestSetup = quote
 end
 ```
 
-```jldoctest; output = false
-julia> coriolis = nothing
-
-nothing
-```
-
-## $f$-plane
-
-To set up an $f$-plane with, for example, Coriolis parameter $f = 10^{-4} \text{s}^{-1}$
-
 ```jldoctest
 julia> coriolis = FPlane(f=1e-4)
-
 FPlane{Float64}: f = 1.00e-04
 ```
 
@@ -38,7 +33,6 @@ $\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}$
 
 ```jldoctest
 julia> coriolis = FPlane(rotation_rate=7.292115e-5, latitude=45)
-
 FPlane{Float64}: f = 1.03e-04
 ```
 
@@ -49,7 +43,6 @@ $\bm{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}$,
 
 ```jldoctest
 julia> coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)
-
 Non-TraditionalFPlane{Float64}:fz = 1.00e-04, fy = 2.00e-04
 ```
 
@@ -59,7 +52,6 @@ on Earth which has a rotation rate of $\Omega = 7.292115 \times 10^{-5} \text{s}
 
 ```jldoctest
 julia> coriolis = NonTraditionalFPlane(rotation_rate=7.292115e-5, latitude=45)
-
 Non-TraditionalFPlane{Float64}:fz = 1.03e-04, fy = 1.03e-04
 ```
 
@@ -73,7 +65,6 @@ set up with
 
 ```jldoctest
 julia> coriolis = BetaPlane(f₀=1e-4, β=1.5e-11)
-
 BetaPlane{Float64}: f₀ = 1.00e-04, β = 1.50e-11
 ```
 
@@ -83,7 +74,6 @@ which has a rotation rate of $\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}$ an
 
 ```jldoctest
 julia> coriolis = BetaPlane(rotation_rate=7.292115e-5, latitude=-10, radius=6371e3)
-
 BetaPlane{Float64}: f₀ = -2.53e-05, β = 2.25e-11
 ```
 

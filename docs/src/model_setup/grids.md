@@ -17,7 +17,6 @@ end
 
 ```jldoctest
 julia> grid = RegularCartesianGrid(size=(64, 32, 16), extent=(200, 100, 100))
-
 RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 200.0], y ∈ [0.0, 100.0], z ∈ [-100.0, 6.25]
                  topology: (Periodic, Periodic, Bounded)
@@ -39,7 +38,6 @@ in the y- and z-dimensions:
 ```jldoctest
 julia> grid = RegularCartesianGrid(topology=(Periodic, Bounded, Bounded),
                             size=(64, 32, 16), extent=(200, 100, 100))
-
 RegularCartesianGrid{Float64, Periodic, Bounded, Bounded}
                    domain: x ∈ [0.0, 200.0], y ∈ [0.0, 103.125], z ∈ [-100.0, 6.25]
                  topology: (Periodic, Bounded, Bounded)
@@ -55,7 +53,6 @@ to use the domain $x \in [-100, 100]$ meters, $y \in [0, 12.5]$ meters, and $z \
 
 ```jldoctest
 julia> grid = RegularCartesianGrid(size=(64, 32, 16), x=(-100, 100), y=(0, 12.5), z=(-π, π))
-
 RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [-100.0, 100.0], y ∈ [0.0, 12.5], z ∈ [-3.141592653589793, 3.5342917352885173]
                  topology: (Periodic, Periodic, Bounded)
@@ -72,7 +69,6 @@ two-dimensional grid in the $xz$-plane can be constructed using
 ```jldoctest
 julia> grid = RegularCartesianGrid(topology=(Periodic, Flat, Bounded),
                             size=(64, 1, 16), extent=(200, 1, 100))
-
 RegularCartesianGrid{Float64, Periodic, Flat, Bounded}
                    domain: x ∈ [0.0, 200.0], y ∈ [0.0, 1.0], z ∈ [-100.0, 6.25]
                  topology: (Periodic, Flat, Bounded)
@@ -93,7 +89,6 @@ example, to set up a 1D model with $N_z$ grid points
 ```jldoctest
 julia> grid = RegularCartesianGrid(topology=(Flat, Flat, Bounded),
                             size=(1, 1, 90), extent=(1, 1, 1000))
-
 RegularCartesianGrid{Float64, Flat, Flat, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1000.0, 11.111111111111086]
                  topology: (Flat, Flat, Bounded)
