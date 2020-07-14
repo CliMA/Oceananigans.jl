@@ -105,7 +105,7 @@ abstract type AbstractDiagnostic end
 Abstract subtype for averagesthat compute information from the current
 model state.
 """
-abstract type AbstractAverage <: AbstractDiagnostic end
+abstract type AbstractAverage{T} <: AbstractDiagnostic end
 
 """
     AbstractOutputWriter
