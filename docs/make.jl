@@ -71,6 +71,7 @@ makedocs(
               Oceananigans.TurbulenceClosures,
               Oceananigans.AbstractOperations],
    doctest = true,
+    strict = true,
    clean   = true,
  checkdocs = :all,
     format = format,
