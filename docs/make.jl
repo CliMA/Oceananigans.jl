@@ -64,6 +64,7 @@ makedocs(
    modules = [Oceananigans,
               Oceananigans.Grids,
               Oceananigans.Operators,
+              Oceananigans.Models,
               Oceananigans.Diagnostics,
               Oceananigans.OutputWriters,
               Oceananigans.TimeSteppers,
