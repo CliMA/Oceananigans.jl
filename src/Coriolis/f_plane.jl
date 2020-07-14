@@ -95,4 +95,4 @@ end
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = - coriolis.fy * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.show(io::IO, f_plane::NonTraditionalFPlane{FT}) where FT =
-    println(io, "Non-Traditional FPlane{$FT}:", @sprintf("fz = %.2e, fy = %.2e", f_plane.fz, f_plane.fy))
+    println(io, "Non-TraditionalFPlane{$FT}:", @sprintf("fz = %.2e, fy = %.2e", f_plane.fz, f_plane.fy))
