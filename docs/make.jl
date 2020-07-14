@@ -1,17 +1,24 @@
 push!(LOAD_PATH, "..")
 
-using
-    Documenter,
-    Literate,
-    Plots,  # to avoid capturing precompilation output by Literate
-    Oceananigans,
-    Oceananigans.Operators,
-    Oceananigans.Grids,
-    Oceananigans.Diagnostics,
-    Oceananigans.OutputWriters,
-    Oceananigans.TurbulenceClosures,
-    Oceananigans.TimeSteppers,
-    Oceananigans.AbstractOperations
+using Documenter
+using Bibliography
+using Literate
+using Plots  # to avoid capturing precompilation output by Literate
+using Oceananigans
+using Oceananigans.Operators
+using Oceananigans.Grids
+using Oceananigans.Diagnostics
+using Oceananigans.OutputWriters
+using Oceananigans.TurbulenceClosures
+using Oceananigans.TimeSteppers
+using Oceananigans.AbstractOperations
+
+bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
+const BIBLIOGRAPHY = import_bibtex(bib_filepath)
+@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
+
+include("bibliography.jl")
+include("citations.jl")
 
 #####
 ##### Generate examples
@@ -143,7 +150,8 @@ makedocs(
              "Fractional step method" => "appendix/fractional_step.md",
          ],
 
-         "Function index" => "function_index.md"
+         "Function index" => "function_index.md",
+         "References"     => "references.md"
      ]
 )
 

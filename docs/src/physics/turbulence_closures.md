@@ -110,7 +110,7 @@ Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by
 Verstappen18 and described and tested by Vreugdenhil18.
 The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
 In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms
-of eddy viscosity and diffusivity \emph{predictors}
+of eddy viscosity and diffusivity *predictors*
 $\nu_e^\dagger$ and $\kappa_e^\dagger$, such that
 ```math
     \nu_e = \max \left ( 0, \nu_e^\dagger \right ) + \nu
