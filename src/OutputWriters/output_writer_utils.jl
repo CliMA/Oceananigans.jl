@@ -44,9 +44,18 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # When checkpointing, `serializeproperty!` is used, which serializes objects
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = (file[location] = p)
-serializeproperty!(file, location, p::FieldBoundaryConditions) = (file[location] = p)
 serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
+
+function serializeproperty!(file, location, p::FieldBoundaryConditions)
+    if has_reference(Function, p)
+        @warn "Cannot serialize $location as it contains functions. Will replace with missing. " *
+              " Function boundary conditions must be restored manually."
+        file[location] = missing
+    else
+        file[location] = p
+    end
+end
 
 function serializeproperty!(file, location, p::Field{LX, LY, LZ}) where {LX, LY, LZ}
     serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))

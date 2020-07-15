@@ -399,6 +399,23 @@ function run_thermal_bubble_checkpointer_tests(arch)
     @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
 end
 
+function checkpoint_with_function_bcs(arch)
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+
+    @inline some_flux(x, y, t, p) = 2x + exp(y)
+    some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux, nothing)
+    top_T_bc = FluxBoundaryCondition(some_flux_bf)
+    T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
+
+    model = IncompressibleModel(grid=grid, boundary_conditions=(T=T_bcs,))
+    checkpointer = Checkpointer(model, interval=Inf)
+    write_output(model, checkpointer)
+    model = nothing
+
+    restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2")
+    return restored_model.tracers.T.boundary_conditions.z.top === missing
+end
+
 @testset "Output writers" begin
     @info "Testing output writers..."
 
@@ -418,6 +435,7 @@ end
         @testset "Checkpointer [$(typeof(arch))]" begin
             @info "  Testing Checkpointer [$(typeof(arch))]..."
             run_thermal_bubble_checkpointer_tests(arch)
+            checkpoint_with_function_bcs(arch)
         end
     end
 end

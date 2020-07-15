@@ -91,7 +91,7 @@ end
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 function restore_if_not_missing(file, address)
-    if haskey(file, address)
+    if file[address] !== missing
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *
@@ -123,7 +123,13 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     file = jldopen(filepath, "r")
     cps = file["checkpointed_properties"]
 
-    arch = file["architecture"]
+    if haskey(kwargs, :architecture)
+        arch = kwargs[:architecture]
+        filter!(p -> p ≠ :architecture, cps)
+    else
+        arch = file["architecture"]
+    end
+
     grid = file["grid"]
 
     # Restore velocity fields
