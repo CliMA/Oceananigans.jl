@@ -163,6 +163,34 @@ function horizontal_average_of_plus(model)
     return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
+function zonal_average_of_plus(model)
+    S₀(x, y, z) = sin(π*z) * sin(π*y)
+    T₀(x, y, z) = 42*z + y^2
+    set!(model; S=S₀, T=T₀)
+    T, S = model.tracers
+
+    ST = ZonalAverage(S + T, model)
+    computed_slice = ST(model)
+
+    yC = ynodes(Cell, model.grid, reshape=true)
+    zC = znodes(Cell, model.grid, reshape=true)
+    correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
+
+    return all(computed_slice[1, 2:end-1, 2:end-1] .≈ correct_slice[1, :, :])
+end
+
+function volume_average_of_times(model)
+    S₀(x, y, z) = 1 + sin(2π*x) 
+    T₀(x, y, z) = y
+    set!(model; S=S₀, T=T₀)
+    T, S = model.tracers
+
+    ST = VolumeAverage(S * T, model)
+    computed_scalar = ST(model)
+
+    return all(computed_scalar[:] .≈ 0.5)
+end
+
 function horizontal_average_of_minus(model)
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
@@ -407,6 +435,16 @@ end
 
                     @test multiplication_and_derivative_ccf(model)
                     @test multiplication_and_derivative_ccc(model)
+                end
+
+                @testset "Zonal averages of operations [$FT, $(typeof(arch))]" begin
+                    @info "      Testing zonal averges..."
+                    @test zonal_average_of_plus(model)
+                end
+
+                @testset "Volume averages of operations [$FT, $(typeof(arch))]" begin
+                    @info "      Testing volume averges..."
+                    @test volume_average_of_times(model)
                 end
             end
         end
