@@ -155,7 +155,7 @@ makedocs(
      ]
 )
 
-withenv("GITHUB_REPOSITORY" => "CliMA/OceananigansDocumentation") do
+withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
   deploydocs(        repo = "github.com/CliMA/OceananigansDocumentation.git",
                 versions = ["stable" => "v^", "v#.#.#"],
             push_preview = true
