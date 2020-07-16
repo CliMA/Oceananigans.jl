@@ -10,17 +10,17 @@
 
 for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
     @eval begin
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, U, Ks) where {C1, C2} = (
-              $stress_div(i, j, k, grid, closures[1], U, Ks[1])
-            + $stress_div(i, j, k, grid, closures[2], U, Ks[2]))
+        @inline $stress_div(i, j, k, grid::AbstractGrid, clock, closures::Tuple{C1, C2}, U, Ks) where {C1, C2} = (
+                $stress_div(i, j, k, grid, clock, closures[1], U, Ks[1])
+              + $stress_div(i, j, k, grid, clock, closures[2], U, Ks[2]))
     end
 end
 
 # Tracer flux divergences
 
-@inline ∇_κ_∇c(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, c, iᶜ, Ks, C, buoyancy) where {C1, C2} = (
-      ∇_κ_∇c(i, j, k, grid, closures[1], c, iᶜ, Ks[1], C, buoyancy)
-    + ∇_κ_∇c(i, j, k, grid, closures[2], c, iᶜ, Ks[2], C, buoyancy))
+@inline ∇_κ_∇c(i, j, k, grid::AbstractGrid, clock, closures::Tuple{C1, C2}, c, iᶜ, Ks, C, buoyancy) where {C1, C2} = (
+        ∇_κ_∇c(i, j, k, grid, clock, closures[1], c, iᶜ, Ks[1], C, buoyancy)
+      + ∇_κ_∇c(i, j, k, grid, clock, closures[2], c, iᶜ, Ks[2], C, buoyancy))
 
 # Utilities for closures
 

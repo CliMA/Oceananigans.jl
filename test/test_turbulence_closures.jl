@@ -24,6 +24,7 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(arch, grid)
        tracers = TracerFields(arch, grid, (:T, :S))
+         clock = Clock(time=0.0)
 
     u, v, w = velocities
        T, S = tracers
@@ -40,10 +41,10 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
 
     U, C = datatuples(velocities, tracers)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, closure, C.T, Val(1)) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U) == 6ν )
+    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 2κ &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2ν &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4ν &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6ν )
 end
 
 function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
@@ -54,6 +55,7 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
     velocities = VelocityFields(arch, grid)
        tracers = TracerFields(arch, grid, (:T, :S))
+         clock = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)
 
@@ -78,10 +80,10 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
 
     U, C = datatuples(velocities, tracers)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, closure, C.T, Val(1)) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, closure, U) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, closure, U) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, closure, U) == 6νh + 8νv)
+    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 8κh + 10κv &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2νh + 4νv &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4νh + 6νv &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6νh + 8νv)
 end
 
 function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
