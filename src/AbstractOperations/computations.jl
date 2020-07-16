@@ -40,11 +40,13 @@ function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
 
-    workgroup, worksize= work_layout(computation.grid, :xyz)
-    kernel! = _compute!(device(arch), workgroup, worksize)
+    workgroup, worksize = work_layout(computation.grid, :xyz)
 
-    event = kernel!(result_data, computation.grid, computation.operation)
-    wait(event)
+    compute_kernel! = _compute!(device(arch), workgroup, worksize)
+
+    event = compute_kernel!(result_data, computation.grid, computation.operation; dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
 
     return nothing
 end
