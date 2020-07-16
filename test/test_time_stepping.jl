@@ -36,7 +36,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     return nothing
 end
 
-using Oceananigans.Utils: work_config
+using Oceananigans.Utils: launch!
 using KernelAbstractions
 
 """
@@ -57,10 +57,7 @@ function compute_w_from_continuity(arch, FT)
     state = (velocities=datatuple(U), tracers=(), diffusivities=nothing)
     fill_halo_regions!(U, arch, nothing, state)
 
-    workgroup, worksize = work_config(grid, :xy)
-    kernel! = _compute_w_from_continuity!(device(arch), workgroup, worksize)
-    event = kernel!((u=U.u.data, v=U.v.data, w=U.w.data), grid)
-    wait(event)
+    launch!(arch, grid, :xy, _compute_w_from_continuity!, (u=U.u.data, v=U.v.data, w=U.w.data), grid)
             
     fill_halo_regions!(U, arch, nothing, state)
     velocity_div!(grid, U.u.data, U.v.data, U.w.data, div_U.data)
