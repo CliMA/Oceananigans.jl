@@ -54,8 +54,7 @@ end
         replace_strings = [
             ("size = (1, 1, 128)", "size = (1, 1, 16)"),
             ("stop_iteration = 1000", "stop_iteration = 1"),
-            ("stop_iteration += 100", "stop_iteration += 1"),
-            ("for i=1:100", "for i=1:1"),
+            ("simulation.stop_iteration += 10000", "simulation.stop_iteration += 100"),
             ("mp4(", "# mp4(")
         ]
 
