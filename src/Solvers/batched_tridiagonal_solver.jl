@@ -57,9 +57,9 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 function solve_batched_tridiagonal_system!(ϕ, arch, solver)
     a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
 
-    workgroup, ndrange = work_layout(grid, :xy)
-    kernel! = solve_batched_tridiagonal_system_kernel!(device(arch), workgroup)
-    kernel!(ϕ, a, b, c, f, t, grid, params; ndrange=ndrange)
+    launch!(arch, grid, :xy, solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, params)
+
+    return nothing
 end
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
