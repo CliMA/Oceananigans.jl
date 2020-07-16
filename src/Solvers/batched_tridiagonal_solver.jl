@@ -57,43 +57,40 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 function solve_batched_tridiagonal_system!(ϕ, arch, solver)
     a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
 
-    @launch(device(arch), config=launch_config(grid, :xy),
-            solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, params))
-
-    return nothing
+    workgroup, ndrange = work_layout(grid, :xy)
+    kernel! = solve_batched_tridiagonal_system_kernel!(device(arch), workgroup)
+    kernel!(ϕ, a, b, c, f, t, grid, params; ndrange=ndrange)
 end
 
-function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
-    @loop_xy i j grid begin
-        @inbounds begin
-            β  = get_coefficient(b, i, j, 1, grid, p)
-            f₁ = get_coefficient(f, i, j, 1, grid, p)
-            ϕ[i, j, 1] = f₁ / β
+    i, j = @index(Global, NTuple)
 
-            @unroll for k = 2:Nz
-                cₖ₋₁ = get_coefficient(c, i, j, k-1, grid, p)
-                bₖ   = get_coefficient(b, i, j, k,   grid, p)
-                aₖ₋₁ = get_coefficient(a, i, j, k-1, grid, p)
+    @inbounds begin
+        β  = get_coefficient(b, i, j, 1, grid, p)
+        f₁ = get_coefficient(f, i, j, 1, grid, p)
+        ϕ[i, j, 1] = f₁ / β
 
-                t[i, j, k] = cₖ₋₁ / β
-                β    = bₖ - aₖ₋₁ * t[i, j, k]
+        @unroll for k = 2:Nz
+            cₖ₋₁ = get_coefficient(c, i, j, k-1, grid, p)
+            bₖ   = get_coefficient(b, i, j, k,   grid, p)
+            aₖ₋₁ = get_coefficient(a, i, j, k-1, grid, p)
 
-                # This should only happen on last element of forward pass for problems
-                # with zero eigenvalue. In that case the algorithmn is still stable.
-                abs(β) < 1e-12 && break
+            t[i, j, k] = cₖ₋₁ / β
+            β    = bₖ - aₖ₋₁ * t[i, j, k]
 
-                fₖ = get_coefficient(f, i, j, k, grid, p)
+            # This should only happen on last element of forward pass for problems
+            # with zero eigenvalue. In that case the algorithmn is still stable.
+            abs(β) < 1e-12 && break
 
-                ϕ[i, j, k] = (fₖ - aₖ₋₁ * ϕ[i, j, k-1]) / β
-            end
+            fₖ = get_coefficient(f, i, j, k, grid, p)
 
-            @unroll for k = Nz-1:-1:1
-                ϕ[i, j, k] = ϕ[i, j, k] - t[i, j, k+1] * ϕ[i, j, k+1]
-            end
+            ϕ[i, j, k] = (fₖ - aₖ₋₁ * ϕ[i, j, k-1]) / β
+        end
+
+        @unroll for k = Nz-1:-1:1
+            ϕ[i, j, k] = ϕ[i, j, k] - t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
-
-    return nothing
 end

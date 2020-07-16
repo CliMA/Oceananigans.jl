@@ -17,8 +17,10 @@ function time_step_precomputations!(diffusivities, pressures, velocities, tracer
 
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
-    @launch(device(model.architecture), config=launch_config(model.grid, :xy),
-            update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
+    workgroup, worksize = work_layout(model.grid, :xy)
+    kernel! = update_hydrostatic_pressure!(device(model.architecture), workgroup, worksize)
+    event = kernel!(pressures.pHY′, model.grid, model.buoyancy, tracers)
+    wait(event)
 
     fill_halo_regions!(model.pressures.pHY′, model.architecture)
 
@@ -62,8 +64,8 @@ end
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
-    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture,
-                       model.clock, state(model))
+
+    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture, model.clock, state(model))
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
                         model.architecture, model.grid, Δt, predictor_velocities)
@@ -84,16 +86,18 @@ Update the horizontal velocities u and v via
 
 Note that the vertical velocity is not explicitly time stepped.
 """
-function _fractional_step_velocities!(U, grid, Δt, pNHS)
-    @loop_xyz i j k grid begin
-        @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
-        @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
-    end
-    return nothing
+@kernel function _fractional_step_velocities!(U, grid, Δt, pNHS)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
 function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    @launch device(arch) config=launch_config(grid, :xyz) _fractional_step_velocities!(U, grid, Δt, pNHS)
+    workgroup, worksize = work_layout(grid, :xyz)
+    kernel! = _fractional_step_velocities!(device(arch), workgroup, worksize)
+    event = kernel!(U, grid, Δt, pNHS)
+    wait(event)
     return nothing
 end

@@ -1,7 +1,7 @@
 using CUDA
-using GPUifyLoops: @launch, @loop
+using KernelAbstractions
 using Oceananigans.Architectures: device
-using Oceananigans.Utils: @loop_xyz
+using Oceananigans.Utils: work_layout
 
 """
     set!(model; kwargs...)
@@ -84,15 +84,16 @@ end
 
 # Set the GPU field `u` to the CuArray `v`.
 @hascuda function set!(u::AbstractGPUField, v::CuArray)
-    @launch device(GPU()) config=launch_config(u.grid, :xyz) _set_gpu!(u.data, v, u.grid)
+    workgroup, ndrange = work_layout(u.grid, :xyz)
+    kernel! = _set_gpu!(CUDADevice(), workgroup)
+    event = kernel!(u.data, v, u.grid; ndrange=ndrange)
+    wait(event)
     return nothing
 end
 
-function _set_gpu!(u, v, grid)
-	@loop_xyz i j k grid begin
-        @inbounds u[i, j, k] = v[i, j, k]
-    end
-    return nothing
+@kernel function _set_gpu!(u, v, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds u[i, j, k] = v[i, j, k]
 end
 
 # Set the GPU field `u` data to the CPU field data of `v`.

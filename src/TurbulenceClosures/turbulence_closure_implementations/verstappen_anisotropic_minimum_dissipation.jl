@@ -174,38 +174,32 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
+    workgroup, worksize = work_layout(grid, :xyz)
+
+    viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
+    viscosity_kernel!(K.νₑ, grid, closure, buoyancy, U, C)
+
+    diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
+    event = nothing
 
     for (tracer_index, κₑ) in enumerate(K.κₑ)
         @inbounds c = C[tracer_index]
-        @launch(device(arch), config=launch_config(grid, :xyz),
-                calculate_tracer_diffusivity!(κₑ, grid, closure, c, Val(tracer_index), U))
+        event = diffusivity_kernel!(κₑ, grid, closure, c, Val(tracer_index), U)
     end
+
+    wait(event)
 
     return nothing
 end
 
-function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
-            end
-        end
-    end
-    return nothing
+@kernel function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+    i, j, k = @index(Global, NTuple)
+    @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
 end
 
-function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
-            end
-        end
-    end
-    return nothing
+@kernel function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
+    i, j, k = @index(Global, NTuple)
+    @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
 end
 
 #####

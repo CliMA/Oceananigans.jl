@@ -207,8 +207,13 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
+    workgroup, worksize = work_layout(grid, :xyz)
+
+    kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    event = kernel!(K.νₑ, grid, closure, buoyancy, U, C)
+    wait(event)
+
+    return nothing
 end
 
 "Return the filter width for a Leith Diffusivity on a Regular Cartesian grid."

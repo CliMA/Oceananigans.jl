@@ -34,7 +34,6 @@ using Dates: DateTime, Nanosecond
 using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
-using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
 
 using SeawaterPolynomials

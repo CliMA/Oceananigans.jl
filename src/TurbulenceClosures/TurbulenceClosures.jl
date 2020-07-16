@@ -26,7 +26,7 @@ export
   cell_diffusion_timescale
 
 using CUDA
-using GPUifyLoops
+using KernelAbstractions
 
 import Oceananigans.Utils: with_tracers
 
