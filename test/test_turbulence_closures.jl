@@ -102,6 +102,42 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
     return true
 end
 
+function time_step_with_variable_isotropic_diffusivity(arch)
+
+    closure = IsotropicDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
+                                   κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
+
+    model = IncompressibleModel(
+        architecture=arch, float_type=FT, closure=closure,
+        grid=RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3))
+    )
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
+function time_step_with_variable_anisotropic_diffusivity(arch)
+
+    closure = AnisotropicDiffusivity(
+                                     νx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
+                                     νy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
+                                     νz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t),
+                                     κx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
+                                     κy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
+                                     κz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t)
+                                    )
+
+    model = IncompressibleModel(
+        architecture=arch, float_type=FT, closure=closure,
+        grid=RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3))
+    )
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
 
@@ -153,6 +189,14 @@ end
         for T in float_types
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
+        end
+    end
+
+    @testset "Time-stepping with variable diffusivities" begin
+        @info "  Testing time-stepping with presribed variable diffusivities..."
+        for arch in archs
+            @test time_step_with_variable_isotropic_diffusivity(arch)
+            @test time_step_with_variable_anisotropic_diffusivity(arch)
         end
     end
 
