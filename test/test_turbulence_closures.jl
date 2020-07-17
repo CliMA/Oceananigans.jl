@@ -108,8 +108,8 @@ function time_step_with_variable_isotropic_diffusivity(arch)
                                    κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
     model = IncompressibleModel(
-        architecture=arch, float_type=FT, closure=closure,
-        grid=RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3))
+        architecture=arch, closure=closure,
+        grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -129,8 +129,8 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
                                     )
 
     model = IncompressibleModel(
-        architecture=arch, float_type=FT, closure=closure,
-        grid=RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3))
+        architecture=arch, closure=closure,
+        grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
