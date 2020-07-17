@@ -32,7 +32,19 @@ correlations and data" (2010).
 """
 IsotropicDiffusivity(; ν=ν₀, κ=κ₀) = IsotropicDiffusivity(ν, κ)
 
-ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀) = IsotropicDiffusivity(FT(ν), FT(κ))
+"""
+    ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
+
+Returns parameters for an isotropic constant diffusivity model with viscosity `ν`
+and thermal diffusivities `κ` for each tracer field in `tracers`
+`ν` and the fields of `κ` have type `FT`.
+
+See also `IsotropicDiffusivity`.
+"""
+function ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
+    κ = convert_diffusivity(FT, κ)
+    return IsotropicDiffusivity(FT(ν), κ)
+end
 
 function with_tracers(tracers, closure::IsotropicDiffusivity)
     κ = tracer_diffusivities(tracers, closure.κ)

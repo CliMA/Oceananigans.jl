@@ -8,9 +8,9 @@ end
 
 datatuple(args, names) = NamedTuple{names}(a.data for a in args)
 
-function test_closure_instantiation(FT, closurename)
-    closure = getproperty(TurbulenceClosures, closurename)(FT)
-    return eltype(closure) == FT
+function test_closure_instantiation(closurename)
+    closure = getproperty(TurbulenceClosures, closurename)()
+    return true
 end
 
 function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
@@ -135,10 +135,8 @@ end
 
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
-        for T in float_types
-            for closure in closures
-                @test test_closure_instantiation(T, closure)
-            end
+        for closure in closures
+            @test test_closure_instantiation(closure)
         end
     end
 

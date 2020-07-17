@@ -30,9 +30,6 @@ of existing correlations and data" (2010).
 AnisotropicDiffusivity(; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀) =
     AnisotropicDiffusivity(νx, νy, νz, κx, κy, κz)
 
-convert_diffusivity(FT, κ::Number) = convert(FT, κ)
-convert_diffusivity(FT, κ::NamedTuple) = convert(NamedTuple{propertynames(κ), NTuple{length(κ), FT}}, κ)
-
 """
     ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
 
@@ -41,12 +38,7 @@ and vertical viscosities `νh`, `νv` and constant horizontal and vertical trace
 diffusivities `κh`, `κv`. `κh` and `κv` may be `NamedTuple`s with fields corresponding
 to each tracer, or a single number to be a applied to all tracers.
 
-By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for both the horizontal
-and vertical viscosity, and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used
-for the horizontal and vertical diffusivities applied to every tracer.
-These values are the approximate viscosity and thermal diffusivity for seawater at 20°C
-and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review
-of existing correlations and data" (2010).
+See also `AnisotropicDiffusivity`.
 """
 function ConstantAnisotropicDiffusivity(FT=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=κ₀)
     κh = convert_diffusivity(FT, κh)
