@@ -68,6 +68,8 @@ run!(simulation)
 # stored as 3D arrays in Oceananigans so we plot `interior(T)[1, 1, :]`
 # which will return a 1D array.
 
+using Plots, Printf
+
 ## A convenient function for generating a label with the current model time
 tracer_label(time) = @sprintf("t = %.3f", time)
 
@@ -103,7 +105,7 @@ nothing
 # iterations we ended up saving at, and plot the evolution of the
 # temperature profile in a loop over the iterations.
 
-using JLD2, Plots
+using JLD2
 
 file = jldopen(simulation.output_writers[:temperature].filepath)
 
