@@ -95,7 +95,7 @@ function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
     store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
     store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
 
-    store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
+    event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
     event = nothing
 
     # Tracer fields
@@ -161,4 +161,3 @@ end
 
 ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻) =
     launch!(arch, grid, :xyz,  _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻)
-
