@@ -177,10 +177,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
-    workgroup, worksize = work_layout(grid, :xyz)
-    kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
-    event = kernel!(K.νₑ, grid, closure, buoyancy, U, C)
-    wait(event)
+    launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C)
     return nothing
 end
 

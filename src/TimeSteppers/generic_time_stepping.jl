@@ -17,10 +17,8 @@ function time_step_precomputations!(diffusivities, pressures, velocities, tracer
 
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
-    workgroup, worksize = work_layout(model.grid, :xy)
-    kernel! = update_hydrostatic_pressure!(device(model.architecture), workgroup, worksize)
-    event = kernel!(pressures.pHY′, model.grid, model.buoyancy, tracers)
-    wait(event)
+    launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
+            pressures.pHY′, model.grid, model.buoyancy, tracers)
 
     fill_halo_regions!(model.pressures.pHY′, model.architecture)
 

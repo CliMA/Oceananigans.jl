@@ -84,10 +84,7 @@ end
 
 # Set the GPU field `u` to the CuArray `v`.
 @hascuda function set!(u::AbstractGPUField, v::CuArray)
-    workgroup, ndrange = work_layout(u.grid, :xyz)
-    kernel! = _set_gpu!(CUDADevice(), workgroup)
-    event = kernel!(u.data, v, u.grid; ndrange=ndrange)
-    wait(event)
+    launch!(CUDADevice(), u.grid, :xyz, _set_gpu!, u.data, v, u.grid)
     return nothing
 end
 
