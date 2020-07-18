@@ -33,7 +33,8 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ, arch)
-    launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ)
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ, dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     fill_halo_regions!(∇²ϕ, arch)
 
@@ -63,7 +64,8 @@ function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
     interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ, arch)
-    launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ)
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ, dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     fill_halo_regions!(∇²ϕ, arch)
 
@@ -101,7 +103,8 @@ function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     interior(ϕ) .= real.(solver.storage)
 
     fill_halo_regions!(ϕ, arch)
-    launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data)
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     fill_halo_regions!(∇²ϕ, arch)
     interior(∇²ϕ) ≈ RHS_orig
@@ -140,7 +143,8 @@ function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
     @. ϕ_p = real(storage)
 
     fill_halo_regions!(ϕ, arch)
-    launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data)
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     fill_halo_regions!(∇²ϕ, arch)
     interior(∇²ϕ) ≈ RHS_orig
