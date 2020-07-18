@@ -98,6 +98,6 @@ function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
     workgroup, worksize = work_layout(grid, :xyz)
     kernel! = _fractional_step_velocities!(device(arch), workgroup, worksize)
     event = kernel!(U, grid, Δt, pNHS)
-    wait(event)
+    wait(device(arch), event)
     return nothing
 end
