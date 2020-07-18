@@ -55,7 +55,6 @@ function launch!(arch, grid, layout, kernel!, args...; sync=true, kwargs...)
     workgroup, worksize = work_layout(grid, layout)
     loop! = kernel!(device(arch), workgroup, worksize)
     event = loop!(args...; ndrange=worksize, kwargs...)
-    sync && wait(event)
+     wait(device(arch), event)
     return nothing
 end
-
