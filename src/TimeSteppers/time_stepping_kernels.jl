@@ -13,24 +13,25 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
     calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
     calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
 
-    Gu_event = calculate_Gu_kernel!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
-    Gv_event = calculate_Gv_kernel!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
-    Gw_event = calculate_Gw_kernel!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, clock)
+    default_stream = Event(device(arch))
 
-    Gc_events = []
+    Gu_event = calculate_Gu_kernel!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock, dependencies=default_stream)
+    Gv_event = calculate_Gv_kernel!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock, dependencies=default_stream)
+    Gw_event = calculate_Gw_kernel!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, clock, dependencies=default_stream)
+
+    events = [Gu_event, Gv_event, Gw_event]
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
         @inbounds Fc = F[tracer_index+3]
         @inbounds  c = C[tracer_index]
 
-        event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, clock)
-        push!(Gc_events, event)
+        Gc_event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, clock, dependencies=default_stream)
+
+        push!(events, Gc_event)
     end
 
-    multi = MultiEvent(tuple(Gu_event, Gv_event, Gw_event, Gc_events...))
-
-    wait(multi)
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -81,19 +82,29 @@ end
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, state)
 
+    events = []
+
     # Velocity fields
     for i in 1:3
-        apply_x_bcs!(Gⁿ[i], U[i], arch, clock, state)
-        apply_y_bcs!(Gⁿ[i], U[i], arch, clock, state)
-        apply_z_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, clock, state)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        apply_x_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
-        apply_y_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
-        apply_z_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
+
+    events = filter(e -> typeof(e) <: Base.Event, events)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -110,7 +121,9 @@ the `buoyancy_perturbation` downwards:
 """
 @kernel function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
+
     @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz+1, grid)
+
     @unroll for k in grid.Nz-1 : -1 : 1
         @inbounds pHY′[i, j, k] =
             pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k+1, grid)
@@ -122,8 +135,15 @@ Compute the vertical velocity w by integrating the continuity equation from the 
 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
-compute_w_from_continuity!(model) =
-    launch!(model.architecture, model.grid, :xyz, _compute_w_from_continuity!, datatuple(model.velocities), model.grid)
+function compute_w_from_continuity!(model)
+
+    event = launch!(model.architecture, model.grid, :xyz, _compute_w_from_continuity!, datatuple(model.velocities), model.grid,
+                    dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), event)
+
+    return nothing
+end
 
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)

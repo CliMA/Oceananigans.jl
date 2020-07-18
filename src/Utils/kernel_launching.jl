@@ -3,6 +3,7 @@
 #####
 
 using CUDA
+using KernelAbstractions
 
 function launch_config(grid, dims)
     return function (kernel)
@@ -51,10 +52,15 @@ end
 
 using Oceananigans.Architectures: device
 
-function launch!(arch, grid, layout, kernel!, args...; kwargs...)
+function launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
+
     workgroup, worksize = work_layout(grid, layout)
+
     loop! = kernel!(device(arch), workgroup, worksize)
-    event = loop!(args...; ndrange=worksize, kwargs..., dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    return nothing
+
+    @debug "worksize and kernel:" worksize kernel!
+
+    event = loop!(args...; dependencies=dependencies, kwargs...)
+
+    return event
 end

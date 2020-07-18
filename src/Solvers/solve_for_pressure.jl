@@ -7,11 +7,15 @@ function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
         ϕ = RHS = solver.storage
     end
 
-    launch!(arch, grid, :xyz, calculate_pressure_right_hand_side!, RHS, solver.type, arch, grid, Δt, U★)
+    event = launch!(arch, grid, :xyz, calculate_pressure_right_hand_side!, RHS, solver.type, arch, grid, Δt, U★)
+    wait(device(arch), event)
 
     solve_poisson_equation!(solver, grid)
 
-    launch!(arch, grid, :xyz, copy_pressure!, pressure, ϕ, solver.type, arch, grid)
+    event = launch!(arch, grid, :xyz, copy_pressure!, pressure, ϕ, solver.type, arch, grid,
+                    dependencies = Event(device(arch)))
+
+    wait(device(arch), event)
 
     return nothing
 end

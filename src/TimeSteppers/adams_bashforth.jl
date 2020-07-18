@@ -95,24 +95,21 @@ function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
     workgroup, worksize = work_layout(grid, :xyz)
 
     store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
-
     store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
 
     velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
 
-    tracers_events = []
+    events = [velocities_event]
 
     # Tracer fields
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
-        event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ)
-        push!(tracers_events, event)
+        tracer_event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ)
+        push!(events, tracer_event)
     end
 
-    multi = MultiEvent(tuple(velocities_event, tracers_events...))
-
-    wait(multi)
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -133,6 +130,8 @@ Time step tracers via
     @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
 end
 
+ab2_time_step_tracers!(::Nothing, args...) = nothing
+
 function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
 
     workgroup, worksize = work_layout(grid, :xyz)
@@ -149,9 +148,7 @@ function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
         push!(events, event)
     end
 
-    multi = MultiEvent(tuple(events...))
-
-    wait(multi)
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -172,5 +169,8 @@ end
     end
 end
 
-ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻) =
-    launch!(arch, grid, :xyz,  _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻)
+function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
+    event = launch!(arch, grid, :xyz, _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻)
+    wait(device(arch), event)
+    return nothing
+end

@@ -9,16 +9,23 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
+    # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
                        model.clock, state(model))
 
+    # Calculate diffusivities
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, velocities, tracers)
 
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
-    launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
-            pressures.pHY′, model.grid, model.buoyancy, tracers)
+    # Calculate hydrostatic pressure
+    pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
+                                   pressures.pHY′, model.grid, model.buoyancy, tracers,
+                                   dependencies=Event(device(model.architecture)))
+
+    # Fill halo regions for pressure
+    wait(device(model.architecture), pressure_calculation)
 
     fill_halo_regions!(model.pressures.pHY′, model.architecture)
 
@@ -44,9 +51,9 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, 
-                                               model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
-                                               velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
-                                               model.clock)
+                                               model.coriolis, model.buoyancy, model.surface_waves,
+                                               model.closure, velocities, tracers, pressures.pHY′,
+                                               diffusivities, model.forcing, model.clock)
                                                
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
@@ -93,9 +100,7 @@ end
 
 "Update the solution variables (velocities and tracers)."
 function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    workgroup, worksize = work_layout(grid, :xyz)
-    kernel! = _fractional_step_velocities!(device(arch), workgroup, worksize)
-    event = kernel!(U, grid, Δt, pNHS)
+    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS) 
     wait(device(arch), event)
     return nothing
 end
