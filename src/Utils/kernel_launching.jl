@@ -54,7 +54,7 @@ using Oceananigans.Architectures: device
 function launch!(arch, grid, layout, kernel!, args...; sync=true, kwargs...)
     workgroup, worksize = work_layout(grid, layout)
     loop! = kernel!(device(arch), workgroup, worksize)
-    event = loop!(args...; ndrange=worksize, kwargs..., dependencies=Event(device(arch)()
-     wait(device(arch), event)
+    event = loop!(args...; ndrange=worksize, kwargs..., dependencies=Event(device(arch)))
+    wait(device(arch), event)
     return nothing
 end

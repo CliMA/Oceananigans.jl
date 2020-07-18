@@ -91,21 +91,28 @@ end
 
 """ Store previous source terms before updating them. """
 function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
+
     workgroup, worksize = work_layout(grid, :xyz)
+
     store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
+
     store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
 
-    event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
-    event = nothing
+    velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
+
+    tracers_events = []
 
     # Tracer fields
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
         event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ)
+        push!(tracers_events, event)
     end
 
-    wait(event)
+    multi = MultiEvent(tuple(velocities_event, tracers_events...))
+
+    wait(multi)
 
     return nothing
 end
@@ -127,18 +134,24 @@ Time step tracers via
 end
 
 function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
+
     workgroup, worksize = work_layout(grid, :xyz)
+
     time_step_tracer_kernel! = ab2_time_step_tracer!(device(arch), workgroup, worksize)
-    event = nothing
+
+    events = []
 
     for i in 1:length(C)
         @inbounds c = C[i]
         @inbounds Gcⁿ = Gⁿ[i+3]
         @inbounds Gc⁻ = G⁻[i+3]
         event = time_step_tracer_kernel!(c, grid, Δt, χ, Gcⁿ, Gc⁻)
+        push!(events, event)
     end
 
-    wait(event)
+    multi = MultiEvent(tuple(events...))
+
+    wait(multi)
 
     return nothing
 end

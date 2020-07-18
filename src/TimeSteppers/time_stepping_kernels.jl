@@ -13,10 +13,11 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
     calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
     calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
 
-    calculate_Gu_kernel!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
-    calculate_Gv_kernel!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
-    calculate_Gw_kernel!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, clock)
-    event = nothing
+    Gu_event = calculate_Gu_kernel!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+    Gv_event = calculate_Gv_kernel!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+    Gw_event = calculate_Gw_kernel!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, clock)
+
+    Gc_events = []
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
@@ -24,9 +25,12 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
         @inbounds  c = C[tracer_index]
 
         event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, clock)
+        push!(Gc_events, event)
     end
 
-    wait(event)
+    multi = MultiEvent(tuple(Gu_event, Gv_event, Gw_event, Gc_events...))
+
+    wait(multi)
 
     return nothing
 end
