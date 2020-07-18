@@ -1,18 +1,23 @@
 using Oceananigans.Operators
 
 function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
+
     if solver.type isa Channel && arch isa GPU
         ϕ = RHS = solver.storage.storage1
     else
         ϕ = RHS = solver.storage
     end
 
-    event = launch!(arch, grid, :xyz, calculate_pressure_right_hand_side!, RHS, solver.type, arch, grid, Δt, U★)
+    event = launch!(arch, grid, :xyz,
+                    calculate_pressure_right_hand_side!, RHS, solver.type, arch, grid, Δt, U★,
+                    dependencies = Event(device(arch)))
+
     wait(device(arch), event)
 
     solve_poisson_equation!(solver, grid)
 
-    event = launch!(arch, grid, :xyz, copy_pressure!, pressure, ϕ, solver.type, arch, grid,
+    event = launch!(arch, grid, :xyz,
+                    copy_pressure!, pressure, ϕ, solver.type, arch, grid,
                     dependencies = Event(device(arch)))
 
     wait(device(arch), event)

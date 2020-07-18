@@ -57,7 +57,11 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 function solve_batched_tridiagonal_system!(ϕ, arch, solver)
     a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
 
-    launch!(arch, grid, :xy, solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, params)
+    event = launch!(arch, grid, :xy,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, params,
+                    dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
 
     return nothing
 end
