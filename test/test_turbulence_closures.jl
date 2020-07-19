@@ -19,7 +19,7 @@ function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.
 end
 
 function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(0.7))
-    closure = AnisotropicDiffusivity(T; κh=(T=κ, S=κ), νh=ν)
+    closure = AnisotropicDiffusivity(κh=(T=κh, S=κh), νh=νh)
     return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
 end
 
