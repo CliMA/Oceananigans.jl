@@ -24,8 +24,8 @@ unresolved, subgrid-scale turbulence.
 `κ` may be a `NamedTuple` with fields corresponding
 to each tracer, or a single number to be a applied to all tracers.
 
-By default, a molecular viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ and a molecular thermal
-diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are
+By default, a molecular viscosity of `ν₀ = 1.05×10⁻⁶` m² s⁻¹ and a molecular thermal
+diffusivity of `κ₀ = 1.46×10⁻⁷` m² s⁻¹ is used for each tracer. These molecular values are
 the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 psu,
 according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing
 correlations and data" (2010).

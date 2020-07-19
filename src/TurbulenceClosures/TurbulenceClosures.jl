@@ -57,18 +57,17 @@ const κ₀ = 1.46e-7
 #####
 
 """
-    TurbulenceClosure
+    AbstractTurbulenceClosure
 
-Abstract supertype for turbulence closures with model parameters stored as properties of
-type `FT`.
+Abstract supertype for turbulence closures.
 """
 abstract type AbstractTurbulenceClosure end
 
 """
-    AbstractIsotropicDiffusivity{FT} <: TurbulenceClosure
+    AbstractIsotropicDiffusivity <: AbstractTurbulenceClosure
 
 Abstract supertype for turbulence closures that are defined by an isotropic viscosity
-and isotropic diffusivities with model parameters stored as properties of type `FT`.
+and isotropic diffusivities.
 """
 abstract type AbstractIsotropicDiffusivity <: AbstractTurbulenceClosure end
 
@@ -76,12 +75,12 @@ abstract type AbstractIsotropicDiffusivity <: AbstractTurbulenceClosure end
     AbstractTensorDiffusivity <: AbstractTurbulenceClosure
 
 Abstract supertype for turbulence closures that are defined by a tensor viscosity and
-tensor diffusivities with model parameters stored as properties of type `FT`.
+tensor diffusivities.
 """
 abstract type AbstractTensorDiffusivity <: AbstractTurbulenceClosure end
 
 """
-    AbstractSmagorinsky{FT}
+    AbstractSmagorinsky{FT} <: AbstractIsotropicDiffusivity
 
 Abstract supertype for large eddy simulation models based off the model described
 by Smagorinsky with model parameters stored as properties of type `FT`.
@@ -89,7 +88,7 @@ by Smagorinsky with model parameters stored as properties of type `FT`.
 abstract type AbstractSmagorinsky{FT} <: AbstractIsotropicDiffusivity end
 
 """
-    AbstractAnisotropicMinimumDissipation{FT}
+    AbstractAnisotropicMinimumDissipation{FT} <: AbstractIsotropicDiffusivity
 
 Abstract supertype for large eddy simulation models based on the anisotropic minimum
 dissipation principle with model parameters stored as properties of type `FT`.
@@ -97,7 +96,7 @@ dissipation principle with model parameters stored as properties of type `FT`.
 abstract type AbstractAnisotropicMinimumDissipation{FT} <: AbstractIsotropicDiffusivity end
 
 """
-    AbstractLeith{FT}
+    AbstractLeith{FT} <: AbstractTurbulenceClosure
 
 Abstract supertype for large eddy simulation models based on the Leith viscosity
 principle with model parameters stored as properties of type `FT`.

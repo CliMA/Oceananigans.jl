@@ -13,7 +13,8 @@ struct AnisotropicDiffusivity{NX, NY, NZ, KX, KY, KZ} <: AbstractTensorDiffusivi
 end
 
 """
-    AnisotropicDiffusivity(; νx, νy, νz, κx, κy, κz)
+    AnisotropicDiffusivity(; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀,
+                             νh=nothing, κh=nothing)
 
 Returns parameters for a closure with a diagonal diffusivity tensor with heterogeneous
 'anisotropic' components labeled by `x`, `y`, `z`.   
@@ -21,14 +22,28 @@ Each component may be a number or function.
 The tracer diffusivities `κx`, `κy`, and `κz` may be `NamedTuple`s with fields corresponding
 to each tracer, or a single number or function to be a applied to all tracers.
 
-By default, a viscosity of `ν = 1.05×10⁻⁶` m² s⁻¹ is used for all viscosity components
-and a diffusivity of `κ = 1.46×10⁻⁷` m² s⁻¹ is used for all diffusivity components for every tracer.
+If `νh` or `κh` are provided, then `νx = νy = νh`, and `κx = κy = κh`, respectively.
+
+By default, a viscosity of `ν₀ = 1.05×10⁻⁶` m² s⁻¹ is used for all viscosity components
+and a diffusivity of `κ₀ = 1.46×10⁻⁷` m² s⁻¹ is used for all diffusivity components for every tracer.
 These values are the approximate viscosity and thermal diffusivity for seawater at 20°C
 and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review
 of existing correlations and data" (2010).
 """
-AnisotropicDiffusivity(; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀) =
-    AnisotropicDiffusivity(νx, νy, νz, κx, κy, κz)
+function AnisotropicDiffusivity(; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀, νh=nothing, κh=nothing)
+
+    if νh != nothing
+        νx = νh
+        νy = νh
+    end
+
+    if κh != nothing
+        κx = κh
+        κy = κh
+    end
+
+    return AnisotropicDiffusivity(νx, νy, νz, κx, κy, κz)
+end
 
 """
     ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
