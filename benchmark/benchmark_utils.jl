@@ -1,8 +1,6 @@
+using CUDA
 using InteractiveUtils
-
 using Oceananigans: @hascuda, AbstractArchitecture
-
-@hascuda using CUDAdrv
 
 function print_benchmark_info()
     InteractiveUtils.versioninfo(verbose=true)
