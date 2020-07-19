@@ -63,7 +63,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
         p isa Symbol || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
 
-        if has_reference(Function, getproperty(model, p)) && (p ∉ required_properties)
+        if has_reference(Function, getproperty(model, p))
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
         end
@@ -91,7 +91,7 @@ end
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 function restore_if_not_missing(file, address)
-    if file[address] !== missing
+    if haskey(file, address)
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *
@@ -123,13 +123,7 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     file = jldopen(filepath, "r")
     cps = file["checkpointed_properties"]
 
-    if haskey(kwargs, :architecture)
-        arch = kwargs[:architecture]
-        filter!(p -> p ≠ :architecture, cps)
-    else
-        arch = file["architecture"]
-    end
-
+    arch = file["architecture"]
     grid = file["grid"]
 
     # Restore velocity fields
