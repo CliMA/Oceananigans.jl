@@ -1,11 +1,3 @@
-Base.eltype(::TurbulenceClosure{T}) where T = T
-
-function Base.convert(::TurbulenceClosure{T2}, closure::TurbulenceClosure{T1}) where {T1, T2}
-    paramdict = Dict((p, convert(T2, getproperty(closure, p))) for p in propertynames(closure))
-    Closure = typeof(closure).name.wrapper
-    return Closure(T2; paramdict...)
-end
-
 tracer_diffusivities(tracers, κ::Union{Number, Function}) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
 
 function tracer_diffusivities(tracers, κ::NamedTuple)

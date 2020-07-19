@@ -27,7 +27,7 @@ and `clock` is the physical clock of the model.
     return ( - div_ũu(i, j, k, grid, U)
              - x_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
-             + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure, U, K)
+             + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, U, K)
              + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_uˢ(i, j, k, grid, surface_waves, clock.time)
              + F.u(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
@@ -62,7 +62,7 @@ and `clock` is the physical clock of the model.
     return ( - div_ũv(i, j, k, grid, U)
              - y_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
-             + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure, U, K)
+             + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, U, K)
              + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_vˢ(i, j, k, grid, surface_waves, clock.time)
              + F.v(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
@@ -94,7 +94,7 @@ and `clock` is the physical clock of the model.
 
     return ( - div_ũw(i, j, k, grid, U)
              - z_f_cross_U(i, j, k, grid, coriolis, U)
-             + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure, U, K)
+             + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, U, K)
              + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_wˢ(i, j, k, grid, surface_waves, clock.time)
              + F.w(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
@@ -124,6 +124,6 @@ tracer fields, and  precalculated diffusivities where applicable.
                                  closure, buoyancy, U, C, K, Fc, clock)
 
     return ( - div_uc(i, j, k, grid, U, c)
-             + ∇_κ_∇c(i, j, k, grid, closure, c, tracer_index, K, C, buoyancy)
+             + ∇_κ_∇c(i, j, k, grid, clock, closure, c, tracer_index, K, C, buoyancy)
              + Fc(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end
