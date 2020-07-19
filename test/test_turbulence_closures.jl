@@ -18,6 +18,11 @@ function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.
     return closure.ν == ν && closure.κ.T == κ
 end
 
+function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(0.7))
+    closure = AnisotropicDiffusivity(T; κh=(T=κ, S=κ), νh=ν)
+    return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
+end
+
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
@@ -187,6 +192,7 @@ end
     @testset "Constant anisotropic diffusivity" begin
         @info "  Testing constant anisotropic diffusivity..."
         for T in float_types
+            @test anisotropic_diffusivity_convenience_kwarg(T)
             @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
         end
