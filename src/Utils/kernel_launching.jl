@@ -5,6 +5,8 @@
 using CUDA
 using KernelAbstractions
 
+const MAX_THREADS_PER_BLOCK = 256
+
 function launch_config(grid, dims)
     return function (kernel)
         fun = kernel.fun
@@ -38,9 +40,10 @@ end
 # See: https://github.com/climate-machine/Oceananigans.jl/pull/308
 function work_layout(grid, dims)
 
-    workgroup = grid.Nx == 1 ? (1, min(256, grid.Ny)) :
-                grid.Ny == 1 ? (1, min(256, grid.Nx)) : 
-                               (16, 16)
+    workgroup = grid.Nx == 1 && grid.Ny == 1 ? (1, 1, min(MAX_THREADS_PER_BLOCK, grid.Nz)) : 
+                grid.Nx == 1 ? (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
+                grid.Ny == 1 ? (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) : 
+                               (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
     
     worksize = dims == :xyz ? (grid.Nx, grid.Ny, grid.Nz) :
                dims == :xy  ? (grid.Nx, grid.Ny) :
