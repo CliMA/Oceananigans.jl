@@ -6,7 +6,7 @@
     total_extent(topology, H, Δ, L)
 
 Returns the total extent, including halo regions, of constant-spaced
-`Periodic` and `Flat` dimensions with number of halo points `H`, 
+`Periodic` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
 total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
@@ -23,7 +23,7 @@ total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 """
     total_length(loc, topo, N, H=0)
 
-Returns the total length (number of nodes), including halo points, of a field 
+Returns the total length (number of nodes), including halo points, of a field
 located at `Cell` centers along a grid dimension of length `N` and with halo points `H`.
 """
 total_length(loc, topo, N, H=0) = N + 2H
@@ -31,13 +31,13 @@ total_length(loc, topo, N, H=0) = N + 2H
 """
     total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
 
-Returns the total length, including halo points, of a field located at 
+Returns the total length, including halo points, of a field located at
 cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
 total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
 #####
-##### << Nodes >> 
+##### << Nodes >>
 #####
 
 @inline interior_indices(loc, topo, N) = 1:N
@@ -102,10 +102,10 @@ on `grid` in the z-direction. For `Bounded` directions,
 Examples
 ========
 
-```jldoctest
+```jldoctest znodes
 julia> using Oceananigans, Oceananigans.Grids
 
-julia> horz_periodic_grid = RegularCartesianGrid(size=(3, 3, 3), extent=(2π, 2π, 1), 
+julia> horz_periodic_grid = RegularCartesianGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
                                                  topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Cell, horz_periodic_grid)
@@ -113,8 +113,10 @@ julia> zC = znodes(Cell, horz_periodic_grid)
  -0.8333333333333331
  -0.4999999999999999
  -0.16666666666666652
+```
 
- julia> zF = znodes(Face, horz_periodic_grid)
+``` jldoctest znodes
+julia> zF = znodes(Face, horz_periodic_grid)
 4-element view(OffsetArray(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}, 0:5), 1:4) with eltype Float64:
  -1.0
  -0.6666666666666666
@@ -259,4 +261,3 @@ function validate_vertically_stretched_grid_size_and_xy(FT, size, halo, x, y)
 
     return FT(Lx), FT(Ly), FT.(x), FT.(y)
 end
-

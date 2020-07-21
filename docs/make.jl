@@ -179,7 +179,7 @@ format = Documenter.HTML(
 makedocs(
    modules = modules,
    doctest = true,
-  # strict = true,
+    strict = true,
    clean   = true,
  checkdocs = :all,
     format = format,

@@ -28,7 +28,9 @@ end
 
 ```jldoctest
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
+
 julia> T_avg = HorizontalAverage(model.tracers.T);
+
 julia> T_avg(model)  # Compute horizontal average of T on demand
 1×1×6 Array{Float64,3}:
 [:, :, 1] =
@@ -48,7 +50,6 @@ julia> T_avg(model)  # Compute horizontal average of T on demand
 
 [:, :, 6] =
  0.0
-
 ```
 
 which can then be called on-demand via `T_avg(model)` to return the horizontally averaged temperature. Notice that
@@ -58,7 +59,9 @@ construct it like
 
 ```jldoctest
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
+
 julia> T_avg = HorizontalAverage(model.tracers.T, return_type=Array);
+
 julia> T_avg(model)  # Will always return an Array
 1×1×6 Array{Float64,3}:
 [:, :, 1] =

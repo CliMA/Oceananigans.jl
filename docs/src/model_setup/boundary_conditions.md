@@ -71,7 +71,9 @@ Some examples of creating individual boundary conditions:
 
    ```jldoctest
    julia> ρ₀ = 1027;  # Reference density [kg/m³]
+
    julia> τₓ = 0.08;  # Wind stress [N/m²]
+
    julia> wind_stress_bc = FluxBoundaryCondition(τₓ/ρ₀)
    BoundaryCondition: type=Flux, condition=7.789678675754625e-5
    ```
@@ -81,9 +83,13 @@ Some examples of creating individual boundary conditions:
 
    ```jldoctest
    julia> Nx = Ny = 16;  # Number of grid points.
+
    julia> ρ₀ = 1027;  # Reference density [kg/m³]
+
    julia> cₚ = 4000;  # Heat capacity of water at constant pressure [J/kg/K]
+
    julia> Q  = randn(Nx, Ny) ./ (ρ₀ * cₚ);
+
    julia> white_noise_T_bc = FluxBoundaryCondition(Q)
    BoundaryCondition: type=Flux, condition=16×16 Array{Float64,2}
    ```
@@ -115,9 +121,10 @@ containing `state.velocities`, `state.tracers`, and `state.diffusivities`. The s
 boundary conditions expect that `i, j` is replaced with `j, k` and `i, k` respectively.
 
 ```jldoctest
-julia> @inline linear_drag(i, j, grid, clock, state) = @inbounds -0.2*state.velocities.u[i, j, 1]
+julia> @inline linear_drag(i, j, grid, clock, state) = @inbounds -0.2*state.velocities.u[i, j, 1];
+
 julia> u_bottom_bc = FluxBoundaryCondition(linear_drag)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in Main at REPL[12]:1
+BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in Main at none:1
 ```
 
 Instead of hard-coding in the drag coefficient of 0.2, we may want to turn it, and other magic numbers, into parameters.
@@ -131,11 +138,14 @@ which would convert the above example into
 
 ```jldoctest
 julia> C = 0.2;  # drag coefficient
+
 julia> parameters = (C=C,);
+
 julia> @inline linear_drag(i, j, grid, clock, state, parameters) =
            @inbounds - parameters.C * state.velocities.u[i, j, 1];
+
 julia> u_bottom_bc = ParameterizedBoundaryCondition(Flux, linear_drag, parameters)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state, parameters) in Main at REPL[4]:1
+BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state, parameters) in Main at none:1
 ```
 
 ### Boundary condition functions with grid coordinate access
@@ -152,9 +162,11 @@ boundary conditions expect that `x, y` is replaced with `y, z` and `x, z` respec
 
 ```jldoctest
 julia> surface_flux(x, y, t) = cos(2π*x) * cos(t);
+
 julia> top_tracer_boundary_function = BoundaryFunction{:z, Cell, Cell}(surface_flux);
+
 julia> top_tracer_bc = FluxBoundaryCondition(top_tracer_boundary_function)
-BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at REPL[3]:1
+BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at none:1
 ```
 
 To add user-defined parameters such as a length-scale or scaling exponent, for example to a boundary condition function
@@ -168,10 +180,13 @@ where `parameters` can be any structure that is passed to the [`BoundaryFunction
 
 ```jldoctest
 julia> params = (k=4π, ω=3.0);
+
 julia> flux_func(x, y, t, p) = cos(p.k * x) * cos(p.ω * t); # function with parameters
+
 julia> parameterized_u_velocity_flux = BoundaryFunction{:z, Face, Cell}(flux_func, params);
+
 julia> top_u_bc = BoundaryCondition(Flux, parameterized_u_velocity_flux)
-BoundaryCondition: type=Flux, condition=flux_func(x, y, t, p) in Main at REPL[7]:1
+BoundaryCondition: type=Flux, condition=flux_func(x, y, t, p) in Main at none:1
 ```
 
 ## Specifying boundary conditions on a field
@@ -180,7 +195,9 @@ To, for example, create a set of horizontally periodic field boundary conditions
 
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
+
 julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
+
 julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
                                               bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions
@@ -199,16 +216,20 @@ conditions on all fields. To, for example, impose non-default boundary condition
 
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
+
 julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
-julia> u_bcs = UVelocityBoundaryConditions(grid,   top = ValueBoundaryCondition(+0.1),
-                                                bottom = ValueBoundaryCondition(-0.1));
-julia> T_bcs = TracerBoundaryConditions(grid,   top = ValueBoundaryCondition(20),
-                                             bottom = GradientBoundaryCondition(0.01));
-julia> model = Model(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+
+julia> u_bcs = UVelocityBoundaryConditions(grid, top = ValueBoundaryCondition(+0.1),
+                                              bottom = ValueBoundaryCondition(-0.1));
+
+julia> T_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(20),
+                                           bottom = GradientBoundaryCondition(0.01));
+
+julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
