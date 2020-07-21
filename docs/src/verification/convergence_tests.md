@@ -121,10 +121,150 @@ The expected convergence with spatial resolution is observed:
 
 This validates the correctness of the advection and diffusion of a velocity field.
 
-## Forced, free-slip flow
+## Forced two-dimensional flows
 
-TODO
+We introduce two convergence tests associated with forced flows in domains that are 
+bounded in ``y``, and periodic in ``x`` with no tracers.
+
+*Note: in this section, subscripts are used to denote derivatives to make reading 
+and typing equations easier.*
+
+In a two-dimensional flow in ``(x, y)``, the velocity field ``(u, v)`` can be expressed in terms
+of a streamfunction ``\psi(x, y, t)`` such that
+
+```math
+u \equiv - \psi_y \, ,
+\quad \text{and} \quad
+v \equiv \psi_x \, ,
+```
+where subscript denote derivatives such that ``\psi_y \equiv \partial_y \psi``, for example.
+With an isotropic Laplacian viscosity ``\nu = 1``, the momentum and continuity equations are
+```math
+\begin{aligned}
+\bm{u}_t + \left ( \bm{u} \cdot \nabla \right ) \bm{u} + \nabla p &= \nabla^2 \bm{u} + \bm{F}_u \, , \\
+\nabla \cdot \bm{u} &= 0 \, ,
+\end{aligned}
+```
+while the equation for vorticity, ``\omega = v_x - u_y = \nabla^2 \psi``, is
+```math
+\omega_t + \mathrm{J} \left ( \psi, \omega \right ) = \nabla^2 \omega + F_\omega
+```
+Finally, taking the divergence of the momentum equation, we find a Poisson equation for pressure,
+```math
+\nabla^2 p = - u_x^2 - v_y^2 - 2 u_y v_x + \partial_x F_u + \partial_y F_v \, .
+```
+
+To pose the problem, we first pick a streamfunction ``\psi``.
+This choice then yields the vorticity forcing ``F_\omega`` that satisfies the vorticity equation.
+We then determine ``F_u`` by solving ``\partial_y F_u = - F_\omega``, and pick ``F_v`` so that we can
+solve the Poisson equation for pressure.
+
+We restrict ourselves to a class of problems in which
+```math
+\psi(x, y, t) = - f(x, t) g(y) \, ,
+\quad \text{with} \quad
+f \equiv \cos \left [ x - \xi(t) \right ] \, , 
+\qquad
+\xi(t) \equiv 1 + \sin(t^2) \, .
+```
+Grinding through the algebra, this particular form implies that ``F_\omega`` is given by
+```math
+F_\omega = -\xi' f_x \left ( g - g'' \right ) + f f_x \left ( g g''' - g' g'' \right ) + f \left ( g - 2 g'' + g'''' \right ) \, ,
+```
+where primes denote derivatives of functions of a single argument.
+Setting ``\partial_y F_u = F_\omega``, we find that if ``F_v`` satisfies
+```math
+\partial_y F_v = \left ( g' \right )^2 + g g'' \, ,
+```
+then the pressure Poisson equation becomes
+```math
+\nabla^2 p = \cos \left [ 2 \left ( x - \xi \right ) \right ] \left [ \left ( g' \right )^2 - g g'' \right ] 
+    + \partial_x F_u \, .
+```
+This completes the specification of the problem.
+
+We set up the problem by imposing the time-dependent forcing functions ``F_u`` and ``F_v``
+on ``u`` and ``v``, initializing the flow at ``t=0``, and integrating the problem forwards
+in time using Oceananigans. We find the expected convergence of the numerical solution to the
+analytical solution: the error between the numerical and analytical solutions
+decreasess with ``1/N_x^2 \sim \Delta x^2``, where ``N_x`` is the number of grid
+points and ``\Delta x`` is the spatial resolution:
+
+![Forced free slip convergence](convergence_plots/forced_free_slip_convergence.png)
+
+The convergence tests are performed using both ``y`` and ``z`` as the bounded direction.
+
+### Forced, free-slip flow
+
+A forced flow satsifying free-slip conditions at ``y=0`` and ``y=\pi`` has the streamfunction
+```math
+\psi(x, y, t) = - \cos \left [ x - \xi(t) \right ] \sin(y)
+```
+and thus ``g(y) = \sin y``.
+The velocity field ``(u, v)`` is
+```math
+u = \cos(x-\xi) \cos y \, ,
+\quad \text{and} \quad
+v = \sin(x-\xi) \sin y \, ,
+```
+which satisfies the boundary conditions ``u_y |_{y=0} = u_y |_{y=\pi} = 0`` and
+``v |_{y=0} = v |_{y=\pi} = 0``.
+The vorticity forcing is
+```math
+F_\omega = - 2 \xi' f_x \sin y + 4 f \sin y \, ,
+```
+which implies that
+```math
+F_u = - 2 \xi' f_x \cos y + 4 f \cos y \, ,
+```
+and ``F_v = \frac{1}{2} \sin 2 y``.
 
 ## Forced, fixed-slip flow
 
-TODO
+A forced flow satisfying "fixed-slip" boundary conditions at ``y=0`` and ``y=1`` has
+the streamfunction
+```math
+\psi(x, y, t) = - \cos \left [ x - \xi(t) \right ] \left ( y^3 - y^2 \right ) \, ,
+```
+and thus ``g(y) = y^3 - y^2``.
+The velocity field ``(u, v)`` is
+```math
+u = f \left ( 3 y^2 - 2 y \right ) \, ,
+\quad \text{and} \quad
+v = - f_x \left ( y^3 - y^2 \right ) \, ,
+```
+which satisfies the boundary conditions
+```math
+u |_{y=0} = 0 \, ,
+\quad
+u |_{y=1} = f \, ,
+\quad \text{and} \quad
+v |_{y=0} = v |_{y=1} = 0 \, .
+```
+The vorticity forcing is
+```math
+F_\omega = - \xi' f_x \left ( y^3 - y^2 - 6y + 2 \right )
+    - f f_x \left ( 12 y^3 - 12 y^2 + 4 y \right )
+    + f \left ( y^3 - y^2 - 12 y + 4 \right ) \, ,
+```
+which implies that
+```math
+F_u = \xi' f_x \left ( \tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 3 y^2 + 2y \right )
+    + f f_x \left ( 3 y^4 - 4 y^3 + 2y^2 \right ) 
+    - f \left ( \tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 6 y^2 + 4 y \right ) \, ,
+```
+while
+```math
+F_v = 3 y^5 - 5 y^4 + 2y^3 \, .
+```
+
+We set up the problem in the same manner as the forced, free-slip problem above.
+Note that we also must the no-slip boundary condition ``u |_{y=0} = 0`` and the
+time-dependent fixed-slip condition ``u |_{y=1} = f``.
+As for the free-slip problem, we find that the error between the numerical and
+analytical solutions decreasess with ``1/N_x^2 \sim \Delta x^2``, where ``N_x``
+is the number of grid points and ``\Delta x`` is the spatial resolution:
+
+![Forced fixed slip convergence](convergence_plots/forced_fixed_slip_convergence.png)
+
+The convergence tests are performed using both ``y`` and ``z`` as the bounded direction.
