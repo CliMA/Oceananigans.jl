@@ -3,6 +3,7 @@
 Documenting the public user interface.
 
 ## Architectures
+
 ```@autodocs
 Modules = [Oceananigans.Architectures]
 Private = false
@@ -10,6 +11,7 @@ Pages   = ["Architectures.jl"]
 ```
 
 ## Boundary conditions
+
 ```@autodocs
 Modules = [Oceananigans.BoundaryConditions]
 Private = false
@@ -35,6 +37,7 @@ Pages   = [
 ```
 
 ## Buoyancy
+
 ```@autodocs
 Modules = [Oceananigans.Buoyancy]
 Private = false
@@ -52,6 +55,7 @@ Pages   = [
 ```
 
 ## Coriolis
+
 ```@autodocs
 Modules = [Oceananigans.Coriolis]
 Private = false
@@ -64,6 +68,7 @@ Pages   = [
 ```
 
 ## Diagnostics
+
 ```@autodocs
 Modules = [Oceananigans.Diagnostics]
 Private = false
@@ -79,6 +84,7 @@ Pages   = [
 ```
 
 ## Fields
+
 ```@autodocs
 Modules = [Oceananigans.Fields]
 Private = false
@@ -92,6 +98,7 @@ Pages   = [
 ```
 
 ## Forcing
+
 ```@autodocs
 Modules = [Oceananigans.Forcing]
 Private = false
@@ -103,6 +110,7 @@ Pages   = [
 ```
 
 ## Grids
+
 ```@autodocs
 Modules = [Oceananigans.Grids]
 Private = false
@@ -114,6 +122,7 @@ Pages   = [
 ```
 
 ## Models
+
 ```@autodocs
 Modules = [Oceananigans.Models]
 Private = false
@@ -129,6 +138,7 @@ Pages   = [
 ```
 
 ## Output writers
+
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
@@ -142,6 +152,7 @@ Pages   = [
 ```
 
 ## Time steppers
+
 ```@autodocs
 Modules = [Oceananigans.TimeSteppers]
 Private = false
@@ -153,6 +164,7 @@ Pages   = [
 ```
 
 ## Simulations
+
 ```@autodocs
 Modules = [Oceananigans.Simulations]
 Private = false
@@ -160,6 +172,7 @@ Pages   = ["Simulations.jl"]
 ```
 
 ## Tubrulence closures
+
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]
 Private = false
@@ -184,6 +197,7 @@ Pages   = [
 ```
 
 ## Utilities
+
 ```@autodocs
 Modules = [Oceananigans.Utils]
 Private = false
@@ -205,6 +219,7 @@ Pages   = [
 ```
 
 ## Abstract operations
+
 ```@autodocs
 Modules = [Oceananigans, Oceananigans.AbstractOperations]
 Private = false
