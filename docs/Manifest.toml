@@ -40,9 +40,9 @@ version = "0.1.6"
 
 [[Bibliography]]
 deps = ["BibInternal", "BibParser", "DataStructures"]
-git-tree-sha1 = "1b0dc373a407246b71144a5d8b410f64bb90070e"
+git-tree-sha1 = "77769ce13ad1058b9ddb4e157adeb6de41593fab"
 uuid = "f1be7e48-bf82-45af-a471-ae754a193061"
-version = "0.2.0"
+version = "0.2.1"
 
 [[BinDeps]]
 deps = ["Libdl", "Pkg", "SHA", "URIParser", "Unicode"]
