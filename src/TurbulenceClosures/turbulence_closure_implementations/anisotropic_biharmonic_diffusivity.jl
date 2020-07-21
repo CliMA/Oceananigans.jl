@@ -3,7 +3,7 @@
 
 Parameters for anisotropic biharmonic diffusivity models.
 """
-struct AnisotropicBiharmonicDiffusivity{FT, KH, KV} <: TensorDiffusivity{FT}
+struct AnisotropicBiharmonicDiffusivity{FT, KH, KV} <: AbstractTensorDiffusivity
     νh :: FT
     νv :: FT
     κh :: KH
@@ -39,22 +39,22 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
     - closure.νh * ∇⁴hᶠᶜᵃ(i, j, k, grid, U.u)
     - closure.νv * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.u)
     )
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
     - closure.νh * ∇⁴hᶜᶠᵃ(i, j, k, grid, U.v)
     - closure.νv * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.v)
     )
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
     - closure.νh * ∇⁴hᶜᶜᵃ(i, j, k, grid, U.w)
     - closure.νv * ∂⁴zᵃᵃᶠ(i, j, k, grid, U.w)
     )
 
-@inline function ∇_κ_∇c(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity,
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
 
     @inbounds κh = closure.κh[tracer_index]

@@ -113,7 +113,7 @@ Return the ``x``-component of the turbulent diffusive flux divergence:
 
 at the location `fcc`.
 """
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, closure::IsotropicViscosity, U, diffusivities) = (
+@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AbstractIsotropicDiffusivity, U, diffusivities) = (
       ∂x_2ν_Σ₁₁(i, j, k, grid, closure, U, diffusivities)
     + ∂y_2ν_Σ₁₂(i, j, k, grid, closure, U, diffusivities)
     + ∂z_2ν_Σ₁₃(i, j, k, grid, closure, U, diffusivities)
@@ -128,7 +128,7 @@ Return the ``y``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, closure::IsotropicViscosity, U, diffusivities) = (
+@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::AbstractIsotropicDiffusivity, U, diffusivities) = (
       ∂x_2ν_Σ₂₁(i, j, k, grid, closure, U, diffusivities)
     + ∂y_2ν_Σ₂₂(i, j, k, grid, closure, U, diffusivities)
     + ∂z_2ν_Σ₂₃(i, j, k, grid, closure, U, diffusivities)
@@ -143,7 +143,7 @@ Return the ``z``-component of the turbulent diffusive flux divergence:
 
 at the location `ccf`.
 """
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, closure::IsotropicViscosity, U, diffusivities) = (
+@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::AbstractIsotropicDiffusivity, U, diffusivities) = (
       ∂x_2ν_Σ₃₁(i, j, k, grid, closure, U, diffusivities)
     + ∂y_2ν_Σ₃₂(i, j, k, grid, closure, U, diffusivities)
     + ∂z_2ν_Σ₃₃(i, j, k, grid, closure, U, diffusivities)

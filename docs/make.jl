@@ -57,7 +57,7 @@ dot_timer = Timer(t -> println("."), 0, interval=60)
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/Oceananigans.jl/latest/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/latest/"
 )
 
 makedocs(
@@ -156,6 +156,11 @@ makedocs(
      ]
 )
 
-deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git")
+withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
+  deploydocs(        repo = "github.com/CliMA/OceananigansDocumentation.git",
+                versions = ["stable" => "v^", "v#.#.#"],
+            push_preview = true
+            )
+end
 
 close(dot_timer)

@@ -5,6 +5,7 @@
 #
 #   * how to load `Oceananigans.jl`;
 #   * how to instantiate an `Oceananigans.jl` model;
+#   * how to create simple `Oceananigans.jl` output;
 #   * how to set an initial condition with a function;
 #   * how to time-step a model forward, and finally
 #   * how to look at results.
@@ -16,14 +17,9 @@
 
 using Oceananigans
 
-# In addition, we import the submodule `Grids`, and the types `Cell` and
-# `Face` to use for plotting.
+# In addition, we import the submodule `Grids`.
 
 using Oceananigans.Grids
-
-# We also use `Plots.jl` for plotting and `Printf` to format plot legends:
-
-using Plots, Printf
 
 # ## Instantiating and configuring a model
 #
@@ -47,7 +43,7 @@ nothing # hide
 
 ## Build a Gaussian initial condition function with width `δ`:
 δ = 0.1
-Tᵢ(x, y, z) = exp( -z^2 / (2δ^2) )
+Tᵢ(x, y, z) = exp(-z^2 / (2δ^2))
 
 ## Set `model.tracers.T` to the function `Tᵢ`:
 set!(model, T=Tᵢ)
@@ -63,38 +59,65 @@ cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 ## We create a `Simulation` which will handle time stepping the model. It will
 ## execute `Nt` time steps with step size `Δt` using a second-order Adams-Bashforth method.
 simulation = Simulation(model, Δt = 0.1 * cell_diffusion_time_scale, stop_iteration = 1000)
+
 run!(simulation)
 
 # ## Visualizing the results
 #
-# We use `Plots.jl` to look at the results. Tracers are defined at cell
-# centers so we use `zC` as the z-coordinate when plotting it. Fields are
+# We use `Plots.jl` to look at the results. Fields are
 # stored as 3D arrays in Oceananigans so we plot `interior(T)[1, 1, :]`
 # which will return a 1D array.
 
+using Plots, Printf
+
 ## A convenient function for generating a label with the current model time
-tracer_label(model) = @sprintf("t = %.3f", model.clock.time)
+tracer_label(time) = @sprintf("t = %.3f", time)
 
 ## Plot initial condition
 T = model.tracers.T
 
-zC = znodes(T)[:]
+z = znodes(T)[:]
 
-p = plot(Tᵢ.(0, 0, zC), zC, linewidth=2, label="t = 0",
-         xlabel="Tracer concentration", ylabel="z")
+p = plot(Tᵢ.(0, 0, z), z, linewidth=2, label="t = 0",
+         xlabel="Temperature", ylabel="z")
 
 ## Plot current solution
-plot!(p, interior(T)[1, 1, :], zC, linewidth=2, label=tracer_label(model))
+plot!(p, interior(T)[1, 1, :], z, linewidth=2, label=tracer_label(model.clock.time))
 
-# Interesting! We can keep running the simulation and animate the tracer
-# concentration to see the Gaussian diffusing.
+# Interesting! Next, we add an output writer that saves the temperature field
+# in JLD2 files, and run the simulation for longer so that we can animate the results.
 
-anim = @animate for i=1:100
-    simulation.stop_iteration += 100
-    run!(simulation)
+using Oceananigans.OutputWriters: JLD2OutputWriter, FieldOutputs
 
-    plot(interior(T)[1, 1, :], zC, linewidth=2, title=tracer_label(model),
-         label="", xlabel="Tracer concentration", ylabel="z", xlims=(0, 1))
+simulation.output_writers[:temperature] =
+    JLD2OutputWriter(model, FieldOutputs(model.tracers),
+                     frequency = 100,
+                        prefix = "one_dimensional_diffusion",
+                         force = true)
+
+## Run simulation for 10,000 more iterations
+simulation.stop_iteration += 10000
+
+run!(simulation)
+nothing
+
+# Finally, we animate the results by opening the JLD2 file, extract the 
+# iterations we ended up saving at, and plot the evolution of the
+# temperature profile in a loop over the iterations.
+
+using JLD2
+
+file = jldopen(simulation.output_writers[:temperature].filepath)
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
+
+anim = @animate for (i, iter) in enumerate(iterations)
+
+    T = file["timeseries/T/$iter"][1, 1, 2:end-1]
+    t = file["timeseries/t/$iter"]
+
+    plot(T, z, linewidth=2, title=tracer_label(t),
+         label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
-mp4(anim, "1d_diffusion.mp4", fps = 15) # hide
+mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide

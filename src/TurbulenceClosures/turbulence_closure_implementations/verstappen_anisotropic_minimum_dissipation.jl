@@ -157,12 +157,12 @@ end
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, closure::AbstractAnisotropicMinimumDissipation,
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractAnisotropicMinimumDissipation,
                         c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     κₑ = diffusivities.κₑ[tracer_index]
