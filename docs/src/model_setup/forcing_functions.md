@@ -74,10 +74,10 @@ forcing = ModelForcing(T=T_forcing, S=S_forcing)
 model = IncompressibleModel(grid=grid, forcing=forcing)
 
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
@@ -108,10 +108,10 @@ forcing = ModelForcing(u=u_forcing, v=v_forcing, w=w_forcing)
 model = IncompressibleModel(grid=grid, forcing=forcing)
 
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```

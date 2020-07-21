@@ -7,9 +7,19 @@ cluster time limits, but also if you'd like to restore from a checkpoint and try
 For example, to periodically checkpoint the model state to disk every 1,000,000 seconds of simulation time to files of
 the form `model_checkpoint_iteration12500.jld2` where `12500` is the iteration number (automatically filled in)
 
+```@meta
+DocTestSetup = quote
+    using Oceananigans
+end
+```
+
 ```jldoctest
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
-model.output_writers[:checkpointer] = Checkpointer(model, interval=1000000, prefix="model_checkpoint")
+julia> using Oceananigans.OutputWriters;
+
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
+
+julia> checkpointer = Checkpointer(model, interval=1000000, prefix="model_checkpoint")
+Checkpointer{Nothing,Int64,Array{Symbol,1}}(nothing, 1000000, 0.0, ".", "model_checkpoint", [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure, :velocities, :tracers, :timestepper], false, false)
 ```
 
 The default options should provide checkpoint files that are easy to restore from in most cases. For more advanced

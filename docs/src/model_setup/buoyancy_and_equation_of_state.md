@@ -21,10 +21,10 @@ end
 julia> grid = RegularCartesianGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid, buoyancy=nothing)
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -35,10 +35,10 @@ also pass`tracers = ()` to the model constructor.
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=nothing, tracers=())
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -50,10 +50,10 @@ constructor. Buoyancy `:b` must be included as a tracer, for example,
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
 ├── buoyancy: BuoyancyTracer
 └── coriolis: Nothing
 ```
@@ -65,10 +65,10 @@ To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pa
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=SeawaterBuoyancy())
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
@@ -86,10 +86,10 @@ SeawaterBuoyancy{Float64}: g = 1.3
 └── equation of state: LinearEquationOfState{Float64}: α = 1.67e-04, β = 7.80e-04
 
 julia> model = IncompressibleModel(grid=grid, buoyancy=buoyancy)
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0) 
+IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: ConstantIsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
@@ -123,7 +123,7 @@ SecondOrderSeawaterPolynomial{Float64}(0.7718, -0.0491, 0.0, -2.5681e-5, 0.0, -0
 
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}: g = 9.80665
-└── equation of state: SecondOrderSeawaterPolynomial{Float64}(0.7718, -0.0491, 0.0, -2.5681e-5, 0.0, -0.005027, 0.0)
+└── equation of state: SeawaterPolynomials.SecondOrderSeawaterPolynomials.SecondOrderSeawaterPolynomial{Float64}(0.7718, -0.0491, 0.0, -2.5681e-5, 0.0, -0.005027, 0.0)
 ```
 
 ### TEOS-10 equation of state

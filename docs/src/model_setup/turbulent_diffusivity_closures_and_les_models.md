@@ -11,6 +11,8 @@ on turbulent diffusivity closures.
 To use constant isotropic values for the viscosity ν and diffusivity κ you can use `ConstantIsotropicDiffusivity`
 
 ```jldoctest
+julia> using Oceananigans.TurbulenceClosures
+
 julia> closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2)
 IsotropicDiffusivity: ν=0.01, κ=0.01
 ```
@@ -21,6 +23,8 @@ To specify constant values for the horizontal and vertical viscosities, $\nu_h$ 
 diffusivities, $\kappa_h$ and $\kappa_v$, you can use `ConstantAnisotropicDiffusivity`
 
 ```jldoctest
+julia> using Oceananigans.TurbulenceClosures
+
 julia> closure = ConstantAnisotropicDiffusivity(νh=1e-3, νv=5e-2, κh=2e-3, κv=1e-1)
 AnisotropicDiffusivity: (νx=0.001, νy=0.001, νz=0.05), (κx=0.002, κy=0.002, κz=0.1)
 ```
@@ -31,6 +35,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
+
 julia> closure = SmagorinskyLilly()
 SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=1.05e-6, κ=1.46e-7
 ```
@@ -44,6 +49,7 @@ To use the constant anisotropic minimum dissipation (AMD) LES closure,
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
+
 julia> closure = AnisotropicMinimumDissipation()
 VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
