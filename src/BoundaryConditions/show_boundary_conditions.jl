@@ -6,7 +6,7 @@ import Oceananigans.Grids: short_show
 
 print_condition(n::Number) = "$n"
 print_condition(A::AbstractArray) = "$(Base.dims2string(size(A))) $(typeof(A))"
-print_condition(bf::BoundaryFunction) = print_condition(bf.func)
+print_condition(bf::Union{ParameterizedBoundaryConditionFunction, BoundaryFunction}) = print_condition(bf.func)
 
 function print_condition(f::Function)
     ms = methods(f).ms
