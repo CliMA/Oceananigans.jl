@@ -137,7 +137,8 @@ makedocs(
 
          "Verification experiments" => [
              "Taylor-Green vortex"     => "verification/taylor_green_vortex.md",
-             "Stratified Couette flow" => "verification/stratified_couette_flow.md"
+             "Stratified Couette flow" => "verification/stratified_couette_flow.md",
+             "Convergence tests"       => "verification/convergence_tests.md"
          ],
 
                         "Gallery" => "gallery.md",
