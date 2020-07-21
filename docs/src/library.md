@@ -21,18 +21,14 @@ Pages   = [
     "BoundaryConditions/boundary_condition.jl",
     "BoundaryConditions/coordinate_boundary_conditions.jl",
     "BoundaryConditions/field_boundary_conditions.jl",
-    "BoundaryConditions/solution_boundary_conditions.jl",
-    "BoundaryConditions/model_boundary_conditions.jl",
-    "BoundaryConditions/tracer_boundary_conditions.jl",
-    "BoundaryConditions/tendency_boundary_conditions.jl",
-    "BoundaryConditions/pressure_boundary_conditions.jl",
     "BoundaryConditions/boundary_function.jl",
+    "BoundaryConditions/parameterized_boundary_condition.jl",
     "BoundaryConditions/show_boundary_conditions.jl",
     "BoundaryConditions/zero_halo_regions.jl",
     "BoundaryConditions/fill_halo_regions.jl",
     "BoundaryConditions/apply_flux_bcs.jl",
     "BoundaryConditions/apply_value_gradient_bcs.jl",
-    "BoundaryConditions/apply_flux_periodic_no_penetration_bcs.jl"
+    "BoundaryConditions/apply_normal_flow_bcs.jl"
 ]
 ```
 
@@ -76,7 +72,7 @@ Pages   = [
     "Diagnostics/Diagnostics.jl",
     "Diagnostics/diagnostics_kernels.jl",
     "Diagnostics/horizontal_average.jl",
-    "Diagnostics/timeseries.jl",
+    "Diagnostics/time_series.jl",
     "Diagnostics/cfl.jl",
     "Diagnostics/field_maximum.jl",
     "Diagnostics/nan_checker.jl"
@@ -105,7 +101,9 @@ Private = false
 Pages   = [
     "Forcing/Forcing.jl",
     "Forcing/simple_forcing.jl",
-    "Forcing/model_forcing.jl"
+    "Forcing/model_forcing.jl",
+    "Forcing/parameterized_forcing.jl",
+    "Forcing/relaxation.jl"
 ]
 ```
 
@@ -168,7 +166,12 @@ Pages   = [
 ```@autodocs
 Modules = [Oceananigans.Simulations]
 Private = false
-Pages   = ["Simulations.jl"]
+Pages   = [
+    "Simulations/Simulations.jl",
+    "Simulations/time_step_wizard.jl",
+    "Simulations/simulation.jl",
+    "Simulations/run.jl"
+]
 ```
 
 ## Tubrulence closures
