@@ -47,6 +47,33 @@ for example in examples
 end
 
 #####
+##### Don't forget any modules!
+#####
+
+modules = [
+    Oceananigans,
+    Oceananigans.Architectures,
+    Oceananigans.Utils,
+    Oceananigans.Logger,
+    Oceananigans.Grids,
+    Oceananigans.Operators,
+    Oceananigans.BoundaryConditions,
+    Oceananigans.Fields,
+    Oceananigans.Coriolis,
+    Oceananigans.Buoyancy,
+    Oceananigans.SurfaceWaves,
+    Oceananigans.TurbulenceClosures,
+    Oceananigans.Solvers,
+    Oceananigans.Forcing,
+    Oceananigans.Models,
+    Oceananigans.TimeSteppers,
+    Oceananigans.Diagnostics,
+    Oceananigans.OutputWriters,
+    Oceananigans.Simulations,
+    Oceananigans.AbstractOperations
+]
+
+#####
 ##### Organize page hierarchies
 #####
 
@@ -131,15 +158,7 @@ format = Documenter.HTML(
 )
 
 makedocs(
-   modules = [Oceananigans,
-              Oceananigans.Grids,
-              Oceananigans.Operators,
-              Oceananigans.Models,
-              Oceananigans.Diagnostics,
-              Oceananigans.OutputWriters,
-              Oceananigans.TimeSteppers,
-              Oceananigans.TurbulenceClosures,
-              Oceananigans.AbstractOperations],
+   modules = modules,
    doctest = true,
   # strict = true,
    clean   = true,
