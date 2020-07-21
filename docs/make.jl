@@ -95,6 +95,25 @@ example_pages = [
     "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
 ]
 
+model_setup_pages = [
+    "Overview" => "model_setup/overview.md",
+    "Architecture" => "model_setup/architecture.md",
+    "Number type" => "model_setup/number_type.md",
+    "Grid" => "model_setup/grids.md",
+    "Clock" => "model_setup/clock.md",
+    "Coriolis (rotation)" => "model_setup/coriolis.md",
+    "Tracers" => "model_setup/tracers.md",
+    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    "Boundary conditions" => "model_setup/boundary_conditions.md",
+    "Forcing functions" => "model_setup/forcing_functions.md",
+    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
+    "Diagnostics" => "model_setup/diagnostics.md",
+    "Output writers" => "model_setup/output_writers.md",
+    "Checkpointing" => "model_setup/checkpointing.md",
+    "Time stepping" => "model_setup/time_stepping.md",
+    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
+]
+
 physics_pages = [
     "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
     "Coordinate system and notation" => "physics/coordinate_system_and_notation.md",
@@ -118,7 +137,7 @@ numerical_pages = [
 verification_pages = [
     "Taylor-Green vortex" => "verification/taylor_green_vortex.md",
     "Stratified Couette flow" => "verification/stratified_couette_flow.md"
-],
+]
 
 appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
@@ -141,7 +160,7 @@ pages = [
     "Appendix" => appendix_pages,
     "Function index" => "function_index.md",
     "References" => "references.md"
-],
+]
 
 #####
 ##### Build and deploy docs
@@ -170,10 +189,11 @@ makedocs(
 )
 
 withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
-  deploydocs(        repo = "github.com/CliMA/OceananigansDocumentation.git",
-                versions = ["stable" => "v^", "v#.#.#"],
-            push_preview = true
-            )
+    deploydocs(
+              repo = "github.com/CliMA/OceananigansDocumentation.git",
+          versions = ["stable" => "v^", "v#.#.#"],
+      push_preview = true
+    )
 end
 
 close(dot_timer)
