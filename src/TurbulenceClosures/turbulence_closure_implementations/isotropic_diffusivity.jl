@@ -1,7 +1,3 @@
-#####
-##### Isotropic diffusivity
-#####
-
 """
     IsotropicDiffusivity{N, K}
 
@@ -69,3 +65,6 @@ end
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) =
     ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, clock, closure.ν, U.w)
+
+Base.show(io::IO, closure::IsotropicDiffusivity) =
+    print(io, "IsotropicDiffusivity: ν=$(closure.ν), κ=$(closure.κ)")

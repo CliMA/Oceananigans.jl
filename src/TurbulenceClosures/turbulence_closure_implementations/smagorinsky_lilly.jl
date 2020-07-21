@@ -251,3 +251,6 @@ end
             + 2 *   ℑyᵃᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
+
+Base.show(io::IO, closure::SmagorinskyLilly) =
+    print(io, "SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr), ν=$(closure.ν), κ=$(closure.κ)")

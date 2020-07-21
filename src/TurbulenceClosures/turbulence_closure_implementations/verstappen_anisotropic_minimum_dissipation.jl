@@ -24,7 +24,7 @@ Base.show(io::IO, closure::VAMD{FT}) where FT =
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
               "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
               "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
-              "             Background kinematic viscosity for momentum, ν: ", closure.ν, '\n')
+              "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
     VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,

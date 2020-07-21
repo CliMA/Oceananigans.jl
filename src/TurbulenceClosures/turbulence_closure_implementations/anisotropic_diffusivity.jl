@@ -88,3 +88,8 @@ calculate_diffusivities!(K, arch, grid, closure::AnisotropicDiffusivity, args...
 
     return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κx, κy, κz, c)
 end
+
+Base.show(io::IO, closure::AnisotropicDiffusivity) =
+    print(io, "AnisotropicDiffusivity: " *
+              "(νx=$(closure.νx), νy=$(closure.νy), νz=$(closure.νz)), " *
+              "(κx=$(closure.κx), κy=$(closure.κy), κz=$(closure.κz))")
