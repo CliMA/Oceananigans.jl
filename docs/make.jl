@@ -103,7 +103,6 @@ makedocs(
                                      "model_setup/buoyancy_and_equation_of_state.md",
             "Boundary conditions" => "model_setup/boundary_conditions.md",
               "Forcing functions" => "model_setup/forcing_functions.md",
-               "Model parameters" => "model_setup/model_parameters.md",
             "Turbulent diffusivity closures and LES models" =>
                                      "model_setup/turbulent_diffusivity_closures_and_les_models.md",
                     "Diagnostics" => "model_setup/diagnostics.md",
