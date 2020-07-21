@@ -112,8 +112,8 @@ SeawaterBuoyancy{Float64}: g = 9.80665
 ### Idealized nonlinear equations of state
 
 Instead of a linear equation of state, five idealized (second-order) nonlinear equation of state as described by
-[Roquet15](@cite) may be used. These equations of state are provided via the
-[SeawaterPolynomials.jl](https://github.com/glwagner/SeawaterPolynomials.jl) package.
+[Roquet15Idealized](@cite) may be used. These equations of state are provided via the
+[SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
 
 ```jldoctest buoyancy
 julia> using SeawaterPolynomials.SecondOrderSeawaterPolynomials
@@ -129,8 +129,8 @@ SeawaterBuoyancy{Float64}: g = 9.80665
 ### TEOS-10 equation of state
 
 A high-accuracy 55-term polynomial approximation to the TEOS-10 equation of state suitable for use in
-Boussinesq models as described by [Roquet15](@cite) is implemented in the
-[SeawaterPolynomials.jl](https://github.com/glwagner/SeawaterPolynomials.jl) package and may be used.
+Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
+[SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package and may be used.
 
 ```jldoctest buoyancy
 julia> using SeawaterPolynomials.TEOS10
