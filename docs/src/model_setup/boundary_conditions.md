@@ -11,11 +11,11 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 
 ## Types of boundary conditions
 
-1. [`Periodic`](@ref Periodic)
-2. [`Flux`](@ref Flux)
-3. [`Value`](@ref Value)
-4. [`Gradient`](@ref Gradient)
-5. [`NormalFlow`](@ref NormalFlow)
+1. [`Periodic`](@ref)
+2. [`Flux`](@ref)
+3. [`Value`](@ref) (Dirchlet)
+4. [`Gradient`](@ref) (Neumann)
+5. [`NormalFlow`](@ref)
 
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
 conditions defined by a function or array. Or alternatively, through a forcing function if more flexibility is
@@ -47,19 +47,19 @@ different kinds of boundary conditions.
 
 ## Creating individual boundary conditions
 
+```@meta
+DocTestSetup = quote
+   using Random
+   using Oceananigans
+   using Oceananigans.Fields
+   using Oceananigans.BoundaryConditions
+   Random.seed!(1234)
+end
+```
+
 Some examples of creating individual boundary conditions:
 
 1. A constant `Value` (Dirchlet) boundary condition, perhaps representing a constant temperature at some boundary.
-
-   ```@meta
-   DocTestSetup = quote
-      using Random
-      using Oceananigans
-      using Oceananigans.Fields
-      using Oceananigans.BoundaryConditions
-      Random.seed!(1234)
-   end
-   ```
 
    ```jldoctest
    julia> constant_T_bc = ValueBoundaryCondition(20.0)
