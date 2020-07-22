@@ -5,7 +5,7 @@
 
 <!-- description -->
 <p align="center">
-  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. https://clima.github.io/Oceananigans.jl/stable/</strong>
+  <strong>🌊 A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs. https://clima.github.io/OceananigansDocumentation/stable</strong>
 </p>
 
 <!-- Information badges -->
@@ -19,10 +19,10 @@
   <a href="https://github.com/clima/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
-  <a href="https://clima.github.io/Oceananigans.jl/stable/">
+  <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
   </a>
-  <a href="https://clima.github.io/Oceananigans.jl/latest">
+  <a href="https://clima.github.io/OceananigansDocumentation/latest">
     <img alt="Latest documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
   </a>
 </p>
