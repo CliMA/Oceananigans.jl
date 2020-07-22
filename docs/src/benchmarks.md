@@ -1,4 +1,4 @@
-# Performance benchmarks
+# [Performance benchmarks](@id performance_benchmarks)
 
 The performance benchmarking scripts in the `benchmarks` directory of the git repository
 can be run to benchmark Oceananigans.jl on your machine. They use

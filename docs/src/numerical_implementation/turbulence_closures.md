@@ -1,4 +1,4 @@
-# Turbulence closures
+# [Turbulence closures](@id numerical_closures)
 
 To truly simulate and resolve turbulence at high Reynolds number (so basically all interesting flows) would require
 you resolve all motions down to the [Kolmogorov41](@cite) length scale $\eta = (\nu^3 / \varepsilon)^{1/4}$ where

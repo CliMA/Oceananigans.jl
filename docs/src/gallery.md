@@ -3,6 +3,7 @@
 Collection of cool movies!
 
 ## [Deep convection](https://www.youtube.com/watch?v=kpUrxnKKMjI)
+
 An idealized simulation of deep convection in the ocean. The simulation employs a resolution of 256x256x128 volumes in
 a 2x2x1 km horizontally periodic domain. Heat is sucked out of the ocean surface within a cooling disk of radius 600 m
 at a rate of 800 W/m² which cools the surface water and making it denser. This cold dense water then sinks into the
@@ -18,6 +19,7 @@ disk is clear.
 
 
 ## [Free convection](https://www.youtube.com/watch?v=yq4op9h3xcU)
+
 An idealized simulation of free convection in the ocean. The simulation employs a resolution of 256x256x256 volumes in
 a 100x100x100 m horizontally periodic domain. Heat is sucked out of the ocean surface at a rate of 75 W/m² which cools
 the surface water and making it denser. This cold dense water then sinks into the ocean interior, initiating a
@@ -30,6 +32,7 @@ The video shows the temperature field and the domain is sliced in half.
 
 
 ## [Winds blowing over the ocean](https://www.youtube.com/watch?v=IRncfbvuiy8)
+
 An idealized simulation of a strong wind stress acting on the surface of a stratified ocean. The simulation employs a
 resolution of 256x256x256 volumes in a 100x100x100 m horizontally periodic domain. A pretty strong wind stress of
 0.1 N/m² is applied in the x direction which mechanically mixes the upper layer of the ocean. This leads to a "mixed
@@ -44,6 +47,7 @@ plots show the horizontally averaged temperature profile (top right), horizontal
 
 
 ## [Free convection with wind stress](https://www.youtube.com/watch?v=ob6OMQgPfI4)
+
 An idealized simulation of a strong wind stress acting on the surface of a stratified ocean along with a cooling flux
 that sucks heat out of the surface. The simulation employs a resolution of 256x256x256 volumes in a 100x100x100 m
 horizontally periodic domain. A pretty strong wind stress of 0.1 N/m² is applied in the x direction which mechanically
