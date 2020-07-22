@@ -85,7 +85,7 @@ At this time, updating should be done with care, as Oceananigans is under rapid 
 Let's initialize a 3D horizontally periodic model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 hour using a constant time step of 60 seconds.
 ```julia
 using Oceananigans
-grid = RegularCartesianGrid(size=(100, 100, 50), extent=(2000, 2000, 1000))
+grid = RegularCartesianGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
 model = IncompressibleModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
@@ -103,7 +103,7 @@ topology = (Periodic, Periodic, Bounded)
 
 model = IncompressibleModel(
     architecture = CPU(),
-            grid = RegularCartesianGrid(topology=topology, size=(N, N, N), extent=(L, L, L)),
+            grid = RegularCartesianGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
 )
 
