@@ -25,7 +25,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-   IncompressibleModel(;
+    IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,

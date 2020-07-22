@@ -28,10 +28,10 @@ function run_example(replace_strings, example_name, module_suffix="")
         @printf "% 3d module Test_%s_%s\n" 1 example_name module_suffix
 
         for (number, line) in enumerate(delineated_file_content)
-            @printf "% 3d %s\n" number line
+            @printf "% 3d %s\n" number+1 line
         end
 
-        @printf("% 3d end # module", number+2)
+        @printf("% 3d end # module", length(delineated_file_content)+2)
 
         # Delete the test script
         rm(test_script_filepath)
@@ -54,8 +54,7 @@ end
         replace_strings = [
             ("size = (1, 1, 128)", "size = (1, 1, 16)"),
             ("stop_iteration = 1000", "stop_iteration = 1"),
-            ("stop_iteration += 100", "stop_iteration += 1"),
-            ("for i=1:100", "for i=1:1"),
+            ("simulation.stop_iteration += 10000", "simulation.stop_iteration += 100"),
             ("mp4(", "# mp4(")
         ]
 

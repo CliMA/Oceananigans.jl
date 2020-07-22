@@ -1,4 +1,4 @@
-# # Wind and convection-driven mixing in an ocean surface boundary layer
+# # [Wind and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
 #
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:

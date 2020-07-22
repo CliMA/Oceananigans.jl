@@ -17,12 +17,12 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Value, Gradient,
+    Flux, Value, Gradient, NormalFlow,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
-    BoundaryFunction,
+    BoundaryFunction, ParameterizedBoundaryCondition,
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,

@@ -1,4 +1,4 @@
-# Large eddy simulation
+# [Large eddy simulation](@id numerical_les)
 
 The idea behind large eddy simulation (LES) is to resolve the "large eddies" while modeling the effect of unresolved
 sub-grid scale motions. This is done usually be assuming eddy viscosity and eddy diffusivity models and providing an

@@ -24,7 +24,7 @@ Base.show(io::IO, closure::VAMD{FT}) where FT =
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
               "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
               "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
-              "             Background kinematic viscosity for momentum, ν: ", closure.ν, '\n')
+              "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
     VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
@@ -157,12 +157,12 @@ end
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, closure::AbstractAnisotropicMinimumDissipation,
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractAnisotropicMinimumDissipation,
                         c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     κₑ = diffusivities.κₑ[tracer_index]

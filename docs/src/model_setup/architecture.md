@@ -1,4 +1,5 @@
 # Architecture
+
 Passing `architecture = CPU()` or `architecture = GPU()` to the `Model` constructor will determine whether the model
 is time stepped on a CPU or GPU.
 

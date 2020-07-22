@@ -164,16 +164,18 @@ data located at cell centers.
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, clock, c, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractSmagorinsky, c, tracer_index,
+@inline ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractSmagorinsky, c, tracer_index,
                diffusivities, args...) = (
+
       ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, tracer_index, diffusivities.νₑ)
     + ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, closure, c, tracer_index, diffusivities.νₑ)
     + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, closure, c, tracer_index, diffusivities.νₑ)
+
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
@@ -253,3 +255,6 @@ end
             + 2 *   ℑyᵃᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
+
+Base.show(io::IO, closure::SmagorinskyLilly) =
+    print(io, "SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr), ν=$(closure.ν), κ=$(closure.κ)")
