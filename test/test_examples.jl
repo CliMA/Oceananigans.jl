@@ -31,7 +31,7 @@ function run_example(replace_strings, example_name, module_suffix="")
             @printf "% 3d %s\n" number+1 line
         end
 
-        @printf("% 3d end # module", length(delineated_file_content)+2)
+        @printf("% 3d end # module\n", length(delineated_file_content)+2)
 
         # Delete the test script
         rm(test_script_filepath)
