@@ -1,3 +1,5 @@
+using Oceananigans.Grids
+
 #####
 ##### Centered fourth-order advection scheme
 #####
@@ -128,8 +130,8 @@ end
 @inline fourth_order_advective_tracer_flux_z(i, j, k, grid, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * ℑzᵃᵃᶠ(i, j, k, grid, ℑ³zᵃᵃᶜ, c)
 
 @inline advective_tracer_flux_x(i, j, k, grid, ::C4, u, c) = fourth_order_advective_tracer_flux_x(i, j, k, grid, u, c)
-@inline advective_tracer_flux_y(i, j, k, grid, ::C4, u, c) = fourth_order_advective_tracer_flux_y(i, j, k, grid, u, c)
-@inline advective_tracer_flux_z(i, j, k, grid, ::C4, u, c) = fourth_order_advective_tracer_flux_z(i, j, k, grid, u, c)
+@inline advective_tracer_flux_y(i, j, k, grid, ::C4, v, c) = fourth_order_advective_tracer_flux_y(i, j, k, grid, v, c)
+@inline advective_tracer_flux_z(i, j, k, grid, ::C4, w, c) = fourth_order_advective_tracer_flux_z(i, j, k, grid, w, c)
 
 @inline function advective_tracer_flux_x(i, j, k, grid::AbstractGrid{FT, <:Bounded}, ::C4, u, c) where FT
     if i > 1 && i < grid.Nx
@@ -143,7 +145,7 @@ end
     if j > 1 && i < grid.Ny
         return fourth_order_advective_tracer_flux_x(i, j, k, grid, v, c)
     else
-        return advective_tracer_flux_y(i, j, k, grid, centered_second_order, u, c)
+        return advective_tracer_flux_y(i, j, k, grid, centered_second_order, v, c)
     end
 end
 
@@ -151,6 +153,6 @@ end
     if k > 1 && i < grid.Nz
         return fourth_order_advective_tracer_flux_x(i, j, k, grid, w, c)
     else
-        return advective_tracer_flux_z(i, j, k, grid, centered_second_order, u, c)
+        return advective_tracer_flux_z(i, j, k, grid, centered_second_order, w, c)
     end
 end
