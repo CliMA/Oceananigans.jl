@@ -138,7 +138,7 @@ Compute the vertical velocity w by integrating the continuity equation from the 
 """
 function compute_w_from_continuity!(model)
 
-    event = launch!(model.architecture, model.grid, :xyz, _compute_w_from_continuity!, datatuple(model.velocities), model.grid,
+    event = launch!(model.architecture, model.grid, :xy, _compute_w_from_continuity!, datatuple(model.velocities), model.grid,
                     dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), event)
