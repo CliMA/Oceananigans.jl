@@ -36,6 +36,9 @@ function run_first_AB2_time_step_tests(arch, FT)
     return nothing
 end
 
+using Oceananigans.Utils: launch!
+using KernelAbstractions
+
 """
     This test ensures that when we compute w from the continuity equation that the full velocity field
     is divergence-free.
@@ -54,11 +57,19 @@ function compute_w_from_continuity(arch, FT)
     state = (velocities=datatuple(U), tracers=(), diffusivities=nothing)
     fill_halo_regions!(U, arch, nothing, state)
 
-    @launch(device(arch), config=launch_config(grid, :xy),
-            _compute_w_from_continuity!((u=U.u.data, v=U.v.data, w=U.w.data), grid))
+    event = launch!(arch, grid, :xy,
+                    _compute_w_from_continuity!, (u=U.u.data, v=U.v.data, w=U.w.data), grid,
+                    dependencies=Event(device(arch)))
 
+    wait(device(arch), event)
+            
     fill_halo_regions!(U, arch, nothing, state)
-    velocity_div!(grid, U.u.data, U.v.data, U.w.data, div_U.data)
+
+    event = launch!(arch, grid, :xyz,
+                    velocity_div!, div_U.data, grid, U.u.data, U.v.data, U.w.data,
+                    dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
 
     # Set div_U to zero at the top because the initial velocity field is not
     # divergence-free so we end up some divergence at the top if we don't do this.
@@ -98,7 +109,8 @@ function incompressible_in_time(arch, FT, Nt)
         time_step!(model, 0.05, euler = n==1)
     end
 
-    velocity_div!(grid, u, v, w, div_U)
+    event = launch!(arch, grid, :xyz, velocity_div!, div_U, grid, u, v, w, dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     min_div = minimum(interior(div_U))
     max_div = maximum(interior(div_U))

@@ -74,11 +74,8 @@ using FFTW
 using JLD2
 using NCDatasets
 
-import GPUifyLoops
-
 using Base: @propagate_inbounds
 using Statistics: mean
-using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     +, -, *, /,

@@ -25,8 +25,10 @@ export
     fill_halo_regions!, zero_halo_regions!
 
 using CUDA
+using KernelAbstractions
 
 using Oceananigans.Architectures: device
+using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Grids
 
 include("boundary_condition_types.jl")

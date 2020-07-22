@@ -9,16 +9,23 @@ Perform precomputations necessary for an explicit timestep or substep.
 """
 function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
 
+    # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
                        model.clock, state(model))
 
+    # Calculate diffusivities
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, velocities, tracers)
 
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
 
-    @launch(device(model.architecture), config=launch_config(model.grid, :xy),
-            update_hydrostatic_pressure!(pressures.pHY′, model.grid, model.buoyancy, tracers))
+    # Calculate hydrostatic pressure
+    pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
+                                   pressures.pHY′, model.grid, model.buoyancy, tracers,
+                                   dependencies=Event(device(model.architecture)))
+
+    # Fill halo regions for pressure
+    wait(device(model.architecture), pressure_calculation)
 
     fill_halo_regions!(model.pressures.pHY′, model.architecture)
 
@@ -44,9 +51,9 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, 
-                                               model.coriolis, model.buoyancy, model.surface_waves, model.closure, 
-                                               velocities, tracers, pressures.pHY′, diffusivities, model.forcing, 
-                                               model.clock)
+                                               model.coriolis, model.buoyancy, model.surface_waves,
+                                               model.closure, velocities, tracers, pressures.pHY′,
+                                               diffusivities, model.forcing, model.clock)
                                                
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
@@ -62,8 +69,8 @@ end
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
-    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture,
-                       model.clock, state(model))
+
+    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture, model.clock, state(model))
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
                         model.architecture, model.grid, Δt, predictor_velocities)
@@ -84,16 +91,16 @@ Update the horizontal velocities u and v via
 
 Note that the vertical velocity is not explicitly time stepped.
 """
-function _fractional_step_velocities!(U, grid, Δt, pNHS)
-    @loop_xyz i j k grid begin
-        @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
-        @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
-    end
-    return nothing
+@kernel function _fractional_step_velocities!(U, grid, Δt, pNHS)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
 function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    @launch device(arch) config=launch_config(grid, :xyz) _fractional_step_velocities!(U, grid, Δt, pNHS)
+    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS) 
+    wait(device(arch), event)
     return nothing
 end

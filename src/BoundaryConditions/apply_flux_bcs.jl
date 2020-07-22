@@ -1,6 +1,4 @@
-using GPUifyLoops: @launch, @loop
 using Oceananigans.Operators: Δx, Δy, ΔzF
-using Oceananigans.Utils: @loop_xy, @loop_xz, @loop_yz, launch_config
 
 #####
 ##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.
@@ -13,12 +11,8 @@ using Oceananigans.Utils: @loop_xy, @loop_xz, @loop_yz, launch_config
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-@inline function apply_x_bcs!(Gc, c, arch, args...)
-    @launch(device(arch), config=launch_config(Gc.grid, :yz),
-            _apply_x_bcs!(Gc.data, Gc.grid, c.boundary_conditions.x.left,
-                                            c.boundary_conditions.x.right, args...))
-    return nothing
-end
+apply_x_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :yz, _apply_x_bcs!, Gc.data, c.grid, 
+                                             c.boundary_conditions.x.left, c.boundary_conditions.x.right, args...)
 
 """
     apply_y_bcs!(Gc, arch, grid, args...)
@@ -26,12 +20,8 @@ end
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-@inline function apply_y_bcs!(Gc, c, arch, args...)
-    @launch(device(arch), config=launch_config(Gc.grid, :xz),
-            _apply_y_bcs!(Gc.data, Gc.grid, c.boundary_conditions.y.left,
-                                            c.boundary_conditions.y.right, args...))
-    return nothing
-end
+apply_y_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :xz, _apply_y_bcs!, Gc.data, c.grid, 
+                                             c.boundary_conditions.y.left, c.boundary_conditions.y.right, args...)
 
 """
     apply_z_bcs!(Gc, arch, grid, args...)
@@ -39,11 +29,40 @@ end
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-@inline function apply_z_bcs!(Gc, c, arch, args...)
-    @launch(device(arch), config=launch_config(Gc.grid, :xy),
-            _apply_z_bcs!(Gc.data, Gc.grid, c.boundary_conditions.z.bottom,
-                                            c.boundary_conditions.z.top, args...))
-    return nothing
+apply_z_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :xy, _apply_z_bcs!, Gc.data, c.grid, 
+                                             c.boundary_conditions.z.left, c.boundary_conditions.z.right, args...)
+
+"""
+    _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
+
+Apply a west and/or east boundary condition to variable `c`.
+"""
+@kernel function _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
+    j, k = @index(Global, NTuple)
+    apply_x_west_bc!(Gc, west_bc, j, k, grid, args...)
+    apply_x_east_bc!(Gc, east_bc, j, k, grid, args...)
+end
+
+"""
+    _apply_y_bcs!(Gc, grid, south_bc, north_bc, args...)
+
+Apply a south and/or north boundary condition to variable `c`.
+"""
+@kernel function _apply_y_bcs!(Gc, grid, south_bc, north_bc, args...)
+    i, k = @index(Global, NTuple)
+    apply_y_south_bc!(Gc, south_bc, i, k, grid, args...)
+    apply_y_north_bc!(Gc, north_bc, i, k, grid, args...)
+end
+
+"""
+    _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
+
+Apply a top and/or bottom boundary condition to variable `c`.
+"""
+@kernel function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
+    i, j = @index(Global, NTuple)
+    apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
+       apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
 end
 
 # Avoid some computation / memory accesses for Value, Gradient, Periodic, NormalFlow,
@@ -54,42 +73,6 @@ const NotFluxBC = Union{VBC, GBC, PBC, NFBC, ZFBC}
 @inline _apply_x_bcs!(Gc, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 @inline _apply_y_bcs!(Gc, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
 @inline _apply_z_bcs!(Gc, grid, ::NotFluxBC, ::NotFluxBC, args...) = nothing
-
-"""
-    _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
-
-Apply a west and/or east boundary condition to variable `c`.
-"""
-function _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
-    @loop_yz j k grid begin
-        apply_x_west_bc!(Gc, west_bc, j, k, grid, args...)
-        apply_x_east_bc!(Gc, east_bc, j, k, grid, args...)
-    end
-end
-
-"""
-    _apply_y_bcs!(Gc, grid, south_bc, north_bc, args...)
-
-Apply a south and/or north boundary condition to variable `c`.
-"""
-function _apply_y_bcs!(Gc, grid, south_bc, north_bc, args...)
-    @loop_xz i k grid begin
-        apply_y_south_bc!(Gc, south_bc, i, k, grid, args...)
-        apply_y_north_bc!(Gc, north_bc, i, k, grid, args...)
-    end
-end
-
-"""
-    _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
-
-Apply a top and/or bottom boundary condition to variable `c`.
-"""
-function _apply_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
-    @loop_xy i j grid begin
-        apply_z_bottom_bc!(Gc, bottom_bc, i, j, grid, args...)
-           apply_z_top_bc!(Gc, top_bc,    i, j, grid, args...)
-    end
-end
 
 # Fall back functions for boundary conditions that are not of type Flux.
 @inline apply_x_east_bc!(  args...) = nothing

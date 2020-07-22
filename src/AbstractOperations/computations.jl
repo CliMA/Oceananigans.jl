@@ -1,4 +1,6 @@
-using Oceananigans.Utils: @loop_xyz
+using KernelAbstractions
+using Oceananigans.Utils: work_layout
+
 import Oceananigans.Fields: location, total_size
 
 """
@@ -37,17 +39,22 @@ Perform a `computation`. The result is stored in `computation.result`.
 function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
-    @launch(device(arch), config=launch_config(computation.grid, :xyz),
-            _compute!(result_data, computation.grid, computation.operation))
+
+    workgroup, worksize = work_layout(computation.grid, :xyz)
+
+    compute_kernel! = _compute!(device(arch), workgroup, worksize)
+
+    event = compute_kernel!(result_data, computation.grid, computation.operation; dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
+
     return nothing
 end
 
 """Compute an `operation` over `grid` and store in `result`."""
-function _compute!(result, grid, operation)
-    @loop_xyz i j k grid begin
-        @inbounds result[i, j, k] = operation[i, j, k]
-    end
-    return nothing
+@kernel function _compute!(result, grid, operation)
+    i, j, k = @index(Global, NTuple)
+    @inbounds result[i, j, k] = operation[i, j, k]
 end
 
 """
