@@ -38,12 +38,12 @@ FPlane{Float64}: f = 1.03e-04
 
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
 
-To set up an $f$-plane with non-traditional Coriolis terms, for example, with 
+To set up an $f$-plane with non-traditional Coriolis terms, for example, with
 $\bm{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}$,
 
 ```jldoctest
 julia> coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)
-Non-TraditionalFPlane{Float64}:fz = 1.00e-04, fy = 2.00e-04
+NonTraditionalFPlane{Float64}: fz = 1.00e-04, fy = 2.00e-04
 ```
 
 An $f$-plane with non-traditional Coriolis terms can also be specified at some latitude on a spherical planet
@@ -52,7 +52,7 @@ on Earth which has a rotation rate of $\Omega = 7.292115 \times 10^{-5} \text{s}
 
 ```jldoctest
 julia> coriolis = NonTraditionalFPlane(rotation_rate=7.292115e-5, latitude=45)
-Non-TraditionalFPlane{Float64}:fz = 1.03e-04, fy = 1.03e-04
+NonTraditionalFPlane{Float64}: fz = 1.03e-04, fy = 1.03e-04
 ```
 
 in which case $f_z = 2\Omega\sin\varphi$ and $f_y = 2\Omega\cos\varphi$.

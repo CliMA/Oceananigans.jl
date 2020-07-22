@@ -65,7 +65,7 @@ with `y`- and `z`-components `fy/2` and `fz/2`, and the background vorticity is
 `(0, fy, fz)`.
 
 In oceanography `fz` and `fy` represent the components of planetary voriticity which
-are perpendicular and parallel to the ocean surface in a domain in which `x, y, z` 
+are perpendicular and parallel to the ocean surface in a domain in which `x, y, z`
 correspond to the directions east, north, and up.
 
 If `fz` and `fy` are not specified, they are calculated from `rotation_rate` and `latitude`
@@ -95,4 +95,4 @@ end
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = - coriolis.fy * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.show(io::IO, f_plane::NonTraditionalFPlane{FT}) where FT =
-    println(io, "Non-TraditionalFPlane{$FT}:", @sprintf("fz = %.2e, fy = %.2e", f_plane.fz, f_plane.fy))
+    println(io, "NonTraditionalFPlane{$FT}: ", @sprintf("fz = %.2e, fy = %.2e", f_plane.fz, f_plane.fy))
