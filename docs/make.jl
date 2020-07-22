@@ -33,12 +33,12 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    # "one_dimensional_diffusion.jl",
-    # "two_dimensional_turbulence.jl",
-    # "ocean_wind_mixing_and_convection.jl",
-    # "ocean_convection_with_plankton.jl",
-    # "internal_wave.jl",
-    # "langmuir_turbulence.jl",
+    "one_dimensional_diffusion.jl",
+    "two_dimensional_turbulence.jl",
+    "ocean_wind_mixing_and_convection.jl",
+    "ocean_convection_with_plankton.jl",
+    "internal_wave.jl",
+    "langmuir_turbulence.jl"
 ]
 
 for example in examples
