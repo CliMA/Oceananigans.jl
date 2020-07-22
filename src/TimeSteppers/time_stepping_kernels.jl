@@ -3,7 +3,7 @@
 #####
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buoyancy, surface_waves, closure, 
+function calculate_interior_tendency_contributions!(G, arch, grid, advection, coriolis, buoyancy, surface_waves, closure, 
                                                     U, C, pHY′, K, F, clock)
 
     workgroup, worksize = work_layout(grid, :xyz)
@@ -15,9 +15,14 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
 
     default_stream = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(G.u, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock, dependencies=default_stream)
-    Gv_event = calculate_Gv_kernel!(G.v, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock, dependencies=default_stream)
-    Gw_event = calculate_Gw_kernel!(G.w, grid, coriolis, surface_waves, closure, U, C, K, F, clock, dependencies=default_stream)
+    Gu_event = calculate_Gu_kernel!(G.u, grid, advection, coriolis, surface_waves, closure,
+                                    U, C, K, F, pHY′, clock, dependencies=default_stream)
+
+    Gv_event = calculate_Gv_kernel!(G.v, grid, advection, coriolis, surface_waves, closure,
+                                    U, C, K, F, pHY′, clock, dependencies=default_stream)
+
+    Gw_event = calculate_Gw_kernel!(G.w, grid, advection, coriolis, surface_waves, closure,
+                                    U, C, K, F, clock, dependencies=default_stream)
 
     events = [Gu_event, Gv_event, Gw_event]
 
@@ -26,7 +31,8 @@ function calculate_interior_tendency_contributions!(G, arch, grid, coriolis, buo
         @inbounds Fc = F[tracer_index+3]
         @inbounds  c = C[tracer_index]
 
-        Gc_event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), closure, buoyancy, U, C, K, Fc, clock, dependencies=default_stream)
+        Gc_event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), advection, closure,
+                                        buoyancy, U, C, K, Fc, clock, dependencies=default_stream)
 
         push!(events, Gc_event)
     end
@@ -41,26 +47,26 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+@kernel function calculate_Gu!(Gu, grid, advection, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                                 closure, U, C, K, F, pHY′, clock)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, grid, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+@kernel function calculate_Gv!(Gv, grid, advection, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                                 closure, U, C, K, F, pHY′, clock)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, grid, coriolis, surface_waves, closure, U, C, K, F, clock)
+@kernel function calculate_Gw!(Gw, grid, advection, coriolis, surface_waves, closure, U, C, K, F, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                                 closure, U, C, K, F, clock)
 end
 
@@ -69,11 +75,11 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, grid, c, tracer_index, closure, buoyancy, U, C, K, Fc, clock)
+@kernel function calculate_Gc!(Gc, grid, c, tracer_index, advection, closure, buoyancy, U, C, K, Fc, clock)
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, c, tracer_index,
-                                            closure, buoyancy, U, C, K, Fc, clock)
+                                            advection, closure, buoyancy, U, C, K, Fc, clock)
 end
 
 #####

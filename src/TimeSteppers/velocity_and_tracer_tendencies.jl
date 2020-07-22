@@ -1,5 +1,7 @@
+using Oceananigans.Advection
+
 """
-    u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                         closure, U, C, K, F, pHY′, clock)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
@@ -21,10 +23,10 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `clock` is the physical clock of the model.
 """
-@inline function u_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, clock)
 
-    return ( - div_ũu(i, j, k, grid, U)
+    return ( - div_ũu(i, j, k, grid, advection, U)
              - x_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂xᶠᵃᵃ(i, j, k, grid, pHY′)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, U, K)
@@ -34,7 +36,7 @@ and `clock` is the physical clock of the model.
 end
 
 """
-    v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                         closure, U, C, K, F, pHY′, clock)
 
 Return the tendency for the horizontal velocity in the y-direction, or the north-south 
@@ -56,10 +58,10 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `clock` is the physical clock of the model.
 """
-@inline function v_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, clock)
 
-    return ( - div_ũv(i, j, k, grid, U)
+    return ( - div_ũv(i, j, k, grid, advection, U)
              - y_f_cross_U(i, j, k, grid, coriolis, U)
              - ∂yᵃᶠᵃ(i, j, k, grid, pHY′)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, U, K)
@@ -69,7 +71,7 @@ and `clock` is the physical clock of the model.
 end
 
 """
-    w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+    w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                         closure, U, C, K, F, clock)
                         
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
@@ -89,10 +91,10 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
 `parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
 and `clock` is the physical clock of the model.
 """
-@inline function w_velocity_tendency(i, j, k, grid, coriolis, surface_waves, 
+@inline function w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, clock)
 
-    return ( - div_ũw(i, j, k, grid, U)
+    return ( - div_ũw(i, j, k, grid, advection, U)
              - z_f_cross_U(i, j, k, grid, coriolis, U)
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, U, K)
              + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
@@ -102,7 +104,7 @@ end
 
 """
     tracer_tendency(i, j, k, grid, c, tracer_index, 
-                    closure, buoyancy, U, C, K, Fc, clock)
+                    advection, closure, buoyancy, U, C, K, Fc, clock)
 
 Return the tendency for a tracer field `c` with index `tracer_index` 
 at grid point `i, j, k`.
@@ -121,9 +123,9 @@ tracer fields, and  precalculated diffusivities where applicable.
 `clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function tracer_tendency(i, j, k, grid, c, tracer_index, 
-                                 closure, buoyancy, U, C, K, Fc, clock)
+                                 advection, closure, buoyancy, U, C, K, Fc, clock)
 
-    return ( - div_uc(i, j, k, grid, U, c)
+    return ( - div_uc(i, j, k, grid, advection, U, c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, tracer_index, K, C, buoyancy)
              + Fc(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
 end

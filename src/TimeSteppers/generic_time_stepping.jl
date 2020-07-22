@@ -50,7 +50,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, 
+    calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, model.advection,
                                                model.coriolis, model.buoyancy, model.surface_waves,
                                                model.closure, velocities, tracers, pressures.pHY′,
                                                diffusivities, model.forcing, model.clock)

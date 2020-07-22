@@ -15,8 +15,7 @@ export
     ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ,
     ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ,
     hdivᶜᶜᵃ, divᶜᶜᶜ, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, div_yzᵃᶜᶜ,
-    ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ,
-    div_uc, div_ũu, div_ũv, div_ũw
+    ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ
 
 using Oceananigans.Grids
 
@@ -26,8 +25,5 @@ include("derivative_operators.jl")
 include("interpolation_operators.jl")
 include("divergence_operators.jl")
 include("laplacian_operators.jl")
-
-include("tracer_advection_operators.jl")
-include("momentum_advection_operators.jl")
 
 end
