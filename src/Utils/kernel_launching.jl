@@ -1,49 +1,41 @@
 #####
-##### Dynamic launch configuration
+##### Utilities for launching kernels
 #####
 
+using Oceananigans.Architectures: device
 using CUDA
 using KernelAbstractions
 
 const MAX_THREADS_PER_BLOCK = 256
 
-function launch_config(grid, dims)
-    return function (kernel)
-        fun = kernel.fun
-        config = launch_configuration(fun)
+"""
+    work_layout(grid, dims)
 
-        # Adapt the suggested config from 1D to the requested grid dimensions
-        if dims == :xyz
-            t = floor(Int, cbrt(config.threads))
-            threads = [t, t, t]
-            blocks  = ceil.(Int, [grid.Nx, grid.Ny, grid.Nz] ./ t)
-        elseif dims == :xy
-            t = floor(Int, sqrt(config.threads))
-            threads = [t, t]
-            blocks  = ceil.(Int, [grid.Nx, grid.Ny] ./ t)
-        elseif dims == :xz
-            t = floor(Int, sqrt(config.threads))
-            threads = [t, t]
-            blocks  = ceil.(Int, [grid.Nx, grid.Nz] ./ t)
-        elseif dims == :yz
-            t = floor(Int, sqrt(config.threads))
-            threads = [t, t]
-            blocks  = ceil.(Int, [grid.Ny, grid.Nz] ./ t)
-        else
-            error("Unsupported launch configuration: $dims")
-        end
+Returns the `workgroup` and `worksize` for launching a kernel over `dims`
+on `grid`. The `workgroup` is a tuple specifying the threads per block in each dimension.
+The `worksize` specifies the range of the loop in each dimension.
 
-        return (threads=Tuple(threads), blocks=Tuple(blocks))
-    end
-end
-
-# See: https://github.com/climate-machine/Oceananigans.jl/pull/308
+For more information, see: https://github.com/climate-machine/Oceananigans.jl/pull/308
+"""
 function work_layout(grid, dims)
 
-    workgroup = grid.Nx == 1 && grid.Ny == 1 ? (1, 1, min(MAX_THREADS_PER_BLOCK, grid.Nz)) : 
-                grid.Nx == 1 ? (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
-                grid.Ny == 1 ? (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) : 
-                               (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
+    workgroup = grid.Nx == 1 && grid.Ny == 1 ? 
+
+                    # One-dimensional column models:
+                    (1, 1) : 
+
+                grid.Nx == 1 ? 
+
+                    # Two-dimensional y-z slice models:
+                    (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
+
+                grid.Ny == 1 ? 
+
+                    # Two-dimensional x-z slice models:
+                    (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) : 
+
+                    # Three-dimensional models use the default (16, 16)
+                    (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
     
     worksize = dims == :xyz ? (grid.Nx, grid.Ny, grid.Nz) :
                dims == :xy  ? (grid.Nx, grid.Ny) :
@@ -53,11 +45,20 @@ function work_layout(grid, dims)
     return workgroup, worksize
 end
 
-using Oceananigans.Architectures: device
+"""
+    launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
 
-function launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
+Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
+over the `dims` of `grid` on the architecture `arch`.
 
-    workgroup, worksize = work_layout(grid, layout)
+Returns an `event` token associated with the `kernel!` launch.
+
+The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
+that must complete before `kernel!` is launched.
+"""
+function launch!(arch, grid, dims, kernel!, args...; dependencies=nothing, kwargs...)
+
+    workgroup, worksize = work_layout(grid, dims)
 
     loop! = kernel!(device(arch), workgroup, worksize)
 
