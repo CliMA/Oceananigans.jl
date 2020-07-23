@@ -2,9 +2,9 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans.Architectures: device
 using CUDA
 using KernelAbstractions
+using Oceananigans.Architectures
 
 const MAX_THREADS_PER_BLOCK = 256
 
@@ -19,24 +19,24 @@ For more information, see: https://github.com/climate-machine/Oceananigans.jl/pu
 """
 function work_layout(grid, dims)
 
-    workgroup = grid.Nx == 1 && grid.Ny == 1 ? 
+    workgroup = grid.Nx == 1 && grid.Ny == 1 ?
 
                     # One-dimensional column models:
-                    (1, 1) : 
+                    (1, 1) :
 
-                grid.Nx == 1 ? 
+                grid.Nx == 1 ?
 
                     # Two-dimensional y-z slice models:
                     (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
 
-                grid.Ny == 1 ? 
+                grid.Ny == 1 ?
 
                     # Two-dimensional x-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) : 
+                    (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) :
 
                     # Three-dimensional models use the default (16, 16)
                     (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
-    
+
     worksize = dims == :xyz ? (grid.Nx, grid.Ny, grid.Nz) :
                dims == :xy  ? (grid.Nx, grid.Ny) :
                dims == :xz  ? (grid.Nx, grid.Nz) :
@@ -60,7 +60,7 @@ function launch!(arch, grid, dims, kernel!, args...; dependencies=nothing, kwarg
 
     workgroup, worksize = work_layout(grid, dims)
 
-    loop! = kernel!(device(arch), workgroup, worksize)
+    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
     @debug "worksize and kernel:" worksize kernel!
 
