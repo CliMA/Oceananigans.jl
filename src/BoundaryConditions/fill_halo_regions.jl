@@ -25,15 +25,18 @@ fill_halo_regions!(field, arch, args...) =
 "Fill halo regions in x, y, and z for a given field."
 function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
 
-      west_event =   fill_west_halo!(c, fieldbcs.x.left,   arch, grid, args...)
-      east_event =   fill_east_halo!(c, fieldbcs.x.right,  arch, grid, args...)
-     south_event =  fill_south_halo!(c, fieldbcs.y.left,   arch, grid, args...)
-     north_event =  fill_north_halo!(c, fieldbcs.y.right,  arch, grid, args...)
-    bottom_event = fill_bottom_halo!(c, fieldbcs.z.bottom, arch, grid, args...)
-       top_event =    fill_top_halo!(c, fieldbcs.z.top,    arch, grid, args...)
+    barrier = Event(device(arch))
 
+      west_event =   fill_west_halo!(c, fieldbcs.x.left,   arch, barrier, grid, args...)
+      east_event =   fill_east_halo!(c, fieldbcs.x.right,  arch, barrier, grid, args...)
+     south_event =  fill_south_halo!(c, fieldbcs.y.left,   arch, barrier, grid, args...)
+     north_event =  fill_north_halo!(c, fieldbcs.y.right,  arch, barrier, grid, args...)
+    bottom_event = fill_bottom_halo!(c, fieldbcs.z.bottom, arch, barrier, grid, args...)
+       top_event =    fill_top_halo!(c, fieldbcs.z.top,    arch, barrier, grid, args...)
+
+    # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
-    events = filter(e -> typeof(e) <: Base.Event, events)
+    events = filter(e -> typeof(e) <: Event, events)
     wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
@@ -74,7 +77,7 @@ for (x, side) in zip(coords, sides)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
     @eval begin
-        $name(c, bc::Union{FBC, PBC}, arch, grid, args...) =
+        $name(c, bc::Union{FBC, PBC}, arch, dependencies, grid, args...) =
             $name(c, bc, grid.$(H), grid.$(N))
     end
 end

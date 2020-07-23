@@ -176,16 +176,18 @@ end
 function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
     workgroup, worksize = work_layout(grid, :xyz)
 
+    barrier = Event(device(arch))
+
     viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
     diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
 
-    viscosity_event = viscosity_kernel!(K.νₑ, grid, closure, buoyancy, U, C, dependencies=Event(device(arch)))
+    viscosity_event = viscosity_kernel!(K.νₑ, grid, closure, buoyancy, U, C, dependencies=barrier)
 
     events = [viscosity_event]
 
     for (tracer_index, κₑ) in enumerate(K.κₑ)
         @inbounds c = C[tracer_index]
-        event = diffusivity_kernel!(κₑ, grid, closure, c, Val(tracer_index), U, dependencies=Event(device(arch)))
+        event = diffusivity_kernel!(κₑ, grid, closure, c, Val(tracer_index), U, dependencies=barrier)
         push!(events, event)
     end
 

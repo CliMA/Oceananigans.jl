@@ -92,12 +92,14 @@ end
 """ Store previous source terms before updating them. """
 function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
 
+    barrier = Event(device(arch))
+
     workgroup, worksize = work_layout(grid, :xyz)
 
     store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
     store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
 
-    velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ)
+    velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ, dependencies=barrier)
 
     events = [velocities_event]
 
@@ -105,7 +107,7 @@ function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
-        tracer_event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ)
+        tracer_event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ, dependencies=barrier)
         push!(events, tracer_event)
     end
 
@@ -136,6 +138,8 @@ function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
+    barrier = Event(device(arch))
+
     time_step_tracer_kernel! = ab2_time_step_tracer!(device(arch), workgroup, worksize)
 
     events = []
@@ -144,7 +148,7 @@ function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
         @inbounds c = C[i]
         @inbounds Gcⁿ = Gⁿ[i+3]
         @inbounds Gc⁻ = G⁻[i+3]
-        event = time_step_tracer_kernel!(c, grid, Δt, χ, Gcⁿ, Gc⁻)
+        event = time_step_tracer_kernel!(c, grid, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
         push!(events, event)
     end
 
@@ -170,7 +174,8 @@ end
 end
 
 function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
-    event = launch!(arch, grid, :xyz, _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻)
+    event = launch!(arch, grid, :xyz, _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻,
+                    dependencies=Event(device(arch)))
     wait(device(arch), event)
     return nothing
 end

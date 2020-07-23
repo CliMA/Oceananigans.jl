@@ -13,16 +13,16 @@ function calculate_interior_tendency_contributions!(G, arch, grid, advection, co
     calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
     calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
 
-    default_stream = Event(device(arch))
+    barrier = Event(device(arch))
 
     Gu_event = calculate_Gu_kernel!(G.u, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, pHY′, clock, dependencies=default_stream)
+                                    U, C, K, F, pHY′, clock, dependencies=barrier)
 
     Gv_event = calculate_Gv_kernel!(G.v, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, pHY′, clock, dependencies=default_stream)
+                                    U, C, K, F, pHY′, clock, dependencies=barrier)
 
     Gw_event = calculate_Gw_kernel!(G.w, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, clock, dependencies=default_stream)
+                                    U, C, K, F, clock, dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]
 
@@ -32,7 +32,7 @@ function calculate_interior_tendency_contributions!(G, arch, grid, advection, co
         @inbounds  c = C[tracer_index]
 
         Gc_event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), advection, closure,
-                                        buoyancy, U, C, K, Fc, clock, dependencies=default_stream)
+                                        buoyancy, U, C, K, Fc, clock, dependencies=barrier)
 
         push!(events, Gc_event)
     end
@@ -89,27 +89,29 @@ end
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, state)
 
+    barrier = Event(device(arch))
+
     events = []
 
     # Velocity fields
     for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, clock, state)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, clock, state)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
 
-    events = filter(e -> typeof(e) <: Base.Event, events)
+    events = filter(e -> typeof(e) <: Event, events)
 
     wait(device(arch), MultiEvent(Tuple(events)))
 

@@ -17,9 +17,9 @@ end
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, clock, state)
 end
 
-  fill_west_halo!(u, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :yz, set_east_west_u_velocity!,   u,           1, bc, grid, clock, state)
-  fill_east_halo!(u, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :yz, set_east_west_u_velocity!,   u, grid.Nx + 1, bc, grid, clock, state)
- fill_south_halo!(v, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :xz, set_north_south_v_velocity!, v,           1, bc, grid, clock, state)
- fill_north_halo!(v, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :xz, set_north_south_v_velocity!, v, grid.Ny + 1, bc, grid, clock, state)
-fill_bottom_halo!(w, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :xy, set_top_bottom_w_velocity!,  w,           1, bc, grid, clock, state)
-   fill_top_halo!(w, bc::NFBC, arch, grid, clock, state) = launch!(arch, grid, :xy, set_top_bottom_w_velocity!,  w, grid.Nz + 1, bc, grid, clock, state)
+  fill_west_halo!(u, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, set_east_west_u_velocity!,   u,           1, bc, grid, clock, state, dependencies=dep)
+  fill_east_halo!(u, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, set_east_west_u_velocity!,   u, grid.Nx + 1, bc, grid, clock, state, dependencies=dep)
+ fill_south_halo!(v, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, set_north_south_v_velocity!, v,           1, bc, grid, clock, state, dependencies=dep)
+ fill_north_halo!(v, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, set_north_south_v_velocity!, v, grid.Ny + 1, bc, grid, clock, state, dependencies=dep)
+fill_bottom_halo!(w, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, set_top_bottom_w_velocity!,  w,           1, bc, grid, clock, state, dependencies=dep)
+   fill_top_halo!(w, bc::NFBC, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, set_top_bottom_w_velocity!,  w, grid.Nz + 1, bc, grid, clock, state, dependencies=dep)

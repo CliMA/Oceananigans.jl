@@ -11,8 +11,9 @@ using Oceananigans.Operators: Δx, Δy, ΔzF
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_x_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :yz, _apply_x_bcs!, Gc.data, c.grid, 
-                                             c.boundary_conditions.x.left, c.boundary_conditions.x.right, args...)
+apply_x_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :yz, _apply_x_bcs!, Gc.data, c.grid, 
+                                                  c.boundary_conditions.x.left, c.boundary_conditions.x.right, args...,
+                                                  dependencies=dep)
 
 """
     apply_y_bcs!(Gc, arch, grid, args...)
@@ -20,8 +21,9 @@ apply_x_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :yz, _apply_x_bcs!, G
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_y_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :xz, _apply_y_bcs!, Gc.data, c.grid, 
-                                             c.boundary_conditions.y.left, c.boundary_conditions.y.right, args...)
+apply_y_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :xz, _apply_y_bcs!, Gc.data, c.grid, 
+                                                  c.boundary_conditions.y.left, c.boundary_conditions.y.right, args...,
+                                                  dependencies=dep)
 
 """
     apply_z_bcs!(Gc, arch, grid, args...)
@@ -29,8 +31,9 @@ apply_y_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :xz, _apply_y_bcs!, G
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-apply_z_bcs!(Gc, c, arch, args...) = launch!(arch, c.grid, :xy, _apply_z_bcs!, Gc.data, c.grid, 
-                                             c.boundary_conditions.z.left, c.boundary_conditions.z.right, args...)
+apply_z_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :xy, _apply_z_bcs!, Gc.data, c.grid, 
+                                                  c.boundary_conditions.z.left, c.boundary_conditions.z.right, args...,
+                                                  dependencies=dep)
 
 """
     _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
