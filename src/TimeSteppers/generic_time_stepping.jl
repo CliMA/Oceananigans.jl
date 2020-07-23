@@ -100,7 +100,8 @@ end
 
 "Update the solution variables (velocities and tracers)."
 function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS) 
+    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS,
+                    dependencies=Event(device(arch))) 
     wait(device(arch), event)
     return nothing
 end

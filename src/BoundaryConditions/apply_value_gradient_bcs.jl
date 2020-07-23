@@ -109,10 +109,9 @@ end
 ##### Kernel callers
 #####
 
-  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, clock, state)
-  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, clock, state)
- fill_south_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, clock, state)
- fill_north_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, clock, state)
-fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, clock, state)
-   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, grid, clock, state) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, clock, state)
-
+  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, clock, state, dependencies=dep)
+  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, clock, state, dependencies=dep)
+ fill_south_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, clock, state, dependencies=dep)
+ fill_north_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, clock, state, dependencies=dep)
+fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, clock, state, dependencies=dep)
+   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, clock, state, dependencies=dep)
