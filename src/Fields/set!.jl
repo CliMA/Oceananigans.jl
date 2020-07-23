@@ -1,5 +1,5 @@
 using CUDA
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index, CUDADevice
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
