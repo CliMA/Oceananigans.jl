@@ -60,7 +60,7 @@ function launch!(arch, grid, dims, kernel!, args...; dependencies=nothing, kwarg
 
     workgroup, worksize = work_layout(grid, dims)
 
-    loop! = kernel!(Oceananigans.Architectures.device(arch), workgroup, worksize)
+    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
     @debug "worksize and kernel:" worksize kernel!
 
