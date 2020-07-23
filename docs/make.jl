@@ -51,21 +51,12 @@ end
 #####
 
 example_pages = [
-    "Architecture" => "model_setup/architecture.md",
-    "Number type" => "model_setup/number_type.md",
-    "Grid" => "model_setup/grids.md",
-    "Clock" => "model_setup/clock.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Tracers" => "model_setup/tracers.md",
-    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Diagnostics" => "model_setup/diagnostics.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
-    "Time stepping" => "model_setup/time_stepping.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
+    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
+    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
+    "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
+    "Internal wave"                    => "generated/internal_wave.md",
+    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
 ]
 
 model_setup_pages = [
