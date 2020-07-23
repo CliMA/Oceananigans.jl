@@ -91,7 +91,7 @@ def plot_lid_driven_cavity_frame(Re, n):
 
     ζ = ds.ζ.isel(yF=slice(0, -2), zF=slice(0, -2), time=n).squeeze()
     img_ζ = ζ.plot.pcolormesh(ax=ax_ζ_mesh, cmap=cmocean.cm.curl, extend="both", add_colorbar=False,
-                              norm=colors.SymLogNorm(linthresh=1e-2, vmin=-1e2, vmax=1e2))
+                              norm=colors.SymLogNorm(base=10, linthresh=1e-2, vmin=-1e2, vmax=1e2))
     fig.colorbar(img_ζ, ax=ax_ζ_mesh, extend="both")
     ax_ζ_mesh.axhline(y=ds.zF[Nz-1], color="tab:red", alpha=0.5)
     ax_ζ_mesh.set_title("vorticity")
