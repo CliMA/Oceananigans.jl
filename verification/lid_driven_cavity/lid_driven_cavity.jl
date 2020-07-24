@@ -86,6 +86,11 @@ function print_progress(simulation)
     return nothing
 end
 
-#  simulate_lid_driven_cavity(Re=100, end_time=25.0)
-#  simulate_lid_driven_cavity(Re=400, end_time=50.0)
+ simulate_lid_driven_cavity(Re=100,   end_time=15)
+ simulate_lid_driven_cavity(Re=400,   end_time=20)
+ simulate_lid_driven_cavity(Re=1000,  end_time=25)
+ simulate_lid_driven_cavity(Re=3200,  end_time=50)
+ simulate_lid_driven_cavity(Re=5000,  end_time=50)
+ simulate_lid_driven_cavity(Re=7500,  end_time=75)
+ simulate_lid_driven_cavity(Re=10000, end_time=100)
 
