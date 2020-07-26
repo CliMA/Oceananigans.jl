@@ -1,7 +1,7 @@
+using Dates: now
 using NCDatasets
-
 using Oceananigans.Fields
-using Oceananigans.Utils: validate_interval
+using Oceananigans.Utils: validate_interval, versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices
 using Oceananigans.Fields: cpudata
 
@@ -41,8 +41,9 @@ end
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either field from the model (e.g. `model.velocities.u`) or a function `f(model)` that returns
-something to be written to disk.
+either a field from the model (e.g. `model.velocities.u`) or a function `f(model)` that returns
+something to be written to disk. Custom output requires the spatial `dimensions` to be manually
+specified.
 
 Keyword arguments
 =================
@@ -64,21 +65,20 @@ Keyword arguments
 """
 
 function NetCDFOutputWriter(model, outputs; filename,
-                                     interval = nothing,
-                                    frequency = nothing,
-                            global_attributes = Dict(),
-                            output_attributes = Dict(),
-                                   dimensions = Dict(),
-                                      clobber = true,
-                                  compression = 0,
-                                           xC = interior_x_indices(Cell, model.grid),
-                                           xF = interior_x_indices(Face, model.grid),
-                                           yC = interior_y_indices(Cell, model.grid),
-                                           yF = interior_y_indices(Face, model.grid),
-                                           zC = interior_z_indices(Cell, model.grid),
-                                           zF = interior_z_indices(Face, model.grid)
-                           )
-
+             interval = nothing,
+            frequency = nothing,
+    global_attributes = Dict(),
+    output_attributes = Dict(),
+           dimensions = Dict(),
+              clobber = true,
+          compression = 0,
+                   xC = interior_x_indices(Cell, model.grid),
+                   xF = interior_x_indices(Face, model.grid),
+                   yC = interior_y_indices(Cell, model.grid),
+                   yF = interior_y_indices(Face, model.grid),
+                   zC = interior_z_indices(Cell, model.grid),
+                   zF = interior_z_indices(Face, model.grid)
+    )
 
     mode = clobber ? "c" : "a"
     validate_interval(interval, frequency)
@@ -159,7 +159,7 @@ zdim(::Type{Cell}) = "zC"
 
 # This function allows users to specify slices with integers; eg xC=3.
 # Note: size(a[3:3, :, :]) = (1, Ny, Nz) versus size(a[3, :, :]) = (Ny, Nz)
-get_slice(n::Integer) = n:n 
+get_slice(n::Integer) = n:n
 get_slice(n::UnitRange) = n
 
 """
@@ -215,31 +215,35 @@ Keyword arguments
 - `attributes`: Global attributes. Default: Dict().
 """
 function write_grid_and_attributes(model;
-                                      filename = "grid.nc",
-                                          mode = "c",
-                                         units = "m",
-                                   compression = 0,
-                                    attributes = Dict(),
-                                    slice_keywords...)
-                                                                       
-    dims = Dict(
-                "xC" => collect(model.grid.xC),
-                "yC" => collect(model.grid.yC),
-                "zC" => collect(model.grid.zC),
+       filename = "grid.nc",
+           mode = "c",
+          units = "m",
+    compression = 0,
+     attributes = Dict(),
+    slice_keywords...)
 
-                "xF" => collect(model.grid.xF),
-                "yF" => collect(model.grid.yF),
-                "zF" => collect(model.grid.zF),
-               )
+    dims = Dict(
+        "xC" => collect(model.grid.xC),
+        "yC" => collect(model.grid.yC),
+        "zC" => collect(model.grid.zC),
+        "xF" => collect(model.grid.xF),
+        "yF" => collect(model.grid.yF),
+        "zF" => collect(model.grid.zF),
+    )
 
     dim_attribs = Dict(
-                       "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => units),
-                       "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => units),
-                       "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => units),
-                       "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => units),
-                       "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => units),
-                       "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => units)
-                      )
+        "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => units),
+        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => units),
+        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => units),
+        "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => units),
+        "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => units),
+        "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => units)
+    )
+
+    # Add useful metadata as global attributes
+    attributes["date"] = "This file was generated on $(now())."
+    attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
+    attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
 
     # Slice coordinate arrays stored in the dims dict
     for (dim, indices) in slice_keywords
@@ -256,4 +260,3 @@ function write_grid_and_attributes(model;
 
     return nothing
 end
-
