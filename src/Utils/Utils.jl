@@ -11,7 +11,7 @@ export
     validate_interval, time_to_run,
     ordered_dict_show,
     with_tracers,
-    versioninfo_with_gpu
+    versioninfo_with_gpu, oceananigans_versioninfo
 
 include("adapt_structure.jl")
 include("units.jl")
