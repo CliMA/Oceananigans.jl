@@ -50,6 +50,14 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
 
+# All indices including halos.
+@inline all_indices(loc::Type{Cell}, topo, N, H) = 1-H:N+H
+@inline all_indices(loc::Type{Face}, topo, N, H) = 1-H:N+1+H
+
+@inline all_x_indices(loc, grid) = all_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
+@inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
+@inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+
 # Node by node
 @inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
 @inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]

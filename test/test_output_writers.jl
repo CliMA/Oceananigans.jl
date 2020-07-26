@@ -61,9 +61,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test length(ds3["xC"]) == Nx
     @test length(ds3["yC"]) == Ny
     @test length(ds3["zC"]) == Nz
-    @test length(ds3["xF"]) == Nx+1
-    @test length(ds3["yF"]) == Ny+1
-    @test length(ds3["zF"]) == Nz+1
+    @test length(ds3["xF"]) == Nx
+    @test length(ds3["yF"]) == Ny
+    @test length(ds3["zF"]) == Nz+1  # z is Bounded
 
     @test ds3["xC"][1] == grid.xC[1]
     @test ds3["xF"][1] == grid.xF[1]
@@ -73,11 +73,11 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test ds3["zF"][1] == grid.zF[1]
 
     @test ds3["xC"][end] == grid.xC[Nx]
-    @test ds3["xF"][end] == grid.xF[Nx+1]
+    @test ds3["xF"][end] == grid.xF[Nx]
     @test ds3["yC"][end] == grid.yC[Ny]
-    @test ds3["yF"][end] == grid.yF[Ny+1]
+    @test ds3["yF"][end] == grid.yF[Ny]
     @test ds3["zC"][end] == grid.zC[Nz]
-    @test ds3["zF"][end] == grid.zF[Nz+1]
+    @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
 
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
@@ -181,9 +181,9 @@ function run_netcdf_function_output_tests(arch)
     @test length(ds["xC"]) == N
     @test length(ds["yC"]) == N
     @test length(ds["zC"]) == N
-    @test length(ds["xF"]) == N+1
-    @test length(ds["yF"]) == N+1
-    @test length(ds["zF"]) == N+1
+    @test length(ds["xF"]) == N
+    @test length(ds["yF"]) == N
+    @test length(ds["zF"]) == N+1  # z is Bounded
 
     @test ds["xC"][1] == grid.xC[1]
     @test ds["xF"][1] == grid.xF[1]
@@ -195,9 +195,9 @@ function run_netcdf_function_output_tests(arch)
     @test ds["xC"][end] == grid.xC[N]
     @test ds["yC"][end] == grid.yC[N]
     @test ds["zC"][end] == grid.zC[N]
-    @test ds["xF"][end] == grid.xF[N+1]
-    @test ds["yF"][end] == grid.yF[N+1]
-    @test ds["zF"][end] == grid.zF[N+1]
+    @test ds["xF"][end] == grid.xF[N]
+    @test ds["yF"][end] == grid.yF[N]
+    @test ds["zF"][end] == grid.zF[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7

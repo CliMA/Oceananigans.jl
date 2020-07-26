@@ -73,13 +73,14 @@ function NetCDFOutputWriter(model, outputs; filename,
            dimensions = Dict(),
               clobber = true,
           compression = 0,
+        include_halos = false,
               verbose = false,
-                   xC = interior_x_indices(Cell, model.grid),
-                   xF = interior_x_indices(Face, model.grid),
-                   yC = interior_y_indices(Cell, model.grid),
-                   yF = interior_y_indices(Face, model.grid),
-                   zC = interior_z_indices(Cell, model.grid),
-                   zF = interior_z_indices(Face, model.grid)
+    xC = include_halos ? all_x_indices(Cell, model.grid) : interior_x_indices(Cell, model.grid),
+    xF = include_halos ? all_x_indices(Face, model.grid) : interior_x_indices(Face, model.grid),
+    yC = include_halos ? all_y_indices(Cell, model.grid) : interior_y_indices(Cell, model.grid),
+    yF = include_halos ? all_y_indices(Face, model.grid) : interior_y_indices(Face, model.grid),
+    zC = include_halos ? all_z_indices(Cell, model.grid) : interior_z_indices(Cell, model.grid),
+    zF = include_halos ? all_z_indices(Face, model.grid) : interior_z_indices(Face, model.grid)
     )
 
     mode = clobber ? "c" : "a"
@@ -89,9 +90,9 @@ function NetCDFOutputWriter(model, outputs; filename,
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
                                                          ( xC,   yC,   zC,   xF,   yF,   zF )))
 
-    # Initiates the output file with dimensions
+    # Initializes the output file with dimensions.
     write_grid_and_attributes(model; filename=filename, compression=compression,
-                              attributes=global_attributes, mode=mode,
+                              include_halos=include_halos, attributes=global_attributes, mode=mode,
                               xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
@@ -244,28 +245,31 @@ Keyword arguments
 - `attributes`: Global attributes. Default: Dict().
 """
 function write_grid_and_attributes(model;
-       filename = "grid.nc",
-           mode = "c",
-          units = "m",
-    compression = 0,
-     attributes = Dict(),
+         filename = "grid.nc",
+             mode = "c",
+            units = "m",
+      compression = 0,
+    include_halos = false,
+       attributes = Dict(),
     slice_keywords...)
 
+    grid = model.grid
+
     dims = Dict(
-        "xC" => collect(model.grid.xC),
-        "yC" => collect(model.grid.yC),
-        "zC" => collect(model.grid.zC),
-        "xF" => collect(model.grid.xF),
-        "yF" => collect(model.grid.yF),
-        "zF" => collect(model.grid.zF),
+        "xC" => include_halos ? collect(grid.xC) : collect(xnodes(Cell, grid)),
+        "xF" => include_halos ? collect(grid.xF) : collect(xnodes(Face, grid)),
+        "yC" => include_halos ? collect(grid.yC) : collect(ynodes(Cell, grid)),
+        "yF" => include_halos ? collect(grid.yF) : collect(ynodes(Face, grid)),
+        "zC" => include_halos ? collect(grid.zC) : collect(znodes(Cell, grid)),
+        "zF" => include_halos ? collect(grid.zF) : collect(znodes(Face, grid))
     )
 
     dim_attribs = Dict(
         "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => units),
-        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => units),
-        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => units),
         "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => units),
+        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => units),
         "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => units),
+        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => units),
         "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => units)
     )
 
