@@ -53,6 +53,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
 
     ds3 = Dataset(nc_filename)
+    @test !isnothing(ds3.attrib["date"])
+    @test !isnothing(ds3.attrib["Julia"])
+    @test !isnothing(ds3.attrib["Oceananigans"])
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
@@ -68,6 +71,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
     ds2 = Dataset(nc_sliced_filename)
+    @test !isnothing(ds2.attrib["date"])
+    @test !isnothing(ds2.attrib["Julia"])
+    @test !isnothing(ds2.attrib["Oceananigans"])
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
     w_sliced = ds2["w"][:, :, :, end]
@@ -119,6 +125,10 @@ function run_netcdf_function_output_tests(arch)
     @test repr(simulation.output_writers[:fruits].dataset) == "closed NetCDF NCDataset"
 
     ds = Dataset(nc_filename, "r")
+
+    @test !isnothing(ds.attrib["date"])
+    @test !isnothing(ds.attrib["Julia"])
+    @test !isnothing(ds.attrib["Oceananigans"])
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
