@@ -53,14 +53,38 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
 
     ds3 = Dataset(nc_filename)
+
     @test !isnothing(ds3.attrib["date"])
     @test !isnothing(ds3.attrib["Julia"])
     @test !isnothing(ds3.attrib["Oceananigans"])
+
+    @test length(ds3["xC"]) == Nx
+    @test length(ds3["yC"]) == Ny
+    @test length(ds3["zC"]) == Nz
+    @test length(ds3["xF"]) == Nx+1
+    @test length(ds3["yF"]) == Ny+1
+    @test length(ds3["zF"]) == Nz+1
+
+    @test ds3["xC"][1] == grid.xC[1]
+    @test ds3["xF"][1] == grid.xF[1]
+    @test ds3["yC"][1] == grid.yC[1]
+    @test ds3["yF"][1] == grid.yF[1]
+    @test ds3["zC"][1] == grid.zC[1]
+    @test ds3["zF"][1] == grid.zF[1]
+
+    @test ds3["xC"][end] == grid.xC[Nx]
+    @test ds3["xF"][end] == grid.xF[Nx+1]
+    @test ds3["yC"][end] == grid.yC[Ny]
+    @test ds3["yF"][end] == grid.yF[Ny+1]
+    @test ds3["zC"][end] == grid.zC[Nz]
+    @test ds3["zF"][end] == grid.zF[Nz+1]
+
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
     T = ds3["T"][:, :, :, end]
     S = ds3["S"][:, :, :, end]
+
     close(ds3)
     @test repr(ds3) == "closed NetCDF NCDataset"
 
@@ -71,14 +95,38 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
     ds2 = Dataset(nc_sliced_filename)
+
     @test !isnothing(ds2.attrib["date"])
     @test !isnothing(ds2.attrib["Julia"])
     @test !isnothing(ds2.attrib["Oceananigans"])
+
+    @test length(ds2["xC"]) == length(xC_slice)
+    @test length(ds2["xF"]) == length(xF_slice)
+    @test length(ds2["yC"]) == length(yC_slice)
+    @test length(ds2["yF"]) == length(yF_slice)
+    @test length(ds2["zC"]) == length(zC_slice)
+    @test length(ds2["zF"]) == length(zF_slice)
+
+    @test ds2["xC"][1] == grid.xC[xC_slice[1]]
+    @test ds2["xF"][1] == grid.xF[xF_slice[1]]
+    @test ds2["yC"][1] == grid.yC[yC_slice[1]]
+    @test ds2["yF"][1] == grid.yF[yF_slice]
+    @test ds2["zC"][1] == grid.zC[zC_slice]
+    @test ds2["zF"][1] == grid.zF[zF_slice[1]]
+
+    @test ds2["xC"][end] == grid.xC[xC_slice[end]]
+    @test ds2["xF"][end] == grid.xF[xF_slice[end]]
+    @test ds2["yC"][end] == grid.yC[yC_slice[end]]
+    @test ds2["yF"][end] == grid.yF[yF_slice]
+    @test ds2["zC"][end] == grid.zC[zC_slice]
+    @test ds2["zF"][end] == grid.zF[zF_slice[end]]
+
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
     w_sliced = ds2["w"][:, :, :, end]
     T_sliced = ds2["T"][:, :, :, end]
     S_sliced = ds2["S"][:, :, :, end]
+
     close(ds2)
     @test repr(ds2) == "closed NetCDF NCDataset"
 
@@ -129,6 +177,27 @@ function run_netcdf_function_output_tests(arch)
     @test !isnothing(ds.attrib["date"])
     @test !isnothing(ds.attrib["Julia"])
     @test !isnothing(ds.attrib["Oceananigans"])
+
+    @test length(ds["xC"]) == N
+    @test length(ds["yC"]) == N
+    @test length(ds["zC"]) == N
+    @test length(ds["xF"]) == N+1
+    @test length(ds["yF"]) == N+1
+    @test length(ds["zF"]) == N+1
+
+    @test ds["xC"][1] == grid.xC[1]
+    @test ds["xF"][1] == grid.xF[1]
+    @test ds["yC"][1] == grid.yC[1]
+    @test ds["yF"][1] == grid.yF[1]
+    @test ds["zC"][1] == grid.zC[1]
+    @test ds["zF"][1] == grid.zF[1]
+
+    @test ds["xC"][end] == grid.xC[N]
+    @test ds["yC"][end] == grid.yC[N]
+    @test ds["zC"][end] == grid.zC[N]
+    @test ds["xF"][end] == grid.xF[N+1]
+    @test ds["yF"][end] == grid.yF[N+1]
+    @test ds["zF"][end] == grid.zF[N+1]
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
