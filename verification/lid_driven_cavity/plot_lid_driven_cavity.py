@@ -7,6 +7,7 @@ import cmocean
 import ffmpeg
 
 from numpy import nan
+from xarray.ufuncs import fabs
 
 #####
 ##### Data from tables 1, 2, and 4 of Ghia et al. (1982).
@@ -97,20 +98,21 @@ def plot_lid_driven_cavity_frame(Re, n):
     ax_w_mesh.set_ylabel("z")
     ax_w_mesh.set_aspect("equal")
 
-    ζ_line = ds.ζ.isel(time=n, zF=Nz-1)
-    ax_ζ_line.plot(y_ζ_Ghia, ζ_Ghia[Re], label="Ghia et al. (1982)", color="tab:red", linestyle="", marker="o", fillstyle="none")
+    ζ_line = fabs(ds.ζ.isel(time=n, zF=Nz-1))
+    ax_ζ_line.plot(y_ζ_Ghia, ζ_Ghia[Re], label="Ghia et al. (1982)", color="tab:purple", linestyle="", marker="o", fillstyle="none")
     ax_ζ_line.plot(ds.yF, ζ_line.values.flatten(), label="Oceananigans.jl", color="tab:purple")
     ax_ζ_line.legend(loc="lower left", bbox_to_anchor=(0, 1.01, 1, 0.2), ncol=2, frameon=False)
     ax_ζ_line.set_xlabel("y")
-    ax_ζ_line.set_ylabel("vorticity $\zeta$")
+    ax_ζ_line.set_ylabel("vorticity $|\zeta$|")
     ax_ζ_line.set_xlim([0, 1])
     ax_ζ_line.set_ylim(bottom=0)
 
     ζ = ds.ζ.isel(yF=slice(0, -2), zF=slice(0, -2), time=n).squeeze()
     img_ζ = ζ.plot.pcolormesh(ax=ax_ζ_mesh, cmap=cmocean.cm.curl, extend="both", add_colorbar=False,
-                              norm=colors.SymLogNorm(base=10, linthresh=1e-2, vmin=-1e2, vmax=1e2))
+                              # vmin=-100, vmax=100)
+                              norm=colors.SymLogNorm(base=10, linthresh=1, vmin=-1e2, vmax=1e2))
     fig.colorbar(img_ζ, ax=ax_ζ_mesh, extend="both")
-    ax_ζ_mesh.axhline(y=ds.zF[Nz-2], color="tab:purple", alpha=0.5)
+    ax_ζ_mesh.axhline(y=ds.zF[Nz-2], color="tab:purple", alpha=1.0)
     ax_ζ_mesh.set_title("vorticity")
     ax_ζ_mesh.set_xlabel("y")
     ax_ζ_mesh.set_ylabel("z")
@@ -120,7 +122,7 @@ def plot_lid_driven_cavity_frame(Re, n):
     plt.savefig(f"lid_driven_cavity_Re{Re}_{n:05d}.png")
     plt.close("all")
 
-Re = 400
+Re = 100
 ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
 
 joblib.Parallel(n_jobs=-1)(
