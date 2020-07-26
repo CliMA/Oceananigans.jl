@@ -10,7 +10,8 @@ export
     tupleit, parenttuple, datatuple, datatuples,
     validate_interval, time_to_run,
     ordered_dict_show,
-    with_tracers
+    with_tracers,
+    versioninfo_with_gpu
 
 include("adapt_structure.jl")
 include("units.jl")
@@ -22,5 +23,6 @@ include("tuple_utils.jl")
 include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
+include("versioninfo.jl")
 
 end
