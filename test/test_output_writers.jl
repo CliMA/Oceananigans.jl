@@ -29,7 +29,7 @@ function run_thermal_bubble_netcdf_tests(arch)
         "S" => model.tracers.S
     )
     nc_filename = "dump_test_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -41,7 +41,7 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10,
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10, verbose=true,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
@@ -117,8 +117,8 @@ function run_netcdf_function_output_tests(arch)
 
     nc_filename = "test_function_outputs_$(typeof(arch)).nc"
     simulation.output_writers[:fruits] =
-        NetCDFOutputWriter(
-            model, outputs; frequency=1, filename=nc_filename, dimensions=dims,
+        NetCDFOutputWriter(model, outputs;
+            frequency=1, filename=nc_filename, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)

@@ -32,6 +32,7 @@ mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
       clobber :: Bool
        slices :: S
      previous :: Float64
+      verbose :: Bool
 end
 
 """
@@ -72,6 +73,7 @@ function NetCDFOutputWriter(model, outputs; filename,
            dimensions = Dict(),
               clobber = true,
           compression = 0,
+              verbose = false,
                    xC = interior_x_indices(Cell, model.grid),
                    xF = interior_x_indices(Face, model.grid),
                    yC = interior_y_indices(Cell, model.grid),
@@ -121,14 +123,15 @@ function NetCDFOutputWriter(model, outputs; filename,
     end
     sync(dataset)
 
-    field_outputs = filter(o -> o.second isa Field, outputs) # extract outputs whose values are Fields
+    # extract outputs whose values are Fields
+    field_outputs = filter(o -> o.second isa Field, outputs)
 
     # Store a slice specification for each field.
     slices = Dict(name => slice_indices(field; xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
                   for (name, field) in field_outputs)
 
     return NetCDFOutputWriter(filename, dataset, outputs, interval, frequency,
-                              clobber, slices, 0.0)
+                              clobber, slices, 0.0, verbose)
 end
 
 Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filename, "a")
@@ -177,12 +180,24 @@ Writes output to the netcdf file at specified intervals. Increments the `time` d
 every time an output is written to the file.
 """
 function write_output(model, ow::NetCDFOutputWriter)
-    ds = ow.dataset
+    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filename
 
     time_index = length(ds["time"]) + 1
     ds["time"][time_index] = model.clock.time
 
+    if verbose
+        @info "Writing to NetCDF: $filepath..."
+        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
+    end
+
+    if verbose
+        # Time and file size before computing any outputs.
+        t0, sz0 = time_ns(), filesize(filepath)
+    end
+
     for (name, output) in ow.outputs
+        # Time before computing this output.
+        verbose && (t0′ = time_ns())
 
         if output isa Field
             data = cpudata(output) # Transfer data to CPU if parent(output) is a CuArray
@@ -193,9 +208,23 @@ function write_output(model, ow::NetCDFOutputWriter)
             ds[name][colons..., time_index] = data
         end
 
+        if verbose
+            # Time after computing this output.
+            t1′ = time_ns()
+            @info "Computing $name done: time=$(prettytime((t1′-t0′)/1e9))"
+        end
     end
 
     sync(ow.dataset)
+
+    if verbose
+        # Time and file size after computing and writing all outputs.
+        t1, sz1 = time_ns(), filesize(filepath)
+        verbose && @info begin
+            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
+        end
+    end
 
     return nothing
 end
