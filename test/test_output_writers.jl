@@ -23,7 +23,7 @@ function run_thermal_bubble_netcdf_tests(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-    nc_filename = "dump_test_$(typeof(arch)).nc"
+    nc_filename = "test_dump_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
 
@@ -34,7 +34,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     zC_slice = 10
     zF_slice = 9:11
 
-    nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
+    nc_sliced_filename = "test_dump_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
         NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10, verbose=true,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
@@ -49,9 +49,9 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     ds3 = Dataset(nc_filename)
 
-    @test !isnothing(ds3.attrib["date"])
-    @test !isnothing(ds3.attrib["Julia"])
-    @test !isnothing(ds3.attrib["Oceananigans"])
+    @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
+    @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
+    @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
 
     @test length(ds3["xC"]) == Nx
     @test length(ds3["yC"]) == Ny
@@ -91,9 +91,9 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     ds2 = Dataset(nc_sliced_filename)
 
-    @test !isnothing(ds2.attrib["date"])
-    @test !isnothing(ds2.attrib["Julia"])
-    @test !isnothing(ds2.attrib["Oceananigans"])
+    @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
+    @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
+    @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
 
     @test length(ds2["xC"]) == length(xC_slice)
     @test length(ds2["xF"]) == length(xF_slice)
@@ -155,7 +155,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-    nc_filename = "dump_test_$(typeof(arch)).nc"
+    nc_filename = "test_dump_include_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, include_halos=true)
     push!(simulation.output_writers, nc_writer)
 
@@ -165,9 +165,9 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
 
     ds = Dataset(nc_filename)
 
-    @test !isnothing(ds.attrib["date"])
-    @test !isnothing(ds.attrib["Julia"])
-    @test !isnothing(ds.attrib["Oceananigans"])
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     @test length(ds["xC"]) == Nx+2Hx
@@ -244,9 +244,9 @@ function run_netcdf_function_output_tests(arch)
 
     ds = Dataset(nc_filename, "r")
 
-    @test !isnothing(ds.attrib["date"])
-    @test !isnothing(ds.attrib["Julia"])
-    @test !isnothing(ds.attrib["Oceananigans"])
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
 
     @test length(ds["xC"]) == N
     @test length(ds["yC"]) == N
