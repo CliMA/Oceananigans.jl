@@ -19,11 +19,6 @@ const default_output_attributes = Dict(
     "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
 )
 
-"""
-    NetCDFOutputWriter <: AbstractOutputWriter
-
-An output writer for writing to NetCDF files.
-"""
 mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
      filename :: String
       dataset :: D
@@ -37,9 +32,9 @@ mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs; frequency=nothing, interval=nothing, filename=".",
+    NetCDFOutputWriter(model, outputs; filename, frequency=nothing, interval=nothing,
                        global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
-                       clobber=true, compression=0, slice_kw...)
+                       clobber=true, compression=0, include_halos=false, verbose=false, slice_kwargs...)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
@@ -51,19 +46,90 @@ Keyword arguments
 =================
 - `frequency`: Save output every `n` model iterations.
 - `interval`: Save output every `t` units of model clock time.
-- `filename`: Filepath to save output to. Default: "." (current working directory).
-- `global_attributes`: Dict of model properties to save with every file (deafult: Dict())
+- `filename`: Filepath to save output to.
+- `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
-  defaults are provided for velocities, temperature, and salinity).
-- `dimensions`: A Dict of dimensions to apply to outputs (useful for function outputs as
-  field dimensions can be inferred).
+  defaults are provided for velocities, buoyancy, temperature, and salinity).
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (useful for function outputs
+  as field dimensions can be inferred).
+- `include_halos`: Include the halo regions in the grid coordinates and output fields
+  (default: `false`).
 - `clobber`: Remove existing files if their filenames conflict. Default: `true`.
 - `compression`: Determines the compression level of data (0-9, default 0)
-- `slice_kw`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
+- `slice_kwargs`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
   All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
   `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
   is treated like `xC = 1:1`. Multiple dimensions can be sliced in one call. Not providing slices
-  writes output over the entire domain.
+  writes output over the entire domain (including halo regions if `include_halos=true`).
+
+Examples
+========
+Saving the u velocity field and temperature fields to NetCDF:
+```jldoctest netcdf1
+julia> using Oceananigans, Oceananigans.OutputWriters
+
+julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
+
+julia> model = IncompressibleModel(grid=grid);
+
+julia> simulation = Simulation(model, Δt=12, stop_time=3600);
+
+julia> fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
+
+julia> simulation.output_writers[:field_writer] =
+           NetCDFOutputWriter(model, fields, filename="output_fields.nc", interval=60)
+NetCDFOutputWriter (interval=60): output_fields.nc
+├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 2 outputs: ["T", "u"]
+```
+
+```jldoctest netcdf1
+julia> simulation.output_writers[:surface_slice_writer] =
+           NetCDFOutputWriter(model, fields, filename="output_surface_xy_slice.nc",
+                              interval=60, zC=Nz, zF=Nz+1)
+NetCDFOutputWriter (interval=60): output_surface_xy_slice.nc
+├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 2 outputs: ["T", "u"]
+```
+
+Writing a scalar, profile, and slice to NetCDF:
+```jldoctest netcdf2
+julia> using Oceananigans, Oceananigans.OutputWriters
+
+julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3));
+
+julia> model = IncompressibleModel(grid=grid);
+
+julia> simulation = Simulation(model, Δt=1.25, stop_iteration=3);
+
+julia> f(model) = model.clock.time^2; # scalar output
+
+julia> g(model) = model.clock.time .* exp.(znodes(Cell, grid)); # vector/profile output
+
+# xy slice output
+julia> h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                   .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1]));
+
+julia> outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h);
+
+julia>    dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"));
+
+julia> output_attributes = Dict(
+           "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
+           "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
+           "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+       );
+
+julia> global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
+
+julia> simulation.output_writers[:fruits] =
+           NetCDFOutputWriter(model, outputs;
+                              frequency=1, filename="fruits.nc", dimensions=dims, verbose=true,
+                              global_attributes=global_attributes, output_attributes=output_attributes)
+NetCDFOutputWriter (frequency=1): fruits.nc
+├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 3 outputs: ["profile", "slice", "scalar"]
+```
 """
 
 function NetCDFOutputWriter(model, outputs; filename,
