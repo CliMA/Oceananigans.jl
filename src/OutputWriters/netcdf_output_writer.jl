@@ -131,7 +131,6 @@ NetCDFOutputWriter (frequency=1): fruits.nc
 └── 3 outputs: ["profile", "slice", "scalar"]
 ```
 """
-
 function NetCDFOutputWriter(model, outputs; filename,
              interval = nothing,
             frequency = nothing,
