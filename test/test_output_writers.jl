@@ -1,10 +1,5 @@
 using NCDatasets, Statistics
 
-"""
-Run a coarse thermal bubble simulation and save the output to NetCDF at the
-10th time step. Then read back the output and test that it matches the model's
-state.
-"""
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -135,6 +130,81 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
     @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
     @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
+end
+
+function run_thermal_bubble_netcdf_tests_with_halos(arch)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 100, 100, 100
+
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    simulation = Simulation(model, Δt=6, stop_iteration=10)
+
+    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
+    # of the domain volume.
+    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
+    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
+    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
+    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+
+    outputs = Dict(
+        "v" => model.velocities.v,
+        "u" => model.velocities.u,
+        "w" => model.velocities.w,
+        "T" => model.tracers.T,
+        "S" => model.tracers.S
+    )
+    nc_filename = "dump_test_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, include_halos=true)
+    push!(simulation.output_writers, nc_writer)
+
+    run!(simulation)
+
+    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
+
+    ds = Dataset(nc_filename)
+
+    @test !isnothing(ds.attrib["date"])
+    @test !isnothing(ds.attrib["Julia"])
+    @test !isnothing(ds.attrib["Oceananigans"])
+
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+    @test length(ds["xC"]) == Nx+2Hx
+    @test length(ds["yC"]) == Ny+2Hy
+    @test length(ds["zC"]) == Nz+2Hz
+    @test length(ds["xF"]) == Nx+2Hx
+    @test length(ds["yF"]) == Ny+2Hy
+    @test length(ds["zF"]) == Nz+2Hz+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.xC[1-Hx]
+    @test ds["xF"][1] == grid.xF[1-Hx]
+    @test ds["yC"][1] == grid.yC[1-Hy]
+    @test ds["yF"][1] == grid.yF[1-Hy]
+    @test ds["zC"][1] == grid.zC[1-Hz]
+    @test ds["zF"][1] == grid.zF[1-Hz]
+
+    @test ds["xC"][end] == grid.xC[Nx+Hx]
+    @test ds["xF"][end] == grid.xF[Nx+Hx]
+    @test ds["yC"][end] == grid.yC[Ny+Hy]
+    @test ds["yF"][end] == grid.yF[Ny+Hy]
+    @test ds["zC"][end] == grid.zC[Nz+Hz]
+    @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+
+    u = ds["u"][:, :, :, end]
+    v = ds["v"][:, :, :, end]
+    w = ds["w"][:, :, :, end]
+    T = ds["T"][:, :, :, end]
+    S = ds["S"][:, :, :, end]
+
+    close(ds)
+    @test repr(ds) == "closed NetCDF NCDataset"
+
+    @test all(u .≈ Array(model.velocities.u.data.parent))
+    @test all(v .≈ Array(model.velocities.v.data.parent))
+    @test all(w .≈ Array(model.velocities.w.data.parent))
+    @test all(T .≈ Array(model.tracers.T.data.parent))
+    @test all(S .≈ Array(model.tracers.S.data.parent))
 end
 
 function run_netcdf_function_output_tests(arch)
@@ -273,7 +343,7 @@ end
 """
 Run two coarse rising thermal bubble simulations and make sure that when
 restarting from a checkpoint, the restarted simulation matches the non-restarted
-simulation numerically.
+simulation to machine precision.
 """
 function run_thermal_bubble_checkpointer_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -336,6 +406,7 @@ end
          @testset "NetCDF [$(typeof(arch))]" begin
              @info "  Testing NetCDF output writer [$(typeof(arch))]..."
              run_thermal_bubble_netcdf_tests(arch)
+             run_thermal_bubble_netcdf_tests_with_halos(arch)
              run_netcdf_function_output_tests(arch)
          end
 
