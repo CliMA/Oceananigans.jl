@@ -131,10 +131,6 @@ pages = [
 ##### Build and deploy docs
 #####
 
-# Set up a timer to print a dot '.' every 60 seconds. This is to avoid Travis CI
-# timing out when building demanding Literate.jl examples.
-dot_timer = Timer(t -> println("."), 0, interval=60)
-
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
@@ -160,5 +156,3 @@ withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
       push_preview = true
     )
 end
-
-close(dot_timer)
