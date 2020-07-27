@@ -36,6 +36,14 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
 total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
+# Grid domains
+domain(ξ, topo) = ξ[1], ξ[end]
+domain(ξ, ::Type{Bounded}) = ξ[1], ξ[end-1]
+
+x_domain(grid) = domain(grid.xF, topology(grid, 1))
+y_domain(grid) = domain(grid.yF, topology(grid, 2))
+z_domain(grid) = domain(grid.zF, topology(grid, 3))
+
 #####
 ##### << Nodes >>
 #####
