@@ -295,3 +295,17 @@ function write_grid_and_attributes(model;
 
     return nothing
 end
+
+function Base.show(io::IO, ow::NetCDFOutputWriter)
+    freq_int = isnothing(ow.frequency) && isnothing(ow.interval) ? "" :
+               isnothing(ow.frequency) ? "(interval=$(ow.interval))" :
+               isnothing(ow.interval)  ? "(frequency=$(ow.frequency))" :
+               "(frequency=$(ow.frequency), interval=$(ow.interval))"
+
+    dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
+                 for dim in keys(ow.dataset.dim)])[1:end-2]
+
+    print(io, "NetCDFOutputWriter $freq_int: $(ow.filename)\n",
+        "├── dimensions: $dims\n",
+        "└── $(length(ow.outputs)) outputs: $(keys(ow.outputs))")
+end
