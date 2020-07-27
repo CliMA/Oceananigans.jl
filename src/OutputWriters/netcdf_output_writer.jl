@@ -64,7 +64,8 @@ Keyword arguments
 
 Examples
 ========
-Saving the u velocity field and temperature fields to NetCDF:
+Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
+to separate NetCDF files:
 ```jldoctest netcdf1
 julia> using Oceananigans, Oceananigans.OutputWriters
 
@@ -86,14 +87,14 @@ NetCDFOutputWriter (interval=60): output_fields.nc
 ```jldoctest netcdf1
 julia> simulation.output_writers[:surface_slice_writer] =
            NetCDFOutputWriter(model, fields, filename="output_surface_xy_slice.nc",
-                              interval=60, zC=Nz, zF=Nz+1)
+                              interval=60, zC=grid.Nz, zF=grid.Nz+1)
 NetCDFOutputWriter (interval=60): output_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 └── 2 outputs: ["T", "u"]
 ```
 
 Writing a scalar, profile, and slice to NetCDF:
-```jldoctest netcdf2
+```jldoctest
 julia> using Oceananigans, Oceananigans.OutputWriters
 
 julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3));
@@ -106,9 +107,8 @@ julia> f(model) = model.clock.time^2; # scalar output
 
 julia> g(model) = model.clock.time .* exp.(znodes(Cell, grid)); # vector/profile output
 
-# xy slice output
 julia> h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
-                                   .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1]));
+                                   .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
 
 julia> outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h);
 
