@@ -1,9 +1,10 @@
 using Dates: now
 using NCDatasets
 using Oceananigans.Fields
-using Oceananigans.Utils: validate_interval, versioninfo_with_gpu, oceananigans_versioninfo
-using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices
 using Oceananigans.Fields: cpudata
+using Oceananigans.Utils: validate_interval, versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices,
+                          all_x_indices, all_y_indices, all_z_indices
 
 # Possibly should
 collect_face_nodes(topo, ξF) = collect(ξF)[1:end-1]
@@ -255,13 +256,14 @@ function write_grid_and_attributes(model;
 
     grid = model.grid
 
-    dims = Dict(
-        "xC" => include_halos ? collect(grid.xC) : collect(xnodes(Cell, grid)),
-        "xF" => include_halos ? collect(grid.xF) : collect(xnodes(Face, grid)),
-        "yC" => include_halos ? collect(grid.yC) : collect(ynodes(Cell, grid)),
-        "yF" => include_halos ? collect(grid.yF) : collect(ynodes(Face, grid)),
-        "zC" => include_halos ? collect(grid.zC) : collect(znodes(Cell, grid)),
-        "zF" => include_halos ? collect(grid.zF) : collect(znodes(Face, grid))
+    # Allow values to be of Any type as OffsetArrays may get modified below.
+    dims = Dict{String,Any}(
+        "xC" => include_halos ? grid.xC : collect(xnodes(Cell, grid)),
+        "xF" => include_halos ? grid.xF : collect(xnodes(Face, grid)),
+        "yC" => include_halos ? grid.yC : collect(ynodes(Cell, grid)),
+        "yF" => include_halos ? grid.yF : collect(ynodes(Face, grid)),
+        "zC" => include_halos ? grid.zC : collect(znodes(Cell, grid)),
+        "zF" => include_halos ? grid.zF : collect(znodes(Face, grid))
     )
 
     dim_attribs = Dict(

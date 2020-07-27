@@ -21,7 +21,7 @@ function oceananigans_versioninfo()
         uuid = project.dependencies["Oceananigans"]
         pkg_info = Pkg.dependencies()[uuid]
         s = "Oceananigans v$(pkg_info.version)"
-        s *= isnothing(pkg_info.git_revision) ? " #$(pkg_info.git_revision)" : ""
+        s *= isnothing(pkg_info.git_revision) ? "" : " #$(pkg_info.git_revision)"
         return s
     end
 
