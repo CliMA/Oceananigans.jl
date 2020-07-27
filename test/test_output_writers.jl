@@ -234,13 +234,13 @@ function run_netcdf_function_output_tests(arch)
     global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
     nc_filename = "test_function_outputs_$(typeof(arch)).nc"
-    simulation.output_writers[:fruits] =
+    simulation.output_writers[:food] =
         NetCDFOutputWriter(model, outputs;
             frequency=1, filename=nc_filename, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
-    @test repr(simulation.output_writers[:fruits].dataset) == "closed NetCDF NCDataset"
+    @test repr(simulation.output_writers[:food].dataset) == "closed NetCDF NCDataset"
 
     ds = Dataset(nc_filename, "r")
 

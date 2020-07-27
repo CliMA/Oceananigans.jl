@@ -16,25 +16,76 @@ passing it a dictionary of (label, field) pairs and any indices for slicing if y
 The following example shows how to construct NetCDF output writers for two different kinds of outputs (3D fields and
 slices) along with output attributes
 
-```julia
-using Oceananigans
-using Oceananigans.OutputWriters
+```jldoctest netcdf1
+using Oceananigans, Oceananigans.OutputWriters
 
-Nx = Ny = Nz = 16
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1)))
-simulation = Simulation(model, Δt=12, stop_time=3600)
+grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-fields = Dict(
-    "u" => model.velocities.u,
-    "T" => model.tracers.T
-)
+model = IncompressibleModel(grid=grid);
+
+simulation = Simulation(model, Δt=12, stop_time=3600);
+
+fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields; filename="output_fields.nc", interval=1800)
+    NetCDFOutputWriter(model, fields, filename="output_fields.nc", interval=60)
 
+# output
+NetCDFOutputWriter (interval=60): output_fields.nc
+├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 2 outputs: ["T", "u"]
+```
+
+```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields; filename="output_surface_xy_slice.nc",
-                       interval=300, zC=Nz, zF=Nz)
+    NetCDFOutputWriter(model, fields, filename="output_surface_xy_slice.nc",
+                       interval=60, zC=grid.Nz, zF=grid.Nz+1)
+
+# output
+NetCDFOutputWriter (interval=60): output_surface_xy_slice.nc
+├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 2 outputs: ["T", "u"]
+```
+
+Writing a scalar, profile, and slice to NetCDF:
+
+```jldoctest
+using Oceananigans, Oceananigans.OutputWriters
+
+grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3));
+
+model = IncompressibleModel(grid=grid);
+
+simulation = Simulation(model, Δt=1.25, stop_iteration=3);
+
+f(model) = model.clock.time^2; # scalar output
+
+g(model) = model.clock.time .* exp.(znodes(Cell, grid)); # vector/profile output
+
+h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
+
+outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
+
+dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"));
+
+output_attributes = Dict(
+    "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
+    "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
+    "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+);
+
+global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
+
+simulation.output_writers[:stuff] =
+    NetCDFOutputWriter(model, outputs,
+                       frequency=1, filename="stuff.nc", dimensions=dims, verbose=true,
+                       global_attributes=global_attributes, output_attributes=output_attributes)
+
+# output
+NetCDFOutputWriter (frequency=1): stuff.nc
+├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
+└── 3 outputs: ["profile", "slice", "scalar"]
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more details and options.
