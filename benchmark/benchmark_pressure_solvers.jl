@@ -2,6 +2,7 @@ using Printf
 using TimerOutputs
 using Oceananigans
 using Oceananigans.Solvers
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 

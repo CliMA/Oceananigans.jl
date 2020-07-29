@@ -1,10 +1,5 @@
 using NCDatasets, Statistics
 
-"""
-Run a coarse thermal bubble simulation and save the output to NetCDF at the
-10th time step. Then read back the output and test that it matches the model's
-state.
-"""
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -28,8 +23,8 @@ function run_thermal_bubble_netcdf_tests(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-    nc_filename = "dump_test_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10)
+    nc_filename = "test_dump_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -39,9 +34,9 @@ function run_thermal_bubble_netcdf_tests(arch)
     zC_slice = 10
     zF_slice = 9:11
 
-    nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
+    nc_sliced_filename = "test_dump_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10,
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10, verbose=true,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
@@ -53,11 +48,38 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
 
     ds3 = Dataset(nc_filename)
+
+    @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
+    @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
+    @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
+
+    @test length(ds3["xC"]) == Nx
+    @test length(ds3["yC"]) == Ny
+    @test length(ds3["zC"]) == Nz
+    @test length(ds3["xF"]) == Nx
+    @test length(ds3["yF"]) == Ny
+    @test length(ds3["zF"]) == Nz+1  # z is Bounded
+
+    @test ds3["xC"][1] == grid.xC[1]
+    @test ds3["xF"][1] == grid.xF[1]
+    @test ds3["yC"][1] == grid.yC[1]
+    @test ds3["yF"][1] == grid.yF[1]
+    @test ds3["zC"][1] == grid.zC[1]
+    @test ds3["zF"][1] == grid.zF[1]
+
+    @test ds3["xC"][end] == grid.xC[Nx]
+    @test ds3["xF"][end] == grid.xF[Nx]
+    @test ds3["yC"][end] == grid.yC[Ny]
+    @test ds3["yF"][end] == grid.yF[Ny]
+    @test ds3["zC"][end] == grid.zC[Nz]
+    @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
+
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
     T = ds3["T"][:, :, :, end]
     S = ds3["S"][:, :, :, end]
+
     close(ds3)
     @test repr(ds3) == "closed NetCDF NCDataset"
 
@@ -68,11 +90,38 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(S .≈ Array(interiorparent(model.tracers.S)))
 
     ds2 = Dataset(nc_sliced_filename)
+
+    @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
+    @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
+    @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
+
+    @test length(ds2["xC"]) == length(xC_slice)
+    @test length(ds2["xF"]) == length(xF_slice)
+    @test length(ds2["yC"]) == length(yC_slice)
+    @test length(ds2["yF"]) == length(yF_slice)
+    @test length(ds2["zC"]) == length(zC_slice)
+    @test length(ds2["zF"]) == length(zF_slice)
+
+    @test ds2["xC"][1] == grid.xC[xC_slice[1]]
+    @test ds2["xF"][1] == grid.xF[xF_slice[1]]
+    @test ds2["yC"][1] == grid.yC[yC_slice[1]]
+    @test ds2["yF"][1] == grid.yF[yF_slice]
+    @test ds2["zC"][1] == grid.zC[zC_slice]
+    @test ds2["zF"][1] == grid.zF[zF_slice[1]]
+
+    @test ds2["xC"][end] == grid.xC[xC_slice[end]]
+    @test ds2["xF"][end] == grid.xF[xF_slice[end]]
+    @test ds2["yC"][end] == grid.yC[yC_slice[end]]
+    @test ds2["yF"][end] == grid.yF[yF_slice]
+    @test ds2["zC"][end] == grid.zC[zC_slice]
+    @test ds2["zF"][end] == grid.zF[zF_slice[end]]
+
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
     w_sliced = ds2["w"][:, :, :, end]
     T_sliced = ds2["T"][:, :, :, end]
     S_sliced = ds2["S"][:, :, :, end]
+
     close(ds2)
     @test repr(ds2) == "closed NetCDF NCDataset"
 
@@ -81,6 +130,81 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
     @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
     @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
+end
+
+function run_thermal_bubble_netcdf_tests_with_halos(arch)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 100, 100, 100
+
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    simulation = Simulation(model, Δt=6, stop_iteration=10)
+
+    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
+    # of the domain volume.
+    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
+    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
+    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
+    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+
+    outputs = Dict(
+        "v" => model.velocities.v,
+        "u" => model.velocities.u,
+        "w" => model.velocities.w,
+        "T" => model.tracers.T,
+        "S" => model.tracers.S
+    )
+    nc_filename = "test_dump_with_halos_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, with_halos=true)
+    push!(simulation.output_writers, nc_writer)
+
+    run!(simulation)
+
+    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
+
+    ds = Dataset(nc_filename)
+
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+    @test length(ds["xC"]) == Nx+2Hx
+    @test length(ds["yC"]) == Ny+2Hy
+    @test length(ds["zC"]) == Nz+2Hz
+    @test length(ds["xF"]) == Nx+2Hx
+    @test length(ds["yF"]) == Ny+2Hy
+    @test length(ds["zF"]) == Nz+2Hz+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.xC[1-Hx]
+    @test ds["xF"][1] == grid.xF[1-Hx]
+    @test ds["yC"][1] == grid.yC[1-Hy]
+    @test ds["yF"][1] == grid.yF[1-Hy]
+    @test ds["zC"][1] == grid.zC[1-Hz]
+    @test ds["zF"][1] == grid.zF[1-Hz]
+
+    @test ds["xC"][end] == grid.xC[Nx+Hx]
+    @test ds["xF"][end] == grid.xF[Nx+Hx]
+    @test ds["yC"][end] == grid.yC[Ny+Hy]
+    @test ds["yF"][end] == grid.yF[Ny+Hy]
+    @test ds["zC"][end] == grid.zC[Nz+Hz]
+    @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+
+    u = ds["u"][:, :, :, end]
+    v = ds["v"][:, :, :, end]
+    w = ds["w"][:, :, :, end]
+    T = ds["T"][:, :, :, end]
+    S = ds["S"][:, :, :, end]
+
+    close(ds)
+    @test repr(ds) == "closed NetCDF NCDataset"
+
+    @test all(u .≈ Array(model.velocities.u.data.parent))
+    @test all(v .≈ Array(model.velocities.v.data.parent))
+    @test all(w .≈ Array(model.velocities.w.data.parent))
+    @test all(T .≈ Array(model.tracers.T.data.parent))
+    @test all(S .≈ Array(model.tracers.S.data.parent))
 end
 
 function run_netcdf_function_output_tests(arch)
@@ -110,15 +234,40 @@ function run_netcdf_function_output_tests(arch)
     global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
     nc_filename = "test_function_outputs_$(typeof(arch)).nc"
-    simulation.output_writers[:fruits] =
-        NetCDFOutputWriter(
-            model, outputs; frequency=1, filename=nc_filename, dimensions=dims,
+    simulation.output_writers[:food] =
+        NetCDFOutputWriter(model, outputs;
+            frequency=1, filename=nc_filename, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
-    @test repr(simulation.output_writers[:fruits].dataset) == "closed NetCDF NCDataset"
+    @test repr(simulation.output_writers[:food].dataset) == "closed NetCDF NCDataset"
 
     ds = Dataset(nc_filename, "r")
+
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+
+    @test length(ds["xC"]) == N
+    @test length(ds["yC"]) == N
+    @test length(ds["zC"]) == N
+    @test length(ds["xF"]) == N
+    @test length(ds["yF"]) == N
+    @test length(ds["zF"]) == N+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.xC[1]
+    @test ds["xF"][1] == grid.xF[1]
+    @test ds["yC"][1] == grid.yC[1]
+    @test ds["yF"][1] == grid.yF[1]
+    @test ds["zC"][1] == grid.zC[1]
+    @test ds["zF"][1] == grid.zF[1]
+
+    @test ds["xC"][end] == grid.xC[N]
+    @test ds["yC"][end] == grid.yC[N]
+    @test ds["zC"][end] == grid.zC[N]
+    @test ds["xF"][end] == grid.xF[N]
+    @test ds["yF"][end] == grid.yF[N]
+    @test ds["zF"][end] == grid.zF[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -194,7 +343,7 @@ end
 """
 Run two coarse rising thermal bubble simulations and make sure that when
 restarting from a checkpoint, the restarted simulation matches the non-restarted
-simulation numerically.
+simulation to machine precision.
 """
 function run_thermal_bubble_checkpointer_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -257,6 +406,7 @@ end
          @testset "NetCDF [$(typeof(arch))]" begin
              @info "  Testing NetCDF output writer [$(typeof(arch))]..."
              run_thermal_bubble_netcdf_tests(arch)
+             run_thermal_bubble_netcdf_tests_with_halos(arch)
              run_netcdf_function_output_tests(arch)
          end
 

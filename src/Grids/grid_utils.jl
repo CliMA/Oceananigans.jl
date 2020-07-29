@@ -9,7 +9,7 @@ Returns the total extent, including halo regions, of constant-spaced
 `Periodic` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
-total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
+@inline total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
 
 """
     total_extent(::Type{Bounded}, H, Δ, L)
@@ -18,7 +18,7 @@ Returns the total extent of, including halo regions, of constant-spaced
 `Bounded` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
-total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
+@inline total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 
 """
     total_length(loc, topo, N, H=0)
@@ -26,7 +26,7 @@ total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 Returns the total length (number of nodes), including halo points, of a field
 located at `Cell` centers along a grid dimension of length `N` and with halo points `H`.
 """
-total_length(loc, topo, N, H=0) = N + 2H
+@inline total_length(loc, topo, N, H=0) = N + 2H
 
 """
     total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
@@ -34,7 +34,15 @@ total_length(loc, topo, N, H=0) = N + 2H
 Returns the total length, including halo points, of a field located at
 cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
-total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
+@inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
+
+# Grid domains
+@inline domain(ξ, topo) = ξ[1], ξ[end]
+@inline domain(ξ, ::Type{Bounded}) = ξ[1], ξ[end-1]
+
+@inline x_domain(grid) = domain(grid.xF, topology(grid, 1))
+@inline y_domain(grid) = domain(grid.yF, topology(grid, 2))
+@inline z_domain(grid) = domain(grid.zF, topology(grid, 3))
 
 #####
 ##### << Nodes >>
@@ -49,6 +57,21 @@ total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
 @inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
+
+# All indices including halos.
+@inline all_indices(loc, topo, N, H) = 1-H:N+H
+@inline all_indices(loc::Type{Face}, ::Type{Bounded}, N, H) = 1-H:N+1+H
+
+@inline all_x_indices(loc, grid) = all_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
+@inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
+@inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+
+@inline all_parent_indices(loc, topo, N, H) = 1:N+2H
+@inline all_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1:N+1+2H
+
+@inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
+@inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
+@inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
 # Node by node
 @inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
@@ -79,7 +102,9 @@ on `grid` in the x-direction. For `Bounded` directions,
 
 See `znodes` for examples.
 """
-xnodes(::Type{Cell}, grid; reshape=false) = reshape ? Base.reshape(view(grid.xC, 1:grid.Nx), grid.Nx, 1, 1) : view(grid.xC, 1:grid.Nx)
+xnodes(::Type{Cell}, grid; reshape=false) =
+    reshape ? Base.reshape(view(grid.xC, 1:grid.Nx), grid.Nx, 1, 1) :
+              view(grid.xC, 1:grid.Nx)
 
 """
     ynodes(loc, grid)
@@ -90,7 +115,9 @@ on `grid` in the y-direction. For `Bounded` directions,
 
 See `znodes` for examples.
 """
-ynodes(::Type{Cell}, grid; reshape=false) = reshape ? Base.reshape(view(grid.yC, 1:grid.Ny), 1, grid.Ny, 1) : view(grid.yC, 1:grid.Ny)
+ynodes(::Type{Cell}, grid; reshape=false) =
+    reshape ? Base.reshape(view(grid.yC, 1:grid.Ny), 1, grid.Ny, 1) :
+              view(grid.yC, 1:grid.Ny)
 
 """
     znodes(loc, grid)
@@ -124,7 +151,9 @@ julia> zF = znodes(Face, horz_periodic_grid)
  -4.44089209850063e-17
 ```
 """
-znodes(::Type{Cell}, grid; reshape=false) = reshape ? Base.reshape(view(grid.zC, 1:grid.Nz), 1, 1, grid.Nz) : view(grid.zC, 1:grid.Nz)
+znodes(::Type{Cell}, grid; reshape=false) =
+    reshape ? Base.reshape(view(grid.zC, 1:grid.Nz), 1, 1, grid.Nz) :
+              view(grid.zC, 1:grid.Nz)
 
 function xnodes(::Type{Face}, grid; reshape=false)
     xF = view(grid.xF, interior_indices(Face, topology(grid, 1), grid.Nx))
