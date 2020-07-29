@@ -39,7 +39,7 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, frequency=nothing, interval=nothing,
                        global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
-                       clobber=true, compression=0, include_halos=false, verbose=false, slice_kwargs...)
+                       clobber=true, compression=0, with_halos=false, verbose=false, slice_kwargs...)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
@@ -57,7 +57,7 @@ Keyword arguments
   defaults are provided for velocities, buoyancy, temperature, and salinity).
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (useful for function outputs
   as field dimensions can be inferred).
-- `include_halos`: Include the halo regions in the grid coordinates and output fields
+- `with_halos`: Include the halo regions in the grid coordinates and output fields
   (default: `false`).
 - `clobber`: Remove existing files if their filenames conflict. Default: `true`.
 - `compression`: Determines the compression level of data (0-9, default 0)
@@ -65,7 +65,7 @@ Keyword arguments
   All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
   `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
   is treated like `xC = 1:1`. Multiple dimensions can be sliced in one call. Not providing slices
-  writes output over the entire domain (including halo regions if `include_halos=true`).
+  writes output over the entire domain (including halo regions if `with_halos=true`).
 
 Examples
 ========
@@ -152,14 +152,14 @@ function NetCDFOutputWriter(model, outputs; filename,
            dimensions = Dict(),
               clobber = true,
           compression = 0,
-        include_halos = false,
+        with_halos = false,
               verbose = false,
-    xC = include_halos ? all_x_indices(Cell, model.grid) : interior_x_indices(Cell, model.grid),
-    xF = include_halos ? all_x_indices(Face, model.grid) : interior_x_indices(Face, model.grid),
-    yC = include_halos ? all_y_indices(Cell, model.grid) : interior_y_indices(Cell, model.grid),
-    yF = include_halos ? all_y_indices(Face, model.grid) : interior_y_indices(Face, model.grid),
-    zC = include_halos ? all_z_indices(Cell, model.grid) : interior_z_indices(Cell, model.grid),
-    zF = include_halos ? all_z_indices(Face, model.grid) : interior_z_indices(Face, model.grid)
+    xC = with_halos ? all_x_indices(Cell, model.grid) : interior_x_indices(Cell, model.grid),
+    xF = with_halos ? all_x_indices(Face, model.grid) : interior_x_indices(Face, model.grid),
+    yC = with_halos ? all_y_indices(Cell, model.grid) : interior_y_indices(Cell, model.grid),
+    yF = with_halos ? all_y_indices(Face, model.grid) : interior_y_indices(Face, model.grid),
+    zC = with_halos ? all_z_indices(Cell, model.grid) : interior_z_indices(Cell, model.grid),
+    zF = with_halos ? all_z_indices(Face, model.grid) : interior_z_indices(Face, model.grid)
     )
 
     mode = clobber ? "c" : "a"
@@ -171,7 +171,7 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Initializes the output file with dimensions.
     write_grid_and_attributes(model; filename=filename, compression=compression,
-                              include_halos=include_halos, attributes=global_attributes, mode=mode,
+                              with_halos=with_halos, attributes=global_attributes, mode=mode,
                               xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
@@ -328,7 +328,7 @@ function write_grid_and_attributes(model;
              mode = "c",
             units = "m",
       compression = 0,
-    include_halos = false,
+    with_halos = false,
        attributes = Dict(),
     slice_keywords...)
 
@@ -336,12 +336,12 @@ function write_grid_and_attributes(model;
 
     # Allow values to be of Any type as OffsetArrays may get modified below.
     dims = Dict{String,Any}(
-        "xC" => include_halos ? grid.xC : collect(xnodes(Cell, grid)),
-        "xF" => include_halos ? grid.xF : collect(xnodes(Face, grid)),
-        "yC" => include_halos ? grid.yC : collect(ynodes(Cell, grid)),
-        "yF" => include_halos ? grid.yF : collect(ynodes(Face, grid)),
-        "zC" => include_halos ? grid.zC : collect(znodes(Cell, grid)),
-        "zF" => include_halos ? grid.zF : collect(znodes(Face, grid))
+        "xC" => with_halos ? grid.xC : collect(xnodes(Cell, grid)),
+        "xF" => with_halos ? grid.xF : collect(xnodes(Face, grid)),
+        "yC" => with_halos ? grid.yC : collect(ynodes(Cell, grid)),
+        "yF" => with_halos ? grid.yF : collect(ynodes(Face, grid)),
+        "zC" => with_halos ? grid.zC : collect(znodes(Cell, grid)),
+        "zF" => with_halos ? grid.zF : collect(znodes(Face, grid))
     )
 
     dim_attribs = Dict(

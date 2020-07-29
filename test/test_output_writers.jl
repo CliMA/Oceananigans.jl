@@ -155,8 +155,8 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-    nc_filename = "test_dump_include_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, include_halos=true)
+    nc_filename = "test_dump_with_halos_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, with_halos=true)
     push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
