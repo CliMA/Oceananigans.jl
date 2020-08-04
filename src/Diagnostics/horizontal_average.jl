@@ -8,18 +8,18 @@ using Oceananigans.Grids: total_size
 
 A diagnostic for computing horizontal average of a field.
 """
-mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic
-          field :: F
-         result :: P
-      frequency :: Ω
-       interval :: I
-       previous :: Float64
-    return_type :: R
-           grid :: G
+mutable struct HorizontalAverage{F, R, P, I, T, G} <: AbstractDiagnostic
+                   field :: F
+                  result :: P
+      iteration_interval :: I
+           time_interval :: T
+                previous :: Float64
+             return_type :: R
+                    grid :: G
 end
 
 """
-    HorizontalAverage(model, field; frequency=nothing, interval=nothing, return_type=Array)
+    HorizontalAverage(model, field; iteration_interval=nothing, time_interval=nothing, return_type=Array)
 
 Construct a `HorizontalAverage` of `field`.
 
@@ -28,18 +28,18 @@ After the horizontal average is computed it will be stored in the `result` prope
 The `HorizontalAverage` can be used as a callable object that computes and returns the
 horizontal average.
 
-A `frequency` or `interval` (or both) can be passed to indicate how often to run this
-diagnostic if it is part of `model.diagnostics`. `frequency` is a number of iterations
-while `interval` is a time interval in units of `model.clock.time`.
+An `iteration_interval` or `time_interval` (or both) can be passed to indicate how often
+to run this diagnostic if it is part of `simulation.diagnostics`. `iteration_interval` is
+a number of iterations while `time_interval` is in units of `model.clock.time`.
 
 A `return_type` can be used to specify the type returned when the `HorizontalAverage` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array)
+function HorizontalAverage(field; iteration_interval=nothing, time_interval=nothing, return_type=Array)
     arch = architecture(field)
     result = zeros(arch, field.grid, 1, 1, total_size(parent(field))[3])
-    return HorizontalAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
+    return HorizontalAverage(field, result, iteration_interval, time_interval, 0.0, return_type, field.grid)
 end
 
 # Normalize a horizontal sum to get the horizontal average.

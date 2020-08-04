@@ -1,28 +1,28 @@
 """
-    Checkpointer{I, T, P, A} <: AbstractOutputWriter
+    Checkpointer{I, T, P} <: AbstractOutputWriter
 
 An output writer for checkpointing models to a JLD2 file from which models can be restored.
 """
 mutable struct Checkpointer{I, T, P} <: AbstractOutputWriter
-         frequency :: I
-          interval :: T
-          previous :: Float64
-               dir :: String
-            prefix :: String
-        properties :: P
-             force :: Bool
-           verbose :: Bool
+    iteration_interval :: I
+         time_interval :: T
+              previous :: Float64
+                   dir :: String
+                prefix :: String
+            properties :: P
+                 force :: Bool
+               verbose :: Bool
 end
 
 """
-    Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
+    Checkpointer(model; iteration_interval=nothing, time_interval=nothing, dir=".",
                  prefix="checkpoint", force=false, verbose=false,
                  properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
                                :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file every so often as
-specified by `frequency` or `interval`. The `model.clock.iteration` is included in the
-filename to distinguish between multiple checkpoint files.
+specified by `iteration_interval` or `time_interval`. The `model.clock.iteration` is included
+in the filename to distinguish between multiple checkpoint files.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
 such as `:velocities` will make restoring from the checkpoint impossible.
@@ -34,21 +34,21 @@ file (and you will have to manually restore them).
 
 Keyword arguments
 =================
-- `frequency::Int`   : Save output every `n` model iterations.
-- `interval::Int`    : Save output every `t` units of model clock time.
-- `dir::String`      : Directory to save output to. Default: "." (current working directory).
-- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "checkpoint".
-- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write times and file sizes.
-                       Default: `false`.
-- `properties::Array`: List of model properties to checkpoint.
+- `iteration_interval`: Save output every `n` model iterations.
+- `time_interval`: Save output every `t` units of model clock time.
+- `dir`: Directory to save output to. Default: "." (current working directory).
+- `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
+- `force`: Remove existing files if their filenames conflict. Default: `false`.
+- `verbose`: Log what the output writer is doing with statistics on compute/write times
+  and file sizes. Default: `false`.
+- `properties`: List of model properties to checkpoint. Some are required.
 """
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
-                      prefix="checkpoint", force=false, verbose=false,
+function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
+                      dir=".", prefix="checkpoint", force=false, verbose=false,
                       properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
-    validate_interval(frequency, interval)
+    validate_interval(iteration_interval, time_interval)
 
     # Certain properties are required for `restore_from_checkpoint` to work.
     required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper)
@@ -70,7 +70,7 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, force, verbose)
+    return Checkpointer(iteration_interval, time_interval, 0.0, dir, prefix, properties, force, verbose)
 end
 
 function write_output(model, c::Checkpointer)

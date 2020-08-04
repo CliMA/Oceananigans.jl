@@ -20,24 +20,24 @@ const default_output_attributes = Dict(
 )
 
 """
-    NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
+    NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, I, F, S} <: AbstractOutputWriter
-     filename :: String
-      dataset :: D
-      outputs :: O
-     interval :: I
-    frequency :: F
-      clobber :: Bool
-       slices :: S
-     previous :: Float64
-      verbose :: Bool
+mutable struct NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
+              filename :: String
+               dataset :: D
+               outputs :: O
+    iteration_interval :: I
+         time_interval :: T
+               clobber :: Bool
+                slices :: S
+              previous :: Float64
+               verbose :: Bool
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, frequency=nothing, interval=nothing,
+    NetCDFOutputWriter(model, outputs; filename, iteration_interval=nothing, time_interval=nothing,
                        global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
                        clobber=true, compression=0, with_halos=false, verbose=false, slice_kwargs...)
 
@@ -49,8 +49,8 @@ specified.
 
 Keyword arguments
 =================
-- `frequency`: Save output every `n` model iterations.
-- `interval`: Save output every `t` units of model clock time.
+- `iteration_interval`: Save output every `n` model iterations.
+- `time_interval`: Save output every `t` units of model clock time.
 - `filename`: Filepath to save output to.
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
@@ -84,7 +84,7 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="fields.nc", interval=60)
+    NetCDFOutputWriter(model, fields, filename="fields.nc", time_interval=60)
 
 # output
 NetCDFOutputWriter (interval=60): fields.nc
@@ -135,25 +135,25 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       frequency=1, filename="things.nc", dimensions=dims, verbose=true,
+                       iteration_interval=1, filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
-NetCDFOutputWriter (frequency=1): things.nc
+NetCDFOutputWriter (iteration_interval=1): things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 └── 3 outputs: ["profile", "slice", "scalar"]
 ```
 """
 function NetCDFOutputWriter(model, outputs; filename,
-             interval = nothing,
-            frequency = nothing,
-    global_attributes = Dict(),
-    output_attributes = Dict(),
-           dimensions = Dict(),
-              clobber = true,
-          compression = 0,
-        with_halos = false,
-              verbose = false,
+    iteration_interval = nothing,
+         time_interval = nothing,
+     global_attributes = Dict(),
+     output_attributes = Dict(),
+            dimensions = Dict(),
+               clobber = true,
+           compression = 0,
+            with_halos = false,
+               verbose = false,
     xC = with_halos ? all_x_indices(Cell, model.grid) : interior_x_indices(Cell, model.grid),
     xF = with_halos ? all_x_indices(Face, model.grid) : interior_x_indices(Face, model.grid),
     yC = with_halos ? all_y_indices(Cell, model.grid) : interior_y_indices(Cell, model.grid),
@@ -163,7 +163,7 @@ function NetCDFOutputWriter(model, outputs; filename,
     )
 
     mode = clobber ? "c" : "a"
-    validate_interval(interval, frequency)
+    validate_interval(iteration_interval, time_interval)
 
     # Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
@@ -210,7 +210,7 @@ function NetCDFOutputWriter(model, outputs; filename,
     slices = Dict(name => slice_indices(field; xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
                   for (name, field) in field_outputs)
 
-    return NetCDFOutputWriter(filename, dataset, outputs, interval, frequency,
+    return NetCDFOutputWriter(filename, dataset, outputs, iteration_interval, time_interval,
                               clobber, slices, 0.0, verbose)
 end
 
@@ -375,10 +375,10 @@ function write_grid_and_attributes(model;
 end
 
 function Base.show(io::IO, ow::NetCDFOutputWriter)
-    freq_int = isnothing(ow.frequency) && isnothing(ow.interval) ? "" :
-               isnothing(ow.frequency) ? "(interval=$(ow.interval))" :
-               isnothing(ow.interval)  ? "(frequency=$(ow.frequency))" :
-               "(frequency=$(ow.frequency), interval=$(ow.interval))"
+    freq_int = isnothing(ow.iteration_interval) && isnothing(ow.time_interval) ? "" :
+               isnothing(ow.iteration_interval) ? "(time_interval=$(ow.time_interval))" :
+               isnothing(ow.time_interval)      ? "(iteration_interval=$(ow.iteration_interval))" :
+               "(iteration_interval=$(ow.iteration_interval), time_interval=$(ow.time_interval))"
 
     dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
                  for dim in keys(ow.dataset.dim)])[1:end-2]
