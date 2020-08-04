@@ -67,7 +67,7 @@ function TriplyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     IFFTxyz! = plan_backward_transform(storage, x_bc, [1, 2, 3])
     @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU} done!"
 
-    transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxy!)
+    transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxyz!)
 
     return PressureSolver(TriplyPeriodic(), GPU(), wavenumbers, storage, transforms, nothing)
 end
