@@ -1,3 +1,5 @@
+using KernelAbstractions
+
 #####
 ##### Useful utilities
 #####

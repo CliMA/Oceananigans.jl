@@ -1,4 +1,3 @@
-using KernelAbstractions
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
@@ -40,10 +39,10 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
     ∇²ϕ = CellField(FT, arch, grid, pbcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
-    solve_for_pressure!(ϕ, solver, arch, grid, 1, U)
+    solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
 
     fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
     wait(device(arch), event)
     fill_halo_regions!(∇²ϕ, arch)
 
@@ -154,4 +153,5 @@ const BBB_topo = (Bounded,  Bounded,  Bounded)
         @test poisson_solver_convergence(CPU(), (Periodic,  Bounded,  Bounded), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Bounded,   Bounded,  Bounded), 2^6, 2^7)
     end
+
 end
