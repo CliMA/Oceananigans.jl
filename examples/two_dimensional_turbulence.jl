@@ -79,7 +79,7 @@ anim = @animate for i=1:100
     compute!(vorticity_computation)
 
     x, y = xnodes(ω)[:], ynodes(ω)[:]
-    heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
+    heatmap(x, y, interior(ω)[:, :, 1]', xlabel="x", ylabel="y",
             color=:balance, clims=(-0.1, 0.1))
 end
 
