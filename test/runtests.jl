@@ -47,28 +47,6 @@ using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
 #####
-##### On CI servers select the GPU with the most available memory or with the
-##### highest capability if testing needs to be thorough).
-##### Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
-#####
-
-@hascuda begin
-    gpu_candidates = [(dev=dev, cap=CUDA.capability(dev),
-                       mem=CUDA.CuContext(ctx -> CUDA.available_memory(), dev))
-                       for dev in CUDA.devices()]
-
-    thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
-    if thorough
-        sort!(gpu_candidates, by=x->(x.cap, x.mem))
-    else
-        sort!(gpu_candidates, by=x->x.mem)
-    end
-
-    pick = last(gpu_candidates)
-    device!(pick.dev)
-end
-
-#####
 ##### Useful utilities
 #####
 
