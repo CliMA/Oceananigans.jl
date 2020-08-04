@@ -1,5 +1,5 @@
 using KernelAbstractions
-using Oceananigans.Solvers: solve_for_pressure!
+using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 @kernel function ∇²!(grid, f, ∇²f)
@@ -7,7 +7,7 @@ using Oceananigans.TimeSteppers: _compute_w_from_continuity!
     @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
 end
 
-@kernel function divᶜᶜᶜ!(grid, U, div_U)
+@kernel function divergence!(grid, U, div_U)
     i, j, k = @index(Global, NTuple)
     @inbounds div_U[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U.u.data, U.v.data, U.w.data)
 end
@@ -42,7 +42,7 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
 
     # Compute the right hand side R = ∇⋅U
     R = zeros(Nx, Ny, Nz) |> ArrayType
-    event = launch!(arch, grid, :xyz, divᶜᶜᶜ!, grid, U, R, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, U, R, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     ϕ   = CellField(FT, arch, grid, pbcs)  # "pressure"
