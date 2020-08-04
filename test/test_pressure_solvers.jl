@@ -245,7 +245,7 @@ end
 
     @testset "Convergence to analytical solution" begin
         @info "  Testing convergence to analytical solution..."
-        @test_skip poisson_solver_convergence(CPU(), (Periodic, Periodic, Periodic), 2^6, 2^7)
+        @test poisson_solver_convergence(CPU(), (Periodic, Periodic, Periodic), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Periodic, Periodic, Bounded), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Periodic, Bounded, Bounded), 2^6, 2^7)
         @test poisson_solver_convergence(CPU(), (Bounded, Bounded, Bounded), 2^6, 2^7)

@@ -26,7 +26,6 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     bc_symbol = Symbol(x, y, z)
 
     if bc_symbol == :PPP
-        @warn "TriplyPeriodicPressureSolver is still untested."
         return TriplyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :PPN
         return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
