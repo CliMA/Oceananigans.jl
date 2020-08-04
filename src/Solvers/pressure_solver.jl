@@ -33,7 +33,6 @@ function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     elseif bc_symbol == :PNN
         return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
     elseif bc_symbol == :NNN
-        @warn "BoxPressureSolver is still untested."
         return BoxPressureSolver(arch, grid, pressure_bcs, planner_flag)
     else
         throw(ArgumentError("Unsupported pressure boundary conditions: $bc_symbol"))
