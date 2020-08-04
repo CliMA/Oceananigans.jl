@@ -12,9 +12,8 @@ function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
-function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
+function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planner_flag)
+    grid = RegularCartesianGrid(FT, topology=topology, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
     fbcs = TracerBoundaryConditions(grid)
     pbcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, fbcs)
@@ -38,38 +37,7 @@ function poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
 
     fill_halo_regions!(∇²ϕ, arch)
 
-    interior(∇²ϕ) ≈ interior(RHS_orig)
-end
-
-function poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, planner_flag)
-    arch = CPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
-    fbcs = TracerBoundaryConditions(grid)
-    pbcs = PressureBoundaryConditions(grid)
-    solver = PressureSolver(arch, grid, fbcs)
-
-    RHS = CellField(FT, arch, grid, fbcs)
-    interior(RHS) .= rand(Nx, Ny, Nz)
-    interior(RHS) .= interior(RHS) .- mean(interior(RHS))
-
-    RHS_orig = deepcopy(RHS)
-
-    solver.storage .= interior(RHS)
-
-    solve_poisson_equation!(solver, grid)
-
-    ϕ   = CellField(FT, arch, grid, pbcs)
-    ∇²ϕ = CellField(FT, arch, grid, pbcs)
-
-    interior(ϕ) .= real.(solver.storage)
-
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, ∇²ϕ, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
-    fill_halo_regions!(∇²ϕ, arch)
-
-    interior(∇²ϕ) ≈ interior(RHS_orig)
+    return interior(∇²ϕ) ≈ interior(RHS_orig)
 end
 
 function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
@@ -191,6 +159,15 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64)
     return isapprox(rate, 2, rtol=5e-3)
 end
 
+#####
+##### Run pressure solver tests
+#####
+
+const PPP_topo = (Periodic, Periodic, Periodic)
+const PPB_topo = (Periodic, Periodic, Bounded)
+const PBB_topo = (Periodic, Bounded,  Bounded)
+const BBB_topo = (Bounded,  Bounded,  Bounded)
+
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
@@ -208,38 +185,41 @@ end
     @testset "Divergence-free solution [CPU]" begin
         @info "  Testing divergence-free solution [CPU]..."
 
-        for N in [7, 10, 16, 20]
-            for FT in float_types
-                for planner_flag in (FFTW.ESTIMATE, FFTW.MEASURE)
-                    @test poisson_ppn_planned_div_free_cpu(FT, N, N, N, planner_flag)
-                    @test poisson_ppn_planned_div_free_cpu(FT, 1, N, N, planner_flag)
-                    @test poisson_ppn_planned_div_free_cpu(FT, N, 1, N, planner_flag)
-                    @test poisson_ppn_planned_div_free_cpu(FT, 1, 1, N, planner_flag)
+        for topo in (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
+            @info "    Testing $topo topology on square grids..."
+            for N in [7, 16]
+                for FT in float_types
+                    for planner_flag in (FFTW.ESTIMATE, FFTW.MEASURE)
+                        @test divergence_free_poisson_solution(CPU(), FT, topo, N, N, N, planner_flag)
+                        @test divergence_free_poisson_solution(CPU(), FT, topo, 1, N, N, planner_flag)
+                        @test divergence_free_poisson_solution(CPU(), FT, topo, N, 1, N, planner_flag)
+                        @test divergence_free_poisson_solution(CPU(), FT, topo, 1, 1, N, planner_flag)
+                    end
                 end
             end
         end
 
-        Ns = [5, 11, 20, 32]
-        for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
-            @test poisson_ppn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
-            @test poisson_pnn_planned_div_free_cpu(FT, Nx, Ny, Nz, FFTW.ESTIMATE)
+        Ns = [11, 16]
+        for topo in (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
+            @info "    Testing $topo topology on rectangular grids..."
+            for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
+                @test divergence_free_poisson_solution(CPU(), FT, topo, Nx, Ny, Nz, FFTW.ESTIMATE)
+            end
         end
     end
 
-    @hascuda begin
-    @testset "Divergence-free solution [GPU]" begin
+    @hascuda @testset "Divergence-free solution [GPU]" begin
         @info "  Testing divergence-free solution [GPU]..."
-            for FT in [Float64]
-                @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
-                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
-                @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
-                @test poisson_ppn_planned_div_free_gpu(FT, 16, 32, 24)
+        for FT in [Float64]
+            @test poisson_ppn_planned_div_free_gpu(FT, 16, 16, 16)
+            @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 32)
+            @test poisson_ppn_planned_div_free_gpu(FT, 32, 32, 16)
+            @test poisson_ppn_planned_div_free_gpu(FT, 16, 32, 24)
 
-                @test poisson_pnn_planned_div_free_gpu(FT, 16, 16, 16)
-                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 32)
-                @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 16)
-                @test poisson_pnn_planned_div_free_gpu(FT, 16, 32, 24)
-            end
+            @test poisson_pnn_planned_div_free_gpu(FT, 16, 16, 16)
+            @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 32)
+            @test poisson_pnn_planned_div_free_gpu(FT, 32, 32, 16)
+            @test poisson_pnn_planned_div_free_gpu(FT, 16, 32, 24)
         end
     end
 
