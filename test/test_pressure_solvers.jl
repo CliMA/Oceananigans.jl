@@ -7,9 +7,9 @@ using Oceananigans.TimeSteppers: _compute_w_from_continuity!
     @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
 end
 
-@kernel function divergence!(grid, U, div_U)
+@kernel function divergence!(grid, u, v, w, div)
     i, j, k = @index(Global, NTuple)
-    @inbounds div_U[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U.u.data, U.v.data, U.w.data)
+    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
 end
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
@@ -42,7 +42,8 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
 
     # Compute the right hand side R = ∇⋅U
     R = zeros(Nx, Ny, Nz) |> ArrayType
-    event = launch!(arch, grid, :xyz, divergence!, grid, U, R, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R,
+                    dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     ϕ   = CellField(FT, arch, grid, pbcs)  # "pressure"
@@ -57,84 +58,6 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
     fill_halo_regions!(∇²ϕ, arch)
 
     return interior(∇²ϕ) ≈ R
-end
-
-function poisson_ppn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6))
-    pbcs = PressureBoundaryConditions(grid)
-    solver = PressureSolver(arch, grid, pbcs)
-
-    RHS = rand(Nx, Ny, Nz)
-    RHS .= RHS .- mean(RHS)
-    RHS = CuArray(RHS)
-
-    RHS_orig = copy(RHS)
-
-    solver.storage .= RHS
-
-    # Performing the permutation [a, b, c, d, e, f] -> [a, c, e, f, d, b]
-    # in the z-direction in preparation to calculate the DCT in the Poisson
-    # solver.
-    solver.storage .= cat(solver.storage[:, :, 1:2:Nz], solver.storage[:, :, Nz:-2:2]; dims=3)
-
-    solve_poisson_equation!(solver, grid)
-
-    # Undoing the permutation made above to complete the IDCT.
-    solver.storage .= CuArray(reshape(permutedims(cat(solver.storage[:, :, 1:Int(Nz/2)],
-                                                      solver.storage[:, :, end:-1:Int(Nz/2)+1]; dims=4), (1, 2, 4, 3)), Nx, Ny, Nz))
-
-    ϕ   = CellField(FT, arch, grid, pbcs)
-    ∇²ϕ = CellField(FT, arch, grid, pbcs)
-
-    interior(ϕ) .= real.(solver.storage)
-
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
-    fill_halo_regions!(∇²ϕ, arch)
-    interior(∇²ϕ) ≈ RHS_orig
-end
-
-function poisson_pnn_planned_div_free_gpu(FT, Nx, Ny, Nz)
-    arch = GPU()
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1.0, 2.5, 3.6), topology=(Periodic, Bounded, Bounded))
-    pbcs = PressureBoundaryConditions(grid)
-    solver = PressureSolver(arch, grid, pbcs)
-
-    RHS = rand(Nx, Ny, Nz)
-    RHS .= RHS .- mean(RHS)
-    RHS = CuArray(RHS)
-
-    RHS_orig = copy(RHS)
-
-    storage = solver.storage.storage1
-    storage .= RHS
-
-    storage .= cat(storage[:, :, 1:2:Nz], storage[:, :, Nz:-2:2]; dims=3)
-    storage .= cat(storage[:, 1:2:Ny, :], storage[:, Ny:-2:2, :]; dims=2)
-
-    solve_poisson_equation!(solver, grid)
-
-    ϕ   = CellField(FT, arch, grid)
-    ∇²ϕ = CellField(FT, arch, grid)
-
-    # Indices used when we need views to permuted arrays where the odd indices
-    # are iterated over first followed by the even indices.
-    p_y_inds = [1:2:Ny..., Ny:-2:2...] |> CuArray
-    p_z_inds = [1:2:Nz..., Nz:-2:2...] |> CuArray
-
-    ϕ_p = view(interior(ϕ), 1:Nx, p_y_inds, p_z_inds)
-
-    @. ϕ_p = real(storage)
-
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
-    fill_halo_regions!(∇²ϕ, arch)
-    interior(∇²ϕ) ≈ RHS_orig
 end
 
 #####
