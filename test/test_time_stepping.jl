@@ -62,11 +62,11 @@ function compute_w_from_continuity(arch, FT)
                     dependencies=Event(device(arch)))
 
     wait(device(arch), event)
-            
+
     fill_halo_regions!(U, arch, nothing, state)
 
     event = launch!(arch, grid, :xyz,
-                    velocity_div!, div_U.data, grid, U.u.data, U.v.data, U.w.data,
+                    divergence!, grid, U.u.data, U.v.data, U.w.data, div_U.data,
                     dependencies=Event(device(arch)))
 
     wait(device(arch), event)
@@ -109,7 +109,7 @@ function incompressible_in_time(arch, FT, Nt)
         time_step!(model, 0.05, euler = n==1)
     end
 
-    event = launch!(arch, grid, :xyz, velocity_div!, div_U, grid, u, v, w, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, u, v, w, div_U, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     min_div = minimum(interior(div_U))

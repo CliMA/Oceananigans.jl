@@ -42,30 +42,9 @@ using SeawaterPolynomials
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: datatuple
 
-using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
+using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
-
-#####
-##### Useful utilities
-#####
-
-function get_model_field(field_name, model)
-    if field_name ∈ (:u, :v, :w)
-        return getfield(model.velocities, field_name)
-    else
-        return getfield(model.tracers, field_name)
-    end
-end
-
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
-
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
 
 #####
 ##### Testing parameters
@@ -90,6 +69,8 @@ closures = (
 #####
 ##### Run tests!
 #####
+
+include("runtests_utils.jl")
 
 with_logger(ModelLogger()) do
     @testset "Oceananigans" begin

@@ -2,16 +2,6 @@ using KernelAbstractions
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
-@kernel function ∇²!(grid, f, ∇²f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
-end
-
-@kernel function divergence!(grid, u, v, w, div)
-    i, j, k = @index(Global, NTuple)
-    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-end
-
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = PressureSolver(CPU(), grid, PressureBoundaryConditions(grid), planner_flag)
