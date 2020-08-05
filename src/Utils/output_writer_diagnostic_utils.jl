@@ -29,38 +29,37 @@ function push!(container::DiagOrWriterDict, elems...)
 end
 
 """
-    validate_interval(frequency, interval)
+    validate_intervals(iteration_interval, time_interval)
 
-Ensure that frequency and interval are not both `nothing`.
+Warn the user if iteration and time intervals are both `nothing`.
 """
-function validate_interval(frequency, interval)
-    isnothing(frequency) && isnothing(interval) && @error "Must specify a frequency or interval!"
+function validate_intervals(iteration_interval, time_interval)
+    isnothing(iteration_interval) && isnothing(time_interval) && @warn "You have not specified any intervals."
     return nothing
 end
 
-has_interval(obj) = :interval in propertynames(obj) && obj.interval != nothing
-has_frequency(obj) = :frequency in propertynames(obj) && obj.frequency != nothing
+has_iteration_interval(obj) = :iteration_interval in propertynames(obj) && obj.iteration_interval != nothing
+has_time_interval(obj) = :time_interval in propertynames(obj) && obj.time_interval != nothing
 
-function interval_is_ripe(clock, obj)
-    if has_interval(obj) && clock.time >= obj.previous + obj.interval
-        obj.previous = clock.time - rem(clock.time, obj.interval)
+iteration_interval_is_ripe(clock, obj) = has_iteration_interval(obj) && clock.iteration % obj.iteration_interval == 0
+
+function time_interval_is_ripe(clock, obj)
+    if has_time_interval(obj) && clock.time >= obj.previous + obj.time_interval
+        obj.previous = clock.time - rem(clock.time, obj.time_interval)
         return true
     else
         return false
     end
 end
 
-frequency_is_ripe(clock, obj) = has_frequency(obj) && clock.iteration % obj.frequency == 0
+function time_to_run(clock, diag)
+    iteration_interval_is_ripe(clock, diag) && return true
+    has_time_interval(clock, diag) && return true
 
-function time_to_run(clock, output_writer)
-
-    interval_is_ripe(clock, output_writer) && return true
-    frequency_is_ripe(clock, output_writer) && return true
-
-    # If the output writer does not specify an interval or frequency,
+    # If the output writer does not specify any intervals,
     # it is unable to write output and we throw an error as a convenience.
-    has_interval(output_writer) || has_frequency(output_writer) ||
-        error("$(typeof(output_writer)) must have a frequency or interval specified!")
+    iteration_interval_is_ripe(diag) || has_time_interval(diag) ||
+        error("$(typeof(diag)) must have an iteration or time interval specified!")
 
     return false
 end

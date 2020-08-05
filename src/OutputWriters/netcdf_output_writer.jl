@@ -2,7 +2,7 @@ using Dates: now
 using NCDatasets
 using Oceananigans.Fields
 using Oceananigans.Fields: cpudata
-using Oceananigans.Utils: validate_interval, versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.Utils: validate_intervals, versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices,
                           all_x_indices, all_y_indices, all_z_indices
 
@@ -163,7 +163,7 @@ function NetCDFOutputWriter(model, outputs; filename,
     )
 
     mode = clobber ? "c" : "a"
-    validate_interval(iteration_interval, time_interval)
+    validate_intervals(iteration_interval, time_interval)
 
     # Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),

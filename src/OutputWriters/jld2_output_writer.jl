@@ -59,7 +59,7 @@ function JLD2OutputWriter(model, outputs; iteration_interval=nothing, time_inter
                           part=1, max_filesize=Inf, force=false, async=false, verbose=false,
                           jld2_kw=Dict{Symbol, Any}())
 
-    validate_interval(iteration_interval, time_interval)
+    validate_intervals(iteration_interval, time_interval)
 
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")

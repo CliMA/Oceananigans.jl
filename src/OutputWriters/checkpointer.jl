@@ -48,7 +48,7 @@ function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
                       properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
-    validate_interval(iteration_interval, time_interval)
+    validate_intervals(iteration_interval, time_interval)
 
     # Certain properties are required for `restore_from_checkpoint` to work.
     required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper)
