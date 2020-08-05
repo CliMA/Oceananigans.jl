@@ -1,5 +1,3 @@
-using KernelAbstractions: @kernel, @index, Event
-
 #####
 ##### Useful utilities
 #####

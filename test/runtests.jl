@@ -9,6 +9,7 @@ using CUDA
 using JLD2
 using FFTW
 using OffsetArrays
+using SeawaterPolynomials
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -36,11 +37,10 @@ using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
-
-using SeawaterPolynomials
+using KernelAbstractions: @kernel, @index, Event
 
 import Oceananigans.Fields: interior
-import Oceananigans.Utils: datatuple
+import Oceananigans.Utils: launch!, datatuple
 
 using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!

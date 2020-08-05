@@ -36,9 +36,6 @@ function run_first_AB2_time_step_tests(arch, FT)
     return nothing
 end
 
-using Oceananigans.Utils: launch!
-using KernelAbstractions
-
 """
     This test ensures that when we compute w from the continuity equation that the full velocity field
     is divergence-free.
