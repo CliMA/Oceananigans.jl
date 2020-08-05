@@ -119,9 +119,9 @@ include("Architectures.jl")
 
 using Oceananigans.Architectures: @hascuda
 @hascuda begin
-    println("CUDA-enabled GPU(s) detected:")
+    @debug "CUDA-enabled GPU(s) detected:"
     for (gpu, dev) in enumerate(CUDA.devices())
-        println(dev)
+        @debug "$dev: $(CUDA.name(dev))"
     end
 end
 
