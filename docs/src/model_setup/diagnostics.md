@@ -9,7 +9,7 @@ Diagnostics are stored as a list of diagnostics in `simulation.diagnostics`. Dia
 time or be specified at any later time and appended (or assigned with a key value pair) to `simulation.diagnostics`.
 
 Most diagnostics can be run at specified frequencies (e.g. every 25 time steps) or specified intervals (e.g. every
-15 minutes of simulation time). If you'd like to run a diagnostic on demand then do not specify a frequency or interval
+15 minutes of simulation time). If you'd like to run a diagnostic on demand then do not specify any intervals
 (and do not add it to `simulation.diagnostics`).
 
 We describe the `HorizontalAverage` diagnostic in detail below but see the API documentation for other diagnostics such

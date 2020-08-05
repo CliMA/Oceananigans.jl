@@ -24,13 +24,22 @@ julia> using Oceananigans, Oceananigans.Diagnostics
 
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
-julia> max_u = TimeSeries(FieldMaximum(abs, model.velocities.u), model; iteration_interval=1)
+julia> set!(model, u=π);
+
+julia> sim = Simulation(model, Δt=1, stop_iteration=3);
+
+julia> max_u = TimeSeries(FieldMaximum(abs, model.velocities.u), model; iteration_interval=1);
+
+julia> sim.diagnostics[:max_u] = max_u;
+
+julia> run!(sim);
 
 julia> max_u.data
-3-element Array{Float64,1}:
+4-element Array{Float64,1}:
  3.141592653589793
- 3.1415926025389127
- 3.1415925323439517
+ 3.141592653589793
+ 3.141592653589793
+ 3.141592653589793
 ```
 """
 function TimeSeries(diagnostic, model; iteration_interval=nothing, time_interval=nothing)
@@ -55,22 +64,33 @@ A `TimeSeries` `Diagnostic` that records a `NamedTuple` of time series of
 
 Example
 =======
-```jldoctest
-julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))); Δt = 1.0;
+
+```jldoctest timeseries
+julia> using Oceananigans, Oceananigans.Diagnostics
+
+julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
+
+julia> Δt = 1.0;
 
 julia> cfl = TimeSeries((adv=AdvectiveCFL(Δt), diff=DiffusiveCFL(Δt)), model; iteration_interval=1);
 
-julia> model.diagnostics[:cfl] = cfl; time_step!(model, Nt=3, Δt=Δt)
+julia> sim = Simulation(model, Δt=Δt, stop_iteration=3);
+
+julia> sim.diagnostics[:cfl] = cfl;
+
+julia> run!(sim);
 
 julia> cfl.data
 (adv = [0.0, 0.0, 0.0, 0.0], diff = [0.0002688, 0.0002688, 0.0002688, 0.0002688])
+```
 
-julia> cfl.adv
+``` jldoctest timeseries
+julia> cfl.diff
 4-element Array{Float64,1}:
- 0.0
- 0.0
- 0.0
- 0.0
+ 0.0002688
+ 0.0002688
+ 0.0002688
+ 0.0002688
 ```
 """
 function TimeSeries(diagnostics::NamedTuple, model; iteration_interval=nothing, time_interval=nothing)
