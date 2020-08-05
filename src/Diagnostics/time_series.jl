@@ -91,12 +91,12 @@ julia> cfl.data
 ```
 
 ``` jldoctest timeseries2
-julia> cfl.diff
+julia> cfl.adv
 4-element Array{Float64,1}:
- 0.0002688
- 0.0002688
- 0.0002688
- 0.0002688
+ 0.0
+ 0.0
+ 0.0
+ 0.0
 ```
 """
 function TimeSeries(diagnostics::NamedTuple, model; iteration_interval=nothing, time_interval=nothing)
