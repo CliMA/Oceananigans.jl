@@ -108,7 +108,7 @@ nothing # hide
 ## Random noise damped at top and bottom
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
-## Temperature initial condition: a stable density tradient with random noise superposed.
+## Temperature initial condition: a stable density gradient with random noise superposed.
 T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
