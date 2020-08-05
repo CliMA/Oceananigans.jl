@@ -87,7 +87,7 @@ simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filename="fields.nc", time_interval=60)
 
 # output
-NetCDFOutputWriter (interval=60): fields.nc
+NetCDFOutputWriter (time_interval=60): fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 └── 2 outputs: ["T", "u"]
 ```
@@ -98,7 +98,7 @@ simulation.output_writers[:surface_slice_writer] =
                        time_interval=60, zC=grid.Nz, zF=grid.Nz+1)
 
 # output
-NetCDFOutputWriter (interval=60): surface_xy_slice.nc
+NetCDFOutputWriter (time_interval=60): surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 └── 2 outputs: ["T", "u"]
 ```

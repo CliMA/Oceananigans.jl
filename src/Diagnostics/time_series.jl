@@ -19,7 +19,7 @@ A `TimeSeries` `Diagnostic` that records a time series of `diagnostic(model)`.
 Example
 =======
 
-```jldoctest
+```jldoctest timeseries1
 julia> using Oceananigans, Oceananigans.Diagnostics
 
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
@@ -33,7 +33,10 @@ julia> max_u = TimeSeries(FieldMaximum(abs, model.velocities.u), model; iteratio
 julia> sim.diagnostics[:max_u] = max_u;
 
 julia> run!(sim);
+[ Info: Simulation is stopping. Model iteration 3 has hit or exceeded simulation stop iteration 3.
+```
 
+```jldoctest timeseries1
 julia> max_u.data
 4-element Array{Float64,1}:
  3.141592653589793
@@ -65,7 +68,7 @@ A `TimeSeries` `Diagnostic` that records a `NamedTuple` of time series of
 Example
 =======
 
-```jldoctest timeseries
+```jldoctest timeseries2
 julia> using Oceananigans, Oceananigans.Diagnostics
 
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
@@ -79,12 +82,15 @@ julia> sim = Simulation(model, Δt=Δt, stop_iteration=3);
 julia> sim.diagnostics[:cfl] = cfl;
 
 julia> run!(sim);
+[ Info: Simulation is stopping. Model iteration 3 has hit or exceeded simulation stop iteration 3.
+```
 
+```jldoctest timeseries2
 julia> cfl.data
 (adv = [0.0, 0.0, 0.0, 0.0], diff = [0.0002688, 0.0002688, 0.0002688, 0.0002688])
 ```
 
-``` jldoctest timeseries
+``` jldoctest timeseries2
 julia> cfl.diff
 4-element Array{Float64,1}:
  0.0002688

@@ -167,19 +167,6 @@ FieldOutput(field) = FieldOutput(Array, field) # default
 Returns a dictionary of `FieldOutput` objects with key, value
 pairs corresponding to each name and value in the `NamedTuple` `fields`.
 Intended for use with `JLD2OutputWriter`.
-
-Examples
-========
-
-```jldoctest
-julia> output_writer = JLD2OutputWriter(model, FieldOutputs(model.velocities));
-
-julia> keys(output_writer.outputs)
-Base.KeySet for a Dict{Symbol,FieldOutput{UnionAll,F} where F} with 3 entries. Keys:
-  :w
-  :v
-  :u
-```
 """
 function FieldOutputs(fields)
     names = propertynames(fields)
