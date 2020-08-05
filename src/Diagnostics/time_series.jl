@@ -24,8 +24,6 @@ julia> using Oceananigans, Oceananigans.Diagnostics
 
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
-julia> set!(model, u=π);
-
 julia> sim = Simulation(model, Δt=1, stop_iteration=3);
 
 julia> max_u = TimeSeries(FieldMaximum(abs, model.velocities.u), model; iteration_interval=1);
@@ -39,10 +37,10 @@ julia> run!(sim);
 ```jldoctest timeseries1
 julia> max_u.data
 4-element Array{Float64,1}:
- 3.141592653589793
- 3.141592653589793
- 3.141592653589793
- 3.141592653589793
+ 0.0
+ 0.0
+ 0.0
+ 0.0
 ```
 """
 function TimeSeries(diagnostic, model; iteration_interval=nothing, time_interval=nothing)
