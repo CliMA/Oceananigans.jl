@@ -12,7 +12,7 @@ c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-(x - U * t)^2
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                   architecture = CPU(), topo = (Periodic, Periodic, Bounded))
-                                      
+
     t₀ = width^2 / 4κ
 
     #####
@@ -28,11 +28,11 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                                      tracers = :c,
                                      closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
 
-    set!(model, u = U, 
+    set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
                 c = (x, y, z) -> c(x, y, z, 0, U, κ, t₀))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     println("Running Gaussian advection diffusion test for v and c with Nx = $Nx and Δt = $Δt...")
     run!(simulation)
@@ -52,7 +52,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
     ##### Test u-advection
     #####
-    
+
     ygrid = RegularCartesianGrid(size=(1, Nx, 1), x=(0, 1), y=(-1, 1.5), z=(0, 1), topology=topo)
 
     model = IncompressibleModel(architecture = architecture,
@@ -62,11 +62,11 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                                      tracers = :c,
                                      closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
 
-    set!(model, v = U, 
+    set!(model, v = U,
                 c = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
                 u = (x, y, z) -> c(y, x, z, 0, U, κ, t₀))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     println("Running Gaussian advection diffusion test for u with Nx = $Nx and Δt = $Δt...")
     run!(simulation)

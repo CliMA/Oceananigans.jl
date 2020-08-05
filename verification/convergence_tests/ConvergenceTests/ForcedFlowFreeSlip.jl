@@ -25,7 +25,7 @@ v(x, y, t) = -fₓ(x, t) * sin(y)
 
 function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
 
-    grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π), 
+    grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π),
                                 topology=(Periodic, Periodic, Bounded))
 
     model = IncompressibleModel(architecture = architecture,
@@ -34,14 +34,14 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     buoyancy = nothing,
                                      tracers = nothing,
                                      closure = ConstantIsotropicDiffusivity(ν=1),
-                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t)), 
+                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t)),
                                                             w = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t)))
                                 )
 
-    set!(model, u = (x, y, z) -> u(x, z, 0), 
+    set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
                                                           dir = dir, force = true,
@@ -64,7 +64,7 @@ end
 
 function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
 
-    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1), 
+    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     model = IncompressibleModel(architecture = architecture,
@@ -73,14 +73,14 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     buoyancy = nothing,
                                      tracers = nothing,
                                      closure = ConstantIsotropicDiffusivity(ν=1),
-                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t)), 
+                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t)),
                                                             v = SimpleForcing((x, y, z, t) -> Fᵛ(x, y, t)))
                                 )
 
-    set!(model, u = (x, y, z) -> u(x, y, 0), 
+    set!(model, u = (x, y, z) -> u(x, y, 0),
                 v = (x, y, z) -> v(x, y, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
                                                           dir = dir, force = true,

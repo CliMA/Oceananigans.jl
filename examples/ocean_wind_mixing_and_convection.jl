@@ -148,7 +148,7 @@ nothing # hide
 
 # Finally, we set up and run the the simulation.
 
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=10)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=10)
 simulation.output_writers[:fields] = field_writer
 
 anim = @animate for i in 1:100

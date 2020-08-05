@@ -53,7 +53,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    checkpointer = Checkpointer(model, frequency = test_steps, prefix = name,
+    checkpointer = Checkpointer(model, iteration_interval = test_steps, prefix = name,
                                 dir = joinpath(dirname(@__FILE__), "data"))
 
     simulation.output_writers[:checkpointer] = checkpointer
@@ -104,16 +104,16 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     field_names = ["u", "v", "w", "T", "S"]
 
-    test_fields = (model.velocities.u.data.parent, 
+    test_fields = (model.velocities.u.data.parent,
                    model.velocities.v.data.parent,
-                   model.velocities.w.data.parent, 
+                   model.velocities.w.data.parent,
                    model.tracers.T.data.parent,
                    model.tracers.S.data.parent)
 
     correct_fields = (solution₁.u,
-                      solution₁.v, 
+                      solution₁.v,
                       solution₁.w,
-                      solution₁.T, 
+                      solution₁.T,
                       solution₁.S)
 
     summarize_regression_test(field_names, test_fields, correct_fields)

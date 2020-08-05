@@ -198,7 +198,7 @@ end
 
 using Oceananigans.Utils: hour # correpsonds to "1 hour", in units of seconds
 
-simulation = Simulation(model, progress_frequency = 100,
+simulation = Simulation(model, iteration_interval = 100,
                                                Δt = wizard,
                                         stop_time = 4hour,
                                          progress = print_progress)

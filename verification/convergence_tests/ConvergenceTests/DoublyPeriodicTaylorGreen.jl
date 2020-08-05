@@ -14,7 +14,7 @@ v(x, y, t, U=1) =   - exp(-2t) * sin(x - U*t) * cos(y)
 
 function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), dir="data")
 
-    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1), 
+    grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
                                 topology=(Periodic, Periodic, Bounded))
 
     model = IncompressibleModel(architecture = architecture,
@@ -24,13 +24,13 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
                                      tracers = nothing,
                                      closure = ConstantIsotropicDiffusivity(ν=1))
 
-    set!(model, u = (x, y, z) -> u(x, y, 0, U), 
+    set!(model, u = (x, y, z) -> u(x, y, 0, U),
                 v = (x, y, z) -> v(x, y, 0, U))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
-                                                          dir = dir, force = true, 
+                                                          dir = dir, force = true,
                                                           prefix = @sprintf("taylor_green_Nx%d_Δt%.1e", Nx, Δt),
                                                           interval = stop_iteration * Δt / 10)
 
@@ -42,9 +42,9 @@ function setup_and_run(; setup...)
     simulation = setup_simulation(; setup...)
 
     println("""
-            Running decaying Taylor-Green vortex simulation in x, y with 
+            Running decaying Taylor-Green vortex simulation in x, y with
 
-                Nx = $(setup[:Nx]) 
+                Nx = $(setup[:Nx])
                 Δt = $(setup[:Δt])
 
             """)

@@ -58,7 +58,7 @@ function (Reτ::FrictionReynoldsNumber)(model)
 
     return h * uτ_top / ν, h * uτ_bottom / ν
 end
- 
+
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
     κ = model.closure.κ.T
@@ -259,7 +259,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     end
 
     simulation = Simulation(model, Δt=wizard, stop_time=end_time,
-                            progress=print_progress, progress_frequency=Ni)
+                            progress=print_progress, iteration_interval=Ni)
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
     run!(simulation)
 
