@@ -109,7 +109,7 @@ function incompressible_in_time(arch, FT, Nt)
         time_step!(model, 0.05, euler = n==1)
     end
 
-    event = launch!(arch, grid, :xyz, divergence!, grid, u, v, w, div_U, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     min_div = minimum(interior(div_U))
