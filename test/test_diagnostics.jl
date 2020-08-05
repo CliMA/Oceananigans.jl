@@ -5,7 +5,7 @@ function horizontal_average_is_correct(arch, FT)
     T₀(x, y, z) = z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
+    T̅ = HorizontalAverage(model.tracers.T; time_interval=0.5second)
     computed_profile = dropdims(T̅(model), dims=(1, 2))
 
     zC = znodes(Cell, grid)

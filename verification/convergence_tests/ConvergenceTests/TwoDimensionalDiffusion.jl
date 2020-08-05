@@ -45,7 +45,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="da
         simulation.output_writers[:fields] =
             JLD2OutputWriter(model, FieldOutputs(model.tracers); dir = dir, force = true,
                              prefix = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
-                             interval = stop_iteration * Δt / 10)
+                             time_interval = stop_iteration * Δt / 10)
     end
 
     return simulation

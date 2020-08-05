@@ -182,7 +182,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
-                         init=init_save_parameters_and_bcs, interval=10,
+                         init=init_save_parameters_and_bcs, time_interval=10,
                          force=true, verbose=true)
 
     #####
@@ -206,7 +206,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     profile_writer =
         JLD2OutputWriter(model, profiles, dir=base_dir, prefix=prefix * "_profiles",
-                         init=init_save_parameters_and_bcs, interval=1,
+                         init=init_save_parameters_and_bcs, time_interval=1,
                          force=true, verbose=true)
 
     #####
@@ -222,7 +222,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     statistics_writer =
         JLD2OutputWriter(model, statistics, dir=base_dir, prefix=prefix * "_statistics",
-                         init=init_save_parameters_and_bcs, interval=1/2,
+                         init=init_save_parameters_and_bcs, time_interval=1/2,
                          force=true, verbose=true)
 
     #####

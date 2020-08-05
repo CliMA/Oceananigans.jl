@@ -54,11 +54,11 @@ end
 
 function time_to_run(clock, diag)
     iteration_interval_is_ripe(clock, diag) && return true
-    has_time_interval(clock, diag) && return true
+    time_interval_is_ripe(clock, diag) && return true
 
     # If the output writer does not specify any intervals,
     # it is unable to write output and we throw an error as a convenience.
-    iteration_interval_is_ripe(diag) || has_time_interval(diag) ||
+    has_iteration_interval(diag) || has_time_interval(diag) ||
         error("$(typeof(diag)) must have an iteration or time interval specified!")
 
     return false
