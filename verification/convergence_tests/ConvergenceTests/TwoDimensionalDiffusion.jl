@@ -37,15 +37,15 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="da
                                      tracers = :c,
                                      closure = ConstantIsotropicDiffusivity(κ=1))
 
-    set!(model, c = (x, y, z) -> c(x, y, 0)) 
+    set!(model, c = (x, y, z) -> c(x, y, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     if output
-        simulation.output_writers[:fields] = 
-            JLD2OutputWriter(model, FieldOutputs(model.tracers); dir = dir, force = true, 
+        simulation.output_writers[:fields] =
+            JLD2OutputWriter(model, FieldOutputs(model.tracers); dir = dir, force = true,
                              prefix = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
-                             interval = stop_iteration * Δt / 10)
+                             time_interval = stop_iteration * Δt / 10)
     end
 
     return simulation

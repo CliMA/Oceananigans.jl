@@ -58,7 +58,7 @@ function (Reτ::FrictionReynoldsNumber)(model)
 
     return h * uτ_top / ν, h * uτ_bottom / ν
 end
- 
+
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
     κ = model.closure.κ.T
@@ -182,7 +182,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
-                         init=init_save_parameters_and_bcs, interval=10,
+                         init=init_save_parameters_and_bcs, time_interval=10,
                          force=true, verbose=true)
 
     #####
@@ -206,7 +206,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     profile_writer =
         JLD2OutputWriter(model, profiles, dir=base_dir, prefix=prefix * "_profiles",
-                         init=init_save_parameters_and_bcs, interval=1,
+                         init=init_save_parameters_and_bcs, time_interval=1,
                          force=true, verbose=true)
 
     #####
@@ -222,7 +222,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     statistics_writer =
         JLD2OutputWriter(model, statistics, dir=base_dir, prefix=prefix * "_statistics",
-                         init=init_save_parameters_and_bcs, interval=1/2,
+                         init=init_save_parameters_and_bcs, time_interval=1/2,
                          force=true, verbose=true)
 
     #####
@@ -259,7 +259,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     end
 
     simulation = Simulation(model, Δt=wizard, stop_time=end_time,
-                            progress=print_progress, progress_frequency=Ni)
+                            progress=print_progress, iteration_interval=Ni)
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
     run!(simulation)
 

@@ -77,7 +77,7 @@ wizard = TimeStepWizard(cfl=0.1, Δt=1.0, max_change=1.1, max_Δt=90.0)
 nothing # hide
 
 # Set up and run the simulation:
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=100)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=100)
 
 anim = @animate for i = 1:100
     simulation.stop_iteration += 100

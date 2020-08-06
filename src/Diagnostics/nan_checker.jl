@@ -4,19 +4,19 @@
 A diagnostic that checks for `NaN` values and aborts the simulation if any are found.
 """
 struct NaNChecker{F} <: AbstractDiagnostic
-    frequency :: Int
-       fields :: F
+    iteration_interval :: Int
+                fields :: F
 end
 
 """
-    NaNChecker(model; frequency, fields)
+    NaNChecker(model; iteration_interval, fields)
 
-Construct a `NaNChecker` for `model`. `fields` should be a `Dict{Symbol,Field}`. A
-`frequency` should be passed to indicate how often to check for NaNs (in number of
-iterations).
+Construct a `NaNChecker` for `model`. `fields` should be a `Dict{Symbol,Field}`. An
+`iteration_interval` should be passed to indicate how often to check for NaNs (in
+number of iterations).
 """
-function NaNChecker(model; frequency, fields)
-    return NaNChecker(frequency, fields)
+function NaNChecker(model; iteration_interval, fields)
+    return NaNChecker(iteration_interval, fields)
 end
 
 function run_diagnostic(model, nc::NaNChecker)

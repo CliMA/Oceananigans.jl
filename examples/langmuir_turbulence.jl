@@ -1,13 +1,13 @@
 # # Langmuir turbulence example
 #
 # This example implements the Langmuir turbulence simulation reported in section
-# 4 of 
-# 
-# [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38). 
+# 4 of
+#
+# [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38).
 #
 # This example demonstrates:
 #
-#   * how to run large eddy simulations with surface wave effects 
+#   * how to run large eddy simulations with surface wave effects
 #     via the Craik-Leibovich approximation
 
 using Oceananigans
@@ -19,7 +19,7 @@ using Oceananigans
 #
 # ### Domain specification and Grid construction
 #
-# We create a grid with modest resolution. The grid extent is similar, but not 
+# We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
 
 using Oceananigans.Grids
@@ -65,7 +65,7 @@ nothing # hide
 ∂z_uˢ(z, t) = 2wavenumber * Uˢ * exp(2wavenumber * z)
 nothing # hide
 
-# Finally, we note that the time-derivative of the Stokes drift must be provided 
+# Finally, we note that the time-derivative of the Stokes drift must be provided
 # if the Stokes drift changes in time. In this example, the Stokes drift is constant
 # and thus the time-derivative of the Stokes drift is 0.
 
@@ -119,7 +119,7 @@ nothing # hide
 # model for large eddy simulation. Because our Stokes drift does not vary in $x, y$,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of $z, t$ only.
 
-using Oceananigans.Buoyancy: BuoyancyTracer 
+using Oceananigans.Buoyancy: BuoyancyTracer
 using Oceananigans.SurfaceWaves: UniformStokesDrift
 
 model = IncompressibleModel(        architecture = CPU(),
@@ -129,13 +129,13 @@ model = IncompressibleModel(        architecture = CPU(),
                                         coriolis = FPlane(f=f),
                                          closure = AnisotropicMinimumDissipation(),
                                    surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                             boundary_conditions = (u=u_boundary_conditions, 
+                             boundary_conditions = (u=u_boundary_conditions,
                                                     b=b_boundary_conditions),
                             )
 
 # ## Initial conditions
 #
-# We make use of random noise concentrated in the upper 4 meters 
+# We make use of random noise concentrated in the upper 4 meters
 # for buoyancy and velocity initial conditions,
 
 Ξ(z) = randn() * exp(z / 4)
@@ -187,7 +187,7 @@ function print_progress(simulation)
                    prettytime(wizard.Δt),
                    umax(), vmax(), wmax(),
                    prettytime(1e-9 * (time_ns() - wall_clock))
-                  )       
+                  )
 
     @info msg
 
@@ -198,14 +198,14 @@ end
 
 using Oceananigans.Utils: hour # correpsonds to "1 hour", in units of seconds
 
-simulation = Simulation(model, progress_frequency = 100,
+simulation = Simulation(model, iteration_interval = 100,
                                                Δt = wizard,
                                         stop_time = 4hour,
                                          progress = print_progress)
-                        
+
 # ## Output
 #
-# We set up an output writer for the simulation that saves all velocity fields, 
+# We set up an output writer for the simulation that saves all velocity fields,
 # tracer fields, and the subgrid turbulent diffusivity every 2 minutes.
 
 using Oceananigans.OutputWriters
@@ -213,10 +213,9 @@ using Oceananigans.Utils: minute
 
 field_outputs = FieldOutputs(merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,)))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, field_outputs,
-                                                      interval = 2minute,
-                                                        prefix = "langmuir_turbulence",
-                                                         force = true)
+simulation.output_writers[:fields] =
+    JLD2OutputWriter(model, field_outputs, time_interval = 2minute,
+                     prefix = "langmuir_turbulence", force = true)
 nothing # hide
 
 # ## Running the simulation
@@ -317,7 +316,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
                               ylims = (-grid.Lz, 0),
                              xlabel = "x (m)",
                              ylabel = "z (m)")
-                        
+
     plot(wxy_plot, wxz_plot, uxz_plot, layout=(1, 3), size=(1000, 400),
          title = ["w(x, y, z=-8, t) (m/s)" "w(x, y=0, z, t) (m/s)" "u(x, y = 0, z, t) (m/s)"])
 

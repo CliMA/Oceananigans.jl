@@ -5,7 +5,7 @@ function horizontal_average_is_correct(arch, FT)
     T₀(x, y, z) = z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model.tracers.T; interval=0.5second)
+    T̅ = HorizontalAverage(model.tracers.T; time_interval=0.5second)
     computed_profile = dropdims(T̅(model), dims=(1, 2))
 
     zC = znodes(Cell, grid)
@@ -19,7 +19,7 @@ function nan_checker_aborts_simulation(arch, FT)
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
-    nc = NaNChecker(model; frequency=1, fields=Dict(:w => model.velocities.w.data.parent))
+    nc = NaNChecker(model; iteration_interval=1, fields=Dict(:w => model.velocities.w.data.parent))
     push!(model.diagnostics, nc)
 
     model.velocities.w[4, 3, 2] = NaN
@@ -83,7 +83,7 @@ function timeseries_diagnostic_works(arch, FT)
     model = TestModel(arch, FT)
     Δt = FT(1e-16)
     simulation = Simulation(model, Δt=Δt, stop_iteration=1)
-    iter_diag = TimeSeries(get_iteration, model, frequency=1)
+    iter_diag = TimeSeries(get_iteration, model, iteration_interval=1)
     push!(simulation.diagnostics, iter_diag)
     run!(simulation)
     return iter_diag.time[end] == Δt && iter_diag.data[end] == 1
@@ -93,7 +93,7 @@ function timeseries_diagnostic_tuples(arch, FT)
     model = TestModel(arch, FT)
     Δt = FT(1e-16)
     simulation = Simulation(model, Δt=Δt, stop_iteration=2)
-    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model, frequency=2)
+    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model, iteration_interval=2)
     simulation.diagnostics[:timeseries] = timeseries
     run!(simulation)
     return timeseries.iters[end] == 2 && timeseries.itertimes[end] == 2Δt
@@ -115,7 +115,7 @@ function diagnostics_setindex(arch, FT)
 
     iter_timeseries = TimeSeries(get_iteration, model)
     time_timeseries = TimeSeries(get_time, model)
-    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model, frequency=1)
+    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model, iteration_interval=1)
 
     push!(simulation.diagnostics, iter_timeseries, time_timeseries)
     simulation.diagnostics[2] = max_abs_u_timeseries

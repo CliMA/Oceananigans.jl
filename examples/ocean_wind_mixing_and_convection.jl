@@ -129,7 +129,7 @@ nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
+field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); time_interval=hour/4,
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 # ## Running the simulation
@@ -148,7 +148,7 @@ nothing # hide
 
 # Finally, we set up and run the the simulation.
 
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=10)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=10)
 simulation.output_writers[:fields] = field_writer
 
 anim = @animate for i in 1:100

@@ -24,7 +24,7 @@ function run_thermal_bubble_netcdf_tests(arch)
         "S" => model.tracers.S
     )
     nc_filename = "test_dump_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, verbose=true)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, iteration_interval=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
 
     xC_slice = 1:10
@@ -36,7 +36,7 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     nc_sliced_filename = "test_dump_sliced_$(typeof(arch)).nc"
     nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10, verbose=true,
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, iteration_interval=10, verbose=true,
                            xC=xC_slice, xF=xF_slice, yC=yC_slice,
                            yF=yF_slice, zC=zC_slice, zF=zF_slice)
 
@@ -156,7 +156,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
         "S" => model.tracers.S
     )
     nc_filename = "test_dump_with_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10, with_halos=true)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, iteration_interval=10, with_halos=true)
     push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
@@ -236,7 +236,7 @@ function run_netcdf_function_output_tests(arch)
     nc_filename = "test_function_outputs_$(typeof(arch)).nc"
     simulation.output_writers[:food] =
         NetCDFOutputWriter(model, outputs;
-            frequency=1, filename=nc_filename, dimensions=dims, verbose=true,
+            iteration_interval=1, filename=nc_filename, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
@@ -311,7 +311,7 @@ function run_jld2_file_splitting_tests(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", frequency=1,
+    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", iteration_interval=1,
                           init=fake_bc_init, including=[:grid],
                           max_filesize=200KiB, force=true)
 
@@ -367,7 +367,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     run!(true_simulation)
 
     checkpointed_simulation = Simulation(checkpointed_model, Δt=Δt, stop_iteration=5)
-    checkpointer = Checkpointer(checkpointed_model, frequency=5, force=true)
+    checkpointer = Checkpointer(checkpointed_model, iteration_interval=5, force=true)
     push!(checkpointed_simulation.output_writers, checkpointer)
 
     # Checkpoint should be saved as "checkpoint5.jld" after the 5th iteration.

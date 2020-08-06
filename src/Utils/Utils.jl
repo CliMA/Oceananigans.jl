@@ -8,7 +8,7 @@ export
     TimeStepWizard, update_Δt!,
     prettytime, pretty_filesize,
     tupleit, parenttuple, datatuple, datatuples,
-    validate_interval, time_to_run,
+    validate_intervals, time_to_run,
     ordered_dict_show,
     with_tracers,
     versioninfo_with_gpu, oceananigans_versioninfo
