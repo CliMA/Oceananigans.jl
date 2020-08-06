@@ -119,7 +119,9 @@ Restore a model from the checkpoint file stored at `filepath`. `kwargs` can be p
 to the model constructor, which can be especially useful if you need to manually
 restore forcing functions or boundary conditions that rely on functions.
 """
-function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
+function restore_from_checkpoint(filepath; kwargs...)
+    kwargs = length(kwargs) == 0 ? Dict{Symbol,Any}() : Dict{Symbol,Any}(kwargs)
+
     file = jldopen(filepath, "r")
     cps = file["checkpointed_properties"]
 

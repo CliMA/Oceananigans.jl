@@ -50,7 +50,7 @@ serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Functi
 function serializeproperty!(file, location, p::FieldBoundaryConditions)
     if has_reference(Function, p)
         @warn "Cannot serialize $location as it contains functions. Will replace with missing. " *
-              " Function boundary conditions must be restored manually."
+              "Function boundary conditions must be restored manually."
         file[location] = missing
     else
         file[location] = p
