@@ -109,9 +109,11 @@ function restore_field(file, address, arch, grid, loc, kwargs)
     # apply the same BCs on T and T tendencies).
     field_name = split(address, "/")[2:end] |> join |> Symbol
 
+    # If the user specified a non-default boundary condition through the kwargs
+    # in restore_from_checkpoint, then use them when restoring the field. Otherwise
+    # restore the BCs from the checkpoint file as long as they're not missing.
     if :boundary_conditions in keys(kwargs) && field_name in keys(kwargs[:boundary_conditions])
         bcs = kwargs[:boundary_conditions][field_name]
-        @show bcs
     else
         bcs = restore_if_not_missing(file, address * "/boundary_conditions")
     end
