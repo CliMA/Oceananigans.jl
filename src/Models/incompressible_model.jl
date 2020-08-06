@@ -95,14 +95,12 @@ function IncompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     # Instantiate tracer fields if not already instantiated
-    if tracers isa Tuple
-        tracers = TracerFields(architecture, grid, tracers, boundary_conditions)
-    end
+    tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, float_type, architecture, grid, velocities, tracernames(tracers))
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, velocities, tracers, pressures, diffusivities,
+                               forcing, closure, velocities, tracer_fields, pressures, diffusivities,
                                timestepper, pressure_solver)
 end
