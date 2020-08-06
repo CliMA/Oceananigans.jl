@@ -176,7 +176,7 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Opens the same output file for writing fields from the user-supplied variable outputs
     dataset = Dataset(filename, "a")
-    println("hello")
+
     # Creates an unliimited dimension "time"
     defDim(dataset, "time", Inf)
     defVar(dataset, "time", Float64, ("time",))
