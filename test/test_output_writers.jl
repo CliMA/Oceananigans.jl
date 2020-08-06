@@ -408,7 +408,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
     T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
 
-    model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+    model = IncompressibleModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
     checkpointer = Checkpointer(model)
@@ -426,6 +426,43 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test all(interior(restored_model.velocities.w) .== 0)
     @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
     @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    restored_model = nothing
+
+    properly_restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2",
+                                                      boundary_conditions=(u=u_bcs, T=T_bcs))
+
+    @test all(interior(properly_restored_model.velocities.u) .≈ π/2)
+    @test all(interior(properly_restored_model.velocities.v) .≈ ℯ)
+    @test all(interior(properly_restored_model.velocities.w) .== 0)
+    @test all(interior(properly_restored_model.tracers.T) .≈ Base.MathConstants.γ)
+    @test all(interior(properly_restored_model.tracers.S) .≈ Base.MathConstants.φ)
+
+    @test !ismissing(properly_restored_model.velocities.u.boundary_conditions)
+    @test !ismissing(properly_restored_model.velocities.v.boundary_conditions)
+    @test !ismissing(properly_restored_model.velocities.w.boundary_conditions)
+    @test !ismissing(properly_restored_model.tracers.T.boundary_conditions)
+    @test !ismissing(properly_restored_model.tracers.S.boundary_conditions)
+
+    u, v, w = properly_restored_model.velocities
+    T, S = properly_restored_model.tracers
+
+    @test u.boundary_conditions.x.left  isa PBC
+    @test u.boundary_conditions.x.right isa PBC
+    @test u.boundary_conditions.y.left  isa PBC
+    @test u.boundary_conditions.y.right isa PBC
+    @test u.boundary_conditions.z.left  isa ZFBC
+    @test u.boundary_conditions.z.right isa FBC
+    @test u.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test u.boundary_conditions.z.right.condition.func(1, 2, 3, nothing) == some_flux(1, 2, 3, nothing)
+
+    @test T.boundary_conditions.x.left  isa PBC
+    @test T.boundary_conditions.x.right isa PBC
+    @test T.boundary_conditions.y.left  isa PBC
+    @test T.boundary_conditions.y.right isa PBC
+    @test T.boundary_conditions.z.left  isa ZFBC
+    @test T.boundary_conditions.z.right isa FBC
+    @test T.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test T.boundary_conditions.z.right.condition.func(1, 2, 3, nothing) == some_flux(1, 2, 3, nothing)
 end
 
 @testset "Output writers" begin
