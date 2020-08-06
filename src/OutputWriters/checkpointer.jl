@@ -100,10 +100,22 @@ function restore_if_not_missing(file, address)
     end
 end
 
-function restore_field(file, address, arch, grid, loc)
+function restore_field(file, address, arch, grid, loc, kwargs)
     field_address = file[address * "/location"]
     data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
-    bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+
+    # Extract field name from address. We use 2:end so "tracers/T "gets extracted
+    # as :T while "timestepper/Gⁿ/T" gets extracted as :Gⁿ/T (we don't want to
+    # apply the same BCs on T and T tendencies).
+    field_name = split(address, "/")[2:end] |> join |> Symbol
+
+    if :boundary_conditions in keys(kwargs) && field_name in keys(kwargs[:boundary_conditions])
+        bcs = kwargs[:boundary_conditions][field_name]
+        @show bcs
+    else
+        bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+    end
+
     return Field(field_address, arch, grid, bcs, data)
 end
 
@@ -136,14 +148,14 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     # Restore velocity fields
     kwargs[:velocities] =
-        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location),
-                                   v = restore_field(file, "velocities/v", arch, grid, v_location),
-                                   w = restore_field(file, "velocities/w", arch, grid, w_location))
+        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
+                                   v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
+                                   w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
     filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location) for c in tracer_names)
+    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location, kwargs) for c in tracer_names)
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
     kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
 
@@ -153,8 +165,8 @@ function restore_from_checkpoint(filepath; kwargs...)
     field_names = (:u, :v, :w, tracer_names...) # field names
     locs = (u_location, v_location, w_location, Tuple(c_location for c in tracer_names)...) # name locations
 
-    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
-    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
+    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
+    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
 
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
