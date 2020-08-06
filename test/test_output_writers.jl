@@ -1,4 +1,6 @@
-using NCDatasets, Statistics
+using Statistics
+using NCDatasets
+using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
 
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -397,6 +399,8 @@ function run_thermal_bubble_checkpointer_tests(arch)
     @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
     @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
     @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+
+    return nothing
 end
 
 function run_checkpoint_with_function_bcs_tests(arch)
@@ -463,6 +467,45 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test T.boundary_conditions.z.right isa FBC
     @test T.boundary_conditions.z.right.condition isa BoundaryFunction
     @test T.boundary_conditions.z.right.condition.func(1, 2, 3, nothing) == some_flux(1, 2, 3, nothing)
+
+    # Test that the restored model can be time stepped
+    time_step!(properly_restored_model, 1)
+    @test properly_restored_model isa IncompressibleModel
+
+    return nothing
+end
+
+function run_cross_architecture_checkpointer_tests(arch1, arch2)
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch1, grid=grid)
+    set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
+
+    checkpointer = Checkpointer(model)
+    write_output(model, checkpointer)
+    model = nothing
+
+    restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2", architecture=arch2)
+
+    @test restored_model.architecture == arch2
+
+    ArrayType = array_type(restored_model.architecture)
+    @test restored_model.velocities.u.data.parent isa ArrayType
+    @test restored_model.velocities.v.data.parent isa ArrayType
+    @test restored_model.velocities.w.data.parent isa ArrayType
+    @test restored_model.tracers.T.data.parent isa ArrayType
+    @test restored_model.tracers.S.data.parent isa ArrayType
+
+    @test all(interior(restored_model.velocities.u) .≈ π/2)
+    @test all(interior(restored_model.velocities.v) .≈ ℯ)
+    @test all(interior(restored_model.velocities.w) .== 0)
+    @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+    @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+
+    # Test that the restored model can be time stepped
+    time_step!(restored_model, 1)
+    @test restored_model isa IncompressibleModel
+
+    return nothing
 end
 
 @testset "Output writers" begin
@@ -485,6 +528,8 @@ end
             @info "  Testing Checkpointer [$(typeof(arch))]..."
             run_thermal_bubble_checkpointer_tests(arch)
             run_checkpoint_with_function_bcs_tests(arch)
+            @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
+            @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
     end
 end
