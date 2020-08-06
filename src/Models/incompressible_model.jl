@@ -52,6 +52,7 @@ Construct an incompressible `Oceananigans.jl` model on `grid`.
 
 Keyword arguments
 =================
+
 - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
 - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
@@ -94,12 +95,14 @@ function IncompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     # Instantiate tracer fields if not already instantiated
-    tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
+    if tracers isa Tuple
+        tracers = TracerFields(architecture, grid, tracers, boundary_conditions)
+    end
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, float_type, architecture, grid, velocities, tracernames(tracers))
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, velocities, tracer_fields, pressures, diffusivities,
+                               forcing, closure, velocities, tracers, pressures, diffusivities,
                                timestepper, pressure_solver)
 end
