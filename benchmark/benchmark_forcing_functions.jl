@@ -1,5 +1,7 @@
-using TimerOutputs, Printf
+using Printf
+using TimerOutputs
 using Oceananigans
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 
@@ -97,6 +99,6 @@ end
 #####
 
 println()
-print_benchmark_info()
+print(versioninfo_with_gpu())
 print_timer(timer, title="Forcing function benchmarks")
 println()

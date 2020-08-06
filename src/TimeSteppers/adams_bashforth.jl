@@ -75,49 +75,43 @@ end
 ##### Source term storage
 #####
 
+""" Store source terms for `u`, `v`, and `w`. """
+@kernel function ab2_store_velocity_source_terms!(G⁻, grid::AbstractGrid{FT}, χ, Gⁿ) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
+    @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
+    @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
+end
+
+""" Store previous source terms for a tracer before updating them. """
+@kernel function ab2_store_tracer_source_term!(Gc⁻, grid::AbstractGrid{FT}, χ, Gcⁿ) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
+end
+
 """ Store previous source terms before updating them. """
 function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
 
-    # Velocity fields
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            ab2_store_velocity_source_terms!(G⁻, grid, χ, Gⁿ))
+    barrier = Event(device(arch))
+
+    workgroup, worksize = work_layout(grid, :xyz)
+
+    store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
+    store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
+
+    velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ, dependencies=barrier)
+
+    events = [velocities_event]
 
     # Tracer fields
     for i in 4:length(G⁻)
         @inbounds Gc⁻ = G⁻[i]
         @inbounds Gcⁿ = Gⁿ[i]
-        @launch(device(arch), config=launch_config(grid, :xyz),
-                ab2_store_tracer_source_term!(Gc⁻, grid, χ, Gcⁿ))
+        tracer_event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ, dependencies=barrier)
+        push!(events, tracer_event)
     end
 
-    return nothing
-end
-
-""" Store source terms for `u`, `v`, and `w`. """
-function ab2_store_velocity_source_terms!(G⁻, grid::AbstractGrid{FT}, χ, Gⁿ) where FT
-    @loop_xyz i j k grid begin
-        @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
-        @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
-        @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
-    end
-    return nothing
-end
-
-""" Store previous source terms for a tracer before updating them. """
-function ab2_store_tracer_source_term!(Gc⁻, grid::AbstractGrid{FT}, χ, Gcⁿ) where FT
-    @loop_xyz i j k grid begin
-        @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
-    end
-    return nothing
-end
-
-function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
-    for i in 1:length(C)
-        @inbounds c = C[i]
-        @inbounds Gcⁿ = Gⁿ[i+3]
-        @inbounds Gc⁻ = G⁻[i+3]
-        @launch device(arch) config=launch_config(grid, :xyz) ab2_time_step_tracer!(c, grid, Δt, χ, Gcⁿ, Gc⁻)
-    end
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -132,32 +126,56 @@ Time step tracers via
     `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
 
 """
-function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
-    @loop_xyz i j k grid begin
-        @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
-    end
-    return nothing
+@kernel function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
 end
 
-function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
-    @launch(device(arch), config=launch_config(grid, :xyz), 
-            _ab2_update_predictor_velocities!(U★, grid, Δt, χ, Gⁿ, G⁻))
+ab2_time_step_tracers!(::Nothing, args...) = nothing
+
+function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
+
+    workgroup, worksize = work_layout(grid, :xyz)
+
+    barrier = Event(device(arch))
+
+    time_step_tracer_kernel! = ab2_time_step_tracer!(device(arch), workgroup, worksize)
+
+    events = []
+
+    for i in 1:length(C)
+        @inbounds c = C[i]
+        @inbounds Gcⁿ = Gⁿ[i+3]
+        @inbounds Gc⁻ = G⁻[i+3]
+        event = time_step_tracer_kernel!(c, grid, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
+        push!(events, event)
+    end
+
+    wait(device(arch), MultiEvent(Tuple(events)))
+
     return nothing
 end
 
 """ Update predictor velocity field. """
-function _ab2_update_predictor_velocities!(U★, grid::AbstractGrid{FT}, Δt, χ, Gⁿ, G⁻) where FT
-    @loop_xyz i j k grid begin
-        @inbounds begin
-            U★.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
-                                    - (FT(0.5) + χ) * G⁻.u[i, j, k] )
+@kernel function _ab2_update_predictor_velocities!(U★, grid::AbstractGrid{FT}, Δt, χ, Gⁿ, G⁻) where FT
+    i, j, k = @index(Global, NTuple)
 
-            U★.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
-                                    - (FT(0.5) + χ) * G⁻.v[i, j, k] )
+    @inbounds begin
+        U★.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
+                                - (FT(0.5) + χ) * G⁻.u[i, j, k] )
 
-            U★.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
-                                    - (FT(0.5) + χ) * G⁻.w[i, j, k] )
-        end
+        U★.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
+                                - (FT(0.5) + χ) * G⁻.v[i, j, k] )
+
+        U★.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
+                                - (FT(0.5) + χ) * G⁻.w[i, j, k] )
     end
+end
+
+function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
+    event = launch!(arch, grid, :xyz, _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻,
+                    dependencies=Event(device(arch)))
+    wait(device(arch), event)
     return nothing
 end

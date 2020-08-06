@@ -7,7 +7,6 @@ using Base: @propagate_inbounds
 
 import Adapt
 using CUDA
-using GPUifyLoops: @launch, @loop
 
 using Oceananigans.Architectures: @hascuda
 
@@ -21,9 +20,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans: AbstractAverage
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Diagnostics: VolumeAverage, HorizontalAverage
-using Oceananigans.Diagnostics: ZonalAverage, normalize_sum!
-using Oceananigans.Utils: launch_config
+using Oceananigans.Diagnostics: VolumeAverage, HorizontalAverage, ZonalAverage, normalize_sum!
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: data

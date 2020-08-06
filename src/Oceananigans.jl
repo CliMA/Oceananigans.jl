@@ -17,12 +17,12 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Value, Gradient,
+    Flux, Value, Gradient, NormalFlow,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
-    BoundaryFunction,
+    BoundaryFunction, ParameterizedBoundaryCondition,
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,
@@ -74,11 +74,8 @@ using FFTW
 using JLD2
 using NCDatasets
 
-import GPUifyLoops
-
 using Base: @propagate_inbounds
 using Statistics: mean
-using GPUifyLoops: @launch, @loop, @unroll
 
 import Base:
     +, -, *, /,
@@ -130,9 +127,9 @@ include("Architectures.jl")
 
 using Oceananigans.Architectures: @hascuda
 @hascuda begin
-    println("CUDA-enabled GPU(s) detected:")
+    @debug "CUDA-enabled GPU(s) detected:"
     for (gpu, dev) in enumerate(CUDA.devices())
-        println(dev)
+        @debug "$dev: $(CUDA.name(dev))"
     end
 end
 
@@ -140,6 +137,7 @@ include("Utils/Utils.jl")
 include("Logger.jl")
 include("Grids/Grids.jl")
 include("Operators/Operators.jl")
+include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")

@@ -1,31 +1,33 @@
 using CUDA
 using OrderedCollections: OrderedDict
 
+using Oceananigans.Advection
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   S, K} <: AbstractModel
+                                   V, S, K} <: AbstractModel
        architecture :: A         # Computer `Architecture` on which `Model` is run
                grid :: G         # Grid of physical points on which `Model` is solved
               clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+          advection :: V         # Advection scheme for velocities _and_ tracers
            buoyancy :: B         # Set of parameters for buoyancy model
            coriolis :: R         # Set of parameters for the background rotation rate of `Model`
       surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+            forcing :: F         # Container for forcing functions defined by the user
+            closure :: E         # Diffusive 'turbulence closure' for all model fields
          velocities :: U         # Container for velocity fields `u`, `v`, and `w`
             tracers :: C         # Container for tracer fields
           pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
-            forcing :: F         # Container for forcing functions defined by the user
-            closure :: E         # Diffusive 'turbulence closure' for all model fields
+      diffusivities :: K         # Container for turbulent diffusivities
         timestepper :: TS        # Object containing timestepper fields and parameters
     pressure_solver :: S         # Pressure/Poisson solver
-      diffusivities :: K         # Container for turbulent diffusivities
 end
 
 """
-   IncompressibleModel(;
+    IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,
@@ -63,17 +65,18 @@ function IncompressibleModel(;
                    grid,
            architecture = CPU(),
              float_type = Float64,
-                tracers = (:T, :S),
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
                   clock = Clock{float_type}(0, 0),
+              advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
+                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
              velocities = VelocityFields(architecture, grid, boundary_conditions),
+                tracers = (:T, :S),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
             timestepper = :AdamsBashforth,
@@ -96,7 +99,7 @@ function IncompressibleModel(;
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, float_type, architecture, grid, velocities, tracernames(tracers))
 
-    return IncompressibleModel(architecture, grid, clock, buoyancy, coriolis, surface_waves,
-                               velocities, tracer_fields, pressures, forcing, closure,
-                               timestepper, pressure_solver, diffusivities)
+    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
+                               forcing, closure, velocities, tracer_fields, pressures, diffusivities,
+                               timestepper, pressure_solver)
 end

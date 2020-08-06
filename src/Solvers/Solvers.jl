@@ -5,7 +5,8 @@ export
     PressureSolver, solve_for_pressure!
 
 using CUDA
-using GPUifyLoops: @launch, @loop, @unroll
+using KernelAbstractions
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type
 using Oceananigans.Utils

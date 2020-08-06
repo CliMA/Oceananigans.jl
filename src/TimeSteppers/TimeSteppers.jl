@@ -7,7 +7,8 @@ export
     tendencies
 
 using CUDA
-using GPUifyLoops: @launch, @loop, @unroll
+using KernelAbstractions
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans: TimeStepper
 

@@ -1,9 +1,9 @@
 # Exponential decay at a point
 #
-# We set up a problem in which a tracer obeys 
+# We set up a problem in which a tracer obeys
 #
 # ∂c/∂t = - c
-# 
+#
 # at a single point. This leads to exponential decay,
 #
 # c(t) = exp(-t)
@@ -35,7 +35,7 @@ function run_test(; Δt, stop_iteration, architecture = CPU())
                                      forcing = ModelForcing(c=Fᶜ))
 
     set!(model, c=1)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     println("Running Point exponential decay test for Δt = $Δt...")
     run!(simulation)

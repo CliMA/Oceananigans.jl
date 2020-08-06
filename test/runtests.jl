@@ -9,11 +9,13 @@ using CUDA
 using JLD2
 using FFTW
 using OffsetArrays
+using SeawaterPolynomials
 
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
+using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
@@ -34,60 +36,15 @@ using Dates: DateTime, Nanosecond
 using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
-using GPUifyLoops: @launch, @loop
 using NCDatasets: Dataset
-
-using SeawaterPolynomials
+using KernelAbstractions: @kernel, @index, Event
 
 import Oceananigans.Fields: interior
-import Oceananigans.Utils: datatuple
+import Oceananigans.Utils: launch!, datatuple
 
-using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
+using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
-
-#####
-##### On CI servers select the GPU with the most available memory or with the
-##### highest capability if testing needs to be thorough).
-##### Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
-#####
-
-@hascuda begin
-    gpu_candidates = [(dev=dev, cap=CUDA.capability(dev),
-                       mem=CUDA.CuContext(ctx -> CUDA.available_memory(), dev))
-                       for dev in CUDA.devices()]
-
-    thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
-    if thorough
-        sort!(gpu_candidates, by=x->(x.cap, x.mem))
-    else
-        sort!(gpu_candidates, by=x->x.mem)
-    end
-
-    pick = last(gpu_candidates)
-    device!(pick.dev)
-end
-
-#####
-##### Useful utilities
-#####
-
-function get_model_field(field_name, model)
-    if field_name ∈ (:u, :v, :w)
-        return getfield(model.velocities, field_name)
-    else
-        return getfield(model.tracers, field_name)
-    end
-end
-
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
-
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
 
 #####
 ##### Testing parameters
@@ -112,6 +69,8 @@ closures = (
 #####
 ##### Run tests!
 #####
+
+include("runtests_utils.jl")
 
 with_logger(ModelLogger()) do
     @testset "Oceananigans" begin

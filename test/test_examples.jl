@@ -28,10 +28,10 @@ function run_example(replace_strings, example_name, module_suffix="")
         @printf "% 3d module Test_%s_%s\n" 1 example_name module_suffix
 
         for (number, line) in enumerate(delineated_file_content)
-            @printf "% 3d %s\n" number line
+            @printf "% 3d %s\n" number+1 line
         end
 
-        @printf("% 3d end # module", number+2)
+        @printf("% 3d end # module\n", length(delineated_file_content)+2)
 
         # Delete the test script
         rm(test_script_filepath)
@@ -54,8 +54,7 @@ end
         replace_strings = [
             ("size = (1, 1, 128)", "size = (1, 1, 16)"),
             ("stop_iteration = 1000", "stop_iteration = 1"),
-            ("stop_iteration += 100", "stop_iteration += 1"),
-            ("for i=1:100", "for i=1:1"),
+            ("simulation.stop_iteration += 10000", "simulation.stop_iteration += 100"),
             ("mp4(", "# mp4(")
         ]
 
@@ -81,7 +80,7 @@ end
 
             replace_strings = [
                 ("Nz = 32", "Nz = 16"),
-                ("progress_frequency=10", "progress_frequency=1"),
+                ("iteration_interval=10", "iteration_interval=1"),
                 ("for i in 1:100", "for i in 1:1"),
                 ("stop_iteration += 10", "stop_iteration += 1"),
                 ("mp4(", "# mp4(")
@@ -102,7 +101,7 @@ end
 
         replace_strings = [
             ("Nz = 128", "Nz = 16"),
-            ("progress_frequency=100", "progress_frequency=1"),
+            ("iteration_interval=100", "iteration_interval=1"),
             ("for i = 1:100", "for i = 1:1"),
             ("stop_iteration += 100", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
@@ -116,7 +115,7 @@ end
 
         replace_strings = [
             ("Nx = 128", "Nx = 16"),
-            ("progress_frequency = 20", "progress_frequency = 1"),
+            ("iteration_interval = 20", "iteration_interval = 1"),
             ("for i=1:100", "for i=1:1"),
             ("stop_iteration += 20", "stop_iteration += 1"),
             ("mp4(", "# mp4(")

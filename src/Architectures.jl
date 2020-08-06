@@ -7,7 +7,7 @@ export
 
 using CUDA
 
-import GPUifyLoops
+using KernelAbstractions
 
 """
     AbstractArchitecture
@@ -40,8 +40,8 @@ macro hascuda(expr)
     return has_cuda() ? :($(esc(expr))) : :(nothing)
 end
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
+device(::CPU) = KernelAbstractions.CPU()
+device(::GPU) = KernelAbstractions.CUDADevice()
 
          architecture(::Array)   = CPU()
 @hascuda architecture(::CuArray) = GPU()

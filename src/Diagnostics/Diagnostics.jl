@@ -12,7 +12,6 @@ using Oceananigans,
 using Oceananigans: AbstractDiagnostic
 using Oceananigans: AbstractAverage
 
-include("diagnostics_kernels.jl")
 include("nan_checker.jl")
 include("averages.jl")
 include("time_series.jl")

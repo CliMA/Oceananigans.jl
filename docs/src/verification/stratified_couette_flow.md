@@ -2,19 +2,19 @@
 
 In regular plane Couette flow, a viscous fluid is situated between two infinite, parallel plates and usually the top
 plate moves at some constant velocity generating a linear velocity profile in steady state
-\citep[\S4.2--4.3]{Batchelor00}.
+(§4.2-4.3) [Batchelor00](@cite).
 
 In stratified Couette flow, the plates are additionally held at fixed temperatures to provide a stable stratification.
 It is a canonical geometry in which to investigate the dynamics of stratified shear flows as it exhibits a transition to
-turbulence, intermittent turbulence, coherent structures, and diapycnal mixing among other rich behavior \citep{Zhou17}.
+turbulence, intermittent turbulence, coherent structures, and diapycnal mixing among other rich behavior [Zhou17](@cite).
 
-In this test we follow \citet{Vreugdenhil18} who use stratified Couette flow as a test of their large-eddy simulation
-model. We will compare our results to theirs and the direct numerical simulation results of \citet{Deusebio15} and
-\citet{Zhou17}.
+In this test we follow [Vreugdenhil18](@cite) who use stratified Couette flow as a test of their large-eddy simulation
+model. We will compare our results to theirs and the direct numerical simulation results of [Deusebio15](@cite) and
+[Zhou17](@cite).
 
 ## Simulation setup
 
-In our setup replicating that of \citet{Vreugdenhil18}, a domain of size ``(L_x, L_y, L_z)/h = (4\pi, 2\pi, 2)``
+In our setup replicating that of [Vreugdenhil18](@cite), a domain of size ``(L_x, L_y, L_z)/h = (4\pi, 2\pi, 2)``
 is bounded in the vertical ``z``-direction by two infinite, parallel plates or walls at ``z = \pm h`` with horizontal
 velocity ``u = \pm U_w`` and constant temperature ``\theta = \pm \Theta_w`` where ``\theta`` denotes temperature in this
 section. The resulting flow is governed by the Reynolds, Richardson, and Prandtl numbers

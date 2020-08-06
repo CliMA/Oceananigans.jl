@@ -85,12 +85,12 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 # Finally, we release the packet and watch it go!
 
 simulation = Simulation(model, Δt = 0.001 * 2π/ω, stop_iteration = 0,
-                        progress_frequency = 20)
+                        iteration_interval = 20)
 
 anim = @animate for i=0:100
     x, z = xnodes(Cell, model.grid)[:], znodes(Face, model.grid)[:]
     w = model.velocities.w
-    
+
     contourf(x, z, w.data[1:Nx, 1, 1:Nx+1]',
                    title = @sprintf("ωt = %.2f", ω * model.clock.time),
                   levels = range(-1e-8, stop=1e-8, length=10),
@@ -103,7 +103,7 @@ anim = @animate for i=0:100
                    color = :balance,
                   legend = false,
              aspectratio = :equal)
-            
+
     simulation.stop_iteration += 20
     run!(simulation)
 end

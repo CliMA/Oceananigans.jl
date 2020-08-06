@@ -68,6 +68,7 @@ end
         @info "  Testing field setting..."
 
         for arch in archs, FT in float_types
+	    ArrayType = array_type(arch)
             grid = RegularCartesianGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
             for fieldtype in fieldtypes, val in vals
@@ -76,8 +77,7 @@ end
 
             for fieldtype in fieldtypes
                 field = fieldtype(arch, grid)
-                A = rand(FT, N...)
-                arch isa GPU && (A = CuArray(A))
+                A = rand(FT, N...) |> ArrayType
                 set!(field, A)
                 @test field.data[2, 4, 6] == A[2, 4, 6]
             end

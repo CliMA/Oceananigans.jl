@@ -56,7 +56,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     prefix = "rayleigh_benard"
 
-    checkpointer = Checkpointer(model, frequency=test_steps, prefix=prefix,
+    checkpointer = Checkpointer(model, iteration_interval=test_steps, prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
 
     #####
@@ -120,16 +120,16 @@ function run_rayleigh_benard_regression_test(arch)
 
     field_names = ["u", "v", "w", "b", "c"]
 
-    test_fields = (model.velocities.u.data.parent, 
+    test_fields = (model.velocities.u.data.parent,
                    model.velocities.v.data.parent,
-                   model.velocities.w.data.parent, 
+                   model.velocities.w.data.parent,
                    model.tracers.b.data.parent,
                    model.tracers.c.data.parent)
 
-    correct_fields = (solution₁.u, 
-                      solution₁.v, 
+    correct_fields = (solution₁.u,
+                      solution₁.v,
                       solution₁.w,
-                      solution₁.b, 
+                      solution₁.b,
                       solution₁.c)
 
     summarize_regression_test(field_names, test_fields, correct_fields)

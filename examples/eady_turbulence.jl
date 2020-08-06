@@ -88,7 +88,7 @@ forcing_parameters = (α=α, f=f, H=Lz)
 #
 # is applied at location `(f, c, c)`.
 
-function Fu_eady_func(i, j, k, grid, clock, state, p) 
+function Fu_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, state.velocities.w)
                       - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, state.velocities.u))
 end
@@ -99,7 +99,7 @@ end
 #
 # is applied at location `(c, f, c)`.
 
-function Fv_eady_func(i, j, k, grid, clock, state, p) 
+function Fv_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.v)
 end
 
@@ -109,7 +109,7 @@ end
 #
 # is applied at location `(c, c, f)`.
 
-function Fw_eady_func(i, j, k, grid, clock, state, p) 
+function Fw_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.w)
 end
 
@@ -119,7 +119,7 @@ end
 #
 # is applied at location `(c, c, c)`.
 
-function Fb_eady_func(i, j, k, grid, clock, state, p) 
+function Fb_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.tracers.b)
                       + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
 end
@@ -184,7 +184,7 @@ wmax = FieldMaximum(abs, model.velocities.w)
 # Set up output. Here we output the velocity and buoyancy fields at intervals of one day.
 fields_to_output = merge(model.velocities, (b=model.tracers.b,))
 output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
-                                 interval=day, prefix=output_filename_prefix,
+                                 time_interval=day, prefix=output_filename_prefix,
                                  force=true, max_filesize=10GiB)
 
 # # The `TimeStepWizard`

@@ -11,7 +11,7 @@ c(x, y, z, t, U, κ) = exp(-κ * t) * cos(x - U * t)
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                   architecture = CPU(), topo = (Periodic, Periodic, Bounded))
-                                      
+
     #####
     ##### Test c and v-advection
     #####
@@ -25,11 +25,11 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                                      tracers = :c,
                                      closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
 
-    set!(model, u = U, 
+    set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ),
                 c = (x, y, z) -> c(x, y, z, 0, U, κ))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     println("Running 1D in x cosine advection diffusion test for v and c with Nx = $Nx and Δt = $Δt...")
     run!(simulation)
@@ -49,7 +49,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     #####
     ##### Test u-advection
     #####
-    
+
     ygrid = RegularCartesianGrid(size=(1, Nx, 1), x=(0, 1), y=(0, 2π), z=(0, 1), topology=topo)
 
     model = IncompressibleModel(architecture = architecture,
@@ -59,11 +59,11 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                                      tracers = :c,
                                      closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
 
-    set!(model, v = U, 
+    set!(model, v = U,
                 u = (x, y, z) -> c(y, x, z, 0, U, κ),
                 c = (x, y, z) -> c(y, x, z, 0, U, κ))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress_frequency=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
     println("Running 1D in y cosine advection diffusion test for u and c with Ny = $Nx and Δt = $Δt...")
     run!(simulation)

@@ -1,6 +1,13 @@
-"""
-    TimeStepWizard{T}
+mutable struct TimeStepWizard{T}
+              cfl :: T
+    diffusive_cfl :: T
+       max_change :: T
+       min_change :: T
+           max_Δt :: T
+               Δt :: T
+end
 
+"""
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf)
 
 A type for calculating adaptive time steps based on capping the CFL number at `cfl`.
@@ -12,14 +19,8 @@ between model velocity and along-velocity grid spacing anywhere on the model gri
 less than `min_change` from the previous `Δt`, and to be no greater in absolute magnitude
 than `max_Δt`.
 """
-Base.@kwdef mutable struct TimeStepWizard{T}
-              cfl :: T = 0.1
-    diffusive_cfl :: T = Inf
-       max_change :: T = 2.0
-       min_change :: T = 0.5
-           max_Δt :: T = Inf
-               Δt :: T = 0.01
-end
+TimeStepWizard(; cfl=0.1, diffusive_cfl=Inf, max_change=2.0, min_change=0.5, max_Δt=Inf, Δt=0.01) =
+        TimeStepWizard(cfl, diffusive_cfl, max_change, min_change, max_Δt, Δt)
 
 """
     update_Δt!(wizard, model)

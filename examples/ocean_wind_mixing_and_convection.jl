@@ -1,4 +1,4 @@
-# # Wind and convection-driven mixing in an ocean surface boundary layer
+# # [Wind and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
 #
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
@@ -108,7 +108,7 @@ nothing # hide
 ## Random noise damped at top and bottom
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
-## Temperature initial condition: a stable density tradient with random noise superposed.
+## Temperature initial condition: a stable density gradient with random noise superposed.
 T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
@@ -129,7 +129,7 @@ nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
+field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); time_interval=hour/4,
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 # ## Running the simulation
@@ -148,7 +148,7 @@ nothing # hide
 
 # Finally, we set up and run the the simulation.
 
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=10)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=10)
 simulation.output_writers[:fields] = field_writer
 
 anim = @animate for i in 1:100
