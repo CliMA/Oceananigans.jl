@@ -91,7 +91,7 @@ end
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 function restore_if_not_missing(file, address)
-    if file[address] !== missing
+    if !ismissing(file[address])
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *

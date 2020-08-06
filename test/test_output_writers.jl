@@ -406,8 +406,8 @@ end
 function run_checkpoint_with_function_bcs_tests(arch)
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-    @inline some_flux(x, y, t, p) = 2x + exp(y)
-    some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux, nothing)
+    @inline some_flux(x, y, t) = 2x + exp(y)
+    some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux)
     top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux_bf)
     u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
     T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
@@ -457,7 +457,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test u.boundary_conditions.z.left  isa ZFBC
     @test u.boundary_conditions.z.right isa FBC
     @test u.boundary_conditions.z.right.condition isa BoundaryFunction
-    @test u.boundary_conditions.z.right.condition.func(1, 2, 3, nothing) == some_flux(1, 2, 3, nothing)
+    @test u.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
     @test T.boundary_conditions.x.left  isa PBC
     @test T.boundary_conditions.x.right isa PBC
@@ -466,7 +466,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test T.boundary_conditions.z.left  isa ZFBC
     @test T.boundary_conditions.z.right isa FBC
     @test T.boundary_conditions.z.right.condition isa BoundaryFunction
-    @test T.boundary_conditions.z.right.condition.func(1, 2, 3, nothing) == some_flux(1, 2, 3, nothing)
+    @test T.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
     # Test that the restored model can be time stepped
     time_step!(properly_restored_model, 1)
