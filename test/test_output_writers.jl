@@ -399,21 +399,33 @@ function run_thermal_bubble_checkpointer_tests(arch)
     @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
 end
 
-function checkpoint_with_function_bcs(arch)
+function run_checkpoint_with_function_bcs_tests(arch)
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
     @inline some_flux(x, y, t, p) = 2x + exp(y)
     some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux, nothing)
-    top_T_bc = FluxBoundaryCondition(some_flux_bf)
+    top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux_bf)
+    u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
     T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
 
-    model = IncompressibleModel(grid=grid, boundary_conditions=(T=T_bcs,))
-    checkpointer = Checkpointer(model, interval=Inf)
+    model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+    set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
+
+    checkpointer = Checkpointer(model)
     write_output(model, checkpointer)
     model = nothing
 
     restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2")
-    return restored_model.tracers.T.boundary_conditions.z.top === missing
+    @test  ismissing(restored_model.velocities.u.boundary_conditions)
+    @test !ismissing(restored_model.velocities.v.boundary_conditions)
+    @test !ismissing(restored_model.velocities.w.boundary_conditions)
+    @test  ismissing(restored_model.tracers.T.boundary_conditions)
+    @test !ismissing(restored_model.tracers.S.boundary_conditions)
+    @test all(interior(restored_model.velocities.u) .≈ π/2)
+    @test all(interior(restored_model.velocities.v) .≈ ℯ)
+    @test all(interior(restored_model.velocities.w) .== 0)
+    @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+    @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
 end
 
 @testset "Output writers" begin
@@ -435,7 +447,7 @@ end
         @testset "Checkpointer [$(typeof(arch))]" begin
             @info "  Testing Checkpointer [$(typeof(arch))]..."
             run_thermal_bubble_checkpointer_tests(arch)
-            checkpoint_with_function_bcs(arch)
+            run_checkpoint_with_function_bcs_tests(arch)
         end
     end
 end
