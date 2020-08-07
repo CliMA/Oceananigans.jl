@@ -115,7 +115,7 @@ topology = (Periodic, Periodic, Bounded)
 model = IncompressibleModel(
     architecture = CPU(),
             grid = RegularCartesianGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-         closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+         closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
 )
 
 # Set a temperature perturbation with a Gaussian profile located at the center.

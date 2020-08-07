@@ -23,7 +23,7 @@ Additional `kwargs` are passed to the regular `IncompressibleModel` constructor.
 function NonDimensionalModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
     buoyancy = BuoyancyTracer(),
     coriolis = FPlane(float_type, f=1/Ro),
-     closure = ConstantIsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
+     closure = IsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
     kwargs...)
 
     return IncompressibleModel(; float_type=float_type, grid=grid, closure=closure,

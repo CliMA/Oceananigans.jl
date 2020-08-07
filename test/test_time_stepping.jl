@@ -135,12 +135,12 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     α = (Lz/Nz)/(Lx/Nx) # Grid cell aspect ratio.
     νh, κh = 20.0, 20.0
-    νv, κv = α*νh, α*κh
+    νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
-                                closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
@@ -166,7 +166,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     FT == Float32 && return isapprox(Tavg, Tavg0, rtol=2e-4)
 end
 
-Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
