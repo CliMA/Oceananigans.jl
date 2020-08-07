@@ -33,7 +33,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = nothing,
-                                     closure = ConstantIsotropicDiffusivity(ν=1),
+                                     closure = IsotropicDiffusivity(ν=1),
                                      forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t)),
                                                             w = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t)))
                                 )
@@ -72,7 +72,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = nothing,
-                                     closure = ConstantIsotropicDiffusivity(ν=1),
+                                     closure = IsotropicDiffusivity(ν=1),
                                      forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t)),
                                                             v = SimpleForcing((x, y, z, t) -> Fᵛ(x, y, t)))
                                 )

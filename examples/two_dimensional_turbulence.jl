@@ -28,7 +28,7 @@ model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
     buoyancy = nothing,
      tracers = nothing,
-     closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)
+     closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3)
 )
 nothing # hide
 

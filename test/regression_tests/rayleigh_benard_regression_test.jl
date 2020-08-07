@@ -36,7 +36,7 @@ function run_rayleigh_benard_regression_test(arch)
     model = IncompressibleModel(
                architecture = arch,
                        grid = grid,
-                    closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+                    closure = IsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = BuoyancyTracer(),
         boundary_conditions = (b=bbcs,),

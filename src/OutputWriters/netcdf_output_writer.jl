@@ -165,6 +165,9 @@ function NetCDFOutputWriter(model, outputs; filename,
     mode = clobber ? "c" : "a"
     validate_intervals(iteration_interval, time_interval)
 
+    # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
+    global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
+  
     # Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
                                                          ( xC,   yC,   zC,   xF,   yF,   zF )))

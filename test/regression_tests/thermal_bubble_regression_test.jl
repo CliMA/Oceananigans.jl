@@ -4,7 +4,7 @@ function run_thermal_bubble_regression_test(arch)
     Δt = 6
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 

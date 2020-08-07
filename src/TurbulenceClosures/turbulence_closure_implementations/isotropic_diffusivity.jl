@@ -13,7 +13,7 @@ end
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
 and thermal diffusivities `κ` for each tracer field in `tracers`
-`ν` and the fields of `κ` may be constants or functions of `(x, y, z, t)`, and 
+`ν` and the fields of `κ` may be constants or functions of `(x, y, z, t)`, and
 may represent molecular diffusivities in cases that all flow
 features are explicitly resovled, or turbulent eddy diffusivities that model the effect of
 unresolved, subgrid-scale turbulence.
@@ -26,20 +26,13 @@ the approximate viscosity and thermal diffusivity for seawater at 20°C and 35 p
 according to Sharqawy et al., "Thermophysical properties of seawater: A review of existing
 correlations and data" (2010).
 """
-IsotropicDiffusivity(; ν=ν₀, κ=κ₀) = IsotropicDiffusivity(ν, κ)
-
-"""
-    ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
-
-Returns parameters for an isotropic constant diffusivity model with viscosity `ν`
-and thermal diffusivities `κ` for each tracer field in `tracers`
-`ν` and the fields of `κ` have type `FT`.
-
-See also `IsotropicDiffusivity`.
-"""
-function ConstantIsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
-    κ = convert_diffusivity(FT, κ)
-    return IsotropicDiffusivity(FT(ν), κ)
+function IsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
+    if ν isa Number && κ isa Number
+        κ = convert_diffusivity(FT, κ)
+        return IsotropicDiffusivity(FT(ν), κ)
+    else
+        return IsotropicDiffusivity(ν, κ)
+    end
 end
 
 function with_tracers(tracers, closure::IsotropicDiffusivity)

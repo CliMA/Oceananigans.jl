@@ -75,7 +75,7 @@ function test_flux_budget(arch, FT, fldname)
 
     model_bcs = NamedTuple{(fldname,)}((field_bcs,))
 
-    closure = ConstantIsotropicDiffusivity(FT, ν=κ, κ=κ)
+    closure = IsotropicDiffusivity(FT, ν=κ, κ=κ)
     model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
                                 float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
 

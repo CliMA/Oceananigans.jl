@@ -116,7 +116,7 @@ end
         replace_strings = [
             ("Nx = 128", "Nx = 16"),
             ("iteration_interval = 20", "iteration_interval = 1"),
-            ("for i=1:100", "for i=1:1"),
+            ("for i=0:100", "for i=1:1"),
             ("stop_iteration += 20", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
         ]

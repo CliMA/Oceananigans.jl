@@ -57,7 +57,7 @@ end
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
           grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(16Δx, 16Δx, 16Δx)),
-       closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
+       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
 )
@@ -65,7 +65,7 @@ TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
           grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
-       closure = ConstantIsotropicDiffusivity(FT, ν=ν, κ=ν),
+       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = CPU(),
     float_type = FT
 )
