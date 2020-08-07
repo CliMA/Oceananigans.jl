@@ -52,6 +52,7 @@ Construct an incompressible `Oceananigans.jl` model on `grid`.
 
 Keyword arguments
 =================
+
 - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
 - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.

@@ -63,7 +63,7 @@ function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
         p isa Symbol || @error "Property $p to be checkpointed must be a Symbol."
         p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
 
-        if has_reference(Function, getproperty(model, p))
+        if has_reference(Function, getproperty(model, p)) && (p ∉ required_properties)
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
         end
@@ -91,7 +91,7 @@ end
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 function restore_if_not_missing(file, address)
-    if haskey(file, address)
+    if !ismissing(file[address])
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *
@@ -100,10 +100,24 @@ function restore_if_not_missing(file, address)
     end
 end
 
-function restore_field(file, address, arch, grid, loc)
+function restore_field(file, address, arch, grid, loc, kwargs)
     field_address = file[address * "/location"]
     data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
-    bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+
+    # Extract field name from address. We use 2:end so "tracers/T "gets extracted
+    # as :T while "timestepper/Gⁿ/T" gets extracted as :Gⁿ/T (we don't want to
+    # apply the same BCs on T and T tendencies).
+    field_name = split(address, "/")[2:end] |> join |> Symbol
+
+    # If the user specified a non-default boundary condition through the kwargs
+    # in restore_from_checkpoint, then use them when restoring the field. Otherwise
+    # restore the BCs from the checkpoint file as long as they're not missing.
+    if :boundary_conditions in keys(kwargs) && field_name in keys(kwargs[:boundary_conditions])
+        bcs = kwargs[:boundary_conditions][field_name]
+    else
+        bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+    end
+
     return Field(field_address, arch, grid, bcs, data)
 end
 
@@ -119,23 +133,31 @@ Restore a model from the checkpoint file stored at `filepath`. `kwargs` can be p
 to the model constructor, which can be especially useful if you need to manually
 restore forcing functions or boundary conditions that rely on functions.
 """
-function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
+function restore_from_checkpoint(filepath; kwargs...)
+    kwargs = length(kwargs) == 0 ? Dict{Symbol,Any}() : Dict{Symbol,Any}(kwargs)
+
     file = jldopen(filepath, "r")
     cps = file["checkpointed_properties"]
 
-    arch = file["architecture"]
+    if haskey(kwargs, :architecture)
+        arch = kwargs[:architecture]
+        filter!(p -> p ≠ :architecture, cps)
+    else
+        arch = file["architecture"]
+    end
+
     grid = file["grid"]
 
     # Restore velocity fields
     kwargs[:velocities] =
-        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location),
-                                   v = restore_field(file, "velocities/v", arch, grid, v_location),
-                                   w = restore_field(file, "velocities/w", arch, grid, w_location))
+        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
+                                   v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
+                                   w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
     filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location) for c in tracer_names)
+    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location, kwargs) for c in tracer_names)
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
     kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
 
@@ -145,8 +167,8 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     field_names = (:u, :v, :w, tracer_names...) # field names
     locs = (u_location, v_location, w_location, Tuple(c_location for c in tracer_names)...) # name locations
 
-    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
-    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
+    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
+    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
 
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)
