@@ -83,7 +83,7 @@ end
 Returns the representation of an `Average` over the operation `op`, using `result` as
 a temporary array to store the result of `operation` computed on `op.grid`.
 """
-function VolumeAverage(op::AbstractOperation, result; dims, kwargs...)
+function Average(op::AbstractOperation, result; dims, kwargs...)
     computation = Computation(op, result)
     return Average(computation; dims=dims, kwargs...)
 end

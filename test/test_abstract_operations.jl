@@ -154,7 +154,7 @@ function horizontal_average_of_plus(model)
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = HorizontalAverage(S + T, model)
+    ST = Average(S + T, model, dims=(1, 2))
     computed_profile = ST(model)
 
     zC = znodes(Cell, model.grid)
@@ -169,7 +169,7 @@ function zonal_average_of_plus(model)
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = ZonalAverage(S + T, model)
+    ST = Average(S + T, model, dims=1)
     computed_slice = ST(model)
 
     yC = ynodes(Cell, model.grid, reshape=true)
@@ -180,12 +180,12 @@ function zonal_average_of_plus(model)
 end
 
 function volume_average_of_times(model)
-    S₀(x, y, z) = 1 + sin(2π*x) 
+    S₀(x, y, z) = 1 + sin(2π*x)
     T₀(x, y, z) = y
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = VolumeAverage(S * T, model)
+    ST = Average(S * T, model, dims=(1, 2, 3))
     computed_scalar = ST(model)
 
     return all(computed_scalar[:] .≈ 0.5)
@@ -197,7 +197,7 @@ function horizontal_average_of_minus(model)
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = HorizontalAverage(S - T, model)
+    ST = Average(S - T, model, dims=(1, 2))
     computed_profile = ST(model)
 
     zC = znodes(Cell, model.grid)
@@ -212,7 +212,7 @@ function horizontal_average_of_times(model)
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = HorizontalAverage(S * T, model)
+    ST = Average(S * T, model, dims=(1, 2))
     computed_profile = ST(model)
 
     zC = znodes(Cell, model.grid)
@@ -229,7 +229,7 @@ function multiplication_and_derivative_ccf(model)
     w = model.velocities.w
     T = model.tracers.T
 
-    wT = HorizontalAverage(w * ∂z(T), model)
+    wT = Average(w * ∂z(T), model, dims=(1, 2))
     computed_profile = wT(model)
 
     zF = znodes(Face, model.grid)
@@ -251,7 +251,7 @@ function multiplication_and_derivative_ccc(model)
     T = model.tracers.T
 
     wT_ccc = @at (C, C, C) w * ∂z(T)
-    wT_ccc_avg = HorizontalAverage(wT_ccc, model)
+    wT_ccc_avg = Average(wT_ccc, model, dims=(1, 2))
     computed_profile_ccc = wT_ccc_avg(model)
 
     zF = znodes(Face, model.grid)
