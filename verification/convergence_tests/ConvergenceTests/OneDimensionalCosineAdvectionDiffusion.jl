@@ -23,7 +23,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
+                                     closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ),
@@ -57,7 +57,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ))
+                                     closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, v = U,
                 u = (x, y, z) -> c(y, x, z, 0, U, κ),

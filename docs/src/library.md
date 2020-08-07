@@ -71,7 +71,7 @@ Private = false
 Pages   = [
     "Diagnostics/Diagnostics.jl",
     "Diagnostics/diagnostics_kernels.jl",
-    "Diagnostics/horizontal_average.jl",
+    "Diagnostics/average.jl",
     "Diagnostics/time_series.jl",
     "Diagnostics/cfl.jl",
     "Diagnostics/field_maximum.jl",
@@ -190,10 +190,10 @@ Pages   = [
     "TurbulenceClosures/turbulence_closure_diagnostics.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/smagorinsky_lilly.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/constant_isotropic_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/isotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl",
     "TurbulenceClosures/turbulence_closure_implementations/blasius_smagorinsky.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/constant_anisotropic_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/anisotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl",
     "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl"
 ]

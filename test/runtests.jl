@@ -56,8 +56,8 @@ float_types = (Float32, Float64)
 @hascuda archs = (GPU(),)
 
 closures = (
-    :ConstantIsotropicDiffusivity,
-    :ConstantAnisotropicDiffusivity,
+    :IsotropicDiffusivity,
+    :AnisotropicDiffusivity,
     :AnisotropicBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,

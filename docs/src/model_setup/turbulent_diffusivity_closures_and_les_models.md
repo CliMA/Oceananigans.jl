@@ -8,24 +8,24 @@ on turbulent diffusivity closures.
 
 ## Constant isotropic diffusivity
 
-To use constant isotropic values for the viscosity ν and diffusivity κ you can use `ConstantIsotropicDiffusivity`
+To use constant isotropic values for the viscosity ν and diffusivity κ you can use [`IsotropicDiffusivity`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> closure = ConstantIsotropicDiffusivity(ν=1e-2, κ=1e-2)
+julia> closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2)
 IsotropicDiffusivity: ν=0.01, κ=0.01
 ```
 
 ## Constant anisotropic diffusivity
 
 To specify constant values for the horizontal and vertical viscosities, $\nu_h$ and $\nu_v$, and horizontal and vertical
-diffusivities, $\kappa_h$ and $\kappa_v$, you can use `ConstantAnisotropicDiffusivity`
+diffusivities, $\kappa_h$ and $\kappa_v$, you can use [`AnisotropicDiffusivity`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> closure = ConstantAnisotropicDiffusivity(νh=1e-3, νv=5e-2, κh=2e-3, κv=1e-1)
+julia> closure = AnisotropicDiffusivity(νh=1e-3, νz=5e-2, κh=2e-3, κz=1e-1)
 AnisotropicDiffusivity: (νx=0.001, νy=0.001, νz=0.05), (κx=0.002, κy=0.002, κz=0.1)
 ```
 

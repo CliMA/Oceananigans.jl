@@ -199,16 +199,16 @@ Platform Info:
 
  Section                                                     ncalls     time   %tot     avg     alloc   %tot      avg
  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  32× 32× 32 ConstantAnisotropicDiffusivity (CPU, Float64)       10   78.1ms  0.32%  7.81ms    769KiB  1.42%  76.9KiB
-  32× 32× 32 ConstantAnisotropicDiffusivity (GPU, Float64)       10   43.0ms  0.18%  4.30ms   7.86MiB  14.9%   805KiB
-  32× 32× 32 ConstantIsotropicDiffusivity (CPU, Float64)         10   78.7ms  0.32%  7.87ms    768KiB  1.42%  76.8KiB
-  32× 32× 32 ConstantIsotropicDiffusivity (GPU, Float64)         10   44.5ms  0.18%  4.45ms   7.84MiB  14.9%   803KiB
+  32× 32× 32 AnisotropicDiffusivity (CPU, Float64)       10   78.1ms  0.32%  7.81ms    769KiB  1.42%  76.9KiB
+  32× 32× 32 AnisotropicDiffusivity (GPU, Float64)       10   43.0ms  0.18%  4.30ms   7.86MiB  14.9%   805KiB
+  32× 32× 32 IsotropicDiffusivity (CPU, Float64)         10   78.7ms  0.32%  7.87ms    768KiB  1.42%  76.8KiB
+  32× 32× 32 IsotropicDiffusivity (GPU, Float64)         10   44.5ms  0.18%  4.45ms   7.84MiB  14.9%   803KiB
   32× 32× 32 SmagorinskyLilly (CPU, Float64)                     10    189ms  0.78%  18.9ms    778KiB  1.44%  77.8KiB
   32× 32× 32 SmagorinskyLilly (GPU, Float64)                     10   45.7ms  0.19%  4.57ms   8.43MiB  16.0%   863KiB
- 128×128×128 ConstantAnisotropicDiffusivity (CPU, Float64)       10    5.54s  22.8%   554ms    769KiB  1.42%  76.9KiB
- 128×128×128 ConstantAnisotropicDiffusivity (GPU, Float64)       10   53.5ms  0.22%  5.35ms   7.86MiB  14.9%   805KiB
- 128×128×128 ConstantIsotropicDiffusivity (CPU, Float64)         10    5.53s  22.7%   553ms    768KiB  1.42%  76.8KiB
- 128×128×128 ConstantIsotropicDiffusivity (GPU, Float64)         10   54.1ms  0.22%  5.41ms   7.84MiB  14.9%   803KiB
+ 128×128×128 AnisotropicDiffusivity (CPU, Float64)       10    5.54s  22.8%   554ms    769KiB  1.42%  76.9KiB
+ 128×128×128 AnisotropicDiffusivity (GPU, Float64)       10   53.5ms  0.22%  5.35ms   7.86MiB  14.9%   805KiB
+ 128×128×128 IsotropicDiffusivity (CPU, Float64)         10    5.53s  22.7%   553ms    768KiB  1.42%  76.8KiB
+ 128×128×128 IsotropicDiffusivity (GPU, Float64)         10   54.1ms  0.22%  5.41ms   7.84MiB  14.9%   803KiB
  128×128×128 SmagorinskyLilly (CPU, Float64)                     10    12.6s  51.8%   1.26s    778KiB  1.44%  77.8KiB
  128×128×128 SmagorinskyLilly (GPU, Float64)                     10   75.6ms  0.31%  7.56ms   8.43MiB  16.0%   863KiB
  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

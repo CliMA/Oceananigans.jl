@@ -19,7 +19,7 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
    float_types = [Float64]       # Float types to benchmark.
          archs = [CPU()]         # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
-      closures = [ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity, SmagorinskyLilly,
+      closures = [IsotropicDiffusivity, AnisotropicDiffusivity, SmagorinskyLilly,
 	              VerstappenAnisotropicMinimumDissipation]
 
 #####

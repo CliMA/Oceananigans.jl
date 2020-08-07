@@ -4,8 +4,6 @@ export
   AbstractIsotropicDiffusivity,
   IsotropicDiffusivity,
   AnisotropicDiffusivity,
-  ConstantIsotropicDiffusivity,
-  ConstantAnisotropicDiffusivity,
   AnisotropicBiharmonicDiffusivity,
   TwoDimensionalLeith,
   ConstantSmagorinsky,
