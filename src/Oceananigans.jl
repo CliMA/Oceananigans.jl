@@ -56,7 +56,7 @@ export
     prettytime, pretty_filesize,
 
     # Turbulence closures
-    ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+    IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
