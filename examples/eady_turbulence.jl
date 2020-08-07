@@ -137,7 +137,7 @@ Fb_eady = ParameterizedForcing(Fb_eady_func, forcing_parameters)
 # `closure` a tuple of two closures. Note that the "2D Leith" parameterization may
 # also be a sensible choice to pair with a Laplacian vertical diffusivity for this problem.
 
-closure = (ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ),
+closure = (AnisotropicDiffusivity(νh=0, κh=0, νz=κᵥ, κz=κᵥ),
            AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h))
            #TwoDimensionalLeith())
 
