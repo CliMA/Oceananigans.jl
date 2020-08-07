@@ -8,6 +8,8 @@ using Base: @propagate_inbounds
 import Adapt
 using CUDA
 
+using Oceananigans.Architectures: @hascuda
+
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -15,10 +17,13 @@ using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
-using Oceananigans.Architectures: @hascuda, architecture, device
-import Oceananigans.Fields: data
+using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Diagnostics: Average, normalize_sum!, run_diagnostic
+using Oceananigans.Diagnostics: Average, normalize_sum!
+
+import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: data
+import Oceananigans.Diagnostics: run_diagnostic
 
 #####
 ##### Basic functionality
