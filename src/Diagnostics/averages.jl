@@ -4,138 +4,75 @@ using Oceananigans.Utils
 using Oceananigans.Grids: total_size
 
 """
-    VolumeAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic{F}
+    Average{F, R, D, P, I, T} <: AbstractDiagnostic
 
-A diagnostic for computing the volume average of a field.
+A diagnostic for computing the averages of a field along particular dimensions.
 """
-mutable struct VolumeAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
-          field :: F
-         result :: P
-      frequency :: Ω
-       interval :: I
-       previous :: Float64
-    return_type :: R
-           grid :: G
+mutable struct Average{F, R, D, P, I, T} <: AbstractDiagnostic
+                 field :: F
+                  dims :: D
+                result :: P
+    iteration_interval :: I
+         time_interval :: T
+              previous :: Float64
+           return_type :: R
+end
+
+function dims_to_result_size(field, dims, grid)
+    N = (grid.Nx, grid.Ny, grid.Nz)
+    field_size = total_size(parent(field))
+    return Tuple(d in dims ? 1 : field_size[d] for d in 1:3)
 end
 
 """
-    HorizontalAverage{F, R, P, I, Ω, G} <: AbstractDiagnostic{F}
+    Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
 
-A diagnostic for computing horizontal average of a field.
-"""
-mutable struct HorizontalAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
-          field :: F
-         result :: P
-      frequency :: Ω
-       interval :: I
-       previous :: Float64
-    return_type :: R
-           grid :: G
-end
+Construct an `Average` of `field` along the dimensions specified by the tuple `dims`.
 
-"""
-    ZonalAverage{F, R, P, I, Ω} <: AbstractDiagnostic
+After the average is computed it will be stored in the `result` property.
 
-A diagnostic for computing the zonal average of a field.
-"""
-mutable struct ZonalAverage{F, R, P, I, Ω, G} <: AbstractAverage{F}
-          field :: F
-         result :: P
-      frequency :: Ω
-       interval :: I
-       previous :: Float64
-    return_type :: R
-           grid :: G
-end
+The `Average` can be used as a callable object that computes and returns the average.
 
-"""
-    VolumeAverage(model, field; frequency=nothing, interval=nothing, return_type=Array)
+An `iteration_interval` or `time_interval` (or both) can be passed to indicate how often to
+run this diagnostic if it is part of `simulation.diagnostics`. `iteration_interval` is a
+number of iterations while `time_interval` is a time interval in units of `model.clock.time`.
 
-Construct a `VolumeAverage` of `field`.
-
-After the volume average is computed it will be stored in the `result` property.
-
-The `VolumeAverage` can be used as a callable object that computes and returns the
-volume average.
-
-A `frequency` or `interval` (or both) can be passed to indicate how often to run this
-diagnostic if it is part of `model.diagnostics`. `frequency` is a number of iterations
-while `interval` is a time interval in units of `model.clock.time`.
-
-A `return_type` can be used to specify the type returned when the `VolumeAverage` is
+A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function VolumeAverage(field; frequency=nothing, interval=nothing, return_type=Array)
+function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+    length(dims) == 0 && @error "dims is empty! Must average over at least one dimension."
+    length(dims) > 3  && @error "Models are 3-dimensional. Cannot average over 4+ dimensions."
+    all(1 <= d <= 3 for d in dims) && @error "Dimensions must be one of 1, 2, 3."
+
     arch = architecture(field)
-    result = zeros(arch, field.grid, 1, 1, 1)
-    return VolumeAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
+    result_size = dims_to_result_size(field, dims, field.grid)
+    result = zeros(arch, field.grid, result_size...)
+    return Average(field, dims, result, iteration_interval, time_interval, 0.0, return_type)
 end
 
 """
-    HorizontalAverage(model, field; frequency=nothing, interval=nothing, return_type=Array)
+    normalize_sum!(avg)
 
-Construct a `HorizontalAverage` of `field`.
-
-After the horizontal average is computed it will be stored in the `result` property.
-
-The `HorizontalAverage` can be used as a callable object that computes and returns the
-horizontal average.
-
-A `frequency` or `interval` (or both) can be passed to indicate how often to run this
-diagnostic if it is part of `model.diagnostics`. `frequency` is a number of iterations
-while `interval` is a time interval in units of `model.clock.time`.
-
-A `return_type` can be used to specify the type returned when the `HorizontalAverage` is
-used as a callable object. The default `return_type=Array` is useful when running a GPU
-model and you want to save the output to disk by passing it to an output writer.
+Normalize the sum by the number of grid points averaged over to get the average.
 """
-function HorizontalAverage(field; frequency=nothing, interval=nothing, return_type=Array)
-    arch = architecture(field)
-    result = zeros(arch, field.grid, 1, 1, total_size(parent(field))[3])
-    return HorizontalAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
+function normalize_sum!(avg)
+    grid = avg.field.grid
+    N = (grid.Nx, grid.Ny, grid.Nz)
+    avg.result ./= prod(N[d] for d in avg.dims)
+    return nothing
 end
 
 """
-    ZonalAverage(model, field; frequency=nothing, interval=nothing, return_type=Array)
-
-Construct a `ZonalAverage` of `field`.
-
-After the zonal average is computed it will be stored in the `result` property.
-
-The `ZonalAverage` can be used as a callable object that computes and returns the
-zonal average.
-
-A `frequency` or `interval` (or both) can be passed to indicate how often to run this
-diagnostic if it is part of `model.diagnostics`. `frequency` is a number of iterations
-while `interval` is a time interval in units of `model.clock.time`.
-
-A `return_type` can be used to specify the type returned when the `ZonalAverage` is
-used as a callable object. The default `return_type=Array` is useful when running a GPU
-model and you want to save the output to disk by passing it to an output writer.
-"""
-function ZonalAverage(field; frequency=nothing, interval=nothing, return_type=Array)
-    arch = architecture(field)
-    result = zeros(arch, field.grid, 1, total_size(parent(field))[2], total_size(parent(field))[3])
-    return ZonalAverage(field, result, frequency, interval, 0.0, return_type, field.grid)
-end
-
-# Normalize sum to get the average
-normalize_sum!(avg::VolumeAverage, grid) = avg.result ./= (grid.Nx * grid.Ny * grid.Nz)
-
-normalize_sum!(avg::HorizontalAverage, grid) = avg.result ./= (grid.Nx * grid.Ny)
-
-normalize_sum!(avg::ZonalAverage, grid) = avg.result ./= grid.Nx
-
-"""
-    run_diagnostic(model, avg::HorizontalAverage{NTuple{1}})
+    run_diagnostic(model, avg::Average)
 
 Compute the horizontal average of `avg.field` and store the result in `avg.result`.
 """
-function run_diagnostic(model, avg::AbstractAverage)
-    zero_halo_regions!(parent(avg.field), model.grid)
+function run_diagnostic(model, avg::Average)
+    zero_halo_regions!(parent(avg.field), avg.field.grid)
     sum!(avg.result, parent(avg.field))
-    normalize_sum!(avg, model.grid)
+    normalize_sum!(avg)
     return nothing
 end
 
