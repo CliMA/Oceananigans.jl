@@ -1,19 +1,17 @@
 module Diagnostics
 
 export
-    HorizontalAverage, ZonalAverage, VolumeAverage,
-    TimeSeries, FieldMaximum,
+    Average, TimeSeries, FieldMaximum,
     CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker,
     run_diagnostic
 
-using Oceananigans,
-      Oceananigans.Operators
+using Oceananigans
+using Oceananigans.Operators
 
 using Oceananigans: AbstractDiagnostic
-using Oceananigans: AbstractAverage
 
 include("nan_checker.jl")
-include("averages.jl")
+include("average.jl")
 include("time_series.jl")
 include("field_maximum.jl")
 include("cfl.jl")

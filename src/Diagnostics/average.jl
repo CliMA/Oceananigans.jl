@@ -76,7 +76,7 @@ function run_diagnostic(model, avg::Average)
     return nothing
 end
 
-function (avg::AbstractAverage)(model)
+function (avg::Average)(model)
     run_diagnostic(model, avg)
     return avg.return_type(avg.result)
 end
