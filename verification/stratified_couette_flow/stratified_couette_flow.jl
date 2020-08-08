@@ -189,12 +189,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = HorizontalAverage(model.velocities.u,       return_type=Array)
-    Vavg = HorizontalAverage(model.velocities.v,       return_type=Array)
-    Wavg = HorizontalAverage(model.velocities.w,       return_type=Array)
-    Tavg = HorizontalAverage(model.tracers.T,          return_type=Array)
-    νavg = HorizontalAverage(model.diffusivities.νₑ,   return_type=Array)
-    κavg = HorizontalAverage(model.diffusivities.κₑ.T, return_type=Array)
+    Uavg = Average(model.velocities.u,       dims=(1, 2), return_type=Array)
+    Vavg = Average(model.velocities.v,       dims=(1, 2), return_type=Array)
+    Wavg = Average(model.velocities.w,       dims=(1, 2), return_type=Array)
+    Tavg = Average(model.tracers.T,          dims=(1, 2), return_type=Array)
+    νavg = Average(model.diffusivities.νₑ,   dims=(1, 2), return_type=Array)
+    κavg = Average(model.diffusivities.κₑ.T, dims=(1, 2), return_type=Array)
 
     profiles = Dict(
          :u => model -> Uavg(model),
