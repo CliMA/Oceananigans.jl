@@ -74,35 +74,35 @@ function (computation::Computation{<:Nothing})(args...)
 end
 
 #####
-##### Functionality for using computations with HorizontalAverage
+##### Functionality for using computations with Average
 #####
 
 """
-    HorizontalAverage(op::AbstractOperation, result; kwargs...)
+    Average(op::AbstractOperation, result; dims, kwargs...)
 
-Returns the representation of a `HorizontalAverage` over the operation `op`, using
-`result` as a temporary array to store the result of `operation` computed on `op.grid`.
+Returns the representation of an `Average` over the operation `op`, using `result` as
+a temporary array to store the result of `operation` computed on `op.grid`.
 """
-function HorizontalAverage(op::AbstractOperation, result; kwargs...)
+function Average(op::AbstractOperation, result; dims, kwargs...)
     computation = Computation(op, result)
-    return HorizontalAverage(computation; kwargs...)
+    return Average(computation; dims=dims, kwargs...)
 end
 
 """
-    HorizontalAverage(op::AbstractOperation, model; kwargs...)
+    Average(op::AbstractOperation, model; dims, kwargs...)
 
-Returns the representation of a `HorizontalAverage` over the operation `op`, using
+Returns the representation of an `Average` over the operation `op`, using
 `model.pressures.pHY′` as a temporary array to store the result of `operation` computed on
 `op.grid`.
 """
-HorizontalAverage(op::AbstractOperation, model::AbstractModel; kwargs...) =
-    HorizontalAverage(op, model.pressures.pHY′; kwargs...)
+Average(op::AbstractOperation, model::AbstractModel; dims, kwargs...) =
+    Average(op, model.pressures.pHY′; dims=dims, kwargs...)
 
-"""Compute the horizontal average of a computation."""
-function run_diagnostic(model, havg::HorizontalAverage{<:Computation})
-    compute!(havg.field)
-    zero_halo_regions!(parent(havg.field.result), model.grid)
-    sum!(havg.result, parent(havg.field.result))
-    normalize_horizontal_sum!(havg, model.grid)
+"""Compute the average of a computation."""
+function run_diagnostic(model, avg::Average{<:Computation})
+    compute!(avg.field)
+    zero_halo_regions!(parent(avg.field.result), model.grid)
+    sum!(avg.result, parent(avg.field.result))
+    normalize_sum!(avg)
     return nothing
 end

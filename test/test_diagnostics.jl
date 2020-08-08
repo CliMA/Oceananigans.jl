@@ -1,11 +1,12 @@
 function horizontal_average_is_correct(arch, FT)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(100, 100, 100))
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = z
     set!(model; T=T₀)
 
-    T̅ = HorizontalAverage(model.tracers.T; time_interval=0.5second)
+    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second)
     computed_profile = dropdims(T̅(model), dims=(1, 2))
 
     zC = znodes(Cell, grid)
@@ -14,8 +15,34 @@ function horizontal_average_is_correct(arch, FT)
     return all(computed_profile[2:end-1] .≈ correct_profile)
 end
 
+function zonal_average_is_correct(arch, FT)
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+
+    T₀(x, y, z) = z
+    set!(model; T=T₀)
+
+    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second)
+    computed_slice = dropdims(T̅(model), dims=(1,))
+    zC = znodes(Cell, grid)
+    return all([all(computed_slice[i, 2:end-1] .≈ zC) for i in 2:Ny+1])
+end
+
+function volume_average_is_correct(arch, FT)
+    Nx = Ny = Nz = 16
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+
+    T₀(x, y, z) = z
+    set!(model; T=T₀)
+
+    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second)
+    return all(T̅(model) .≈ -50.0)
+end
+
 function nan_checker_aborts_simulation(arch, FT)
-    grid=RegularCartesianGrid(size=(16, 16, 2), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(16, 16, 2), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
@@ -24,7 +51,7 @@ function nan_checker_aborts_simulation(arch, FT)
 
     model.velocities.w[4, 3, 2] = NaN
 
-    time_step!(model, 1, 1);
+    time_step!(model, 1, 1)
 end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
@@ -132,6 +159,20 @@ end
             @info "  Testing horizontal average [$(typeof(arch))]"
             for FT in float_types
                 @test horizontal_average_is_correct(arch, FT)
+            end
+        end
+
+        @testset "Zonal average [$(typeof(arch))]" begin
+            @info "  Testing zonal average [$(typeof(arch))]"
+            for FT in float_types
+                @test zonal_average_is_correct(arch, FT)
+            end
+        end
+
+        @testset "Volume average [$(typeof(arch))]" begin
+            @info "  Testing volume average [$(typeof(arch))]"
+            for FT in float_types
+                @test zonal_average_is_correct(arch, FT)
             end
         end
     end

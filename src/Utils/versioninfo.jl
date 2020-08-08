@@ -6,7 +6,7 @@ using Oceananigans.Architectures
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
     @hascuda begin
-        gpu_name = CUDA.CuCurrentContext() |> CUDA.device |> CUDA.name
+        gpu_name = CUDA.context() |> CUDA.device |> CUDA.name
         s = s * "  GPU: $gpu_name\n"
     end
     return s
