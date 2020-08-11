@@ -42,12 +42,12 @@ used as a callable object. The default `return_type=Array` is useful when runnin
 model and you want to save the output to disk by passing it to an output writer.
 """
 function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
-    dims isa Union{Int, Tuple} || @error "Average dims must be an integer or tuple!"
+    dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
 
-    length(dims) == 0 && @error "dims is empty! Must average over at least one dimension."
-    length(dims) > 3  && @error "Models are 3-dimensional. Cannot average over 4+ dimensions."
-    all(1 <= d <= 3 for d in dims) || @error "Dimensions must be one of 1, 2, 3."
+    length(dims) == 0 && error("dims is empty! Must average over at least one dimension.")
+    length(dims) > 3  && error("Models are 3-dimensional. Cannot average over 4+ dimensions.")
+    all(1 <= d <= 3 for d in dims) || error("Dimensions must be one of 1, 2, 3.")
 
     arch = architecture(field)
     result_size = dims_to_result_size(field, dims, field.grid)
