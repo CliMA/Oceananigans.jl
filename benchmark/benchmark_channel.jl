@@ -42,9 +42,10 @@ end
 #####
 
 println()
-print(versioninfo_with_gpu())
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 
-print_timer(timer, title="Eddying channel benchmarks", sortby=:name)
+print_timer(timer, title="Channel benchmarks", sortby=:name)
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
