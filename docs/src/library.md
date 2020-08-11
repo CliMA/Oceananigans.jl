@@ -2,6 +2,20 @@
 
 Documenting the public user interface.
 
+## Advection
+
+```@autodocs
+Modules = [Oceananigans.Advection]
+Private = false
+Pages   = [
+    "Advection.jl",
+    "tracer_advection_operators.jl",
+    "momentum_advection_operators.jl",
+    "centered_second_order.jl",
+    "centered_fourth_order.jl"
+]
+```
+
 ## Architectures
 
 ```@autodocs
@@ -127,11 +141,9 @@ Private = false
 Pages   = [
     "Models/Models.jl",
     "Models/clock.jl",
-    "Models/model.jl",
-    "Models/channel_model.jl",
+    "Models/incompressible_model.jl",
     "Models/non_dimensional_model.jl",
-    "Models/show_models.jl",
-    "Models/model_utils.jl"
+    "Models/show_models.jl"
 ]
 ```
 
