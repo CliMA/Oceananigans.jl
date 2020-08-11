@@ -1,7 +1,7 @@
 module Oceananigans
 
-if VERSION < v"1.1"
-    @error "Oceananigans requires Julia v1.1 or newer."
+if VERSION < v"1.4"
+    error("This version of Oceananigans.jl requires Julia v1.4 or newer.")
 end
 
 export

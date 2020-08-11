@@ -14,7 +14,7 @@ const timer = TimerOutput()
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Model resolutions to benchmarks. Focusing on 3D models for GPU benchmarking.
-            Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
+            Ns = [(16, 16, 16), (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
    float_types = [Float32, Float64]  # Float types to benchmark.
          archs = [CPU()]             # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
@@ -41,7 +41,8 @@ end
 #####
 
 println()
-print(versioninfo_with_gpu())
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 
 print_timer(timer, title="Static ocean benchmarks", sortby=:name)
 

@@ -29,7 +29,7 @@ function oceananigans_versioninfo()
     # i.e. running from the git repository. Really we should not
     # use untagged versions for real science. It's not as reproducible.
     if "Oceananigans" == project.name
-        return "Oceananigans v$(project.version) (DEVELOPMENT)"
+        return "Oceananigans v$(project.version) (DEVELOPMENT BRANCH)"
     end
 
     @warn "Could not determine Oceananigans version info."

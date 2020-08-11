@@ -15,12 +15,12 @@ const timer = TimerOutput()
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Run benchmark across these parameters.
-            Ns = [(32, 32, 32), (128, 128, 128)]
+            Ns = [(32, 32, 32), (256, 256, 128)]
    float_types = [Float64]       # Float types to benchmark.
          archs = [CPU()]         # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
       closures = [IsotropicDiffusivity, AnisotropicDiffusivity, SmagorinskyLilly,
-	              VerstappenAnisotropicMinimumDissipation]
+	          VerstappenAnisotropicMinimumDissipation]
 
 #####
 ##### Run benchmarks
@@ -44,6 +44,7 @@ end
 #####
 
 println()
-print(versioninfo_with_gpu())
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 print_timer(timer, title="Turbulence closure benchmarks", sortby=:name)
 println()

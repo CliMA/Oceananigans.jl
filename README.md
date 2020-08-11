@@ -169,8 +169,20 @@ For more information, check out our [contributor's guide](https://github.com/cli
 
 ## Performance benchmarks
 
-We've performed some preliminary performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step). The CPU used was a single core of an Intel Xeon CPU E5-2680 v4 @ 2.40GHz while the GPU used was an Nvidia Tesla V100-SXM2-16GB. This isn't really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
-![Performance benchmark plots](https://raw.githubusercontent.com/clima/Oceananigans.jl/master/benchmark/oceananigans_benchmarks.png)
+We've performed some preliminary performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
+
+This is not really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
+
+To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
+a Titan V, the model should have around ~10 million grid points or more.
+
+Sometimes counter-intuitively running with `Float32` is slower than `Float64`. This is likely due
+to type mismatches causing slowdowns as floats have to be converted between 32-bit and 64-bit, an
+issue that needs to be addressed meticulously. Due to other bottlenecks such as memory accesses and
+GPU register pressure, `Float32` models may not provide much of a speedup so the main benefit becomes
+lower memory costs (by around a factor of 2).
+
+![Performance benchmark plots](https://user-images.githubusercontent.com/20099589/89906791-d2c85b00-dbb9-11ea-969a-4b8db2c31680.png)
 
 ## Development team
 

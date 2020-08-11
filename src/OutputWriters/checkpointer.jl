@@ -60,8 +60,8 @@ function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
     end
 
     for p in properties
-        p isa Symbol || @error "Property $p to be checkpointed must be a Symbol."
-        p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
+        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
+        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
 
         if has_reference(Function, getproperty(model, p)) && (p ∉ required_properties)
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
