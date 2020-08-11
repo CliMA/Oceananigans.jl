@@ -4,9 +4,6 @@ using Oceananigans.Grids: total_extent
 ##### Grid utilities and such
 #####
 
-total_periodic_extent_is_correct() = total_extent(Periodic, 1, 0.2, 1.0) == 1.2
-total_bounded_extent_is_correct() = total_extent(Bounded, 1, 0.2, 1.0) == 1.4
-
 function test_xnode_ynode_znode_are_correct(FT, N=3)
 
     grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
@@ -125,7 +122,7 @@ end
 
 function correct_quadratic_grid_spacings(FT)
     Nx = Ny = Nz = 16
-    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), 
+    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz),
                                             x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
@@ -184,8 +181,8 @@ end
 
     @testset "Grid utils" begin
         @info "  Testing grid utilities..."
-        @test total_periodic_extent_is_correct()
-        @test total_bounded_extent_is_correct()
+        @test total_extent(Periodic, 1, 0.2, 1.0) == 1.2
+        @test total_extent(Bounded, 1, 0.2, 1.0) == 1.4
         for FT in float_types
             test_xnode_ynode_znode_are_correct(FT)
         end

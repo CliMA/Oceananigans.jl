@@ -6,8 +6,6 @@ for closure in closures
     end
 end
 
-datatuple(args, names) = NamedTuple{names}(a.data for a in args)
-
 function test_closure_instantiation(closurename)
     closure = getproperty(TurbulenceClosures, closurename)()
     return true

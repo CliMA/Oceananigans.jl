@@ -13,10 +13,6 @@ function summarize_regression_test(field_names, fields, correct_fields)
     end
 end
 
-interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
-                            grid.Hy+1:grid.Ny+grid.Hy,
-                            grid.Hz+1:grid.Nz+grid.Hz)
-
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
 
