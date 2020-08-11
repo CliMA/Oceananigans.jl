@@ -182,7 +182,7 @@ issue that needs to be addressed meticulously. Due to other bottlenecks such as 
 GPU register pressure, `Float32` models may not provide much of a speedup so the main benefit becomes
 lower memory costs (by around a factor of 2).
 
-![Performance benchmark plots](https://raw.githubusercontent.com/clima/Oceananigans.jl/master/benchmark/oceananigans_benchmarks.png)
+![Performance benchmark plots](https://user-images.githubusercontent.com/20099589/89906791-d2c85b00-dbb9-11ea-969a-4b8db2c31680.png)
 
 ## Development team
 
