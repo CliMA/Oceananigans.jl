@@ -92,16 +92,16 @@ equations, convergence tests, and verification experiments against published
 scientific results. Future development plans include support for distributed
 parallelism with CUDA-aware MPI as well as topography.
 
-Widely-used ocean models include MITgcm [@Marshall1997] and MOM6 [@Adcroft2019]
-which focus on large-scale hydrostatic ocean modeling while ``Oceananigans.jl``
-supports non-hydrostatic modeling (MITgcm supports non-hydrostatic simulations,
-however Oceananigans is much faster due to a more efficient pressure solver)
-with large eddy simulation. PALM [@Maronga2020] has been used to model and
-study large eddy simulations of atmospheric and oceanic boundary layers. Other
-codes such as dedalus [@Burns2020] can be used to model general partial
-differential equations, including the incompressible Navier-Stokes equations,
-and solve them using spectral methods. None of these other packages support GPU
-simulations.
+Some widely-used height coordinate ocean models include MITgcm [@Marshall1997]
+and MOM6 [@Adcroft2019] which focus on large-scale hydrostatic ocean modeling
+while ``Oceananigans.jl`` supports non-hydrostatic modeling (MITgcm supports
+non-hydrostatic simulations, however Oceananigans is much faster due to a more
+efficient pressure solver) with large eddy simulation. PALM [@Maronga2020] has
+been used to model and study large eddy simulations of atmospheric and oceanic
+boundary layers. Other codes such as dedalus [@Burns2020] can be used to model
+general partial differential equations, including the incompressible
+Navier-Stokes equations, and solve them using spectral methods. None of these
+other packages support GPU simulations.
 
 # Acknowledgements
 
