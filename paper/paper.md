@@ -33,7 +33,7 @@ affiliations:
    index: 1
  - name: Julia Computing, Inc.
    index: 2
-date: 21 December 2019
+date: 11 August 2020
 bibliography: paper.bib
 ---
 
@@ -41,8 +41,8 @@ bibliography: paper.bib
 
 ``Oceananigans.jl`` is a fast and friendly software package for the numerical
 simulation of incompressible, stratified, rotating fluid flows on CPUs and GPUs.
-Intended for wide use, it is simple enough to be used for educational purposes
-yet fast and flexible enough for research use. It is being developed as part of
+Intended for wide use, it is fast and flexible for research use yet simple
+enough to be used for educational purposes. It is being developed as part of
 the Climate Modeling Alliance project for the simulation of small-scale ocean
 physics at high-resolution that affect the evolution of Earth’s climate.
 
@@ -65,7 +65,7 @@ eddies that stir carbon and heat. Plots made with `matplotlib` [@Hunter2007]
 and `cmocean` [@Thyng2016].
 
 ``Oceananigans.jl`` leverages the Julia programming language [@Bezanson2017] to
-implement high-level, low-cost abstractions, a friendly user interface, a
+implement high-level, low-cost abstractions, a friendly user interface, and a
 high-performance model in one language and a common code base for execution on
 the CPU or GPU with Julia’s native GPU compiler [@Besard2019]. Because Julia is
 a high-level language, development is fast and users can flexibly specify
@@ -88,9 +88,20 @@ training data for turbulence parameterizations in Earth system models.
 
 ``Oceananigans.jl`` is continuously tested on CPUs and GPUs with unit tests,
 integration tests, analytic solutions to the incompressible Navier-Stokes
-equations, and verification experiments against published scientific results.
-Future development plans include support for distributed parallelism with
-CUDA-aware MPI as well as bathymetry and irregular domains.
+equations, convergence tests, and verification experiments against published
+scientific results. Future development plans include support for distributed
+parallelism with CUDA-aware MPI as well as topography.
+
+Widely-used ocean models include MITgcm [@Marshall1997] and MOM6 [@Adcroft2019]
+which focus on large-scale hydrostatic ocean modeling while ``Oceananigans.jl``
+supports non-hydrostatic modeling (MITgcm supports non-hydrostatic simulations,
+however Oceananigans is much faster due to a more efficient pressure solver)
+with large eddy simulation. PALM [@Maronga2020] has been used to model and
+study large eddy simulations of atmospheric and oceanic boundary layers. Other
+codes such as dedalus [@Burns2020] can be used to model general partial
+differential equations, including the incompressible Navier-Stokes equations,
+and solve them using spectral methods. None of these other packages support GPU
+simulations.
 
 # Acknowledgements
 
