@@ -8,12 +8,11 @@ export
 
 using CUDA
 
-using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
-using Oceananigans.Architectures
 
-using Oceananigans: AbstractOutputWriter, @hascuda
+using Oceananigans: AbstractOutputWriter
 using Oceananigans.Fields: OffsetArray
 
 Base.open(ow::AbstractOutputWriter) = nothing

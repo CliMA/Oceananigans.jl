@@ -116,15 +116,6 @@ function write_output end
 #####
 
 include("Architectures.jl")
-
-using Oceananigans.Architectures: @hascuda
-@hascuda begin
-    @debug "CUDA-enabled GPU(s) detected:"
-    for (gpu, dev) in enumerate(CUDA.devices())
-        @debug "$dev: $(CUDA.name(dev))"
-    end
-end
-
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Grids/Grids.jl")
@@ -163,5 +154,17 @@ using .Forcing
 using .Models
 using .TimeSteppers
 using .Simulations
+
+using Oceananigans.Architectures: @hascuda
+
+function __init__()
+    @hascuda begin
+        @debug "CUDA-enabled GPU(s) detected:"
+        for (gpu, dev) in enumerate(CUDA.devices())
+            @debug "$dev: $(CUDA.name(dev))"
+        end
+	CUDA.allowscalar(false)
+    end
+end
 
 end # module
