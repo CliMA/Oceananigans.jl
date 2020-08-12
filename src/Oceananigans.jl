@@ -155,8 +155,6 @@ using .Models
 using .TimeSteppers
 using .Simulations
 
-using Oceananigans.Architectures: @hascuda
-
 function __init__()
     @hascuda begin
         @debug "CUDA-enabled GPU(s) detected:"

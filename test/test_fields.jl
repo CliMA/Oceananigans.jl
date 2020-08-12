@@ -16,7 +16,7 @@ function.
 function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
     f = fieldtype(arch, grid)
     set!(f, val)
-    return interior(f) ≈ val * ones(size(f))
+    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
 end
 
 @testset "Fields" begin

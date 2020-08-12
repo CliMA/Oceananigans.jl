@@ -26,7 +26,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     field = CellField(FT, arch, grid)
 
-    interior(field) .= rand(FT, Nx, Ny, Nz)
+    CUDA.@allowscalar interior(field) .= rand(FT, Nx, Ny, Nz)
     fill_halo_regions!(field, arch)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
