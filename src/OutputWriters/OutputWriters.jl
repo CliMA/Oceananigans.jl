@@ -11,6 +11,7 @@ using CUDA
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
+using Oceananigans.Models
 
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Fields: OffsetArray

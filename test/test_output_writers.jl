@@ -16,7 +16,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     outputs = Dict(
         "v" => model.velocities.v,
@@ -361,7 +361,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     checkpointed_model = deepcopy(true_model)
 
@@ -389,16 +389,18 @@ function run_thermal_bubble_checkpointer_tests(arch)
     rm("checkpoint_iteration5.jld2", force=true)
 
     # Now the true_model and restored_model should be identical.
-    @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
-    @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
-    @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
-    @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
-    @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
-    @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
-    @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
-    @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
-    @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
-    @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+    CUDA.@allowscalar begin
+        @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
+        @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
+        @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
+        @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
+        @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
+        @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
+        @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
+        @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
+        @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
+        @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+    end
 
     return nothing
 end
@@ -425,21 +427,26 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test !ismissing(restored_model.velocities.w.boundary_conditions)
     @test  ismissing(restored_model.tracers.T.boundary_conditions)
     @test !ismissing(restored_model.tracers.S.boundary_conditions)
-    @test all(interior(restored_model.velocities.u) .≈ π/2)
-    @test all(interior(restored_model.velocities.v) .≈ ℯ)
-    @test all(interior(restored_model.velocities.w) .== 0)
-    @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
-    @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+   
+    CUDA.@allowscalar begin
+        @test all(interior(restored_model.velocities.u) .≈ π/2)
+        @test all(interior(restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(restored_model.velocities.w) .== 0)
+        @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
     restored_model = nothing
 
     properly_restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2",
                                                       boundary_conditions=(u=u_bcs, T=T_bcs))
 
-    @test all(interior(properly_restored_model.velocities.u) .≈ π/2)
-    @test all(interior(properly_restored_model.velocities.v) .≈ ℯ)
-    @test all(interior(properly_restored_model.velocities.w) .== 0)
-    @test all(interior(properly_restored_model.tracers.T) .≈ Base.MathConstants.γ)
-    @test all(interior(properly_restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    CUDA.@allowscalar begin
+        @test all(interior(properly_restored_model.velocities.u) .≈ π/2)
+        @test all(interior(properly_restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(properly_restored_model.velocities.w) .== 0)
+        @test all(interior(properly_restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(properly_restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
 
     @test !ismissing(properly_restored_model.velocities.u.boundary_conditions)
     @test !ismissing(properly_restored_model.velocities.v.boundary_conditions)
@@ -489,17 +496,19 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     @test restored_model.architecture == arch2
 
     ArrayType = array_type(restored_model.architecture)
-    @test restored_model.velocities.u.data.parent isa ArrayType
-    @test restored_model.velocities.v.data.parent isa ArrayType
-    @test restored_model.velocities.w.data.parent isa ArrayType
-    @test restored_model.tracers.T.data.parent isa ArrayType
-    @test restored_model.tracers.S.data.parent isa ArrayType
+    CUDA.@allowscalar begin
+        @test restored_model.velocities.u.data.parent isa ArrayType
+        @test restored_model.velocities.v.data.parent isa ArrayType
+        @test restored_model.velocities.w.data.parent isa ArrayType
+        @test restored_model.tracers.T.data.parent isa ArrayType
+        @test restored_model.tracers.S.data.parent isa ArrayType
 
-    @test all(interior(restored_model.velocities.u) .≈ π/2)
-    @test all(interior(restored_model.velocities.v) .≈ ℯ)
-    @test all(interior(restored_model.velocities.w) .== 0)
-    @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
-    @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+        @test all(interior(restored_model.velocities.u) .≈ π/2)
+        @test all(interior(restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(restored_model.velocities.w) .== 0)
+        @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
 
     # Test that the restored model can be time stepped
     time_step!(restored_model, 1)
