@@ -52,7 +52,7 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::Field, v::Number) = CUDA.@allowscalar @. u.data = v
+set!(u::Field, v::Number) = @. u.data.parent = v
 
 set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} =
     @. u.data.parent = v.data.parent
