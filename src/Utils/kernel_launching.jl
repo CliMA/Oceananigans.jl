@@ -62,7 +62,7 @@ function launch!(arch, grid, dims, kernel!, args...; dependencies=nothing, kwarg
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
-    @debug "worksize and kernel:" worksize kernel!
+    @debug "worksize: $worksize, kernel: $kernel!"
 
     event = loop!(args...; dependencies=dependencies, kwargs...)
 
