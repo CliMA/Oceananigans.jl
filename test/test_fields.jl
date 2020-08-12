@@ -1,3 +1,5 @@
+using Oceananigans.Fields: cpudata
+
 """
     correct_field_size(N, L, ftf)
 
@@ -98,7 +100,7 @@ end
 
 		@hascuda begin
 			ϕ = CellField(GPU(), grid)
-			@test cpudata(ϕ).parent isa CuArray
+			@test cpudata(ϕ).parent isa Array
 		end
     end
 end
