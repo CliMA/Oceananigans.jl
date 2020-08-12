@@ -4,11 +4,13 @@ export ModelLogger, Diagnostic, Setup
 
 using Dates
 using Logging
+using Crayons
 
-
-#####
-##### ModelLogger
-#####
+const RED    = Crayon(foreground=:red)
+const YELLOW = Crayon(foreground=:light_yellow)
+const CYAN   = Crayon(foreground=:cyan)
+const BLUE   = Crayon(foreground=:blue)
+const BOLD   = Crayon(bold=true)
 
 """
     ModelLogger(stream::IO, level::LogLevel)
@@ -31,9 +33,17 @@ Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
 
 Logging.catch_exceptions(logger::ModelLogger) = false
 
-function level_to_string(level::Logging.LogLevel)
+function level_to_string(level)
     level == Logging.Warn && return "Warning"
     return string(level)
+end
+
+function level_to_crayon(level)
+    level == Logging.Error && return RED
+    level == Logging.Warn  && return YELLOW
+    level == Logging.Info  && return CYAN
+    level == Logging.Debug && return BLUE
+    return identity
 end
 
 function Logging.handle_message(logger::ModelLogger, level, message, _module, group, id,
@@ -52,9 +62,11 @@ function Logging.handle_message(logger::ModelLogger, level, message, _module, gr
     module_name = something(_module, "nothing")
     file_name   = something(filepath, "nothing")
     line_number = something(line, "nothing")
-    msg_timestamp = Dates.format(Dates.now(), "[dd/mm/yyyy HH:MM:SS]")
+    msg_timestamp = Dates.format(Dates.now(), "[dd/mm/yyyy HH:MM:SS.sss]")
 
-    formatted_message = "$msg_timestamp $message ---  $level_name $file_name:$line_number"
+    crayon = level_to_crayon(level)
+
+    formatted_message = "$(crayon(msg_timestamp)) $message ---  $(BOLD(crayon(level_name))) $file_name:$line_number"
 
     println(iob, formatted_message)
     write(logger.stream, take!(buf))
