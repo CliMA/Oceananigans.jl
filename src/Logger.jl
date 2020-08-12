@@ -10,14 +10,16 @@ const RED    = Crayon(foreground=:red)
 const YELLOW = Crayon(foreground=:light_yellow)
 const CYAN   = Crayon(foreground=:cyan)
 const BLUE   = Crayon(foreground=:blue)
-const BOLD   = Crayon(bold=true)
+
+const BOLD      = Crayon(bold=true)
+const UNDERLINE = Crayon(underline=true)
 
 """
     ModelLogger(stream::IO, level::LogLevel)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
-[dd/mm/yyyy HH:MM:SS.sss] message --- log_level source_file:line_number
+[yyyy/mm/dd HH:MM:SS.sss] log_level message @ source_file:line_number
 """
 struct ModelLogger <: Logging.AbstractLogger
             stream :: IO
@@ -34,7 +36,10 @@ Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
 Logging.catch_exceptions(logger::ModelLogger) = false
 
 function level_to_string(level)
-    level == Logging.Warn && return "Warning"
+    level == Logging.Error && return "ERROR"
+    level == Logging.Warn  && return "WARN "
+    level == Logging.Info  && return "INFO "
+    level == Logging.Debug && return "DEBUG"
     return string(level)
 end
 
@@ -62,11 +67,11 @@ function Logging.handle_message(logger::ModelLogger, level, message, _module, gr
     module_name = something(_module, "nothing")
     file_name   = something(filepath, "nothing")
     line_number = something(line, "nothing")
-    msg_timestamp = Dates.format(Dates.now(), "[dd/mm/yyyy HH:MM:SS.sss]")
+    msg_timestamp = Dates.format(Dates.now(), "[yyyy/mm/dd HH:MM:SS.sss]")
 
     crayon = level_to_crayon(level)
 
-    formatted_message = "$(crayon(msg_timestamp)) $message ---  $(BOLD(crayon(level_name))) $file_name:$line_number"
+    formatted_message = "$(crayon(msg_timestamp)) $(BOLD(crayon(level_name))) $message $(BOLD(crayon("-@->"))) $(UNDERLINE("$file_name:$line_number"))"
 
     println(iob, formatted_message)
     write(logger.stream, take!(buf))
