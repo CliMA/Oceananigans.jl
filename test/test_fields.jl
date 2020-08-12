@@ -5,7 +5,7 @@ Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
 correct_field_size(a, g, fieldtype, Tx, Ty, Tz) = size(parent(fieldtype(a, g)))  == (Tx, Ty, Tz)
-    
+
 """
      correct_field_value_was_set(N, L, ftf, val)
 
@@ -84,11 +84,21 @@ end
         end
     end
 
-    @testset "Miscellaneous field functionality" begin
-        @info "  Testing miscellaneous field functionality..."
+    @testset "Field utils" begin
+        @info "  Testing field utils..."
+
         @test Fields.has_velocities(()) == false
         @test Fields.has_velocities((:u,)) == false
         @test Fields.has_velocities((:u, :v)) == false
         @test Fields.has_velocities((:u, :v, :w)) == true
+
+		grid = RegularCartesianGrid(size=(4, 6, 8), extent=(1, 1, 1))
+		ϕ = CellField(CPU(), grid)
+		@test cpudata(ϕ).parent isa Array
+
+		@hascuda begin
+			ϕ = CellField(GPU(), grid)
+			@test cpudata(ϕ).parent isa CuArray
+		end
     end
 end
