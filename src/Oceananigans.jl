@@ -140,6 +140,7 @@ include("AbstractOperations/AbstractOperations.jl")
 ##### Re-export stuff from submodules
 #####
 
+using .Logger
 using .Architectures
 using .Utils
 using .Grids
@@ -156,6 +157,7 @@ using .TimeSteppers
 using .Simulations
 
 function __init__()
+    Logging.global_logger(ModelLogger())
     @hascuda begin
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
