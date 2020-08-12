@@ -84,7 +84,7 @@ function HorizontallyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args..
     # multiplied by 2. For some reason, we only need to account for this when
     # doing a 1D IDCT (for PPN boundary conditions) but not for a 2D IDCT. It's
     # possible that the masks are effectively doing this job.
-    ω_4Nz⁻[1] *= 1/2
+    CUDA.@allowscalar ω_4Nz⁻[1] *= 1/2
 
     constants = (ω_4Nz⁺ = ω_4Nz⁺, ω_4Nz⁻ = ω_4Nz⁻)
 
@@ -145,7 +145,7 @@ function solve_poisson_equation!(solver::PressureSolver{HorizontallyPeriodic, GP
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
     # and so the DC component comes out to be ∞.
-    ϕ[1, 1, 1] = 0
+    CUDA.@allowscalar ϕ[1, 1, 1] = 0
 
     solver.transforms.IFFTxy! * ϕ  # Calculate IFFTˣʸ(ϕ̂) in place.
 

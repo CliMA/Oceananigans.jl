@@ -85,8 +85,8 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     M_ky = ones(1, Ny, 1) |> CuArray
     M_kz = ones(1, 1, Nz) |> CuArray
 
-    M_ky[1] = 0
-    M_kz[1] = 0
+    CUDA.@allowscalar M_ky[1] = 0
+    CUDA.@allowscalar M_kz[1] = 0
 
     constants = (ω_4Ny⁺ = ω_4Ny⁺, ω_4Nz⁺ = ω_4Nz⁺, ω_4Ny⁻ = ω_4Ny⁻, ω_4Nz⁻ = ω_4Nz⁻,
                  r_y_inds = r_y_inds, r_z_inds = r_z_inds,
@@ -142,7 +142,7 @@ function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
 
     @. B = -B / (kx² + ky² + kz²)
 
-    B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    CUDA.@allowscalar B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
     solver.transforms.IFFTx! * B  # Calculate IFFTˣ(ϕ̂) in place.
 

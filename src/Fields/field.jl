@@ -52,7 +52,7 @@ end
                                  data = zeros(arch, grid, (X, Y, Z)) ] )
 
 Construct a `Field` on `grid` with `data` on architecture `arch` with
-boundary conditions `bcs`. Each of `(X, Y, Z)` is either `Cell` or `Face` and determines 
+boundary conditions `bcs`. Each of `(X, Y, Z)` is either `Cell` or `Face` and determines
 the field's location in `(x, y, z)`.
 
 Example
@@ -61,7 +61,7 @@ Example
 julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianmodel.grid)
 
 """
-function Field(X, Y, Z, arch, grid, 
+function Field(X, Y, Z, arch, grid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = zeros(eltype(grid), arch, grid, (X, Y, Z)))
 
@@ -89,7 +89,7 @@ Field(L::Tuple, args...) = Field(destantiate.(L)..., args...)
 #####
 
 """
-    CellField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid, 
+    CellField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
               [  bcs = TracerBoundaryConditions(grid),
                 data = zeros(FT, arch, grid, (Cell, Cell, Cell) ] )
 
@@ -111,13 +111,13 @@ end
 Return a `Field{Face, Cell, Cell}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function XFaceField(FT::DataType, arch, grid, 
+function XFaceField(FT::DataType, arch, grid,
                      bcs = UVelocityBoundaryConditions(grid),
                     data = zeros(FT, arch, grid, (Face, Cell, Cell)))
 
     return Field{Face, Cell, Cell}(data, grid, bcs)
 end
-  
+
 """
     YFaceField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
                [  bcs = VVelocityBoundaryConditions(grid),
@@ -132,7 +132,7 @@ function YFaceField(FT::DataType, arch, grid,
 
     return Field{Cell, Face, Cell}(data, grid, bcs)
 end
-  
+
 """
     ZFaceField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
                [  bcs = WVelocityBoundaryConditions(grid),
@@ -167,7 +167,7 @@ location(f, i) = location(f)[i]
 architecture(f::Field) = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
 
-"Returns the length of a field's `data`."    
+"Returns the length of a field's `data`."
 @inline length(f::Field) = length(f.data)
 
 
@@ -219,7 +219,9 @@ contained by `f` along `x, y, z`.
 
 @inline cpudata(a) = data(a)
 
-@hascuda @inline cpudata(f::Field{X, Y, Z, <:CuArray}) where {X, Y, Z} =
+const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
+
+@hascuda @inline cpudata(f::Field{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
     OffsetArray(Array(parent(f)), f.grid, location(f))
 
 # Endpoint for recursive `datatuple` function:
@@ -229,12 +231,12 @@ contained by `f` along `x, y, z`.
 @inline Base.parent(f::Field) = f.data.parent
 
 "Returns a view of `f` that excludes halo points."
-@inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx), 
-                                                                   interior_indices(Y, topology(f, 2), f.grid.Ny), 
+@inline interior(f::Field{X, Y, Z}) where {X, Y, Z} = view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx),
+                                                                   interior_indices(Y, topology(f, 2), f.grid.Ny),
                                                                    interior_indices(Z, topology(f, 3), f.grid.Nz))
 
 "Returns a reference (not a view) to the interior points of `field.data.parent.`"
-@inline interiorparent(f::Field{X, Y, Z}) where {X, Y, Z} = 
+@inline interiorparent(f::Field{X, Y, Z}) where {X, Y, Z} =
     @inbounds f.data.parent[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
                             interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
                             interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
@@ -271,7 +273,7 @@ offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
     OffsetArray(underlying_data, grid, loc)
 
 Returns an `OffsetArray` that maps to `underlying_data` in memory,
-with offset indices appropriate for the `data` of a field on 
+with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
 function OffsetArray(underlying_data, grid, loc)
@@ -286,7 +288,7 @@ end
     zeros([FT=Float64], ::CPU, grid, loc)
 
 Returns an `OffsetArray` of zeros of float type `FT`, with
-parent data in CPU memory and indices corresponding to a field on a 
+parent data in CPU memory and indices corresponding to a field on a
 `grid` of `size(grid)` and located at `loc`.
 """
 function Base.zeros(FT, ::CPU, grid, loc=(Cell, Cell, Cell))

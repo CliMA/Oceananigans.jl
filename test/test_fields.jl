@@ -1,3 +1,5 @@
+using Oceananigans.Fields: cpudata
+
 """
     correct_field_size(N, L, ftf)
 
@@ -5,7 +7,7 @@ Test that the field initialized by the field type function `ftf` on the grid g
 has the correct size.
 """
 correct_field_size(a, g, fieldtype, Tx, Ty, Tz) = size(parent(fieldtype(a, g)))  == (Tx, Ty, Tz)
-    
+
 """
      correct_field_value_was_set(N, L, ftf, val)
 
@@ -16,7 +18,7 @@ function.
 function correct_field_value_was_set(arch, grid, fieldtype, val::Number)
     f = fieldtype(arch, grid)
     set!(f, val)
-    return interior(f) ≈ val * ones(size(f))
+    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
 end
 
 @testset "Fields" begin
@@ -84,11 +86,21 @@ end
         end
     end
 
-    @testset "Miscellaneous field functionality" begin
-        @info "  Testing miscellaneous field functionality..."
+    @testset "Field utils" begin
+        @info "  Testing field utils..."
+
         @test Fields.has_velocities(()) == false
         @test Fields.has_velocities((:u,)) == false
         @test Fields.has_velocities((:u, :v)) == false
         @test Fields.has_velocities((:u, :v, :w)) == true
+
+		grid = RegularCartesianGrid(size=(4, 6, 8), extent=(1, 1, 1))
+		ϕ = CellField(CPU(), grid)
+		@test cpudata(ϕ).parent isa Array
+
+		@hascuda begin
+			ϕ = CellField(GPU(), grid)
+			@test cpudata(ϕ).parent isa Array
+		end
     end
 end
