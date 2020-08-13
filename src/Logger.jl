@@ -14,13 +14,6 @@ const BLUE   = Crayon(foreground=:blue)
 const BOLD      = Crayon(bold=true)
 const UNDERLINE = Crayon(underline=true)
 
-"""
-    ModelLogger(stream::IO, level::LogLevel)
-
-Based on Logging.SimpleLogger, it tries to log all messages in the following format:
-
-[yyyy/mm/dd HH:MM:SS.sss] log_level message @ source_file:line_number
-"""
 struct ModelLogger <: Logging.AbstractLogger
             stream :: IO
          min_level :: Logging.LogLevel
@@ -28,6 +21,16 @@ struct ModelLogger <: Logging.AbstractLogger
        show_source :: Bool
 end
 
+"""
+    ModelLogger(stream::IO=stdout, level=Logging.Info; show_source=false)
+
+Based on Logging.SimpleLogger, it tries to log all messages in the following format:
+
+    [yyyy/mm/dd HH:MM:SS.sss] log_level message [-@-> source_file:line_number]
+
+where the source of the message between the square brackets is included only if
+`show_source=true` or if the message is a warning or error.
+"""
 ModelLogger(stream::IO=stdout, level=Logging.Info; show_source=false) =
     ModelLogger(stream, level, Dict{Any,Int}(), show_source)
 

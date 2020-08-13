@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Logging
-    ModelLogger, Diagnostic, Setup,
+    ModelLogger,
 
     # Grids
     Periodic, Bounded, Flat,
