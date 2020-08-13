@@ -15,24 +15,24 @@ const BOLD      = Crayon(bold=true)
 const UNDERLINE = Crayon(underline=true)
 
 struct OceananigansLogger <: Logging.AbstractLogger
-            stream :: IO
-         min_level :: Logging.LogLevel
-    message_limits :: Dict{Any,Int}
-       show_source :: Bool
+              stream :: IO
+           min_level :: Logging.LogLevel
+      message_limits :: Dict{Any,Int}
+    show_info_source :: Bool
 end
 
 """
-    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_source=false)
+    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
     [yyyy/mm/dd HH:MM:SS.sss] log_level message [-@-> source_file:line_number]
 
 where the source of the message between the square brackets is included only if
-`show_source=true` or if the message is a warning or error.
+`show_info_source=true` or if the message is not an info level message.
 """
-OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_source=false) =
-    OceananigansLogger(stream, level, Dict{Any,Int}(), show_source)
+OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false) =
+    OceananigansLogger(stream, level, Dict{Any,Int}(), show_info_source)
 
 Logging.shouldlog(logger::OceananigansLogger, level, _module, group, id) =
     get(logger.message_limits, id, 1) > 0
@@ -78,7 +78,7 @@ function Logging.handle_message(logger::OceananigansLogger, level, message, _mod
     msg_timestamp = Dates.format(Dates.now(), "[yyyy/mm/dd HH:MM:SS.sss]")
 
     formatted_message = "$(crayon(msg_timestamp)) $(BOLD(crayon(level_name))) $message"
-    if logger.show_source || level == Logging.Error || level == Logging.Warn
+    if logger.show_info_source || level != Logging.Info
         formatted_message *= " $(BOLD(crayon("-@->"))) $(UNDERLINE("$file_name:$line_number"))"
     end
 
