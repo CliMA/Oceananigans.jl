@@ -46,6 +46,8 @@ using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
+Logging.global_logger(ModelLogger(show_source=true))
+
 #####
 ##### Testing parameters
 #####
@@ -98,4 +100,3 @@ include("runtests_utils.jl")
     include("test_verification.jl")
     include("test_benchmarks.jl")
 end
-

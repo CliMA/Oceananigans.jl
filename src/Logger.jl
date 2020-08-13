@@ -25,11 +25,14 @@ struct ModelLogger <: Logging.AbstractLogger
             stream :: IO
          min_level :: Logging.LogLevel
     message_limits :: Dict{Any,Int}
+       show_source :: Bool
 end
 
-ModelLogger(stream::IO=stdout, level=Logging.Info) = ModelLogger(stream, level, Dict{Any,Int}())
+ModelLogger(stream::IO=stdout, level=Logging.Info; show_source=false) =
+    ModelLogger(stream, level, Dict{Any,Int}(), show_source)
 
-Logging.shouldlog(logger::ModelLogger, level, _module, group, id) = get(logger.message_limits, id, 1) > 0
+Logging.shouldlog(logger::ModelLogger, level, _module, group, id) =
+    get(logger.message_limits, id, 1) > 0
 
 Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
 
@@ -64,14 +67,17 @@ function Logging.handle_message(logger::ModelLogger, level, message, _module, gr
     iob = IOContext(buf, logger.stream)
 
     level_name = level_to_string(level)
+    crayon = level_to_crayon(level)
+
     module_name = something(_module, "nothing")
     file_name   = something(filepath, "nothing")
     line_number = something(line, "nothing")
     msg_timestamp = Dates.format(Dates.now(), "[yyyy/mm/dd HH:MM:SS.sss]")
 
-    crayon = level_to_crayon(level)
-
-    formatted_message = "$(crayon(msg_timestamp)) $(BOLD(crayon(level_name))) $message $(BOLD(crayon("-@->"))) $(UNDERLINE("$file_name:$line_number"))"
+    formatted_message = "$(crayon(msg_timestamp)) $(BOLD(crayon(level_name))) $message"
+    if logger.show_source || level == Logging.Error || level == Logging.Warn
+        formatted_message *= " $(BOLD(crayon("-@->"))) $(UNDERLINE("$file_name:$line_number"))"
+    end
 
     println(iob, formatted_message)
     write(logger.stream, take!(buf))
