@@ -46,7 +46,7 @@ using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
-Logging.global_logger(ModelLogger(show_source=true))
+Logging.global_logger(OceananigansLogger(show_source=true))
 
 #####
 ##### Testing parameters

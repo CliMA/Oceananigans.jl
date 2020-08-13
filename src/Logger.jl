@@ -1,6 +1,6 @@
 module Logger
 
-export ModelLogger, Diagnostic, Setup
+export OceananigansLogger
 
 using Dates
 using Logging
@@ -14,7 +14,7 @@ const BLUE   = Crayon(foreground=:blue)
 const BOLD      = Crayon(bold=true)
 const UNDERLINE = Crayon(underline=true)
 
-struct ModelLogger <: Logging.AbstractLogger
+struct OceananigansLogger <: Logging.AbstractLogger
             stream :: IO
          min_level :: Logging.LogLevel
     message_limits :: Dict{Any,Int}
@@ -22,7 +22,7 @@ struct ModelLogger <: Logging.AbstractLogger
 end
 
 """
-    ModelLogger(stream::IO=stdout, level=Logging.Info; show_source=false)
+    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_source=false)
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
@@ -31,15 +31,15 @@ Based on Logging.SimpleLogger, it tries to log all messages in the following for
 where the source of the message between the square brackets is included only if
 `show_source=true` or if the message is a warning or error.
 """
-ModelLogger(stream::IO=stdout, level=Logging.Info; show_source=false) =
-    ModelLogger(stream, level, Dict{Any,Int}(), show_source)
+OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_source=false) =
+    OceananigansLogger(stream, level, Dict{Any,Int}(), show_source)
 
-Logging.shouldlog(logger::ModelLogger, level, _module, group, id) =
+Logging.shouldlog(logger::OceananigansLogger, level, _module, group, id) =
     get(logger.message_limits, id, 1) > 0
 
-Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
+Logging.min_enabled_level(logger::OceananigansLogger) = logger.min_level
 
-Logging.catch_exceptions(logger::ModelLogger) = false
+Logging.catch_exceptions(logger::OceananigansLogger) = false
 
 function level_to_string(level)
     level == Logging.Error && return "ERROR"
@@ -57,7 +57,7 @@ function level_to_crayon(level)
     return identity
 end
 
-function Logging.handle_message(logger::ModelLogger, level, message, _module, group, id,
+function Logging.handle_message(logger::OceananigansLogger, level, message, _module, group, id,
                                 filepath, line; maxlog = nothing, kwargs...)
 
     if !isnothing(maxlog) && maxlog isa Int

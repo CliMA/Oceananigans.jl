@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Logging
-    ModelLogger,
+    OceananigansLogger,
 
     # Grids
     Periodic, Bounded, Flat,
@@ -157,7 +157,7 @@ using .TimeSteppers
 using .Simulations
 
 function __init__()
-    Logging.global_logger(ModelLogger())
+    Logging.global_logger(OceananigansLogger())
     @hascuda begin
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
