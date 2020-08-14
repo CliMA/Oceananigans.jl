@@ -37,7 +37,7 @@ function WindowedTimeAverage(kernel; time_window, time_interval,
     result = 0 .* deepcopy(get_kernel(kernel))
 
     return WindowedTimeAverage(float_type(time_window),
-                               float_type(time_inteval),
+                               float_type(time_interval),
                                zero(float_type),
                                zero(float_type),
                                zero(float_type),
