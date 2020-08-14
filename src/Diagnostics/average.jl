@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
+using Oceananigans.Grids: halo_size, total_size
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
-using Oceananigans.Grids: total_size
 
 """
     Average{F, R, D, P, I, T} <: AbstractDiagnostic
@@ -19,7 +19,6 @@ mutable struct Average{F, R, D, P, I, T} <: AbstractDiagnostic
 end
 
 function dims_to_result_size(field, dims, grid)
-    N = (grid.Nx, grid.Ny, grid.Nz)
     field_size = total_size(parent(field))
     return Tuple(d in dims ? 1 : field_size[d] for d in 1:3)
 end
@@ -61,8 +60,7 @@ end
 Normalize the sum by the number of grid points averaged over to get the average.
 """
 function normalize_sum!(avg)
-    grid = avg.field.grid
-    N = (grid.Nx, grid.Ny, grid.Nz)
+    N = size(avg.field.grid)
     avg.result ./= prod(N[d] for d in avg.dims)
     return nothing
 end
