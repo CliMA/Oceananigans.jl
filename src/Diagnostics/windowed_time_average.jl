@@ -57,7 +57,7 @@ function time_to_run(clock, wta::WindowedTimeAverage)
     end
 end
 
-get_kernel(kernel::Field) = parent(field)
+get_kernel(field::Field) = parent(field)
 
 function get_kernel(kernel::Average)
     run_diagnostic(nothing, kernel)
