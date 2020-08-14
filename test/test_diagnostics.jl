@@ -1,4 +1,4 @@
-function horizontal_average_is_correct(arch, FT)
+function run_horizontal_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
@@ -12,10 +12,10 @@ function horizontal_average_is_correct(arch, FT)
     zC = znodes(Cell, grid)
     correct_profile = zC
 
-    return all(computed_profile[2:end-1] .≈ correct_profile)
+    @test all(computed_profile .≈ correct_profile)
 end
 
-function zonal_average_is_correct(arch, FT)
+function run_zonal_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
@@ -26,10 +26,10 @@ function zonal_average_is_correct(arch, FT)
     T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second)
     computed_slice = dropdims(T̅(model), dims=(1,))
     zC = znodes(Cell, grid)
-    return all([all(computed_slice[i, 2:end-1] .≈ zC) for i in 2:Ny+1])
+    @test all([all(computed_slice[i, :] .≈ zC) for i in 1:Ny])
 end
 
-function volume_average_is_correct(arch, FT)
+function run_volume_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
@@ -38,7 +38,7 @@ function volume_average_is_correct(arch, FT)
     set!(model; T=T₀)
 
     T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second)
-    return all(T̅(model) .≈ -50.0)
+    @test all(T̅(model) .≈ -50.0)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
@@ -155,24 +155,12 @@ end
     @info "Testing diagnostics..."
 
     for arch in archs
-        @testset "Horizontal average [$(typeof(arch))]" begin
+        @testset "Average [$(typeof(arch))]" begin
             @info "  Testing horizontal average [$(typeof(arch))]"
             for FT in float_types
-                @test horizontal_average_is_correct(arch, FT)
-            end
-        end
-
-        @testset "Zonal average [$(typeof(arch))]" begin
-            @info "  Testing zonal average [$(typeof(arch))]"
-            for FT in float_types
-                @test zonal_average_is_correct(arch, FT)
-            end
-        end
-
-        @testset "Volume average [$(typeof(arch))]" begin
-            @info "  Testing volume average [$(typeof(arch))]"
-            for FT in float_types
-                @test zonal_average_is_correct(arch, FT)
+                run_horizontal_average_tests(arch, FT)
+                run_zonal_average_tests(arch, FT)
+                run_volume_average_tests(arch, FT)
             end
         end
     end
