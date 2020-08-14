@@ -16,6 +16,7 @@ mutable struct Average{F, R, D, P, I, T} <: AbstractDiagnostic
          time_interval :: T
               previous :: Float64
            return_type :: R
+            with_halos :: Bool
 end
 
 function dims_to_result_size(field, dims, grid)
@@ -40,7 +41,9 @@ A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
+                 with_halos=false)
+
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
 
@@ -51,7 +54,9 @@ function Average(field; dims, iteration_interval=nothing, time_interval=nothing,
     arch = architecture(field)
     result_size = dims_to_result_size(field, dims, field.grid)
     result = zeros(arch, field.grid, result_size...)
-    return Average(field, dims, result, iteration_interval, time_interval, 0.0, return_type)
+
+    return Average(field, dims, result, iteration_interval, time_interval, 0.0,
+                   return_type, with_halos)
 end
 
 """
@@ -79,5 +84,6 @@ end
 
 function (avg::Average)(model)
     run_diagnostic(model, avg)
-    return avg.return_type(avg.result)
+    N, H = size(model.grid), halo_size(model.grid)
+    return avg.return_type(avg.result)[(avg.with_halos ? Colon() : d in avg.dims ? Colon() : (1+H[d]:N[d]+H[d]) for d in 1:3)...]
 end
