@@ -1,6 +1,5 @@
-import Oceananigans.Utils: time_to_run
-import Oceananigans.Fields: Field
-import Oceananigans.AbstractOperations: Computation, compute!
+import ..Utils: time_to_run
+import ..Fields: Field
 
 """
     WindowedTimeAverage{RT, FT, A, B} <: Diagnostic
@@ -8,7 +7,7 @@ import Oceananigans.AbstractOperations: Computation, compute!
 An object for computing 'windowed' time averages, or moving time-averages
 of a `kernel` over a specified `time_window`, collected on `time_interval`.
 """
-mutable struct WindowedTimeAverage{RT, FT, K, R} <: Diagnostic
+mutable struct WindowedTimeAverage{RT, FT, K, R} <: AbstractDiagnostic
                     time_window :: FT
                   time_interval :: FT
               window_start_time :: FT
@@ -65,11 +64,6 @@ function get_kernel(kernel::Average)
     return kernel.result
 end
 
-function get_kernel(computation::Computation)
-    compute!(computation)
-    return parent(computation.result)
-end
-
 function run_diagnostic(model, wta::WindowedTimeAverage)
 
     if !(wta.collecting)
@@ -92,10 +86,13 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
 
         # Accumulate final point in the left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
-        wta.result .+= get_kernel(wta.kernel) ./ Δt
+        wta.result .+= get_kernel(wta.kernel) .* Δt
 
         # Averaging period is complete.
         wta.collecting = false
+
+        # Convert time integral to a time-average:
+        wta.result ./= model.clock.time - wta.window_start_time
 
         # Reset the "previous" interval time,
         # subtracting a sliver that presents window overshoot from accumulating.
@@ -105,7 +102,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
 
         # Accumulate left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
-        wta.result .+= get_kernel(wta.kernel) ./ Δt
+        wta.result .+= get_kernel(wta.kernel) .* Δt
 
         # Save data collection time
         wta.previous_collection_time = model.clock.time
@@ -120,8 +117,14 @@ convert_result(wta::WindowedTimeAverage{<:Nothing}) = wta.result
 
 function (wta::WindowedTimeAverage)(model=nothing)
 
-    wta.collecting && warn("The data being outputted from windowed time average is
-                           still being collected.")
+    if wta.collecting 
 
-    return convert_result(wta)
+        warn("The windowed time average is currently being collected.
+             Converting intermediate result to a time average.")
+
+        return convert_result(wta) ./ (wta.previous_collection_time - wta.window_start_time)
+    else
+        return convert_result(wta)
+    end
+
 end
