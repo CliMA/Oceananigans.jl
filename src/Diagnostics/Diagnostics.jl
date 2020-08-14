@@ -1,7 +1,7 @@
 module Diagnostics
 
 export
-    Average, TimeSeries, FieldMaximum,
+    Average, TimeSeries, FieldMaximum, WindowedTimeAverage,
     CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker,
     run_diagnostic
 
