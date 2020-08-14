@@ -211,7 +211,7 @@ end
         @testset "WindowedTimeAverage tests [$(typeof(arch))]" begin
             @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
             for FT in float_types
-                @test instnantiate_windowed_time_average(arch, FT)
+                @test instantiate_windowed_time_average(arch, FT)
             end
         end
     end
