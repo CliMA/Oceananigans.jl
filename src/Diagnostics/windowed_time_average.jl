@@ -8,37 +8,45 @@ An object for computing 'windowed' time averages, or moving time-averages
 of a `kernel` over a specified `time_window`, collected on `time_interval`.
 """
 mutable struct WindowedTimeAverage{RT, FT, K, R} <: AbstractDiagnostic
-                    time_window :: FT
-                  time_interval :: FT
-              window_start_time :: FT
-       previous_collection_time :: FT
-    previous_interval_stop_time :: FT
-                     collecting :: Bool
-                         kernel :: K
-                         result :: R
-                    return_type :: RT
+                         time_window :: FT
+                       time_interval :: FT
+                              stride :: Int
+                   window_start_time :: FT
+              window_start_iteration :: Int
+            previous_collection_time :: FT
+         previous_interval_stop_time :: FT
+                          collecting :: Bool
+                              kernel :: K
+                              result :: R
+                         return_type :: RT
 end
 
 """
-    WindowedTimeAverage(kernel; time_window, time_interval,
+    WindowedTimeAverage(kernel; time_window, time_interval, stride=1,
                                 return_type=Array, float_type=Float64)
                                                         
 Returns an object for computing running averages of `kernel` over `time_window`,
-recurring on `time_interval`. Calling the `WindowedTimeAverage` object returns 
-the computed time-average of `kernel` at the current time, converted to `return_type`.
+recurring on `time_interval`. During the collection period, averages are computed
+every `stride` iteration. 
+
+Calling the `WindowedTimeAverage` object returns the computed time-average of `kernel`
+at the current time, converted to `return_type`.
+
 `float_type` specifies the floating point precision of scalar parameters.
 
 `kernel` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
 or `Oceananigans.Diagnostics.Average`.
 """ 
-function WindowedTimeAverage(kernel; time_window, time_interval,
+function WindowedTimeAverage(kernel; time_window, time_interval, stride=1,
                                      return_type=Array, float_type=Float64)
 
     result = 0 .* deepcopy(get_kernel(kernel))
 
     return WindowedTimeAverage(float_type(time_window),
                                float_type(time_interval),
+                               stride,
                                zero(float_type),
+                               0,
                                zero(float_type),
                                zero(float_type),
                                false,
@@ -78,11 +86,11 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
 
         # Save averaging start time and the initial data collection time
         wta.window_start_time = model.clock.time
+        wta.window_start_iteration = model.clock.iteration
         wta.previous_collection_time = model.clock.time
 
-    # We are currently collecting data:
     elseif model.clock.time - wta.window_start_time >= wta.time_window 
-        # The averaging window is now closed. Finalize averages and cease data collection.
+        # The averaging window has been exceeded. Finalize averages and cease data collection.
 
         # Accumulate final point in the left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
@@ -98,7 +106,8 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
         # subtracting a sliver that presents window overshoot from accumulating.
         wta.previous_interval_stop_time = model.clock.time - rem(model.clock.time, wta.time_interval)
 
-    else # the averaging window is open; accumulate the time-average.
+    elseif mod(model.clock.iteration - wta.window_start_iteration, wta.stride) == 0
+        # Collect data as usual
 
         # Accumulate left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
