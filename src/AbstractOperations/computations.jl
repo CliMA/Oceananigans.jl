@@ -98,6 +98,9 @@ Returns the representation of an `Average` over the operation `op`, using
 Average(op::AbstractOperation, model::AbstractModel; dims, kwargs...) =
     Average(op, model.pressures.pHY′; dims=dims, kwargs...)
 
+Average(::AbstractOperation; dims, kwargs...) =
+    error("Creation of a result array is not implemented yet. You must pass a result array or a model.")
+
 """Compute the average of a computation."""
 function run_diagnostic(model, avg::Average{<:Computation})
     compute!(avg.field)

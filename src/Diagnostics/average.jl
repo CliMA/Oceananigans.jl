@@ -2,7 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 using Oceananigans.Grids: total_size
-using Oceananigans.Fields: Field
 
 """
     Average{F, R, D, P, I, T} <: AbstractDiagnostic
@@ -42,7 +41,7 @@ A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
 
