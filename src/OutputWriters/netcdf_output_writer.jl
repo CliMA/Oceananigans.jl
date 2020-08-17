@@ -167,7 +167,7 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
-  
+
     # Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
                                                          ( xC,   yC,   zC,   xF,   yF,   zF )))
@@ -256,6 +256,17 @@ Returns an array of indices that specify a view over a field's data.
 slice_indices(field; slice_specs...) =
     [get_slice(slice_specs[Symbol(dim)]) for dim in netcdf_spatial_dimensions(field)]
 
+function save_output_to_netcdf!(nc, model, f::Field, name, time_index)
+    data = cpudata(f) # Transfer data to CPU if parent(output) is a CuArray
+    nc.dataset[name][:, :, :, time_index] = view(data, nc.slices[name]...)
+end
+
+function save_output_to_netcdf!(nc, model, output, name, time_index)
+    data = output(model)
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    nc.dataset[name][colons..., time_index] = data
+end
+
 """
     write_output(model, OutputWriter)
 
@@ -282,14 +293,7 @@ function write_output(model, ow::NetCDFOutputWriter)
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        if output isa Field
-            data = cpudata(output) # Transfer data to CPU if parent(output) is a CuArray
-            ds[name][:, :, :, time_index] = view(data, ow.slices[name]...)
-        else
-            data = output(model)
-            colons = Tuple(Colon() for _ in 1:ndims(data))
-            ds[name][colons..., time_index] = data
-        end
+        save_output_to_netcdf!(ow, model, output, name, time_index)
 
         if verbose
             # Time after computing this output.
