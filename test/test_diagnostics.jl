@@ -10,15 +10,14 @@ function run_horizontal_average_tests(arch, FT)
     T₀(x, y, z) = z
     set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second)
-
+    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=false)
     computed_profile = T̅(model)
     @test size(computed_profile) == (1, 1, Nz)
 
     computed_profile = dropdims(computed_profile, dims=(1, 2))
     @test computed_profile ≈ znodes(Cell, grid)
 
-    T̅.with_halos = true
+    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=true)
     computed_profile_with_halos = T̅(model)
     @test size(computed_profile_with_halos) == (1, 1, Nz+2Hz)
 
@@ -36,8 +35,7 @@ function run_zonal_average_tests(arch, FT)
     T₀(x, y, z) = z
     set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second)
-
+    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=false)
     computed_slice = T̅(model)
     @test size(computed_slice) == (1, Ny, Nz)
 
@@ -45,7 +43,7 @@ function run_zonal_average_tests(arch, FT)
     zC = znodes(Cell, grid)
     @test all(computed_slice[j, :] ≈ zC for j in 1:Ny)
 
-    T̅.with_halos = true
+    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=true)
     computed_slice_with_halos = T̅(model)
     @test size(computed_slice_with_halos) == (1, Ny+2Hy, Nz+2Hz)
 
@@ -61,13 +59,12 @@ function run_volume_average_tests(arch, FT)
     T₀(x, y, z) = z
     set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second)
-
+    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=false)
     computed_scalar = T̅(model)
     @test size(computed_scalar) == (1, 1, 1)
     @test all(computed_scalar .≈ -50.0)
 
-    T̅.with_halos = true
+    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=true)
     computed_scalar_with_halos = T̅(model)
     @test size(computed_scalar_with_halos) == (1, 1, 1)
     @test all(computed_scalar_with_halos .≈ -50.0)

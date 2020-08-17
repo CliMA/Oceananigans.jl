@@ -42,7 +42,7 @@ used as a callable object. The default `return_type=Array` is useful when runnin
 model and you want to save the output to disk by passing it to an output writer.
 """
 function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
-                 with_halos=false)
+                 with_halos=true)
 
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
