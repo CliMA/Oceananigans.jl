@@ -13,8 +13,6 @@ env:
     - TEST_GROUP=integration
     - TEST_GROUP=regression
     - TEST_GROUP=scripts
-  global:
-    - PYTHON=''
 
 notifications:
   email: true
