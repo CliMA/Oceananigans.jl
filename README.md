@@ -44,9 +44,6 @@
   <a href="https://codecov.io/gh/clima/Oceananigans.jl">
     <img alt="Codecov coverage" src="https://img.shields.io/codecov/c/github/clima/Oceananigans.jl/master?label=Codecov&logo=codecov&logoColor=white&style=flat-square">
   </a>
-  <a href="https://coveralls.io/github/clima/Oceananigans.jl?branch=master">
-    <img alt="Coveralls coverage" src="https://img.shields.io/coveralls/github/clima/Oceananigans.jl/master?label=Coveralls&style=flat-square">
-  </a>
 </p>
 
 Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It is designed to solve the rotating Boussinesq equations used in non-hydrostatic ocean modeling but can be used to solve for any incompressible flow.

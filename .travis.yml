@@ -8,14 +8,16 @@ julia:
   - 1.4
 
 env:
-  global:
-    - PYTHON=''
+  jobs:
+    - TEST_GROUP=unit
+    - TEST_GROUP=integration
+    - TEST_GROUP=regression
+    - TEST_GROUP=scripts
 
 notifications:
   email: true
 
 after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())';
 
 jobs:
