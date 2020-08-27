@@ -135,7 +135,7 @@ function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.transforms.FFTyz! * RHS
 
-    RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
+    CUDA.@allowscalar RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
     @. B = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
 
     solver.transforms.FFTx! * B # Calculate FFTˣ(f) in place.
@@ -147,9 +147,11 @@ function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
     solver.transforms.IFFTx! * B  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
-    B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
-    B⁺⁻ = view(B, 1:Nx, 1:Ny, r_z_inds)
-    B⁻⁻ = view(B, 1:Nx, r_y_inds, r_z_inds)
+    CUDA.@allowscalar begin
+        B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
+        B⁺⁻ = view(B, 1:Nx, 1:Ny, r_z_inds)
+        B⁻⁻ = view(B, 1:Nx, r_y_inds, r_z_inds)
+    end
 
     @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((B - M_ky * M_kz * B⁻⁻) - im*(M_kz * B⁺⁻ + M_ky * B⁻⁺))
 
