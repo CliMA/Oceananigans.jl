@@ -6,6 +6,8 @@ using Dates
 using Logging
 using Crayons
 
+import Logging: shouldlog, min_enabled_level, catch_exceptions, handle_message
+
 const RED    = Crayon(foreground=:red)
 const YELLOW = Crayon(foreground=:light_yellow)
 const CYAN   = Crayon(foreground=:cyan)
@@ -34,12 +36,12 @@ where the source of the message between the square brackets is included only if
 OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false) =
     OceananigansLogger(stream, level, Dict{Any,Int}(), show_info_source)
 
-Logging.shouldlog(logger::OceananigansLogger, level, _module, group, id) =
+shouldlog(logger::OceananigansLogger, level, _module, group, id) =
     get(logger.message_limits, id, 1) > 0
 
-Logging.min_enabled_level(logger::OceananigansLogger) = logger.min_level
+min_enabled_level(logger::OceananigansLogger) = logger.min_level
 
-Logging.catch_exceptions(logger::OceananigansLogger) = false
+catch_exceptions(logger::OceananigansLogger) = false
 
 function level_to_string(level)
     level == Logging.Error && return "ERROR"
@@ -57,7 +59,7 @@ function level_to_crayon(level)
     return identity
 end
 
-function Logging.handle_message(logger::OceananigansLogger, level, message, _module, group, id,
+function handle_message(logger::OceananigansLogger, level, message, _module, group, id,
                                 filepath, line; maxlog = nothing, kwargs...)
 
     if !isnothing(maxlog) && maxlog isa Int
