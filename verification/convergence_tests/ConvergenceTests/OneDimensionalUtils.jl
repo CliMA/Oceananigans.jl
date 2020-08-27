@@ -73,16 +73,16 @@ function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
     ylabel(L"c")
     removespines("top", "right", "bottom")
     axs[1].tick_params(bottom=false, labelbottom=false)
-    legend(loc="upper left", prop=Dict(:size=>7), bbox_to_anchor=(0.01, 0.3, 1.5, 1.0))
+    lgd1 = legend(loc="upper left", prop=Dict(:size=>7), bbox_to_anchor=(-0.35, 0, 1.5, 1.0))
 
     sca(axs[2])
     axs[2].set_yscale("log")
     removespines("top", "right")
     xlabel(L"x")
     ylabel("Absolute error \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} | \$")
-    legend(loc="upper left", prop=Dict(:size=>10), bbox_to_anchor=(0.01, 0.3, 1.5, 1.0))
+    lgd2 = legend(loc="upper right", prop=Dict(:size=>10), bbox_to_anchor=(-0.2, 0.4, 1.5, 1.0))
 
-    return nothing
+    return (lgd1, lgd2)
 end
 
 function plot_error_convergence!(axs, Nx, all_results, names)
@@ -114,9 +114,10 @@ function plot_error_convergence!(axs, Nx, all_results, names)
     xlabel(L"N_x")
     ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
     removespines("top", "right")
-    legend(loc="upper right", prop=Dict(:size=>6))
+    lgd = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
     xticks(Nx, ["\$ 2^{$(round(Int, log2(n)))} \$" for n in Nx])
 
+    return lgd
 end
 
 end # module

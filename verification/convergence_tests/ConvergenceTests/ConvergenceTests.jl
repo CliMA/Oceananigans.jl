@@ -1,17 +1,23 @@
-# This module implements a few simple convergence tests for verifying
-# the expected numerical behavior of the spatial discretization
-# and time-stepping.
+"""
+`ConvergenceTests` implements a few simple convergence tests for verifying
+the expected numerical behavior of the spatial discretization
+and time-stepping
+"""
 module ConvergenceTests
 
-using JLD2, Statistics, Printf, OffsetArrays
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.Fields
+using JLD2
+using OffsetArrays
+
+using Oceananigans
+using Oceananigans.Fields
 
 using Oceananigans: Face, Cell
 using Oceananigans.Fields: Face, Cell, nodes
 
 import Oceananigans: RegularCartesianGrid
-
 import Oceananigans.Fields: location
 
 figspath = abspath(joinpath(@__FILE__, "..", "..", "figs"))

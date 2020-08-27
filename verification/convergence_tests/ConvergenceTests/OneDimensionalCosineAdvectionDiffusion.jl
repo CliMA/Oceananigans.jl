@@ -31,7 +31,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    println("Running 1D in x cosine advection diffusion test for v and c with Nx = $Nx and Δt = $Δt...")
+    @info "Running 1D in x cosine advection diffusion test for v and c with Nx = $Nx and Δt = $Δt..."
     run!(simulation)
 
     x = xnodes(model.tracers.c)
@@ -65,7 +65,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    println("Running 1D in y cosine advection diffusion test for u and c with Ny = $Nx and Δt = $Δt...")
+    @info "Running 1D in y cosine advection diffusion test for u and c with Ny = $Nx and Δt = $Δt..."
     run!(simulation)
 
     # Calculate errors

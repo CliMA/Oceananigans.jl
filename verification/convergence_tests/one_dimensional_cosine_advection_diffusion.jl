@@ -5,10 +5,11 @@ using PyPlot
 using Oceananigans.Grids
 
 # Define a few utilities for running tests and unpacking and plotting results
+push!(LOAD_PATH, "ConvergenceTests/")
 
-include("ConvergenceTests/ConvergenceTests.jl")
-
-run_test = ConvergenceTests.OneDimensionalCosineAdvectionDiffusion.run_test
+using ConvergenceTests
+using ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test
+using ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!
 
 """ Run advection-diffusion test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions...)
@@ -52,13 +53,13 @@ close("all")
 
 fig, axs = subplots(nrows=2, figsize=(12, 6), sharex=true)
 
-ConvergenceTests.OneDimensionalUtils.plot_solutions!(axs, all_results, names, linestyles, specialcolors)
+legends = plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 
-savefig("figs/cosine_advection_diffusion_solutions.png", dpi=480)
+savefig("figs/cosine_advection_diffusion_solutions.png", dpi=480, bbox_extra_artists=legends, bbox_inches="tight")
 
 # Error profile
 fig, axs = subplots()
 
-ConvergenceTests.OneDimensionalUtils.plot_error_convergence!(axs, Nx, all_results, names)
+legend = plot_error_convergence!(axs, Nx, all_results, names)
 
-savefig("figs/cosine_advection_diffusion_error_convergence.png", dpi=480)
+savefig("figs/cosine_advection_diffusion_error_convergence.png", dpi=480, bbox_extra_artists=(legend,), bbox_inches="tight")
