@@ -1,7 +1,6 @@
 environment:
   matrix:
   - julia_version: 1.4
-  - julia_version: nightly
   - TEST_GROUP: unit
   - TEST_GROUP: integration
   - TEST_GROUP: regression
