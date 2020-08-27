@@ -1,4 +1,4 @@
-# # "Cosine advection-diffusion" Spatial resolution convergence test
+# "Cosine advection-diffusion" Spatial resolution convergence test
 
 using PyPlot
 

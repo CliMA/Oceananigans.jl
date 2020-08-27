@@ -1,7 +1,3 @@
-# So we can write `using Oceananigans` and it will use the version of Oceananigans
-# from the current repository.
-push!(LOAD_PATH, "../../")
-
 # This module implements a few simple convergence tests for verifying
 # the expected numerical behavior of the spatial discretization
 # and time-stepping.
