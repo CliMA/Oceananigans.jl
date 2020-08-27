@@ -74,3 +74,5 @@ end
         @printf("%s: %.3f\n", benchmark_name(N, ft), t_cpu/t_gpu)
     end
 end
+
+println()
