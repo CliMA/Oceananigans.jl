@@ -4,7 +4,7 @@ environment:
   - julia_version: nightly
 
 platform:
-  - x64 # 64-bit
+  - x64
 
 matrix:
   fast_finish: true
