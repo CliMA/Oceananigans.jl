@@ -1,16 +1,13 @@
 environment:
+  julia_version: 1.5
   matrix:
-  - julia_version: 1.4
-  - julia_version: nightly
+  - test_group: unit
+  - test_group: integration
+  - test_group: regression
+  - test_group: scripts
 
 platform:
-  - x64 # 64-bit
-
-# Uncomment the following lines to allow failures on nightly julia
-# (tests will run but not make your overall status red)
-matrix:
-  allow_failures:
-  - julia_version: nightly
+  - x64
 
 branches:
   only:
