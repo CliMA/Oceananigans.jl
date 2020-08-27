@@ -60,4 +60,3 @@ fig, axs = subplots()
 ConvergenceTests.OneDimensionalUtils.plot_error_convergence!(axs, Nx, all_results, names)
 
 savefig("figs/gaussian_advection_diffusion_error_convergence.png", dpi=480)
-

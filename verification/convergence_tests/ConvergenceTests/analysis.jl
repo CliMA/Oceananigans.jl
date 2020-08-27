@@ -51,7 +51,7 @@ function compute_error(analytical_solution, filename::String; kwargs...)
     return compute_error(u_simulation, u_analytical)
 end
 
-compute_errors(analytical_solution, filenames::String...; kwargs...) = 
+compute_errors(analytical_solution, filenames::String...; kwargs...) =
     [compute_error(analytical_solution, filename; kwargs...) for filename in filenames]
 
 extract_sizes(filenames...) = [size(RegularCartesianGrid(filename)) for filename in filenames]

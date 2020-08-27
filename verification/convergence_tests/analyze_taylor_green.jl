@@ -9,7 +9,7 @@ include("ConvergenceTests/ConvergenceTests.jl")
 filenames = glob("data/taylor_green*.jld2")
 
 errors = ConvergenceTests.compute_errors(
-            (x, y, z, t) -> ConvergenceTests.DoublyPeriodicTaylorGreen.u(x, y, t), 
+            (x, y, z, t) -> ConvergenceTests.DoublyPeriodicTaylorGreen.u(x, y, t),
             filenames...)
 
 sizes = ConvergenceTests.extract_sizes(filenames...)

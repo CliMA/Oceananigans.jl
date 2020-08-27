@@ -72,4 +72,3 @@ ax.set_yscale("log")
 xticks(sort(Nx), ["\$ 2^{$(round(Int, log2(n)))} \$" for n in sort(Nx)])
 
 savefig("figs/forced_fixed_slip_convergence.png", dpi=480)
-

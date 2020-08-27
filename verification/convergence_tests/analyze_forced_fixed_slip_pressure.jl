@@ -16,7 +16,7 @@ filenameses = [
                glob("data/forced_fixed_slip_xy*Δt6.0e-06.jld2"),
                glob("data/forced_fixed_slip_xy*Δt6.0e-07.jld2"),
                glob("data/forced_fixed_slip_xy*Δt6.0e-08.jld2"),
-              ]  
+              ]
 
 Δt = [
       6.0e-06,
@@ -84,5 +84,3 @@ title("Convergence for forced fixed slip")
 xticks(sort(Nx), ["\$ 2^{$(round(Int, log2(n)))} \$" for n in sort(Nx)])
 
 savefig("figs/forced_fixed_slip_convergence.png", dpi=480)
-
-

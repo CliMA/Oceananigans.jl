@@ -3,7 +3,7 @@
 push!(LOAD_PATH, "../../")
 
 # This module implements a few simple convergence tests for verifying
-# the expected numerical behavior of the spatial discretization 
+# the expected numerical behavior of the spatial discretization
 # and time-stepping.
 module ConvergenceTests
 

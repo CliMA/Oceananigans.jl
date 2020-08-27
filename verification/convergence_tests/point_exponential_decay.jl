@@ -20,7 +20,7 @@ function run_convergence_test(stop_time, proposal_Δt...)
                  Δt = [stop_time / stop_iter for stop_iter in stop_iterations]
 
     # Run the tests
-    results = [run_single_test(Δt=dt, stop_iteration=stop_iter) 
+    results = [run_single_test(Δt=dt, stop_iteration=stop_iter)
                for (dt, stop_iter) in zip(Δt, stop_iterations)]
 
     return results, Δt

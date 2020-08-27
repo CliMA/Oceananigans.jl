@@ -21,7 +21,7 @@ p(x, y, t) = p1(y) * ξ′(t) * cos(x - ξ(t)) + (p2a(y) + p2b(y)) * sin(x - ξ(
 
 filename = "data/forced_fixed_slip_xy_Nx128_Δt6.0e-06.jld2"
 
-RegularCartesianGrid = ConvergenceTests.RegularCartesianGrid 
+RegularCartesianGrid = ConvergenceTests.RegularCartesianGrid
 grid = RegularCartesianGrid(filename)
 
 u_sim, u_ana = ConvergenceTests.extract_two_solutions((x, y, z, t) -> u(x, y, t), filename; name=:u)
