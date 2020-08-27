@@ -11,5 +11,3 @@ coverage:
         target: auto
         threshold: 50
         base: auto
-
-comment: off
