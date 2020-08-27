@@ -8,7 +8,7 @@ julia:1.4:unit:
     - .julia:1.4
     - .test
   variables:
-    - TEST_GROUP: 'unit'
+    TEST_GROUP: 'unit'
   tags:
     - nvidia
 
@@ -17,7 +17,7 @@ julia:1.4:integration:
     - .julia:1.4
     - .test
   variables:
-    - TEST_GROUP: 'integration'
+    TEST_GROUP: 'integration'
   tags:
     - nvidia
 
@@ -26,7 +26,7 @@ julia:1.4:regression:
     - .julia:1.4
     - .test
   variables:
-    - TEST_GROUP: 'regression'
+    TEST_GROUP: 'regression'
   tags:
     - nvidia
 
@@ -35,7 +35,7 @@ julia:1.4:scripts:
     - .julia:1.4
     - .test
   variables:
-    - TEST_GROUP: 'scripts'
+    TEST_GROUP: 'scripts'
   tags:
     - nvidia
 
@@ -44,7 +44,7 @@ julia:nightly:unit:
     - .julia:nightly
     - .test
   variables:
-    - TEST_GROUP: 'unit'
+    TEST_GROUP: 'unit'
   tags:
     - nvidia
   allow_failure: true
@@ -54,7 +54,7 @@ julia:nightly:integration:
     - .julia:nightly
     - .test
   variables:
-    - TEST_GROUP: 'integration'
+    TEST_GROUP: 'integration'
   tags:
     - nvidia
   allow_failure: true
@@ -64,7 +64,7 @@ julia:nightly:regression:
     - .julia:nightly
     - .test
   variables:
-    - TEST_GROUP: 'regression'
+    TEST_GROUP: 'regression'
   tags:
     - nvidia
   allow_failure: true
@@ -74,7 +74,7 @@ julia:nightly:scripts:
     - .julia:nightly
     - .test
   variables:
-    - TEST_GROUP: 'scripts'
+    TEST_GROUP: 'scripts'
   tags:
     - nvidia
   allow_failure: true
