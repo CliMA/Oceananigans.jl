@@ -2,6 +2,10 @@ environment:
   matrix:
   - julia_version: 1.4
   - julia_version: nightly
+  - TEST_GROUP: unit
+  - TEST_GROUP: integration
+  - TEST_GROUP: regression
+  - TEST_GROUP: scripts
 
 platform:
   - x64
@@ -10,13 +14,6 @@ matrix:
   fast_finish: true
   allow_failures:
   - julia_version: nightly
-
-environment:
-  matrix:
-    - TEST_GROUP: unit
-    - TEST_GROUP: integration
-    - TEST_GROUP: regression
-    - TEST_GROUP: scripts
 
 branches:
   only:
