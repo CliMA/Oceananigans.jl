@@ -39,46 +39,6 @@ julia:1.4:scripts:
   tags:
     - nvidia
 
-julia:nightly:unit:
-  extends:
-    - .julia:nightly
-    - .test
-  variables:
-    TEST_GROUP: 'unit'
-  tags:
-    - nvidia
-  allow_failure: true
-
-julia:nightly:integration:
-  extends:
-    - .julia:nightly
-    - .test
-  variables:
-    TEST_GROUP: 'integration'
-  tags:
-    - nvidia
-  allow_failure: true
-
-julia:nightly:regression:
-  extends:
-    - .julia:nightly
-    - .test
-  variables:
-    TEST_GROUP: 'regression'
-  tags:
-    - nvidia
-  allow_failure: true
-
-julia:nightly:scripts:
-  extends:
-    - .julia:nightly
-    - .test
-  variables:
-    TEST_GROUP: 'scripts'
-  tags:
-    - nvidia
-  allow_failure: true
-
 coverage:
   extends:
     - .julia:1.4
