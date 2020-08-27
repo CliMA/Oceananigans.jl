@@ -10,6 +10,10 @@ julia:
 env:
   global:
     - PYTHON=''
+  - TEST_GROUP=unit
+  - TEST_GROUP=integration
+  - TEST_GROUP=regression
+  - TEST_GROUP=scripts
 
 notifications:
   email: true
