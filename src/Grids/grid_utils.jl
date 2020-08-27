@@ -94,11 +94,13 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 @inline zF(k, grid) = znode(Face, k, grid)
 
 """
-    xnodes(loc, grid)
+    xnodes(loc, grid, reshape=false)
 
 Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the x-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
+`Face` nodes include the boundary points. `reshape=false` will
+return a 1D array while `reshape=true` will return a 3D array
+with size Nx×1×1.
 
 See `znodes` for examples.
 """
@@ -107,11 +109,14 @@ xnodes(::Type{Cell}, grid; reshape=false) =
               view(grid.xC, 1:grid.Nx)
 
 """
-    ynodes(loc, grid)
+    ynodes(loc, grid, reshape=false)
 
 Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the y-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
+`Face` nodes include the boundary points. `reshape=false` will
+return a 1D array while `reshape=true` will return a 3D array
+with size 1×Ny×1.
+
 
 See `znodes` for examples.
 """
@@ -120,11 +125,14 @@ ynodes(::Type{Cell}, grid; reshape=false) =
               view(grid.yC, 1:grid.Ny)
 
 """
-    znodes(loc, grid)
+    znodes(loc, grid, reshape=false)
 
 Returns a view over the interior `loc=Cell` or `loc=Face` nodes
 on `grid` in the z-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
+`Face` nodes include the boundary points. `reshape=false` will
+return a 1D array while `reshape=true` will return a 3D array
+with size 1×1×Nz.
+
 
 Examples
 ========
