@@ -133,6 +133,14 @@ Pages   = [
 ]
 ```
 
+## Logger
+
+```@autodocs
+Modules = [Oceananigans.Logger]
+Private = false
+Pages   = ["Logger.jl"]
+```
+
 ## Models
 
 ```@autodocs

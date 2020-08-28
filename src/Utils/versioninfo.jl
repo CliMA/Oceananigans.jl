@@ -6,7 +6,7 @@ using Oceananigans.Architectures
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
     @hascuda begin
-        gpu_name = CUDA.context() |> CUDA.device |> CUDA.name
+        gpu_name = CUDA.device() |> CUDA.name
         s = s * "  GPU: $gpu_name\n"
     end
     return s
@@ -21,7 +21,7 @@ function oceananigans_versioninfo()
         uuid = project.dependencies["Oceananigans"]
         pkg_info = Pkg.dependencies()[uuid]
         s = "Oceananigans v$(pkg_info.version)"
-        s *= isnothing(pkg_info.git_revision) ? "" : " #$(pkg_info.git_revision)"
+        s *= isnothing(pkg_info.git_revision) ? "" : "#$(pkg_info.git_revision)"
         return s
     end
 
@@ -34,5 +34,5 @@ function oceananigans_versioninfo()
 
     @warn "Could not determine Oceananigans version info."
 
-    return nothing
+    return ""
 end
