@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Logging
-    ModelLogger, Diagnostic, Setup,
+    OceananigansLogger,
 
     # Grids
     Periodic, Bounded, Flat,
@@ -157,13 +157,21 @@ using .TimeSteppers
 using .Simulations
 
 function __init__()
-    Logging.global_logger(ModelLogger())
+    Logging.global_logger(OceananigansLogger())
+
+    threads = Threads.nthreads()
+    if threads > 1
+        @info "Oceananigans will use $threads threads"
+        FFTW.set_num_threads(threads)
+    end
+
     @hascuda begin
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
             @debug "$dev: $(CUDA.name(dev))"
         end
-	CUDA.allowscalar(false)
+
+        CUDA.allowscalar(false)
     end
 end
 

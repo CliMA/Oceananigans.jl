@@ -88,7 +88,7 @@ function solve_poisson_equation!(solver::PressureSolver{TriplyPeriodic, GPU}, gr
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
     # and so the DC component comes out to be ∞.
-    ϕ[1, 1, 1] = 0
+    CUDA.@allowscalar ϕ[1, 1, 1] = 0
 
     solver.transforms.IFFTxyz! * ϕ  # Calculate IFFTˣʸᶻ(ϕ̂) in place.
 
