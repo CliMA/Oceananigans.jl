@@ -57,7 +57,7 @@ end
 
 function time_to_run(clock, wta::WindowedTimeAverage)
     if (wta.collecting || 
-        clock.time > wta.previous_interval_stop_time + wta.time_interval - wta.time_window)
+        clock.time >= wta.previous_interval_stop_time + wta.time_interval - wta.time_window)
 
         return true
     else
