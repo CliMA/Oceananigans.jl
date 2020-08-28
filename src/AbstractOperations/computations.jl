@@ -2,6 +2,7 @@ using KernelAbstractions
 using Oceananigans.Utils: work_layout
 
 import Oceananigans.Fields: location, total_size
+using Oceananigans.Diagnostics: dims_to_result_size
 
 """
     Computation{T, R, O, G}
@@ -98,8 +99,36 @@ Returns the representation of an `Average` over the operation `op`, using
 Average(op::AbstractOperation, model::AbstractModel; dims, kwargs...) =
     Average(op, model.pressures.pHY′; dims=dims, kwargs...)
 
-Average(::AbstractOperation; dims, kwargs...) =
-    error("Creation of a result array is not implemented yet. You must pass a result array or a model.")
+"""
+    Average(field::Computation; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+
+Construct an `Average` of `field` along the dimensions specified by the tuple `dims`.
+
+After the average is computed it will be stored in the `result` property.
+
+The `Average` can be used as a callable object that computes and returns the average.
+
+An `iteration_interval` or `time_interval` (or both) can be passed to indicate how often to
+run this diagnostic if it is part of `simulation.diagnostics`. `iteration_interval` is a
+number of iterations while `time_interval` is a time interval in units of `model.clock.time`.
+
+A `return_type` can be used to specify the type returned when the `Average` is
+used as a callable object. The default `return_type=Array` is useful when running a GPU
+model and you want to save the output to disk by passing it to an output writer.
+"""
+function Average(field::Computation; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+    dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
+    dims isa Int && (dims = tuple(dims))
+
+    length(dims) == 0 && error("dims is empty! Must average over at least one dimension.")
+    length(dims) > 3  && error("Models are 3-dimensional. Cannot average over 4+ dimensions.")
+    all(1 <= d <= 3 for d in dims) || error("Dimensions must be one of 1, 2, 3.")
+
+    arch = architecture(field)
+    result_size = dims_to_result_size(field, dims, field.grid)
+    result = zeros(arch, field.grid, result_size...)
+    return Average(field, dims, result, iteration_interval, time_interval, 0.0, return_type)
+end
 
 """Compute the average of a computation."""
 function run_diagnostic(model, avg::Average{<:Computation})
