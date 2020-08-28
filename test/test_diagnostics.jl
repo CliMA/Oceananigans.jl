@@ -157,6 +157,19 @@ function instantiate_windowed_time_average(arch, FT)
     return true
 end
 
+function time_step_with_windowed_time_average(arch, FT)
+    model = TestModel(arch, FT)
+
+    simple_kernel = model.velocities.u
+    wta = WindowedTimeAverage(simple_kernel, time_window=2.0, time_interval=4.0, float_type=FT)
+
+    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
+    simulation.diagnostics[:u_avg] = wta
+    run!(simulation)
+
+    return all(wta(model) .== parent(model.velocities.u))
+end
+
 @testset "Diagnostics" begin
     @info "Testing diagnostics..."
 
@@ -212,6 +225,7 @@ end
             @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
             for FT in float_types
                 @test instantiate_windowed_time_average(arch, FT)
+                @test time_step_with_windowed_time_average(arch, FT)
             end
         end
     end
