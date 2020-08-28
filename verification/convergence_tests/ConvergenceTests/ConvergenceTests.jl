@@ -7,6 +7,7 @@ module ConvergenceTests
 
 using Printf
 using Statistics
+using Logging
 
 using JLD2
 using OffsetArrays
@@ -71,5 +72,9 @@ include("DoublyPeriodicTaylorGreen.jl")
 include("ForcedFlowFreeSlip.jl")
 
 include("ForcedFlowFixedSlip.jl")
+
+function __init__()
+    Logging.global_logger(OceananigansLogger())
+end
 
 end

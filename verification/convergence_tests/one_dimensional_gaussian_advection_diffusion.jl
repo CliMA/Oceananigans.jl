@@ -1,12 +1,12 @@
-# # "Gaussian advection-diffusion" Spatial resolution convergence test
+# "Gaussian advection-diffusion" Spatial resolution convergence test
 
 using PyPlot
 
 # Define a few utilities for running tests and unpacking and plotting results
+include("ConvergenceTests/ConvergenceTests.jl")
 
-include("ConvergenceTests/ConvergenceTests.jl") # we use the GaussianAdvectionDiffusion module here.
-
-run_test = ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion.run_test
+using .ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
+using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!
 
 """ Run advection-diffusion test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions...)
@@ -50,13 +50,15 @@ close("all")
 
 fig, axs = subplots(nrows=2, figsize=(12, 6), sharex=true)
 
-ConvergenceTests.OneDimensionalUtils.plot_solutions!(axs, all_results, names, linestyles, specialcolors)
+legends = ConvergenceTests.OneDimensionalUtils.plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 
-savefig("figs/gaussian_advection_diffusion_solutions.png", dpi=480)
+savefig("figs/gaussian_advection_diffusion_solutions.png", dpi=480,
+        bbox_extra_artists=legends, bbox_inches="tight")
 
 # Error profile
 fig, axs = subplots()
 
-ConvergenceTests.OneDimensionalUtils.plot_error_convergence!(axs, Nx, all_results, names)
+legend = ConvergenceTests.OneDimensionalUtils.plot_error_convergence!(axs, Nx, all_results, names)
 
-savefig("figs/gaussian_advection_diffusion_error_convergence.png", dpi=480)
+savefig("figs/gaussian_advection_diffusion_error_convergence.png", dpi=480,
+        bbox_extra_artists=(legend,), bbox_inches="tight")

@@ -2,25 +2,27 @@
 
 using PyPlot
 
-# Define a few utilities for running tests and unpacking and plotting results
+using Oceananigans
 
-include("ConvergenceTests/ConvergenceTests.jl") # we use the GaussianAdvectionDiffusion module here.
+# Define a few utilities for running tests and unpacking and plotting results
+include("ConvergenceTests/ConvergenceTests.jl")
+
+using .ConvergenceTests
+using .ConvergenceTests.PointExponentialDecay: run_test
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-run_single_test = ConvergenceTests.PointExponentialDecay.run_test
-
 """ Run advection-diffusion test for all Nx in resolutions. """
-function run_convergence_test(stop_time, proposal_Δt...)
+function run_convergence_test(stop_time, proposal_Δt)
 
     # Adjust time-step
     stop_iterations = [round(Int, stop_time / dt) for dt in proposal_Δt]
                  Δt = [stop_time / stop_iter for stop_iter in stop_iterations]
 
     # Run the tests
-    results = [run_single_test(Δt=dt, stop_iteration=stop_iter)
+    results = [run_test(Δt=dt, stop_iteration=stop_iter)
                for (dt, stop_iter) in zip(Δt, stop_iterations)]
 
     return results, Δt
@@ -30,7 +32,7 @@ unpack_errors(results) = map(r -> r.L₁, results)
 
 stop_time = 3
 Δt = vcat(1 ./ collect(1000:-100:100), 1 ./ collect(90:-10:10), 1 ./ collect(9:-1:1))
-results, Δt = run_convergence_test(stop_time, Δt...)
+results, Δt = run_convergence_test(stop_time, Δt)
 L₁ = unpack_errors(results)
 
 fig, axs = subplots()

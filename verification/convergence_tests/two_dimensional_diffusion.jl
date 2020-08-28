@@ -4,12 +4,11 @@ using PyPlot
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests.TwoDimensionalDiffusion: run_and_analyze
+
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
-
-run = ConvergenceTests.TwoDimensionalDiffusion.run_simulation
-run_and_analyze = ConvergenceTests.TwoDimensionalDiffusion.run_and_analyze
 
 function convergence_test(Nx, Δt, stop_iteration, topo)
     results = [run_and_analyze(Nx=N, Δt=Δt, stop_iteration=stop_iteration, topo=topo,

@@ -2,11 +2,11 @@ using PyPlot, Glob
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests.ForcedFlowFreeSlip: u
+
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
-
-u = ConvergenceTests.ForcedFlowFreeSlip.u
 
 xy_filenames = glob("data/forced_free_slip_xy*.jld2")
 xz_filenames = glob("data/forced_free_slip_xz*.jld2")

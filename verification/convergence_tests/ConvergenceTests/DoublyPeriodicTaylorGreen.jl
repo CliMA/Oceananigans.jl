@@ -41,13 +41,7 @@ function setup_and_run(; setup...)
 
     simulation = setup_simulation(; setup...)
 
-    println("""
-            Running decaying Taylor-Green vortex simulation in x, y with
-
-                Nx = $(setup[:Nx])
-                Δt = $(setup[:Δt])
-
-            """)
+    @info "Running decaying Taylor-Green vortex simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
 
     @time run!(simulation)
     return nothing

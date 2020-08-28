@@ -2,8 +2,11 @@ module ForcedFlowFreeSlip
 
 using Printf
 
-using Oceananigans, Oceananigans.Forcing, Oceananigans.BoundaryConditions, Oceananigans.OutputWriters,
-        Oceananigans.Fields
+using Oceananigans
+using Oceananigans.Forcing
+using Oceananigans.BoundaryConditions
+using Oceananigans.OutputWriters
+using Oceananigans.Fields
 
 # Functions that define the forced flow problem
 
@@ -53,7 +56,7 @@ end
 
 function setup_and_run_xz(; setup...)
     simulation = setup_xz_simulation(; setup...)
-    println("Running free slip simulation in x, z with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
+    @info "Running free slip simulation in x, z with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
     return nothing
 end
@@ -92,7 +95,7 @@ end
 
 function setup_and_run_xy(; setup...)
     simulation = setup_xy_simulation(; setup...)
-    println("Running free slip simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
+    @info "Running free slip simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
     return nothing
 end

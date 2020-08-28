@@ -1,4 +1,6 @@
-using PyPlot, Glob, JLD2
+using PyPlot
+using Glob
+using JLD2
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
@@ -6,13 +8,15 @@ removespines(sides...) = [removespine(side) for side in sides]
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests: compute_errors, extract_sizes
+
 filenames = glob("data/taylor_green*.jld2")
 
-errors = ConvergenceTests.compute_errors(
+errors = compute_errors(
             (x, y, z, t) -> ConvergenceTests.DoublyPeriodicTaylorGreen.u(x, y, t),
             filenames...)
 
-sizes = ConvergenceTests.extract_sizes(filenames...)
+sizes = extract_sizes(filenames...)
 
 Nx = map(sz -> sz[1], sizes)
 L₁ = map(err -> err.L₁, errors)

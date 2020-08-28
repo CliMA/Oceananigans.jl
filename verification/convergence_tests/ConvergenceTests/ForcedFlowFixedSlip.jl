@@ -2,8 +2,11 @@ module ForcedFlowFixedSlip
 
 using Printf
 
-using Oceananigans, Oceananigans.Forcing, Oceananigans.BoundaryConditions, Oceananigans.OutputWriters,
-        Oceananigans.Fields
+using Oceananigans
+using Oceananigans.Forcing
+using Oceananigans.BoundaryConditions
+using Oceananigans.OutputWriters
+using Oceananigans.Fields
 
 # Functions that define the forced flow problem
 
@@ -67,6 +70,7 @@ end
 
 function setup_and_run_xy(args...; kwargs...)
     simulation = setup_xy_simulation(args...; kwargs...)
+    @info "Running fixed slip simulation in x, y with Nx = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end
@@ -111,6 +115,7 @@ end
 
 function setup_and_run_xz(args...; kwargs...)
     simulation = setup_xz_simulation(args...; kwargs...)
+    @info "Running fixed slip simulation in x, z with Nx = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end

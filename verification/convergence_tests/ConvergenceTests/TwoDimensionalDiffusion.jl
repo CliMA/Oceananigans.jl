@@ -1,9 +1,9 @@
 module TwoDimensionalDiffusion
 
-using Printf, Statistics
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.OutputWriters
-
+using Oceananigans
 using Oceananigans.Fields: nodes
 
 include("analysis.jl")
@@ -51,16 +51,9 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="da
     return simulation
 end
 
-function run_simulation(; setup...)
-    simulation = setup_simulation(; setup...)
-    println("Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
-    @time run!(simulation)
-    return nothing
-end
-
 function run_and_analyze(; setup...)
     simulation = setup_simulation(; setup...)
-    println("Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
+    @info "Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
 
     c_simulation = simulation.model.tracers.c

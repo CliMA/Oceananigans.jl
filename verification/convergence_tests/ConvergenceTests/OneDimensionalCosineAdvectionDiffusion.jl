@@ -1,8 +1,10 @@
 module OneDimensionalCosineAdvectionDiffusion
 
-using Printf, Statistics
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Grids
+using Oceananigans
+using Oceananigans.Grids
 
 include("analysis.jl")
 

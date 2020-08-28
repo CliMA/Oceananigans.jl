@@ -13,9 +13,10 @@
 
 module PointExponentialDecay
 
-using Printf, Statistics
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
 include("analysis.jl")
 
@@ -37,7 +38,7 @@ function run_test(; Δt, stop_iteration, architecture = CPU())
     set!(model, c=1)
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    println("Running Point exponential decay test for Δt = $Δt...")
+    @info "Running Point exponential decay test for Δt=$Δt, stop_iteration=$stop_iteration..."
     run!(simulation)
 
     # Calculate errors
