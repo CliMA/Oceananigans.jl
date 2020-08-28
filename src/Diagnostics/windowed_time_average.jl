@@ -128,8 +128,8 @@ function (wta::WindowedTimeAverage)(model=nothing)
 
     if wta.collecting 
 
-        warn("The windowed time average is currently being collected.
-             Converting intermediate result to a time average.")
+        @warn("The windowed time average is currently being collected.
+              Converting intermediate result to a time average.")
 
         return convert_result(wta) ./ (wta.previous_collection_time - wta.window_start_time)
     else
