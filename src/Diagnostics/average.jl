@@ -85,5 +85,10 @@ end
 function (avg::Average)(model)
     run_diagnostic(model, avg)
     N, H = size(model.grid), halo_size(model.grid)
-    return avg.return_type(avg.result)[(avg.with_halos ? Colon() : d in avg.dims ? Colon() : (1+H[d]:N[d]+H[d]) for d in 1:3)...]
+    result = avg.return_type(avg.result)
+    if avg.with_halos
+        return result
+    else
+        return result[(d in avg.dims ? Colon() : (1+H[d]:N[d]+H[d]) for d in 1:3)...]
+    end
 end
