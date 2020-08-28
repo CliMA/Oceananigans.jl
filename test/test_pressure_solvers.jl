@@ -20,9 +20,9 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
     Rw = CellField(FT, arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
-    interior(Ru) .= rand(Nx, Ny, Nz) |> ArrayType
-    interior(Rv) .= rand(Nx, Ny, Nz) |> ArrayType
-    interior(Rw) .= rand(Nx, Ny, Nz) |> ArrayType
+    set!(Ru, rand(Nx, Ny, Nz))
+    set!(Rv, rand(Nx, Ny, Nz))
+    set!(Rw, rand(Nx, Ny, Nz))
 
     # Adding (nothing, nothing) in case we need to dispatch on ::NFBC
     fill_halo_regions!(Ru, arch, nothing, nothing)
@@ -46,7 +46,7 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
     wait(device(arch), event)
     fill_halo_regions!(∇²ϕ, arch)
 
-    return interior(∇²ϕ) ≈ R
+    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
 
 #####
