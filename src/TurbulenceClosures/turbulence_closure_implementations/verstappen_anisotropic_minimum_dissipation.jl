@@ -24,7 +24,7 @@ Base.show(io::IO, closure::VAMD{FT}) where FT =
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
               "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
               "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
-              "             Background kinematic viscosity for momentum, ν: ", closure.ν, '\n')
+              "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
     VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
@@ -157,12 +157,12 @@ end
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, tracer_index, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, closure::AbstractAnisotropicMinimumDissipation,
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractAnisotropicMinimumDissipation,
                         c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     κₑ = diffusivities.κₑ[tracer_index]
@@ -174,38 +174,36 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
+    workgroup, worksize = work_layout(grid, :xyz)
+
+    barrier = Event(device(arch))
+
+    viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
+    diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
+
+    viscosity_event = viscosity_kernel!(K.νₑ, grid, closure, buoyancy, U, C, dependencies=barrier)
+
+    events = [viscosity_event]
 
     for (tracer_index, κₑ) in enumerate(K.κₑ)
         @inbounds c = C[tracer_index]
-        @launch(device(arch), config=launch_config(grid, :xyz),
-                calculate_tracer_diffusivity!(κₑ, grid, closure, c, Val(tracer_index), U))
+        event = diffusivity_kernel!(κₑ, grid, closure, c, Val(tracer_index), U, dependencies=barrier)
+        push!(events, event)
     end
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
-function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
-            end
-        end
-    end
-    return nothing
+@kernel function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+    i, j, k = @index(Global, NTuple)
+    @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
 end
 
-function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
-    @loop for k in (1:grid.Nz; (blockIdx().z - 1) * blockDim().z + threadIdx().z)
-        @loop for j in (1:grid.Ny; (blockIdx().y - 1) * blockDim().y + threadIdx().y)
-            @loop for i in (1:grid.Nx; (blockIdx().x - 1) * blockDim().x + threadIdx().x)
-                @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
-            end
-        end
-    end
-    return nothing
+@kernel function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
+    i, j, k = @index(Global, NTuple)
+    @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
 end
 
 #####

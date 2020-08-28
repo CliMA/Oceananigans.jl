@@ -6,13 +6,13 @@ export
     compute_w_from_continuity!,
     tendencies
 
-using GPUifyLoops: @launch, @loop, @unroll
+using CUDA
+using KernelAbstractions
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans: TimeStepper
 
-using Oceananigans.Architectures: @hascuda
-@hascuda using CUDAnative, CuArrays
-
+using Oceananigans.Architectures: @hascuda, device
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
@@ -52,9 +52,6 @@ end
 
 # Fallbacks
 TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
-
-"""Returns the arguments passed to boundary conditions functions."""
-@inline boundary_condition_function_arguments(model) = (model.clock, state(model))
 
 include("generic_time_stepping.jl")
 include("velocity_and_tracer_tendencies.jl")

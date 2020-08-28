@@ -30,7 +30,7 @@ function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
 
     field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
-    return getbc(bcs.z.top) == val && getbc(bcs.z.bottom) == -val
+    return bcs.z.top.condition == val && bcs.z.bottom.condition == -val
 end
 
 function test_z_boundary_condition_array(arch, FT, fldname)
@@ -75,7 +75,7 @@ function test_flux_budget(arch, FT, fldname)
 
     model_bcs = NamedTuple{(fldname,)}((field_bcs,))
 
-    closure = ConstantIsotropicDiffusivity(FT, ν=κ, κ=κ)
+    closure = IsotropicDiffusivity(FT, ν=κ, κ=κ)
     model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
                                 float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
 
@@ -155,17 +155,13 @@ end
     @testset "Boundary condition instatiation and time-stepping" begin
         Nx = Ny = 16
         for arch in archs
+	    ArrayType = array_type(arch)
             for FT in float_types
                 @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
 
                 for fld in (:u, :v, :T, :S)
                     for bctype in (Gradient, Flux, Value)
-
-                        arraybc = rand(FT, Nx, Ny)
-                        if arch == GPU()
-                            arraybc = CuArray(arraybc)
-                        end
-
+                        arraybc = rand(FT, Nx, Ny) |> ArrayType
                         for bc in (FT(0.6), arraybc, funbc, boundaryfunbc)
                             @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
                         end

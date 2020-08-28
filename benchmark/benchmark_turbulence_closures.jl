@@ -1,7 +1,8 @@
-using TimerOutputs, Printf
-
+using Printf
+using TimerOutputs
 using Oceananigans
 using Oceananigans.TurbulenceClosures
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 
@@ -14,12 +15,12 @@ const timer = TimerOutput()
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
 # Run benchmark across these parameters.
-            Ns = [(32, 32, 32), (128, 128, 128)]
+            Ns = [(32, 32, 32), (256, 256, 128)]
    float_types = [Float64]       # Float types to benchmark.
          archs = [CPU()]         # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
-      closures = [ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity, SmagorinskyLilly,
-	              VerstappenAnisotropicMinimumDissipation]
+      closures = [IsotropicDiffusivity, AnisotropicDiffusivity, SmagorinskyLilly,
+	          VerstappenAnisotropicMinimumDissipation]
 
 #####
 ##### Run benchmarks
@@ -43,6 +44,7 @@ end
 #####
 
 println()
-print_benchmark_info()
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 print_timer(timer, title="Turbulence closure benchmarks", sortby=:name)
 println()

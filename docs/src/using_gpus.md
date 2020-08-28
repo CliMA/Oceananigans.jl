@@ -3,7 +3,7 @@
 A big feature of Oceananigans is being able to run on graphical processing units (GPUs)
 for increased performance. Depending on your CPU and GPU combination, speedups of >150x
 are possible, for example on Google Cloud where running on GPUs is more cost-effective.
-See the [performance benchmarks](@ref) for more details.
+See the [performance benchmarks](@ref performance_benchmarks) for more details.
 
 See [Architecture](@ref) for instructions on setting up a model on a GPU.
 
@@ -11,7 +11,7 @@ Oceananigans does not yet support distributed parallelism (multi-CPU or multi-GP
 
 !!! tip "Running on GPUs"
     If you are having issues with running Oceananigans on a GPU or setting things up,
-    please [open an issue](https://github.com/climate-machine/Oceananigans.jl/issues/new)
+    please [open an issue](https://github.com/CLiMA/Oceananigans.jl/issues/new)
     and we'll do our best to help out!
 
 ## When to use a GPU
@@ -65,4 +65,4 @@ Once the CUDA Toolkit is installed, you might have to build Oceananigans again
 julia>]
 (v1.3) pkg> build Oceananigans
 ```
-The [Ocean wind mixing and convection](@ref) is a good example to test out on the GPU.
+The [ocean wind mixing and convection](@ref gpu_example) example is a good one to test out on the GPU.

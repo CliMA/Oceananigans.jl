@@ -1,12 +1,13 @@
 module Architectures
 
-import GPUifyLoops
-using CUDAapi: has_cuda
-
 export
     @hascuda,
     AbstractArchitecture, CPU, GPU,
     device, architecture, array_type
+
+using CUDA
+
+using KernelAbstractions
 
 """
     AbstractArchitecture
@@ -39,10 +40,8 @@ macro hascuda(expr)
     return has_cuda() ? :($(esc(expr))) : :(nothing)
 end
 
-device(::CPU) = GPUifyLoops.CPU()
-device(::GPU) = GPUifyLoops.CUDA()
-
-@hascuda using CuArrays
+device(::CPU) = KernelAbstractions.CPU()
+device(::GPU) = KernelAbstractions.CUDADevice()
 
          architecture(::Array)   = CPU()
 @hascuda architecture(::CuArray) = GPU()

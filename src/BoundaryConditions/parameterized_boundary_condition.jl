@@ -24,8 +24,6 @@ struct ParameterizedBoundaryConditionFunction{F, P} <: Function
     parameters :: P
 end
 
-@inline (bc::ParameterizedBoundaryConditionFunction)(args...) = bc.func(args..., bc.parameters)
-
 """
     ParameterizedBoundaryCondition(bctype, func, parameters)
 
@@ -35,3 +33,4 @@ with function `func` and `parameters`.
 ParameterizedBoundaryCondition(bctype, func, parameters) =
     BoundaryCondition(bctype, ParameterizedBoundaryConditionFunction(func, parameters))    
 
+@inline (bc::ParameterizedBoundaryConditionFunction)(args...) = bc.func(args..., bc.parameters)

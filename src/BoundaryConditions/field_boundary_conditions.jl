@@ -17,7 +17,7 @@ FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 DefaultBoundaryCondition(::Union{Type{Grids.Periodic}, Type{Flat}}, loc) = PeriodicBoundaryCondition()
 
 DefaultBoundaryCondition(::Type{Bounded}, ::Type{Cell}) = NoFluxBoundaryCondition()
-DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face}) = NoPenetrationBoundaryCondition()
+DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face}) = ImpenetrableBoundaryCondition()
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)

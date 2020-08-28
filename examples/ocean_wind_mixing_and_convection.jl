@@ -1,4 +1,4 @@
-# # Wind and convection-driven mixing in an ocean surface boundary layer
+# # [Wind and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
 #
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
@@ -108,7 +108,7 @@ nothing # hide
 ## Random noise damped at top and bottom
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
-## Temperature initial condition: a stable density tradient with random noise superposed.
+## Temperature initial condition: a stable density gradient with random noise superposed.
 T₀(x, y, z) = 20 + ∂T∂z * z + ∂T∂z * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
@@ -125,10 +125,11 @@ set!(model, u=u₀, w=u₀, T=T₀, S=35)
 
 ## Create a NamedTuple containing all the fields to be outputted.
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
+field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); time_interval=hour/4,
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 # ## Running the simulation
@@ -147,7 +148,7 @@ nothing # hide
 
 # Finally, we set up and run the the simulation.
 
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=10)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=10)
 simulation.output_writers[:fields] = field_writer
 
 anim = @animate for i in 1:100
@@ -171,8 +172,8 @@ anim = @animate for i in 1:100
 
     ## Plot the slices.
     w_plot = heatmap(xC, zF, w', xlabel="x (m)", ylabel="z (m)", color=:balance, clims=(-3e-2, 3e-2))
-    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20))
-    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline, clims=(34.99, 35.01))
+    T_plot = heatmap(xC, zC, T', xlabel="x (m)", ylabel="z (m)", color=:thermal, clims=(19.75, 20.0))
+    S_plot = heatmap(xC, zC, S', xlabel="x (m)", ylabel="z (m)", color=:haline,  clims=(34.99, 35.01))
 
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, layout=(1, 3), size=(1600, 400),

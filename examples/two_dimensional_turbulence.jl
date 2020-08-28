@@ -28,7 +28,7 @@ model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
     buoyancy = nothing,
      tracers = nothing,
-     closure = ConstantIsotropicDiffusivity(ν=1e-3, κ=1e-3)
+     closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3)
 )
 nothing # hide
 
@@ -79,7 +79,7 @@ anim = @animate for i=1:100
     compute!(vorticity_computation)
 
     x, y = xnodes(ω)[:], ynodes(ω)[:]
-    heatmap(x, y, interior(ω)[:, :, 1], xlabel="x", ylabel="y",
+    heatmap(x, y, interior(ω)[:, :, 1]', xlabel="x", ylabel="y",
             color=:balance, clims=(-0.1, 0.1))
 end
 

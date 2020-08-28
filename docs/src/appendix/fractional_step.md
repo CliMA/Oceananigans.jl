@@ -30,14 +30,14 @@ problem for the pressure $\phi^{n+1}$ with the boundary condition
   \bm{\hat{n}} \cdotp \nabla\phi^{n+1} |_{\partial\Omega} = 0
 ```
 
-\citet{Orszag86} and \citet{Brown01} raise an important issue regarding these fractional step methods, which is that
+[Orszag86](@cite) and [Brown01](@cite) raise an important issue regarding these fractional step methods, which is that
 "while the velocity can be reliably computed to second-order accuracy in time and space, the pressure is typically only
 first-order accurate in the $L_\infty$-norm." The numerical boundary conditions must be carefully accounted for to
 ensure the second-order accuracy promised by the fractional step methods.
 
 We are currently investigating whether our projection method is indeed second-order accurate in both velocity and
 pressure (see \S\ref{sec:forced-flow}). However, it may not matter too much for simulating high Reynolds number
-geophysical fluids as \citet{Brown01} conclude that "Quite often, semi-implicit projection methods are applied to
+geophysical fluids as [Brown01](@cite) conclude that "Quite often, semi-implicit projection methods are applied to
 problems in which the viscosity is small. Since the predicted first-order errors in the pressure are scaled by $\nu$,
 it is not clear whether the improved pressure-update formula is beneficial in such situations. ... Finally, in some
 applications of projection methods, second-order accuracy in the pressure may not be relevant or in some cases even

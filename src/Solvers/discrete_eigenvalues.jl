@@ -1,8 +1,8 @@
 using Oceananigans.Grids: unpack_grid
-using Oceananigans.BoundaryConditions: PBC, NFBC
+using Oceananigans.BoundaryConditions: PBC, ZFBC
 
 const PeriodicBC = PBC
-const NoFluxBC = NFBC
+const NoFluxBC = ZFBC
 
 function generate_discrete_eigenvalues(grid, pressure_bcs)
     kx² = λi(grid, pressure_bcs.x.left)
@@ -68,7 +68,7 @@ equation with periodic boundary conditions in the z-dimension on `grid`.
 function λk(grid, ::PeriodicBC)
     Nx, Ny, Nz, Lx, Ly, Lz = unpack_grid(grid)
     ks = reshape(1:Nz, 1, 1, Nz)
-    return @. (2sin((ks - 1) * π / 2Nz) / (Lz / Nz))^2
+    return @. (2sin((ks - 1) * π / Nz) / (Lz / Nz))^2
 end
 
 """

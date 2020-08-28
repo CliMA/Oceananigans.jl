@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: PBC, NFBC, NPBC
+using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC
 
 function instantiate_boundary_function(B, X1, X2, func)
     boundary_function = BoundaryFunction{B, X1, X2}(func)
@@ -49,82 +49,168 @@ end
     @testset "Field boundary conditions" begin
         @info "  Testing field boundary functions..."
 
-        ppb_topology = (Periodic, Periodic, Bounded)
-        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppb_topology)
+        # Triply periodic
+        ppp_topology = (Periodic, Periodic, Periodic)
+        ppp_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppp_topology)
 
-        u_bcs = UVelocityBoundaryConditions(ppb_grid)
+        u_bcs = UVelocityBoundaryConditions(ppp_grid)
+        v_bcs = VVelocityBoundaryConditions(ppp_grid)
+        w_bcs = WVelocityBoundaryConditions(ppp_grid)
+        T_bcs = TracerBoundaryConditions(ppp_grid)
+
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa PBC
         @test u_bcs.x.right isa PBC
         @test u_bcs.y.left  isa PBC
         @test u_bcs.y.right isa PBC
-        @test u_bcs.z.left  isa NFBC
-        @test u_bcs.z.right isa NFBC
+        @test u_bcs.z.left  isa PBC
+        @test u_bcs.z.right isa PBC
 
-        v_bcs = VVelocityBoundaryConditions(ppb_grid)
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.x.left  isa PBC
         @test v_bcs.x.right isa PBC
         @test v_bcs.y.left  isa PBC
         @test v_bcs.y.right isa PBC
-        @test v_bcs.z.left  isa NFBC
-        @test v_bcs.z.right isa NFBC
+        @test v_bcs.z.left  isa PBC
+        @test v_bcs.z.right isa PBC
 
-        w_bcs = WVelocityBoundaryConditions(ppb_grid)
         @test w_bcs isa FieldBoundaryConditions
         @test w_bcs.x.left  isa PBC
         @test w_bcs.x.right isa PBC
         @test w_bcs.y.left  isa PBC
         @test w_bcs.y.right isa PBC
-        @test w_bcs.z.left  isa NPBC
-        @test w_bcs.z.right isa NPBC
+        @test w_bcs.z.left  isa PBC
+        @test w_bcs.z.right isa PBC
 
-        Tbcs = TracerBoundaryConditions(ppb_grid)
-        @test Tbcs isa FieldBoundaryConditions
-        @test Tbcs.x.left  isa PBC
-        @test Tbcs.x.right isa PBC
-        @test Tbcs.y.left  isa PBC
-        @test Tbcs.y.right isa PBC
-        @test Tbcs.z.left  isa NFBC
-        @test Tbcs.z.right isa NFBC
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.x.left  isa PBC
+        @test T_bcs.x.right isa PBC
+        @test T_bcs.y.left  isa PBC
+        @test T_bcs.y.right isa PBC
+        @test T_bcs.z.left  isa PBC
+        @test T_bcs.z.right isa PBC
 
+        # Doubly periodic. Engineers call this a "Channel geometry".
+        ppb_topology = (Periodic, Periodic, Bounded)
+        ppb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=ppb_topology)
+
+        u_bcs = UVelocityBoundaryConditions(ppb_grid)
+        v_bcs = VVelocityBoundaryConditions(ppb_grid)
+        w_bcs = WVelocityBoundaryConditions(ppb_grid)
+        T_bcs = TracerBoundaryConditions(ppb_grid)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.x.left  isa PBC
+        @test u_bcs.x.right isa PBC
+        @test u_bcs.y.left  isa PBC
+        @test u_bcs.y.right isa PBC
+        @test u_bcs.z.left  isa ZFBC
+        @test u_bcs.z.right isa ZFBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.x.left  isa PBC
+        @test v_bcs.x.right isa PBC
+        @test v_bcs.y.left  isa PBC
+        @test v_bcs.y.right isa PBC
+        @test v_bcs.z.left  isa ZFBC
+        @test v_bcs.z.right isa ZFBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.x.left  isa PBC
+        @test w_bcs.x.right isa PBC
+        @test w_bcs.y.left  isa PBC
+        @test w_bcs.y.right isa PBC
+        @test w_bcs.z.left  isa NFBC
+        @test w_bcs.z.right isa NFBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.x.left  isa PBC
+        @test T_bcs.x.right isa PBC
+        @test T_bcs.y.left  isa PBC
+        @test T_bcs.y.right isa PBC
+        @test T_bcs.z.left  isa ZFBC
+        @test T_bcs.z.right isa ZFBC
+
+        # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
         pbb_topology = (Periodic, Bounded, Bounded)
         pbb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=pbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(pbb_grid)
+        v_bcs = VVelocityBoundaryConditions(pbb_grid)
+        w_bcs = WVelocityBoundaryConditions(pbb_grid)
+        T_bcs = TracerBoundaryConditions(pbb_grid)
+
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa PBC
         @test u_bcs.x.right isa PBC
-        @test u_bcs.y.left  isa NFBC
-        @test u_bcs.y.right isa NFBC
-        @test u_bcs.z.left  isa NFBC
-        @test u_bcs.z.right isa NFBC
+        @test u_bcs.y.left  isa ZFBC
+        @test u_bcs.y.right isa ZFBC
+        @test u_bcs.z.left  isa ZFBC
+        @test u_bcs.z.right isa ZFBC
 
-        v_bcs = VVelocityBoundaryConditions(pbb_grid)
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.x.left  isa PBC
         @test v_bcs.x.right isa PBC
-        @test v_bcs.y.left  isa NPBC
-        @test v_bcs.y.right isa NPBC
-        @test v_bcs.z.left  isa NFBC
-        @test v_bcs.z.right isa NFBC
+        @test v_bcs.y.left  isa NFBC
+        @test v_bcs.y.right isa NFBC
+        @test v_bcs.z.left  isa ZFBC
+        @test v_bcs.z.right isa ZFBC
 
-        w_bcs = WVelocityBoundaryConditions(pbb_grid)
         @test w_bcs isa FieldBoundaryConditions
         @test w_bcs.x.left  isa PBC
         @test w_bcs.x.right isa PBC
-        @test w_bcs.y.left  isa NFBC
-        @test w_bcs.y.right isa NFBC
-        @test w_bcs.z.left  isa NPBC
-        @test w_bcs.z.right isa NPBC
+        @test w_bcs.y.left  isa ZFBC
+        @test w_bcs.y.right isa ZFBC
+        @test w_bcs.z.left  isa NFBC
+        @test w_bcs.z.right isa NFBC
 
-        Tbcs = TracerBoundaryConditions(pbb_grid)
-        @test Tbcs isa FieldBoundaryConditions
-        @test Tbcs.x.left  isa PBC
-        @test Tbcs.x.right isa PBC
-        @test Tbcs.y.left  isa NFBC
-        @test Tbcs.y.right isa NFBC
-        @test Tbcs.z.left  isa NFBC
-        @test Tbcs.z.right isa NFBC
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.x.left  isa PBC
+        @test T_bcs.x.right isa PBC
+        @test T_bcs.y.left  isa ZFBC
+        @test T_bcs.y.right isa ZFBC
+        @test T_bcs.z.left  isa ZFBC
+        @test T_bcs.z.right isa ZFBC
+
+        # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
+        bbb_topology = (Bounded, Bounded, Bounded)
+        bbb_grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=bbb_topology)
+
+        u_bcs = UVelocityBoundaryConditions(bbb_grid)
+        v_bcs = VVelocityBoundaryConditions(bbb_grid)
+        w_bcs = WVelocityBoundaryConditions(bbb_grid)
+        T_bcs = TracerBoundaryConditions(bbb_grid)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.x.left  isa NFBC
+        @test u_bcs.x.right isa NFBC
+        @test u_bcs.y.left  isa ZFBC
+        @test u_bcs.y.right isa ZFBC
+        @test u_bcs.z.left  isa ZFBC
+        @test u_bcs.z.right isa ZFBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.x.left  isa ZFBC
+        @test v_bcs.x.right isa ZFBC
+        @test v_bcs.y.left  isa NFBC
+        @test v_bcs.y.right isa NFBC
+        @test v_bcs.z.left  isa ZFBC
+        @test v_bcs.z.right isa ZFBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.x.left  isa ZFBC
+        @test w_bcs.x.right isa ZFBC
+        @test w_bcs.y.left  isa ZFBC
+        @test w_bcs.y.right isa ZFBC
+        @test w_bcs.z.left  isa NFBC
+        @test w_bcs.z.right isa NFBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.x.left  isa ZFBC
+        @test T_bcs.x.right isa ZFBC
+        @test T_bcs.y.left  isa ZFBC
+        @test T_bcs.y.right isa ZFBC
+        @test T_bcs.z.left  isa ZFBC
+        @test T_bcs.z.right isa ZFBC
     end
 end

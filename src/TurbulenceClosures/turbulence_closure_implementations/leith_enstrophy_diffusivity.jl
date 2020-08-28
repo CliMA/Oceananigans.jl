@@ -194,12 +194,12 @@ Return `K₃₁ ∂x c + K₃₂ ∂y c + K₃₃ ∂z c` for a Leith diffusivit
 end
 
 """
-    ∇_κ_∇c(i, j, k, grid, c, closure, diffusivities)
+    ∇_κ_∇c(i, j, k, grid, clock, c, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, closure::AbstractLeith, c, tracer_index,
+@inline ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractLeith, c, tracer_index,
                diffusivities, C, buoyancy) = (
       ∂xᶜᵃᵃ(i, j, k, grid, K₁ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
     + ∂yᵃᶜᵃ(i, j, k, grid, K₂ⱼ_∂ⱼ_c, closure, c, tracer_index, diffusivities.νₑ, C, buoyancy)
@@ -207,8 +207,12 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 )
 
 function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyancy, U, C)
-    @launch(device(arch), config=launch_config(grid, :xyz),
-            calculate_nonlinear_viscosity!(K.νₑ, grid, closure, buoyancy, U, C))
+    event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
+                    dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
+
+    return nothing
 end
 
 "Return the filter width for a Leith Diffusivity on a Regular Cartesian grid."

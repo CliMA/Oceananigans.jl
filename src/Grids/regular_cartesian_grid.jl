@@ -48,13 +48,13 @@ Keyword arguments
                      The origin is the oceanic default `(0, 0, -Lz)`.
 
 - `x`, `y`, and `z`: Each of `x, y, z` are 2-tuples that specify the end points of the domain
-                     in their respect directions.  
+                     in their respect directions.
 
 *Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
 
-- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain. 
+- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
               `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
-              `Periodic`, `Bounded`, or `Flat`. In a `Flat` direction, derivatives are 
+              `Periodic`, `Bounded`, or `Flat`. In a `Flat` direction, derivatives are
               zero. The default is `(Periodic, Periodic, Bounded)`.
 
 - `halo`: A 3-tuple of integers that specifies the size of the halo region of cells surrounding
@@ -83,35 +83,41 @@ Grid properties
 
 - `(Δx, Δy, Δz)::FT`: Cell width in the (x, y, z)-direction
 
-- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers, reshaped for broadcasting.
+- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
 
-- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces, rehsaped for broadcasting.
+- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces.
 
 Examples
 ========
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> grid = RegularCartesianGrid(size=(32, 32, 32), extent=(1, 2, 3))
-RegularCartesianGrid{Float64}
-domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
-  resolution (Nx, Ny, Nz) = (32, 32, 32)
-   halo size (Hx, Hy, Hz) = (1, 1, 1)
-grid spacing (Δx, Δy, Δz) = (0.03125, 0.0625, 0.09375)
+RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (32, 32, 32)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
 ```
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> grid = RegularCartesianGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-RegularCartesianGrid{Float32}
-domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.141592653589793]
-  resolution (Nx, Ny, Nz) = (32, 32, 16)
-   halo size (Hx, Hy, Hz) = (1, 1, 1)
-grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
+RegularCartesianGrid{Float32, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (32, 32, 16)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
-function RegularCartesianGrid(FT=Float64; 
-                                  size, 
+function RegularCartesianGrid(FT=Float64;
+                                  size,
                                      x = nothing, y = nothing, z = nothing,
-                                extent = nothing, 
+                                extent = nothing,
                               topology = (Periodic, Periodic, Bounded),
                                   halo = (1, 1, 1),
                               )
@@ -127,15 +133,15 @@ function RegularCartesianGrid(FT=Float64;
                 X₁ = (x[1], y[1], z[1])
 
     # Face-node limits in x, y, z
-    xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ 
-    xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L) 
+    xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ
+    xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L)
 
     # Cell-node limits in x, y, z
     xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
     xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + Δ * (2H - 1)
 
     TFx, TFy, TFz = total_length.(Face, topology, N, H)
-    TCx, TCy, TCz = total_length.(Cell, topology, N, H) 
+    TCx, TCy, TCz = total_length.(Cell, topology, N, H)
 
     # Include halo points in coordinate arrays
     xF = range(xF₋, xF₊; length = TFx)
@@ -146,23 +152,14 @@ function RegularCartesianGrid(FT=Float64;
     yC = range(yC₋, yC₊; length = TCy)
     zC = range(zC₋, zC₊; length = TCz)
 
-    # Reshape coordinate arrays first...
-    xC = reshape(xC, TCx, 1, 1)
-    yC = reshape(yC, 1, TCy, 1)
-    zC = reshape(zC, 1, 1, TCz)
+    # Offset.
+    xC = OffsetArray(xC, -Hx)
+    yC = OffsetArray(yC, -Hy)
+    zC = OffsetArray(zC, -Hz)
 
-    xF = reshape(xF, TFx, 1, 1)
-    yF = reshape(yF, 1, TFy, 1)
-    zF = reshape(zF, 1, 1, TFz)
-
-    # Then offset.
-    xC = OffsetArray(xC, -Hx, 0, 0)
-    yC = OffsetArray(yC, 0, -Hy, 0)
-    zC = OffsetArray(zC, 0, 0, -Hz)
-
-    xF = OffsetArray(xF, -Hx, 0, 0)
-    yF = OffsetArray(yF, 0, -Hy, 0)
-    zF = OffsetArray(zF, 0, 0, -Hz)
+    xF = OffsetArray(xF, -Hx)
+    yF = OffsetArray(yF, -Hy)
+    zF = OffsetArray(zF, -Hz)
 
     return RegularCartesianGrid{FT, TX, TY, TZ, typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
@@ -175,10 +172,15 @@ show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
                            "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ",
                            "z ∈ [", grid.zF[1], ", ", grid.zF[end], "]")
 
-show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    xₗ, xᵣ = x_domain(g)
+    yₗ, yᵣ = y_domain(g)
+    zₗ, zᵣ = z_domain(g)
+
     print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
-              "                   domain: x ∈ [$(g.xF[1]), $(g.xF[end])], y ∈ [$(g.yF[1]), $(g.yF[end])], z ∈ [$(g.zF[1]), $(g.zF[end])]", '\n',
+              "                   domain: x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
+end

@@ -68,7 +68,7 @@ function run!(sim)
             [write_output(sim.model, out)    for out  in values(sim.output_writers)]
         end
 
-        for n in 1:sim.progress_frequency
+        for n in 1:sim.iteration_interval
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             time_step!(model, get_Δt(sim.Δt), euler=euler)
 
@@ -82,8 +82,6 @@ function run!(sim)
         time_after = time()
         sim.run_time += time_after - time_before
     end
-
-    [close(out) for out in values(sim.output_writers)]
 
     return nothing
 end

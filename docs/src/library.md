@@ -2,7 +2,22 @@
 
 Documenting the public user interface.
 
+## Advection
+
+```@autodocs
+Modules = [Oceananigans.Advection]
+Private = false
+Pages   = [
+    "Advection.jl",
+    "tracer_advection_operators.jl",
+    "momentum_advection_operators.jl",
+    "centered_second_order.jl",
+    "centered_fourth_order.jl"
+]
+```
+
 ## Architectures
+
 ```@autodocs
 Modules = [Oceananigans.Architectures]
 Private = false
@@ -10,6 +25,7 @@ Pages   = ["Architectures.jl"]
 ```
 
 ## Boundary conditions
+
 ```@autodocs
 Modules = [Oceananigans.BoundaryConditions]
 Private = false
@@ -19,22 +35,19 @@ Pages   = [
     "BoundaryConditions/boundary_condition.jl",
     "BoundaryConditions/coordinate_boundary_conditions.jl",
     "BoundaryConditions/field_boundary_conditions.jl",
-    "BoundaryConditions/solution_boundary_conditions.jl",
-    "BoundaryConditions/model_boundary_conditions.jl",
-    "BoundaryConditions/tracer_boundary_conditions.jl",
-    "BoundaryConditions/tendency_boundary_conditions.jl",
-    "BoundaryConditions/pressure_boundary_conditions.jl",
     "BoundaryConditions/boundary_function.jl",
+    "BoundaryConditions/parameterized_boundary_condition.jl",
     "BoundaryConditions/show_boundary_conditions.jl",
     "BoundaryConditions/zero_halo_regions.jl",
     "BoundaryConditions/fill_halo_regions.jl",
     "BoundaryConditions/apply_flux_bcs.jl",
     "BoundaryConditions/apply_value_gradient_bcs.jl",
-    "BoundaryConditions/apply_flux_periodic_no_penetration_bcs.jl"
+    "BoundaryConditions/apply_normal_flow_bcs.jl"
 ]
 ```
 
 ## Buoyancy
+
 ```@autodocs
 Modules = [Oceananigans.Buoyancy]
 Private = false
@@ -52,6 +65,7 @@ Pages   = [
 ```
 
 ## Coriolis
+
 ```@autodocs
 Modules = [Oceananigans.Coriolis]
 Private = false
@@ -64,14 +78,15 @@ Pages   = [
 ```
 
 ## Diagnostics
+
 ```@autodocs
 Modules = [Oceananigans.Diagnostics]
 Private = false
 Pages   = [
     "Diagnostics/Diagnostics.jl",
     "Diagnostics/diagnostics_kernels.jl",
-    "Diagnostics/horizontal_average.jl",
-    "Diagnostics/timeseries.jl",
+    "Diagnostics/average.jl",
+    "Diagnostics/time_series.jl",
     "Diagnostics/cfl.jl",
     "Diagnostics/field_maximum.jl",
     "Diagnostics/nan_checker.jl"
@@ -79,6 +94,7 @@ Pages   = [
 ```
 
 ## Fields
+
 ```@autodocs
 Modules = [Oceananigans.Fields]
 Private = false
@@ -92,17 +108,21 @@ Pages   = [
 ```
 
 ## Forcing
+
 ```@autodocs
 Modules = [Oceananigans.Forcing]
 Private = false
 Pages   = [
     "Forcing/Forcing.jl",
     "Forcing/simple_forcing.jl",
-    "Forcing/model_forcing.jl"
+    "Forcing/model_forcing.jl",
+    "Forcing/parameterized_forcing.jl",
+    "Forcing/relaxation.jl"
 ]
 ```
 
 ## Grids
+
 ```@autodocs
 Modules = [Oceananigans.Grids]
 Private = false
@@ -113,22 +133,30 @@ Pages   = [
 ]
 ```
 
+## Logger
+
+```@autodocs
+Modules = [Oceananigans.Logger]
+Private = false
+Pages   = ["Logger.jl"]
+```
+
 ## Models
+
 ```@autodocs
 Modules = [Oceananigans.Models]
 Private = false
 Pages   = [
     "Models/Models.jl",
     "Models/clock.jl",
-    "Models/model.jl",
-    "Models/channel_model.jl",
+    "Models/incompressible_model.jl",
     "Models/non_dimensional_model.jl",
-    "Models/show_models.jl",
-    "Models/model_utils.jl"
+    "Models/show_models.jl"
 ]
 ```
 
 ## Output writers
+
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
@@ -142,6 +170,7 @@ Pages   = [
 ```
 
 ## Time steppers
+
 ```@autodocs
 Modules = [Oceananigans.TimeSteppers]
 Private = false
@@ -153,13 +182,20 @@ Pages   = [
 ```
 
 ## Simulations
+
 ```@autodocs
 Modules = [Oceananigans.Simulations]
 Private = false
-Pages   = ["Simulations.jl"]
+Pages   = [
+    "Simulations/Simulations.jl",
+    "Simulations/time_step_wizard.jl",
+    "Simulations/simulation.jl",
+    "Simulations/run.jl"
+]
 ```
 
 ## Tubrulence closures
+
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]
 Private = false
@@ -174,16 +210,17 @@ Pages   = [
     "TurbulenceClosures/turbulence_closure_diagnostics.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/smagorinsky_lilly.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/constant_isotropic_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/isotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl",
     "TurbulenceClosures/turbulence_closure_implementations/blasius_smagorinsky.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/constant_anisotropic_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/anisotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl",
     "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl"
 ]
 ```
 
 ## Utilities
+
 ```@autodocs
 Modules = [Oceananigans.Utils]
 Private = false
@@ -205,6 +242,7 @@ Pages   = [
 ```
 
 ## Abstract operations
+
 ```@autodocs
 Modules = [Oceananigans, Oceananigans.AbstractOperations]
 Private = false

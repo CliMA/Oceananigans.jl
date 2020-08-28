@@ -1,225 +1,326 @@
 # # Langmuir turbulence example
 #
 # This example implements the Langmuir turbulence simulation reported in section
-# 4 of McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of
-# Fluid Mechanics (1997). This example demonstrates:
+# 4 of
 #
-#   * how to run a simulation with surface wave effects via the Craik-Leibovich
-#     approximation
+# [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38).
 #
-# In addition to `Oceananigans.jl` we need `PyPlot` for plotting, `Random` for
-# generating random initial conditions, and `Printf` for printing progress messages.
+# This example demonstrates:
+#
+#   * how to run large eddy simulations with surface wave effects
+#     via the Craik-Leibovich approximation
 
-using Oceananigans, Oceananigans.Diagnostics, Oceananigans.OutputWriters, Random, Printf
-using Oceananigans: g_Earth
-using Oceananigans.SurfaceWaves: UniformStokesDrift
+using Oceananigans
 
-# ## Model parameters
+# ## Model set-up
 #
-# Here we use an anisotropic grid with `Nh` horizontal grid points, `Nz` vertical
-# grid points, `Δh` horizontal grid spacing, and `Δz` vertical grid spacing.
-# We specify fluxes of buouyancy and momentum that match the specifications in
-# McWilliams and Sullivan (1997) via
+# To build the model, we specify the grid, Stokes drift, boundary conditions, and
+# Coriolis parameter.
 #
-#   1. A buoyancy flux `Qᵇ` at the top of the domain.
+# ### Domain specification and Grid construction
 #
-#   2. A velocity flux `Qᵘ` at the top of the domain, which is related
-#       to the `x` momentum flux `τˣ` via `τˣ = ρ₀ * Qᵘ`, where `ρ₀` is a reference density.
-#
-# We also choose the wavenumber and amplitude of the surface wave field, and use an
-# initial buoyancy gradient of `N² = 1.936e-5`.
+# We create a grid with modest resolution. The grid extent is similar, but not
+# exactly the same as that in McWilliams et al. (1997).
 
-      Nh = 32       # Number of grid points in x, y, z
-      Nz = 48       # Number of grid points in x, y, z
-      Δh = 4.0      # [m] Grid spacing in x, y, z (meters)
-      Δz = 2.0      # [m] Grid spacing in x, y, z (meters)
-      Qᵘ = -3.72e-5 # [m² s⁻²] Velocity flux / stress at surface
-      Qᵇ = 2.307e-9 # [m³ s⁻²] Buoyancy flux at surface
-      N² = 1.936e-5 # [s⁻²] Initial buoyancy gradient
-       f = 1e-4     # [s⁻¹] Coriolis parameter
-end_time = 2hour    # [s] End time for the simulation
+using Oceananigans.Grids
 
-# Surface wave stokes drift profile:
+grid = RegularCartesianGrid(size=(32, 32, 48), extent=(128, 128, 96))
+
+# ### The Stokes Drift profile
 #
-# $ uˢ(z) = Uˢ exp(2kˢʷ z) $
-#
+# The surface wave Stokes drift profile used in McWilliams et al. (1997)
+# corresponds to a 'monochromatic' (that is, single-frequency) wave field with
+
+const wavenumber = 2π / 60 # m⁻¹
+nothing # hide
+
 # and
+
+const amplitude = 0.8 # m
+nothing # hide
+
+# The `const` declarations ensure that Stokes drift functions compile on the GPU.
+# To run this example on the GPU, write `architecture = GPU()` in the constructor
+# for `IncompressibleModel` below.
 #
-# $ ∂_z uˢ(z) = 2 kˢʷ Uˢ exp(2kˢʷ z) $
+# The Stokes drift at the surface for a monochromatic, deep water wave is
+
+using Oceananigans.Buoyancy: g_Earth
+
+const Uˢ = amplitude^2 * wavenumber * sqrt(g_Earth * wavenumber) # m s⁻¹
+
+# The Stokes drift profile is then,
+
+uˢ(z) = Uˢ * exp(2wavenumber * z)
+nothing # hide
+
+# which we need for the initial condition.
 #
-# Notes:
+# Note that `Oceananigans.jl` implements the Lagrangian-mean form of the Craik-Leibovich
+# equations. This means that our model takes the *vertical derivative* as an input,
+# rather than the Stokes drift profile itself.
 #
-#  * We use `const`s so Stokes drift functions compile on GPU.
+# The vertical derivative of the Stokes drift is
+
+∂z_uˢ(z, t) = 2wavenumber * Uˢ * exp(2wavenumber * z)
+nothing # hide
+
+# Finally, we note that the time-derivative of the Stokes drift must be provided
+# if the Stokes drift changes in time. In this example, the Stokes drift is constant
+# and thus the time-derivative of the Stokes drift is 0.
+
+# ### Boundary conditions
 #
-#  * The `Oceananigans.jl` implementation of Craik-Leibovich uses the Lagrangian-mean
-#    formulation, which means that the vertical derivative or 'Stokes shear' is specified.
-#    If the surface wave field Stokes drift changes in time, the time-derivative of the
-#    Stokes drift profile must be provided as well.
+# At the surface at $z=0$, McWilliams et al. (1997) impose wind stress,
 
-const kˢʷ = 0.105    # [m⁻¹] Surface wave wavenumber
-const aˢʷ = 0.8      # [m] Surface wave amplitude
-const Uˢ = aˢʷ^2 * kˢʷ * sqrt(g_Earth * kˢʷ)
+Qᵘ = -3.72e-5 # m² s⁻²
+nothing # hide
 
-## Oceananigans
-∂z_uˢ(z, t) = 2kˢʷ * Uˢ * exp(2kˢʷ * z)
+# and weak cooling with buoyancy flux
 
-# We use the Stokes drift profile for the initial condition
-uˢ(z) = Uˢ * exp(2kˢʷ * z)
+Qᵇ = 2.307e-9 # m³ s⁻²
+nothing # hide
 
-# ## Boundary conditions
+# Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
+# a negative flux at the surface drives positive velocities, and a positive flux of
+# buoyancy drives cooling.
 #
-# Here we define `Flux` boundary conditions at the surface for `u`, `T`, and `S`,
-# and a `Gradient` boundary condition on `T` that maintains a constant stratification
-# at the bottom. Our flux boundary condition for salinity uses a function that calculates
-# the salinity flux in terms of the evaporation rate.
+# The initial condition and bottom boundary condition for buoyancy
+# impose a linear stratification with buoyancy frequency
 
-grid = RegularCartesianGrid(size=(Nh, Nh, Nz), extent=(Δh*Nh, Δh*Nh, Δz*Nz))
+N² = 1.936e-5 # s⁻²
+nothing # hide
 
-u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+# To summarize, we impose a surface flux on $u$,
 
-b_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵇ),
-                                       bottom = BoundaryCondition(Gradient, N²))
+using Oceananigans.BoundaryConditions
+
+u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+nothing # hide
+
+# and a surface flux and bottom linear gradient on buoyancy, $b$,
+
+b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
+                                                       bottom = BoundaryCondition(Gradient, N²))
+nothing # hide
+
+# ### Coriolis parameter
+#
+# McWilliams et al. (1997) use
+
+f = 1e-4 # s⁻¹
+nothing # hide
+
+# which is typical for mid-latitudes on Earth.
 
 # ## Model instantiation
 #
-# We instantiate a horizontally-periodic `Model` on the CPU with on a `RegularCartesianGrid`,
-# using a `FPlane` model for rotation (constant rotation rate), the Anisotropic Minimum
-# Dissipation closure to model the effects of unresolved turbulence, and the previously defined
-# boundary conditions for `u` and `b`.
+# Finally, we are ready to build the model. We use the AnisotropicMinimumDissipation
+# model for large eddy simulation. Because our Stokes drift does not vary in $x, y$,
+# we use `UniformStokesDrift`, which expects Stokes drift functions of $z, t$ only.
 
-model = Model(
-         architecture = CPU(),
-                 grid = grid,
-             buoyancy = BuoyancyTracer(), tracers = :b,
-              closure = AnisotropicMinimumDissipation(),
-        surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-  boundary_conditions = SolutionBoundaryConditions(grid, u=u_bcs, b=b_bcs),
-)
+using Oceananigans.Buoyancy: BuoyancyTracer
+using Oceananigans.SurfaceWaves: UniformStokesDrift
+
+model = IncompressibleModel(        architecture = CPU(),
+                                            grid = grid,
+                                         tracers = :b,
+                                        buoyancy = BuoyancyTracer(),
+                                        coriolis = FPlane(f=f),
+                                         closure = AnisotropicMinimumDissipation(),
+                                   surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                             boundary_conditions = (u=u_boundary_conditions,
+                                                    b=b_boundary_conditions),
+                            )
 
 # ## Initial conditions
 #
-# Out initial condition for buoyancy consists of a linear stratification superposed with
-# random noise damped at the walls.
+# We make use of random noise concentrated in the upper 4 meters
+# for buoyancy and velocity initial conditions,
 
-## Random noise damped at top and bottom
-Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
+Ξ(z) = randn() * exp(z / 4)
+nothing # hide
 
-## Temperature initial condition: a stable density tradient with random noise superposed.
-b₀(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
+# Our initial condition for buoyancy consists of a linear stratification, plus noise,
 
-# Velocity initial condition: note that McWilliams and Sullivan (1997) use a model
-# that is formulated in terms of the Eulerian-mean velocity field. Due to this,
-# their 'resting' initial condition actually consists of a sheared and
-# unbalanced Lagrangian-mean velocity field uˢ(z). To this we add noise.
-u₀(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
+bᵢ(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
+nothing # hide
 
-# Finally, we introduce noise into the vertical velocity:
-w₀(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
+# The velocity initial condition is zero *Eulerian* velocity. This means that we
+# must add the Stokes drift profile to the $u$ velocity field. We also add noise scaled
+# by the friction velocity to $u$ and $w$.
 
-set!(model, u=u₀, w=w₀, b=b₀)
+uᵢ(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
-# ## Set up output
+wᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
+
+set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
+
+# ## Setting up the simulation
 #
-# We set up an output writer that saves all velocity fields, tracer fields, and the subgrid
-# turbulent diffusivity associated with `model.closure`. The `prefix` keyword argument
-# to `JLD2OutputWriter` indicates that output will be saved in
-# `ocean_wind_mixing_and_convection.jld2`.
-
-## Create a NamedTuple containing all the fields to be outputted.
-fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
-
-## Instantiate a JLD2OutputWriter to write fields.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=hour/4,
-                                prefix="langmuir_turbulence", force=true)
-
-## Add the output writer to the models `output_writers`.
-model.output_writers[:fields] = field_writer;
-
-# ## Running the simulation
-#
-# To run the simulation, we instantiate a `TimeStepWizard` to ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
+# We use the `TimeStepWizard` for adaptive time-stepping
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.2,
 
 wizard = TimeStepWizard(cfl=0.2, Δt=5.0, max_change=1.1, max_Δt=10.0)
+nothing # hide
 
-# Diagnostic that returns the maximum absolute value of `u, v, w` by calling
-# `umax(), vmax(), `wmax()`:
+# ### Nice progress messaging
+#
+# We define a function that prints a helpful message with
+# maximum absolute value of $u, v, w$ and the current wall clock time.
+
+using Oceananigans.Diagnostics, Printf
 
 umax = FieldMaximum(abs, model.velocities.u)
 vmax = FieldMaximum(abs, model.velocities.v)
 wmax = FieldMaximum(abs, model.velocities.w)
 
-# We also create a figure and define a plotting function for live plotting of results.
-makeplot = false
+wall_clock = time_ns()
 
-using PyPlot
+function print_progress(simulation)
+    model = simulation.model
 
-fig, axs = subplots(ncols=3, figsize=(12, 5))
+    ## Print a progress message
+    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+                   model.clock.iteration,
+                   prettytime(model.clock.time),
+                   prettytime(wizard.Δt),
+                   umax(), vmax(), wmax(),
+                   prettytime(1e-9 * (time_ns() - wall_clock))
+                  )
 
-"""
-    makeplot!(axs, model)
-
-Make a triptych of x-z slices of vertical velocity, temperature, and salinity
-associated with `model` in `axs`.
-"""
-function makeplot!(axs, model)
-    jhalf = floor(Int, model.grid.Ny/2)
-
-    ## Coordinate arrays for plotting
-    xCˣᶻ = repeat(model.grid.xC, 1, model.grid.Nz)
-    xFˣᶻ = repeat(model.grid.xF[1:end-1], 1, model.grid.Nz)
-    zCˣᶻ = repeat(reshape(model.grid.zC, 1, model.grid.Nz), model.grid.Nx, 1)
-    zFˣᶻ = repeat(reshape(model.grid.zF[1:end-1], 1, model.grid.Nz), model.grid.Nx, 1)
-
-    xCˣʸ = repeat(model.grid.xC, 1, model.grid.Ny)
-    yCˣʸ = repeat(reshape(model.grid.yC, 1, model.grid.Ny), model.grid.Nx, 1)
-
-    sca(axs[1]); cla()
-    title("Horizontal velocity")
-    pcolormesh(xFˣᶻ, zCˣᶻ, Array(interior(model.velocities.u))[:, jhalf, :])
-    xlabel("\$ x \$ (m)"); ylabel("\$ z \$ (m)")
-
-    sca(axs[2]); cla()
-    title("Vertical velocity")
-    pcolormesh(xCˣᶻ, zFˣᶻ, Array(interior(model.velocities.w))[:, jhalf, :])
-    xlabel("\$ x \$ (m)")
-
-    sca(axs[3]); cla()
-    title("Vertical velocity at \$ z = $(model.grid.zF[Nz-2]) \$ meters")
-    pcolormesh(xCˣʸ, yCˣʸ, Array(interior(model.velocities.w))[:, :, Nz-2])
-    xlabel("\$ x \$ (m)"); ylabel("\$ y \$ (m)")
-
-    axs[3].yaxis.set_label_position("right")
-    axs[3].tick_params(right=true, labelright=true, left=false, labelleft=false)
-
-    [ax.set_aspect(1) for ax in axs]
-
-    tight_layout()
-
-    pause(0.01)
+    @info msg
 
     return nothing
 end
 
-# Finally, we run the the model in a `while` loop.
+# Now we create the simulation,
 
-while model.clock.time < end_time
+using Oceananigans.Utils: hour # correpsonds to "1 hour", in units of seconds
 
-    ## Update the time step associated with `wizard`.
-    update_Δt!(wizard, model)
+simulation = Simulation(model, iteration_interval = 100,
+                                               Δt = wizard,
+                                        stop_time = 4hour,
+                                         progress = print_progress)
 
-    ## Time step the model forward
-    walltime = @elapsed time_step!(model, 100, wizard.Δt)
+# ## Output
+#
+# We set up an output writer for the simulation that saves all velocity fields,
+# tracer fields, and the subgrid turbulent diffusivity every 2 minutes.
 
-    ## Print a progress message
-    @printf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-            model.clock.iteration, prettytime(model.clock.time), prettytime(wizard.Δt),
-            umax(), vmax(), wmax(), prettytime(walltime))
+using Oceananigans.OutputWriters
+using Oceananigans.Utils: minute
 
-    makeplot && makeplot!(axs, model)
+field_outputs = FieldOutputs(merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,)))
+
+simulation.output_writers[:fields] =
+    JLD2OutputWriter(model, field_outputs, time_interval = 2minute,
+                     prefix = "langmuir_turbulence", force = true)
+nothing # hide
+
+# ## Running the simulation
+#
+# This part is easy,
+
+run!(simulation)
+
+# # Making a neat movie
+#
+# We look at the results by plotting vertical slices of $u$ and $w$, and a horizontal
+# slice of $w$ to look for Langmuir cells.
+
+k = searchsortedfirst(grid.zF[:], -8)
+nothing # hide
+
+# Making the coordinate arrays takes a few lines of code,
+
+xw, yw, zw = nodes(model.velocities.w)
+xu, yu, zu = nodes(model.velocities.u)
+
+xw, yw, zw = xw[:], yw[:], zw[:]
+xu, yu, zu = xu[:], yu[:], zu[:]
+nothing # hide
+
+# Next, we open the JLD2 file, and extract the iterations we ended up saving at,
+
+using JLD2, Plots
+
+file = jldopen(simulation.output_writers[:fields].filepath)
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
+nothing # hide
+
+# This utility is handy for calculating nice contour intervals:
+
+function nice_divergent_levels(c, clim)
+    levels = range(-clim, stop=clim, length=10)
+
+    cmax = maximum(abs, c)
+
+    if clim < cmax # add levels on either end
+        levels = vcat([-cmax], range(-clim, stop=clim, length=10), [cmax])
+    end
+
+    return levels
+end
+nothing # hide
+
+# Finally, we're ready to animate.
+
+@info "Making an animation from the saved data..."
+
+anim = @animate for (i, iter) in enumerate(iterations)
+
+    @info "Drawing frame $i from iteration $iter \n"
+
+    ## Load 3D fields from file, omitting halo regions
+    w = file["timeseries/w/$iter"][2:end-1, 2:end-1, 2:end-1]
+    u = file["timeseries/u/$iter"][2:end-1, 2:end-1, 2:end-1]
+
+    ## Extract slices
+    wxy = w[:, :, k]
+    wxz = w[:, 1, :]
+    uxz = u[:, 1, :]
+
+    wlim = 0.02
+    ulim = 0.05
+    wlevels = nice_divergent_levels(w, wlim)
+    ulevels = nice_divergent_levels(w, ulim)
+
+    wxy_plot = contourf(xw, yw, wxy';
+                              color = :balance,
+                        aspectratio = :equal,
+                              clims = (-wlim, wlim),
+                             levels = wlevels,
+                              xlims = (0, grid.Lx),
+                              ylims = (0, grid.Ly),
+                             xlabel = "x (m)",
+                             ylabel = "y (m)")
+
+    wxz_plot = contourf(xw, zw, wxz';
+                              color = :balance,
+                        aspectratio = :equal,
+                              clims = (-wlim, wlim),
+                             levels = wlevels,
+                              xlims = (0, grid.Lx),
+                              ylims = (-grid.Lz, 0),
+                             xlabel = "x (m)",
+                             ylabel = "z (m)")
+
+    uxz_plot = contourf(xu, zu, uxz';
+                              color = :balance,
+                        aspectratio = :equal,
+                              clims = (-ulim, ulim),
+                             levels = ulevels,
+                              xlims = (0, grid.Lx),
+                              ylims = (-grid.Lz, 0),
+                             xlabel = "x (m)",
+                             ylabel = "z (m)")
+
+    plot(wxy_plot, wxz_plot, uxz_plot, layout=(1, 3), size=(1000, 400),
+         title = ["w(x, y, z=-8, t) (m/s)" "w(x, y=0, z, t) (m/s)" "u(x, y = 0, z, t) (m/s)"])
+
+    iter == iterations[end] && close(file)
 end
 
-# Show the reults in a plot
-
-makeplot!(axs, model)
-gcf()
+mp4(anim, "langmuir_turbulence.mp4", fps = 15) # hide

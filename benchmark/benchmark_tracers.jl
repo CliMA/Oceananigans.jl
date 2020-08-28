@@ -1,5 +1,7 @@
-using Printf, TimerOutputs
+using Printf
+using TimerOutputs
 using Oceananigans
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 
@@ -9,14 +11,11 @@ include("benchmark_utils.jl")
 
 const timer = TimerOutput()
 
+FT = Float64
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
-         archs = [CPU()]             # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
-
-FT = Float64
-Nxyz(::CPU) = (32, 32, 32)
-Nxyz(::GPU) = (256, 256, 256)
+         archs = [CPU()]        # Architectures to benchmark on.
+@hascuda archs = [CPU(), GPU()] # Benchmark GPU on systems with CUDA-enabled GPUs.
 
 #####
 ##### Utility functions for generating tracer lists
@@ -49,7 +48,7 @@ end
 test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
 
 for arch in archs, test_case in test_cases
-    N = Nxyz(arch)
+    N = arch isa CPU ? (32, 32, 32) : (256, 256, 128)
     na, np = test_case
     tracers = tracer_list(na, np)
 
@@ -71,6 +70,7 @@ end
 #####
 
 println()
-print_benchmark_info()
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 print_timer(timer, title="Tracer benchmarks", sortby=:name)
 println()

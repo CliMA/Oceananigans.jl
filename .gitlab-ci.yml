@@ -1,30 +1,45 @@
-variables:
-  CI_IMAGE_TAG: 'cuda'
-  JULIA_NUM_THREADS: '1'
-
-# See: https://github.com/JuliaGPU/gitlab-ci
 include:
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/test.yml'
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v5/coverage.yml'
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v6.yml'
 
-test:v1.3:
-  extends: .test:v1.3
+image: ubuntu:bionic
 
-test:dev:
-  extends: .test:dev
-  allow_failure: true
+julia:1.4:unit:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'unit'
+  tags:
+    - nvidia
+
+julia:1.4:integration:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'integration'
+  tags:
+    - nvidia
+
+julia:1.4:regression:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'regression'
+  tags:
+    - nvidia
+
+julia:1.4:scripts:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'scripts'
+  tags:
+    - nvidia
 
 coverage:
-  stage: post
-  extends: .root
-  variables:
-    CI_VERSION_TAG: 'v1.3'
-  script:
-    - julia --project -e 'using Pkg;
-                          Pkg.add("Coverage")'
-    - julia --project -e 'using Coverage;
-                          cl, tl = get_summary(process_folder());
-                          println("(", cl/tl*100, "%) covered");
-                          Codecov.submit_local(process_folder(), ".")'
-  coverage: '/\(\d+.\d+\%\) covered/'
-  allow_failure: true
+  extends:
+    - .julia:1.4
+    - .coverage

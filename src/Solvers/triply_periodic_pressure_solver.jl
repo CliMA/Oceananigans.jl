@@ -67,7 +67,7 @@ function TriplyPeriodicPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     IFFTxyz! = plan_backward_transform(storage, x_bc, [1, 2, 3])
     @debug "Planning transforms for PressureSolver{HorizontallyPeriodic, GPU} done!"
 
-    transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxy!)
+    transforms = (FFTxyz! =  FFTxyz!, IFFTxyz! = IFFTxyz!)
 
     return PressureSolver(TriplyPeriodic(), GPU(), wavenumbers, storage, transforms, nothing)
 end
@@ -88,7 +88,7 @@ function solve_poisson_equation!(solver::PressureSolver{TriplyPeriodic, GPU}, gr
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
     # and so the DC component comes out to be ∞.
-    ϕ[1, 1, 1] = 0
+    CUDA.@allowscalar ϕ[1, 1, 1] = 0
 
     solver.transforms.IFFTxyz! * ϕ  # Calculate IFFTˣʸᶻ(ϕ̂) in place.
 

@@ -1,16 +1,140 @@
+using Statistics
 using NCDatasets
+using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
 
-"""
-Run a coarse thermal bubble simulation and save the output to NetCDF at the
-10th time step. Then read back the output and test that it matches the model's
-state.
-"""
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    simulation = Simulation(model, Δt=6, stop_iteration=10)
+
+    # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
+    # of the domain volume.
+    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
+    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
+    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
+    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+
+    outputs = Dict(
+        "v" => model.velocities.v,
+        "u" => model.velocities.u,
+        "w" => model.velocities.w,
+        "T" => model.tracers.T,
+        "S" => model.tracers.S
+    )
+    nc_filename = "test_dump_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, iteration_interval=10, verbose=true)
+    push!(simulation.output_writers, nc_writer)
+
+    xC_slice = 1:10
+    xF_slice = 2:11
+    yC_slice = 10:15
+    yF_slice = 1
+    zC_slice = 10
+    zF_slice = 9:11
+
+    nc_sliced_filename = "test_dump_sliced_$(typeof(arch)).nc"
+    nc_sliced_writer =
+        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, iteration_interval=10, verbose=true,
+                           xC=xC_slice, xF=xF_slice, yC=yC_slice,
+                           yF=yF_slice, zC=zC_slice, zF=zF_slice)
+
+    push!(simulation.output_writers, nc_sliced_writer)
+
+    run!(simulation)
+
+    ds3 = Dataset(nc_filename)
+
+    @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
+    @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
+    @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
+
+    @test length(ds3["xC"]) == Nx
+    @test length(ds3["yC"]) == Ny
+    @test length(ds3["zC"]) == Nz
+    @test length(ds3["xF"]) == Nx
+    @test length(ds3["yF"]) == Ny
+    @test length(ds3["zF"]) == Nz+1  # z is Bounded
+
+    @test ds3["xC"][1] == grid.xC[1]
+    @test ds3["xF"][1] == grid.xF[1]
+    @test ds3["yC"][1] == grid.yC[1]
+    @test ds3["yF"][1] == grid.yF[1]
+    @test ds3["zC"][1] == grid.zC[1]
+    @test ds3["zF"][1] == grid.zF[1]
+
+    @test ds3["xC"][end] == grid.xC[Nx]
+    @test ds3["xF"][end] == grid.xF[Nx]
+    @test ds3["yC"][end] == grid.yC[Ny]
+    @test ds3["yF"][end] == grid.yF[Ny]
+    @test ds3["zC"][end] == grid.zC[Nz]
+    @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
+
+    u = ds3["u"][:, :, :, end]
+    v = ds3["v"][:, :, :, end]
+    w = ds3["w"][:, :, :, end]
+    T = ds3["T"][:, :, :, end]
+    S = ds3["S"][:, :, :, end]
+
+    close(ds3)
+
+    @test all(u .≈ Array(interiorparent(model.velocities.u)))
+    @test all(v .≈ Array(interiorparent(model.velocities.v)))
+    @test all(w .≈ Array(interiorparent(model.velocities.w)))
+    @test all(T .≈ Array(interiorparent(model.tracers.T)))
+    @test all(S .≈ Array(interiorparent(model.tracers.S)))
+
+    ds2 = Dataset(nc_sliced_filename)
+
+    @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
+    @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
+    @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
+
+    @test length(ds2["xC"]) == length(xC_slice)
+    @test length(ds2["xF"]) == length(xF_slice)
+    @test length(ds2["yC"]) == length(yC_slice)
+    @test length(ds2["yF"]) == length(yF_slice)
+    @test length(ds2["zC"]) == length(zC_slice)
+    @test length(ds2["zF"]) == length(zF_slice)
+
+    @test ds2["xC"][1] == grid.xC[xC_slice[1]]
+    @test ds2["xF"][1] == grid.xF[xF_slice[1]]
+    @test ds2["yC"][1] == grid.yC[yC_slice[1]]
+    @test ds2["yF"][1] == grid.yF[yF_slice]
+    @test ds2["zC"][1] == grid.zC[zC_slice]
+    @test ds2["zF"][1] == grid.zF[zF_slice[1]]
+
+    @test ds2["xC"][end] == grid.xC[xC_slice[end]]
+    @test ds2["xF"][end] == grid.xF[xF_slice[end]]
+    @test ds2["yC"][end] == grid.yC[yC_slice[end]]
+    @test ds2["yF"][end] == grid.yF[yF_slice]
+    @test ds2["zC"][end] == grid.zC[zC_slice]
+    @test ds2["zF"][end] == grid.zF[zF_slice[end]]
+
+    u_sliced = ds2["u"][:, :, :, end]
+    v_sliced = ds2["v"][:, :, :, end]
+    w_sliced = ds2["w"][:, :, :, end]
+    T_sliced = ds2["T"][:, :, :, end]
+    S_sliced = ds2["S"][:, :, :, end]
+
+    close(ds2)
+
+    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
+    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
+    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
+    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
+    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
+end
+
+function run_thermal_bubble_netcdf_tests_with_halos(arch)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 100, 100, 100
+
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
@@ -28,59 +152,53 @@ function run_thermal_bubble_netcdf_tests(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
-    nc_filename = "dump_test_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, frequency=10)
+    nc_filename = "test_dump_with_halos_$(typeof(arch)).nc"
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, iteration_interval=10, with_halos=true)
     push!(simulation.output_writers, nc_writer)
-
-    xC_slice = 1:10
-    xF_slice = 2:11
-    yC_slice = 10:15
-    yF_slice = 1
-    zC_slice = 10
-    zF_slice = 9:11
-
-    nc_sliced_filename = "dump_test_sliced_$(typeof(arch)).nc"
-    nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filename=nc_sliced_filename, frequency=10,
-                           xC=xC_slice, xF=xF_slice, yC=yC_slice,
-                           yF=yF_slice, zC=zC_slice, zF=zF_slice)
-
-    push!(simulation.output_writers, nc_sliced_writer)
 
     run!(simulation)
 
-    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
-    @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
+    ds = Dataset(nc_filename)
 
-    ds3 = Dataset(nc_filename)
-    u = ds3["u"][:, :, :, end]
-    v = ds3["v"][:, :, :, end]
-    w = ds3["w"][:, :, :, end]
-    T = ds3["T"][:, :, :, end]
-    S = ds3["S"][:, :, :, end]
-    close(ds3)
-    @test repr(ds3) == "closed NetCDF NCDataset"
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
 
-    @test all(u .≈ Array(interiorparent(model.velocities.u)))
-    @test all(v .≈ Array(interiorparent(model.velocities.v)))
-    @test all(w .≈ Array(interiorparent(model.velocities.w)))
-    @test all(T .≈ Array(interiorparent(model.tracers.T)))
-    @test all(S .≈ Array(interiorparent(model.tracers.S)))
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+    @test length(ds["xC"]) == Nx+2Hx
+    @test length(ds["yC"]) == Ny+2Hy
+    @test length(ds["zC"]) == Nz+2Hz
+    @test length(ds["xF"]) == Nx+2Hx
+    @test length(ds["yF"]) == Ny+2Hy
+    @test length(ds["zF"]) == Nz+2Hz+1  # z is Bounded
 
-    ds2 = Dataset(nc_sliced_filename)
-    u_sliced = ds2["u"][:, :, :, end]
-    v_sliced = ds2["v"][:, :, :, end]
-    w_sliced = ds2["w"][:, :, :, end]
-    T_sliced = ds2["T"][:, :, :, end]
-    S_sliced = ds2["S"][:, :, :, end]
-    close(ds2)
-    @test repr(ds2) == "closed NetCDF NCDataset"
+    @test ds["xC"][1] == grid.xC[1-Hx]
+    @test ds["xF"][1] == grid.xF[1-Hx]
+    @test ds["yC"][1] == grid.yC[1-Hy]
+    @test ds["yF"][1] == grid.yF[1-Hy]
+    @test ds["zC"][1] == grid.zC[1-Hz]
+    @test ds["zF"][1] == grid.zF[1-Hz]
 
-    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
-    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
-    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
-    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
-    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
+    @test ds["xC"][end] == grid.xC[Nx+Hx]
+    @test ds["xF"][end] == grid.xF[Nx+Hx]
+    @test ds["yC"][end] == grid.yC[Ny+Hy]
+    @test ds["yF"][end] == grid.yF[Ny+Hy]
+    @test ds["zC"][end] == grid.zC[Nz+Hz]
+    @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+
+    u = ds["u"][:, :, :, end]
+    v = ds["v"][:, :, :, end]
+    w = ds["w"][:, :, :, end]
+    T = ds["T"][:, :, :, end]
+    S = ds["S"][:, :, :, end]
+
+    close(ds)
+
+    @test all(u .≈ Array(model.velocities.u.data.parent))
+    @test all(v .≈ Array(model.velocities.v.data.parent))
+    @test all(w .≈ Array(model.velocities.w.data.parent))
+    @test all(T .≈ Array(model.tracers.T.data.parent))
+    @test all(S .≈ Array(model.tracers.S.data.parent))
 end
 
 function run_netcdf_function_output_tests(arch)
@@ -90,13 +208,16 @@ function run_netcdf_function_output_tests(arch)
     simulation = Simulation(model, Δt=1.25, stop_iteration=3)
     grid = model.grid
 
-    # Define scalar, vector, 2D slice, and 3D field outputs
+    # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
-    g(model) = model.clock.time .* exp.(znodes(Cell, grid)[:])
-    h(model) = model.clock.time .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
 
-    outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
-    dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+    g(model) = model.clock.time .* exp.(znodes(Cell, grid))
+
+    h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                    .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+
+    outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h)
+       dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
     output_attributes = Dict(
         "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -107,15 +228,39 @@ function run_netcdf_function_output_tests(arch)
     global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
     nc_filename = "test_function_outputs_$(typeof(arch)).nc"
-    simulation.output_writers[:fruits] =
-        NetCDFOutputWriter(
-            model, outputs; frequency=1, filename=nc_filename, dimensions=dims,
+    simulation.output_writers[:food] =
+        NetCDFOutputWriter(model, outputs;
+            iteration_interval=1, filename=nc_filename, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
-    @test repr(simulation.output_writers[:fruits].dataset) == "closed NetCDF NCDataset"
 
     ds = Dataset(nc_filename, "r")
+
+    @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
+    @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
+    @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+
+    @test length(ds["xC"]) == N
+    @test length(ds["yC"]) == N
+    @test length(ds["zC"]) == N
+    @test length(ds["xF"]) == N
+    @test length(ds["yF"]) == N
+    @test length(ds["zF"]) == N+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.xC[1]
+    @test ds["xF"][1] == grid.xF[1]
+    @test ds["yC"][1] == grid.yC[1]
+    @test ds["yF"][1] == grid.yF[1]
+    @test ds["zC"][1] == grid.zC[1]
+    @test ds["zF"][1] == grid.zF[1]
+
+    @test ds["xC"][end] == grid.xC[N]
+    @test ds["yC"][end] == grid.yC[N]
+    @test ds["zC"][end] == grid.zC[N]
+    @test ds["xF"][end] == grid.xF[N]
+    @test ds["yF"][end] == grid.yF[N]
+    @test ds["zF"][end] == grid.zF[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -130,18 +275,20 @@ function run_netcdf_function_output_tests(arch)
 
     @test ds["profile"].attrib["longname"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
-    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid)[:])
+    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid))
     @test size(ds["profile"]) == (N, 4)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     @test ds["slice"].attrib["longname"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
-    @test ds["slice"][:, :, end] == 3.75 .* sin.(xnodes(Cell, grid)[:, :, 1]) .* cos.(ynodes(Face, grid)[:, :, 1])
+
+    @test ds["slice"][:, :, end] == 3.75 .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                             .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+
     @test size(ds["slice"]) == (N, N, 4)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     close(ds)
-    @test repr(ds) == "closed NetCDF NCDataset"
     return nothing
 end
 
@@ -156,7 +303,7 @@ function run_jld2_file_splitting_tests(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", frequency=1,
+    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", iteration_interval=1,
                           init=fake_bc_init, including=[:grid],
                           max_filesize=200KiB, force=true)
 
@@ -188,7 +335,7 @@ end
 """
 Run two coarse rising thermal bubble simulations and make sure that when
 restarting from a checkpoint, the restarted simulation matches the non-restarted
-simulation numerically.
+simulation to machine precision.
 """
 function run_thermal_bubble_checkpointer_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -196,7 +343,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Δt = 6
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -204,7 +351,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     checkpointed_model = deepcopy(true_model)
 
@@ -212,7 +359,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     run!(true_simulation)
 
     checkpointed_simulation = Simulation(checkpointed_model, Δt=Δt, stop_iteration=5)
-    checkpointer = Checkpointer(checkpointed_model, frequency=5, force=true)
+    checkpointer = Checkpointer(checkpointed_model, iteration_interval=5, force=true)
     push!(checkpointed_simulation.output_writers, checkpointer)
 
     # Checkpoint should be saved as "checkpoint5.jld" after the 5th iteration.
@@ -232,16 +379,132 @@ function run_thermal_bubble_checkpointer_tests(arch)
     rm("checkpoint_iteration5.jld2", force=true)
 
     # Now the true_model and restored_model should be identical.
-    @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
-    @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
-    @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
-    @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
-    @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
-    @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
-    @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
-    @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
-    @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
-    @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+    CUDA.@allowscalar begin
+        @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
+        @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
+        @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
+        @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
+        @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
+        @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
+        @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
+        @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
+        @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
+        @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+    end
+
+    return nothing
+end
+
+function run_checkpoint_with_function_bcs_tests(arch)
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+
+    @inline some_flux(x, y, t) = 2x + exp(y)
+    some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux)
+    top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux_bf)
+    u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
+    T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
+
+    model = IncompressibleModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+    set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
+
+    checkpointer = Checkpointer(model)
+    write_output(model, checkpointer)
+    model = nothing
+
+    restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2")
+    @test  ismissing(restored_model.velocities.u.boundary_conditions)
+    @test !ismissing(restored_model.velocities.v.boundary_conditions)
+    @test !ismissing(restored_model.velocities.w.boundary_conditions)
+    @test  ismissing(restored_model.tracers.T.boundary_conditions)
+    @test !ismissing(restored_model.tracers.S.boundary_conditions)
+   
+    CUDA.@allowscalar begin
+        @test all(interior(restored_model.velocities.u) .≈ π/2)
+        @test all(interior(restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(restored_model.velocities.w) .== 0)
+        @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
+    restored_model = nothing
+
+    properly_restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2",
+                                                      boundary_conditions=(u=u_bcs, T=T_bcs))
+
+    CUDA.@allowscalar begin
+        @test all(interior(properly_restored_model.velocities.u) .≈ π/2)
+        @test all(interior(properly_restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(properly_restored_model.velocities.w) .== 0)
+        @test all(interior(properly_restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(properly_restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
+
+    @test !ismissing(properly_restored_model.velocities.u.boundary_conditions)
+    @test !ismissing(properly_restored_model.velocities.v.boundary_conditions)
+    @test !ismissing(properly_restored_model.velocities.w.boundary_conditions)
+    @test !ismissing(properly_restored_model.tracers.T.boundary_conditions)
+    @test !ismissing(properly_restored_model.tracers.S.boundary_conditions)
+
+    u, v, w = properly_restored_model.velocities
+    T, S = properly_restored_model.tracers
+
+    @test u.boundary_conditions.x.left  isa PBC
+    @test u.boundary_conditions.x.right isa PBC
+    @test u.boundary_conditions.y.left  isa PBC
+    @test u.boundary_conditions.y.right isa PBC
+    @test u.boundary_conditions.z.left  isa ZFBC
+    @test u.boundary_conditions.z.right isa FBC
+    @test u.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test u.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
+
+    @test T.boundary_conditions.x.left  isa PBC
+    @test T.boundary_conditions.x.right isa PBC
+    @test T.boundary_conditions.y.left  isa PBC
+    @test T.boundary_conditions.y.right isa PBC
+    @test T.boundary_conditions.z.left  isa ZFBC
+    @test T.boundary_conditions.z.right isa FBC
+    @test T.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test T.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
+
+    # Test that the restored model can be time stepped
+    time_step!(properly_restored_model, 1)
+    @test properly_restored_model isa IncompressibleModel
+
+    return nothing
+end
+
+function run_cross_architecture_checkpointer_tests(arch1, arch2)
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch1, grid=grid)
+    set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
+
+    checkpointer = Checkpointer(model)
+    write_output(model, checkpointer)
+    model = nothing
+
+    restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2", architecture=arch2)
+
+    @test restored_model.architecture == arch2
+
+    ArrayType = array_type(restored_model.architecture)
+    CUDA.@allowscalar begin
+        @test restored_model.velocities.u.data.parent isa ArrayType
+        @test restored_model.velocities.v.data.parent isa ArrayType
+        @test restored_model.velocities.w.data.parent isa ArrayType
+        @test restored_model.tracers.T.data.parent isa ArrayType
+        @test restored_model.tracers.S.data.parent isa ArrayType
+
+        @test all(interior(restored_model.velocities.u) .≈ π/2)
+        @test all(interior(restored_model.velocities.v) .≈ ℯ)
+        @test all(interior(restored_model.velocities.w) .== 0)
+        @test all(interior(restored_model.tracers.T) .≈ Base.MathConstants.γ)
+        @test all(interior(restored_model.tracers.S) .≈ Base.MathConstants.φ)
+    end
+
+    # Test that the restored model can be time stepped
+    time_step!(restored_model, 1)
+    @test restored_model isa IncompressibleModel
+
+    return nothing
 end
 
 @testset "Output writers" begin
@@ -251,6 +514,7 @@ end
          @testset "NetCDF [$(typeof(arch))]" begin
              @info "  Testing NetCDF output writer [$(typeof(arch))]..."
              run_thermal_bubble_netcdf_tests(arch)
+             run_thermal_bubble_netcdf_tests_with_halos(arch)
              run_netcdf_function_output_tests(arch)
          end
 
@@ -262,6 +526,9 @@ end
         @testset "Checkpointer [$(typeof(arch))]" begin
             @info "  Testing Checkpointer [$(typeof(arch))]..."
             run_thermal_bubble_checkpointer_tests(arch)
+            run_checkpoint_with_function_bcs_tests(arch)
+            @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
+            @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
     end
 end

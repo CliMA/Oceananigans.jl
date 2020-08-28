@@ -7,27 +7,33 @@ topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be
 `A` (where an array is needed).
 """
 struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+
     # Number of grid points in (x,y,z).
      Nx :: Int
      Ny :: Int
      Nz :: Int
+
     # Halo size in (x,y,z).
      Hx :: Int
      Hy :: Int
      Hz :: Int
+
     # Domain size [m].
      Lx :: FT
      Ly :: FT
      Lz :: FT
+
     # Grid spacing [m].
      Δx :: FT
      Δy :: FT
     ΔzF :: A
     ΔzC :: A
+
     # Range of coordinates at the centers of the cells.
      xC :: R
      yC :: R
      zC :: A
+
     # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
      xF :: R
@@ -78,27 +84,16 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xC = range(xC₋, xC₊; length = TCx)
     yC = range(yC₋, yC₊; length = TCy)
 
-    # Reshape first...
-     xC = reshape(xC,  TCx, 1, 1) 
-     yC = reshape(yC,  1, TCy, 1)
-     zC = reshape(zC,  1, 1, TCz)
-    ΔzC = reshape(ΔzC, 1, 1, TCz - 1)
+    # Offset.
+     xC = OffsetArray(xC,  -Hx)
+     yC = OffsetArray(yC,  -Hy)
+     zC = OffsetArray(zC,  -Hz)
+    ΔzC = OffsetArray(ΔzC, 1 - Hz)
 
-     xF = reshape(xF,  TFx, 1, 1) 
-     yF = reshape(yF,  1, TFy, 1)
-     zF = reshape(zF,  1, 1, TFz)
-    ΔzF = reshape(ΔzF, 1, 1, TFz - 1)
-
-    # Then Offset.
-     xC = OffsetArray(xC,  -Hx, 0, 0)
-     yC = OffsetArray(yC,  0, -Hy, 0)
-     zC = OffsetArray(zC,  0, 0, -Hz)
-    ΔzC = OffsetArray(ΔzC, 0, 0, 1 - Hz)
-
-     xF = OffsetArray(xF,  -Hx, 0, 0)
-     yF = OffsetArray(yF,  0, -Hy, 0)
-     zF = OffsetArray(zF,  0, 0, -Hz)
-    ΔzF = OffsetArray(ΔzF, 0, 0, -Hz)
+     xF = OffsetArray(xF,  -Hx)
+     yF = OffsetArray(yF,  -Hy)
+     zF = OffsetArray(zF,  -Hz)
+    ΔzF = OffsetArray(ΔzF, -Hz)
 
     return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
