@@ -83,7 +83,5 @@ function run!(sim)
         sim.run_time += time_after - time_before
     end
 
-    [close(out) for out in values(sim.output_writers)]
-
     return nothing
 end

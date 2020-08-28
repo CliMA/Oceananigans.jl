@@ -46,9 +46,6 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     run!(simulation)
 
-    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
-    @test repr(nc_sliced_writer.dataset) == "closed NetCDF NCDataset"
-
     ds3 = Dataset(nc_filename)
 
     @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
@@ -83,7 +80,6 @@ function run_thermal_bubble_netcdf_tests(arch)
     S = ds3["S"][:, :, :, end]
 
     close(ds3)
-    @test repr(ds3) == "closed NetCDF NCDataset"
 
     @test all(u .≈ Array(interiorparent(model.velocities.u)))
     @test all(v .≈ Array(interiorparent(model.velocities.v)))
@@ -125,7 +121,6 @@ function run_thermal_bubble_netcdf_tests(arch)
     S_sliced = ds2["S"][:, :, :, end]
 
     close(ds2)
-    @test repr(ds2) == "closed NetCDF NCDataset"
 
     @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
     @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
@@ -163,8 +158,6 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
 
     run!(simulation)
 
-    @test repr(nc_writer.dataset) == "closed NetCDF NCDataset"
-
     ds = Dataset(nc_filename)
 
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
@@ -200,7 +193,6 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     S = ds["S"][:, :, :, end]
 
     close(ds)
-    @test repr(ds) == "closed NetCDF NCDataset"
 
     @test all(u .≈ Array(model.velocities.u.data.parent))
     @test all(v .≈ Array(model.velocities.v.data.parent))
@@ -242,7 +234,6 @@ function run_netcdf_function_output_tests(arch)
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
-    @test repr(simulation.output_writers[:food].dataset) == "closed NetCDF NCDataset"
 
     ds = Dataset(nc_filename, "r")
 
@@ -298,7 +289,6 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     close(ds)
-    @test repr(ds) == "closed NetCDF NCDataset"
     return nothing
 end
 
