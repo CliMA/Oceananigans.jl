@@ -50,9 +50,9 @@ get_dependency(output) = nothing
 get_dependency(wta::WindowedTimeAverage) = wta
 
 function add_dependencies!(sim, writer)
-    for output in writer.outputs
+    for output in values(writer.outputs)
         dependency = get_dependency(output)
-        if !isnothing(dependency) && !(dependency ∈ sim.diagnostics.vals)
+        if !isnothing(dependency) && !(dependency ∈ values(sim.diagnostics))
             push!(sim.diagnostics, dependency)
         end
     end
@@ -76,9 +76,9 @@ function run!(sim)
     model = sim.model
     clock = model.clock
 
-    [open(out) for out in values(sim.output_writers)]
+    [open(writer) for writer in values(sim.output_writers)]
 
-    [add_dependencies!(sim, out) for out in values(sim.output_writers)]
+    [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
 
     while !stop(sim)
         time_before = time()
