@@ -1,5 +1,6 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: halo_size, total_size
+using Oceananigans.Fields: Field
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
@@ -25,7 +26,7 @@ function dims_to_result_size(field, dims, grid)
 end
 
 """
-    Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+    Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
 
 Construct an `Average` of `field` along the dimensions specified by the tuple `dims`.
 
@@ -41,7 +42,7 @@ A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function Average(field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
+function Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
                  with_halos=true)
 
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
