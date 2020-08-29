@@ -1,7 +1,9 @@
 using Dates: now
 using NCDatasets
+
 using Oceananigans.Fields
 using Oceananigans.Fields: cpudata
+using Oceananigans.Diagnostics: Average
 using Oceananigans.Utils: validate_intervals, versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices,
                           all_x_indices, all_y_indices, all_z_indices
@@ -259,6 +261,13 @@ slice_indices(field; slice_specs...) =
 function save_output_to_netcdf!(nc, model, f::Field, name, time_index)
     data = cpudata(f) # Transfer data to CPU if parent(output) is a CuArray
     nc.dataset[name][:, :, :, time_index] = view(data, nc.slices[name]...)
+end
+
+function save_output_to_netcdf!(nc, model, avg::Average, name, time_index)
+    data = avg(model)
+    data = dropdims(data, dims=avg.dims)
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    nc.dataset[name][colons..., time_index] = data
 end
 
 function save_output_to_netcdf!(nc, model, output, name, time_index)
