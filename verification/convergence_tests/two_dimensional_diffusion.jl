@@ -45,19 +45,18 @@ for (itopo, topo) in enumerate(topologies)
     L∞ = errors[itopo].L∞
     name ="$(topo[1]), $(topo[2])"
 
-    loglog(Nx, L₁, "o", color=defaultcolors[itopo], mfc="None", label="\$L_1\$-norm, $name")
-    loglog(Nx, L∞, "^", color=defaultcolors[itopo], mfc="None", label="\$L_\\infty\$-norm, $name")
+    loglog(Nx, L₁, "o", basex=2, color=defaultcolors[itopo], mfc="None", label="\$L_1\$-norm, $name")
+    loglog(Nx, L∞, "^", basex=2, color=defaultcolors[itopo], mfc="None", label="\$L_\\infty\$-norm, $name")
 end
 
 L₁ = errors[1].L₁
 L∞ = errors[1].L∞
-loglog(Nx, L₁[1] * (Nx[1]./Nx).^2, "k-", alpha=0.6, linewidth=1, label=L"\sim N_x^{-2}")
+loglog(Nx, L₁[1] * (Nx[1]./Nx).^2, "k-", basex=2, alpha=0.6, linewidth=1, label=L"\sim N_x^{-2}")
 
 xlabel(L"N_x")
 ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
 title("Two dimensional diffusion convergence test")
 removespines("top", "right")
 legend(loc="upper right")
-xticks(Nx, ["\$ 2^{$(round(Int, log2(n)))} \$" for n in Nx])
 
 savefig("figs/two_dimensional_diffusion_convergence.png", dpi=480)

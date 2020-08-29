@@ -38,10 +38,10 @@ for j = 1:2
 
     @show size(L₁) size(Nx)
 
-    ax.plot(Nx, L₁, color=defaultcolors[j], alpha=0.6, mfc="None",
+    ax.loglog(Nx, L₁, basex=2, color=defaultcolors[j], alpha=0.6, mfc="None",
             linestyle="None", marker="o", label="\$L_1\$-norm, $(labels[j])")
 
-    ax.plot(Nx, L∞, color=defaultcolors[j], alpha=0.6, mfc="None",
+    ax.loglog(Nx, L∞, basex=2, color=defaultcolors[j], alpha=0.6, mfc="None",
             linestyle="None", marker="^", label="\$L_\\infty\$-norm, $(labels[j])")
 
     if j == 2
@@ -49,7 +49,7 @@ for j = 1:2
         ii = sortperm(Nx)
         Nx = Nx[ii]
         L₁ = L₁[ii]
-        ax.plot(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+        ax.loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", basex=2, linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
     end
 end
 
@@ -65,10 +65,5 @@ ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}
 
 removespines("top", "right")
 title("Convergence for forced fixed slip")
-
-ax.set_xscale("log")
-ax.set_yscale("log")
-
-xticks(sort(Nx), ["\$ 2^{$(round(Int, log2(n)))} \$" for n in sort(Nx)])
 
 savefig("figs/forced_fixed_slip_convergence.png", dpi=480)

@@ -25,9 +25,9 @@ L∞ = map(err -> err.L∞, errors)
 close("all")
 fig, ax = subplots()
 
-ax.loglog(Nx, L₁, linestyle="None", marker="o", label="error, \$L_1\$-norm")
-ax.loglog(Nx, L∞, linestyle="None", marker="^", label="error, \$L_\\infty\$-norm")
-ax.loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6,  label=L"\sim N_x^{-2}")
+ax.loglog(Nx, L₁, basex=2, linestyle="None", marker="o", label="error, \$L_1\$-norm")
+ax.loglog(Nx, L∞, basex=2, linestyle="None", marker="^", label="error, \$L_\\infty\$-norm")
+ax.loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", basex=2, linewidth=1, alpha=0.6,  label=L"\sim N_x^{-2}")
 
 legend()
 
@@ -35,6 +35,5 @@ title("Convergence for freely-decaying Taylor-Green vortex")
 removespines("top", "right")
 ylabel("Norms of the absolute error, \$ | u_\\mathrm{simulation} - u_\\mathrm{analytical} | \$")
 xlabel(L"N_x")
-xticks(sort(Nx), ["\$ 2^{$(round(Int, log2(n)))} \$" for n in sort(Nx)])
 
 savefig("figs/taylor_green_convergence.png", dpi=480)
