@@ -58,7 +58,7 @@ function run_and_analyze(; setup...)
 
     c_simulation = simulation.model.tracers.c
 
-    x, y, z, t = (nodes(c_simulation)..., simulation.model.clock.time)
+    x, y, z, t = (nodes(c_simulation, reshape=true)..., simulation.model.clock.time)
 
     c_analytical = c.(x, y, t)
 
