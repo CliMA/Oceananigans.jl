@@ -46,20 +46,10 @@ function wall_time_limit_exceeded(sim)
     return false
 end
 
-get_dependency(output) = nothing
-get_dependency(wta::WindowedTimeAverage) = wta
+add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(diags, wta::WindowedTimeAverage) = !(wta ∈ values(diags)) && push!(diags, wta)
 
-function add_dependencies!(sim, writer)
-    for output in values(writer.outputs)
-        dependency = get_dependency(output)
-        if !isnothing(dependency) && !(dependency ∈ values(sim.diagnostics))
-            push!(sim.diagnostics, dependency)
-        end
-    end
-
-    return nothing
-end
-
+add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 get_Δt(Δt) = Δt
@@ -78,7 +68,7 @@ function run!(sim)
 
     [open(writer) for writer in values(sim.output_writers)]
 
-    [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
+    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
     while !stop(sim)
         time_before = time()
