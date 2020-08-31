@@ -157,11 +157,11 @@ ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid),
 ##### Functions for querying fields
 #####
 
-location(a) = nothing
+@inline location(a) = nothing
 
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
-location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
-location(f, i) = location(f)[i]
+@inline location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
+@inline location(f, i) = location(f)[i]
 
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::Field) = architecture(f.data)
@@ -195,16 +195,11 @@ of `f` along `x, y, z`.
 @inline size(f::AbstractField) = size(location(f), f.grid)
 
 """
-    total_size(loc, grid)
+    total_size(field::Field)
 
-Returns the "total" size of a field at `loc` on `grid`.
-This is a 3-tuple of integers corresponding to the number of grid points
-contained by `f` along `x, y, z`.
+Returns a 3-tuple that gives the "total" size of a field including 
+both interior points and halo points.
 """
-@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
-
 @inline total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @propagate_inbounds getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)

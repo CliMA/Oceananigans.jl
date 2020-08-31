@@ -3,6 +3,17 @@
 #####
 
 """
+    total_size(loc, grid)
+
+Returns the "total" size of a field at `loc` on `grid`.
+This is a 3-tuple of integers corresponding to the number of grid points
+contained by `f` along `x, y, z`.
+"""
+@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+
+"""
     total_extent(topology, H, Δ, L)
 
 Returns the total extent, including halo regions, of constant-spaced
