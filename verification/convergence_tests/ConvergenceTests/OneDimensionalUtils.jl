@@ -95,9 +95,6 @@ function plot_error_convergence!(axs, Nx, all_results, names)
         name = names[j]
         u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(results)
 
-        @info "u_L₁ = $u_L₁"
-        @info "u_L∞ = $u_L₁"
-
         common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
         loglog(Nx,  u_L₁; basex=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
         loglog(Nx,  v_L₁; basex=2, marker="2", label="\$L_1\$-norm, \$v\$ $name", common_kwargs...)

@@ -38,7 +38,7 @@ function run_test(; Δt, stop_iteration, architecture = CPU())
     set!(model, c=1)
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running point exponential decay test for Δt=$Δt, stop_iteration=$stop_iteration..."
+    @info "Running point exponential decay test for Δt = $Δt, stop_iteration = $stop_iteration..."
     run!(simulation)
 
     # Calculate errors
