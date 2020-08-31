@@ -6,7 +6,7 @@ location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
                                   (Cell, Cell, Cell))
 
 print_min_max_mean(ψ, name="") =
-    @printf("%s max: %.9e, min: %.9e, mean: %.9e\n", name, minimum(ψ), maximum(ψ), mean(ψ))
+    @printf("%s min: %.9e, max: %.9e, mean: %.9e\n", name, minimum(ψ), maximum(ψ), mean(ψ))
 
 function extract_two_solutions(analytical_solution, filename; name=:u)
     grid = RegularCartesianGrid(filename)
