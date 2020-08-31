@@ -31,7 +31,7 @@ end
 unpack_errors(results) = map(r -> r.L₁, results)
 
 stop_time = 3
-Δt = vcat(1 ./ collect(1000:-100:100), 1 ./ collect(90:-10:10), 1 ./ collect(9:-1:1))
+Δt = 10 .^ range(-3, 0, length=30)  # Equally spaced in log space.
 results, Δt = run_convergence_test(stop_time, Δt)
 L₁ = unpack_errors(results)
 
