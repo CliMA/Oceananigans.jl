@@ -4,6 +4,7 @@ using PyPlot
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests
 using .ConvergenceTests.TwoDimensionalDiffusion: run_and_analyze
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -20,7 +21,7 @@ function convergence_test(Nx, Δt, stop_iteration, topo)
     return (L₁=L₁, L∞=L∞)
 end
 
-# Setup and run 4 simulations
+# Setup and run simulations
 Nx = [8, 16, 32, 64, 128, 256]
 stop_time = 1e-4
 
@@ -59,4 +60,12 @@ title("Two dimensional diffusion convergence test")
 removespines("top", "right")
 legend(loc="upper right")
 
-savefig("figs/two_dimensional_diffusion_convergence.png", dpi=480)
+filepath = joinpath(@__DIR__, "figs", "two_dimensional_diffusion_convergence.png")
+savefig(filepath, dpi=480)
+
+for (itopo, topo) in enumerate(topologies)
+    L₁ = errors[itopo].L₁
+    L∞ = errors[itopo].L∞
+    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.01, name="2D diffusion $topo L₁")
+    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.06, name="2D diffusion $topo L∞")
+end

@@ -53,7 +53,7 @@ end
 
 function run_and_analyze(; setup...)
     simulation = setup_simulation(; setup...)
-    @info "Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
+    @info "Running two dimensional diffusion simulation $(setup[:topo]) with Nx = Ny = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
 
     c_simulation = simulation.model.tracers.c

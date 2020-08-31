@@ -70,7 +70,7 @@ end
 
 function setup_and_run_xy(args...; kwargs...)
     simulation = setup_xy_simulation(args...; kwargs...)
-    @info "Running fixed slip simulation in x, y with Nx = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
+    @info "Running fixed slip simulation with Nx = Ny = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end
@@ -115,7 +115,7 @@ end
 
 function setup_and_run_xz(args...; kwargs...)
     simulation = setup_xz_simulation(args...; kwargs...)
-    @info "Running fixed slip simulation in x, z with Nx = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
+    @info "Running fixed slip simulation with Nx = Nz = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end

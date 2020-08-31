@@ -8,6 +8,7 @@ removespines(sides...) = [removespine(side) for side in sides]
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests
 using .ConvergenceTests: compute_errors, extract_sizes
 
 filenames = glob("data/taylor_green*.jld2")
@@ -36,4 +37,8 @@ removespines("top", "right")
 ylabel("Norms of the absolute error, \$ | u_\\mathrm{simulation} - u_\\mathrm{analytical} | \$")
 xlabel(L"N_x")
 
-savefig("figs/taylor_green_convergence.png", dpi=480)
+filepath = joinpath(@__DIR__, "figs", "taylor_green_convergence.png")
+savefig(filepath, dpi=480)
+
+test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name="Taylor-Green L₁")
+test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.050, name="Taylor-Green L∞")

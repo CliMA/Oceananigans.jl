@@ -58,9 +58,9 @@ compute_errors(analytical_solution, filenames::String...; kwargs...) =
 
 extract_sizes(filenames...) = [size(RegularCartesianGrid(filename)) for filename in filenames]
 
-function test_rate_of_convergence(error, Δ; data_points, expected, atol)
+function test_rate_of_convergence(error, Δ; name="", data_points=length(error), expected, atol)
     d = data_points
     ROC = log10(error[1] / error[d]) / log10(Δ[1] / Δ[d])
-    @info "Rate of convergence = $ROC (expected ≈ $expected, atol=$atol)"
+    @info (name == "" ? "" : name * " ") * "rate of convergence = $ROC (expected ≈ $expected, atol=$atol)"
     @test isapprox(ROC, expected, atol=atol)
 end

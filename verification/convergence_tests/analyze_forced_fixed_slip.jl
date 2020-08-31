@@ -2,6 +2,7 @@ using PyPlot, Glob, Printf
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
+using .ConvergenceTests
 using .ConvergenceTests.ForcedFlowFixedSlip: u
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -66,4 +67,13 @@ ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}
 removespines("top", "right")
 title("Convergence for forced fixed slip")
 
-savefig("figs/forced_fixed_slip_convergence.png", dpi=480)
+filepath = joinpath(@__DIR__, "figs", "forced_fixed_slip_convergence.png")
+savefig(filepath, dpi=480)
+
+for (label, error) in zip(labels, errorses)
+    L₁ = map(e -> e.L₁, error)
+    L∞ = map(e -> e.L∞, error)
+    name = "Forced fixed slip " * label
+    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=Inf, name=name * " L₁")
+    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=Inf, name=name * " L∞")
+end

@@ -56,7 +56,7 @@ end
 
 function setup_and_run_xz(; setup...)
     simulation = setup_xz_simulation(; setup...)
-    @info "Running free slip simulation in x, z with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
+    @info "Running free slip simulation with Nx = Nz = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
     return nothing
 end
@@ -95,7 +95,7 @@ end
 
 function setup_and_run_xy(; setup...)
     simulation = setup_xy_simulation(; setup...)
-    @info "Running free slip simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])"
+    @info "Running free slip simulation with Nx = Ny = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
     return nothing
 end
