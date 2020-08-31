@@ -1,7 +1,6 @@
 # # "Point exponential decay" time-stepper convergence test
 
 using PyPlot
-
 using Oceananigans
 
 # Define a few utilities for running tests and unpacking and plotting results
@@ -48,4 +47,7 @@ title("Oceananigans time-stepper convergence for \$ c(t) = \\mathrm{e}^{-t} \$")
 removespines("top", "right")
 legend()
 
-savefig("figs/point_exponential_decay_time_stepper_convergence.png", dpi=480)
+filepath = joinpath(@__DIR__, "figs", "point_exponential_decay_time_stepper_convergence.png")
+savefig(filepath, dpi=480)
+
+test_rate_of_convergence(L₁, Δt, data_points=9, expected=1.0, atol=0.01)

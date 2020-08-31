@@ -111,8 +111,7 @@ include("runtests_utils.jl")
             include("test_verification.jl")
             include("test_benchmarks.jl")
         end
-    elseif group == :convergence || group == :all
-        @testset "Convergence" begin
-        end
+    elseif group == :convergence
+        include("test_convergence.jl")
     end
 end

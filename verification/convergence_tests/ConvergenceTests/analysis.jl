@@ -1,3 +1,5 @@
+using Test
+
 location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
                        s === :v ? (Cell, Face, Cell) :
                        s === :w ? (Cell, Cell, Face) :
@@ -55,3 +57,10 @@ compute_errors(analytical_solution, filenames::String...; kwargs...) =
     [compute_error(analytical_solution, filename; kwargs...) for filename in filenames]
 
 extract_sizes(filenames...) = [size(RegularCartesianGrid(filename)) for filename in filenames]
+
+function test_rate_of_convergence(error, Δ; data_points, expected, atol)
+    d = data_points
+    ROC = log10(error[1] / error[d]) / log10(Δ[1] / Δ[d])
+    @info "Rate of convergence = $ROC (expected ≈ $expected, atol=$atol)"
+    @test isapprox(ROC, expected, atol=atol)
+end

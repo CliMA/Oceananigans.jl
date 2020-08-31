@@ -5,6 +5,8 @@ and time-stepping
 """
 module ConvergenceTests
 
+export test_rate_of_convergence
+
 using Printf
 using Statistics
 using Logging
@@ -21,7 +23,7 @@ using Oceananigans.Fields: Face, Cell, nodes
 import Oceananigans: RegularCartesianGrid
 import Oceananigans.Fields: location
 
-figspath = abspath(joinpath(@__FILE__, "..", "..", "figs"))
+figspath = joinpath(@__DIR__, "..", "figs")
 ispath(figspath) || mkpath(figspath)
 
 include("file_wrangling.jl")
