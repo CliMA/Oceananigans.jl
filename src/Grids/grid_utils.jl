@@ -2,6 +2,8 @@
 ##### Convinience functions
 #####
 
+total_size(a) = size(a) # fallback
+
 """
     total_size(loc, grid)
 
