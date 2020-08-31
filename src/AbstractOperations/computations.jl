@@ -101,7 +101,7 @@ Average(op::AbstractOperation, model::AbstractModel; dims, kwargs...) =
     Average(op, model.pressures.pHY′; dims=dims, kwargs...)
 
 """
-    Average(field::Computation; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+    Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
 
 Construct an `Average` of `field` along the dimensions specified by the tuple `dims`.
 
@@ -117,7 +117,9 @@ A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function Average(field::Computation; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+function Average(field::Computation; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
+                 with_halos=true)
+
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
 
@@ -128,7 +130,9 @@ function Average(field::Computation; dims, iteration_interval=nothing, time_inte
     arch = architecture(field)
     result_size = dims_to_result_size(field, dims, field.grid)
     result = zeros(arch, field.grid, result_size...)
-    return Average(field, dims, result, iteration_interval, time_interval, 0.0, return_type)
+
+    return Average(field, dims, result, iteration_interval, time_interval, 0.0,
+                   return_type, with_halos)
 end
 
 """Compute the average of a computation."""

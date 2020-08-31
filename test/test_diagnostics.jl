@@ -1,44 +1,73 @@
-function horizontal_average_is_correct(arch, FT)
+using Oceananigans.Grids: halo_size
+
+function run_horizontal_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    Hx, Hy, Hz = halo_size(grid)
+
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = z
-    set!(model; T=T₀)
+    set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second)
-    computed_profile = dropdims(T̅(model), dims=(1, 2))
+    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=false)
+    computed_profile = T̅(model)
+    @test size(computed_profile) == (1, 1, Nz)
 
-    zC = znodes(Cell, grid)
-    correct_profile = zC
+    computed_profile = dropdims(computed_profile, dims=(1, 2))
+    @test computed_profile ≈ znodes(Cell, grid)
 
-    return all(computed_profile[2:end-1] .≈ correct_profile)
+    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=true)
+    computed_profile_with_halos = T̅(model)
+    @test size(computed_profile_with_halos) == (1, 1, Nz+2Hz)
+
+    computed_profile_with_halos = dropdims(computed_profile_with_halos, dims=(1, 2))
+    @test computed_profile_with_halos[1+Hz:Nz+Hz] ≈ computed_profile
 end
 
-function zonal_average_is_correct(arch, FT)
+function run_zonal_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    Hx, Hy, Hz = halo_size(grid)
+
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = z
-    set!(model; T=T₀)
+    set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second)
-    computed_slice = dropdims(T̅(model), dims=(1,))
+    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=false)
+    computed_slice = T̅(model)
+    @test size(computed_slice) == (1, Ny, Nz)
+
+    computed_slice = dropdims(computed_slice, dims=1)
     zC = znodes(Cell, grid)
-    return all([all(computed_slice[i, 2:end-1] .≈ zC) for i in 2:Ny+1])
+    @test all(computed_slice[j, :] ≈ zC for j in 1:Ny)
+
+    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=true)
+    computed_slice_with_halos = T̅(model)
+    @test size(computed_slice_with_halos) == (1, Ny+2Hy, Nz+2Hz)
+
+    computed_slice_with_halos = dropdims(computed_slice_with_halos, dims=1)
+    @test computed_slice_with_halos[1+Hy:Ny+Hy, 1+Hz:Nz+Hz] ≈ computed_slice
 end
 
-function volume_average_is_correct(arch, FT)
+function run_volume_average_tests(arch, FT)
     Nx = Ny = Nz = 16
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     T₀(x, y, z) = z
-    set!(model; T=T₀)
+    set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second)
-    return all(T̅(model) .≈ -50.0)
+    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=false)
+    computed_scalar = T̅(model)
+    @test size(computed_scalar) == (1, 1, 1)
+    @test all(computed_scalar .≈ -50.0)
+
+    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=true)
+    computed_scalar_with_halos = T̅(model)
+    @test size(computed_scalar_with_halos) == (1, 1, 1)
+    @test all(computed_scalar_with_halos .≈ -50.0)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
@@ -174,24 +203,12 @@ end
     @info "Testing diagnostics..."
 
     for arch in archs
-        @testset "Horizontal average [$(typeof(arch))]" begin
-            @info "  Testing horizontal average [$(typeof(arch))]"
+        @testset "Average [$(typeof(arch))]" begin
+            @info "  Testing averages [$(typeof(arch))]"
             for FT in float_types
-                @test horizontal_average_is_correct(arch, FT)
-            end
-        end
-
-        @testset "Zonal average [$(typeof(arch))]" begin
-            @info "  Testing zonal average [$(typeof(arch))]"
-            for FT in float_types
-                @test zonal_average_is_correct(arch, FT)
-            end
-        end
-
-        @testset "Volume average [$(typeof(arch))]" begin
-            @info "  Testing volume average [$(typeof(arch))]"
-            for FT in float_types
-                @test zonal_average_is_correct(arch, FT)
+                run_horizontal_average_tests(arch, FT)
+                run_zonal_average_tests(arch, FT)
+                run_volume_average_tests(arch, FT)
             end
         end
     end
