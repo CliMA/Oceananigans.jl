@@ -89,10 +89,10 @@ const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
       NoFluxBoundaryCondition() = BoundaryCondition(Flux,       nothing)
 ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
 
-      FluxBoundaryCondition(val) = BoundaryCondition(Flux, val)
-     ValueBoundaryCondition(val) = BoundaryCondition(Value, val)
-  GradientBoundaryCondition(val) = BoundaryCondition(Gradient, val)
-NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
+      FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
+     ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
+  GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
+NormalFlowBoundaryCondition(val; kwargs...) = BoundaryCondition(NormalFlow, val; kwargs...)
 
 # Support for various types of boundary conditions
 @inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
