@@ -26,6 +26,14 @@ v(x, y, t) = -fₓ(x, t) * sin(y)
 ##### x, z
 #####
 
+function print_progress(simulation)
+    model = simulation.model
+    i, t = model.clock.iteration, model.clock.time
+    progress = 100 * (i / simulation.stop_iteration)
+    @info @sprintf("[%05.2f%%] i: %d, t: %.5e", progress, i, t)
+    return nothing
+end
+
 const DATA_DIR = joinpath(@__DIR__, "..", "data")
 
 function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
@@ -46,7 +54,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=100)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
                                                           dir = dir, force = true,
@@ -85,7 +93,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     set!(model, u = (x, y, z) -> u(x, y, 0),
                 v = (x, y, z) -> v(x, y, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=100)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
                                                           dir = dir, force = true,
