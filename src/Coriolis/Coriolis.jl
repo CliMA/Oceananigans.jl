@@ -8,7 +8,7 @@ using Printf
 using Oceananigans.Grids
 using Oceananigans.Operators
 
-# Physical constants for FPlane and BetaPlane constructors.
+# Physical constants for constructors.
 const Ω_Earth = 7.292115e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
 const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
 
@@ -21,6 +21,8 @@ abstract type AbstractRotation end
 
 include("no_rotation.jl")
 include("f_plane.jl")
+include("non_traditional_f_plane.jl")
 include("beta_plane.jl")
+include("non_traditional_beta_plane.jl")
 
 end
