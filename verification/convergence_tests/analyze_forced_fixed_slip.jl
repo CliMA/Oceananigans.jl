@@ -73,7 +73,8 @@ savefig(filepath, dpi=480)
 for (label, error) in zip(labels, errorses)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)
-    name = "Forced fixed slip " * label
-    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=Inf, name=name * " L₁")
-    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=Inf, name=name * " L∞")
+    name = "Forced flow fixed slip " * label
+    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.05, name=name * " L₁")
+    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.10, name=name * " L∞")
 end
+

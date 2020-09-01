@@ -54,7 +54,7 @@ savefig(filepath, dpi=480)
 for (name, error) in zip(names, errors)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)
-    name = "Forced free slip " * strip(name.s, '$')
+    name = "Forced flow free slip " * strip(name.s, '$')
     test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name=name * " L₁")
     test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.001, name=name * " L∞")
 end
