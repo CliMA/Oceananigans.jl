@@ -1,7 +1,9 @@
 """
     BetaPlane{T} <: AbstractRotation
 
-A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
+A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`)
+that accounts for the variation of the locally vertical component of the rotation
+vector with latitude.
 """
 struct BetaPlane{T} <: AbstractRotation
     f₀ :: T
@@ -11,8 +13,6 @@ end
 """
     BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
-
-A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`).
 
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`,
 `latitude`, and `radius` that specify the rotation rate and radius of a planet, and

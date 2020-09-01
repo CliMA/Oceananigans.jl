@@ -1,8 +1,9 @@
 """
     NonTraditionalFPlane{FT} <: AbstractRotation
 
-A Coriolis implementation that facilitates non-traditional Coriolis terms in the zonal
-and vertical momentum equations along with the traditional Coriolis terms.
+A Coriolis implementation that accounts for both the locally vertical and
+the locally horizontal components of the rotation vector. Traditionally
+(see [`FPlane`](@ref)) only the locally vertical component is accounted for.
 """
 struct NonTraditionalFPlane{FT} <: AbstractRotation
     fz :: FT
