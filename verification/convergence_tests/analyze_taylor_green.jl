@@ -11,7 +11,7 @@ include("ConvergenceTests/ConvergenceTests.jl")
 using .ConvergenceTests
 using .ConvergenceTests: compute_errors, extract_sizes
 
-filenames = glob(joinpath(@__DIR__, "data", "taylor_green*.jld2"))
+filenames = glob("taylor_green*.jld2", joinpath(@__DIR__, "data"))
 
 errors = compute_errors(
             (x, y, z, t) -> ConvergenceTests.DoublyPeriodicTaylorGreen.u(x, y, t),
