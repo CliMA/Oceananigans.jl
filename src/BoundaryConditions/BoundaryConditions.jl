@@ -15,11 +15,6 @@ export
 
     DiffusivityBoundaryConditions,
 
-    BoundaryFunction, TracerBoundaryCondition,
-    UVelocityBoundaryCondition, VVelocityBoundaryCondition, WVelocityBoundaryCondition,
-
-    ParameterizedBoundaryCondition, ParameterizedBoundaryConditionFunction,
-
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
 
     fill_halo_regions!, zero_halo_regions!
@@ -32,11 +27,11 @@ using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Grids
 
 include("boundary_condition_types.jl")
+include("boundary_function.jl")
+include("parameterized_boundary_condition.jl")
 include("boundary_condition.jl")
 include("coordinate_boundary_conditions.jl")
 include("field_boundary_conditions.jl")
-include("boundary_function.jl")
-include("parameterized_boundary_condition.jl")
 include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")

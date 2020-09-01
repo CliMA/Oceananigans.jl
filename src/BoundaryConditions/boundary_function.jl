@@ -22,12 +22,14 @@ julia> parameterized_u_velocity_flux = BoundaryFunction{:z, Face, Cell}(flux_fun
 julia> top_u_bc = BoundaryCondition(Flux, parameterized_u_velocity_flux);
 """
 struct BoundaryFunction{B, X1, X2, F, P} <: Function
-    func :: F
+          func :: F
     parameters :: P
 
-    function BoundaryFunction{B, X1, X2}(func, parameters=nothing) where {B, X1, X2}
+    function BoundaryFunction{B, X1, X2}(func; parameters=nothing) where {B, X1, X2}
+
         B ∈ (:x, :y, :z) || throw(ArgumentError("The boundary B at which the BoundaryFunction is
                                                 to be applied must be either :x, :y, or :z."))
+
         return new{B, X1, X2, typeof(func), typeof(parameters)}(func, parameters)
     end
 end
@@ -43,101 +45,3 @@ end
 
 @inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, clock, state) where {X, Y} =
     call_boundary_function(bc.func, xnode(X, i, grid), ynode(Y, j, grid), clock.time, bc.parameters)
-
-#####
-##### Convenience constructors
-#####
-
-""" Returns the location of `loc` on the boundary `:x`, `:y`, or `:z`. """
-boundary_location(::Val{:x}, loc) = (loc[2], loc[3])
-boundary_location(::Val{:y}, loc) = (loc[1], loc[3])
-boundary_location(::Val{:z}, loc) = (loc[1], loc[2])
-
-""" Returns a boundary function at on the boundary `B` at the appropriate
-    location for a tracer field. """
-TracerBoundaryFunction(B, args...) = BoundaryFunction{B, Cell, Cell}(args...)
-
-""" Returns a boundary function at on the boundary `B` at the appropriate
-    location for u, the x-velocity field. """
-function UVelocityBoundaryFunction(B, args...)
-    loc = boundary_location(Val(B), (Face, Cell, Cell))
-    return BoundaryFunction{B, loc[1], loc[2]}(args...)
-end
-
-""" Returns a boundary function at on the boundary `B` at the appropriate
-    location for v, the y-velocity field. """
-function VVelocityBoundaryFunction(B, args...)
-    loc = boundary_location(Val(B), (Cell, Face, Cell))
-    return BoundaryFunction{B, loc[1], loc[2]}(args...)
-end
-
-""" Returns a boundary function at on the boundary `B` at the appropriate
-    location for w, the z-velocity field. """
-function WVelocityBoundaryFunction(B, args...)
-    loc = boundary_location(Val(B), (Cell, Cell, Face))
-    return BoundaryFunction{B, loc[1], loc[2]}(args...)
-end
-
-"""
-    TracerBoundaryCondition(bctype, B, args...)
-
-Returns a `BoundaryCondition` of type `bctype`, that applies the function
-`func` to a tracer on the boundary `B`, which is one of `:x, :y, :z`.
-The boundary function has the signature
-
-    `func(ξ, η, t)`
-
-where `t` is time, and `ξ` and `η` are coordinates along the
-boundary, eg: `(y, z)` for `B = :x`, `(x, z)` for `B = :y`, or
-`(x, y)` for `B = :z`.
-"""
-TracerBoundaryCondition(bctype, B, args...) =
-    BoundaryCondition(bctype, TracerBoundaryFunction(B, args...))
-
-"""
-    UVelocityBoundaryCondition(bctype, B, args...)
-
-Returns a `BoundaryCondition` of type `bctype`, that applies the function
-`func` to `u`, the `x`-velocity field, on the boundary `B`, which is one
-of `:x, :y, :z`. The boundary function has the signature
-
-    `func(ξ, η, t)`
-
-where `t` is time, and `ξ` and `η` are coordinates along the
-boundary, eg: `(y, z)` for `B = :x`, `(x, z)` for `B = :y`, or
-`(x, y)` for `B = :z`.
-"""
-UVelocityBoundaryCondition(bctype, B, args...) =
-    BoundaryCondition(bctype, UVelocityBoundaryFunction(B, args...))
-
-"""
-    VVelocityBoundaryCondition(bctype, B, args...)
-
-Returns a `BoundaryCondition` of type `bctype`, that applies the function
-`func` to `v`, the `y`-velocity field, on the boundary `B`, which is one
-of `:x, :y, :z`. The boundary function has the signature
-
-    `func(ξ, η, t)`
-
-where `t` is time, and `ξ` and `η` are coordinates along the
-boundary, eg: `(y, z)` for `B = :x`, `(x, z)` for `B = :y`, or
-`(x, y)` for `B = :z`.
-"""
-VVelocityBoundaryCondition(bctype, B, args...) =
-    BoundaryCondition(bctype, VVelocityBoundaryFunction(B, args...))
-
-"""
-    VVelocityBoundaryCondition(bctype, B, args...)
-
-Returns a `BoundaryCondition` of type `bctype`, that applies the function
-`func` to `w`, the `z`-velocity field, on the boundary `B`, which is one
-of `:x, :y, :z`. The boundary function has the signature
-
-    `func(ξ, η, t)`
-
-where `t` is time, and `ξ` and `η` are coordinates along the
-boundary, eg: `(y, z)` for `B = :x`, `(x, z)` for `B = :y`, or
-`(x, y)` for `B = :z`.
-"""
-WVelocityBoundaryCondition(bctype, B, args...) =
-    BoundaryCondition(bctype, WVelocityBoundaryFunction(B, args...))

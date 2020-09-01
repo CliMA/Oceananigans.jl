@@ -28,6 +28,11 @@ function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_
     return true
 end
 
+relocate_function_boundary_condition(bc, args...) = bc # fallback
+
+relocate_function_boundary_condition(bc::BoundaryCondition{C, <:BoundaryFunction}, boundary, loc1, loc2) where C =
+    BoundaryCondition(C, BoundaryFunction{boundary, loc1, loc2}(bc.condition.func; parameters=bc.condition.parameters))
+
 """
     FieldBoundaryConditions(grid, loc;
           east = DefaultBoundaryCondition(topology(grid)[1], loc[1]),
@@ -52,6 +57,13 @@ function FieldBoundaryConditions(grid, loc;
      north = DefaultBoundaryCondition(topology(grid)[2], loc[2]),
     bottom = DefaultBoundaryCondition(topology(grid)[3], loc[3]),
        top = DefaultBoundaryCondition(topology(grid)[3], loc[3]))
+
+    east = relocate_function_boundary_condition(east, :x, loc[2], loc[3])
+    west = relocate_function_boundary_condition(west, :x, loc[2], loc[3])
+    south = relocate_function_boundary_condition(south, :y, loc[1], loc[3])
+    north = relocate_function_boundary_condition(north, :y, loc[1], loc[3])
+    bottom = relocate_function_boundary_condition(bottom, :z, loc[1], loc[2])
+    top = relocate_function_boundary_condition(top, :z, loc[1], loc[2])
 
     TX, TY, TZ = topology(grid)
     x_default_bc = DefaultBoundaryCondition(topology(grid)[1], loc[1])

@@ -1,22 +1,69 @@
 import Adapt
 
 """
-    BoundaryCondition{C<:BCType}(condition)
+    struct BoundaryCondition{C<:BCType, T}
 
-Construct a boundary condition of type `C` with a `condition` that may be given by a
-number, an array, or a function with signature:
-
-    condition(i, j, grid, clock, state) = # function definition
-
-that returns a number and where `i` and `j` are indices along the boundary.
-
-Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NormalFlow`.
+Container for boundary conditions.
 """
 struct BoundaryCondition{C<:BCType, T}
     condition :: T
 end
 
-BoundaryCondition(Tbc, c) = BoundaryCondition{Tbc, typeof(c)}(c)
+"""
+    BoundaryCondition(BC, condition)
+
+Construct a boundary condition of type `BC` with a number or array as a `condition`.
+
+Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NormalFlow`.
+"""
+BoundaryCondition(BC, condition) = BoundaryCondition{BC, typeof(condition)}(condition)
+
+"""
+    BoundaryCondition(BC, condition::Function; parameters=nothing, discrete_form=false)
+
+Construct a boundary condition of type `BC` with a function boundary `condition`.
+
+By default, the function boudnary `condition` is assumed to have the 'short form'
+`condition(ξ, η, t)`, where `t` is time and `ξ` and `η` vary along the boundary.
+In particular:
+
+- On `x`-boundaries, `condition(y, z, t)`.
+- On `y`-boundaries, `condition(x, z, t)`.
+- On `z`-boundaries, `condition(x, y, t)`.
+
+If `parameters` is not `nothing`, then function boundary conditions have the form
+`func(ξ, η, t, parameters)`, where `ξ` and `η` are spatial coordinates varying along
+the boundary as explained above.
+
+If `discrete_form=true`, the function `condition` is assumed to have the "discrete form",
+
+    `condition(i, j, grid, clock, state)`,
+
+where `i`, and `j` are indices that vary along the boundary. If `discrete_form=true` and
+`parameters` is not `nothing`, the function `condition` is called with
+
+    `condition(i, j, grid, clock, state, parameters)`.
+"""
+function BoundaryCondition(TBC, condition::Function; parameters=nothing, discrete_form=false)
+
+    if !discrete_form # convert condition to a BoundaryFunction
+
+        # Note that the boundary :x and location Cell, Cell are in general incorrect.
+        # These are corrected in the FieldBoundaryConditions constructor.
+        condition = BoundaryFunction{:x, Cell, Cell}(condition, parameters=parameters)
+
+    elseif parameters != nothing
+
+        condition = ParameterizedDiscreteBoundaryFunction(condition, parameters)
+
+    end
+
+    return BoundaryCondition{TBC, typeof(condition)}(condition)
+end
+
+# Don't re-convert BoundaryFunctions or ParameterizedDiscreteBoundaryFunctions
+BoundaryCondition(TBC, condition::Union{BoundaryFunction, ParameterizedDiscreteBoundaryFunction}) =
+    BoundaryCondition{TBC, typeof(condition)}(condition)
 
 bctype(bc::BoundaryCondition{C}) where C = C
 
@@ -50,8 +97,7 @@ NormalFlowBoundaryCondition(val) = BoundaryCondition(NormalFlow, val)
 # Support for various types of boundary conditions
 @inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
 @inline getbc(bc::BC{C, <:Number},        args...)                  where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C =
-    bc.condition(i, j, grid, clock, state)
+@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = @inbounds bc.condition[i, j]
+@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C = bc.condition(i, j, grid, clock, state)
 
 @inline Base.getindex(bc::BC{C, <:AbstractArray}, i, j) where C = getindex(bc.condition, i, j)
