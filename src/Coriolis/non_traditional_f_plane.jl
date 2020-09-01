@@ -32,7 +32,7 @@ function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=
     use_f = !isnothing(fz) && !isnothing(fy) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && isnothing(fz) && isnothing(fy)
 
-    if (use_planet_parameters && use_f) || (!use_planet_parameters && !use_f)
+    if !xor(use_f, use_planet_parameters)
         throw(ArgumentError("Either both rotation_rate and latitude must be " *
                             "specified, *or* both f and f′ must be specified."))
     elseif use_planet_parameters
@@ -42,9 +42,10 @@ function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=
     return NonTraditionalFPlane{FT}(fz, fy)
 end
 
-@inline fᶻv_minus_fʸw(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
+@inline fʸw_minus_fᶻv(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =
+    coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   ℑxᶠᵃᵃ(i, j, k, grid, fᶻv_minus_fʸw, coriolis, U)
+@inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   coriolis.fz * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = - coriolis.fy * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
