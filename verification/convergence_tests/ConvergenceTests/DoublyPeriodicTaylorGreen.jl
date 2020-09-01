@@ -12,7 +12,9 @@ v(x, y, t, U=1) =   - exp(-2t) * sin(x - U*t) * cos(y)
 ##### x, y
 #####
 
-function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), dir="data")
+const DATA_DIR = joinpath(@__DIR__, "..", "data")
+
+function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), dir=DATA_DIR)
 
     grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
                                 topology=(Periodic, Periodic, Bounded))

@@ -30,7 +30,9 @@ Fᵛ(x, y, t) = 3y^5 - 5y^4 + 2y^3
 u(x, y, t) = f(x, t) * g′(y)
 v(x, y, t) = - fₓ(x, t) * g(y)
 
-function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
+const DATA_DIR = joinpath(@__DIR__, "..", "data")
+
+function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
 
     u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t))
     v_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, y, t))
@@ -75,7 +77,7 @@ function setup_and_run_xy(args...; kwargs...)
     return simulation
 end
 
-function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
+function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
 
     u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t))
     w_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t))

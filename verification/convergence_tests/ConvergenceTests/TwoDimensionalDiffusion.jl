@@ -25,7 +25,9 @@ Ly(::Tuple{X, Bounded,  Z}) where {X, Z} = π
 ##### x, y
 #####
 
-function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data",
+const DATA_DIR = joinpath(@__DIR__, "..", "data")
+
+function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR,
                           topo=(Periodic, Periodic, Bounded), output=false)
 
     grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)

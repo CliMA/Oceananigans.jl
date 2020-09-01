@@ -26,7 +26,9 @@ v(x, y, t) = -fₓ(x, t) * sin(y)
 ##### x, z
 #####
 
-function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
+const DATA_DIR = joinpath(@__DIR__, "..", "data")
+
+function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
 
     grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π),
                                 topology=(Periodic, Periodic, Bounded))
@@ -65,7 +67,7 @@ end
 ##### x, y
 #####
 
-function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data")
+function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
 
     grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
