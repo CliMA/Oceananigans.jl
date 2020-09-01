@@ -90,7 +90,9 @@ include("runtests_utils.jl")
             include("test_buoyancy.jl")
             include("test_surface_waves.jl")
         end
-    elseif group == :integration || group == :all
+    end
+
+    if group == :integration || group == :all
         @testset "Integration tests" begin
             include("test_models.jl")
             include("test_simulations.jl")
@@ -103,15 +105,21 @@ include("runtests_utils.jl")
             include("test_output_writers.jl")
             include("test_abstract_operations.jl")
         end
-    elseif group == :regression || group == :all
+    end
+
+    if group == :regression || group == :all
         include("test_regression.jl")
-    elseif group == :scripts || group == :all
+    end
+
+    if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_examples.jl")
             include("test_verification.jl")
             include("test_benchmarks.jl")
         end
-    elseif group == :convergence
+    end
+
+    if group == :convergence
         include("test_convergence.jl")
     end
 end
