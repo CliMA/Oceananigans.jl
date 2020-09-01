@@ -111,7 +111,6 @@ function plot_error_convergence!(axs, Nx, all_results, names)
     u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(all_results[1])
     loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", basex=2, alpha=0.8, label=L"\sim N_x^{-2}")
 
-    axs.grid(which="both", linewidth=1)
     xlabel(L"N_x")
     ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
     removespines("top", "right")
