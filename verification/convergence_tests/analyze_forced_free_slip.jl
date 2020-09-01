@@ -9,8 +9,8 @@ defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-xy_filenames = glob("data/forced_free_slip_xy*.jld2")
-xz_filenames = glob("data/forced_free_slip_xz*.jld2")
+xy_filenames = glob(joinpath(@__DIR__, "data", "forced_free_slip_xy*.jld2"))
+xz_filenames = glob(joinpath(@__DIR__, "data", "forced_free_slip_xz*.jld2"))
 
 xy_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), xy_filenames...)
 xz_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, z, t), xz_filenames...)

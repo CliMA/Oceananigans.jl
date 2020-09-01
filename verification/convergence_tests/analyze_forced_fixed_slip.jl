@@ -9,8 +9,8 @@ defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-xy_filenames = glob("data/forced_fixed_slip_xy*")
-xz_filenames = glob("data/forced_fixed_slip_xz*")
+xy_filenames = glob(joinpath(@__DIR__, "data", "forced_fixed_slip_xy*"))
+xz_filenames = glob(joinpath(@__DIR__, "data", "forced_fixed_slip_xz*"))
 
 labels = ["(x, y)", "(x, z)"]
 
