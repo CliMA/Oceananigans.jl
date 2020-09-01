@@ -1,8 +1,10 @@
 module OneDimensionalGaussianAdvectionDiffusion
 
-using Printf, Statistics
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Grids
+using Oceananigans
+using Oceananigans.Grids
 
 include("analysis.jl")
 
@@ -34,7 +36,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    println("Running Gaussian advection diffusion test for v and c with Nx = $Nx and Δt = $Δt...")
+    @info "Running Gaussian advection diffusion test for v and c with Nx = $Nx and Δt = $Δt..."
     run!(simulation)
 
     x = xnodes(model.tracers.c)
@@ -68,7 +70,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    println("Running Gaussian advection diffusion test for u with Nx = $Nx and Δt = $Δt...")
+    @info "Running Gaussian advection diffusion test for u with Nx = $Nx and Δt = $Δt..."
     run!(simulation)
 
     # Calculate errors

@@ -46,7 +46,7 @@ using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
-Logging.global_logger(OceananigansLogger(show_info_source=true))
+Logging.global_logger(OceananigansLogger())
 
 #####
 ##### Testing parameters
@@ -72,12 +72,12 @@ closures = (
 ##### Run tests!
 #####
 
-group = get(ENV, "TEST_GROUP", "all")
-
 include("runtests_utils.jl")
 
+group = get(ENV, "TEST_GROUP", :all) |> Symbol
+
 @testset "Oceananigans" begin
-    if group == "unit" || group == "all"
+    if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
             include("test_operators.jl")
@@ -90,7 +90,9 @@ include("runtests_utils.jl")
             include("test_buoyancy.jl")
             include("test_surface_waves.jl")
         end
-    elseif group == "integration" || group == "all"
+    end
+
+    if group == :integration || group == :all
         @testset "Integration tests" begin
             include("test_models.jl")
             include("test_simulations.jl")
@@ -103,13 +105,21 @@ include("runtests_utils.jl")
             include("test_output_writers.jl")
             include("test_abstract_operations.jl")
         end
-    elseif group == "regression" || group == "all"
+    end
+
+    if group == :regression || group == :all
         include("test_regression.jl")
-    elseif group == "scripts" || group == "all"
+    end
+
+    if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_examples.jl")
             include("test_verification.jl")
             include("test_benchmarks.jl")
         end
+    end
+
+    if group == :convergence
+        include("test_convergence.jl")
     end
 end

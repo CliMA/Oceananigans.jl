@@ -157,8 +157,6 @@ using .TimeSteppers
 using .Simulations
 
 function __init__()
-    Logging.global_logger(OceananigansLogger())
-
     threads = Threads.nthreads()
     if threads > 1
         @info "Oceananigans will use $threads threads"

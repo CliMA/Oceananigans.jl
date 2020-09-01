@@ -1,9 +1,9 @@
 module TwoDimensionalDiffusion
 
-using Printf, Statistics
+using Printf
+using Statistics
 
-using Oceananigans, Oceananigans.OutputWriters
-
+using Oceananigans
 using Oceananigans.Fields: nodes
 
 include("analysis.jl")
@@ -25,7 +25,9 @@ Ly(::Tuple{X, Bounded,  Z}) where {X, Z} = π
 ##### x, y
 #####
 
-function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="data",
+const DATA_DIR = joinpath(@__DIR__, "..", "data")
+
+function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR,
                           topo=(Periodic, Periodic, Bounded), output=false)
 
     grid = RegularCartesianGrid(size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
@@ -51,21 +53,14 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir="da
     return simulation
 end
 
-function run_simulation(; setup...)
-    simulation = setup_simulation(; setup...)
-    println("Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
-    @time run!(simulation)
-    return nothing
-end
-
 function run_and_analyze(; setup...)
     simulation = setup_simulation(; setup...)
-    println("Running two dimensional diffusion simulation in x, y with Nx = $(setup[:Nx]), Δt = $(setup[:Δt])")
+    @info "Running two dimensional diffusion simulation $(setup[:topo]) with Nx = Ny = $(setup[:Nx]), Δt = $(setup[:Δt])"
     @time run!(simulation)
 
     c_simulation = simulation.model.tracers.c
 
-    x, y, z, t = (nodes(c_simulation)..., simulation.model.clock.time)
+    x, y, z, t = (nodes(c_simulation, reshape=true)..., simulation.model.clock.time)
 
     c_analytical = c.(x, y, t)
 
