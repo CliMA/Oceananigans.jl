@@ -14,7 +14,7 @@ Base.show(io::IO, operation::AbstractOperation) =
           "├── grid: ", typeof(operation.grid), '\n',
           "│   ├── size: ", size(operation.grid), '\n',
           "│   └── domain: ", show_domain(operation.grid), '\n',
-          "└── tree: ", "\n"^2, tree_show(operation, 0, 0))
+          "└── tree: ", "\n", tree_show(operation, 1, 0))
 
 "Return a representaion of number or function leaf within a tree visualization of an `AbstractOperation`."
 tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
