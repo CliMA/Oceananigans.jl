@@ -34,7 +34,7 @@ function print_progress(simulation)
     model = simulation.model
     i, t = model.clock.iteration, model.clock.time
     progress = 100 * (i / simulation.stop_iteration)
-    @info @sprintf("[%05.2f%%] i: %d, t: %.5e", progress, i, t)
+    @info @sprintf("[%05.2f%%] iteration: %d, time: %.5e", progress, i, t)
     return nothing
 end
 
@@ -64,7 +64,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     set!(model, u = (x, y, z) -> u(x, y, 0),
                 v = (x, y, z) -> v(x, y, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=100)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
     outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
@@ -80,7 +80,7 @@ end
 
 function setup_and_run_xy(args...; kwargs...)
     simulation = setup_xy_simulation(args...; kwargs...)
-    @info "Running fixed slip simulation with Nx = Ny = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
+    @info "Running forced flow fixed slip simulation with Nx = Ny = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end
@@ -109,7 +109,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=100)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
     outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
@@ -125,7 +125,7 @@ end
 
 function setup_and_run_xz(args...; kwargs...)
     simulation = setup_xz_simulation(args...; kwargs...)
-    @info "Running fixed slip simulation with Nx = Nz = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
+    @info "Running forced flow fixed slip simulation with Nx = Nz = $(kwargs[:Nx]), Δt = $(kwargs[:Δt])"
     @time run!(simulation)
     return simulation
 end

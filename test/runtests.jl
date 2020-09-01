@@ -72,9 +72,9 @@ closures = (
 ##### Run tests!
 #####
 
-group = get(ENV, "TEST_GROUP", :all) |> Symbol
-
 include("runtests_utils.jl")
+
+group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
 @testset "Oceananigans" begin
     if group == :unit || group == :all

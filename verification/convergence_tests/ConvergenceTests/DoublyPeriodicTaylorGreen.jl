@@ -34,11 +34,11 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
         model = simulation.model
         i, t = model.clock.iteration, model.clock.time
         progress = 100 * (i / simulation.stop_iteration)
-        @info @sprintf("[%05.2f%%] i: %d, t: %.5e", progress, i, t)
+        @info @sprintf("[%05.2f%%] iteration: %d, time: %.5e", progress, i, t)
         return nothing
     end
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=100)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=125)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, FieldOutputs(model.velocities);
                                                           dir = dir, force = true,
