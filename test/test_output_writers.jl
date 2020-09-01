@@ -507,6 +507,18 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
+function dependencies_added_correctly!(model, windowed_time_average, output_writer)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    push!(simulation.output_writers, output_writer)
+    run!(simulation)
+
+    return windowed_time_average ∈ values(simulation.diagnostics)
+end
+
+
 @testset "Output writers" begin
     @info "Testing output writers..."
 
@@ -529,6 +541,31 @@ end
             run_checkpoint_with_function_bcs_tests(arch)
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
+        end
+
+        @testset "Output writer 'diagnostic dependencies' [$(typeof(arch))]" begin
+            @info "  Testing output writer diagnostic-dependencies [$(typeof(arch))]..."
+
+            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+            model = IncompressibleModel(architecture=arch, grid=grid)
+
+            windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
+
+            output = Dict("time_average" => windowed_time_average)
+            attributes = Dict("time_average" => Dict("longname" => "A time average",  "units" => "arbitrary"))
+            dimensions = Dict("time_average" => ("xF", "yC", "zC"))
+
+            # JLD2 test
+            jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, dir=".", prefix="test", force=true)
+
+            @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
+
+            # NetCDF test
+            netcdf_output_writer =
+                NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc", with_halos=true,
+                                   output_attributes=attributes, dimensions=dimensions)
+
+            @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
         end
     end
 end

@@ -1,17 +1,6 @@
 using Oceananigans.Simulations:
     stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded, TimeStepWizard
 
-function dependencies_added_correctly!(model, windowed_time_average, output_writer)
-
-    model.clock.iteration = 0
-    model.clock.time = 0.0
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-    push!(simulation.output_writers, output_writer)
-    run!(simulation)
-
-    return windowed_time_average ∈ values(simulation.diagnostics)
-end
-
 @testset "Simulations" begin
     @info "Testing simulations..."
 
@@ -53,25 +42,6 @@ end
             @test wall_time_limit_exceeded(simulation) == false
             simulation.wall_time_limit = 1e-12
             @test wall_time_limit_exceeded(simulation) == true
-
         end
-
-        windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
-
-        output = Dict(:time_average => windowed_time_average)
-
-        jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, dir=".", prefix="test", force=true)
-
-        @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
-
-        output = Dict("time_average" => windowed_time_average)
-        attributes = Dict("time_average" => Dict("longname" => "A time average",  "units" => "arbitrary"))
-        dimensions = Dict("time_average" => ("xF", "yC", "zC"))
-
-        netcdf_output_writer =
-            NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc", with_halos=true,
-                               output_attributes=attributes, dimensions=dimensions)
-
-        @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
     end
 end
