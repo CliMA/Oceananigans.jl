@@ -1,7 +1,7 @@
 # "Cosine advection-diffusion" Spatial resolution convergence test
 
+using Test
 using PyPlot
-
 using Oceananigans.Grids
 
 # Define a few utilities for running tests and unpacking and plotting results
@@ -70,7 +70,9 @@ savefig(filepath, dpi=480, bbox_extra_artists=(legend,), bbox_inches="tight")
 for (results, name) in zip(all_results, names)
     name = "1D cosine " * name
     @info "Testing rate of convergence for $name..."
+
     u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(results)
+
     test_rate_of_convergence(u_L₁,  Nx, expected=-2.0, atol=0.01, name=name*" u_L₁")
     test_rate_of_convergence(v_L₁,  Nx, expected=-2.0, atol=0.01, name=name*" v_L₁")
     test_rate_of_convergence(cx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cx_L₁")
@@ -79,4 +81,7 @@ for (results, name) in zip(all_results, names)
     test_rate_of_convergence(v_L∞,  Nx, expected=-2.0, atol=0.05, name=name*" v_L∞")
     test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=0.05, name=name*" cx_L∞")
     test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=0.05, name=name*" cy_L∞")
+
+    @test u_L₁ ≈ v_L₁ ≈ cx_L₁ ≈ cy_L₁
+    @test u_L∞ ≈ v_L∞ ≈ cx_L∞ ≈ cy_L∞
 end

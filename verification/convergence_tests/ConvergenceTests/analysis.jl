@@ -6,7 +6,7 @@ location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
                                   (Cell, Cell, Cell))
 
 print_min_max_mean(ψ, name="") =
-    @printf("%s min: %.9e, max: %.9e, mean: %.9e\n", name, minimum(ψ), maximum(ψ), mean(ψ))
+    @info @sprintf("%s min: %.9e, max: %.9e, mean: %.9e\n", name, minimum(ψ), maximum(ψ), mean(ψ))
 
 function extract_two_solutions(analytical_solution, filename; name=:u)
     grid = RegularCartesianGrid(filename)
@@ -61,6 +61,7 @@ extract_sizes(filenames...) = [size(RegularCartesianGrid(filename)) for filename
 function test_rate_of_convergence(error, Δ; name="", data_points=length(error), expected, atol)
     d = data_points
     ROC = log10(error[1] / error[d]) / log10(Δ[1] / Δ[d])
-    @info (name == "" ? "" : name * " ") * "rate of convergence = $ROC (expected ≈ $expected, atol=$atol)"
+    @info (name == "" ? "" : name * " ") * "rate of convergence = $ROC (expected ≈ $expected, atol = $atol)"
     @test isapprox(ROC, expected, atol=atol)
+    return ROC
 end

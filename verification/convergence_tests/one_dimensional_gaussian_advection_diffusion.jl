@@ -84,4 +84,7 @@ for (results, name) in zip(all_results, names)
     test_rate_of_convergence(v_L∞,  Nx, expected=-2.0, atol=atol_L∞, name=name*" v_L∞")
     test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" cx_L∞")
     test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" cy_L∞")
+
+    @test u_L₁ ≈ v_L₁ ≈ cx_L₁ ≈ cy_L₁
+    @test u_L∞ ≈ v_L∞ ≈ cx_L∞ ≈ cy_L∞
 end
