@@ -10,7 +10,7 @@ removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
 xy_filenames = glob("forced_free_slip_xy*.jld2", joinpath(@__DIR__, "data"))
-xz_filenames = glob("forced_free_slip_xy*.jld2", joinpath(@__DIR__, "data"))
+xz_filenames = glob("forced_free_slip_xz*.jld2", joinpath(@__DIR__, "data"))
 
 xy_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, y, t), xy_filenames...)
 xz_errors = ConvergenceTests.compute_errors((x, y, z, t) -> u(x, z, t), xz_filenames...)

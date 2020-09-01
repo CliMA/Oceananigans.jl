@@ -5,7 +5,7 @@ const CONVERGENCE_DIR = joinpath(@__DIR__, "..", "verification", "convergence_te
 
 Pkg.activate(CONVERGENCE_DIR)
 Pkg.instantiate()
-Pkg.develop(path=joinpath(@__DIR__, ".."))
+Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
 
 @testset "Convergence" begin
     @safetestset "0D point exponential decay" begin
