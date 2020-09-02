@@ -115,7 +115,7 @@ keyword arguments:
     * `south` and `north` for the `-y` and `+y` boundary;
     * `bottom` and `top` for the `-z` and `+z` boundary.
 
-Default boundary conditions depend on `topology(grid)`. See ['DefaultBoundaryCondition'](@ref)
+Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
 UVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Face, Cell, Cell); user_defined_bcs...)
 
@@ -135,7 +135,7 @@ keyword arguments:
     * `south` and `north` for the `-y` and `+y` boundary;
     * `bottom` and `top` for the `-z` and `+z` boundary.
 
-Default boundary conditions depend on `topology(grid)`. See ['DefaultBoundaryCondition'](@ref)
+Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
 VVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Face, Cell); user_defined_bcs...)
 
@@ -155,7 +155,7 @@ keyword arguments:
     * `south` and `north` for the `-y` and `+y` boundary;
     * `bottom` and `top` for the `-z` and `+z` boundary.
 
-Default boundary conditions depend on `topology(grid)`. See ['DefaultBoundaryCondition'](@ref)
+Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
 WVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Face); user_defined_bcs...)
 
@@ -175,7 +175,7 @@ keyword arguments:
     * `south` and `north` for the `-y` and `+y` boundary;
     * `bottom` and `top` for the `-z` and `+z` boundary.
 
-Default boundary conditions depend on `topology(grid)`. See ['DefaultBoundaryCondition'](@ref)
+Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
 TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Cell); user_defined_bcs...)
 
