@@ -49,6 +49,9 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
 @inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
+@inline total_length(::Nothing, args...) = 1
+
+
 # Grid domains
 @inline domain(ξ, topo) = ξ[1], ξ[end]
 @inline domain(ξ, ::Type{Bounded}) = ξ[1], ξ[end-1]
