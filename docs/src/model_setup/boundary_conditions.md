@@ -217,8 +217,10 @@ Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary c
 for horizontally periodic grid topologies.
 The default `Periodic` boundary conditions in $x$ and $y$ are inferred from the `topology` of `grid`.
 
-For $u$, $v$, and $w$, use the [`UVelocityBoundaryConditions`](@ref),
-[`VVelocityBoundaryConditions`](@ref), and [`WVelocityBoundaryConditions`](@ref) constructors, respectively.
+For $u$, $v$, and $w$, use the 
+`UVelocityBoundaryConditions`
+`VVelocityBoundaryConditions`, and 
+`WVelocityBoundaryConditions` constructors, respectively.
 
 ## Specifying model boundary conditions
 
