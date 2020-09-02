@@ -247,13 +247,7 @@ IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
-```
 
-The keyword argument `boundary_conditions` assigns boundary conditions to the corresponding
-fields:
-
-
-```jldoctest
 julia> model.velocities.u
 Field located at (Face, Cell, Cell)
 ├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
@@ -267,4 +261,5 @@ Field located at (Cell, Cell, Cell)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)
 ```
 
-Note the non-default boundary conditions at top and bottom on both `model.velocities.u` and `model.tracers.T`.
+Notice that the specified non-default boundary conditions have been applied at
+top and bottom of both `model.velocities.u` and `model.tracers.T`.
