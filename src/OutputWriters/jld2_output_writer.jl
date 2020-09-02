@@ -92,7 +92,7 @@ function JLD2OutputWriter(model, outputs;
                                           force = false,
                                           async = false,
                                         verbose = false,
-                                        jld2_kw = Dict{Symbol, Any}()
+                                        jld2_kw = Dict{Symbol, Any}(),
                           time_averaging_window = nothing,
                           time_averaging_stride = 1
                          )
