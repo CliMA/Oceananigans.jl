@@ -60,7 +60,7 @@ end
 ```
 
 Boundary conditions may be specified with constants, functions, or arrays.
-In this section we illustrate usage of the `BoundaryCondition` constructor.
+In this section we illustrate usage of the [`BoundaryCondition`](@ref) constructor.
 
 ##### 1. Constant `Value` (Dirchlet) boundary condition
 
@@ -69,9 +69,9 @@ julia> constant_T_bc = ValueBoundaryCondition(20.0)
 BoundaryCondition: type=Value, condition=20.0
 ```
 
-A constant `Value` boundary condition can be used to specify constant tracer (such as temperature),
+A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the `NormalFlow` boundary condition type.
+_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
@@ -83,10 +83,10 @@ julia> ρ₀ = 1027;  # Reference density [kg/m³]
 julia> τₓ = 0.08;  # Wind stress [N/m²]
 
 julia> wind_stress_bc = FluxBoundaryCondition(-τₓ/ρ₀)
-BoundaryCondition: type=Flux, condition=7.789678675754625e-5
+BoundaryCondition: type=Flux, condition=-7.789678675754625e-5
 ```
 
-A constant `Flux` boundary condition can be imposed on tracers and tangential velocity components
+A constant [`Flux`](@ref) boundary condition can be imposed on tracers and tangential velocity components
 can can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
 
 !!! info "The flux convention in Oceananigans"
@@ -95,12 +95,14 @@ can can be used, for example, to specify cooling, heating, evaporation, or wind 
     This means, for example, that a _negative_ flux of momentum or velocity at a _top_
     boundary, such as in the above example, produces currents in the _positive_ direction,
     because it prescribes a downwards flux of momentum into the domain from the top.
-    Likewise, a _positive_ temperature flux at the top boundary leads
+    Likewise, a _positive_ temperature flux at the top boundary
     causes _cooling_, because it transports heat _upwards_, out of the domain.
     Conversely, a positive flux at a _bottom_ boundary acts to increase the interior
     values of a quantity.
 
 ##### 3. Spatially- and temporally-varying flux
+
+Boundary conditions may be specified by functions,
 
 ```jldoctest
 julia> @inline surface_flux(x, y, t) = cos(2π * x) * cos(t);
@@ -118,10 +120,12 @@ BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at none:1
     * `f(y, z, t)` on `x`-boundaries;
     * `f(x, z, t)` on `y`-boundaries;
     * `f(x, y, t)` on `z`-boundaries.
-    Other function signatures are possible by providing keyword arguments to
+    Alternative function signatures are specified by keyword arguments to
     `BoundaryCondition`, as illustrated in subsequent examples.
 
 ##### 4. Spatially- and temporally-varying flux with parameters
+
+Boundary condition functions may be 'parameterized',
 
 ```jldoctest
 julia> @inline wind_stress(x, y, t, p) = - p.τ * cos(p.k * x) * cos(p.ω * t); # function with parameters
@@ -149,7 +153,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
-    The argument `discrete_form=true` indicates to `BoundaryCondition` that `linear_drag`
+    The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `linear_drag`
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
     are called with the signature 
     ```julia
@@ -194,7 +198,7 @@ When running on the GPU, `Q` must be converted to a `CuArray`.
 
 ## Building boundary conditions on a field
 
-To create, for example, a set of horizontally periodic field boundary conditions
+To create, for example, a set of horizontally-periodic field boundary conditions, write
 
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
@@ -213,12 +217,13 @@ Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary c
 for horizontally periodic grid topologies.
 The default `Periodic` boundary conditions in $x$ and $y$ are inferred from the `topology` of `grid`.
 
-For $u$, $v$, and $w$, use the `UVelocityBoundaryConditions`, `VVelocityBoundaryConditions`, and `WVelocityBoundaryConditions` constructors, respectively.
+For $u$, $v$, and $w$, use the [`UVelocityBoundaryConditions`](@ref),
+[`VVelocityBoundaryConditions`](@ref), and [`WVelocityBoundaryConditions`](@ref) constructors, respectively.
 
 ## Specifying model boundary conditions
 
 To specify non-default boundary conditions, a named tuple of [`FieldBoundaryConditions`](@ref) objects is
-passed to the keyword argument `boundary_conditions` in the `IncompressibleModel` constructor.
+passed to the keyword argument `boundary_conditions` in the [`IncompressibleModel`](@ref) constructor.
 The keys of `boundary_conditions` indicate the field to which the boundary condition is applied.
 Below, non-default boundary conditions are imposed on the $u$-velocity and temperature.
 
