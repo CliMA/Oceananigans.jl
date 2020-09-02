@@ -1,10 +1,10 @@
 """
     NonTraditionalBetaPlane{FT} <: AbstractRotation
 
-A Coriolis implementation that accounts for the latitudinal variatino of both
+A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
-Traditionally (see [`BetaPlane`](@ref)) only the locally vertical component is
-accounted for.
+The "traditional" approximation in ocean models accounts for only the locally
+vertical component of the rotation vector (see [`BetaPlane`](@ref)).
 
 This implementation is based off of section 5 of Dellar (2011). It conserve energy,
 angular momentum, and potential vorticity.
@@ -61,6 +61,7 @@ end
 @inline two_Ωʸ(P, y, z) = P.fy * (1 -  z/P.R) + P.γ * y
 @inline two_Ωᶻ(P, y, z) = P.fz * (1 + 2z/P.R) + P.β * y
 
+# This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
     @inbounds (  two_Ωʸ(coriolis, grid.yC[j], grid.zC[k]) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
                - two_Ωᶻ(coriolis, grid.yC[j], grid.zC[k]) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))

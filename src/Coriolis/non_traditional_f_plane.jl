@@ -42,6 +42,7 @@ function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=
     return NonTraditionalFPlane{FT}(fz, fy)
 end
 
+# This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline fʸw_minus_fᶻv(i, j, k, grid, coriolis, U) =
     coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
 
