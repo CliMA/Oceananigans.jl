@@ -42,4 +42,4 @@ end
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
 
 Base.show(io::IO, f_plane::FPlane{FT}) where FT =
-    println(io, "FPlane{$FT}: f = ", @sprintf("%.2e", f_plane.f))
+    print(io, "FPlane{$FT}: f = ", @sprintf("%.2e", f_plane.f))

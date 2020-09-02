@@ -76,6 +76,6 @@ end
     @inbounds -two_Ωʸ(coriolis, grid.yC[j], grid.zF[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.show(io::IO, β_plane::NonTraditionalBetaPlane{FT}) where FT =
-    println(io, "NonTraditionalBetaPlane{$FT}: ",
-            @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e",
-                     β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ))
+    print(io, "NonTraditionalBetaPlane{$FT}: ",
+          @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e",
+                   β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ))

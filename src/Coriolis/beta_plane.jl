@@ -46,4 +46,4 @@ end
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
 
 Base.show(io::IO, β_plane::BetaPlane{FT}) where FT =
-    println(io, "BetaPlane{$FT}: ", @sprintf("f₀ = %.2e, β = %.2e", β_plane.f₀, β_plane.β))
+    print(io, "BetaPlane{$FT}: ", @sprintf("f₀ = %.2e, β = %.2e", β_plane.f₀, β_plane.β))

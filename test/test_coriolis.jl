@@ -97,6 +97,23 @@ end
             @test_throws ArgumentError NonTraditionalBetaPlane(FT, fz=1, fy=2, β=3, rotation_rate=7e-5, latitude=40)
             @test_throws ArgumentError NonTraditionalBetaPlane(FT, fz=1, fy=2, β=3, γ=4, latitude=40)
             @test_throws ArgumentError NonTraditionalBetaPlane(FT, fz=1, fy=2, β=3, γ=4, rotation_rate=7e-5, latitude=40)
+
+            # Test show functions
+            ✈ = FPlane(FT, latitude=45)
+            show(✈); println()
+            @test ✈ isa FPlane{FT}
+
+            ✈ = NonTraditionalFPlane(FT, latitude=45)
+            show(✈); println()
+            @test ✈ isa NonTraditionalFPlane{FT}
+
+            ✈ = BetaPlane(FT, latitude=45)
+            show(✈); println()
+            @test ✈ isa BetaPlane{FT}
+
+            ✈ = NonTraditionalBetaPlane(FT, latitude=45)
+            show(✈); println()
+            @test ✈ isa NonTraditionalBetaPlane{FT}
         end
     end
 end
