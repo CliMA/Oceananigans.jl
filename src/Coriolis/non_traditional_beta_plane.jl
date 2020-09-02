@@ -20,6 +20,7 @@ struct NonTraditionalBetaPlane{FT} <: AbstractRotation
     fy :: FT
     β  :: FT
     γ  :: FT
+    R  :: FT
 end
 
 """
@@ -27,9 +28,9 @@ end
         fz=nothing, fy=nothing, β=nothing, γ=nothing,
         rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-The user may directly specify `fz`, `fy`, `β`, and `γ`, or the three parameters
-`rotation_rate`, `latitude`, and `radius` that specify the rotation rate and
-radius of a planet, and the central latitude (where y = 0) at which the
+The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three
+parameters `rotation_rate`, `latitude`, and `radius` that specify the rotation rate
+and radius of a planet, and the central latitude (where y = 0) at which the
 non-traditional `β`-plane approximation is to be made.
 
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
@@ -44,7 +45,7 @@ function NonTraditionalBetaPlane(FT=Float64;
     use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
 
     if !xor(use_f, use_planet_parameters)
-        throw(ArgumentError("Either the keywords fz, fy, β, and γ must be specified, " *
+        throw(ArgumentError("Either the keywords fz, fy, β, γ, and radius must be specified, " *
                             "*or* all of rotation_rate, latitude, and radius."))
     end
 
@@ -55,7 +56,7 @@ function NonTraditionalBetaPlane(FT=Float64;
         γ  = -4Ω*sind(φ)/R
     end
 
-    return NonTraditionalBetaPlane{FT}(fz, fy, β, γ)
+    return NonTraditionalBetaPlane{FT}(fz, fy, β, γ, R)
 end
 
 @inline two_Ωʸ(P, y, z) = P.fy * (1 -  z/P.R) + P.γ * y
@@ -77,5 +78,5 @@ end
 
 Base.show(io::IO, β_plane::NonTraditionalBetaPlane{FT}) where FT =
     print(io, "NonTraditionalBetaPlane{$FT}: ",
-          @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e",
-                   β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ))
+          @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e, R = %.2e",
+                   β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ, β_plane.R))
