@@ -41,7 +41,7 @@ function NonTraditionalBetaPlane(FT=Float64;
     Ω, φ, R =  rotation_rate, latitude, radius
 
     use_f = !all(isnothing.((fz, fy, β, γ))) && isnothing(latitude)
-    use_planet_parameters = !isnothing(latitude) && all(isnothing((fz, fy, β, γ)))
+    use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
 
     if !xor(use_f, use_planet_parameters)
         throw(ArgumentError("Either the keywords fz, fy, β, and γ must be specified, " *
