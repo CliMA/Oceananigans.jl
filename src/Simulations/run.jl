@@ -1,3 +1,5 @@
+using ..Diagnostics: WindowedTimeAverage
+
 # Simulations are for running
 
 function stop(sim)
@@ -44,6 +46,12 @@ function wall_time_limit_exceeded(sim)
     return false
 end
 
+add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+
+add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
+
 get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
@@ -58,7 +66,9 @@ function run!(sim)
     model = sim.model
     clock = model.clock
 
-    [open(out) for out in values(sim.output_writers)]
+    [open(writer) for writer in values(sim.output_writers)]
+
+    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
     while !stop(sim)
         time_before = time()
