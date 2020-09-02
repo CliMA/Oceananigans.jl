@@ -16,7 +16,7 @@ end
 
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`,
 `latitude`, and `radius` that specify the rotation rate and radius of a planet, and
-the central latitude at which the `β`-plane approximation is to be made.
+the central latitude (where y = 0) at which the `β`-plane approximation is to be made.
 
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """

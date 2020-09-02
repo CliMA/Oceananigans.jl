@@ -1,7 +1,7 @@
 module Coriolis
 
 export
-    FPlane, NonTraditionalFPlane, BetaPlane,
+    FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf

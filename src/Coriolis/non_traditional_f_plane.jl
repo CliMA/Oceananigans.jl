@@ -42,7 +42,7 @@ function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=
     return NonTraditionalFPlane{FT}(fz, fy)
 end
 
-@inline fʸw_minus_fᶻv(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =
+@inline fʸw_minus_fᶻv(i, j, k, grid, coriolis, U) =
     coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) =   ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
