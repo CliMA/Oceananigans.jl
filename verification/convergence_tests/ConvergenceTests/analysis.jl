@@ -1,10 +1,12 @@
+using Test
+
 location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
                        s === :v ? (Cell, Face, Cell) :
                        s === :w ? (Cell, Cell, Face) :
                                   (Cell, Cell, Cell))
 
 print_min_max_mean(ψ, name="") =
-    @printf("%s max: %.9e, min: %.9e, mean: %.9e\n", name, minimum(ψ), maximum(ψ), mean(ψ))
+    @info @sprintf("%s min: %.9e, max: %.9e, mean: %.9e", name, minimum(ψ), maximum(ψ), mean(ψ))
 
 function extract_two_solutions(analytical_solution, filename; name=:u)
     grid = RegularCartesianGrid(filename)
@@ -23,7 +25,7 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
     ψ_data = OffsetArray(ψ_raw, 0:tx-1, 0:ty-1, 0:tz-1)
     ψ_simulation = Field{loc[1], loc[2], loc[3]}(ψ_data, grid, FieldBoundaryConditions(grid, loc))
 
-    x, y, z = nodes(ψ_simulation)
+    x, y, z = nodes(ψ_simulation, reshape=true)
 
     ψ_simulation = interior(ψ_simulation)
 
@@ -51,7 +53,15 @@ function compute_error(analytical_solution, filename::String; kwargs...)
     return compute_error(u_simulation, u_analytical)
 end
 
-compute_errors(analytical_solution, filenames::String...; kwargs...) = 
+compute_errors(analytical_solution, filenames::String...; kwargs...) =
     [compute_error(analytical_solution, filename; kwargs...) for filename in filenames]
 
 extract_sizes(filenames...) = [size(RegularCartesianGrid(filename)) for filename in filenames]
+
+function test_rate_of_convergence(error, Δ; name="", data_points=length(error), expected, atol)
+    d = data_points
+    ROC = log10(error[1] / error[d]) / log10(Δ[1] / Δ[d])
+    @info (name == "" ? "" : name * " ") * "rate of convergence = $ROC (expected ≈ $expected, atol = $atol)"
+    @test isapprox(ROC, expected, atol=atol)
+    return ROC
+end

@@ -47,7 +47,7 @@ function wall_time_limit_exceeded(sim)
 end
 
 add_dependency!(diagnostics, output) = nothing # fallback
-add_dependency!(diags, wta::WindowedTimeAverage) = !(wta ∈ values(diags)) && push!(diags, wta)
+add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
 
 add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"

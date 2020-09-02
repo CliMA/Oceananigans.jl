@@ -1,8 +1,8 @@
 using Oceananigans.Architectures
+using Oceananigans.Grids: halo_size, total_size
+using Oceananigans.Fields: Field
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
-using Oceananigans.Grids: total_size
-using Oceananigans.Fields: Field
 
 """
     Average{F, R, D, P, I, T} <: AbstractDiagnostic
@@ -17,10 +17,10 @@ mutable struct Average{F, R, D, P, I, T} <: AbstractDiagnostic
          time_interval :: T
               previous :: Float64
            return_type :: R
+            with_halos :: Bool
 end
 
 function dims_to_result_size(field, dims, grid)
-    N = (grid.Nx, grid.Ny, grid.Nz)
     field_size = total_size(parent(field))
     return Tuple(d in dims ? 1 : field_size[d] for d in 1:3)
 end
@@ -42,7 +42,9 @@ A `return_type` can be used to specify the type returned when the `Average` is
 used as a callable object. The default `return_type=Array` is useful when running a GPU
 model and you want to save the output to disk by passing it to an output writer.
 """
-function Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array)
+function Average(field::Field; dims, iteration_interval=nothing, time_interval=nothing, return_type=Array,
+                 with_halos=true)
+
     dims isa Union{Int, Tuple} || error("Average dims must be an integer or tuple!")
     dims isa Int && (dims = tuple(dims))
 
@@ -53,7 +55,9 @@ function Average(field::Field; dims, iteration_interval=nothing, time_interval=n
     arch = architecture(field)
     result_size = dims_to_result_size(field, dims, field.grid)
     result = zeros(arch, field.grid, result_size...)
-    return Average(field, dims, result, iteration_interval, time_interval, 0.0, return_type)
+
+    return Average(field, dims, result, iteration_interval, time_interval, 0.0,
+                   return_type, with_halos)
 end
 
 """
@@ -62,8 +66,7 @@ end
 Normalize the sum by the number of grid points averaged over to get the average.
 """
 function normalize_sum!(avg)
-    grid = avg.field.grid
-    N = (grid.Nx, grid.Ny, grid.Nz)
+    N = size(avg.field.grid)
     avg.result ./= prod(N[d] for d in avg.dims)
     return nothing
 end
@@ -82,5 +85,11 @@ end
 
 function (avg::Average)(model)
     run_diagnostic(model, avg)
-    return avg.return_type(avg.result)
+    N, H = size(model.grid), halo_size(model.grid)
+    result = avg.return_type(avg.result)
+    if avg.with_halos
+        return result
+    else
+        return result[(d in avg.dims ? Colon() : (1+H[d]:N[d]+H[d]) for d in 1:3)...]
+    end
 end
