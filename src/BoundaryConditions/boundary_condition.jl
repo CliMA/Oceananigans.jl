@@ -23,7 +23,7 @@ BoundaryCondition(BC, condition) = BoundaryCondition{BC, typeof(condition)}(cond
 
 Construct a boundary condition of type `BC` with a function boundary `condition`.
 
-By default, the function boudnary `condition` is assumed to have the 'short form'
+By default, the function boudnary `condition` is assumed to have the 'continuous form'
 `condition(ξ, η, t)`, where `t` is time and `ξ` and `η` vary along the boundary.
 In particular:
 
