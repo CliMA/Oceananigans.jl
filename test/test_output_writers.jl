@@ -1,6 +1,7 @@
 using Statistics
 using NCDatasets
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
+using Oceananigans.Diagnostics
 
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -518,6 +519,20 @@ function dependencies_added_correctly!(model, windowed_time_average, output_writ
     return windowed_time_average ∈ values(simulation.diagnostics)
 end
 
+function jld2_time_averaging_window(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    output = FieldOutputs(model.velocities)
+
+    jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, time_averaging_window=2.0,
+                                          dir=".", prefix="test", force=true)
+
+    outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
+
+    return all(outputs_are_time_averaged)
+end
 
 @testset "Output writers" begin
     @info "Testing output writers..."
@@ -543,11 +558,13 @@ end
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
 
-        @testset "Output writer 'diagnostic dependencies' [$(typeof(arch))]" begin
-            @info "  Testing output writer diagnostic-dependencies [$(typeof(arch))]..."
+        @testset "Output writer averaging and 'diagnostic dependencies' [$(typeof(arch))]" begin
+            @info "  Testing output writer time-averaging and diagnostic-dependencies [$(typeof(arch))]..."
 
             grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
             model = IncompressibleModel(architecture=arch, grid=grid)
+
+            @test jld2_time_averaging_window(model)
 
             windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
 
@@ -555,12 +572,12 @@ end
             attributes = Dict("time_average" => Dict("longname" => "A time average",  "units" => "arbitrary"))
             dimensions = Dict("time_average" => ("xF", "yC", "zC"))
 
-            # JLD2 test
+            # JLD2 dependencies test
             jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, dir=".", prefix="test", force=true)
 
             @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
 
-            # NetCDF test
+            # NetCDF dependency test
             netcdf_output_writer =
                 NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc", with_halos=true,
                                    output_attributes=attributes, dimensions=dimensions)
