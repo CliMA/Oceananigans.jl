@@ -153,7 +153,8 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 model = IncompressibleModel(               grid = grid,
                                    architecture = CPU(),
                                        coriolis = FPlane(f=f),
-                                       buoyancy = BuoyancyTracer(), tracers = :b,
+                                       buoyancy = BuoyancyTracer(),
+                                        tracers = :b,
                                         forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
                                         closure = closure,
                             boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))
