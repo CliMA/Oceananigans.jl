@@ -1,58 +1,81 @@
 using Oceananigans.Grids: halo_size
 
 function run_horizontal_average_tests(arch, FT)
-    Nx = Ny = Nz = 16
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    topo = (Periodic, Periodic, Bounded)
+    Nx = Ny = Nz = 4
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     Hx, Hy, Hz = halo_size(grid)
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-    T₀(x, y, z) = z
-    set!(model, T=T₀)
+    linear(x, y, z) = z
+    set!(model, T=linear, w=linear)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=false)
-    computed_profile = T̅(model)
-    @test size(computed_profile) == (1, 1, Nz)
+    T̅ = Average(model.tracers.T, dims=(1, 2), with_halos=false)
+    computed_T_profile = T̅(model)
+    @test size(computed_T_profile) == (1, 1, Nz)
+    @test computed_T_profile ≈ znodes(Cell, grid, reshape=true)
 
-    computed_profile = dropdims(computed_profile, dims=(1, 2))
-    @test computed_profile ≈ znodes(Cell, grid)
+    T̅ = Average(model.tracers.T, dims=(1, 2), with_halos=true)
+    computed_T_profile_with_halos = T̅(model)
+    @test size(computed_T_profile_with_halos) == (1, 1, Nz+2Hz)
+    @test computed_T_profile_with_halos[1+Hz:Nz+Hz] ≈ znodes(Cell, grid)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), time_interval=0.5second, with_halos=true)
-    computed_profile_with_halos = T̅(model)
-    @test size(computed_profile_with_halos) == (1, 1, Nz+2Hz)
+    w̅ = Average(model.velocities.w, dims=(1, 2), with_halos=false)
+    computed_w_profile = w̅(model)
+    @test size(computed_w_profile) == (1, 1, Nz+1)
+    @test computed_w_profile ≈ znodes(Face, grid, reshape=true)
 
-    computed_profile_with_halos = dropdims(computed_profile_with_halos, dims=(1, 2))
-    @test computed_profile_with_halos[1+Hz:Nz+Hz] ≈ computed_profile
+    w̅ = Average(model.velocities.w, dims=(1, 2), with_halos=true)
+    computed_w_profile_with_halos = w̅(model)
+    @test size(computed_w_profile_with_halos) == (1, 1, Nz+1+2Hz)
+    @test computed_w_profile_with_halos[1+Hz:Nz+1+Hz] ≈ znodes(Face, grid)
 end
 
 function run_zonal_average_tests(arch, FT)
-    Nx = Ny = Nz = 16
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    topo = (Periodic, Bounded, Bounded)
+    Nx = Ny = Nz = 4
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     Hx, Hy, Hz = halo_size(grid)
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-    T₀(x, y, z) = z
-    set!(model, T=T₀)
+    linear(x, y, z) = z
+    set!(model, T=linear, v=linear)
 
-    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=false)
-    computed_slice = T̅(model)
-    @test size(computed_slice) == (1, Ny, Nz)
+    T̅ = Average(model.tracers.T, dims=1, with_halos=false)
+    computed_T_slice = T̅(model)
+    @test size(computed_T_slice) == (1, Ny, Nz)
 
-    computed_slice = dropdims(computed_slice, dims=1)
+    computed_T_slice = dropdims(computed_T_slice, dims=1)
     zC = znodes(Cell, grid)
-    @test all(computed_slice[j, :] ≈ zC for j in 1:Ny)
+    @test all(computed_T_slice[j, :] ≈ zC for j in 1:Ny)
 
-    T̅ = Average(model.tracers.T, dims=1, time_interval=0.5second, with_halos=true)
-    computed_slice_with_halos = T̅(model)
-    @test size(computed_slice_with_halos) == (1, Ny+2Hy, Nz+2Hz)
+    T̅ = Average(model.tracers.T, dims=1, with_halos=true)
+    computed_T_slice_with_halos = T̅(model)
+    @test size(computed_T_slice_with_halos) == (1, Ny+2Hy, Nz+2Hz)
 
-    computed_slice_with_halos = dropdims(computed_slice_with_halos, dims=1)
-    @test computed_slice_with_halos[1+Hy:Ny+Hy, 1+Hz:Nz+Hz] ≈ computed_slice
+    computed_T_slice_with_halos = dropdims(computed_T_slice_with_halos, dims=1)
+    @test computed_T_slice_with_halos[1+Hy:Ny+Hy, 1+Hz:Nz+Hz] ≈ computed_T_slice
+
+    v̅ = Average(model.velocities.v, dims=1, with_halos=false)
+    computed_v_slice = v̅(model)
+    @test size(computed_v_slice) == (1, Ny+1, Nz)
+
+    computed_v_slice = dropdims(computed_v_slice, dims=1)
+    zC = znodes(Cell, grid)
+    @test all(computed_v_slice[j, :] ≈ zC for j in 1:Ny)
+
+    v̅ = Average(model.velocities.v, dims=1, with_halos=true)
+    computed_v_slice_with_halos = v̅(model)
+    @test size(computed_v_slice_with_halos) == (1, Ny+1+2Hy, Nz+2Hz)
+
+    computed_v_slice_with_halos = dropdims(computed_v_slice_with_halos, dims=1)
+    @test computed_v_slice_with_halos[1+Hy:Ny+1+Hy, 1+Hz:Nz+Hz] ≈ computed_v_slice
 end
 
 function run_volume_average_tests(arch, FT)
-    Nx = Ny = Nz = 16
+    Nx = Ny = Nz = 4
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(100, 100, 100))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
