@@ -1,4 +1,4 @@
-using Oceananigans.Grids: show_domain, short_show
+using Oceananigans.Grids: domain_string, short_show
 using Oceananigans.Fields: show_location
 
 for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
@@ -13,7 +13,7 @@ Base.show(io::IO, operation::AbstractOperation) =
           operation_name(operation), " at ", show_location(operation), '\n',
           "├── grid: ", typeof(operation.grid), '\n',
           "│   ├── size: ", size(operation.grid), '\n',
-          "│   └── domain: ", show_domain(operation.grid), '\n',
+          "│   └── domain: ", domain_string(operation.grid), '\n',
           "└── tree: ", "\n", "    ", tree_show(operation, 1, 0))
 
 "Return a representaion of number or function leaf within a tree visualization of an `AbstractOperation`."

@@ -168,17 +168,16 @@ end
 short_show(grid::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "RegularCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
-show_domain(grid) = string("x ∈ [", grid.xF[1], ", ", grid.xF[end], "], ",
-                           "y ∈ [", grid.yF[1], ", ", grid.yF[end], "], ",
-                           "z ∈ [", grid.zF[1], ", ", grid.zF[end], "]")
+function domain_string(grid)
+    xₗ, xᵣ = x_domain(grid)
+    yₗ, yᵣ = y_domain(grid)
+    zₗ, zᵣ = z_domain(grid)
+    return "x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]"
+end
 
 function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    xₗ, xᵣ = x_domain(g)
-    yₗ, yᵣ = y_domain(g)
-    zₗ, zᵣ = z_domain(g)
-
     print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
-              "                   domain: x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]\n",
+          "                       domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
