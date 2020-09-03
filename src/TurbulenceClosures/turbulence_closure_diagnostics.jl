@@ -50,10 +50,13 @@ end
 
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity{V, <:NamedTuple{()}, <:NamedTuple{()}},
                                   diffusivities, grid) where V
-    Δh = min_Δxy(grid)
+    Δx = min_Δx(grid)
+    Δy = min_Δy(grid)
     Δz = min_Δz(grid)
 
-    return min(Δh^4 / closure.νh, Δz^4 / closure.νz)
+    return min(Δx^4 / closure.νx,
+               Δy^4 / closure.νy,
+               Δz^4 / closure.νz)
 end
 
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
