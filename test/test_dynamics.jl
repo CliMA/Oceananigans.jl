@@ -37,7 +37,7 @@ function test_biharmonic_diffusion_budget(fieldname, model)
 
     field = get_model_field(fieldname, model)
 
-    return test_diffusion_budget(fieldname, field, model, model.closure.νh, model.grid.Δz, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δz, 4)
 end
 
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
@@ -45,12 +45,12 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
 
     for n in 1:100
         # Very small time-steps required to bring error under machine precision
-        time_step!(model, 1e-5 * Δ^order / κ, euler= n==1)
+        time_step!(model, 1e-4 * Δ^order / κ, euler= n==1)
     end
 
     final_mean = mean(interior(field))
 
-    @info @sprintf("        Initial <%s>: %.16f, final <%s>: %.16f, final - initial: %.4e",
+    @info @sprintf("    Initial <%s>: %.16f, final <%s>: %.16f, final - initial: %.4e",
                    fieldname, init_mean, fieldname, final_mean, final_mean - init_mean)
 
     return isapprox(init_mean, final_mean)
