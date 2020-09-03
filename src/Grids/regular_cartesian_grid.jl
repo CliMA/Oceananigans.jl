@@ -177,7 +177,7 @@ end
 
 function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
-          "                       domain: $(domain_string(g))\n",
+              "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
