@@ -22,16 +22,25 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3)),
-                                architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    
+    # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
+    grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+    
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
-    # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
+    # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
+    
+    @test all(interior(model.velocities.u) .≈ 0)
+    @test all(interior(model.velocities.v) .≈ 0)
+    @test all(interior(model.velocities.w) .≈ 0)
+    @test all(interior(model.tracers.T)    .≈ 1.0)
+    @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
 end
