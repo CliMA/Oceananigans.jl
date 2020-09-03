@@ -42,7 +42,7 @@ function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
 
-    workgroup, worksize = work_layout(computation.grid, :xyz)
+    workgroup, worksize = work_layout(computation.grid, :xyz, include_boundaries=true)
 
     compute_kernel! = _compute!(device(arch), workgroup, worksize)
 

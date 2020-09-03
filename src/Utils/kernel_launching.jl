@@ -5,42 +5,56 @@
 using CUDA
 using KernelAbstractions
 using Oceananigans.Architectures
+using Oceananigans.Grids
 
 const MAX_THREADS_PER_BLOCK = 256
 
 """
-    work_layout(grid, dims)
+    work_layout(grid, dims; include_boundaries=false)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each dimension.
 The `worksize` specifies the range of the loop in each dimension.
 
+Specifying `include_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions.
+
 For more information, see: https://github.com/climate-machine/Oceananigans.jl/pull/308
 """
-function work_layout(grid, dims)
+function work_layout(grid, dims; include_boundaries=false)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
-    workgroup = grid.Nx == 1 && grid.Ny == 1 ?
+    workgroup = Nx == 1 && Ny == 1 ?
 
                     # One-dimensional column models:
                     (1, 1) :
 
-                grid.Nx == 1 ?
+                Nx == 1 ?
 
                     # Two-dimensional y-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
+                    (1, min(MAX_THREADS_PER_BLOCK, Ny)) :
 
-                grid.Ny == 1 ?
+                Ny == 1 ?
 
                     # Two-dimensional x-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) :
+                    (1, min(MAX_THREADS_PER_BLOCK, Nx)) :
 
-                    # Three-dimensional models use the default (16, 16)
-                    (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
+                    # Three-dimensional models
+                    (Int(√MAX_THREADS_PER_BLOCK), Int(√MAX_THREADS_PER_BLOCK))
 
-    worksize = dims == :xyz ? (grid.Nx, grid.Ny, grid.Nz) :
-               dims == :xy  ? (grid.Nx, grid.Ny) :
-               dims == :xz  ? (grid.Nx, grid.Nz) :
-               dims == :yz  ? (grid.Ny, grid.Nz) : error("Unsupported launch configuration: $dims")
+    if include_boundaries
+        TX, TY, TZ = topology(grid)
+        Nx′ = grid.Nx + (TX() isa Bounded)
+        Ny′ = grid.Ny + (TY() isa Bounded)
+        Nz′ = grid.Nz + (TZ() isa Bounded)
+    else
+        Nx′, Ny′, Nz′ = Nx, Ny, Nz
+    end
+
+    worksize = dims == :xyz ? (Nx′, Ny′, Nz′) :
+               dims == :xy  ? (Nx′, Ny′) :
+               dims == :xz  ? (Nx′, Nz′) :
+               dims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $dims"))
 
     return workgroup, worksize
 end
