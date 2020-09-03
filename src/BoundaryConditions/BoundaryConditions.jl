@@ -39,11 +39,14 @@ include("boundary_function.jl")
 include("parameterized_boundary_condition.jl")
 include("show_boundary_conditions.jl")
 
-include("fill_halo_regions.jl")
 include("zero_halo_regions.jl")
 
+include("fill_halo_regions.jl")
+include("fill_halo_regions_value_gradient.jl")
+include("fill_halo_regions_normal_flow.jl")
+include("fill_halo_regions_periodic.jl")
+include("fill_halo_regions_flux.jl")
+
 include("apply_flux_bcs.jl")
-include("apply_value_gradient_bcs.jl")
-include("apply_normal_flow_bcs.jl")
 
 end
