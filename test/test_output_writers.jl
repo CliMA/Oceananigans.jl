@@ -418,7 +418,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test !ismissing(restored_model.velocities.w.boundary_conditions)
     @test  ismissing(restored_model.tracers.T.boundary_conditions)
     @test !ismissing(restored_model.tracers.S.boundary_conditions)
-   
+
     CUDA.@allowscalar begin
         @test all(interior(restored_model.velocities.u) .≈ π/2)
         @test all(interior(restored_model.velocities.v) .≈ ℯ)
