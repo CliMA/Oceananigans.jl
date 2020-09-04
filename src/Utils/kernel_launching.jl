@@ -24,8 +24,6 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 function work_layout(grid, dims; include_right_boundaries=false, location=nothing)
     Nx, Ny, Nz = size(grid)
-    TX, TY, TZ = instantiate.(topology(grid))
-    LX, LY, LZ = instantiate.(location)
 
     workgroup = Nx == 1 && Ny == 1 ?
 
