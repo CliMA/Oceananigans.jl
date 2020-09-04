@@ -1,6 +1,6 @@
 using Statistics
 using NCDatasets
-using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
+using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
 using Oceananigans.Diagnostics
 
 function run_thermal_bubble_netcdf_tests(arch)
