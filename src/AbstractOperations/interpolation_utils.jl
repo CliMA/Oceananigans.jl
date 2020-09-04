@@ -27,18 +27,10 @@ end
     interpolation_operator(from, to)
 
 Returns the function to interpolate a field `from = (XA, YZ, ZA)`, `to = (XB, YB, ZB)`,
-where the `XA`s and `XB`s are types `Face` or `Cell` (rather than type instances).
-"""
-interpolation_operator(from::NTuple{N, <:DataType}, to::NTuple{N, <:DataType}) where N =
-    interpolation_operator(instantiate(from), instantiate(to))
-
-"""
-    interpolation_operator(from, to)
-
-Returns the function to interpolate a field `from = (XA, YZ, ZA)`, `to = (XB, YB, ZB)`,
 where the `XA`s and `XB`s are `Face()` or `Cell()` instances.
 """
 function interpolation_operator(from, to)
+    from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
     if all(ξ === :ᵃ for ξ in (x, y, z))

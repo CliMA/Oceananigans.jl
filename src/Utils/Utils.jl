@@ -18,8 +18,8 @@ export
 ##### Misc. small utils
 #####
 
-instantiate(L::NTuple{N, <:DataType}) where N = Tuple(x() for x in L)
-instantiate(x, y...) = instantiate(tuple(x, y...))
+instantiate(x) = x
+instantiate(X::DataType) = X()
 
 #####
 ##### Include utils
