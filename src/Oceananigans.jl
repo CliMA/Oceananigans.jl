@@ -32,7 +32,7 @@ export
     ModelForcing, SimpleForcing, ParameterizedForcing,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalFPlane,
+    FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
     # Buoyancy and equations of state
     BuoyancyTracer, SeawaterBuoyancy,
