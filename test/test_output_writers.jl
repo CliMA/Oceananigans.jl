@@ -299,6 +299,38 @@ function run_netcdf_function_output_tests(arch)
 
     close(simulation.output_writers[:food])
 
+    #####
+    ##### Take 1 more time step and test that appending to a NetCDF file works
+    #####
+
+    iters += 1
+    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+
+    simulation.output_writers[:food] =
+        NetCDFOutputWriter(model, outputs;
+            iteration_interval=1, filename=nc_filename, mode="a", dimensions=dims, verbose=true,
+            global_attributes=global_attributes, output_attributes=output_attributes)
+
+    run!(simulation)
+
+    ds = Dataset(nc_filename, "r")
+
+    @test length(ds["time"]) == iters+1
+    @test length(ds["scalar"]) == iters+1
+    @test size(ds["profile"]) == (N, iters+1)
+    @test size(ds["slice"]) == (N, N, iters+1)
+
+    @test ds["time"][:] == [n*Δt for n in 0:iters]
+    @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
+
+    for n in 0:iters
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+    end
+
+    close(simulation.output_writers[:food])
+
     return nothing
 end
 
