@@ -26,7 +26,7 @@ If `νh` or `κh` are provided, then `νx = νy = νh` or `κx = κy = κh`.
 The tracer flux divergence associated with an anisotropic biharmonic diffusivity is, for example
 
 ```math
-    ∂ᵢ κᵢⱼ ∂ⱼc = - (κh ∂⁴x + ∂⁴y + κz ∂⁴z) c
+    ∂ᵢ κᵢⱼ ∂ⱼc = - [κx ∂⁴x + κy ∂⁴y + κz ∂⁴z] c
 ```
 
 """
