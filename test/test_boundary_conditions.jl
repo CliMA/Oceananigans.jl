@@ -1,29 +1,19 @@
-using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC
+using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, BoundaryFunction, ParameterizedDiscreteBoundaryFunction
+
+using Oceananigans.Fields: Face, Cell
 
 function instantiate_boundary_function(B, X1, X2, func)
     boundary_function = BoundaryFunction{B, X1, X2}(func)
     return true
 end
 
-function instantiate_tracer_boundary_condition(bctype, B, func)
-    boundary_condition = TracerBoundaryCondition(bctype, B, func)
-    return true
-end
+bc_location(bc::BoundaryFunction{B, X, Y}) where {B, X, Y} = (B, X, Y)
 
-function instantiate_u_boundary_condition(bctype, B, func)
-    boundary_condition = UVelocityBoundaryCondition(bctype, B, func)
-    return true
-end
+simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
+simple_parameterized_bc(ξ, η, t, p) = p.a * exp(ξ) * cos(η) * sin(t)
 
-function instantiate_v_boundary_condition(bctype, B, func)
-    boundary_condition = VVelocityBoundaryCondition(bctype, B, func)
-    return true
-end
-
-function instantiate_w_boundary_condition(bctype, B, func)
-    boundary_condition = WVelocityBoundaryCondition(bctype, B, func)
-    return true
-end
+complicated_bc(i, j, grid, clock, state) = rand()
+complicated_parameterized_bc(i, j, grid, clock, state, p) = p.a * rand()
 
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
@@ -31,19 +21,25 @@ end
     @testset "Boundary functions" begin
         @info "  Testing boundary functions..."
 
-        simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
         for B in (:x, :y, :z)
             for X1 in (:Face, :Cell)
                 @test instantiate_boundary_function(B, X1, Cell, simple_bc)
             end
-
-            for bctype in (Value, Gradient)
-                @test instantiate_tracer_boundary_condition(bctype, B, simple_bc)
-                @test instantiate_u_boundary_condition(bctype, B, simple_bc)
-                @test instantiate_v_boundary_condition(bctype, B, simple_bc)
-                @test instantiate_w_boundary_condition(bctype, B, simple_bc)
-            end
         end
+
+        bc = BoundaryCondition(Value, simple_bc)
+        @test typeof(bc.condition) <: BoundaryFunction
+        @test bc.condition.func === simple_bc
+
+        bc = BoundaryCondition(Value, complicated_bc; discrete_form=true)
+        @test bc.condition === complicated_bc
+
+        bc = BoundaryCondition(Value, simple_parameterized_bc; parameters=(a=π,))
+        @test bc.condition.parameters.a == π
+
+        bc = BoundaryCondition(Value, complicated_parameterized_bc; parameters=(a=π,), discrete_form=true)
+        @test typeof(bc.condition) <: ParameterizedDiscreteBoundaryFunction
+        @test bc.condition.func === complicated_parameterized_bc
     end
 
     @testset "Field boundary conditions" begin
@@ -212,5 +208,71 @@ end
         @test T_bcs.y.right isa ZFBC
         @test T_bcs.z.left  isa ZFBC
         @test T_bcs.z.right isa ZFBC
+
+        grid = bbb_grid
+
+        u_bcs = UVelocityBoundaryConditions(grid;
+                                              east = BoundaryCondition(NormalFlow, simple_bc), 
+                                              west = BoundaryCondition(NormalFlow, simple_bc),
+                                            bottom = BoundaryCondition(Value, simple_bc), 
+                                               top = BoundaryCondition(Value, simple_bc), 
+                                             north = BoundaryCondition(Value, simple_bc), 
+                                             south = BoundaryCondition(Value, simple_bc)
+                                           )
+
+        @test bc_location(u_bcs.x.east.condition) === (:x, Cell, Cell)
+        @test bc_location(u_bcs.x.west.condition) === (:x, Cell, Cell)
+        @test bc_location(u_bcs.y.north.condition) === (:y, Face, Cell)
+        @test bc_location(u_bcs.y.south.condition) === (:y, Face, Cell)
+        @test bc_location(u_bcs.z.top.condition) === (:z, Face, Cell)
+        @test bc_location(u_bcs.z.bottom.condition) === (:z, Face, Cell)
+
+        v_bcs = VVelocityBoundaryConditions(grid;
+                                              east = BoundaryCondition(Value, simple_bc), 
+                                              west = BoundaryCondition(Value, simple_bc),
+                                            bottom = BoundaryCondition(NormalFlow, simple_bc), 
+                                               top = BoundaryCondition(NormalFlow, simple_bc), 
+                                             north = BoundaryCondition(Value, simple_bc), 
+                                             south = BoundaryCondition(Value, simple_bc)
+                                           )
+
+        @test bc_location(v_bcs.x.east.condition) === (:x, Face, Cell)
+        @test bc_location(v_bcs.x.west.condition) === (:x, Face, Cell)
+        @test bc_location(v_bcs.y.north.condition) === (:y, Cell, Cell)
+        @test bc_location(v_bcs.y.south.condition) === (:y, Cell, Cell)
+        @test bc_location(v_bcs.z.top.condition) === (:z, Cell, Face)
+        @test bc_location(v_bcs.z.bottom.condition) === (:z, Cell, Face)
+
+        w_bcs = WVelocityBoundaryConditions(grid;
+                                              east = BoundaryCondition(Value, simple_bc), 
+                                              west = BoundaryCondition(Value, simple_bc),
+                                            bottom = BoundaryCondition(Value, simple_bc), 
+                                               top = BoundaryCondition(Value, simple_bc), 
+                                             north = BoundaryCondition(NormalFlow, simple_bc), 
+                                             south = BoundaryCondition(NormalFlow, simple_bc)
+                                           )
+
+        @test bc_location(w_bcs.x.east.condition) === (:x, Cell, Face)
+        @test bc_location(w_bcs.x.west.condition) === (:x, Cell, Face)
+        @test bc_location(w_bcs.y.north.condition) === (:y, Cell, Face)
+        @test bc_location(w_bcs.y.south.condition) === (:y, Cell, Face)
+        @test bc_location(w_bcs.z.top.condition) === (:z, Cell, Cell)
+        @test bc_location(w_bcs.z.bottom.condition) === (:z, Cell, Cell)
+
+        T_bcs = TracerBoundaryConditions(grid;
+                                           east = BoundaryCondition(Value, simple_bc), 
+                                           west = BoundaryCondition(Value, simple_bc),
+                                         bottom = BoundaryCondition(Value, simple_bc), 
+                                            top = BoundaryCondition(Value, simple_bc), 
+                                          north = BoundaryCondition(Value, simple_bc), 
+                                          south = BoundaryCondition(Value, simple_bc)
+                                         )
+
+        @test bc_location(T_bcs.x.east.condition) === (:x, Cell, Cell)
+        @test bc_location(T_bcs.x.west.condition) === (:x, Cell, Cell)
+        @test bc_location(T_bcs.y.north.condition) === (:y, Cell, Cell)
+        @test bc_location(T_bcs.y.south.condition) === (:y, Cell, Cell)
+        @test bc_location(T_bcs.z.top.condition) === (:z, Cell, Cell)
+        @test bc_location(T_bcs.z.bottom.condition) === (:z, Cell, Cell)
     end
 end

@@ -57,11 +57,18 @@ grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
 
 bc_parameters = (μ=μ, H=Lz)
 
-@inline τ₁₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.u[i, j, 1]
-@inline τ₂₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.v[i, j, 1]
+@inline τ₁₃_linear_drag(i, j, grid, clock, state, params) =
+    @inbounds params.μ * params.H * state.velocities.u[i, j, 1]
 
-ubcs = UVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₁₃_linear_drag, bc_parameters))
-vbcs = VVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₂₃_linear_drag, bc_parameters))
+@inline τ₂₃_linear_drag(i, j, grid, clock, state, params) =
+    @inbounds params.μ * params.H * state.velocities.v[i, j, 1]
+
+ubcs = UVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₁₃_linear_drag,
+                                                                    discrete_form=true, parameters=bc_parameters))
+
+vbcs = VVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₂₃_linear_drag,
+                                                                    discrete_form=true, parameters=bc_parameters))
+                                   
 bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0),
                                       bottom = BoundaryCondition(Value, -N² * Lz))
 
@@ -88,7 +95,7 @@ forcing_parameters = (α=α, f=f, H=Lz)
 #
 # is applied at location `(f, c, c)`.
 
-function Fu_eady_func(i, j, k, grid, clock, state, p) 
+function Fu_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, state.velocities.w)
                       - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, state.velocities.u))
 end
@@ -99,7 +106,7 @@ end
 #
 # is applied at location `(c, f, c)`.
 
-function Fv_eady_func(i, j, k, grid, clock, state, p) 
+function Fv_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.v)
 end
 
@@ -109,7 +116,7 @@ end
 #
 # is applied at location `(c, c, f)`.
 
-function Fw_eady_func(i, j, k, grid, clock, state, p) 
+function Fw_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.w)
 end
 
@@ -119,7 +126,7 @@ end
 #
 # is applied at location `(c, c, c)`.
 
-function Fb_eady_func(i, j, k, grid, clock, state, p) 
+function Fb_eady_func(i, j, k, grid, clock, state, p)
     return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.tracers.b)
                       + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
 end
@@ -137,7 +144,7 @@ Fb_eady = ParameterizedForcing(Fb_eady_func, forcing_parameters)
 # `closure` a tuple of two closures. Note that the "2D Leith" parameterization may
 # also be a sensible choice to pair with a Laplacian vertical diffusivity for this problem.
 
-closure = (ConstantAnisotropicDiffusivity(νh=0, κh=0, νv=κᵥ, κv=κᵥ),
+closure = (AnisotropicDiffusivity(νh=0, κh=0, νz=κᵥ, κz=κᵥ),
            AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h))
            #TwoDimensionalLeith())
 
@@ -153,7 +160,8 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 model = IncompressibleModel(               grid = grid,
                                    architecture = CPU(),
                                        coriolis = FPlane(f=f),
-                                       buoyancy = BuoyancyTracer(), tracers = :b,
+                                       buoyancy = BuoyancyTracer(),
+                                        tracers = :b,
                                         forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
                                         closure = closure,
                             boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))
@@ -184,7 +192,7 @@ wmax = FieldMaximum(abs, model.velocities.w)
 # Set up output. Here we output the velocity and buoyancy fields at intervals of one day.
 fields_to_output = merge(model.velocities, (b=model.tracers.b,))
 output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
-                                 interval=day, prefix=output_filename_prefix,
+                                 time_interval=day, prefix=output_filename_prefix,
                                  force=true, max_filesize=10GiB)
 
 # # The `TimeStepWizard`

@@ -28,7 +28,7 @@ using Oceananigans.Grids
 
 model = IncompressibleModel(
        grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
-    closure = ConstantIsotropicDiffusivity(κ = 1.0)
+    closure = IsotropicDiffusivity(κ = 1.0)
 )
 nothing # hide
 
@@ -90,10 +90,8 @@ plot!(p, interior(T)[1, 1, :], z, linewidth=2, label=tracer_label(model.clock.ti
 using Oceananigans.OutputWriters: JLD2OutputWriter, FieldOutputs
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, FieldOutputs(model.tracers),
-                     frequency = 100,
-                        prefix = "one_dimensional_diffusion",
-                         force = true)
+    JLD2OutputWriter(model, FieldOutputs(model.tracers), prefix = "one_dimensional_diffusion",
+                     iteration_interval = 100, force = true)
 
 ## Run simulation for 10,000 more iterations
 simulation.stop_iteration += 10000
@@ -101,7 +99,7 @@ simulation.stop_iteration += 10000
 run!(simulation)
 nothing
 
-# Finally, we animate the results by opening the JLD2 file, extract the 
+# Finally, we animate the results by opening the JLD2 file, extract the
 # iterations we ended up saving at, and plot the evolution of the
 # temperature profile in a loop over the iterations.
 

@@ -58,7 +58,7 @@ growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
 ## Instantiate the model
 model = IncompressibleModel(
                    grid = grid,
-                closure = ConstantIsotropicDiffusivity(ν=1e-4, κ=1e-4),
+                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
@@ -77,7 +77,7 @@ wizard = TimeStepWizard(cfl=0.1, Δt=1.0, max_change=1.1, max_Δt=90.0)
 nothing # hide
 
 # Set up and run the simulation:
-simulation = Simulation(model, Δt=wizard, stop_iteration=0, progress_frequency=100)
+simulation = Simulation(model, Δt=wizard, stop_iteration=0, iteration_interval=100)
 
 anim = @animate for i = 1:100
     simulation.stop_iteration += 100

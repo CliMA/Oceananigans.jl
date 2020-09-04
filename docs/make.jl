@@ -121,10 +121,10 @@ pages = [
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
-    "Library" => "library.md",
     "Appendix" => appendix_pages,
-    "Function index" => "function_index.md",
-    "References" => "references.md"
+    "References" => "references.md",
+    "Library" => "library.md",
+    "Function index" => "function_index.md"
 ]
 
 #####

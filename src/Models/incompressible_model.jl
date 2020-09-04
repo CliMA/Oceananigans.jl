@@ -32,7 +32,7 @@ end
            architecture = CPU(),
              float_type = Float64,
                 tracers = (:T, :S),
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
                   clock = Clock{float_type}(0, 0),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
@@ -52,6 +52,7 @@ Construct an incompressible `Oceananigans.jl` model on `grid`.
 
 Keyword arguments
 =================
+
 - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
 - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
 - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
@@ -71,7 +72,7 @@ function IncompressibleModel(;
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
-                closure = ConstantIsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),

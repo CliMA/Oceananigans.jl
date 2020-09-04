@@ -90,22 +90,28 @@ Grid properties
 Examples
 ========
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> grid = RegularCartesianGrid(size=(32, 32, 32), extent=(1, 2, 3))
-RegularCartesianGrid{Float64}
-domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [0.0, -3.0]
-  resolution (Nx, Ny, Nz) = (32, 32, 32)
-   halo size (Hx, Hy, Hz) = (1, 1, 1)
-grid spacing (Δx, Δy, Δz) = (0.03125, 0.0625, 0.09375)
+RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (32, 32, 32)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
 ```
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> grid = RegularCartesianGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-RegularCartesianGrid{Float32}
-domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [3.141592653589793, -3.141592653589793]
-  resolution (Nx, Ny, Nz) = (32, 32, 16)
-   halo size (Hx, Hy, Hz) = (1, 1, 1)
-grid spacing (Δx, Δy, Δz) = (0.25f0, 0.625f0, 0.3926991f0)
+RegularCartesianGrid{Float32, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (32, 32, 16)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
 ```
 """
 function RegularCartesianGrid(FT=Float64;

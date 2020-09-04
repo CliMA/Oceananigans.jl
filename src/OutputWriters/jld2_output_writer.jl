@@ -1,34 +1,47 @@
 using Printf
 using JLD2
 using Oceananigans.Utils
+using Oceananigans.Diagnostics: WindowedTimeAverage
+import Oceananigans.Diagnostics: get_kernel
 
 """
-    JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
+    JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
 
 An output writer for writing to JLD2 files.
 """
-mutable struct JLD2OutputWriter{F, I, O, IF, IN, KW} <: AbstractOutputWriter
-        filepath :: String
-         outputs :: O
-        interval :: I
-       frequency :: F
-            init :: IF
-       including :: IN
-        previous :: Float64
-            part :: Int
-    max_filesize :: Float64
-           async :: Bool
-           force :: Bool
-         verbose :: Bool
-         jld2_kw :: KW
+mutable struct JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
+              filepath :: String
+               outputs :: O
+    iteration_interval :: I
+         time_interval :: T
+                  init :: IF
+             including :: IN
+              previous :: Float64
+                  part :: Int
+          max_filesize :: Float64
+                 async :: Bool
+                 force :: Bool
+               verbose :: Bool
+               jld2_kw :: KW
 end
 
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".",
-                     prefix="", init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
-                     part=1, max_filesize=Inf, force=false, async=false, verbose=false, jld2_kw=Dict{Symbol, Any}())
+    JLD2OutputWriter(model, outputs; prefix,
+                                                       dir = ".",
+                                        iteration_interval = nothing,
+                                             time_interval = nothing,
+                                     time_averaging_window = nothing,
+                                     time_averaging_stride = 1,
+                                              max_filesize = Inf,
+                                                     force = false,
+                                                      init = noinit,
+                                                     async = false,
+                                                   verbose = false,
+                                                 including = [:grid, :coriolis, :buoyancy, :closure],
+                                                      part = 1,
+                                                   jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`)
 to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)`
@@ -36,30 +49,80 @@ that returns the data to be saved.
 
 Keyword arguments
 =================
-- `frequency::Int`   : Save output every `n` model iterations.
-- `interval::Int`    : Save output every `t` units of model clock time.
-- `dir::String`      : Directory to save output to. Default: "." (current working directory).
-- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "".
-- `init::Function`   : A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
-                       Default: `noinit(args...) = nothing`.
-- `including::Array` : List of model properties to save with every file. By default, the grid, equation of state,
-                       Coriolis parameters, buoyancy parameters, and turbulence closure parameters are saved.
-- `part::Int`        : The starting part number used if `max_filesize` is finite. Default: 1.
-- `max_filesize::Int`: The writer will stop writing to the output file once the file size exceeds `max_filesize`, and
-                       write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc. Defaults to
-                       `Inf`.
-- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-- `async::Bool`      : Write output asynchronously. Default: `false`.
-- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write times and file sizes.
-                       Default: `false`.
-- `jld2_kw::Dict`    : Dict of kwargs to be passed to `jldopen` when data is written.
-"""
-function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, dir=".", prefix="",
-                          init=noinit, including=[:grid, :coriolis, :buoyancy, :closure],
-                          part=1, max_filesize=Inf, force=false, async=false, verbose=false,
-                          jld2_kw=Dict{Symbol, Any}())
+- `prefix`: Descriptive filename prefixed to all output files.
 
-    validate_interval(interval, frequency)
+- `dir`: Directory to save output to.
+         Default: "." (current working directory).
+
+- `iteration_interval`: Save output every `n` model iterations.
+
+- `time_interval`: Save output every `t` units of model clock time.
+
+- `time_averaging_window`: Specifies a time window over which each member of `output` is averaged before    
+                           being saved. For this each member of output is converted to 
+                           `Oceananigans.Diagnostics.WindowedTimeAverage`.
+                           Default `nothing` indicates no averaging.
+
+- `time_averaging_stride`: Specifies a iteration 'stride' between the calculation of each `output` during
+                           time-averaging. Longer strides means that output is calculated less frequently,
+                           and that the resulting time-average is less accurate.
+                           Default: 1.
+
+- `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
+                  and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
+                  Defaults to `Inf`.
+
+- `force`: Remove existing files if their filenames conflict.
+           Default: `false`.
+
+- `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
+          Default: `noinit(args...) = nothing`.
+
+- `async`: Write output asynchronously.
+           Default: `false`.
+
+- `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
+             Default: `false`.
+
+- `including`: List of model properties to save with every file.
+               Default: `[:grid, :coriolis, :buoyancy, :closure]`
+
+- `part`: The starting part number used if `max_filesize` is finite.
+          Default: 1.
+
+- `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+"""
+function JLD2OutputWriter(model, outputs; prefix,
+                                                            dir = ".",
+                                             iteration_interval = nothing,
+                                                  time_interval = nothing,
+                                          time_averaging_window = nothing,
+                                          time_averaging_stride = 1,
+                                                   max_filesize = Inf,
+                                                          force = false,
+                                                           init = noinit,
+                                                          async = false,
+                                                        verbose = false,
+                                                      including = [:grid, :coriolis, :buoyancy, :closure],
+                                                           part = 1,
+                                                        jld2_kw = Dict{Symbol, Any}())
+
+    validate_intervals(iteration_interval, time_interval)
+
+    # Convert each output to WindowedTimeAverage if time_averaging_window is specified
+    if !isnothing(time_averaging_window)
+
+        !isnothing(iteration_interval) && error("Cannot specify iteration_interval with time_averaging_window.")
+
+        output_names = Tuple(keys(outputs))
+
+        averaged_output = Tuple(WindowedTimeAverage(outputs[name]; time_interval = time_interval,
+                                                                     time_window = time_averaging_window,
+                                                                          stride = time_averaging_stride)
+                                for name in output_names)
+
+        outputs = NamedTuple{output_names}(averaged_output)
+    end
 
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
@@ -70,8 +133,8 @@ function JLD2OutputWriter(model, outputs; interval=nothing, frequency=nothing, d
         saveproperties!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, interval, frequency, init, including,
-                            0.0, part, max_filesize, async, force, verbose, jld2_kw)
+    return JLD2OutputWriter(filepath, outputs, iteration_interval, time_interval, init,
+                            including, 0.0, part, max_filesize, async, force, verbose, jld2_kw)
 end
 
 function write_output(model, fw::JLD2OutputWriter)
@@ -161,25 +224,14 @@ end
 FieldOutput(field) = FieldOutput(Array, field) # default
 (fo::FieldOutput)(model) = fo.return_type(fo.field.data.parent)
 
+get_kernel(kernel::FieldOutput) = parent(kernel.field)
+
 """
     FieldOutputs(fields)
 
 Returns a dictionary of `FieldOutput` objects with key, value
 pairs corresponding to each name and value in the `NamedTuple` `fields`.
 Intended for use with `JLD2OutputWriter`.
-
-Examples
-========
-
-```julia
-julia> output_writer = JLD2OutputWriter(model, FieldOutputs(model.velocities), frequency=1);
-
-julia> keys(output_writer.outputs)
-Base.KeySet for a Dict{Symbol,FieldOutput{UnionAll,F} where F} with 3 entries. Keys:
-  :w
-  :v
-  :u
-```
 """
 function FieldOutputs(fields)
     names = propertynames(fields)

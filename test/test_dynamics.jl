@@ -6,7 +6,7 @@ end
 
 function test_diffusion_simple(fieldname)
     model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
-                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
+                                 closure = IsotropicDiffusivity(ν=1, κ=1),
                                 buoyancy = nothing)
     field = get_model_field(fieldname, model)
 
@@ -22,43 +22,38 @@ function test_diffusion_simple(fieldname)
     return !any(@. !isapprox(value, field_data))
 end
 
-function test_diffusion_budget_default(fieldname)
-    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
-                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
-                                buoyancy = nothing)
+function test_isotropic_diffusion_budget(fieldname, model)
+    set!(model; u=0, v=0, w=0, T=0, S=0)
+    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
 
     field = get_model_field(fieldname, model)
 
-    half_Nz = round(Int, model.grid.Nz/2)
-    interior(field)[:, :,   1:half_Nz] .= -1
-    interior(field)[:, :, half_Nz:end] .=  1
-
-    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Lz)
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δz)
 end
 
-function test_diffusion_budget_channel(fieldname)
-    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 16, 4), extent=(1, 1, 1),
-                                                                topology=(Periodic, Bounded, Bounded)),
-                                 closure = ConstantIsotropicDiffusivity(ν=1, κ=1),
-                                buoyancy = nothing)
+function test_biharmonic_diffusion_budget(fieldname, model)
+    set!(model; u=0, v=0, w=0, T=0, S=0)
+    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
 
     field = get_model_field(fieldname, model)
 
-    half_Ny = round(Int, model.grid.Ny/2)
-    interior(field)[:, 1:half_Ny,   :] .= -1
-    interior(field)[:, half_Ny:end, :] .=  1
-
-    return test_diffusion_budget(field, model, model.closure.ν, model.grid.Ly)
+    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δz, 4)
 end
 
-function test_diffusion_budget(field, model, κ, L)
-    mean_init = mean(interior(field))
+function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
+    init_mean = mean(interior(field))
 
     for n in 1:100
-        time_step!(model, 1e-4 * L^2 / κ, euler= n==1)
+        # Very small time-steps required to bring error under machine precision
+        time_step!(model, 1e-4 * Δ^order / κ, euler= n==1)
     end
 
-    return isapprox(mean_init, mean(interior(field)))
+    final_mean = mean(interior(field))
+
+    @info @sprintf("    Initial <%s>: %.16f, final <%s>: %.16f, final - initial: %.4e",
+                   fieldname, init_mean, fieldname, final_mean, final_mean - init_mean)
+
+    return isapprox(init_mean, final_mean)
 end
 
 function test_diffusion_cosine(fieldname)
@@ -67,7 +62,7 @@ function test_diffusion_cosine(fieldname)
     grid = RegularCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
     model = IncompressibleModel(    grid = grid,
-                                 closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ),
+                                 closure = IsotropicDiffusivity(ν=κ, κ=κ),
                                 buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
@@ -125,7 +120,7 @@ function internal_wave_test(; N=128, Nt=10)
     b₀(x, y, z) = b(x, y, z, 0)
 
     model = IncompressibleModel(    grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
-                                 closure = ConstantIsotropicDiffusivity(ν=ν, κ=κ),
+                                 closure = IsotropicDiffusivity(ν=ν, κ=κ),
                                 buoyancy = BuoyancyTracer(),
                                  tracers = :b,
                                 coriolis = FPlane(f=f))
@@ -152,7 +147,7 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
     T₀(x, y, z) = T(x, y, z, 0)
 
     grid = RegularCartesianGrid(size=(N, N, 2), extent=(L, L, L))
-    closure = ConstantIsotropicDiffusivity(ν=κ, κ=κ)
+    closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = IncompressibleModel(grid=grid, closure=closure)
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -187,7 +182,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     model = IncompressibleModel(
         architecture = arch,
                 grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ConstantIsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
+             closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
              tracers = nothing,
             buoyancy = nothing)
 
@@ -232,13 +227,56 @@ end
     end
 
     @testset "Budgets in isotropic diffusion" begin
-        @info "  Testing default model budgets with isotropic diffusion..."
-        for fieldname in (:u, :v, :T, :S)
-            @test test_diffusion_budget_default(fieldname)
-        end
+        @info "  Testing model budgets with isotropic diffusion..."
+        for topology in ((Periodic, Periodic, Periodic),
+                         (Periodic, Periodic, Bounded),
+                         (Periodic, Bounded, Bounded),
+                         (Bounded, Bounded, Bounded))
 
-        for fieldname in (:u, :T, :S)
-            @test test_diffusion_budget_channel(fieldname)
+            fieldnames = [:T, :S]
+
+            topology[1] === Periodic && push!(fieldnames, :u)
+            topology[2] === Periodic && push!(fieldnames, :v)
+            #topology[3] === Periodic && push!(fieldnames, :w)
+
+            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
+
+            model = IncompressibleModel(    grid = grid,
+                                         closure = IsotropicDiffusivity(ν=1, κ=1),
+                                        coriolis = nothing,
+                                        buoyancy = nothing)
+                
+            for fieldname in fieldnames
+                @info "    Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+                @test test_isotropic_diffusion_budget(fieldname, model)
+            end
+        end
+    end
+
+    @testset "Budgets in biharmonic diffusion" begin
+        @info "  Testing model budgets with biharmonic diffusion..."
+        for topology in ((Periodic, Periodic, Periodic),
+                         (Periodic, Periodic, Bounded),
+                         (Periodic, Bounded, Bounded),
+                         (Bounded, Bounded, Bounded))
+
+            fieldnames = [:T, :S]
+
+            topology[1] === Periodic && push!(fieldnames, :u)
+            topology[2] === Periodic && push!(fieldnames, :v)
+            #topology[3] === Periodic && push!(fieldnames, :w)
+
+            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
+
+            model = IncompressibleModel(    grid = grid,
+                                         closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
+                                        coriolis = nothing,
+                                        buoyancy = nothing)
+                
+            for fieldname in fieldnames
+                @info "    Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
+                @test test_biharmonic_diffusion_budget(fieldname, model)
+            end
         end
     end
 

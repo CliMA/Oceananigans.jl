@@ -1,28 +1,28 @@
 """
-    Checkpointer{I, T, P, A} <: AbstractOutputWriter
+    Checkpointer{I, T, P} <: AbstractOutputWriter
 
 An output writer for checkpointing models to a JLD2 file from which models can be restored.
 """
 mutable struct Checkpointer{I, T, P} <: AbstractOutputWriter
-         frequency :: I
-          interval :: T
-          previous :: Float64
-               dir :: String
-            prefix :: String
-        properties :: P
-             force :: Bool
-           verbose :: Bool
+    iteration_interval :: I
+         time_interval :: T
+              previous :: Float64
+                   dir :: String
+                prefix :: String
+            properties :: P
+                 force :: Bool
+               verbose :: Bool
 end
 
 """
-    Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
+    Checkpointer(model; iteration_interval=nothing, time_interval=nothing, dir=".",
                  prefix="checkpoint", force=false, verbose=false,
                  properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
                                :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file every so often as
-specified by `frequency` or `interval`. The `model.clock.iteration` is included in the
-filename to distinguish between multiple checkpoint files.
+specified by `iteration_interval` or `time_interval`. The `model.clock.iteration` is included
+in the filename to distinguish between multiple checkpoint files.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
 such as `:velocities` will make restoring from the checkpoint impossible.
@@ -34,21 +34,21 @@ file (and you will have to manually restore them).
 
 Keyword arguments
 =================
-- `frequency::Int`   : Save output every `n` model iterations.
-- `interval::Int`    : Save output every `t` units of model clock time.
-- `dir::String`      : Directory to save output to. Default: "." (current working directory).
-- `prefix::String`   : Descriptive filename prefixed to all output files. Default: "checkpoint".
-- `force::Bool`      : Remove existing files if their filenames conflict. Default: `false`.
-- `verbose::Bool`    : Log what the output writer is doing with statistics on compute/write times and file sizes.
-                       Default: `false`.
-- `properties::Array`: List of model properties to checkpoint.
+- `iteration_interval`: Save output every `n` model iterations.
+- `time_interval`: Save output every `t` units of model clock time.
+- `dir`: Directory to save output to. Default: "." (current working directory).
+- `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
+- `force`: Remove existing files if their filenames conflict. Default: `false`.
+- `verbose`: Log what the output writer is doing with statistics on compute/write times
+  and file sizes. Default: `false`.
+- `properties`: List of model properties to checkpoint. Some are required.
 """
-function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
-                      prefix="checkpoint", force=false, verbose=false,
+function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
+                      dir=".", prefix="checkpoint", force=false, verbose=false,
                       properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :velocities, :tracers, :timestepper])
 
-    validate_interval(frequency, interval)
+    validate_intervals(iteration_interval, time_interval)
 
     # Certain properties are required for `restore_from_checkpoint` to work.
     required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper)
@@ -60,17 +60,17 @@ function Checkpointer(model; frequency=nothing, interval=nothing, dir=".",
     end
 
     for p in properties
-        p isa Symbol || @error "Property $p to be checkpointed must be a Symbol."
-        p ∉ propertynames(model) && @error "Cannot checkpoint $p, it is not a model property!"
+        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
+        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
 
-        if has_reference(Function, getproperty(model, p))
+        if has_reference(Function, getproperty(model, p)) && (p ∉ required_properties)
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
         end
     end
 
     mkpath(dir)
-    return Checkpointer(frequency, interval, 0.0, dir, prefix, properties, force, verbose)
+    return Checkpointer(iteration_interval, time_interval, 0.0, dir, prefix, properties, force, verbose)
 end
 
 function write_output(model, c::Checkpointer)
@@ -91,7 +91,7 @@ end
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 function restore_if_not_missing(file, address)
-    if haskey(file, address)
+    if !ismissing(file[address])
         return file[address]
     else
         @warn "Checkpoint file does not contain $address. Returning missing. " *
@@ -100,10 +100,24 @@ function restore_if_not_missing(file, address)
     end
 end
 
-function restore_field(file, address, arch, grid, loc)
+function restore_field(file, address, arch, grid, loc, kwargs)
     field_address = file[address * "/location"]
     data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
-    bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+
+    # Extract field name from address. We use 2:end so "tracers/T "gets extracted
+    # as :T while "timestepper/Gⁿ/T" gets extracted as :Gⁿ/T (we don't want to
+    # apply the same BCs on T and T tendencies).
+    field_name = split(address, "/")[2:end] |> join |> Symbol
+
+    # If the user specified a non-default boundary condition through the kwargs
+    # in restore_from_checkpoint, then use them when restoring the field. Otherwise
+    # restore the BCs from the checkpoint file as long as they're not missing.
+    if :boundary_conditions in keys(kwargs) && field_name in keys(kwargs[:boundary_conditions])
+        bcs = kwargs[:boundary_conditions][field_name]
+    else
+        bcs = restore_if_not_missing(file, address * "/boundary_conditions")
+    end
+
     return Field(field_address, arch, grid, bcs, data)
 end
 
@@ -119,23 +133,31 @@ Restore a model from the checkpoint file stored at `filepath`. `kwargs` can be p
 to the model constructor, which can be especially useful if you need to manually
 restore forcing functions or boundary conditions that rely on functions.
 """
-function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
+function restore_from_checkpoint(filepath; kwargs...)
+    kwargs = length(kwargs) == 0 ? Dict{Symbol,Any}() : Dict{Symbol,Any}(kwargs)
+
     file = jldopen(filepath, "r")
     cps = file["checkpointed_properties"]
 
-    arch = file["architecture"]
+    if haskey(kwargs, :architecture)
+        arch = kwargs[:architecture]
+        filter!(p -> p ≠ :architecture, cps)
+    else
+        arch = file["architecture"]
+    end
+
     grid = file["grid"]
 
     # Restore velocity fields
     kwargs[:velocities] =
-        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location),
-                                   v = restore_field(file, "velocities/v", arch, grid, v_location),
-                                   w = restore_field(file, "velocities/w", arch, grid, w_location))
+        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
+                                   v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
+                                   w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
     filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 
     # Restore tracer fields
     tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location) for c in tracer_names)
+    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location, kwargs) for c in tracer_names)
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
     kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
 
@@ -145,8 +167,8 @@ function restore_from_checkpoint(filepath; kwargs=Dict{Symbol,Any}())
     field_names = (:u, :v, :w, tracer_names...) # field names
     locs = (u_location, v_location, w_location, Tuple(c_location for c in tracer_names)...) # name locations
 
-    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
-    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i]) for i = 1:length(field_names))
+    G⁻_fields = Tuple(restore_field(file, "timestepper/G⁻/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
+    Gⁿ_fields = Tuple(restore_field(file, "timestepper/Gⁿ/$(field_names[i])", arch, grid, locs[i], kwargs) for i = 1:length(field_names))
 
     G⁻_tendency_field_kwargs = NamedTuple{field_names}(G⁻_fields)
     Gⁿ_tendency_field_kwargs = NamedTuple{field_names}(Gⁿ_fields)

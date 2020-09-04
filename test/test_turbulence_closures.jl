@@ -6,15 +6,13 @@ for closure in closures
     end
 end
 
-datatuple(args, names) = NamedTuple{names}(a.data for a in args)
-
 function test_closure_instantiation(closurename)
     closure = getproperty(TurbulenceClosures, closurename)()
     return true
 end
 
 function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
-    closure = ConstantIsotropicDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
+    closure = IsotropicDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
     return closure.ν == ν && closure.κ.T == κ
 end
 
@@ -25,7 +23,7 @@ end
 
 function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
-       closure = ConstantIsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
+       closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(arch, grid)
        tracers = TracerFields(arch, grid, (:T, :S))
@@ -52,9 +50,9 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6ν )
 end
 
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νv=FT(0.1), κv=FT(0.5))
+function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
-       closure = ConstantAnisotropicDiffusivity(FT, νh=νh, νv=νv, κh=(T=κh, S=κh), κv=(T=κv, S=κv))
+       closure = AnisotropicDiffusivity(FT, νh=νh, νz=νz, κh=(T=κh, S=κh), κz=(T=κz, S=κz))
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
@@ -85,10 +83,10 @@ function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.
 
     U, C = datatuples(velocities, tracers)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 8κh + 10κv &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2νh + 4νv &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4νh + 6νv &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6νh + 8νv)
+    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 8κh + 10κz &&
+            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2νh + 4νz &&
+            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4νh + 6νz &&
+            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6νh + 8νz)
 end
 
 function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
@@ -144,7 +142,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
 end
 
 function time_step_with_tupled_closure(FT, arch)
-    closure_tuple = (AnisotropicMinimumDissipation(FT), ConstantAnisotropicDiffusivity(FT))
+    closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
 
     model = IncompressibleModel(
         architecture=arch, float_type=FT, closure=closure_tuple,
@@ -193,7 +191,7 @@ end
         @info "  Testing constant anisotropic diffusivity..."
         for T in float_types
             @test anisotropic_diffusivity_convenience_kwarg(T)
-            @test test_anisotropic_diffusivity_fluxdiv(T, νv=zero(T), νh=zero(T))
+            @test test_anisotropic_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
             @test test_anisotropic_diffusivity_fluxdiv(T)
         end
     end

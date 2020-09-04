@@ -2,7 +2,7 @@ using Oceananigans
 
 include("ConvergenceTests/ConvergenceTests.jl")
 
-setup_and_run = ConvergenceTests.DoublyPeriodicTaylorGreen.setup_and_run
+using .ConvergenceTests.DoublyPeriodicTaylorGreen: setup_and_run
 
 Nx = [8, 16, 32, 64, 128]
 stop_time = 0.25

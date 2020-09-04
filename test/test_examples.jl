@@ -1,49 +1,5 @@
-const EXAMPLES_DIR = "../examples/"
-
-function run_example(replace_strings, example_name, module_suffix="")
-    example_filepath = joinpath(EXAMPLES_DIR, example_name * ".jl")
-    file_content = read(example_filepath, String)
-
-    for strs in replace_strings
-        file_content = replace(file_content, strs[1] => strs[2])
-    end
-
-    test_script_filepath = example_name * "_example_test.jl"
-
-    open(test_script_filepath, "w") do f
-        write(f, "module Test_$example_name" * "_$module_suffix\n")
-        write(f, file_content)
-        write(f, "\nend # module")
-    end
-
-    try
-        include(test_script_filepath)
-    catch err
-        # Throw the error
-        @error sprint(showerror, err)
-
-        # Print the content of the file to the test log, with line numbers, for debugging
-        delineated_file_content = split(file_content, '\n')
-
-        @printf "% 3d module Test_%s_%s\n" 1 example_name module_suffix
-
-        for (number, line) in enumerate(delineated_file_content)
-            @printf "% 3d %s\n" number+1 line
-        end
-
-        @printf("% 3d end # module\n", length(delineated_file_content)+2)
-
-        # Delete the test script
-        rm(test_script_filepath)
-
-        return false
-    end
-
-    # Delete the test script (if it hasn't been deleted already)
-    rm(test_script_filepath)
-
-    return true
-end
+example_filepath(example_name, examples_dir="../examples/") =
+    joinpath(examples_dir, example_name * ".jl")
 
 @testset "Examples" begin
     @info "Testing examples..."
@@ -58,20 +14,20 @@ end
             ("mp4(", "# mp4(")
         ]
 
-        @test run_example(replace_strings, "one_dimensional_diffusion")
+        @test run_script(replace_strings, "one_dimensional_diffusion", example_filepath("one_dimensional_diffusion"))
     end
 
     @testset "Two-dimensional turbulence example" begin
         @info "  Testing two-dimensional turbulence example"
 
         replace_strings = [
-            ("N=(128, 128, 1)", "N=(16, 16, 1)"),
+            ("size=(128, 128, 1)", "size=(16, 16, 1)"),
             ("for i=1:100", "for i=1:1"),
             ("stop_iteration += 10", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
         ]
 
-        @test run_example(replace_strings, "two_dimensional_turbulence")
+        @test run_script(replace_strings, "two_dimensional_turbulence", example_filepath("two_dimensional_turbulence"))
     end
 
     for arch in archs
@@ -80,17 +36,19 @@ end
 
             replace_strings = [
                 ("Nz = 32", "Nz = 16"),
-                ("progress_frequency=10", "progress_frequency=1"),
+                ("iteration_interval=10", "iteration_interval=1"),
                 ("for i in 1:100", "for i in 1:1"),
                 ("stop_iteration += 10", "stop_iteration += 1"),
                 ("mp4(", "# mp4(")
             ]
 
-            if arch == GPU()
+            if arch isa GPU
                 push!(replace_strings, ("architecture = CPU()", "architecture = GPU()"))
             end
 
-            @test run_example(replace_strings, "ocean_wind_mixing_and_convection", string(typeof(arch)))
+            @test run_script(replace_strings, "ocean_wind_mixing_and_convection",
+                             example_filepath("ocean_wind_mixing_and_convection"),
+                             string(typeof(arch)))
 
             rm("ocean_wind_mixing_and_convection.jld2", force=true)
         end
@@ -101,13 +59,14 @@ end
 
         replace_strings = [
             ("Nz = 128", "Nz = 16"),
-            ("progress_frequency=100", "progress_frequency=1"),
+            ("iteration_interval=100", "iteration_interval=1"),
             ("for i = 1:100", "for i = 1:1"),
             ("stop_iteration += 100", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
         ]
 
-        @test run_example(replace_strings, "ocean_convection_with_plankton")
+        @test run_script(replace_strings, "ocean_convection_with_plankton",
+                         example_filepath("ocean_convection_with_plankton"))
     end
 
     @testset "Internal wave example" begin
@@ -115,13 +74,13 @@ end
 
         replace_strings = [
             ("Nx = 128", "Nx = 16"),
-            ("progress_frequency = 20", "progress_frequency = 1"),
-            ("for i=1:100", "for i=1:1"),
+            ("iteration_interval = 20", "iteration_interval = 1"),
+            ("for i=0:100", "for i=1:1"),
             ("stop_iteration += 20", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
         ]
 
-        @test run_example(replace_strings, "internal_wave")
+        @test run_script(replace_strings, "internal_wave", example_filepath("internal_wave"))
     end
 
     @testset "Eady turbulence" begin
@@ -142,6 +101,6 @@ end
             ("function #makeplot!(axs, model)", "function makeplot!(axs, model)")
         ]
 
-        @test run_example(replace_strings, "eady_turbulence")
+        @test run_script(replace_strings, "eady_turbulence", example_filepath("eady_turbulence"))
     end
 end

@@ -9,6 +9,7 @@ using CUDA
 using JLD2
 using FFTW
 using OffsetArrays
+using SeawaterPolynomials
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -36,58 +37,16 @@ using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
-
-using SeawaterPolynomials
+using KernelAbstractions: @kernel, @index, Event
 
 import Oceananigans.Fields: interior
-import Oceananigans.Utils: datatuple
+import Oceananigans.Utils: launch!, datatuple
 
-using Oceananigans.Diagnostics: run_diagnostic, velocity_div!
+using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
-#####
-##### On CI servers select the GPU with the most available memory or with the
-##### highest capability if testing needs to be thorough).
-##### Source credit: https://github.com/JuliaGPU/CuArrays.jl/pull/526
-#####
-
-@hascuda begin
-    gpu_candidates = [(dev=dev, cap=CUDA.capability(dev),
-                       mem=CUDA.CuContext(ctx -> CUDA.available_memory(), dev))
-                       for dev in CUDA.devices()]
-
-    thorough = parse(Bool, get(ENV, "CI_THOROUGH", "false"))
-    if thorough
-        sort!(gpu_candidates, by=x->(x.cap, x.mem))
-    else
-        sort!(gpu_candidates, by=x->x.mem)
-    end
-
-    pick = last(gpu_candidates)
-    device!(pick.dev)
-end
-
-#####
-##### Useful utilities
-#####
-
-function get_model_field(field_name, model)
-    if field_name ∈ (:u, :v, :w)
-        return getfield(model.velocities, field_name)
-    else
-        return getfield(model.tracers, field_name)
-    end
-end
-
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
-
-function get_output_tuple(output, iter, tuplename)
-    file = jldopen(output.filepath, "r")
-    output_tuple = file["timeseries/$tuplename/$iter"]
-    close(file)
-    return output_tuple
-end
+Logging.global_logger(OceananigansLogger())
 
 #####
 ##### Testing parameters
@@ -99,8 +58,8 @@ float_types = (Float32, Float64)
 @hascuda archs = (GPU(),)
 
 closures = (
-    :ConstantIsotropicDiffusivity,
-    :ConstantAnisotropicDiffusivity,
+    :IsotropicDiffusivity,
+    :AnisotropicDiffusivity,
     :AnisotropicBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
@@ -113,31 +72,54 @@ closures = (
 ##### Run tests!
 #####
 
-with_logger(ModelLogger()) do
-    @testset "Oceananigans" begin
-        include("test_grids.jl")
-        include("test_operators.jl")
-        include("test_boundary_conditions.jl")
-        include("test_fields.jl")
-        include("test_halo_regions.jl")
-        include("test_solvers.jl")
-        include("test_pressure_solvers.jl")
-        include("test_coriolis.jl")
-        include("test_buoyancy.jl")
-        include("test_surface_waves.jl")
-        include("test_models.jl")
-        include("test_simulations.jl")
-        include("test_time_stepping.jl")
-        include("test_time_stepping_bcs.jl")
-        include("test_forcings.jl")
-        include("test_turbulence_closures.jl")
-        include("test_dynamics.jl")
-        include("test_diagnostics.jl")
-        include("test_output_writers.jl")
-        include("test_abstract_operations.jl")
+include("runtests_utils.jl")
+
+group = get(ENV, "TEST_GROUP", :all) |> Symbol
+
+@testset "Oceananigans" begin
+    if group == :unit || group == :all
+        @testset "Unit tests" begin
+            include("test_grids.jl")
+            include("test_operators.jl")
+            include("test_boundary_conditions.jl")
+            include("test_fields.jl")
+            include("test_halo_regions.jl")
+            include("test_solvers.jl")
+            include("test_pressure_solvers.jl")
+            include("test_coriolis.jl")
+            include("test_buoyancy.jl")
+            include("test_surface_waves.jl")
+        end
+    end
+
+    if group == :integration || group == :all
+        @testset "Integration tests" begin
+            include("test_models.jl")
+            include("test_simulations.jl")
+            include("test_time_stepping.jl")
+            include("test_time_stepping_bcs.jl")
+            include("test_forcings.jl")
+            include("test_turbulence_closures.jl")
+            include("test_dynamics.jl")
+            include("test_diagnostics.jl")
+            include("test_output_writers.jl")
+            include("test_abstract_operations.jl")
+        end
+    end
+
+    if group == :regression || group == :all
         include("test_regression.jl")
-        include("test_examples.jl")
-        include("test_verification.jl")
-        include("test_benchmarks.jl")
+    end
+
+    if group == :scripts || group == :all
+        @testset "Scripts" begin
+            include("test_examples.jl")
+            include("test_verification.jl")
+            include("test_benchmarks.jl")
+        end
+    end
+
+    if group == :convergence
+        include("test_convergence.jl")
     end
 end

@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: BoundaryFunction
+
 function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))
@@ -75,7 +77,7 @@ function test_flux_budget(arch, FT, fldname)
 
     model_bcs = NamedTuple{(fldname,)}((field_bcs,))
 
-    closure = ConstantIsotropicDiffusivity(FT, ν=κ, κ=κ)
+    closure = IsotropicDiffusivity(FT, ν=κ, κ=κ)
     model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
                                 float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
 
@@ -155,17 +157,13 @@ end
     @testset "Boundary condition instatiation and time-stepping" begin
         Nx = Ny = 16
         for arch in archs
+	    ArrayType = array_type(arch)
             for FT in float_types
                 @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
 
                 for fld in (:u, :v, :T, :S)
                     for bctype in (Gradient, Flux, Value)
-
-                        arraybc = rand(FT, Nx, Ny)
-                        if arch == GPU()
-                            arraybc = CuArray(arraybc)
-                        end
-
+                        arraybc = rand(FT, Nx, Ny) |> ArrayType
                         for bc in (FT(0.6), arraybc, funbc, boundaryfunbc)
                             @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
                         end

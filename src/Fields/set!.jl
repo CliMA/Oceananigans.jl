@@ -1,6 +1,6 @@
 using CUDA
 using KernelAbstractions: @kernel, @index, CUDADevice
-using Oceananigans.Architectures: device
+using Oceananigans.Architectures: device, GPU
 using Oceananigans.Utils: work_layout
 
 """
@@ -52,7 +52,7 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::Field, v::Number) = @. u.data = v
+set!(u::Field, v::Number) = @. u.data.parent = v
 
 set!(u::Field{X, Y, Z, A}, v::Field{X, Y, Z, A}) where {X, Y, Z, A} =
     @. u.data.parent = v.data.parent
@@ -84,7 +84,7 @@ end
 
 # Set the GPU field `u` to the CuArray `v`.
 @hascuda function set!(u::AbstractGPUField, v::CuArray)
-    launch!(CUDADevice(), u.grid, :xyz, _set_gpu!, u.data, v, u.grid)
+    launch!(GPU(), u.grid, :xyz, _set_gpu!, u.data, v, u.grid)
     return nothing
 end
 

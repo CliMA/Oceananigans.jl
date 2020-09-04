@@ -1,80 +1,88 @@
 module Logger
 
-export ModelLogger, Diagnostic, Setup
+export OceananigansLogger
 
 using Dates
 using Logging
+using Crayons
 
-#####
-##### Custom LogLevels
-#####
+import Logging: shouldlog, min_enabled_level, catch_exceptions, handle_message
 
-_custom_log_level_docs = """
-    Severity Order:
-    Debug < Diagnostic < Setup < Info
+const RED    = Crayon(foreground=:red)
+const YELLOW = Crayon(foreground=:light_yellow)
+const CYAN   = Crayon(foreground=:cyan)
+const BLUE   = Crayon(foreground=:blue)
 
-    Usage:
-    @logmsg Logging.LogLevel "Log Message"
+const BOLD      = Crayon(bold=true)
+const UNDERLINE = Crayon(underline=true)
 
-    @logmsg comes from Base/Logging
-    LogLevel can be any Base/Logging.LogLevel
-    Log Message can be any expression that evaluates to a string (preferably human readable!)
-"""
-
-const Diagnostic = Logging.LogLevel(-500)  # Sits between Debug and Info
-const Setup      = Logging.LogLevel(-125)
-
-#####
-##### ModelLogger
-#####
-
-"""
-    ModelLogger(stream::IO, level::LogLevel)
-
-Based on Logging.SimpleLogger it tries to log all messages in the following format
-
-    message --- [dd/mm/yyyy HH:MM:SS] log_level source_file:line_number
-
-The logger will handle any message from Diagnostic up by default.
-"""
-struct ModelLogger <: Logging.AbstractLogger
-            stream :: IO
-         min_level :: Logging.LogLevel
-    message_limits :: Dict{Any,Int}
+struct OceananigansLogger <: Logging.AbstractLogger
+              stream :: IO
+           min_level :: Logging.LogLevel
+      message_limits :: Dict{Any,Int}
+    show_info_source :: Bool
 end
 
-ModelLogger(stream::IO=stderr, level=Diagnostic) = ModelLogger(stream, level, Dict{Any,Int}())
+"""
+    OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false)
 
-Logging.shouldlog(logger::ModelLogger, level, _module, group, id) = get(logger.message_limits, id, 1) > 0
+Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 
-Logging.min_enabled_level(logger::ModelLogger) = logger.min_level
+    [yyyy/mm/dd HH:MM:SS.sss] log_level message [-@-> source_file:line_number]
 
-Logging.catch_exceptions(logger::ModelLogger) = false
+where the source of the message between the square brackets is included only if
+`show_info_source=true` or if the message is not an info level message.
+"""
+OceananigansLogger(stream::IO=stdout, level=Logging.Info; show_info_source=false) =
+    OceananigansLogger(stream, level, Dict{Any,Int}(), show_info_source)
 
-function level_to_string(level::Logging.LogLevel)
-    level == Diagnostic   && return "Diagnostic"
-    level == Setup        && return "Setup"
-    level == Logging.Warn && return "Warning"
+shouldlog(logger::OceananigansLogger, level, _module, group, id) =
+    get(logger.message_limits, id, 1) > 0
+
+min_enabled_level(logger::OceananigansLogger) = logger.min_level
+
+catch_exceptions(logger::OceananigansLogger) = false
+
+function level_to_string(level)
+    level == Logging.Error && return "ERROR"
+    level == Logging.Warn  && return "WARN "
+    level == Logging.Info  && return "INFO "
+    level == Logging.Debug && return "DEBUG"
     return string(level)
 end
 
-function Logging.handle_message(logger::ModelLogger, level, message, _module, group, id, filepath, line; maxlog = nothing, kwargs...)
-    if maxlog !== nothing && maxlog isa Integer
+function level_to_crayon(level)
+    level == Logging.Error && return RED
+    level == Logging.Warn  && return YELLOW
+    level == Logging.Info  && return CYAN
+    level == Logging.Debug && return BLUE
+    return identity
+end
+
+function handle_message(logger::OceananigansLogger, level, message, _module, group, id,
+                                filepath, line; maxlog = nothing, kwargs...)
+
+    if !isnothing(maxlog) && maxlog isa Int
         remaining = get!(logger.message_limits, id, maxlog)
         logger.message_limits[id] = remaining - 1
-        remaining > 0 || return
+        remaining > 0 || return nothing
     end
 
     buf = IOBuffer()
     iob = IOContext(buf, logger.stream)
+
     level_name = level_to_string(level)
+    crayon = level_to_crayon(level)
 
     module_name = something(_module, "nothing")
     file_name   = something(filepath, "nothing")
     line_number = something(line, "nothing")
-    msg_timestamp = Dates.format(Dates.now(), "[dd/mm/yyyy HH:MM:SS]")
+    msg_timestamp = Dates.format(Dates.now(), "[yyyy/mm/dd HH:MM:SS.sss]")
 
-    formatted_message = "$msg_timestamp $message ---  $level_name $file_name:$line_number"
+    formatted_message = "$(crayon(msg_timestamp)) $(BOLD(crayon(level_name))) $message"
+    if logger.show_info_source || level != Logging.Info
+        formatted_message *= " $(BOLD(crayon("-@->"))) $(UNDERLINE("$file_name:$line_number"))"
+    end
 
     println(iob, formatted_message)
     write(logger.stream, take!(buf))

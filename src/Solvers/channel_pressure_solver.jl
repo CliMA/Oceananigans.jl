@@ -85,8 +85,8 @@ function ChannelPressureSolver(::GPU, grid, pressure_bcs, no_args...)
     M_ky = ones(1, Ny, 1) |> CuArray
     M_kz = ones(1, 1, Nz) |> CuArray
 
-    M_ky[1] = 0
-    M_kz[1] = 0
+    CUDA.@allowscalar M_ky[1] = 0
+    CUDA.@allowscalar M_kz[1] = 0
 
     constants = (ω_4Ny⁺ = ω_4Ny⁺, ω_4Nz⁺ = ω_4Nz⁺, ω_4Ny⁻ = ω_4Ny⁻, ω_4Nz⁻ = ω_4Nz⁻,
                  r_y_inds = r_y_inds, r_z_inds = r_z_inds,
@@ -135,21 +135,23 @@ function solve_poisson_equation!(solver::PressureSolver{Channel, GPU}, grid)
     # Calculate DCTʸᶻ(f) in place using the FFT.
     solver.transforms.FFTyz! * RHS
 
-    RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
+    CUDA.@allowscalar RHS⁻ = view(RHS, 1:Nx, r_y_inds, 1:Nz)
     @. B = 2 * real(ω_4Nz⁺ * (ω_4Ny⁺ * RHS + ω_4Ny⁻ * RHS⁻))
 
     solver.transforms.FFTx! * B # Calculate FFTˣ(f) in place.
 
     @. B = -B / (kx² + ky² + kz²)
 
-    B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
+    CUDA.@allowscalar B[1, 1, 1] = 0  # Setting DC component of the solution (the mean) to be zero.
 
     solver.transforms.IFFTx! * B  # Calculate IFFTˣ(ϕ̂) in place.
 
     # Calculate IDCTʸᶻ(ϕ̂) in place using the FFT.
-    B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
-    B⁺⁻ = view(B, 1:Nx, 1:Ny, r_z_inds)
-    B⁻⁻ = view(B, 1:Nx, r_y_inds, r_z_inds)
+    CUDA.@allowscalar begin
+        B⁻⁺ = view(B, 1:Nx, r_y_inds, 1:Nz)
+        B⁺⁻ = view(B, 1:Nx, 1:Ny, r_z_inds)
+        B⁻⁻ = view(B, 1:Nx, r_y_inds, r_z_inds)
+    end
 
     @. ϕ = 1/4 *  ω_4Ny⁻ * ω_4Nz⁻ * ((B - M_ky * M_kz * B⁻⁻) - im*(M_kz * B⁺⁻ + M_ky * B⁻⁺))
 

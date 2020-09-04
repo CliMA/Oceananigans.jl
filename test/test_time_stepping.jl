@@ -22,22 +22,28 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3)),
-                                architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    
+    # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
+    grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+    
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
-    # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
+    # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
+    
+    @test all(interior(model.velocities.u) .≈ 0)
+    @test all(interior(model.velocities.v) .≈ 0)
+    @test all(interior(model.velocities.w) .≈ 0)
+    @test all(interior(model.tracers.T)    .≈ 1.0)
+    @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
 end
-
-using Oceananigans.Utils: launch!
-using KernelAbstractions
 
 """
     This test ensures that when we compute w from the continuity equation that the full velocity field
@@ -62,11 +68,11 @@ function compute_w_from_continuity(arch, FT)
                     dependencies=Event(device(arch)))
 
     wait(device(arch), event)
-            
+
     fill_halo_regions!(U, arch, nothing, state)
 
     event = launch!(arch, grid, :xyz,
-                    velocity_div!, div_U.data, grid, U.u.data, U.v.data, U.w.data,
+                    divergence!, grid, U.u.data, U.v.data, U.w.data, div_U.data,
                     dependencies=Event(device(arch)))
 
     wait(device(arch), event)
@@ -109,7 +115,7 @@ function incompressible_in_time(arch, FT, Nt)
         time_step!(model, 0.05, euler = n==1)
     end
 
-    event = launch!(arch, grid, :xyz, velocity_div!, div_U, grid, u, v, w, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     min_div = minimum(interior(div_U))
@@ -138,12 +144,12 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     α = (Lz/Nz)/(Lx/Nx) # Grid cell aspect ratio.
     νh, κh = 20.0, 20.0
-    νv, κv = α*νh, α*κh
+    νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
-                                closure = ConstantAnisotropicDiffusivity(νh=νh, νv=νv, κh=κh, κv=κv))
+                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
@@ -169,7 +175,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     FT == Float32 && return isapprox(Tavg, Tavg0, rtol=2e-4)
 end
 
-Closures = (ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)

@@ -22,7 +22,7 @@ function RegularCartesianGrid(filename)
     Lz = file["grid/Lz"]
     close(file)
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz), 
+    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz),
                                 topology=(Periodic, Periodic, Bounded))
 
     return grid

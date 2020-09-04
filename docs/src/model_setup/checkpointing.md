@@ -18,7 +18,7 @@ julia> using Oceananigans.OutputWriters;
 
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
-julia> checkpointer = Checkpointer(model, interval=1000000, prefix="model_checkpoint")
+julia> checkpointer = Checkpointer(model, time_interval=1000000, prefix="model_checkpoint")
 Checkpointer{Nothing,Int64,Array{Symbol,1}}(nothing, 1000000, 0.0, ".", "model_checkpoint", [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure, :velocities, :tracers, :timestepper], false, false)
 ```
 

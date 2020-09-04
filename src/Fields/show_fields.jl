@@ -7,6 +7,7 @@ location_str(::Cell) = "Cell"
 show_location(X, Y, Z) = "($(location_str(X())), $(location_str(Y())), $(location_str(Z())))"
 show_location(field::AbstractField{X, Y, Z}) where {X, Y, Z} = show_location(X, Y, Z)
 
+short_show(m::Missing) = "$m"
 short_show(field::Field) = string("Field located at ", show_location(field))
 
 show(io::IO, field::Field) =

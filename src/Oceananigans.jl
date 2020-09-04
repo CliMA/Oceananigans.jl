@@ -1,7 +1,7 @@
 module Oceananigans
 
-if VERSION < v"1.1"
-    @error "Oceananigans requires Julia v1.1 or newer."
+if VERSION < v"1.4"
+    error("This version of Oceananigans.jl requires Julia v1.4 or newer.")
 end
 
 export
@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Logging
-    ModelLogger, Diagnostic, Setup,
+    OceananigansLogger,
 
     # Grids
     Periodic, Bounded, Flat,
@@ -56,7 +56,7 @@ export
     prettytime, pretty_filesize,
 
     # Turbulence closures
-    ConstantIsotropicDiffusivity, ConstantAnisotropicDiffusivity,
+    IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation
 
@@ -116,15 +116,6 @@ function write_output end
 #####
 
 include("Architectures.jl")
-
-using Oceananigans.Architectures: @hascuda
-@hascuda begin
-    println("CUDA-enabled GPU(s) detected:")
-    for (gpu, dev) in enumerate(CUDA.devices())
-        println(dev)
-    end
-end
-
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Grids/Grids.jl")
@@ -149,6 +140,7 @@ include("AbstractOperations/AbstractOperations.jl")
 ##### Re-export stuff from submodules
 #####
 
+using .Logger
 using .Architectures
 using .Utils
 using .Grids
@@ -163,5 +155,22 @@ using .Forcing
 using .Models
 using .TimeSteppers
 using .Simulations
+
+function __init__()
+    threads = Threads.nthreads()
+    if threads > 1
+        @info "Oceananigans will use $threads threads"
+        FFTW.set_num_threads(threads)
+    end
+
+    @hascuda begin
+        @debug "CUDA-enabled GPU(s) detected:"
+        for (gpu, dev) in enumerate(CUDA.devices())
+            @debug "$dev: $(CUDA.name(dev))"
+        end
+
+        CUDA.allowscalar(false)
+    end
+end
 
 end # module

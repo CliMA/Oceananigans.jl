@@ -17,7 +17,7 @@ end
                              νh=nothing, κh=nothing)
 
 Returns parameters for a closure with a diagonal diffusivity tensor with heterogeneous
-'anisotropic' components labeled by `x`, `y`, `z`.   
+'anisotropic' components labeled by `x`, `y`, `z`.
 Each component may be a number or function.
 The tracer diffusivities `κx`, `κy`, and `κz` may be `NamedTuple`s with fields corresponding
 to each tracer, or a single number or function to be a applied to all tracers.
@@ -30,35 +30,25 @@ These values are the approximate viscosity and thermal diffusivity for seawater 
 and 35 psu, according to Sharqawy et al., "Thermophysical properties of seawater: A review
 of existing correlations and data" (2010).
 """
-function AnisotropicDiffusivity(; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀, νh=nothing, κh=nothing)
-
-    if νh != nothing
+function AnisotropicDiffusivity(FT=Float64; νx=ν₀, νy=ν₀, νz=ν₀, κx=κ₀, κy=κ₀, κz=κ₀, νh=nothing, κh=nothing)
+    if !isnothing(νh)
         νx = νh
         νy = νh
     end
 
-    if κh != nothing
+    if !isnothing(κh)
         κx = κh
         κy = κh
     end
 
-    return AnisotropicDiffusivity(νx, νy, νz, κx, κy, κz)
-end
-
-"""
-    ConstantAnisotropicDiffusivity(; νh, νv, κh, κv)
-
-Returns parameters for a constant anisotropic diffusivity closure with constant horizontal
-and vertical viscosities `νh`, `νv` and constant horizontal and vertical tracer
-diffusivities `κh`, `κv`. `κh` and `κv` may be `NamedTuple`s with fields corresponding
-to each tracer, or a single number to be a applied to all tracers.
-
-See also `AnisotropicDiffusivity`.
-"""
-function ConstantAnisotropicDiffusivity(FT=Float64; νh=ν₀, νv=ν₀, κh=κ₀, κv=κ₀)
-    κh = convert_diffusivity(FT, κh)
-    κv = convert_diffusivity(FT, κv)
-    return AnisotropicDiffusivity(FT(νh), FT(νh), FT(νv), κh, κh, κv)
+    if all(isa.((νx, νy, νz, κx, κy, κz), Number))
+        κx = convert_diffusivity(FT, κx)
+        κy = convert_diffusivity(FT, κy)
+        κz = convert_diffusivity(FT, κz)
+        return AnisotropicDiffusivity(FT(νx), FT(νy), FT(νz), κx, κy, κz)
+    else
+        return AnisotropicDiffusivity(νx, νy, νz, κx, κy, κz)
+    end
 end
 
 function with_tracers(tracers, closure::AnisotropicDiffusivity)
