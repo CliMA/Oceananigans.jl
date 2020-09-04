@@ -23,9 +23,6 @@ for ξ in ("x", "y", "z")
     end
 end
 
-instantiate(L::NTuple{N, <:DataType}) where N = (L[1](), L[2](), L[3]()) # Tuple(X() for X in L) 
-instantiate(x, y...) = instantiate(tuple(x, y...))
-
 """
     interpolation_operator(from, to)
 

@@ -11,7 +11,19 @@ export
     validate_intervals, time_to_run,
     ordered_dict_show,
     with_tracers,
-    versioninfo_with_gpu, oceananigans_versioninfo
+    versioninfo_with_gpu, oceananigans_versioninfo,
+    instantiate
+
+#####
+##### Misc. small utils
+#####
+
+instantiate(L::NTuple{N, <:DataType}) where N = Tuple(x() for x in L)
+instantiate(x, y...) = instantiate(tuple(x, y...))
+
+#####
+##### Include utils
+#####
 
 include("adapt_structure.jl")
 include("units.jl")
