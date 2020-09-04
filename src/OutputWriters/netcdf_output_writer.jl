@@ -219,14 +219,14 @@ function NetCDFOutputWriter(model, outputs; filename,
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
-        # Creates an unliimited dimension "time"
-        defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",))
-
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, dim_array, (dim_name,),
                    compression=compression, attrib=dim_attribs[dim_name])
         end
+
+        # Creates an unliimited dimension "time"
+        defDim(dataset, "time", Inf)
+        defVar(dataset, "time", Float64, ("time",))
 
         # Ensure we have an attribute for every output. Use reasonable defaults if
         # none were specified by the user.
