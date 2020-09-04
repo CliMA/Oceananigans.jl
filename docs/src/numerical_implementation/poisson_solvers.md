@@ -16,9 +16,9 @@ directions and periodic otherwise) and where $\mathscr{F}$ denotes the source te
 Discretizing elliptic problems that can be solved via a classical separation-of-variables approach, such as Poisson's
 equation, results in a linear system of equations $M\bm{x} = \bm{y}$ where $M$ is a real symmetric matrix of block
 tridiagonal form. This allows for the matrix to be decomposed and solved efficiently, provided that the eigenvalues and
-eigenvectors of the blocks are known \citep[\S2]{Buzbee70}. In the case of Poisson's equation on a rectangle,
-\citet{Hockney65} has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
-multiplication steps resulting in an even more efficient method. \citet{Schumann88} describe the implementation of such
+eigenvectors of the blocks are known (§2) [Buzbee70](@cite). In the case of Poisson's equation on a rectangle,
+[Hockney65](@cite) has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
+multiplication steps resulting in an even more efficient method. [Schumann88](@cite) describe the implementation of such
 an algorithm for Poisson's equation on a staggered grid with Dirichlet, Neumann, and periodic boundary conditions.
 
 The method can be explained easily by taking the Fourier transform of both sides of \eqref{eq:poisson-pressure} to yield
@@ -38,7 +38,7 @@ coefficients of the solution are easily solved for
 \widehat{\phi}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k}
 ```
 
-The eigenvalues are given by \citet{Schumann88} and can also be tediously derived by plugging in the definition of the
+The eigenvalues are given by [Schumann88](@cite) and can also be tediously derived by plugging in the definition of the
 discrete Fourier transform into \eqref{eq:poisson-spectral}
 ```math
 \begin{aligned}
@@ -55,9 +55,9 @@ we choose the solution with zero mean by setting the zeroth Fourier coefficient 
 $k_x = k_y = k_z = 0$) to zero. This also has the added benefit of discarding the zero eigenvalue so we don't divide by
 it.
 
-The Fast Fourier transforms are computed using FFTW.jl \citep{Frigo98,Frigo05} on the CPU and using the cuFFT
-library on the GPU. Along wall-bouded dimensions, the cosine transform is used. In particular, as the transforms are
-performed on a staggered grid, DCT-II (`REDFT10`) is used to perform the forward cosine transform and DCT-III
+The Fast Fourier transforms are computed using FFTW.jl [[Frigo98](@cite) and [Frigo05](@cite)] on the CPU and using the
+cuFFT library on the GPU. Along wall-bouded dimensions, the cosine transform is used. In particular, as the transforms
+are performed on a staggered grid, DCT-II (`REDFT10`) is used to perform the forward cosine transform and DCT-III
 (`REDFT01`) is used to perform the inverse cosine transform.
 
 ## Direct method with a vertically stretched grid
@@ -68,8 +68,8 @@ system along one of the dimensions and utilizing cyclic reduction. This results 
 reduction* or $\text{FACR}(\ell)$ algorithm (with $\ell$ cyclic reduction steps) which requires only
 $\mathcal{O}(N \log_2\log_2 N)$ operations provided the optimal number of cyclic reduction steps is taken, which is
 $\ell = \log_2 \log_2 n$ where $n$ is the number of grid points in the cyclic reduction dimension. The FACR algorithm
-was first developed by \citet{Hockney69} and is well reviewed by \citet{Swarztrauber77} then further benchmarked and
-extended by \citet{Temperton79} and \citet{Temperton80}.
+was first developed by [Hockney69](@cite) and is well reviewed by [Swarztrauber77](@cite) then further benchmarked and
+extended by [Temperton79](@cite) and [Temperton80](@cite).
 
 Furthermore, the FACR algorithm removes the restriction that the grid is uniform in one of the dimensions so it can
 be utilized to implement a fast Poisson solver for vertically stretched grids if the cyclic reduction is applied in the
@@ -100,7 +100,7 @@ $N_x\times N_y$ symmetric tridiagonal systems of $N_z$ linear equations for the 
 ## Cosine transforms on the GPU
 
 Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine transforms for the GPU.
-We implemented the fast 1D and 2D cosine transforms described by \citet{Makhoul80} which compute it by applying the
+We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@cite) which compute it by applying the
 regular Fourier transform to a permuted version of the array.
 
 In this section we will be using the DCT-II as the definition of the forward cosine transform for a real signal of

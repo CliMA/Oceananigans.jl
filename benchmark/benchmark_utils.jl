@@ -1,18 +1,5 @@
-using InteractiveUtils
-
-using Oceananigans: @hascuda, AbstractArchitecture
-
-@hascuda using CUDAdrv
-
-function print_benchmark_info()
-    InteractiveUtils.versioninfo(verbose=true)
-    @hascuda begin
-        dev = device(CuCurrentContext()) |> string
-        gpu_name = split(dev, ":")[end] |> strip
-        println("  GPU: $gpu_name")
-    end
-    println()
-end
+using CUDA
+using Oceananigans.Architectures
 
 arch_name(::CPU) = "CPU"
 arch_name(::GPU) = "GPU"

@@ -8,9 +8,9 @@ version = "0.5.0"
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "9e31b9f5d3f9b5ec32c1d01fd8c05270bad10dc0"
+git-tree-sha1 = "0fac443759fa829ed8066db6cf1077d888bb6573"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "2.0.0"
+version = "2.0.2"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -40,9 +40,9 @@ version = "0.1.0"
 
 [[CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BinaryProvider", "CEnum", "DataStructures", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "Libdl", "LinearAlgebra", "Logging", "MacroTools", "NNlib", "Pkg", "Printf", "Random", "Reexport", "Requires", "SparseArrays", "Statistics", "TimerOutputs"]
-git-tree-sha1 = "e0f4849d30f574b568a2710c609842f308c0b7ff"
+git-tree-sha1 = "83bfd180e2f842f6d4ee315a6db8665e9aa0c19b"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "1.0.0"
+version = "1.3.3"
 
 [[Cassette]]
 git-tree-sha1 = "ff6f5109371926beb67ec3101be17d2c211e497d"
@@ -54,6 +54,12 @@ deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "ded953804d019afa9a3f98981d99b33e3db7b6da"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.0"
+
+[[CompilerSupportLibraries_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "7c4f882c41faa72118841185afc58a2eb00ef612"
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "0.3.3+0"
 
 [[Conda]]
 deps = ["JSON", "VersionParsing"]
@@ -67,11 +73,16 @@ git-tree-sha1 = "25f750df2893991f2c9b18425bfac6f2ce855154"
 uuid = "a9693cdc-2bc8-5703-a9cd-1da358117377"
 version = "0.2.0"
 
+[[Crayons]]
+git-tree-sha1 = "3f71217b538d7aaee0b69ab47d9b7724ca8afa0d"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.0.4"
+
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "be680f1ad03c0a03796aa3fda5a2180df7f83b46"
+git-tree-sha1 = "88d48e133e6d3dd68183309877eac74393daa7eb"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.18"
+version = "0.17.20"
 
 [[Dates]]
 deps = ["Printf"]
@@ -88,9 +99,9 @@ version = "0.1.1"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "IntelOpenMP_jll", "Libdl", "LinearAlgebra", "MKL_jll", "Reexport"]
-git-tree-sha1 = "14536c95939aadcee44014728a459d2fe3ca9acf"
+git-tree-sha1 = "8b7c16b56936047ca41bf25effa137ae0b381ae8"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.2.2"
+version = "1.2.4"
 
 [[FFTW_jll]]
 deps = ["Libdl", "Pkg"]
@@ -100,27 +111,21 @@ version = "3.3.9+5"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "202335fd24c2776493e198d6c66a6d910400a895"
+git-tree-sha1 = "992b4aeb62f99b69fcf0cb2085094494cc05dfb3"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.3.0"
+version = "1.4.3"
 
 [[GPUArrays]]
 deps = ["AbstractFFTs", "Adapt", "LinearAlgebra", "Printf", "Random", "Serialization"]
-git-tree-sha1 = "ae20accf251c6da038fe33cbc2c53d5af7f51344"
+git-tree-sha1 = "600f45500060894487832c2f00c203fe3e0cb264"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "4.0.0"
+version = "5.1.0"
 
 [[GPUCompiler]]
 deps = ["DataStructures", "InteractiveUtils", "LLVM", "Libdl", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "65f7395a1245635f0c2279649fdbef09a1b0aa7b"
+git-tree-sha1 = "5ba2c9bd7f6e88573c744d67523590586ce76e0c"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.4.0"
-
-[[GPUifyLoops]]
-deps = ["Cassette", "Requires", "StaticArrays"]
-git-tree-sha1 = "671b3b85510f3833c05f3846b3019edc131ab03d"
-uuid = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
-version = "0.2.9"
+version = "0.4.1"
 
 [[IntelOpenMP_jll]]
 deps = ["Libdl", "Pkg"]
@@ -134,9 +139,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JLD2]]
 deps = ["CodecZlib", "DataStructures", "FileIO", "Mmap", "Pkg", "Printf", "UUIDs"]
-git-tree-sha1 = "e03e697cf84c275ece9cbefd1eabaf49bf5e7254"
+git-tree-sha1 = "9353b717ee4e27beab4e902c92a06bb5f160d2cf"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.1.13"
+version = "0.1.14"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -144,11 +149,17 @@ git-tree-sha1 = "b34d7cef7b337321e97d22242c3c2b91f476748e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.0"
 
+[[KernelAbstractions]]
+deps = ["Adapt", "CUDA", "Cassette", "LLVM", "MacroTools", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "686aa67246d34f994e691b1118c43e8f7cd1a4c3"
+uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+version = "0.3.3"
+
 [[LLVM]]
 deps = ["CEnum", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "dd3f584c3dbefe39b2a8fbafa1a3b77e31e21255"
+git-tree-sha1 = "d9c6e1efcaa6c2fcd043da812a62b3e489a109a3"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "1.5.1"
+version = "1.7.0"
 
 [[LibGit2]]
 deps = ["Printf"]
@@ -166,9 +177,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MKL_jll]]
 deps = ["IntelOpenMP_jll", "Libdl", "Pkg"]
-git-tree-sha1 = "0ce9a7fa68c70cf83c49d05d2c04d91b47404b08"
+git-tree-sha1 = "eb540ede3aabb8284cb482aa41d00d6ca850b1f8"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2020.1.216+0"
+version = "2020.2.254+0"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
@@ -185,31 +196,37 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[NCDatasets]]
 deps = ["BinDeps", "CFTime", "CondaBinDeps", "DataStructures", "Dates", "Libdl", "Printf"]
-git-tree-sha1 = "271e4670a6b30ec1e5daf6ba8b30240b7d85f535"
+git-tree-sha1 = "31ce6711bc8fa173d97c59066e78caa2846ed200"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.10.2"
+version = "0.10.4"
 
 [[NNlib]]
-deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "Requires", "Statistics"]
-git-tree-sha1 = "d9f196d911f55aeaff11b11f681b135980783824"
+deps = ["Libdl", "LinearAlgebra", "Pkg", "Requires", "Statistics"]
+git-tree-sha1 = "8ec4693a5422f0b064ce324f59351f24aa474893"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
-version = "0.6.6"
+version = "0.7.4"
 
 [[OffsetArrays]]
-git-tree-sha1 = "930db8ef90483570107f2396b1ffc6680f08e8b7"
+git-tree-sha1 = "b8500f9d73999cfbab4add5136ec26894081581e"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.0.4"
+version = "1.1.3"
+
+[[OpenSpecFun_jll]]
+deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "d51c416559217d974a1113522d5919235ae67a87"
+uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
+version = "0.5.3+3"
 
 [[OrderedCollections]]
-git-tree-sha1 = "12ce190210d278e12644bcadf5b21cbdcf225cd3"
+git-tree-sha1 = "293b70ac1780f9584c89268a6e2a560d938a7065"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.2.0"
+version = "1.3.0"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "eb3e09940c0d7ae01b01d9291ebad7b081c844d3"
+git-tree-sha1 = "8077624b3c450b15c087944363606a6ba12f925e"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "1.0.5"
+version = "1.0.10"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -235,12 +252,18 @@ version = "0.2.0"
 
 [[Requires]]
 deps = ["UUIDs"]
-git-tree-sha1 = "d37400976e98018ee840e0ca4f9d20baa231dc6b"
+git-tree-sha1 = "8c08d0c7812169e438a8478dae2a529377ad13f7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
-version = "1.0.1"
+version = "1.0.2"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[SafeTestsets]]
+deps = ["Test"]
+git-tree-sha1 = "36ebc5622c82eb9324005cc75e7e2cc51181d181"
+uuid = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+version = "0.0.1"
 
 [[SeawaterPolynomials]]
 deps = ["Test"]
@@ -258,11 +281,17 @@ uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[[SpecialFunctions]]
+deps = ["OpenSpecFun_jll"]
+git-tree-sha1 = "d8d8b8a9f4119829410ecd706da4cc8594a1e020"
+uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
+version = "0.10.3"
+
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "5c06c0aeb81bef54aed4b3f446847905eb6cbda0"
+git-tree-sha1 = "016d1e1a00fabc556473b07161da3d39726ded35"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.12.3"
+version = "0.12.4"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -304,6 +333,6 @@ version = "1.2.0"
 
 [[Zlib_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "a2e0d558f6031002e380a90613b199e37a8565bf"
+git-tree-sha1 = "fdd89e5ab270ea0f2a0174bd9093e557d06d4bfa"
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.11+10"
+version = "1.2.11+16"

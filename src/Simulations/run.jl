@@ -1,3 +1,5 @@
+using ..Diagnostics: WindowedTimeAverage
+
 # Simulations are for running
 
 function stop(sim)
@@ -44,6 +46,12 @@ function wall_time_limit_exceeded(sim)
     return false
 end
 
+add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+
+add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
+
 get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
@@ -58,7 +66,9 @@ function run!(sim)
     model = sim.model
     clock = model.clock
 
-    [open(out) for out in values(sim.output_writers)]
+    [open(writer) for writer in values(sim.output_writers)]
+
+    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
     while !stop(sim)
         time_before = time()
@@ -68,7 +78,7 @@ function run!(sim)
             [write_output(sim.model, out)    for out  in values(sim.output_writers)]
         end
 
-        for n in 1:sim.progress_frequency
+        for n in 1:sim.iteration_interval
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             time_step!(model, get_Δt(sim.Δt), euler=euler)
 
@@ -82,8 +92,6 @@ function run!(sim)
         time_after = time()
         sim.run_time += time_after - time_before
     end
-
-    [close(out) for out in values(sim.output_writers)]
 
     return nothing
 end

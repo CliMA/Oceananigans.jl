@@ -1,5 +1,5 @@
 """
-    ParameterizedBoundaryConditionFunction(func, parameters)
+    ParameterizedDiscreteBoundaryFunction(func, parameters)
 
 A wrapper for boundary condition functions implemented as functions with parameters.
 The boundary condition `func` is called with the signature
@@ -19,18 +19,9 @@ Example
 
 u_boundary_condition = ParameterizedBoundaryCondition(linear_drag, (μ=π,))
 """
-struct ParameterizedBoundaryConditionFunction{F, P} <: Function
+struct ParameterizedDiscreteBoundaryFunction{F, P} <: Function
     func :: F
     parameters :: P
 end
 
-"""
-    ParameterizedBoundaryCondition(bctype, func, parameters)
-
-Returns a `BoundaryCondition` of `bctype` with a `ParameterizedBoundaryConditionFunction`
-with function `func` and `parameters`.
-"""
-ParameterizedBoundaryCondition(bctype, func, parameters) =
-    BoundaryCondition(bctype, ParameterizedBoundaryConditionFunction(func, parameters))    
-
-@inline (bc::ParameterizedBoundaryConditionFunction)(args...) = bc.func(args..., bc.parameters)
+@inline (bc::ParameterizedDiscreteBoundaryFunction)(args...) = bc.func(args..., bc.parameters)

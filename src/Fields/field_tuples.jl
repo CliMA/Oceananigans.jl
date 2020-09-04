@@ -85,10 +85,10 @@ Convenience method for restoring checkpointed models that returns the already-in
 function TracerFields(arch, grid, proposed_tracer_fields::NamedTuple, bcs; kwargs...)
     grid = proposed_tracer_fields[1].grid
 
-    tracer_fields = 
+    tracer_fields =
         Tuple(c ∈ keys(bcs) ?
               Field{Cell, Cell, Cell}(proposed_tracer_fields[c].data, grid, bcs[c]) :
-              Field{Cell, Cell, Cell}(proposed_tracer_fields[c].data, grid, TracerBoundaryConditions(grid))
+              proposed_tracer_fields[c]
               for c in tracernames(proposed_tracer_fields))
 
     return NamedTuple{tracernames(proposed_tracer_fields)}(tracer_fields)

@@ -2,7 +2,11 @@
 
 We adopt a mixed approach for implementing boundary conditions that uses both halo regions and "direct"
 imposition of boundary conditions, depending on the condition prescribed.
+
 We illustrate how boundary conditions are implemented by considering the tracer equation \eqref{eq:tracer}.
+
+See [Model setup: boundary conditions](@ref model_step_bcs) for how to create and use these
+boundary conditions in Oceananigans.
 
 ## Gradient boundary conditions
 
@@ -30,6 +34,8 @@ This prescription implies that the $z$-derivative of $c$ across the boundary at 
 ```
 as prescribed by the user.
 
+Gradient boundary conditions are represented by the [`Gradient`](@ref) type.
+
 ## Value boundary conditions
 
 Users impose value boundary conditions by prescribing $c^b$, the value of $c$ on the external
@@ -44,6 +50,8 @@ At the bottom boundary in $z$, for example, this means that the gradient of $c$ 
 \gamma = \frac{c_{i, j, 1} - c^b_{i, j, 1}}{\tfrac{1}{2} \Delta z_{i, j, 1}} \, ,
 ```
 which is then used to set the halo point $c_{i, j, 0}$ via linear extrapolation.
+
+Value boundary conditions are represented by the [`Value`](@ref) type.
 
 ## Flux boundary conditions
 
@@ -82,3 +90,5 @@ flux of $c$ across the external boundary is
     flux on a left boundary where $\text{sign}(\hat{\bm{n}}) = -1$ implies an "inward" flux of $c$ that increases interior values of $c$,
     whereas a positive flux on a right boundary where $\text{sign}(\hat{\bm{n}}) = 1$ implies an "outward" flux that decreases interior
     values of $c$.
+
+Flux boundary conditions are represented by the [`Flux`](@ref) type.

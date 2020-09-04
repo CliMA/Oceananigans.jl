@@ -1,6 +1,7 @@
 using Printf
 using TimerOutputs
 using Oceananigans
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 
@@ -41,9 +42,10 @@ end
 #####
 
 println()
-print_benchmark_info()
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 
-print_timer(timer, title="Eddying channel benchmarks", sortby=:name)
+print_timer(timer, title="Channel benchmarks", sortby=:name)
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns

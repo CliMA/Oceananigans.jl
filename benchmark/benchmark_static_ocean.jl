@@ -1,6 +1,7 @@
 using Printf
 using TimerOutputs
 using Oceananigans
+using Oceananigans.Utils
 
 include("benchmark_utils.jl")
 
@@ -12,11 +13,17 @@ const timer = TimerOutput()
 
 Nt = 10  # Number of iterations to use for benchmarking time stepping.
 
-# Model resolutions to benchmarks. Focusing on 3D models for GPU benchmarking.
-            Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
-   float_types = [Float32, Float64]  # Float types to benchmark.
-         archs = [CPU()]             # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]      # Benchmark GPU on systems with CUDA-enabled GPUs.
+threads = Threads.nthreads()
+
+if threads == 1
+    Ns = [(16, 16, 16), (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]
+else
+    Ns = [(256, 256, 256)]
+end
+
+   float_types = [Float32, Float64]
+         archs = [CPU()]
+@hascuda archs = [CPU(), GPU()]
 
 #####
 ##### Run benchmarks
@@ -40,9 +47,13 @@ end
 #####
 
 println()
-print_benchmark_info()
+println(oceananigans_versioninfo())
+println(versioninfo_with_gpu())
 
-print_timer(timer, title="Static ocean benchmarks", sortby=:name)
+title = "Static ocean benchmarks"
+title *= threads > 1 ? " ($threads threads)" : ""
+
+print_timer(timer, title=title, sortby=:name)
 
 println("\n\nCPU Float64 -> Float32 speedup:")
 for N in Ns
@@ -72,3 +83,5 @@ end
         @printf("%s: %.3f\n", benchmark_name(N, ft), t_cpu/t_gpu)
     end
 end
+
+println()

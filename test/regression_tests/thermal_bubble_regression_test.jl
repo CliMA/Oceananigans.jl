@@ -4,7 +4,7 @@ function run_thermal_bubble_regression_test(arch)
     Δt = 6
 
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = ConstantIsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
@@ -33,7 +33,7 @@ function run_thermal_bubble_regression_test(arch)
                    "T" => model.tracers.T,
                    "S" => model.tracers.S)
 
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, frequency=10)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, iteration_interval=10)
     push!(simulation.output_writers, nc_writer)
     =#
 
@@ -53,10 +53,10 @@ function run_thermal_bubble_regression_test(arch)
 
     field_names = ["u", "v", "w", "T", "S"]
 
-    test_fields = (interior(model.velocities.u), 
-                   interior(model.velocities.v), 
+    test_fields = (interior(model.velocities.u),
+                   interior(model.velocities.v),
                    interior(model.velocities.w),
-                   interior(model.tracers.T), 
+                   interior(model.tracers.T),
                    interior(model.tracers.S))
 
     correct_fields = [uᶜ, vᶜ, wᶜ, Tᶜ, Sᶜ]

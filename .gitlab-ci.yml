@@ -3,31 +3,41 @@ include:
 
 image: ubuntu:bionic
 
-variables:
-  CI_IMAGE_TAG: 'cuda'
-  JULIA_NUM_THREADS: '1'
-
-# Julia versions
-
-# the "primary" target, where we require a new GPU to make sure all tests are run
-julia:1.4:
+julia:1.4:unit:
   extends:
     - .julia:1.4
     - .test
-  tags:
-    - nvidia
-    - sm_70
   variables:
-    CI_THOROUGH: 'true'
-
-julia:nightly:
-  extends:
-    - .julia:nightly
-    - .test
+    TEST_GROUP: 'unit'
   tags:
     - nvidia
-  allow_failure: true
 
+julia:1.4:integration:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'integration'
+  tags:
+    - nvidia
+
+julia:1.4:regression:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'regression'
+  tags:
+    - nvidia
+
+julia:1.4:scripts:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'scripts'
+  tags:
+    - nvidia
 
 coverage:
   extends:

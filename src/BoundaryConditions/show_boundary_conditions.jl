@@ -4,8 +4,18 @@ import Oceananigans.Grids: short_show
 ##### BoundaryCondition
 #####
 
+print_condition(n::Union{Nothing, Number}) = "$n"
+print_condition(A::AbstractArray) = "$(Base.dims2string(size(A))) $(typeof(A))"
+print_condition(bf::Union{ParameterizedDiscreteBoundaryFunction, BoundaryFunction}) = print_condition(bf.func)
+
+function print_condition(f::Function)
+    ms = methods(f).ms
+    length(ms) == 1 && return "$(ms[1])"
+    return "$(ms)"
+end
+
 Base.show(io::IO, bc::BC{C, T}) where {C, T} =
-    print(io, "BoundaryCondition: type=$C, condition=$(bc.condition)")
+    print(io, "BoundaryCondition: type=$C, condition=$(print_condition(bc.condition))")
 
 #####
 ##### FieldBoundaryConditions
