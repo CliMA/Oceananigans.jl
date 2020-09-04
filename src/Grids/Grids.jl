@@ -9,7 +9,8 @@ export
 
 import Base: size, length, eltype, show
 
-using Oceananigans, Oceananigans.Architectures
+using Oceananigans
+using Oceananigans.Architectures
 
 using OffsetArrays
 
@@ -68,13 +69,14 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 """
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
-eltype(::AbstractGrid{FT}) where FT = FT
+Base.eltype(::AbstractGrid{FT}) where FT = FT
+Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
+
+halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
-
-size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
-length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 include("grid_utils.jl")
 include("regular_cartesian_grid.jl")

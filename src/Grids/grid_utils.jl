@@ -2,6 +2,16 @@
 ##### Convinience functions
 #####
 
+Base.length(loc, topo, N) = N
+Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
+
+function Base.size(loc, grid::AbstractGrid)
+    N = (grid.Nx, grid.Ny, grid.Nz)
+    return Tuple(length(loc[d], topology(grid, d), N[d]) for d in 1:3)
+end
+
+Base.size(loc, grid, d) = size(loc, grid)[d]
+
 total_size(a) = size(a) # fallback
 
 """
