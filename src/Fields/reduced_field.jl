@@ -1,5 +1,13 @@
 abstract type AbstractReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G}
 
+@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Y, Z}, i, j, k) where {Y, Z} = r.data[1, j, k]
+@propagate_inbounds getindex(r::AbstractReducedField{X, Nothing, Z}, i, j, k) where {X, Z} = r.data[i, 1, k]
+@propagate_inbounds getindex(r::AbstractReducedField{X, Y, Nothing}, i, j, k) where {X, Y} = r.data[i, j, 1]
+
+@propagate_inbounds getindex(r::AbstractReducedField{X, Nothing, Nothing}, i, j, k) where X = r.data[i, 1, 1]
+@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Y, Nothing}, i, j, k) where Y = r.data[1, j, 1]
+@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Nothing, Z}, i, j, k) where Z = r.data[1, 1, k]
+
 """
     struct ReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G}
 
@@ -43,10 +51,4 @@ function ReducedField(reduced_loc, data, grid; dims)
     return ReducedField{X, Y, Z}(data, grid, dims)
 end
 
-@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Y, Z}, i, j, k) where {Y, Z} = r.data[1, j, k]
-@propagate_inbounds getindex(r::AbstractReducedField{X, Nothing, Z}, i, j, k) where {X, Z} = r.data[i, 1, k]
-@propagate_inbounds getindex(r::AbstractReducedField{X, Y, Nothing}, i, j, k) where {X, Y} = r.data[i, j, 1]
 
-@propagate_inbounds getindex(r::AbstractReducedField{X, Nothing, Nothing}, i, j, k) where X = r.data[i, 1, 1]
-@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Y, Nothing}, i, j, k) where Y = r.data[1, j, 1]
-@propagate_inbounds getindex(r::AbstractReducedField{Nothing, Nothing, Z}, i, j, k) where Z = r.data[1, 1, k]
