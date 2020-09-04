@@ -85,17 +85,16 @@ end
 #####
 
 """
-Update the horizontal velocities u and v via
+Update the predictor velocities u, v, and w with the non-hydrostatic pressure via
 
-    `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
-
-Note that the vertical velocity is not explicitly time stepped.
+    `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
 """
 @kernel function _fractional_step_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
     @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
     @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.w[i, j, k] -= ∂zᵃᵃᶠ(i, j, k, grid, pNHS) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
