@@ -43,7 +43,7 @@ function compute!(computation::Computation)
     result_data = data(computation.result)
     loc = location(computation.result)
 
-    workgroup, worksize = work_layout(computation.grid, :xyz, include_boundaries=true, location=loc)
+    workgroup, worksize = work_layout(computation.grid, :xyz, include_right_boundaries=true, location=loc)
 
     compute_kernel! = _compute!(device(arch), workgroup, worksize)
 
