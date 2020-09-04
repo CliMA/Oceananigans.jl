@@ -10,18 +10,19 @@ using Oceananigans.Grids
 const MAX_THREADS_PER_BLOCK = 256
 
 """
-    work_layout(grid, dims; include_boundaries=false)
+    work_layout(grid, dims; include_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid`. The `workgroup` is a tuple specifying the threads per block in each dimension.
-The `worksize` specifies the range of the loop in each dimension.
+on `grid`. The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
 
 Specifying `include_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions.
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
 
-For more information, see: https://github.com/climate-machine/Oceananigans.jl/pull/308
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, dims; include_boundaries=false)
+function work_layout(grid, dims; include_boundaries=false, location=nothing)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     workgroup = Nx == 1 && Ny == 1 ?
@@ -43,10 +44,17 @@ function work_layout(grid, dims; include_boundaries=false)
                     (Int(√MAX_THREADS_PER_BLOCK), Int(√MAX_THREADS_PER_BLOCK))
 
     if include_boundaries
+        e = "include_boundaries kwarg requires the location kwarg to be specified"
+        isnothing(location) && throw(ArgumentError(e))
+
         TX, TY, TZ = topology(grid)
-        Nx′ = grid.Nx + (TX() isa Bounded)
-        Ny′ = grid.Ny + (TY() isa Bounded)
-        Nz′ = grid.Nz + (TZ() isa Bounded)
+        LX, LY, LZ = location
+
+        # Add an extra grid point for face-centered fields
+        # along bounded dimensions
+        Nx′ = Nx + (TX() isa Bounded) * (LX() isa Face)
+        Ny′ = Ny + (TY() isa Bounded) * (LY() isa Face)
+        Nz′ = Nz + (TZ() isa Bounded) * (LZ() isa Face)
     else
         Nx′, Ny′, Nz′ = Nx, Ny, Nz
     end
