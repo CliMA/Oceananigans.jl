@@ -4,10 +4,11 @@
 
 using Oceananigans.Grids
 
-grid = RegularCartesianGrid(size = (128, 128, 32),
+grid = RegularCartesianGrid(size = (64, 64, 32),
                                x = (-2e6, 2e6),
                                y = (-2e6, 2e6),
                                z = (-1e3, 0),
+                            halo = (2, 2, 2),
                         topology = (Bounded, Bounded, Bounded))
 
 # ## Boundary conditions
@@ -17,8 +18,8 @@ using Oceananigans.BoundaryConditions
 @inline wind_stress(x, y, t, parameters) = - parameters.τ * cos(2π * y / parameters.Ly)
 
 u_bcs = UVelocityBoundaryConditions(grid,
-              top = UVelocityBoundaryCondition(Flux, :z, wind_stress, (τ = 1e-4, Ly = grid.Ly)))
-
+              top = BoundaryCondition(wind_stress, parameters = (τ = 1e-4, Ly = grid.Ly)))
+              
 b_reference(y, parameters) = parameters.Δb / parameters.Ly * y
 
 @inline buoyancy_flux(i, j, grid, clock, state, parameters) = @inbounds - parameters.μ * (state.tracers.b[i, j, grid.Nz] - b_reference(grid.yC[j], parameters))
@@ -30,12 +31,15 @@ b_bcs = TracerBoundaryConditions(grid,
 
 using Oceananigans, Oceananigans.TurbulenceClosures
 
+closure = (AnisotropicDiffusivity(νh = 0, νz = 1e-2, κh = 0, κz = 1e-2),
+           AnisotropicBiharmonicDiffusivity(νh = 5e3*grid.Δx^2, νz = 0, κh = 500*grid.Δx^2, κz = 0))
+
 model = IncompressibleModel(       architecture = CPU(),
                                            grid = grid,
                                        coriolis = BetaPlane(latitude = 45),
                                        buoyancy = BuoyancyTracer(),
                                         tracers = :b,
-                                        closure = AnisotropicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2),
+                                        closure = AnisotropicBiharmonicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2),
                             boundary_conditions = (u=u_bcs, b=b_bcs))
 nothing # hide
 
@@ -147,8 +151,8 @@ anim = @animate for (i, iter) in enumerate(iterations)
     @info "Drawing frame $i from iteration $iter \n"
 
     ## Load 3D fields from file, omitting halo regions
-    u = file["timeseries/u/$iter"][2:end-1, 2:end-1, 2:end-1]
-    v = file["timeseries/v/$iter"][2:end-1, 2:end-1, 2:end-1]
+    u = file["timeseries/u/$iter"][3:end-2, 3:end-2, 3:end-2]
+    v = file["timeseries/v/$iter"][3:end-2, 3:end-2, 3:end-2]
     t = file["timeseries/t/$iter"]
 
     ## Extract slices
