@@ -4,7 +4,7 @@
 
 using Oceananigans.Grids
 
-grid = RegularCartesianGrid(size = (64, 64, 32),
+grid = RegularCartesianGrid(size = (128, 128, 64),
                                x = (-2e6, 2e6),
                                y = (-2e6, 2e6),
                                z = (-1e3, 0),
@@ -18,33 +18,35 @@ using Oceananigans.BoundaryConditions
 @inline wind_stress(x, y, t, parameters) = - parameters.τ * cos(2π * y / parameters.Ly)
 
 u_bcs = UVelocityBoundaryConditions(grid,
-              top = BoundaryCondition(wind_stress, parameters = (τ = 1e-4, Ly = grid.Ly)))
+              top = BoundaryCondition(Flux, wind_stress, parameters = (τ = 1e-4, Ly = grid.Ly)))
               
 b_reference(y, parameters) = parameters.Δb / parameters.Ly * y
 
-@inline buoyancy_flux(i, j, grid, clock, state, parameters) = @inbounds - parameters.μ * (state.tracers.b[i, j, grid.Nz] - b_reference(grid.yC[j], parameters))
-
+using Oceananigans.Forcing
 using Oceananigans.Utils
 
-b_bcs = TracerBoundaryConditions(grid,
-              top = ParameterizedBoundaryCondition(Flux, buoyancy_flux, (μ = 50 / 30day, Δb = 0.06, Ly = grid.Ly)))
+b_relaxation(x, y, z, t, b, p) = - p.μ * (b - b_reference(y, p) )
+
+b_forcing = SimpleForcing(b_relaxation, parameters = (μ = 50 / 30day, Δb = 0.06, Ly = grid.Ly),
+                          field_in_signature=true)
 
 using Oceananigans, Oceananigans.TurbulenceClosures
 
-closure = (AnisotropicDiffusivity(νh = 0, νz = 1e-2, κh = 0, κz = 1e-2),
-           AnisotropicBiharmonicDiffusivity(νh = 5e3*grid.Δx^2, νz = 0, κh = 500*grid.Δx^2, κz = 0))
+closure = (AnisotropicDiffusivity(νh = 0*5e3, νz = 1e-2, κh = 0*500, κz = 1e-2),
+           AnisotropicBiharmonicDiffusivity(νh = 1e3*grid.Δx^2, νz = 0, κh = 100*grid.Δx^2, κz = 0))
 
 model = IncompressibleModel(       architecture = CPU(),
                                            grid = grid,
                                        coriolis = BetaPlane(latitude = 45),
                                        buoyancy = BuoyancyTracer(),
                                         tracers = :b,
-                                        closure = AnisotropicBiharmonicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2),
-                            boundary_conditions = (u=u_bcs, b=b_bcs))
+                                        closure = closure,
+                            boundary_conditions = (u=u_bcs,),
+                                        forcing = ModelForcing(b=b_forcing))
 nothing # hide
 
 ## Temperature initial condition: a stable density gradient with random noise superposed.
-b₀(x, y, z) = b_bcs.z.top.condition.parameters.Δb * (1 + z / grid.Lz)
+b₀(x, y, z) = b_forcing.parameters.Δb * (1 + z / grid.Lz)
 
 set!(model, b=b₀)
 
@@ -63,15 +65,17 @@ nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output); interval=7day,
-                                prefix="double_gyre", force=true)
-
+field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
+                                time_interval=2day,
+                                prefix="double_gyre",
+                                force=true)
+                                                                 
 # ## Running the simulation
 #
 # To run the simulation, we instantiate a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
-wizard = TimeStepWizard(cfl = 0.15, Δt = 15minute, max_change = 1.1, max_Δt = 0.02*grid.Δz^2/model.closure.κz.b)
+wizard = TimeStepWizard(cfl = 0.20, Δt = 30minute, max_change = 1.1, max_Δt = 0.05*grid.Δz^2/0.01)
 nothing # hide
 
 # Finally, we set up and run the the simulation.
@@ -101,7 +105,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=2*730day, progress_frequency=100, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, stop_time=10*365day, iteration_interval=100, progress=print_progress)
 simulation.output_writers[:fields] = field_writer
 
 run!(simulation)
@@ -189,4 +193,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "double_gyre.gif", fps = 12) # hide
+gif(anim, "double_gyre2.gif", fps = 12) # hide
