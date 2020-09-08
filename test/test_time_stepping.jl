@@ -1,3 +1,13 @@
+function time_stepping_works_with_coriolis(arch, FT, Coriolis)
+    grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3))
+    c = Coriolis(FT, latitude=45)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, coriolis=c)
+
+    time_step!(model, 1, euler=true)
+
+    return true # Test that no errors/crashes happen when time stepping.
+end
+
 function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), extent=(1, 2, 3))
@@ -22,16 +32,25 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3)),
-                                architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    
+    # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
+    grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+    
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
-    # Test that GT = 1 after first time step and that AB2 actually reduced to forward Euler.
+    # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
+    
+    @test all(interior(model.velocities.u) .≈ 0)
+    @test all(interior(model.velocities.v) .≈ 0)
+    @test all(interior(model.velocities.w) .≈ 0)
+    @test all(interior(model.tracers.T)    .≈ 1.0)
+    @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
 end
@@ -166,6 +185,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     FT == Float32 && return isapprox(Tavg, Tavg0, rtol=2e-4)
 end
 
+Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
+
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, BlasiusSmagorinsky,
@@ -176,10 +197,10 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
 
     for arch in archs, FT in float_types
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
-            @info "Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
+            @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
             model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)),
+                 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                 clock = Clock(time=DateTime(2020))
             )
 
@@ -187,12 +208,19 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
             model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)),
+                 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                 clock = Clock(time=TimeDate(2020))
             )
 
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+        end
+    end
+
+    @testset "Coriolis" begin
+        for arch in archs, FT in [Float64], Coriolis in Planes
+            @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Coriolis]..."
+            @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
         end
     end
 

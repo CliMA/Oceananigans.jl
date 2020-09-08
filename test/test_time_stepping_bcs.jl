@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: BoundaryFunction
+
 function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))

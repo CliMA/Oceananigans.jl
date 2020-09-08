@@ -20,6 +20,7 @@ using Oceananigans.Fields
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: Average, normalize_sum!
+using Oceananigans.Utils: instantiate
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: data

@@ -57,11 +57,18 @@ grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
 
 bc_parameters = (μ=μ, H=Lz)
 
-@inline τ₁₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.u[i, j, 1]
-@inline τ₂₃_linear_drag(i, j, grid, clock, state, p) = @inbounds p.μ * p.H * state.velocities.v[i, j, 1]
+@inline τ₁₃_linear_drag(i, j, grid, clock, state, params) =
+    @inbounds params.μ * params.H * state.velocities.u[i, j, 1]
 
-ubcs = UVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₁₃_linear_drag, bc_parameters))
-vbcs = VVelocityBoundaryConditions(grid, bottom = ParameterizedBoundaryCondition(Flux, τ₂₃_linear_drag, bc_parameters))
+@inline τ₂₃_linear_drag(i, j, grid, clock, state, params) =
+    @inbounds params.μ * params.H * state.velocities.v[i, j, 1]
+
+ubcs = UVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₁₃_linear_drag,
+                                                                    discrete_form=true, parameters=bc_parameters))
+
+vbcs = VVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₂₃_linear_drag,
+                                                                    discrete_form=true, parameters=bc_parameters))
+                                   
 bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0),
                                       bottom = BoundaryCondition(Value, -N² * Lz))
 
@@ -153,7 +160,8 @@ output_filename_prefix = string("eady_turb_Nh", Nh, "_Nz", Nz)
 model = IncompressibleModel(               grid = grid,
                                    architecture = CPU(),
                                        coriolis = FPlane(f=f),
-                                       buoyancy = BuoyancyTracer(), tracers = :b,
+                                       buoyancy = BuoyancyTracer(),
+                                        tracers = :b,
                                         forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
                                         closure = closure,
                             boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))

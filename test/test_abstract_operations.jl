@@ -263,6 +263,24 @@ function multiplication_and_derivative_ccc(model)
     return all(computed_profile_ccc[:][3:end-2] .≈ correct_profile[2:end-1])
 end
 
+function computation_including_boundaries(FT, arch)
+    topo = (Bounded, Bounded, Bounded)
+    grid = RegularCartesianGrid(FT, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
+
+    u, v, w = model.velocities
+    @. u.data = 1 + rand()
+    @. v.data = 2 + rand()
+    @. w.data = 3 + rand()
+
+    op = @at (Face, Face, Face) u*v*w
+    uvw = Field(Face, Face, Face, arch, grid, TracerBoundaryConditions(grid))
+    c = Computation(op, uvw)
+    compute!(c)
+
+    return all(interior(uvw) .!= 0)
+end
+
 @testset "Abstract operations" begin
     @info "Testing abstract operations..."
 
@@ -445,6 +463,11 @@ end
                 @testset "Volume averages of operations [$FT, $(typeof(arch))]" begin
                     @info "      Testing volume averges..."
                     @test volume_average_of_times(model)
+                end
+
+                @testset "Faces along Bounded dimensions" begin
+                    @info "      Testing compute! on faces along bounded dimensions..."
+                    @test computation_including_boundaries(FT, arch)
                 end
             end
         end

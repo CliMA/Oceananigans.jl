@@ -1,8 +1,9 @@
 using Oceananigans.Architectures
-using Oceananigans.Grids: halo_size, total_size
-using Oceananigans.Fields: Field
 using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
 using Oceananigans.Utils
+
+using Oceananigans.Grids: topology, total_size, halo_size, interior_parent_indices
 
 """
     Average{F, R, D, P, I, T} <: AbstractDiagnostic
@@ -85,11 +86,15 @@ end
 
 function (avg::Average)(model)
     run_diagnostic(model, avg)
-    N, H = size(model.grid), halo_size(model.grid)
     result = avg.return_type(avg.result)
+
     if avg.with_halos
         return result
     else
-        return result[(d in avg.dims ? Colon() : (1+H[d]:N[d]+H[d]) for d in 1:3)...]
+        loc = location(avg.field)
+        topo = topology(model.grid)
+        N, H = size(model.grid), halo_size(model.grid)
+        inds = (d in avg.dims ? Colon() : interior_parent_indices(loc[d], topo[d], N[d], H[d]) for d in 1:3)
+        return result[inds...]
     end
 end
