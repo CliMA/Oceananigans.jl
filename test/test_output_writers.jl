@@ -1,6 +1,6 @@
 using Statistics
 using NCDatasets
-using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
+using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
 using Oceananigans.Diagnostics
 
 function run_thermal_bubble_netcdf_tests(arch)
@@ -205,8 +205,11 @@ end
 function run_netcdf_function_output_tests(arch)
     N = 16
     L = 1
+    Δt = 1.25
+    iters = 3
+
     model = IncompressibleModel(grid=RegularCartesianGrid(size=(N, N, N), extent=(L, 2L, 3L)))
-    simulation = Simulation(model, Δt=1.25, stop_iteration=3)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
 
     # Define scalar, vector, and 2D slice outputs
@@ -266,30 +269,68 @@ function run_netcdf_function_output_tests(arch)
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
 
-    @test length(ds["time"]) == 4
-    @test ds["time"][:] == [1.25i for i in 0:3]
+    @test length(ds["time"]) == iters+1
+    @test ds["time"][:] == [n*Δt for n in 0:iters]
 
+    @test length(ds["scalar"]) == iters+1
     @test ds["scalar"].attrib["longname"] == "Some scalar"
     @test ds["scalar"].attrib["units"] == "bananas"
-    @test ds["scalar"][:] == [(1.25i)^2 for i in 0:3]
+    @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
     @test dimnames(ds["scalar"]) == ("time",)
 
     @test ds["profile"].attrib["longname"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
-    @test ds["profile"][:, end] == 3.75 .* exp.(znodes(Cell, grid))
-    @test size(ds["profile"]) == (N, 4)
+    @test size(ds["profile"]) == (N, iters+1)
     @test dimnames(ds["profile"]) == ("zC", "time")
+
+    for n in 0:iters
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
+    end
 
     @test ds["slice"].attrib["longname"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
-
-    @test ds["slice"][:, :, end] == 3.75 .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
-                                             .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
-
-    @test size(ds["slice"]) == (N, N, 4)
+    @test size(ds["slice"]) == (N, N, iters+1)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
-    close(ds)
+    for n in 0:iters
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+    end
+
+    close(simulation.output_writers[:food])
+
+    #####
+    ##### Take 1 more time step and test that appending to a NetCDF file works
+    #####
+
+    iters += 1
+    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+
+    simulation.output_writers[:food] =
+        NetCDFOutputWriter(model, outputs;
+            iteration_interval=1, filename=nc_filename, mode="a", dimensions=dims, verbose=true,
+            global_attributes=global_attributes, output_attributes=output_attributes)
+
+    run!(simulation)
+
+    ds = Dataset(nc_filename, "r")
+
+    @test length(ds["time"]) == iters+1
+    @test length(ds["scalar"]) == iters+1
+    @test size(ds["profile"]) == (N, iters+1)
+    @test size(ds["slice"]) == (N, N, iters+1)
+
+    @test ds["time"][:] == [n*Δt for n in 0:iters]
+    @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
+
+    for n in 0:iters
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+    end
+
+    close(simulation.output_writers[:food])
+
     return nothing
 end
 
@@ -418,7 +459,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test !ismissing(restored_model.velocities.w.boundary_conditions)
     @test  ismissing(restored_model.tracers.T.boundary_conditions)
     @test !ismissing(restored_model.tracers.S.boundary_conditions)
-   
+
     CUDA.@allowscalar begin
         @test all(interior(restored_model.velocities.u) .≈ π/2)
         @test all(interior(restored_model.velocities.v) .≈ ℯ)
