@@ -5,42 +5,50 @@
 using CUDA
 using KernelAbstractions
 using Oceananigans.Architectures
+using Oceananigans.Grids
 
 const MAX_THREADS_PER_BLOCK = 256
 
 """
-    work_layout(grid, dims)
+    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid`. The `workgroup` is a tuple specifying the threads per block in each dimension.
-The `worksize` specifies the range of the loop in each dimension.
+on `grid`. The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
 
-For more information, see: https://github.com/climate-machine/Oceananigans.jl/pull/308
+Specifying `include_right_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
+
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, dims)
+function work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+    Nx, Ny, Nz = size(grid)
 
-    workgroup = grid.Nx == 1 && grid.Ny == 1 ?
+    workgroup = Nx == 1 && Ny == 1 ?
 
                     # One-dimensional column models:
                     (1, 1) :
 
-                grid.Nx == 1 ?
+                Nx == 1 ?
 
                     # Two-dimensional y-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, grid.Ny)) :
+                    (1, min(MAX_THREADS_PER_BLOCK, Ny)) :
 
-                grid.Ny == 1 ?
+                Ny == 1 ?
 
                     # Two-dimensional x-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, grid.Nx)) :
+                    (1, min(MAX_THREADS_PER_BLOCK, Nx)) :
 
-                    # Three-dimensional models use the default (16, 16)
-                    (Int(√(MAX_THREADS_PER_BLOCK)), Int(√(MAX_THREADS_PER_BLOCK)))
+                    # Three-dimensional models
+                    (Int(√MAX_THREADS_PER_BLOCK), Int(√MAX_THREADS_PER_BLOCK))
 
-    worksize = dims == :xyz ? (grid.Nx, grid.Ny, grid.Nz) :
-               dims == :xy  ? (grid.Nx, grid.Ny) :
-               dims == :xz  ? (grid.Nx, grid.Nz) :
-               dims == :yz  ? (grid.Ny, grid.Nz) : error("Unsupported launch configuration: $dims")
+    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : (Nx, Ny, Nz)
+
+    worksize = dims == :xyz ? (Nx′, Ny′, Nz′) :
+               dims == :xy  ? (Nx′, Ny′) :
+               dims == :xz  ? (Nx′, Nz′) :
+               dims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $dims"))
 
     return workgroup, worksize
 end

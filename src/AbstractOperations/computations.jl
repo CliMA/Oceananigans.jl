@@ -41,8 +41,9 @@ Perform a `computation`. The result is stored in `computation.result`.
 function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
+    loc = location(computation.result)
 
-    workgroup, worksize = work_layout(computation.grid, :xyz)
+    workgroup, worksize = work_layout(computation.grid, :xyz, include_right_boundaries=true, location=loc)
 
     compute_kernel! = _compute!(device(arch), workgroup, worksize)
 

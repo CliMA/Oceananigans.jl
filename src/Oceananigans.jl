@@ -116,9 +116,9 @@ function write_output end
 #####
 
 include("Architectures.jl")
+include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
-include("Grids/Grids.jl")
 include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
