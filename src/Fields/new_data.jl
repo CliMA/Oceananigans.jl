@@ -17,6 +17,13 @@ Return a range of indices for a field located at cell `Face`s
 offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
 
 """
+Return a range of indices for a field along a 'reduced' dimension.
+"""
+offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
+
+
+
+"""
     OffsetArray(underlying_data, grid, loc)
 
 Returns an `OffsetArray` that maps to `underlying_data` in memory,

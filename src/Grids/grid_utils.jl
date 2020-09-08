@@ -59,8 +59,12 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
 @inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
 
-@inline total_length(::Nothing, args...) = 1
+"""
+    total_length(::Type{Nothing}, topo, N, H=0)
 
+Returns 1, which is the 'length' of a field along a reduced dimension.
+"""
+@inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
 # Grid domains
 @inline domain(ξ, topo) = ξ[1], ξ[end]
@@ -76,6 +80,7 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 
 @inline interior_indices(loc, topo, N) = 1:N
 @inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
+@inline interior_indices(::Type{Nothing}, topo, N) = 1:1
 
 @inline interior_x_indices(loc, grid) = interior_indices(loc, topology(grid, 1), grid.Nx)
 @inline interior_y_indices(loc, grid) = interior_indices(loc, topology(grid, 2), grid.Ny)
@@ -83,10 +88,12 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 
 @inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Type{Nothing}, topo, N, H) = 1:1
 
 # All indices including halos.
 @inline all_indices(loc, topo, N, H) = 1-H:N+H
-@inline all_indices(loc::Type{Face}, ::Type{Bounded}, N, H) = 1-H:N+1+H
+@inline all_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1-H:N+1+H
+@inline all_indices(::Type{Nothing}, topo, N, H) = 1:1
 
 @inline all_x_indices(loc, grid) = all_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
@@ -94,6 +101,7 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 
 @inline all_parent_indices(loc, topo, N, H) = 1:N+2H
 @inline all_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Type{Nothing}, topo, N, H) = 1:1
 
 @inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
