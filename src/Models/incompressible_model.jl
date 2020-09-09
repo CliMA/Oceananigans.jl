@@ -31,17 +31,18 @@ end
                    grid,
            architecture = CPU(),
              float_type = Float64,
-                tracers = (:T, :S),
-                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
                   clock = Clock{float_type}(0, 0),
+              advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
                 forcing = ModelForcing(),
+                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
              velocities = VelocityFields(architecture, grid, boundary_conditions),
+                tracers = (:T, :S),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
             timestepper = :AdamsBashforth,
@@ -53,14 +54,17 @@ Construct an incompressible `Oceananigans.jl` model on `grid`.
 Keyword arguments
 =================
 
-- `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-- `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-- `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
-- `closure`: The turbulence closure for `model`. See `TurbulenceClosures`.
-- `buoyancy`: Buoyancy model parameters.
-- `coriolis`: Parameters for the background rotation rate of the model.
-- `forcing`: User-defined forcing functions that contribute to solution tendencies.
-- `boundary_conditions`: Named tuple containing field boundary conditions.
+    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+    - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
+    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+    - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
+    - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+    - `coriolis`: Parameters for the background rotation rate of the model.
+    - `forcing`: User-defined forcing functions that contribute to solution tendencies.
+    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+                 preallocated `CellField`s.
+    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
 """
 function IncompressibleModel(;
                    grid,
