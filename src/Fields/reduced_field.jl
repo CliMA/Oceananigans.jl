@@ -49,7 +49,7 @@ function validate_reduced_locations(X, Y, Z, dims)
 
     # Check reduced locations
     for i in dims
-        loc[i] != Nothing && ArgumentError("The location of reduced dimensions must be Nothing")
+        isnothing(loc[i]) || ArgumentError("The location of reduced dimensions must be Nothing")
     end
 
     return nothing
