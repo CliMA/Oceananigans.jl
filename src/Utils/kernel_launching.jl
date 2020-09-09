@@ -23,6 +23,7 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 function work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+
     Nx, Ny, Nz = size(grid)
 
     workgroup = Nx == 1 && Ny == 1 ?
@@ -64,9 +65,13 @@ Returns an `event` token associated with the `kernel!` launch.
 The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
 that must complete before `kernel!` is launched.
 """
-function launch!(arch, grid, dims, kernel!, args...; dependencies=nothing, kwargs...)
+function launch!(arch, grid, dims, kernel!, args...; 
+                 dependencies = nothing, include_right_boundaries = false,
+                 location = nothing, kwargs...)
 
-    workgroup, worksize = work_layout(grid, dims)
+    workgroup, worksize = work_layout(grid, dims,
+                                      include_right_boundaries = include_right_boundaries,
+                                                      location = location)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 

@@ -4,6 +4,7 @@
 
 Base.length(loc, topo, N) = N
 Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
+Base.length(::Type{Nothing}, topo, N) = 1
 
 function Base.size(loc, grid::AbstractGrid)
     N = (grid.Nx, grid.Ny, grid.Nz)
@@ -11,6 +12,17 @@ function Base.size(loc, grid::AbstractGrid)
 end
 
 Base.size(loc, grid, d) = size(loc, grid)[d]
+
+"""
+    size(loc, grid)
+
+Returns the size of a field at `loc` on `grid`, not including halos.
+This is a 3-tuple of integers corresponding to the number of interior nodes
+of `f` along `x, y, z`.
+"""
+@inline size(loc, grid) = (length(loc[1], topology(grid, 1), grid.Nx),
+                           length(loc[2], topology(grid, 2), grid.Ny),
+                           length(loc[3], topology(grid, 3), grid.Nz))
 
 total_size(a) = size(a) # fallback
 
@@ -127,6 +139,13 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline zC(k, grid) = znode(Cell, k, grid)
 @inline zF(k, grid) = znode(Face, k, grid)
 
+all_x_nodes(::Type{Cell}, grid) = grid.xC
+all_x_nodes(::Type{Face}, grid) = grid.xF
+all_y_nodes(::Type{Cell}, grid) = grid.yC
+all_y_nodes(::Type{Face}, grid) = grid.yF
+all_z_nodes(::Type{Cell}, grid) = grid.zC
+all_z_nodes(::Type{Face}, grid) = grid.zF
+
 """
     xnodes(loc, grid, reshape=false)
 
@@ -138,9 +157,13 @@ with size Nx×1×1.
 
 See `znodes` for examples.
 """
-xnodes(::Type{Cell}, grid; reshape=false) =
-    reshape ? Base.reshape(view(grid.xC, 1:grid.Nx), grid.Nx, 1, 1) :
-              view(grid.xC, 1:grid.Nx)
+function xnodes(loc, grid; reshape=false)
+
+    x = view(all_x_nodes(loc, grid),
+             interior_indices(loc, topology(grid, 1), grid.Nx))
+
+    return reshape ? Base.reshape(x, length(x), 1, 1) : x
+end
 
 """
     ynodes(loc, grid, reshape=false)
@@ -154,9 +177,13 @@ with size 1×Ny×1.
 
 See `znodes` for examples.
 """
-ynodes(::Type{Cell}, grid; reshape=false) =
-    reshape ? Base.reshape(view(grid.yC, 1:grid.Ny), 1, grid.Ny, 1) :
-              view(grid.yC, 1:grid.Ny)
+function ynodes(loc, grid; reshape=false)
+
+    y = view(all_y_nodes(loc, grid),
+             interior_indices(loc, topology(grid, 2), grid.Ny))
+
+    return reshape ? Base.reshape(y, 1, length(y), 1) : y
+end
 
 """
     znodes(loc, grid, reshape=false)
@@ -193,23 +220,12 @@ julia> zF = znodes(Face, horz_periodic_grid)
  -4.44089209850063e-17
 ```
 """
-znodes(::Type{Cell}, grid; reshape=false) =
-    reshape ? Base.reshape(view(grid.zC, 1:grid.Nz), 1, 1, grid.Nz) :
-              view(grid.zC, 1:grid.Nz)
+function znodes(loc, grid; reshape=false)
 
-function xnodes(::Type{Face}, grid; reshape=false)
-    xF = view(grid.xF, interior_indices(Face, topology(grid, 1), grid.Nx))
-    return reshape ? Base.reshape(xF, length(xF), 1, 1) : xF
-end
+    z = view(all_z_nodes(loc, grid),
+             interior_indices(loc, topology(grid, 3), grid.Nz))
 
-function ynodes(::Type{Face}, grid; reshape=false)
-    yF = view(grid.yF, interior_indices(Face, topology(grid, 2), grid.Ny))
-    return reshape ? Base.reshape(yF, 1, length(yF), 1) : yF
-end
-
-function znodes(::Type{Face}, grid; reshape=false)
-    zF = view(grid.zF, interior_indices(Face, topology(grid, 3), grid.Nz))
-    return reshape ? Base.reshape(zF, 1, 1, length(zF)) : zF
+    return reshape ? Base.reshape(z, 1, 1, length(z)) : z
 end
 
 """

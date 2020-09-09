@@ -1,3 +1,5 @@
+using Oceananigans.Grids: total_length, topology
+
 import OffsetArrays: OffsetArray
 
 #####
@@ -21,16 +23,14 @@ Return a range of indices for a field along a 'reduced' dimension.
 """
 offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
 
-
-
 """
-    OffsetArray(underlying_data, grid, loc)
+    OffsetArray(underlying_data, grid::AbstractGrid, loc)
 
 Returns an `OffsetArray` that maps to `underlying_data` in memory,
 with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
-function OffsetArray(underlying_data, grid, loc)
+function OffsetArray(underlying_data, grid::AbstractGrid, loc)
     ii = offset_indices(loc[1], topology(grid, 1), grid.Nx, grid.Hx)
     jj = offset_indices(loc[2], topology(grid, 2), grid.Ny, grid.Hy)
     kk = offset_indices(loc[3], topology(grid, 3), grid.Nz, grid.Hz)
