@@ -31,8 +31,8 @@ function define_multiary_operator(op)
         # "Function, or Field"
         local FuFi = Union{Function, AbstractField}
 
-        function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi...)
-            args = tuple(a, b, c...)
+        function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi, d::FuFi...)
+            args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
 
             # Convert any functions to FunctionFields
@@ -42,7 +42,7 @@ function define_multiary_operator(op)
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
-        $op(a::FuFi, b::FuFi, c::FuFi...) = $op(location(a), a, b, c...)
+        $op(a::FuFi, b::FuFi, c::FuFi, d::FuFi...) = $op(location(a), a, b, c, d...)
     end
 end
 
