@@ -36,7 +36,7 @@ function validate_reduced_dims(dims)
     dims isa DimsType || error("Reduced dims must be an integer or tuple of integers.")
     
     # Check length
-    length(dims) > 3  && error("Models are 3-dimensional. Cannot average over 4+ dimensions.")
+    length(dims) > 3  && error("Models are 3-dimensional. Cannot reduce over 4+ dimensions.")
 
     # Check values
     all(1 <= d <= 3 for d in dims) || error("Dimensions must be one of 1, 2, 3.")
