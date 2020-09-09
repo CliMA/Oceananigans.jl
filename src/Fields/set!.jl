@@ -67,9 +67,8 @@ const AbstractReducedCPUField =
 "Set the CPU field `u` to the array `v`."
 function set!(u::AbstractCPUField, v::Array)
 
-    sz = size(u)
-
-    for k in 1:sz[3], j in 1:sz[2], i in 1:sz[1]
+    Sx, Sy, Sz = size(u)
+    for k in 1:Sz, j in 1:Sy, i in 1:Sx
         u[i, j, k] = v[i, j, k]
     end
 
