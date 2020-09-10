@@ -226,7 +226,7 @@ struct FieldOutput{O, F}
 end
 
 FieldOutput(field) = FieldOutput(Array, field) # default
-(fo::FieldOutput)(model) = fo.return_type(fo.field.data.parent)
+(fo::FieldOutput)(args...) = fo.return_type(fo.field.data.parent)
 
 get_kernel(kernel::FieldOutput) = parent(kernel.field)
 
