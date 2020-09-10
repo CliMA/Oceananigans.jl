@@ -83,6 +83,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_fields.jl")
+            include("test_averaged_field.jl")
             include("test_halo_regions.jl")
             include("test_solvers.jl")
             include("test_pressure_solvers.jl")
@@ -102,7 +103,6 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
             include("test_diagnostics.jl")
-            include("test_averaged_field.jl")
             include("test_output_writers.jl")
             include("test_abstract_operations.jl")
         end

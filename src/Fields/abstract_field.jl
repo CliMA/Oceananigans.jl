@@ -31,11 +31,33 @@ function validate_field_data(X, Y, Z, data, grid)
 end
 
 #####
-##### AbstractField functionality
+##### Computing AbstractField
 #####
 
-# Overload compute! for custom fields to produce non-default behavior
-compute!(f::AbstractField) = nothing
+# Note: overload compute! for custom fields to produce non-default behavior
+
+"""
+    compute!(field)
+
+Computes `field.data`.
+"""
+compute!(field::AbstractField) = nothing
+
+"""
+    @compute(exprs...)
+
+Call compute! on fields after defining them.
+"""
+macro compute(def)
+    expr = Expr(:block)
+    push!(expr.args, :($(esc(def))))
+    push!(expr.args, :(compute!($(esc(field)))))
+    return expr
+end
+
+#####
+##### AbstractField functionality
+#####
 
 @inline location(a) = nothing
 

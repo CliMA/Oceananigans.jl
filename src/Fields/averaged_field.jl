@@ -46,7 +46,7 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 function compute!(avg::AveragedField)
     compute!(avg.operand)
 
-    zero_halo_regions!(avg.operand.data.parent, avg.grid)
+    zero_halo_regions!(avg.operand)
 
     sum!(parent(avg.data), parent(avg.operand))
 
@@ -60,7 +60,7 @@ end
 ##### Very sugar
 #####
 
-Statistics.mean(ϕ::AbstractField; dims) = AveragedField(ϕ; dims=dims)
+Statistics.mean(ϕ::AbstractField; kwargs...) = AveragedField(ϕ; kwargs...)
 
 #####
 ##### Adapt

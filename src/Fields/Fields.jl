@@ -6,7 +6,7 @@ export
     ReducedField, AveragedField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
-    set!,
+    set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 
 using Oceananigans.Architectures
