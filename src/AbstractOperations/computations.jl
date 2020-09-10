@@ -139,7 +139,7 @@ end
 """Compute the average of a computation."""
 function run_diagnostic(model, avg::Average{<:Computation})
     compute!(avg.field)
-    zero_halo_regions!(parent(avg.field.result), model.grid)
+    zero_halo_regions!(parent(avg.field.result), location(avg.field), model.grid)
     sum!(avg.result, parent(avg.field.result))
     normalize_sum!(avg)
     return nothing

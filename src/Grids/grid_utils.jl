@@ -87,8 +87,22 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline z_domain(grid) = domain(grid.zF, topology(grid, 3))
 
 #####
-##### << Nodes >>
+##### << Indexing >>
 #####
+
+@inline left_halo_indices(loc, topo, N, H) = 1-H:0
+@inline left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+
+@inline right_halo_indices(loc, topo, N, H) = N+1:N+H
+@inline right_halo_indices(::Type{Face}, ::Type{Bounded}, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+
+@inline underlying_left_halo_indices(loc, topo, N, H) = 1:H
+@inline underlying_left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+
+@inline underlying_right_halo_indices(loc, topo, N, H) = N+1+H:N+2H
+@inline underlying_right_halo_indices(::Type{Face}, ::Type{Bounded}, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 @inline interior_indices(loc, topo, N) = 1:N
 @inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
@@ -118,6 +132,10 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+
+#####
+##### << Nodes >>
+#####
 
 # Node by node
 @inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
