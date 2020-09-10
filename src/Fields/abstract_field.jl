@@ -69,11 +69,24 @@ both interior points and halo points.
 """
 total_size(f::AbstractField) = total_size(location(f), f.grid)
 
+#####
+##### Accessing wrapped arrays
+#####
+
+"Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
+@inline data(a) = a # fallback
+@inline data(f::AbstractField) = f.data
+
+@inline cpudata(a) = data(a)
+
+@hascuda @inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
+    OffsetArray(Array(parent(f)), f.grid, location(f))
+
 # Endpoint for recursive `datatuple` function:
 @inline datatuple(obj::AbstractField) = data(obj)
 
 "Returns `f.data.parent` for `f::Field`."
-@inline Base.parent(f::AbstractField) = f.data.parent
+@inline Base.parent(f::AbstractField) = parent(data(f))
 
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
@@ -87,23 +100,16 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
                             interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
                             interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
 
-Base.iterate(f::AbstractField, state=1) = iterate(f.data, state)
+#####
+##### Coordinates of fields
+#####
 
 @inline xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
 @inline ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
 @inline znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-@hascuda @inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
-    OffsetArray(Array(parent(f)), f.grid, location(f))
-
 @inline Base.lastindex(f::AbstractField) = lastindex(f.data)
 @inline Base.lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
-
-"Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
-@inline data(a) = a # fallback
-@inline data(f::AbstractField) = f.data
-
-@inline cpudata(a) = data(a)
 
 const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
 
@@ -112,3 +118,5 @@ ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
 znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
+
+Base.iterate(f::AbstractField, state=1) = iterate(f.data, state)
