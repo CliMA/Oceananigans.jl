@@ -1,3 +1,5 @@
+using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
@@ -407,14 +409,50 @@ end
         @testset "Computations [$(typeof(arch))]" begin
             @info "  Testing combined binary operations and derivatives..."
             for FT in float_types
-                @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
-
                 model = IncompressibleModel(
                     architecture = arch,
                       float_type = FT,
                             grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1),
                                                         topology=(Periodic, Periodic, Bounded))
                 )
+
+                @testset "Construction of abstract operations [$FT, $(typeof(arch))]" begin
+                    @info "    Testing construction of abstract operations [$FT, $(typeof(arch))]..."
+
+                    u, v, w = model.velocities
+                    T, S = model.tracers
+
+                    for ϕ in (u, v, w, T, S)
+                        for op in (sin, cos, sqrt, exp, tanh)
+                            @test op(ϕ) isa UnaryOperation
+                        end
+
+                        for ∂ in (∂x, ∂y, ∂z)
+                            @test ∂(ϕ) isa Derivative
+                        end
+
+                        @test u ^ 2 isa BinaryOperation
+                        @test u * 2 isa BinaryOperation
+                        @test u + 2 isa BinaryOperation
+                        @test u - 2 isa BinaryOperation
+                        @test u / 2 isa BinaryOperation
+
+                        for ψ in (u, v, w, T, S)
+                            @test ψ ^ ϕ isa BinaryOperation
+                            @test ψ * ϕ isa BinaryOperation
+                            @test ψ + ϕ isa BinaryOperation
+                            @test ψ - ϕ isa BinaryOperation
+                            @test ψ / ϕ isa BinaryOperation
+
+                            for χ in (u, v, w, T, S)
+                                @test ψ * ϕ * χ isa MultiaryOperation
+                                @test ψ + ϕ + χ isa MultiaryOperation
+                            end
+                        end
+                    end
+                end
+
+                @info "    Testing computation of abstract operations [$FT, $(typeof(arch))]..."
 
                 @testset "Derivative computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! derivatives..."

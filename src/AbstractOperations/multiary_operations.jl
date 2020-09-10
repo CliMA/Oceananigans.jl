@@ -28,11 +28,13 @@ function define_multiary_operator(op)
 
         local location = Oceananigans.Fields.location
 
-        # "Function, or Field"
-        local FuFi = Union{Function, AbstractField}
+        function $op(Lop::Tuple,
+                     a::Union{Function, AbstractField},
+                     b::Union{Function, AbstractField},
+                     c::Union{Function, AbstractField},
+                     d::Union{Function, AbstractField}...)
 
-        function $op(Lop::Tuple, a::FuFi, b::FuFi, c::FuFi...)
-            args = tuple(a, b, c...)
+            args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
 
             # Convert any functions to FunctionFields
@@ -42,7 +44,10 @@ function define_multiary_operator(op)
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
-        $op(a::FuFi, b::FuFi, c::FuFi...) = $op(location(a), a, b, c...)
+        $op(a::Union{Function, AbstractField},
+            b::Union{Function, AbstractField},
+            c::Union{Function, AbstractField},
+            d::Union{Function, AbstractField}...) = $op(location(a), a, b, c, d...)
     end
 end
 
