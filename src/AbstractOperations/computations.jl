@@ -2,7 +2,7 @@ using KernelAbstractions
 using Oceananigans.Utils: work_layout
 import Oceananigans.Diagnostics: get_kernel
 
-import Oceananigans.Fields: location, total_size
+import Oceananigans.Fields: location, total_size, compute!
 using Oceananigans.Diagnostics: dims_to_result_size
 
 """
