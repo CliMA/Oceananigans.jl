@@ -73,7 +73,9 @@ Pages   = [
     "Coriolis/Coriolis.jl",
     "Coriolis/no_rotation.jl",
     "Coriolis/f_plane.jl",
-    "Coriolis/beta_plane.jl"
+    "Coriolis/beta_plane.jl",
+    "Coriolis/non_traditional_f_plane.jl",
+    "Coriolis/non_traditional_beta_plane.jl"
 ]
 ```
 

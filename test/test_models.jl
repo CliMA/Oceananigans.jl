@@ -49,27 +49,21 @@ end
 @testset "Models" begin
     @info "Testing models..."
 
-    @testset "Horizontally periodic model" begin
-        @info "  Testing doubly periodic model construction..."
-        for arch in archs, FT in float_types
-            topology = (Periodic, Periodic, Bounded)
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3), topology=topology)
-            model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+    topos = ((Periodic, Periodic, Periodic),
+             (Periodic, Periodic,  Bounded),
+             (Periodic,  Bounded,  Bounded),
+             (Bounded,   Bounded,  Bounded))
 
-            # Just testing that a horizontally periodic model was constructed with no errors/crashes.
-            @test model isa IncompressibleModel
-        end
-    end
+    for topo in topos
+        @testset "$topo model construction" begin
+            @info "  Testing $topo model construction..."
+            for arch in archs, FT in float_types
+                grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-    @testset "Reentrant channel model" begin
-        @info "  Testing reentrant channel model construction..."
-        for arch in archs, FT in float_types
-            topology = (Periodic, Bounded, Bounded)
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3), topology=topology)
-            model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
-
-            # Just testing that a channel model was constructed with no errors/crashes.
-            @test model isa IncompressibleModel
+                # Just testing that the model was constructed with no errors/crashes.
+                @test model isa IncompressibleModel
+            end
         end
     end
 

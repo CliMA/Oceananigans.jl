@@ -12,7 +12,7 @@ three options are available: no rotation, $f$-plane, and $\beta$-plane.
 
 By default there is no rotation. This can be made explicit by passing `coriolis = nothing` to a model constructor.
 
-## $f$-plane
+## Traditional $f$-plane
 
 To set up an $f$-plane with, for example, Coriolis parameter $f = 10^{-4} \text{s}^{-1}$
 
@@ -38,6 +38,8 @@ FPlane{Float64}: f = 1.03e-04
 
 in which case the value of $f$ is given by $2\Omega\sin\varphi$.
 
+## Non-traditional $f$-plane
+
 To set up an $f$-plane with non-traditional Coriolis terms, for example, with
 $\bm{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}$,
 
@@ -57,7 +59,7 @@ NonTraditionalFPlane{Float64}: fz = 1.03e-04, fy = 1.03e-04
 
 in which case $f_z = 2\Omega\sin\varphi$ and $f_y = 2\Omega\cos\varphi$.
 
-## $\beta$-plane
+## Traditional $\beta$-plane
 
 To set up a $\beta$-plane the background rotation rate $f_0$ and the $\beta$ parameter must be specified. For example,
 a $\beta$-plane with $f_0 = 10^{-4} \text{s}^{-1}$ and $\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}$ can be
@@ -78,3 +80,20 @@ BetaPlane{Float64}: f₀ = -2.53e-05, β = 2.25e-11
 ```
 
 in which case $f_0 = 2\Omega\sin\varphi$ and $\beta = 2\Omega\cos\varphi / R$.
+
+## Traditional $\beta$-plane
+
+To set up a non-traditional $\beta$-plane you can directly specify the 5 parameters (by default Earth's radius and
+rotation rate are used)
+
+```jldoctest
+julia> NonTraditionalBetaPlane(fz=1e-4, fy=2e-4, β=4e-11, γ=-8e-11)
+NonTraditionalBetaPlane{Float64}: fz = 1.00e-04, fy = 2.00e-04, β = 4.00e-11, γ = -8.00e-11, R = 6.37e+06
+```
+
+or you can specify the rotation rate, radius, and latitude
+
+```jldoctest
+julia> NonTraditionalBetaPlane(rotation_rate=5.31e-5, radius=252.1e3, latitude=10)
+NonTraditionalBetaPlane{Float64}: fz = 1.84e-05, fy = 1.05e-04, β = 4.15e-10, γ = -1.46e-10, R = 2.52e+05
+```
