@@ -1,8 +1,6 @@
 using Printf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Diagnostics: WindowedTimeAverage
-import Oceananigans.Diagnostics: get_kernel
 
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
@@ -140,11 +138,14 @@ function JLD2OutputWriter(model, outputs; prefix,
 
         output_names = Tuple(keys(outputs))
 
-        averaged_output = Tuple(WindowedTimeAverage(outputs[name]; time_interval = time_interval,
-                                                                     time_window = time_averaging_window,
-                                                                          stride = time_averaging_stride,
-                                                                    field_slicer = field_slicer)
-                                for name in output_names)
+        averaged_output =
+            Tuple(
+                  WindowedTimeAverage(outputs[name], model; time_interval = time_interval,
+                                                              time_window = time_averaging_window,
+                                                                   stride = time_averaging_stride,
+                                                             field_slicer = field_slicer)
+                  for name in output_names
+                 )
 
         outputs = NamedTuple{output_names}(averaged_output)
     end
