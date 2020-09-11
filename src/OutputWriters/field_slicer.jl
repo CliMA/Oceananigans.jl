@@ -31,21 +31,23 @@ FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
 #####
 
 # Integer slice
-parent_slice_indices(loc, topo, N, H, i::Int, with_halos) =UnitRange(i, i)
+parent_slice_indices(loc, topo, N, H, i::Int, with_halos) = UnitRange(i, i)
 
 # Colon slicing
-parent_slice_indices(loc, topo, N, H, ::Colon, with_halos) =
-    with_halos ? UnitRange(1, N+2H) : UnitRange(H, N+H)
+parent_slice_indices(loc, topo, N, H, 
+                     ::Colon, with_halos) = with_halos ? UnitRange(1, N+2H) : UnitRange(H+1, H+N)
 
-parent_slice_indices(::Type{Face}, ::Type{Bounded}, N, H, ::Colon, with_halos) =
-    with_halos ? UnitRange(1, N+1+2H) : UnitRange(H, N+1+H)
+parent_slice_indices(::Type{Face}, ::Type{Bounded}, N, H,
+                     ::Colon, with_halos) = with_halos ? UnitRange(1, N+1+2H) : UnitRange(H+1, H+N+1)
 
 # Slicing along reduced dimensions
-parent_slice_indices(::Type{Nothing}, args...) = 1:1
+parent_slice_indices(::Type{Nothing}, loc, N, H, ::Colon, with_halos) = 1:1
+parent_slice_indices(::Type{Nothing}, loc, N, H, ::UnitRange, with_halos) = 1:1
+parent_slice_indices(::Type{Nothing}, loc, N, H, ::Int, with_halos) = 1:1
 
 # Safe slice ranges without halos
-right_parent_index_without_halos(loc, topo, N, H, right) = min(N + H, right + H)
-right_parent_index_without_halos(::Type{Face}, ::Type{Bounded}, N, H, right) = min(N + H + 1, right + H)
+right_parent_index_without_halos(loc, topo, N, H, right) = min(H + N, right + H)
+right_parent_index_without_halos(::Type{Face}, ::Type{Bounded}, N, H, right) = min(H + N + 1, right + H)
 
 function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
 
@@ -63,7 +65,7 @@ end
 """
     slice(slicer, field)
 
-Returns a view over parent(field) associated with slice.indices.
+Returns a view over parent(field) associated with slice.i, slice.j, slice.k.
 """
 function slice_parent(slicer, field)
 

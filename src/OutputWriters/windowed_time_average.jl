@@ -6,12 +6,12 @@ import Oceananigans.OutputWriters: fetch_output
 import Oceananigans.Diagnostics: run_diagnostic
 
 """
-    WindowedTimeAverage{RT, FT, A, B} <: Diagnostic
+    WindowedTimeAverage{R, OP, FS} <: AbstractDiagnostic
 
 An object for computing 'windowed' time averages, or moving time-averages
 of a `operand` over a specified `time_window`, collected on `time_interval`.
 """
-mutable struct WindowedTimeAverage{Float64, OP, R, FS} <: AbstractDiagnostic
+mutable struct WindowedTimeAverage{R, OP, FS} <: AbstractDiagnostic
                          result :: R
                         operand :: OP
                     time_window :: Float64

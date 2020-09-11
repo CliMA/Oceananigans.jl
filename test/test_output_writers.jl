@@ -339,15 +339,13 @@ function run_jld2_file_splitting_tests(arch)
     model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-    u(model) = Array(model.velocities.u.data.parent)
-    fields = Dict(:u => u)
-
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", iteration_interval=1,
+    ow = JLD2OutputWriter(model, (u=model.velocities.u,); dir=".", prefix="test", iteration_interval=1,
                           init=fake_bc_init, including=[:grid],
+                          field_slicer=nothing, array_type=Array{Float64},
                           max_filesize=200KiB, force=true)
 
     push!(simulation.output_writers, ow)
@@ -554,6 +552,8 @@ function instantiate_windowed_time_average(model)
 
     set!(model, u = (x, y, z) -> rand())
 
+    u, v, w = model.velocities
+
     u₀ = similar(interior(u))
     u₀ .= interior(u)
 
@@ -574,7 +574,7 @@ function time_step_with_windowed_time_average(model)
     simulation.diagnostics[:u_avg] = wta
     run!(simulation)
 
-    return all(wta(model) .== parent(model.velocities.u))
+    return all(wta(model) .== interior(model.velocities.u))
 end
 
 
@@ -712,8 +712,8 @@ function jld2_time_averaged_averages(model)
     file = jldopen("test.jld2")
 
     # Data is saved with halos by default
-    wu = file["timeseries/uw/4"][1, 1, 3]
-    uv = file["timeseries/uw/4"][1, 1, 3]
+    wu = file["timeseries/wu/4"][1, 1, 3]
+    uv = file["timeseries/uv/4"][1, 1, 3]
     wT = file["timeseries/wT/4"][1, 1, 3]
 
     close(file)
@@ -780,7 +780,7 @@ end
 
             # NetCDF dependency test
             netcdf_output_writer =
-                NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc", with_halos=true,
+                NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc",
                                    output_attributes=attributes, dimensions=dimensions)
 
             @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)

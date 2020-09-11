@@ -74,7 +74,7 @@ closures = (
 
 include("runtests_utils.jl")
 
-group = get(ENV, "TEST_GROUP", :integration) |> Symbol
+group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
 @testset "Oceananigans" begin
     if group == :unit || group == :all
@@ -95,16 +95,16 @@ group = get(ENV, "TEST_GROUP", :integration) |> Symbol
 
     if group == :integration || group == :all
         @testset "Integration tests" begin
-            #include("test_models.jl")
-            #include("test_simulations.jl")
-            #include("test_time_stepping.jl")
-            #include("test_time_stepping_bcs.jl")
-            #include("test_forcings.jl")
-            #include("test_turbulence_closures.jl")
-            #include("test_dynamics.jl")
-            #include("test_diagnostics.jl")
+            include("test_models.jl")
+            include("test_simulations.jl")
+            include("test_time_stepping.jl")
+            include("test_time_stepping_bcs.jl")
+            include("test_forcings.jl")
+            include("test_turbulence_closures.jl")
+            include("test_dynamics.jl")
+            include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            #include("test_abstract_operations.jl")
+            include("test_abstract_operations.jl")
         end
     end
 
