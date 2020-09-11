@@ -3,7 +3,17 @@ struct FieldSlicer{I, W}
     with_halos :: W
 end
 
-FieldSlicer(; x=:, y=:, z=:, with_halos=false) = FieldSlicer((x, y, z), with_halos)
+function FieldSlicer(grid=nothing; i=:, j=:, k=:, 
+                                   #x=nothing, y=nothing, z=nothing,
+                                   with_halos=false)
+
+    #if !isnothing(x)
+    #    isnothing(grid) || throw(ArgumentError("Grid must be provided to specify physical slice ranges!"))
+    #end
+
+
+    return FieldSlicer((i, j, k), with_halos)
+end
 
 HaloSlicer() = FieldSlicer()
 
