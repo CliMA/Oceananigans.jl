@@ -111,7 +111,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 anim = @animate for (i, iter) in enumerate(iterations)
 
-    T = file["timeseries/T/$iter"][1, 1, 2:end-1]
+    T = file["timeseries/T/$iter"][1, 1, :]
     t = file["timeseries/t/$iter"]
 
     plot(T, z, linewidth=2, title=tracer_label(t),
