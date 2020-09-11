@@ -1,5 +1,5 @@
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
-    grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(1, 2, 3))
+    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, coriolis=c)
 
@@ -10,7 +10,7 @@ end
 
 function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RegularCartesianGrid(FT; size=(16, 16, 16), halo=(2, 2, 2), extent=(1, 2, 3))
+    grid = RegularCartesianGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, euler=true)
@@ -19,7 +19,7 @@ function time_stepping_works_with_closure(arch, FT, Closure)
 end
 
 function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
-    grid = RegularCartesianGrid(FT; size=(16, 16, 16), extent=(1, 2, 3))
+    grid = RegularCartesianGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)

@@ -411,7 +411,7 @@ end
                 model = IncompressibleModel(
                     architecture = arch,
                       float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1),
+                            grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
                                                         topology=(Periodic, Periodic, Bounded))
                 )
 

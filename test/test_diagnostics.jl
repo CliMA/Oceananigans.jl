@@ -94,21 +94,21 @@ function run_volume_average_tests(arch, FT)
 end
 
 function nan_checker_aborts_simulation(arch, FT)
-    grid = RegularCartesianGrid(size=(16, 16, 2), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
     nc = NaNChecker(model; iteration_interval=1, fields=Dict(:w => model.velocities.w.data.parent))
     push!(model.diagnostics, nc)
 
-    model.velocities.w[4, 3, 2] = NaN
+    model.velocities.w[3, 2, 1] = NaN
 
     time_step!(model, 1, 1)
 end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(16Δx, 16Δx, 16Δx)),
+          grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
