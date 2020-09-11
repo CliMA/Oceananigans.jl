@@ -2,6 +2,7 @@ using Statistics
 using NCDatasets
 using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
 using Oceananigans.Diagnostics
+using Oceananigans.Fields
 
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -751,19 +752,20 @@ end
         grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
 
-        @testset "WindowedTimeAverage [$(typeof(arch))]" begin
-            @info "  Testing WindowedTimeAverage [$(typeof(arch))]"
+        @testset "WindowedTimeAverage and FieldSlicer [$(typeof(arch))]" begin
+            @info "  Testing WindowedTimeAverage and FieldSlicer [$(typeof(arch))]"
 
+            #####
+            ##### Field slicing and field output
+            #####
+            
+            @test FieldSlicer() isa FieldSlicer
             @test instantiate_windowed_time_average(model)
-            @test time_step_with_windowed_time_average(model)
-        end
-
-        @testset "Output writer features [$(typeof(arch))]" begin
-            @info "  Testing output writer features [$(typeof(arch))]..."
-
             @test jld2_field_output(model)
-            @test jld2_time_averaging_window(model)
-            @test jld2_time_averaged_averages(model)
+
+            #####
+            ##### Dependency-adding
+            #####
 
             windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
 
@@ -782,6 +784,14 @@ end
                                    output_attributes=attributes, dimensions=dimensions)
 
             @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
+
+            #####
+            ##### Integrating WindowedTimeAverage into output
+            #####
+
+            @test time_step_with_windowed_time_average(model)
+            @test jld2_time_averaging_window(model)
+            @test jld2_time_averaged_averages(model)
         end
     end
 end
