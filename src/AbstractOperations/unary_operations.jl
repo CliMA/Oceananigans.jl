@@ -1,3 +1,5 @@
+const unary_operators = Set()
+
 """
     UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
 
@@ -21,14 +23,18 @@ struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
+@inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
+
+#####
+##### UnaryOperation construction
+#####
+
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
 function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, data(arg), ▶, grid)
+    return UnaryOperation{L[1], L[2], L[3]}(operator, gpufriendly(arg), ▶, grid)
 end
-
-@inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
 
 """
     @unary op1 op2 op3...
@@ -104,7 +110,21 @@ macro unary(ops...)
     return expr
 end
 
-const unary_operators = Set()
+#####
+##### Architecture inference for UnaryOperation
+#####
+
+architecture(υ::UnaryOperation) = architecture(υ.arg)
+
+#####
+##### Nested computations
+#####
+
+compute!(υ::UnaryOperation) = compute!(υ.arg)
+
+#####
+##### GPU capabilities
+#####
 
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =

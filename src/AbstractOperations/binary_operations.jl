@@ -1,3 +1,5 @@
+const binary_operators = Set()
+
 """
     BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
 
@@ -25,16 +27,20 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     end
 end
 
+@inline Base.getindex(β::BinaryOperation, i, j, k) = β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
+
+#####
+##### BinaryOperation construction
+#####
+
 """Create a binary operation for `op` acting on `a` and `b` with locations `La` and `Lb`.
 The operator acts at `Lab` and the result is interpolated to `Lc`."""
 function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
      ▶a = interpolation_operator(La, Lab)
      ▶b = interpolation_operator(Lb, Lab)
     ▶op = interpolation_operator(Lab, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, data(a), data(b), ▶a, ▶b, ▶op, grid)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, gpufriendly(a), gpufriendly(b), ▶a, ▶b, ▶op, grid)
 end
-
-@inline Base.getindex(β::BinaryOperation, i, j, k) = β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
@@ -43,7 +49,7 @@ function define_binary_operator(op)
         import Oceananigans.Fields: AbstractField
 
         local location = Oceananigans.Fields.location
-        local FunctionField = Oceananigans.AbstractOperations.FunctionField
+        local FunctionField = Oceananigans.Fields.FunctionField
         local AF = AbstractField
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
@@ -138,7 +144,38 @@ macro binary(ops...)
     return expr
 end
 
-const binary_operators = Set()
+#####
+##### Architecture inference for BinaryOperation
+#####
+
+architecture(β::BinaryOperation) = architecture(β.a, β.b)
+
+function architecture(a, b)
+    arch_a = architecture(a)
+    arch_b = architecture(b)
+
+    arch_a === arch_b && return arch_a
+    isnothing(arch_a) && return arch_b
+    isnothing(arch_b) && return arch_a
+
+    throw(ArgumentError("Operation involves fields on architectures $arch_a and $arch_b"))
+
+    return nothing
+end
+
+#####
+##### Nested computations
+#####
+
+function compute!(β::BinaryOperation)
+    compute!(β.a)
+    compute!(β.b)
+    return nothing
+end
+
+#####
+##### GPU capabilities
+#####
 
 "Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =

@@ -39,9 +39,9 @@ end
 """
     compute!(field)
 
-Computes `field.data`.
+Computes `field.data` if needed.
 """
-compute!(field::AbstractField) = nothing
+compute!(field) = nothing
 
 """
     @compute(exprs...)
@@ -103,11 +103,16 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @inline cpudata(a) = data(a)
 
+@hascuda const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
+
 @hascuda @inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
     OffsetArray(Array(parent(f)), f.grid, location(f))
 
 # Endpoint for recursive `datatuple` function:
 @inline datatuple(obj::AbstractField) = data(obj)
+
+""" Converts a field into a GPU-friendly alternative if necessary. """
+@inline gpufriendly(a) = a # fallback
 
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::AbstractField) = parent(data(f))
@@ -134,8 +139,6 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @inline Base.lastindex(f::AbstractField) = lastindex(f.data)
 @inline Base.lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
-
-const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
 
 xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)

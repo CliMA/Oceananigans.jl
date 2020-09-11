@@ -4,7 +4,7 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: zero_halo_regions!
 
 """
-    struct AveragedField{X, Y, Z, A, G, I, N} <: AbstractReducedField{X, Y, Z, A, G, N}
+    struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
 
 Type representing an average over a field-like object.
 """
