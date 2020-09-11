@@ -1,6 +1,9 @@
+using Oceananigans.Diagnostics: AbstractDiagnostic
+
 import Oceananigans.Utils: time_to_run
 import Oceananigans.Fields: AbstractField, compute!
 import Oceananigans.OutputWriters: fetch_output
+import Oceananigans.Diagnostics: run_diagnostic
 
 """
     WindowedTimeAverage{RT, FT, A, B} <: Diagnostic
@@ -8,29 +11,29 @@ import Oceananigans.OutputWriters: fetch_output
 An object for computing 'windowed' time averages, or moving time-averages
 of a `operand` over a specified `time_window`, collected on `time_interval`.
 """
-mutable struct WindowedTimeAverage{RT, FT, O, R} <: AbstractDiagnostic
-                              result :: R
-                             operand :: O
-                         time_window :: FT
-                       time_interval :: FT
-                              stride :: Int
-                        field_slicer :: field_slicer
-                   window_start_time :: FT
-              window_start_iteration :: Int
-            previous_collection_time :: FT
-         previous_interval_stop_time :: FT
-                          collecting :: Bool
+mutable struct WindowedTimeAverage{Float64, OP, R, FS} <: AbstractDiagnostic
+                         result :: R
+                        operand :: OP
+                    time_window :: Float64
+                  time_interval :: Float64
+                         stride :: Int
+                   field_slicer :: FS
+              window_start_time :: Float64
+         window_start_iteration :: Int
+       previous_collection_time :: Float64
+    previous_interval_stop_time :: Float64
+                     collecting :: Bool
 end
 
 """
-    WindowedTimeAverage(operand; time_window, time_interval, stride=1,
-                                 float_type=Float64)
+    WindowedTimeAverage(operand; time_window,
+                                 time_interval,
+                                        stride = 1,
+                                  field_slicer = FieldSlicer())
                                                         
 Returns an object for computing running averages of `operand` over `time_window`,
 recurring on `time_interval`. During the collection period, averages are computed
 every `stride` iteration. 
-
-`float_type` specifies the floating point precision of scalar parameters.
 
 `operand` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
 or `Oceananigans.Diagnostics.Average`.
@@ -38,24 +41,19 @@ or `Oceananigans.Diagnostics.Average`.
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 """ 
 function WindowedTimeAverage(operand, model=nothing; time_window, time_interval, stride=1,
-                                                     field_slicer = FieldSlicer(),
-                                                     float_type=Float64)
+                                                     field_slicer = FieldSlicer())
 
-    result = 0 .* deepcopy(fetch_output(operand, model, field_slicer))
+    output = fetch_output(operand, model, field_slicer)
+    result = similar(output) # convert views to arrays
+    result .= output # initialize `result` with initial output
 
-    return WindowedTimeAverage(
-                               result,
+    return WindowedTimeAverage(result,
                                operand,
-                               float_type(time_window),
-                               float_type(time_interval),
+                               time_window,
+                               time_interval,
                                stride,
                                field_slicer,
-                               zero(float_type),
-                               0,
-                               zero(float_type),
-                               zero(float_type),
-                               false
-                              )
+                               0.0, 0, 0.0, 0.0, false)
 end
 
 function time_to_run(clock, wta::WindowedTimeAverage)
@@ -69,16 +67,20 @@ function time_to_run(clock, wta::WindowedTimeAverage)
 end
 
 function accumulate_result!(wta, model)
+
     # Time increment:
     Δt = model.clock.time - wta.previous_collection_time    
 
     # Time intervals:
-    T_previous = wta.previous_collection_time - wta.window_start_time
     T_current = model.clock.time - wta.window_start_time
+    T_previous = wta.previous_collection_time - wta.window_start_time
 
     # Accumulate left Riemann sum
     integrand = fetch_output(wta.operand, model, wta.field_slicer)
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
+
+    # Save time of integrand collection
+    wta.previous_collection_time = model.clock.time
                     
     return nothing
 end
@@ -114,15 +116,17 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
     elseif mod(model.clock.iteration - wta.window_start_iteration, wta.stride) == 0
         # Collect data as usual
         accumulate_result!(wta, model)
-
-        # Save data collection time
-        wta.previous_collection_time = model.clock.time
     end
 
     return nothing
 end
 
-function (wta::WindowedTimeAverage)(model=nothing)
-    wta.collecting && @warn "Returning a WindowedTimeAverage before the collection period is complete."
+function (wta::WindowedTimeAverage)(model)
+
+    # For the paranoid
+    wta.collecting && 
+        model.clock.iteration > 0 && 
+        @warn "Returning a WindowedTimeAverage before the collection period is complete."
+
     return wta.result
 end
