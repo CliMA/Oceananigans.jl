@@ -574,7 +574,6 @@ function jld2_time_averaging_window(model)
     return all(outputs_are_time_averaged)
 end
 
-
 function jld2_field_output(model)
 
     model.clock.iteration = 0
@@ -592,15 +591,15 @@ function jld2_field_output(model)
                                                                      prefix = "test",
                                                                       force = true)
 
-    u₀ = parent(model.velocities.u)[3, 3, 3]
-    v₀ = parent(model.velocities.v)[3, 3, 3]
-    w₀ = parent(model.velocities.w)[3, 3, 3]
+    u₀ = data(model.velocities.u)[3, 3, 3]
+    v₀ = data(model.velocities.v)[3, 3, 3]
+    w₀ = data(model.velocities.w)[3, 3, 3]
 
     run!(simulation)
 
     file = jldopen("test.jld2")
 
-    # Data is saved with halos by default
+    # Data is saved without halos by default
     u₁ = file["timeseries/u/0"][3, 3, 3]
     v₁ = file["timeseries/v/0"][3, 3, 3]
     w₁ = file["timeseries/w/0"][3, 3, 3]
@@ -612,6 +611,86 @@ function jld2_field_output(model)
     FT = typeof(u₁)
 
     return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
+end
+
+function jld2_sliced_field_output(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand())
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    simulation.output_writers[:velocities] = 
+        JLD2OutputWriter(model, model.velocities,
+                                time_interval = 1.0,
+                                 field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
+                                          dir = ".",
+                                       prefix = "test",
+                                        force = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    u₁ = file["timeseries/u/0"]
+    v₁ = file["timeseries/v/0"]
+    w₁ = file["timeseries/w/0"]
+
+    close(file)
+
+    rm("test.jld2")
+
+    return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
+end
+
+
+
+function jld2_time_averaged_averages(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> 1,
+                v = (x, y, z) -> 2,
+                w = (x, y, z) -> 0,
+                T = (x, y, z) -> 4)
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=5)
+
+    u, v, w = model.velocities
+    T, S = model.tracers
+
+    average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
+                      uv = AveragedField(u * v, dims=(1, 2)),
+                      wT = AveragedField(w * T, dims=(1, 2)))
+
+    simulation.output_writers[:velocities] = JLD2OutputWriter(model, average_fluxes,
+                                                                      time_interval = 4.0,
+                                                              time_averaging_window = 2.0,
+                                                                                dir = ".",
+                                                                             prefix = "test",
+                                                                              force = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    # Data is saved with halos by default
+    wu = file["timeseries/uw/4"][1, 1, 3]
+    uv = file["timeseries/uw/4"][1, 1, 3]
+    wT = file["timeseries/wT/4"][1, 1, 3]
+
+    close(file)
+
+    rm("test.jld2")
+
+    FT = eltype(model.grid)
+
+    return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
 
 @testset "Output writers" begin
@@ -641,11 +720,12 @@ end
         @testset "Output writer features [$(typeof(arch))]" begin
             @info "  Testing output writer features [$(typeof(arch))]..."
 
-            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+            grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
             model = IncompressibleModel(architecture=arch, grid=grid)
 
-            @test jld2_time_averaging_window(model)
             @test jld2_field_output(model)
+            @test jld2_time_averaging_window(model)
+            @test jld2_time_averaged_averages(model)
 
             windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
 
