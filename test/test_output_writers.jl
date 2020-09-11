@@ -549,10 +549,39 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
+function instantiate_windowed_time_average(model)
+
+    set!(model, u = (x, y, z) -> rand())
+
+    u₀ = similar(interior(u))
+    u₀ .= interior(u)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=1.0, time_interval=10.0)
+
+    return all(wta(model) .== u₀)
+end
+
+function time_step_with_windowed_time_average(model)
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u=0, v=0, w=0, T=0, S=0)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
+
+    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
+    simulation.diagnostics[:u_avg] = wta
+    run!(simulation)
+
+    return all(wta(model) .== parent(model.velocities.u))
+end
+
+
 function dependencies_added_correctly!(model, windowed_time_average, output_writer)
 
     model.clock.iteration = 0
     model.clock.time = 0.0
+
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
     push!(simulation.output_writers, output_writer)
     run!(simulation)
@@ -581,7 +610,9 @@ function jld2_field_output(model)
 
     set!(model, u = (x, y, z) -> rand(),
                 v = (x, y, z) -> rand(),
-                w = (x, y, z) -> rand())
+                w = (x, y, z) -> rand(),
+                T = 0,
+                S = 0)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
@@ -717,11 +748,18 @@ end
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
 
+        grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        model = IncompressibleModel(architecture=arch, grid=grid)
+
+        @testset "WindowedTimeAverage [$(typeof(arch))]" begin
+            @info "  Testing WindowedTimeAverage [$(typeof(arch))]"
+
+            @test instantiate_windowed_time_average(model)
+            @test time_step_with_windowed_time_average(model)
+        end
+
         @testset "Output writer features [$(typeof(arch))]" begin
             @info "  Testing output writer features [$(typeof(arch))]..."
-
-            grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
-            model = IncompressibleModel(architecture=arch, grid=grid)
 
             @test jld2_field_output(model)
             @test jld2_time_averaging_window(model)
