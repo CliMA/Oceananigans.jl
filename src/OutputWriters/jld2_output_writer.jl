@@ -9,11 +9,13 @@ import Oceananigans.Diagnostics: get_kernel
 
 An output writer for writing to JLD2 files.
 """
-mutable struct JLD2OutputWriter{I, T, O, IF, IN, KW, D} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{I, T, O, FS, D, IF, IN, KW} <: AbstractOutputWriter
               filepath :: String
                outputs :: O
     iteration_interval :: I
          time_interval :: T
+          field_slicer :: FS
+            array_type :: D
                   init :: IF
              including :: IN
               previous :: Float64
@@ -21,7 +23,6 @@ mutable struct JLD2OutputWriter{I, T, O, IF, IN, KW, D} <: AbstractOutputWriter
           max_filesize :: Float64
                  force :: Bool
                verbose :: Bool
-            array_type :: D
                jld2_kw :: KW
 end
 
@@ -68,7 +69,14 @@ Keyword arguments
                                time-averaging. Longer strides means that output is calculated less frequently,
                                and that the resulting time-average is less accurate.
                                Default: 1.
-    
+
+    - `field_slicer`: An object for slicing field output in (x, y, z), including omitting halos.
+                      Has no effect on output that is not a field.
+                      Default: FieldSlicer(; x=:, y=:, z=:, with_halos=false)
+
+    - `array_type`: The array type to which field data is converted to prior to saving.
+                    Default: Array{Float32}.
+
     - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
                       and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
                       Defaults to `Inf`.
@@ -88,9 +96,6 @@ Keyword arguments
     - `part`: The starting part number used if `max_filesize` is finite.
               Default: 1.
     
-    - `array_type`: The array type to which field data is converted to prior to saving.
-                    Default: Array{Float32}.
-    
     - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; prefix,
@@ -99,13 +104,14 @@ function JLD2OutputWriter(model, outputs; prefix,
                                                   time_interval = nothing,
                                           time_averaging_window = nothing,
                                           time_averaging_stride = 1,
+                                                   field_slicer = FieldSlicer(; x=:, y=:, z=:, with_halos=false),
+                                                     array_type = Array{Float32},
                                                    max_filesize = Inf,
                                                           force = false,
                                                            init = noinit,
                                                         verbose = false,
                                                       including = [:grid, :coriolis, :buoyancy, :closure],
                                                            part = 1,
-                                                     array_type = Array{Float32},
                                                         jld2_kw = Dict{Symbol, Any}())
 
     validate_intervals(iteration_interval, time_interval)
@@ -119,7 +125,8 @@ function JLD2OutputWriter(model, outputs; prefix,
 
         averaged_output = Tuple(WindowedTimeAverage(outputs[name]; time_interval = time_interval,
                                                                      time_window = time_averaging_window,
-                                                                          stride = time_averaging_stride)
+                                                                          stride = time_averaging_stride,
+                                                                    field_slicer = field_slicer)
                                 for name in output_names)
 
         outputs = NamedTuple{output_names}(averaged_output)
@@ -134,8 +141,20 @@ function JLD2OutputWriter(model, outputs; prefix,
         saveproperties!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, iteration_interval, time_interval, init,
-                            including, 0.0, part, max_filesize, force, verbose, array_type, jld2_kw)
+    return JLD2OutputWriter(filepath,
+                            outputs,
+                            iteration_interval,
+                            time_interval,
+                            array_type,
+                            field_slicer,
+                            init,
+                            including,
+                            0.0,
+                            part,
+                            max_filesize,
+                            force,
+                            verbose, 
+                            jld2_kw)
 end
 
 function write_output(model, writer::JLD2OutputWriter)
@@ -145,7 +164,7 @@ function write_output(model, writer::JLD2OutputWriter)
     # Fetch JLD2 output and store in dictionary `data`
     verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
 
-    tc = Base.@elapsed data = Dict((name, fetch_output(output, model, writer)) for (name, output)
+    tc = Base.@elapsed data = Dict((name, fetch_and_convert_output(output, model, writer)) for (name, output)
                                    in zip(keys(writer.outputs), values(writer.outputs)))
 
     verbose && @info "Fetching time: $(prettytime(tc))"
@@ -212,33 +231,6 @@ function start_next_file(model, writer::JLD2OutputWriter)
         writer.init(file, model)
         saveproperties!(file, model, writer.including)
     end
-end
 
-"""
-    FieldOutput([return_type=Array], field)
-
-Returns a `FieldOutput` type intended for use with the `JLD2OutputWriter`.
-Calling `FieldOutput(model)` returns `return_type(field.data.parent)`.
-"""
-struct FieldOutput{O, F}
-    return_type :: O
-          field :: F
-end
-
-FieldOutput(field) = FieldOutput(Array, field) # default
-(fo::FieldOutput)(args...) = fo.return_type(fo.field.data.parent)
-
-get_kernel(kernel::FieldOutput) = parent(kernel.field)
-
-"""
-    FieldOutputs(fields)
-
-Returns a dictionary of `FieldOutput` objects with key, value
-pairs corresponding to each name and value in the `NamedTuple` `fields`.
-Intended for use with `JLD2OutputWriter`.
-"""
-function FieldOutputs(fields)
-    names = propertynames(fields)
-    nfields = length(fields)
-    return Dict((names[i], FieldOutput(fields[i])) for i in 1:nfields)
+    return nothing
 end

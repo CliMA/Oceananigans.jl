@@ -1,11 +1,14 @@
 using Oceananigans.Fields: AbstractField, compute!
 
-fetch_output(output, model, writer) = output(model)
+fetch_output(output, model, field_slicer) = output(model)
+
+function fetch_output(field::AbstractField, model, field_slicer)
+    compute!(field)
+    return slice_parent(field_slicer, field)
+end
 
 convert_output(output, writer) = output
-convert_output(output::AbstractArray, writer) = writer.array_type(parent(output))
+convert_output(output::AbstractArray, writer) = writer.array_type(output)
 
-function fetch_output(field::AbstractField, model, writer)
-    compute!(field)
-    return convert_output(data(field), writer)
-end
+fetch_and_convert_output(output, model, writer) =
+    convert_output(fetch_output(output, model, writer.field_slicer), writer)
