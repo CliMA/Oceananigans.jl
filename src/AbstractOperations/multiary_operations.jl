@@ -1,3 +1,5 @@
+const multiary_operators = Set()
+
 struct MultiaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
     args :: A
@@ -9,45 +11,41 @@ struct MultiaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G
     end
 end
 
-function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
-    ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(data(a) for a in args), ▶, grid)
-end
-
 @inline Base.getindex(Π::MultiaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
-"""Return `a`, or convert `a` to `FunctionField` if `a::Function`"""
-fieldify(L, a, grid) = a
-fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
+#####
+##### MultiaryOperation construction
+#####
+
+function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
+    ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(gpufriendly(a) for a in args), ▶, grid)
+end
 
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
-        import Oceananigans.Fields: AbstractField
-
-        local location = Oceananigans.Fields.location
-
         function $op(Lop::Tuple,
-                     a::Union{Function, AbstractField},
-                     b::Union{Function, AbstractField},
-                     c::Union{Function, AbstractField},
-                     d::Union{Function, AbstractField}...)
+                     a::Union{Function, Oceananigans.Fields.AbstractField},
+                     b::Union{Function, Oceananigans.Fields.AbstractField},
+                     c::Union{Function, Oceananigans.Fields.AbstractField},
+                     d::Union{Function, Oceananigans.Fields.AbstractField}...)
 
             args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
 
             # Convert any functions to FunctionFields
-            args = Tuple(Oceananigans.AbstractOperations.fieldify(Lop, a, grid) for a in args)
-            Largs = Tuple(location(a) for a in args)
+            args = Tuple(Oceananigans.Fields.fieldify(Lop, a, grid) for a in args)
+            Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
 
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
-        $op(a::Union{Function, AbstractField},
-            b::Union{Function, AbstractField},
-            c::Union{Function, AbstractField},
-            d::Union{Function, AbstractField}...) = $op(location(a), a, b, c, d...)
+        $op(a::Union{Function, Oceananigans.Fields.AbstractField},
+            b::Union{Function, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)
     end
 end
 
@@ -128,7 +126,41 @@ macro multiary(ops...)
     return expr
 end
 
-const multiary_operators = Set()
+#####
+##### Architecture inference for MultiaryOperation
+#####
+
+architecture(Π::MultiaryOperation) = architecture(Π.args...)
+
+function architecture(a, b, c, d...)
+
+    archs = []
+
+    push!(archs, architecture(a, b))
+    push!(archs, architecture(a, c))
+    append!(archs, [architecture(a, di) for di in d])
+
+    for arch in archs
+        if !(arch === nothing)
+            return arch
+        end
+    end
+
+    return nothing
+end
+
+#####
+##### Nested computations
+#####
+
+function compute!(Π::MultiaryOperation)
+    c = Tuple(compute!(a) for a in Π.args)
+    return nothing
+end
+
+#####
+##### GPU capabilities
+#####
 
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =

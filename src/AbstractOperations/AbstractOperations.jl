@@ -16,6 +16,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
+using Oceananigans.Fields: gpufriendly
 
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
@@ -23,7 +24,7 @@ using Oceananigans.Diagnostics: Average, normalize_sum!
 using Oceananigans.Utils: instantiate
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: data
+import Oceananigans.Fields: data, compute!
 import Oceananigans.Diagnostics: run_diagnostic
 
 #####
@@ -39,14 +40,12 @@ abstract type AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G
 
 const AF = AbstractField
 
-# We (informally) require that all field-like objects define `data` and `parent`:
-data(op::AbstractOperation) = op
+# We (informally) require that all field-like objects define `parent`:
 Base.parent(op::AbstractOperation) = op
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("function_fields.jl")
 include("interpolation_utils.jl")
 include("grid_validation.jl")
 
@@ -57,6 +56,7 @@ include("derivatives.jl")
 
 include("computations.jl")
 include("show_abstract_operations.jl")
+include("averages_of_operations.jl")
 
 # Make some operators!
 

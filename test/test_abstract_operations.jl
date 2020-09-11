@@ -74,9 +74,8 @@ function compute_derivative(model, ∂)
     T, S = model.tracers
     S.data.parent .= π
 
-    computation = Computation(∂(S), model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute ∂S = ComputedField(∂(S))
+    result = Array(interior(∂S))
 
     return all(result .≈ zero(eltype(model.grid)))
 end
@@ -85,9 +84,9 @@ function compute_unary(unary, model)
     set!(model; S=π)
     T, S = model.tracers
 
-    computation = Computation(unary(S), model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute uS = ComputedField(unary(S), data=model.pressures.pHY′.data)
+    result = Array(interior(uS))
+
     return all(result .≈ unary(eltype(model.grid)(π)))
 end
 
@@ -95,9 +94,9 @@ function compute_plus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
 
-    computation = Computation(S + T, model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute ST = ComputedField(S + T, data=model.pressures.pHY′.data)
+
+    result = Array(interior(ST))
 
     return all(result .≈ eltype(model.grid)(π+42))
 end
@@ -107,9 +106,8 @@ function compute_many_plus(model)
     T, S = model.tracers
     u, v, w = model.velocities
 
-    computation = Computation(@at((Cell, Cell, Cell), u + T + S), model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute uTS = ComputedField(@at((Cell, Cell, Cell), u + T + S))
+    result = Array(interior(uTS))
 
     return all(result .≈ eltype(model.grid)(2+π+42))
 end
@@ -118,9 +116,8 @@ function compute_minus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
 
-    computation = Computation(S - T, model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute ST = ComputedField(S - T, data=model.pressures.pHY′.data)
+    result = Array(interior(ST))
 
     return all(result .≈ eltype(model.grid)(π-42))
 end
@@ -129,9 +126,8 @@ function compute_times(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
 
-    computation = Computation(S * T, model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    @compute ST = ComputedField(S * T, data=model.pressures.pHY′.data)
+    result = Array(interior(ST))
 
     return all(result .≈ eltype(model.grid)(π*42))
 end
@@ -142,88 +138,93 @@ function compute_kinetic_energy(model)
     set!(v, 2)
     set!(w, 3)
 
-    kinetic_energy = @at (Cell, Cell, Cell) (u^2 + v^2 + w^2) / 2
-    computation = Computation(kinetic_energy, model.pressures.pHY′)
-    compute!(computation)
-    result = Array(interior(computation.result))
+    kinetic_energy_operation = @at (Cell, Cell, Cell) (u^2 + v^2 + w^2) / 2
+    @compute kinetic_energy = ComputedField(kinetic_energy_operation, data=model.pressures.pHY′.data)
+    result = Array(interior(kinetic_energy))
 
     return all(result .≈ 7)
 end
 
 function horizontal_average_of_plus(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = Average(S + T, model, dims=(1, 2))
-    computed_profile = ST(model)
+    @compute ST = AveragedField(S + T, dims=(1, 2))
 
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 
-    return all(computed_profile[2:end-1] .≈ correct_profile)
+    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
 end
 
 function zonal_average_of_plus(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     S₀(x, y, z) = sin(π*z) * sin(π*y)
     T₀(x, y, z) = 42*z + y^2
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = Average(S + T, model, dims=1)
-    computed_slice = ST(model)
+    @compute ST = AveragedField(S + T, dims=1)
 
     yC = ynodes(Cell, model.grid, reshape=true)
     zC = znodes(Cell, model.grid, reshape=true)
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
 
-    return all(computed_slice[1, 2:end-1, 2:end-1] .≈ correct_slice[1, :, :])
+    return all(ST[1, 1:Ny, 1:Nz] .≈ correct_slice[1, :, :])
 end
 
 function volume_average_of_times(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     S₀(x, y, z) = 1 + sin(2π*x)
     T₀(x, y, z) = y
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = Average(S * T, model, dims=(1, 2, 3))
-    computed_scalar = ST(model)
-
-    return all(computed_scalar[:] .≈ 0.5)
+    @compute ST = AveragedField(S * T, dims=(1, 2, 3))
+    return all(ST[1, 1, 1] .≈ 0.5)
 end
 
 function horizontal_average_of_minus(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = Average(S - T, model, dims=(1, 2))
-    computed_profile = ST(model)
+    @compute ST = AveragedField(S - T, dims=(1, 2))
 
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) - 42 * zC
 
-    return all(computed_profile[2:end-1] .≈ correct_profile)
+    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
 end
 
 function horizontal_average_of_times(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     S₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
-    ST = Average(S * T, model, dims=(1, 2))
-    computed_profile = ST(model)
+    @compute ST = AveragedField(S * T, dims=(1, 2))
 
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) * 42 * zC
 
-    return all(computed_profile[2:end-1] .≈ correct_profile)
+    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
 end
 
 function multiplication_and_derivative_ccf(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     w₀(x, y, z) = sin(π * z)
     T₀(x, y, z) = 42 * z
     set!(model; w=w₀, T=T₀)
@@ -231,20 +232,21 @@ function multiplication_and_derivative_ccf(model)
     w = model.velocities.w
     T = model.tracers.T
 
-    wT = Average(w * ∂z(T), model, dims=(1, 2))
-    computed_profile = wT(model)
+    @compute wT = AveragedField(w * ∂z(T), dims=(1, 2))
 
     zF = znodes(Face, model.grid)
     correct_profile = @. 42 * sin(π * zF)
 
     # Omit both halos and boundary points
-    return all(computed_profile[3:end-1] .≈ correct_profile[2:end-1])
+    return all(wT[1, 1, 2:Nz] .≈ correct_profile[2:Nz])
 end
 
 const C = Cell
 const F = Face
 
 function multiplication_and_derivative_ccc(model)
+    Ny, Nz = model.grid.Ny, model.grid.Nz
+
     w₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
     set!(model; w=w₀, T=T₀)
@@ -253,16 +255,15 @@ function multiplication_and_derivative_ccc(model)
     T = model.tracers.T
 
     wT_ccc = @at (C, C, C) w * ∂z(T)
-    wT_ccc_avg = Average(wT_ccc, model, dims=(1, 2))
-    computed_profile_ccc = wT_ccc_avg(model)
+    @compute wT_ccc_avg = AveragedField(wT_ccc, dims=(1, 2))
 
     zF = znodes(Face, model.grid)
     sinusoid = sin.(π * zF)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
     correct_profile = interped_sin .* 42
 
-    # Computed profile includes halos.
-    return all(computed_profile_ccc[:][3:end-2] .≈ correct_profile[2:end-1])
+    # Omit boundary-adjacent points from comparison
+    return all(wT_ccc_avg[1, 1, 2:Nz-1] .≈ correct_profile[2:Nz-1])
 end
 
 function computation_including_boundaries(FT, arch)
@@ -275,10 +276,8 @@ function computation_including_boundaries(FT, arch)
     @. v.data = 2 + rand()
     @. w.data = 3 + rand()
 
-    op = @at (Face, Face, Face) u*v*w
-    uvw = Field(Face, Face, Face, arch, grid, TracerBoundaryConditions(grid))
-    c = Computation(op, uvw)
-    compute!(c)
+    op = @at (Face, Face, Face) u * v * w
+    @compute uvw = ComputedField(op)
 
     return all(interior(uvw) .!= 0)
 end
@@ -406,7 +405,7 @@ end
     end
 
     for arch in archs
-        @testset "Computations [$(typeof(arch))]" begin
+        @testset "AbstractOperations and ComputedFields [$(typeof(arch))]" begin
             @info "  Testing combined binary operations and derivatives..."
             for FT in float_types
                 model = IncompressibleModel(

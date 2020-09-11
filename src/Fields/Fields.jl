@@ -3,10 +3,10 @@ module Fields
 export
     Face, Cell,
     AbstractField, Field, CellField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField,
+    ReducedField, AveragedField, ComputedField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
-    set!,
+    set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 
 using Oceananigans.Architectures
@@ -21,6 +21,9 @@ include("new_data.jl")
 include("abstract_field.jl")
 include("field.jl")
 include("reduced_field.jl")
+include("averaged_field.jl")
+include("computed_field.jl")
+include("function_field.jl")
 include("set!.jl")
 include("field_tuples.jl")
 include("show_fields.jl")

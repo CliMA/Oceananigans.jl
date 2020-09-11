@@ -124,3 +124,5 @@ ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid),
 
 @propagate_inbounds Base.getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
+
+gpufriendly(f::Field) = data(f)
