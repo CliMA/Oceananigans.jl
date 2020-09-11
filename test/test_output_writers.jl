@@ -560,19 +560,58 @@ function dependencies_added_correctly!(model, windowed_time_average, output_writ
     return windowed_time_average ∈ values(simulation.diagnostics)
 end
 
+
 function jld2_time_averaging_window(model)
 
     model.clock.iteration = 0
     model.clock.time = 0.0
 
-    output = FieldOutputs(model.velocities)
-
-    jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, time_averaging_window=2.0,
+    jld2_output_writer = JLD2OutputWriter(model, model.velocities, time_interval=4.0, time_averaging_window=2.0,
                                           dir=".", prefix="test", force=true)
 
     outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
 
     return all(outputs_are_time_averaged)
+end
+
+
+function jld2_field_output(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand())
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                              time_interval = 1.0,
+                                                                        dir = ".",
+                                                                     prefix = "test",
+                                                                      force = true)
+
+    u₀ = parent(model.velocities.u)[3, 3, 3]
+    v₀ = parent(model.velocities.v)[3, 3, 3]
+    w₀ = parent(model.velocities.w)[3, 3, 3]
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    # Data is saved with halos by default
+    u₁ = file["timeseries/u/0"][3, 3, 3]
+    v₁ = file["timeseries/v/0"][3, 3, 3]
+    w₁ = file["timeseries/w/0"][3, 3, 3]
+
+    close(file)
+
+    rm("test.jld2")
+
+    FT = typeof(u₁)
+
+    return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
 end
 
 @testset "Output writers" begin
@@ -599,13 +638,14 @@ end
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
 
-        @testset "Output writer averaging and 'diagnostic dependencies' [$(typeof(arch))]" begin
-            @info "  Testing output writer time-averaging and diagnostic-dependencies [$(typeof(arch))]..."
+        @testset "Output writer features [$(typeof(arch))]" begin
+            @info "  Testing output writer features [$(typeof(arch))]..."
 
             grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
             model = IncompressibleModel(architecture=arch, grid=grid)
 
             @test jld2_time_averaging_window(model)
+            @test jld2_field_output(model)
 
             windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
 
