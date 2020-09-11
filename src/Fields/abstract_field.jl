@@ -5,6 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
+import Oceananigans: location
 import Oceananigans.Utils: datatuple
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode

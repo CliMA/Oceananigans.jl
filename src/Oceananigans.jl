@@ -110,6 +110,7 @@ abstract type AbstractOutputWriter end
 function TimeStepper end
 function run_diagnostic end
 function write_output end
+function location end
 
 #####
 ##### Include all the submodules
