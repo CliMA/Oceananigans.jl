@@ -38,27 +38,35 @@ noinit(args...) = nothing
                                               max_filesize = Inf,
                                                      force = false,
                                                       init = noinit,
-                                                   verbose = false,
                                                  including = [:grid, :coriolis, :buoyancy, :closure],
+                                                   verbose = false,
                                                       part = 1,
                                                 array_type = Array{Float32},
                                                    jld2_kw = Dict{Symbol, Any}())
 
-Construct a `JLD2OutputWriter` that writes `label, func` pairs in `outputs` (which can be a `Dict` or `NamedTuple`)
-to a JLD2 file, where `label` is a symbol that labels the output and `func` is a function of the form `func(model)`
-that returns the data to be saved.
+Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
+in `outputs` to a JLD2 file.
+
+The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
+strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects that
+are called with the signature `output(model)`, or `WindowedTimeAverage`s of `AbstractFields`s,
+functions, or callable objects.
 
 Keyword arguments
 =================
+
+    ## Filenaming
 
     - `prefix`: Descriptive filename prefixed to all output files.
     
     - `dir`: Directory to save output to.
              Default: "." (current working directory).
+
+    ## Output frequency and time-averaging
     
-    - `iteration_interval`: Save output every `n` model iterations.
+    - `iteration_interval`: Save output every `iteration_interval` model iterations.
     
-    - `time_interval`: Save output every `t` units of model clock time.
+    - `time_interval`: Save output every `time_interval` units of `model.clock.time`.
     
     - `time_averaging_window`: Specifies a time window over which each member of `output` is averaged before    
                                being saved. For this each member of output is converted to 
@@ -67,15 +75,20 @@ Keyword arguments
     
     - `time_averaging_stride`: Specifies a iteration 'stride' between the calculation of each `output` during
                                time-averaging. Longer strides means that output is calculated less frequently,
-                               and that the resulting time-average is less accurate.
+                               and that the resulting time-average is faster to compute, but less accurate.
                                Default: 1.
 
-    - `field_slicer`: An object for slicing field output in (x, y, z), including omitting halos.
-                      Has no effect on output that is not a field.
-                      Default: FieldSlicer(; x=:, y=:, z=:, with_halos=false)
+    ## Slicing and type conversion prior to output
 
-    - `array_type`: The array type to which field data is converted to prior to saving.
+    - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
+                      Has no effect on output that is not a field. `field_slicer = nothing` means
+                      no slicing occurs, so that all field data, including halo regions, is saved.
+                      Default: FieldSlicer(), which slices halo regions.
+
+    - `array_type`: The array type to which output arrays are converted to prior to saving.
                     Default: Array{Float32}.
+
+    ## File management
 
     - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
                       and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
@@ -83,15 +96,19 @@ Keyword arguments
     
     - `force`: Remove existing files if their filenames conflict.
                Default: `false`.
+
+    ## Output file metadata management
     
     - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
               Default: `noinit(args...) = nothing`.
     
-    - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
-                 Default: `false`.
-    
     - `including`: List of model properties to save with every file.
                    Default: `[:grid, :coriolis, :buoyancy, :closure]`
+
+    ## Miscellaneous keywords
+
+    - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
+                 Default: `false`.
     
     - `part`: The starting part number used if `max_filesize` is finite.
               Default: 1.
@@ -104,13 +121,13 @@ function JLD2OutputWriter(model, outputs; prefix,
                                                   time_interval = nothing,
                                           time_averaging_window = nothing,
                                           time_averaging_stride = 1,
-                                                   field_slicer = FieldSlicer(; x=:, y=:, z=:, with_halos=false),
+                                                   field_slicer = FieldSlicer(),
                                                      array_type = Array{Float32},
                                                    max_filesize = Inf,
                                                           force = false,
                                                            init = noinit,
-                                                        verbose = false,
                                                       including = [:grid, :coriolis, :buoyancy, :closure],
+                                                        verbose = false,
                                                            part = 1,
                                                         jld2_kw = Dict{Symbol, Any}())
 

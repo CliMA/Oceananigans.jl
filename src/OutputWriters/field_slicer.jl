@@ -1,37 +1,53 @@
-struct FieldSlicer{I, W}
-    indices :: I
+"""
+    struct FieldSlicer{I, J, K, W}
+
+Slices fields along indices with or without halo regions as specified.
+"""
+struct FieldSlicer{I, J, K, W}
+    i :: I
+    j :: J
+    k :: K
     with_halos :: W
 end
 
-function FieldSlicer(grid=nothing; i=:, j=:, k=:, 
-                                   #x=nothing, y=nothing, z=nothing,
-                                   with_halos=false)
+"""
+    FieldSlicer(i=Colon(), j=Colon(), k=Colon(), with_halos=false)
 
-    #if !isnothing(x)
-    #    isnothing(grid) || throw(ArgumentError("Grid must be provided to specify physical slice ranges!"))
-    #end
+Returns `FieldSlicer` that slices a field prior to output or time-averaging.
 
+The keyword arguments `i, j, k` prescribe an `Integer` index or `UnitRange` of indices 
+in `x, y, z`, respectively.
 
-    return FieldSlicer((i, j, k), with_halos)
-end
+The default for `i`, `j`, and `k` is `Colon()` which indicates "all indices".
 
-HaloSlicer() = FieldSlicer()
+The keyword `with_halos` denotes whether halo data is saved or not. Halo regions are
+sliced off output for `UnitRange` and `Colon` index specifications.
+"""
+FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
+    FieldSlicer(i, j, k, with_halos)
 
 #####
 ##### Slice of life, err... data
 #####
 
-parent_slice_indices(loc, topo, N, H, ::Colon, with_halos) = with_halos ? (1:N+2H) : (H:N+H)
+# Integer slice
+parent_slice_indices(loc, topo, N, H, i::Int, with_halos) =UnitRange(i, i)
+
+# Colon slicing
+parent_slice_indices(loc, topo, N, H, ::Colon, with_halos) =
+    with_halos ? UnitRange(1, N+2H) : UnitRange(H, N+H)
 
 parent_slice_indices(::Type{Face}, ::Type{Bounded}, N, H, ::Colon, with_halos) =
-    with_halos ? (1:N+1+2H) : (H:N+1+H)
+    with_halos ? UnitRange(1, N+1+2H) : UnitRange(H, N+1+H)
 
+# Slicing along reduced dimensions
 parent_slice_indices(::Type{Nothing}, args...) = 1:1
 
+# Safe slice ranges without halos
 right_parent_index_without_halos(loc, topo, N, H, right) = min(N + H, right + H)
 right_parent_index_without_halos(::Type{Face}, ::Type{Bounded}, N, H, right) = min(N + H + 1, right + H)
 
-function parent_slice_indices(loc, topo, N, H, rng, with_halos)
+function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
 
     if with_halos
         left = rng[1] + H
@@ -41,7 +57,7 @@ function parent_slice_indices(loc, topo, N, H, rng, with_halos)
         right = right_parent_index_without_halos(loc, topo, N, H, rng[end])
     end
 
-    return left:right
+    return UnitRange(left, right)
 end
 
 """
@@ -57,7 +73,9 @@ function slice_parent(slicer, field)
     Lx, Ly, Lz = location(field)
     Tx, Ty, Tz = topology(field)
 
-    x_data_range, y_data_range, z_data_range = slicer.indices
+    x_data_range = slicer.i
+    y_data_range = slicer.j
+    z_data_range = slicer.k
 
     # Convert slicer indices to parent indices, and managing halos
     x_parent_range = parent_slice_indices(Lx, Tx, Nx, Hx, x_data_range, slicer.with_halos)
