@@ -99,6 +99,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_simulations.jl")
             include("test_time_stepping.jl")
             include("test_time_stepping_bcs.jl")
+            include("test_advection_schemes.jl")
             include("test_forcings.jl")
             include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
