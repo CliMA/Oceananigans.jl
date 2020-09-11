@@ -75,7 +75,6 @@ closures = (
 include("runtests_utils.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
-group = :integration
 
 @testset "Oceananigans" begin
     if group == :unit || group == :all

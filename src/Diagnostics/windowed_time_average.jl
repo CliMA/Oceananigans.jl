@@ -1,13 +1,15 @@
 import ..Utils: time_to_run
-import ..Fields: Field
+import ..Fields: AbstractField, compute!
 
 """
     WindowedTimeAverage{RT, FT, A, B} <: Diagnostic
 
 An object for computing 'windowed' time averages, or moving time-averages
-of a `kernel` over a specified `time_window`, collected on `time_interval`.
+of a `operand` over a specified `time_window`, collected on `time_interval`.
 """
-mutable struct WindowedTimeAverage{RT, FT, K, R} <: AbstractDiagnostic
+mutable struct WindowedTimeAverage{RT, FT, O, R} <: AbstractDiagnostic
+                              result :: R
+                             operand :: O
                          time_window :: FT
                        time_interval :: FT
                               stride :: Int
@@ -16,33 +18,34 @@ mutable struct WindowedTimeAverage{RT, FT, K, R} <: AbstractDiagnostic
             previous_collection_time :: FT
          previous_interval_stop_time :: FT
                           collecting :: Bool
-                              kernel :: K
-                              result :: R
                          return_type :: RT
 end
 
 """
-    WindowedTimeAverage(kernel; time_window, time_interval, stride=1,
+    WindowedTimeAverage(operand; time_window, time_interval, stride=1,
                                 return_type=Array, float_type=Float64)
                                                         
-Returns an object for computing running averages of `kernel` over `time_window`,
+Returns an object for computing running averages of `operand` over `time_window`,
 recurring on `time_interval`. During the collection period, averages are computed
 every `stride` iteration. 
 
-Calling the `WindowedTimeAverage` object returns the computed time-average of `kernel`
+Calling the `WindowedTimeAverage` object returns the computed time-average of `operand`
 at the current time, converted to `return_type`.
 
 `float_type` specifies the floating point precision of scalar parameters.
 
-`kernel` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
+`operand` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
 or `Oceananigans.Diagnostics.Average`.
 """ 
-function WindowedTimeAverage(kernel; time_window, time_interval, stride=1,
+function WindowedTimeAverage(operand; time_window, time_interval, stride=1,
                                      return_type=Array, float_type=Float64)
 
-    result = 0 .* deepcopy(get_kernel(kernel))
+    result = 0 .* deepcopy(fetch_operand(operand))
 
-    return WindowedTimeAverage(float_type(time_window),
+    return WindowedTimeAverage(
+                               result,
+                               operand,
+                               float_type(time_window),
                                float_type(time_interval),
                                stride,
                                zero(float_type),
@@ -50,9 +53,8 @@ function WindowedTimeAverage(kernel; time_window, time_interval, stride=1,
                                zero(float_type),
                                zero(float_type),
                                false,
-                               kernel,
-                               result,
-                               return_type)
+                               return_type
+                              )
 end
 
 function time_to_run(clock, wta::WindowedTimeAverage)
@@ -65,11 +67,16 @@ function time_to_run(clock, wta::WindowedTimeAverage)
     end
 end
 
-get_kernel(field::Field) = parent(field)
+fetch_operand(operand) = operand()
 
-function get_kernel(kernel::Average)
-    run_diagnostic(nothing, kernel)
-    return kernel.result
+function fetch_operand(field::AbstractField)
+    compute!(field)
+    return parent(field)
+end
+
+function fetch_operand(operand::Average)
+    run_diagnostic(nothing, operand)
+    return operand.result
 end
 
 function run_diagnostic(model, wta::WindowedTimeAverage)
@@ -94,7 +101,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
 
         # Accumulate final point in the left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
-        wta.result .+= get_kernel(wta.kernel) .* Δt
+        wta.result .+= fetch_operand(wta.operand) .* Δt
 
         # Averaging period is complete.
         wta.collecting = false
@@ -111,7 +118,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
 
         # Accumulate left Riemann sum
         Δt = model.clock.time - wta.previous_collection_time
-        wta.result .+= get_kernel(wta.kernel) .* Δt
+        wta.result .+= fetch_operand(wta.operand) .* Δt
 
         # Save data collection time
         wta.previous_collection_time = model.clock.time
