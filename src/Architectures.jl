@@ -19,7 +19,8 @@ abstract type AbstractArchitecture end
 """
     CPU <: AbstractArchitecture
 
-Run Oceananigans on a single-core of a CPU.
+Run Oceananigans on one CPU node. Uses multiple threads if the environment
+variable `JULIA_NUM_THREADS` is set.
 """
 struct CPU <: AbstractArchitecture end
 
@@ -43,6 +44,7 @@ end
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = KernelAbstractions.CUDADevice()
 
+         architecture(::Number)  = nothing
          architecture(::Array)   = CPU()
 @hascuda architecture(::CuArray) = GPU()
 

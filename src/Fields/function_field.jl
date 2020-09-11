@@ -26,6 +26,10 @@ struct FunctionField{X, Y, Z, C, F, G} <: AbstractField{X, Y, Z, F, G}
     end
 end
 
+"""Return `a`, or convert `a` to `FunctionField` if `a::Function`"""
+fieldify(L, a, grid) = a
+fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
+
 """
     FunctionField(L::Tuple, func, grid)
 
@@ -36,7 +40,6 @@ FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid
 
 # Ordinary functions needed for fields
 architecture(::FunctionField) = nothing
-data(f::FunctionField) = f
 Base.parent(f::FunctionField) = f
 
 @inline Base.getindex(f::FunctionField{X, Y, Z, <:Nothing}, i, j, k) where {X, Y, Z} =

@@ -4,7 +4,7 @@ using Oceananigans.Fields
 using Oceananigans.Diagnostics: dims_to_result_size
 
 import Oceananigans.Diagnostics: get_kernel
-import Oceananigans.Fields: location, total_size, compute!
+import Oceananigans.Fields: location, total_size
 
 """
     Computation{T, R, O, G}

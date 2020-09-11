@@ -20,14 +20,18 @@ struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
     end
 end
 
+@inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)
+
+#####
+##### Derivative construction
+#####
+
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, data(arg), ▶, grid)
+    return Derivative{L[1], L[2], L[3]}(∂, gpufriendly(arg), ▶, grid)
 end
-
-@inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)
 
 """Return `Cell` if given `Face` or `Face` if given `Cell`."""
 flip(::Type{Face}) = Cell
@@ -72,7 +76,6 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
 ∂z(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂z(Z), arg, (X, Y, flip(Z)), arg.grid)
 
-
 # Defaults
 """
     ∂x(a::AbstractField)
@@ -93,6 +96,24 @@ Return an abstract representation of a y-derivative acting on `a`.
 Return an abstract representation of a z-derivative acting on `a`.
 """
 ∂z(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
+
+#####
+##### Architecture inference for derivatives
+#####
+
+architecture(∂::Derivative) = architecture(∂.arg)
+
+#####
+##### Nested computations
+#####
+
+compute!(∂::Derivative) = compute!(∂.arg)
+
+#####
+
+#####
+##### GPU capabilities
+#####
 
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =

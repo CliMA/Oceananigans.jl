@@ -41,7 +41,7 @@ end
 
 Computes `field.data`.
 """
-compute!(field::AbstractField) = nothing
+compute!(field) = nothing
 
 """
     @compute(exprs...)
@@ -50,6 +50,7 @@ Call compute! on fields after defining them.
 """
 macro compute(def)
     expr = Expr(:block)
+    field = def.args[1]
     push!(expr.args, :($(esc(def))))
     push!(expr.args, :(compute!($(esc(field)))))
     return expr
@@ -127,6 +128,9 @@ Base.iterate(f::AbstractField, state=1) = iterate(f.data, state)
 @inline data(f::AbstractField) = f.data
 
 @inline cpudata(a) = data(a)
+
+""" Converts a field into a GPU-friendly alternative if necessary. """
+@inline gpufriendly(a) = a # fallback
 
 const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
 
