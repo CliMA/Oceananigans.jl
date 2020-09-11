@@ -39,7 +39,7 @@ end
 """
     compute!(field)
 
-Computes `field.data`.
+Computes `field.data` if needed.
 """
 compute!(field) = nothing
 
