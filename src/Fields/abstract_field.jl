@@ -50,6 +50,7 @@ Call compute! on fields after defining them.
 """
 macro compute(def)
     expr = Expr(:block)
+    field = def.args[1]
     push!(expr.args, :($(esc(def))))
     push!(expr.args, :(compute!($(esc(field)))))
     return expr
