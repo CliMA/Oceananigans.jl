@@ -5,12 +5,10 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.AbstractOperations
 
-function simulate_lid_driven_cavity(; Re, end_time)
-    Ny = Nz = 128
-
+function simulate_lid_driven_cavity(; Re, N, end_time)
     topology = (Flat, Bounded, Bounded)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topology, size=(1, Ny, Nz); domain...)
+    grid = RegularCartesianGrid(topology=topology, size=(1, N, N); domain...)
 
     v_bcs = VVelocityBoundaryConditions(grid,
            top = ValueBoundaryCondition(1.0),
@@ -85,11 +83,11 @@ function print_progress(simulation)
     return nothing
 end
 
- simulate_lid_driven_cavity(Re=100,   end_time=15)
- simulate_lid_driven_cavity(Re=400,   end_time=20)
- simulate_lid_driven_cavity(Re=1000,  end_time=25)
- simulate_lid_driven_cavity(Re=3200,  end_time=50)
- simulate_lid_driven_cavity(Re=5000,  end_time=50)
- simulate_lid_driven_cavity(Re=7500,  end_time=75)
- simulate_lid_driven_cavity(Re=10000, end_time=100)
+ simulate_lid_driven_cavity(Re=100,   N=128, end_time=15)
+ simulate_lid_driven_cavity(Re=400,   N=128, end_time=20)
+ simulate_lid_driven_cavity(Re=1000,  N=128, end_time=25)
+ simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
+ simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
+ simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
+ simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
 

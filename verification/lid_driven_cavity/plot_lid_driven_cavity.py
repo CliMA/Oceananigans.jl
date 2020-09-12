@@ -121,19 +121,18 @@ def plot_lid_driven_cavity_frame(Re, n):
     plt.savefig(f"lid_driven_cavity_Re{Re}_{n:05d}.png")
     plt.close("all")
 
-Re = 100
-ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
+for Re in [100, 400, 1000, 3200, 5000, 7500, 10000]:
+    ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
 
-joblib.Parallel(n_jobs=-1)(
-    joblib.delayed(plot_lid_driven_cavity_frame)(Re, n)
-    for n in range(ds.time.size)
-)
+    joblib.Parallel(n_jobs=-1)(
+        joblib.delayed(plot_lid_driven_cavity_frame)(Re, n)
+        for n in range(ds.time.size)
+    )
 
-(
-    ffmpeg
-    .input(f"lid_driven_cavity_Re{Re}_%05d.png", framerate=30)
-    .output(f"lid_driven_cavity_Re{Re}.mp4", crf=15, pix_fmt='yuv420p')
-    .overwrite_output()
-    .run()
-)
-
+    (
+        ffmpeg
+        .input(f"lid_driven_cavity_Re{Re}_%05d.png", framerate=30)
+        .output(f"lid_driven_cavity_Re{Re}.mp4", crf=15, pix_fmt='yuv420p')
+        .overwrite_output()
+        .run()
+    )
