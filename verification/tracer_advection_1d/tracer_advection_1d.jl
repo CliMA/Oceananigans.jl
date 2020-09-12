@@ -92,6 +92,6 @@ Ns = [16, 32, 64]
 CFLs = (0.2, 0.5, 1.0)
 
 for ϕ in ϕs, scheme in advection_schemes, N in Ns, CFL in CFLs
-    @info @sprintf("Creating two-revolution animation [%s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(advection_scheme), N, CFL)
+    @info @sprintf("Creating two-revolution animation [%s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(scheme), N, CFL)
     create_animation(N, L, CFL, ϕ, scheme)
 end
