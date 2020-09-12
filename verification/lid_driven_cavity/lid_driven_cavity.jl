@@ -5,12 +5,11 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.AbstractOperations
 
-function simulate_lid_driven_cavity(; Re, end_time=10.0)
+function simulate_lid_driven_cavity(; Re, end_time)
     Ny = Nz = 128
-    Ly = Lz = 1.0
 
     topology = (Flat, Bounded, Bounded)
-    domain = (x=(0, 1), y=(0, Ly), z=(0, Lz))
+    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
     grid = RegularCartesianGrid(topology=topology, size=(1, Ny, Nz); domain...)
 
     v_bcs = VVelocityBoundaryConditions(grid,
@@ -29,7 +28,7 @@ function simulate_lid_driven_cavity(; Re, end_time=10.0)
                     tracers = nothing,
                    coriolis = nothing,
         boundary_conditions = (v=v_bcs, w=w_bcs),
-                    closure = ConstantIsotropicDiffusivity(ν=1/Re)
+                    closure = IsotropicDiffusivity(ν=1/Re)
     )
 
     u, v, w = model.velocities
@@ -48,7 +47,7 @@ function simulate_lid_driven_cavity(; Re, end_time=10.0)
     output_attributes = Dict("ζ" => Dict("longname" => "vorticity", "units" => "1/s"))
 
     field_output_writer =
-        NetCDFOutputWriter(model, fields, filename="lid_driven_cavity_Re$Re.nc", interval=0.1,
+        NetCDFOutputWriter(model, fields, filename="lid_driven_cavity_Re$Re.nc", time_interval=0.1,
                            global_attributes=global_attributes, output_attributes=output_attributes,
                            dimensions=dims)
 
@@ -59,7 +58,7 @@ function simulate_lid_driven_cavity(; Re, end_time=10.0)
     dcfl = DiffusiveCFL(wizard)
 
     simulation = Simulation(model, Δt=wizard, stop_time=end_time, progress=print_progress,
-                            progress_frequency=20, parameters=(cfl=cfl, dcfl=dcfl))
+                            iteration_interval=20, parameters=(cfl=cfl, dcfl=dcfl))
 
     simulation.output_writers[:fields] = field_output_writer
 
