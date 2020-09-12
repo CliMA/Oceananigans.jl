@@ -17,7 +17,7 @@ benchmark_filepath(benchmark_name, benchmarks_dir=BENCHMARKS_DIR) =
 
             replace_strings = [
                 ("Ns = [(16, 16, 16), (32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]",
-                 "Ns = [(16, 16, 16)]")
+                 "Ns = [(1, 1, 1)]")
             ]
 
             @test run_script(replace_strings, "static_ocean", benchmark_filepath("static_ocean"))
@@ -28,7 +28,7 @@ benchmark_filepath(benchmark_name, benchmarks_dir=BENCHMARKS_DIR) =
 
             replace_strings = [
                 ("Ns = [(32, 32, 32), (64, 64, 64), (128, 128, 128), (256, 256, 256)]",
-                 "Ns = [(16, 16, 16)]")
+                 "Ns = [(1, 1, 1)]")
             ]
 
             @test run_script(replace_strings, "channel", benchmark_filepath("channel"))
@@ -39,7 +39,7 @@ benchmark_filepath(benchmark_name, benchmarks_dir=BENCHMARKS_DIR) =
 
             replace_strings = [
                 ("Ns = [(32, 32, 32), (256, 256, 128)]",
-                 "Ns = [(16, 16, 16)]")
+                 "Ns = [(1, 1, 1)]")
             ]
 
             @test run_script(replace_strings, "turbulence_closures", benchmark_filepath("turbulence_closures"))
@@ -49,8 +49,8 @@ benchmark_filepath(benchmark_name, benchmarks_dir=BENCHMARKS_DIR) =
             @info "    Running tracers benchmark..."
 
             replace_strings = [
-                ("(32, 32, 32)", "(16, 16, 16)"),
-                ("(256, 256, 128)", "(16, 16, 16)"),
+                ("(32, 32, 32)", "(1, 1, 1)"),
+                ("(256, 256, 128)", "(1, 1, 1)"),
                 ("test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]",
                  "test_cases = [(0, 0), (2, 0), (2, 3)]")
             ]

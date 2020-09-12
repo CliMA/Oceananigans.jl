@@ -244,6 +244,12 @@ end
                 @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
             end
         end
+
+        # Testing show function
+        topo = (Periodic, Periodic, Periodic)
+        grid = RegularCartesianGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
+        show(grid); println();
+        @test grid isa RegularCartesianGrid
     end
 
     @testset "Vertically stretched Cartesian grid" begin

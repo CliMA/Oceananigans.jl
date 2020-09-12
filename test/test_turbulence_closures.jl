@@ -112,7 +112,7 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 
     model = IncompressibleModel(
         architecture=arch, closure=closure,
-        grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3))
+        grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -133,7 +133,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
 
     model = IncompressibleModel(
         architecture=arch, closure=closure,
-        grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3))
+        grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -146,7 +146,7 @@ function time_step_with_tupled_closure(FT, arch)
 
     model = IncompressibleModel(
         architecture=arch, float_type=FT, closure=closure_tuple,
-        grid=RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3))
+        grid=RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -154,7 +154,7 @@ function time_step_with_tupled_closure(FT, arch)
 end
 
 function compute_closure_specific_diffusive_cfl(closurename)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
 
     model = IncompressibleModel(grid=grid, closure=closure)

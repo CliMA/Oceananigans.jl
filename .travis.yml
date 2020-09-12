@@ -1,7 +1,6 @@
 language: julia
 
 os:
-  - linux
   - osx
 
 julia:
@@ -13,12 +12,6 @@ env:
     - TEST_GROUP=integration
     - TEST_GROUP=regression
     - TEST_GROUP=scripts
-
-# Only build pushes to master (PRs still build merge commits)
-# See: https://stackoverflow.com/a/31882307
-branches:
-  only: 
-    - master
 
 notifications:
   email: true

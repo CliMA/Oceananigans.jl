@@ -32,7 +32,7 @@ export
     ModelForcing, SimpleForcing, ParameterizedForcing,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalFPlane,
+    FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
     # Buoyancy and equations of state
     BuoyancyTracer, SeawaterBuoyancy,
@@ -110,15 +110,16 @@ abstract type AbstractOutputWriter end
 function TimeStepper end
 function run_diagnostic end
 function write_output end
+function location end
 
 #####
 ##### Include all the submodules
 #####
 
 include("Architectures.jl")
+include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
-include("Grids/Grids.jl")
 include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")

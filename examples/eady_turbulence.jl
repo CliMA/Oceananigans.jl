@@ -190,8 +190,7 @@ vmax = FieldMaximum(abs, model.velocities.v)
 wmax = FieldMaximum(abs, model.velocities.w)
 
 # Set up output. Here we output the velocity and buoyancy fields at intervals of one day.
-fields_to_output = merge(model.velocities, (b=model.tracers.b,))
-output_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
+output_writer = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                                  time_interval=day, prefix=output_filename_prefix,
                                  force=true, max_filesize=10GiB)
 

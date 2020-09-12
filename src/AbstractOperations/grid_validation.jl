@@ -25,10 +25,11 @@ consistent by checking each member against `a`.
 This function is only correct when `a` is an `AbstractField`, though the
 subsequent members `b, c...` may be anything.
 """
-function validate_grid(a, b, c...)
+function validate_grid(a, b, c, d...)
     grids = []
     push!(grids, validate_grid(a, b))
-    append!(grids, [validate_grid(a, ci) for ci in c])
+    push!(grids, validate_grid(a, c))
+    append!(grids, [validate_grid(a, di) for di in d])
 
     for g in grids
         if !(g === nothing)

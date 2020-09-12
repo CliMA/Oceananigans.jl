@@ -32,7 +32,7 @@ mutable struct NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
                outputs :: O
     iteration_interval :: I
          time_interval :: T
-               clobber :: Bool
+                  mode :: String
                 slices :: S
               previous :: Float64
                verbose :: Bool
@@ -41,7 +41,7 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, iteration_interval=nothing, time_interval=nothing,
                        global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
-                       clobber=true, compression=0, with_halos=false, verbose=false, slice_kwargs...)
+                       mode="c", compression=0, with_halos=false, verbose=false, slice_kwargs...)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
@@ -52,17 +52,27 @@ specified.
 Keyword arguments
 =================
 - `iteration_interval`: Save output every `n` model iterations.
+
 - `time_interval`: Save output every `t` units of model clock time.
+
 - `filename`: Filepath to save output to.
+
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
+
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
   defaults are provided for velocities, buoyancy, temperature, and salinity).
+
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (useful for function outputs
   as field dimensions can be inferred).
+
 - `with_halos`: Include the halo regions in the grid coordinates and output fields
   (default: `false`).
-- `clobber`: Remove existing files if their filenames conflict. Default: `true`.
+
+- `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
+  documentation for more information on the `mode` option.
+
 - `compression`: Determines the compression level of data (0-9, default 0)
+
 - `slice_kwargs`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
   All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
   `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
@@ -152,7 +162,7 @@ function NetCDFOutputWriter(model, outputs; filename,
      global_attributes = Dict(),
      output_attributes = Dict(),
             dimensions = Dict(),
-               clobber = true,
+                  mode = "c",
            compression = 0,
             with_halos = false,
                verbose = false,
@@ -164,7 +174,6 @@ function NetCDFOutputWriter(model, outputs; filename,
     zF = with_halos ? all_z_indices(Face, model.grid) : interior_z_indices(Face, model.grid)
     )
 
-    mode = clobber ? "c" : "a"
     validate_intervals(iteration_interval, time_interval)
 
     # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
@@ -174,39 +183,73 @@ function NetCDFOutputWriter(model, outputs; filename,
     slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
                                                          ( xC,   yC,   zC,   xF,   yF,   zF )))
 
-    # Initializes the output file with dimensions.
-    write_grid_and_attributes(model; filename=filename, compression=compression,
-                              with_halos=with_halos, attributes=global_attributes, mode=mode,
-                              xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
+    # Allow values to be of Any type as OffsetArrays may get modified below.
+    grid = model.grid
+    dims = Dict{String,Any}(
+        "xC" => with_halos ? grid.xC : collect(xnodes(Cell, grid)),
+        "xF" => with_halos ? grid.xF : collect(xnodes(Face, grid)),
+        "yC" => with_halos ? grid.yC : collect(ynodes(Cell, grid)),
+        "yF" => with_halos ? grid.yF : collect(ynodes(Face, grid)),
+        "zC" => with_halos ? grid.zC : collect(znodes(Cell, grid)),
+        "zF" => with_halos ? grid.zF : collect(znodes(Face, grid))
+    )
 
-    # Opens the same output file for writing fields from the user-supplied variable outputs
-    dataset = Dataset(filename, "a")
+    dim_attribs = Dict(
+        "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+        "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+        "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+        "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m")
+    )
 
-    # Creates an unliimited dimension "time"
-    defDim(dataset, "time", Inf)
-    defVar(dataset, "time", Float64, ("time",))
-    sync(dataset)
+    # Add useful metadata as global attributes
+    global_attributes["date"] = "This file was generated on $(now())."
+    global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
+    global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
 
-    # Ensure we have an attribute for every output. Use reasonable defaults if
-    # none were specified by the user.
-    for c in keys(outputs)
-        if !haskey(output_attributes, c)
-            output_attributes[c] = default_output_attributes[c]
-        end
+    # Slice coordinate arrays stored in the dims dict
+    for (dim, indices) in slice_keywords
+        dim = string(dim) # convert symbol to string
+        dims[dim] = dims[dim][get_slice(indices)] # overwrite entries in dims Dict
     end
 
-    # Initiates empty variables for fields from the user-supplied variable outputs
-    for (name, output) in outputs
-        if output isa Field
-            FT = eltype(output.grid)
-            defVar(dataset, name, FT, (netcdf_spatial_dimensions(output)..., "time"),
-                   compression=compression, attrib=output_attributes[name])
-        else
-            defVar(dataset, name, Float64, (dimensions[name]..., "time"),
-                   compression=compression, attrib=output_attributes[name])
+    # Open the NetCDF dataset file
+    dataset = Dataset(filename, mode, attrib=global_attributes)
+
+    # Define variables for each dimension and attributes if this is a new file.
+    if mode == "c"
+        for (dim_name, dim_array) in dims
+            defVar(dataset, dim_name, dim_array, (dim_name,),
+                   compression=compression, attrib=dim_attribs[dim_name])
         end
+
+        # Creates an unliimited dimension "time"
+        defDim(dataset, "time", Inf)
+        defVar(dataset, "time", Float64, ("time",))
+
+        # Ensure we have an attribute for every output. Use reasonable defaults if
+        # none were specified by the user.
+        for c in keys(outputs)
+            if !haskey(output_attributes, c)
+                output_attributes[c] = default_output_attributes[c]
+            end
+        end
+
+        # Initiates empty variables for fields from the user-supplied variable outputs
+        for (name, output) in outputs
+            if output isa Field
+                FT = eltype(output.grid)
+                defVar(dataset, name, FT, (netcdf_spatial_dimensions(output)..., "time"),
+                       compression=compression, attrib=output_attributes[name])
+            else
+                defVar(dataset, name, Float64, (dimensions[name]..., "time"),
+                       compression=compression, attrib=output_attributes[name])
+            end
+        end
+
+        sync(dataset)
     end
-    sync(dataset)
 
     # extract outputs whose values are Fields
     field_outputs = filter(o -> o.second isa Field, outputs)
@@ -216,7 +259,7 @@ function NetCDFOutputWriter(model, outputs; filename,
                   for (name, field) in field_outputs)
 
     return NetCDFOutputWriter(filename, dataset, outputs, iteration_interval, time_interval,
-                              clobber, slices, 0.0, verbose)
+                              mode, slices, 0.0, verbose)
 end
 
 Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filename, "a")
@@ -291,9 +334,7 @@ function write_output(model, ow::NetCDFOutputWriter)
     if verbose
         @info "Writing to NetCDF: $filepath..."
         @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
-    end
 
-    if verbose
         # Time and file size before computing any outputs.
         t0, sz0 = time_ns(), filesize(filepath)
     end
@@ -319,71 +360,6 @@ function write_output(model, ow::NetCDFOutputWriter)
         verbose && @info begin
             @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                     prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
-        end
-    end
-
-    return nothing
-end
-
-"""
-    write_grid_and_attributes(model; filename="grid.nc", mode="c",
-                              compression=0, attributes=Dict(), slice_kw...)
-
-Writes grid and global `attributes` to `filename`. By default writes information
-to a standalone `grid.nc` file.
-
-Keyword arguments
-=================
-- `filename`  : File name to be saved under.
-- `mode`: NetCDF file is opened in either clobber ("c") or append ("a") mode. Default: "c".
-- `compression`: Defines the compression level of data from 0-9. Default: 0.
-- `attributes`: Global attributes. Default: Dict().
-"""
-function write_grid_and_attributes(model;
-         filename = "grid.nc",
-             mode = "c",
-            units = "m",
-      compression = 0,
-    with_halos = false,
-       attributes = Dict(),
-    slice_keywords...)
-
-    grid = model.grid
-
-    # Allow values to be of Any type as OffsetArrays may get modified below.
-    dims = Dict{String,Any}(
-        "xC" => with_halos ? grid.xC : collect(xnodes(Cell, grid)),
-        "xF" => with_halos ? grid.xF : collect(xnodes(Face, grid)),
-        "yC" => with_halos ? grid.yC : collect(ynodes(Cell, grid)),
-        "yF" => with_halos ? grid.yF : collect(ynodes(Face, grid)),
-        "zC" => with_halos ? grid.zC : collect(znodes(Cell, grid)),
-        "zF" => with_halos ? grid.zF : collect(znodes(Face, grid))
-    )
-
-    dim_attribs = Dict(
-        "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => units),
-        "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => units),
-        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => units),
-        "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => units),
-        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => units),
-        "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => units)
-    )
-
-    # Add useful metadata as global attributes
-    attributes["date"] = "This file was generated on $(now())."
-    attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
-    attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
-
-    # Slice coordinate arrays stored in the dims dict
-    for (dim, indices) in slice_keywords
-        dim = string(dim) # convert symbol to string
-        dims[dim] = dims[dim][get_slice(indices)] # overwrite entries in dims Dict
-    end
-
-    Dataset(filename, mode, attrib=attributes) do ds
-        for (dim_name, dim_array) in dims
-            defVar(ds, dim_name, dim_array, (dim_name,),
-                   compression=compression, attrib=dim_attribs[dim_name])
         end
     end
 

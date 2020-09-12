@@ -87,10 +87,10 @@ plot!(p, interior(T)[1, 1, :], z, linewidth=2, label=tracer_label(model.clock.ti
 # Interesting! Next, we add an output writer that saves the temperature field
 # in JLD2 files, and run the simulation for longer so that we can animate the results.
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, FieldOutputs
+using Oceananigans.OutputWriters: JLD2OutputWriter
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, FieldOutputs(model.tracers), prefix = "one_dimensional_diffusion",
+    JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
                      iteration_interval = 100, force = true)
 
 ## Run simulation for 10,000 more iterations
@@ -111,7 +111,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 anim = @animate for (i, iter) in enumerate(iterations)
 
-    T = file["timeseries/T/$iter"][1, 1, 2:end-1]
+    T = file["timeseries/T/$iter"][1, 1, :]
     t = file["timeseries/t/$iter"]
 
     plot(T, z, linewidth=2, title=tracer_label(t),

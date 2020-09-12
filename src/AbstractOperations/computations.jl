@@ -1,9 +1,10 @@
 using KernelAbstractions
 using Oceananigans.Utils: work_layout
-import Oceananigans.Diagnostics: get_kernel
-
-import Oceananigans.Fields: location, total_size
+using Oceananigans.Fields
 using Oceananigans.Diagnostics: dims_to_result_size
+
+import Oceananigans.Diagnostics: get_kernel
+import Oceananigans.Fields: location, total_size, compute!
 
 """
     Computation{T, R, O, G}
@@ -41,8 +42,9 @@ Perform a `computation`. The result is stored in `computation.result`.
 function compute!(computation::Computation)
     arch = architecture(computation.result)
     result_data = data(computation.result)
+    loc = location(computation.result)
 
-    workgroup, worksize = work_layout(computation.grid, :xyz)
+    workgroup, worksize = work_layout(computation.grid, :xyz, include_right_boundaries=true, location=loc)
 
     compute_kernel! = _compute!(device(arch), workgroup, worksize)
 
@@ -138,7 +140,7 @@ end
 """Compute the average of a computation."""
 function run_diagnostic(model, avg::Average{<:Computation})
     compute!(avg.field)
-    zero_halo_regions!(parent(avg.field.result), model.grid)
+    zero_halo_regions!(parent(avg.field.result), (Cell, Cell, Cell), model.grid)
     sum!(avg.result, parent(avg.field.result))
     normalize_sum!(avg)
     return nothing
