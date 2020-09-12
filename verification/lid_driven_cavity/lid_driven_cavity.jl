@@ -1,9 +1,13 @@
 using Printf
+using Logging
+
 using Oceananigans
 using Oceananigans: Face, Cell
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.AbstractOperations
+
+Logging.global_logger(OceananigansLogger())
 
 function simulate_lid_driven_cavity(; Re, N, end_time)
     topology = (Flat, Bounded, Bounded)
@@ -77,8 +81,8 @@ function print_progress(simulation)
     wmax = maximum(abs, interior(model.velocities.w))
 
     i, t = model.clock.iteration, model.clock.time
-    @printf("[%06.2f%%] i: %d, t: %.3f, U_max: (%.2e, %.2e), CFL: %.2e, dCFL: %.2e, next Δt: %.2e\n",
-            progress, i, t, vmax, wmax, cfl(model), dcfl(model), simulation.Δt.Δt)
+    @info @sprintf("[%06.2f%%] i: %d, t: %.3f, U_max: (%.2e, %.2e), CFL: %.2e, dCFL: %.2e, next Δt: %.2e",
+                   progress, i, t, vmax, wmax, cfl(model), dcfl(model), simulation.Δt.Δt)
 
     return nothing
 end
