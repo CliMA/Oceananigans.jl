@@ -32,7 +32,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_model(N, L, U, ϕₐ, advection_scheme)
     topology = (Periodic, Flat, Flat)
     domain = (x=(-L/2, L/2), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topology, size=(N, 1, 1); domain...)
+    grid = RegularCartesianGrid(topology=topology, size=(N, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(
              grid = grid,
@@ -78,7 +78,7 @@ function create_animation(N, L, CFL, ϕₐ, advection_scheme; U=1.0, T=2.0)
 
     mp4(anim, anim_filename, fps = 15)
 
-    return nothing
+    return model
 end
 
 #####
@@ -86,15 +86,12 @@ end
 #####
 
 L = 1
-# ϕs = (ϕ_Gaussian, ϕ_Square)
-# advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder())
-# Ns = [16, 32, 64, 128]
-# CFLs = (0.05, 0.3, 0.5, 1.0)
+ϕs = (ϕ_Gaussian, ϕ_Square)
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
+Ns = [16, 32, 64]
+CFLs = (0.2, 0.5, 1.0)
 
-# for ϕ in ϕs, scheme in advection_schemes, N in Ns, CFL in CFLs
-#     @info @sprintf("Creating two-revolution animation [%s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(advection_scheme), N, CFL)
-#     create_animation(N, L, CFL, ϕ, scheme)
-# end
-
-create_animation(64, L, 0.05, ϕ_Gaussian, CenteredSecondOrder())
-create_animation(64, L, 0.05, ϕ_Square, CenteredSecondOrder())
+for ϕ in ϕs, scheme in advection_schemes, N in Ns, CFL in CFLs
+    @info @sprintf("Creating two-revolution animation [%s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(advection_scheme), N, CFL)
+    create_animation(N, L, CFL, ϕ, scheme)
+end
