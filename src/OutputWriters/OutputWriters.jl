@@ -2,9 +2,11 @@ module OutputWriters
 
 export
     write_output,
-    JLD2OutputWriter, FieldOutput, FieldOutputs,
+    FieldSlicer,
+    JLD2OutputWriter,
     NetCDFOutputWriter, write_grid_and_attributes,
-    Checkpointer, restore_from_checkpoint
+    Checkpointer, restore_from_checkpoint,
+    WindowedTimeAverage
 
 using CUDA
 
@@ -20,7 +22,9 @@ Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
 
 include("output_writer_utils.jl")
+include("field_slicer.jl")
 include("fetch_output.jl")
+include("windowed_time_average.jl")
 include("jld2_output_writer.jl")
 include("netcdf_output_writer.jl")
 include("checkpointer.jl")

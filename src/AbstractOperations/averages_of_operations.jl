@@ -1,5 +1,7 @@
-import Oceananigans.Fields: AveragedField, ComputedField
+using Oceananigans.Fields: ComputedField
 using Statistics
+
+import Oceananigans.Fields: AveragedField
 
 """
     AveragedField(op::AbstractOperation; dims, data=nothing, computed_data=nothing)

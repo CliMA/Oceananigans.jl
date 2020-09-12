@@ -1,4 +1,4 @@
-using ..Diagnostics: WindowedTimeAverage
+using Oceananigans.OutputWriters: WindowedTimeAverage
 
 # Simulations are for running
 

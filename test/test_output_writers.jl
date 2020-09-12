@@ -2,6 +2,7 @@ using Statistics
 using NCDatasets
 using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
 using Oceananigans.Diagnostics
+using Oceananigans.Fields
 
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -338,15 +339,13 @@ function run_jld2_file_splitting_tests(arch)
     model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-    u(model) = Array(model.velocities.u.data.parent)
-    fields = Dict(:u => u)
-
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, fields; dir=".", prefix="test", iteration_interval=1,
+    ow = JLD2OutputWriter(model, (u=model.velocities.u,); dir=".", prefix="test", iteration_interval=1,
                           init=fake_bc_init, including=[:grid],
+                          field_slicer=nothing, array_type=Array{Float64},
                           max_filesize=200KiB, force=true)
 
     push!(simulation.output_writers, ow)
@@ -549,10 +548,41 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
+function instantiate_windowed_time_average(model)
+
+    set!(model, u = (x, y, z) -> rand())
+
+    u, v, w = model.velocities
+
+    u₀ = similar(interior(u))
+    u₀ .= interior(u)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=1.0, time_interval=10.0)
+
+    return all(wta(model) .== u₀)
+end
+
+function time_step_with_windowed_time_average(model)
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u=0, v=0, w=0, T=0, S=0)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
+
+    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
+    simulation.diagnostics[:u_avg] = wta
+    run!(simulation)
+
+    return all(wta(model) .== interior(model.velocities.u))
+end
+
+
 function dependencies_added_correctly!(model, windowed_time_average, output_writer)
 
     model.clock.iteration = 0
     model.clock.time = 0.0
+
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
     push!(simulation.output_writers, output_writer)
     run!(simulation)
@@ -574,7 +604,6 @@ function jld2_time_averaging_window(model)
     return all(outputs_are_time_averaged)
 end
 
-
 function jld2_field_output(model)
 
     model.clock.iteration = 0
@@ -582,7 +611,9 @@ function jld2_field_output(model)
 
     set!(model, u = (x, y, z) -> rand(),
                 v = (x, y, z) -> rand(),
-                w = (x, y, z) -> rand())
+                w = (x, y, z) -> rand(),
+                T = 0,
+                S = 0)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
@@ -592,15 +623,15 @@ function jld2_field_output(model)
                                                                      prefix = "test",
                                                                       force = true)
 
-    u₀ = parent(model.velocities.u)[3, 3, 3]
-    v₀ = parent(model.velocities.v)[3, 3, 3]
-    w₀ = parent(model.velocities.w)[3, 3, 3]
+    u₀ = data(model.velocities.u)[3, 3, 3]
+    v₀ = data(model.velocities.v)[3, 3, 3]
+    w₀ = data(model.velocities.w)[3, 3, 3]
 
     run!(simulation)
 
     file = jldopen("test.jld2")
 
-    # Data is saved with halos by default
+    # Data is saved without halos by default
     u₁ = file["timeseries/u/0"][3, 3, 3]
     v₁ = file["timeseries/v/0"][3, 3, 3]
     w₁ = file["timeseries/w/0"][3, 3, 3]
@@ -612,6 +643,86 @@ function jld2_field_output(model)
     FT = typeof(u₁)
 
     return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
+end
+
+function jld2_sliced_field_output(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand())
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    simulation.output_writers[:velocities] = 
+        JLD2OutputWriter(model, model.velocities,
+                                time_interval = 1.0,
+                                 field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
+                                          dir = ".",
+                                       prefix = "test",
+                                        force = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    u₁ = file["timeseries/u/0"]
+    v₁ = file["timeseries/v/0"]
+    w₁ = file["timeseries/w/0"]
+
+    close(file)
+
+    rm("test.jld2")
+
+    return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
+end
+
+
+
+function jld2_time_averaged_averages(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> 1,
+                v = (x, y, z) -> 2,
+                w = (x, y, z) -> 0,
+                T = (x, y, z) -> 4)
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=5)
+
+    u, v, w = model.velocities
+    T, S = model.tracers
+
+    average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
+                      uv = AveragedField(u * v, dims=(1, 2)),
+                      wT = AveragedField(w * T, dims=(1, 2)))
+
+    simulation.output_writers[:velocities] = JLD2OutputWriter(model, average_fluxes,
+                                                                      time_interval = 4.0,
+                                                              time_averaging_window = 2.0,
+                                                                                dir = ".",
+                                                                             prefix = "test",
+                                                                              force = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    # Data is saved with halos by default
+    wu = file["timeseries/wu/4"][1, 1, 3]
+    uv = file["timeseries/uv/4"][1, 1, 3]
+    wT = file["timeseries/wT/4"][1, 1, 3]
+
+    close(file)
+
+    rm("test.jld2")
+
+    FT = eltype(model.grid)
+
+    return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
 
 @testset "Output writers" begin
@@ -638,14 +749,23 @@ end
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
 
-        @testset "Output writer features [$(typeof(arch))]" begin
-            @info "  Testing output writer features [$(typeof(arch))]..."
+        grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        model = IncompressibleModel(architecture=arch, grid=grid)
 
-            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
-            model = IncompressibleModel(architecture=arch, grid=grid)
+        @testset "WindowedTimeAverage and FieldSlicer [$(typeof(arch))]" begin
+            @info "  Testing WindowedTimeAverage and FieldSlicer [$(typeof(arch))]"
 
-            @test jld2_time_averaging_window(model)
+            #####
+            ##### Field slicing and field output
+            #####
+            
+            @test FieldSlicer() isa FieldSlicer
+            @test instantiate_windowed_time_average(model)
             @test jld2_field_output(model)
+
+            #####
+            ##### Dependency-adding
+            #####
 
             windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
 
@@ -660,10 +780,18 @@ end
 
             # NetCDF dependency test
             netcdf_output_writer =
-                NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc", with_halos=true,
+                NetCDFOutputWriter(model, output, time_interval=4.0, filename="test.nc",
                                    output_attributes=attributes, dimensions=dimensions)
 
             @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
+
+            #####
+            ##### Integrating WindowedTimeAverage into output
+            #####
+
+            @test time_step_with_windowed_time_average(model)
+            @test jld2_time_averaging_window(model)
+            @test jld2_time_averaged_averages(model)
         end
     end
 end
