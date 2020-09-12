@@ -1,72 +1,21 @@
 using Printf
-using OffsetArrays
-using DifferentialEquations
-
-ENV["GKSwstype"] = "nul"
+using Logging
 using Plots
+
+using Oceananigans
+using Oceananigans.Advection
+using Oceananigans.Utils
+
+using Oceananigans.Grids: ynodes, znodes
+
+include("stommel_gyre.jl")
+
+const km = kilometer
+
+ENV["GKSwstype"] = "100"
 pyplot()
 
-include("wind_driven_gyres.jl")
-
-const km = 1000
-const hour = 3600
-const day  = 24hour
-const month = 30day
-
-#####
-##### 2nd-order centered Advection scheme
-#####
-
-abstract type AbstractAdvectionScheme end
-
-struct SecondOrderCentered <: AbstractAdvectionScheme end
-
-@inline advective_flux_x(i, j, u, ϕ, ::SecondOrderCentered) = u[i, j] * (ϕ[i-1, j] + ϕ[i, j]) / 2
-@inline advective_flux_y(i, j, v, ϕ, ::SecondOrderCentered) = v[i, j] * (ϕ[i, j-1] + ϕ[i, j]) / 2
-
-@inline ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) =
-    (advective_flux_x(i+1, j, u, ϕ, scheme) - advective_flux_x(i, j, u, ϕ, scheme)) / Δx
-
-@inline ∂y_advective_flux(i, j, Δy, v, ϕ, scheme) =
-    (advective_flux_y(i, j+1, v, ϕ, scheme) - advective_flux_y(i, j, v, ϕ, scheme)) / Δy
-
-@inline div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme) =
-    ∂x_advective_flux(i, j, Δx, u, ϕ, scheme) + ∂y_advective_flux(i, j, Δy, v, ϕ, scheme)
-
-#####
-##### WENO-5 advection scheme
-#####
-
-include("weno_2d.jl")
-struct WENO5 <: AbstractAdvectionScheme end
-
-@inline ∂x_advective_flux(i, j, Δx, u, ϕ, ::WENO5) =
-    u[i, j] * (weno5_flux_x(i+1, j, ϕ) - weno5_flux_x(i, j, ϕ)) / Δx
-
-@inline ∂y_advective_flux(i, j, Δy, v, ϕ, ::WENO5) =
-    v[i, j] * (weno5_flux_y(i, j+1, ϕ) - weno5_flux_y(i, j, ϕ)) / Δy
-
-#####
-##### Right hand side evaluation of the 2D tracer advection equation
-#####
-
-function advection!(∂ϕ∂t, ϕ, p, t)
-    Nx, Ny, Δx, Hx, Hy, Δy, T = p.Nx, p.Ny, p.Δx, p.Hx, p.Hy, p.Δy, p.T
-    u, v, scheme = p.u, p.v, p.scheme
-
-    # Forward advection for t < T/2, then backward advection for t >= T/2.
-    sign = t < T/2 ? -1 : 1
-
-    # Fill ghost points to enforce no-flux boundary conditions.
-    ϕ[-Hx+1:0,    :] .= ϕ[1:1,   :]
-    ϕ[Nx+1:Nx+Hx, :] .= ϕ[Nx:Nx, :]
-    ϕ[:,    -Hy+1:0] .= ϕ[:,   1:1]
-    ϕ[:, Ny+1:Ny+Hy] .= ϕ[:, Ny:Ny]
-
-    for j in 1:Ny, i in 1:Nx
-        ∂ϕ∂t[i, j] = sign * div_advective_flux(i, j, Δx, Δy, u, v, ϕ, scheme)
-    end
-end
+Logging.global_logger(OceananigansLogger())
 
 #####
 ##### Initial (= final) conditions
@@ -82,51 +31,37 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 ##### Experiment functions
 #####
 
-function setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
-                       u, v, L, τ₀, β, r, A, σˣ, σʸ)
-    Δx = L/Nx
-    Δy = L/Ny
-    Hx = Hy = 3
+function setup_model(Nx, Ny, ϕₐ, advection_scheme; u, v)
+    topology = (Flat, Bounded, Bounded)
+    domain = (x=(0, 1), y=(0, L), z=(0, L))
+    grid = RegularCartesianGrid(topology=topology, size=(1, Nx, Ny), halo=(3, 3, 3); domain...)
 
-    xC = range(Δx/2, L - Δx/2, length=Nx)
-    yC = range(Δy/2, L - Δy/2, length=Ny)
+    model = IncompressibleModel(
+             grid = grid,
+        advection = advection_scheme,
+          tracers = :c,
+         buoyancy = nothing,
+          closure = IsotropicDiffusivity(ν=0, κ=0)
+    )
 
-    xF = range(0, L, length=Nx+1)
-    yF = range(0, L, length=Ny+1)
+    set!(model, v=u, w=v, c=ϕₐ)
 
-    u = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
-    v = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
-    ϕ = OffsetArray(zeros(Nx+2Hx, Ny+2Hy), -Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
-
-    for j in 1:Ny, i in 1:Nx
-        u[i, j] = u_Stommel(xF[i], yF[j], L=L, τ₀=τ₀, β=β, r=r)
-        v[i, j] = v_Stommel(xF[i], yF[j], L=L, τ₀=τ₀, β=β, r=r)
-        ϕ[i, j] = ϕₐ(xC[i], yC[j], L=L, A=A, σˣ=σˣ, σʸ=σʸ)
-    end
-
-    U_max = max(maximum(abs, u), maximum(abs, v))
-    u = u ./ U_max
-    v = v ./ U_max
-
-    Δt = CFL * min(Δx, Δy) / max(maximum(abs, u), maximum(abs, v))
+    v_max = maximum(abs, interior(model.velocities.v))
+    w_max = maximum(abs, interior(model.velocities.w))
+    Δt = CFL * min(grid.Δy, grid.Δz) / max(v_max, w_max)
 
     @info @sprintf("Nx=%d, Ny=%d, L=%.3f km, Δx=%.3f km, Δy=%.3f km, Δt=%.3f hours",
-                   Nx, Ny, L/km, Δx/km, Δy/km, Δt/hour)
+                   Nx, Ny, L/km, grid.Δx/km, grid.Δy/km, Δt/hour)
 
-    tspan = (0.0, T)
-    params = (Nx=Nx, Ny=Ny, Hx=Hx, Hy=Hy, Δx=Δx, Δy=Δy, T=T, u=u, v=v, scheme=scheme)
-    return xC, yC, Δt, ODEProblem(advection!, ϕ, tspan, params)
+    return model, Δt
 end
 
-function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
-                          u, v, L=1000km, τ₀=1, β=1e-11, r=0.04*β*L,
-                          A=1, σˣ=50km, σʸ=50km)
+function create_animation(Nx, Ny, T, CFL, ϕₐ, scheme; u, v)
+    model, Δt = setup_model(Nx, Ny, ϕₐ, scheme, u=u, v=v)
 
-    xC, yC, Δt, prob = setup_problem(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme,
-                                    u=u, v=v, L=L, τ₀=τ₀, β=β, r=r, A=A, σˣ=σˣ, σʸ=σʸ)
-
-    nt = ceil(Int, T/Δt)
-    integrator  = init(prob, time_stepper, adaptive=false, dt=Δt)
+    c = model.tracers.c
+    y, z = ynodes(c), znodes(c)
+    Nt = ceil(Int, T/Δt)
 
     function every(n)
           0 < n <= 128 && return 1
@@ -135,30 +70,52 @@ function create_animation(Nx, Ny, T, CFL, ϕₐ, time_stepper, scheme;
         512 < n        && return 8
     end
 
-    anim = @animate for iter in 0:nt-1
-        iter % 100 == 0 && @info @sprintf("iter = %d/%d\n", iter, nt)
+    reverse_uv = false
 
-        step!(integrator)
+    anim_filename = @sprintf("%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), Nx, CFL)
 
-        title = @sprintf("%s %s N=%d CFL=%.2f", typeof(scheme), typeof(time_stepper), Nx, CFL)
-        contourf(xC ./ L, yC ./ L, reverse(transpose(integrator.u[1:Nx, 1:Ny]), dims=1),
+    anim = @animate for iter in 0:Nt-1
+        iter % 10 == 0 && @info "$anim_filename: iter = $iter/$Nt"
+
+        time_step!(model, Δt, euler = iter == 0)
+
+        if reverse_uv || model.clock.time >= T/2
+            set!(model, v = (x, y, z) -> -u(x, y, z), w = (x, y, z) -> -v(x, y, z))
+            reverse_uv = true
+        end
+
+        title = @sprintf("%s N=%d CFL=%.2f", typeof(scheme), Nx, CFL)
+
+        contourf(y ./ L, z ./ L, dropdims(interior(c), dims=1),
                  title=title, xlabel="x/L", ylabel="y/L",
                  xlims=(0, 1), ylims=(0, 1),
-                 levels=20, fill=:true, color=:balance, clims=(-1.0, 1.0), legend=false,
+                 levels=20, fill=:true, color=:balance, clims=(-1.0, 1.0),
                  aspect_ratio=:equal, dpi=300)
 
-    end every every(nt)
+    end every every(100)
 
-    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), typeof(scheme), typeof(time_stepper), Nx, CFL)
     mp4(anim, anim_filename, fps = 60)
 
     return nothing
 end
 
-Nx = Ny = 64
-L = 1000km
-T = 3month
-CFL = 0.1
-# create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), SecondOrderCentered(), u=u_Stommel, v=v_Stommel)
+L  = 1000km
+τ₀ = 1
+β  = 1e-11
+r  = 0.04*β*L
 
-create_animation(Nx, Ny, T, CFL, ϕ_Gaussian, Tsit5(), WENO5(), u=u_Stommel, v=v_Stommel)
+A  = 1
+σˣ = 50km
+σʸ = 50km
+
+T = 100day
+Nx = Ny = 64
+CFL = 0.2
+
+u = (x, y, z) -> u_Stommel(y, z, L=L, τ₀=τ₀, β=β, r=r) / u_Stommel_max(L=L, τ₀=τ₀, β=β)
+v = (x, y, z) -> v_Stommel(y, z, L=L, τ₀=τ₀, β=β, r=r) / v_Stommel_max(L=L, τ₀=τ₀, β=β)
+ϕ = (x, y, z) -> ϕ_Gaussian(y, z, L=L, A=A, σˣ=σˣ, σʸ=σʸ)
+
+ic_name(::typeof(ϕ)) = ic_name(ϕ_Gaussian)
+
+create_animation(Nx, Ny, T, CFL, ϕ, CenteredSecondOrder(), u=u, v=v)
