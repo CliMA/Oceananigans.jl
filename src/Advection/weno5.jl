@@ -2,7 +2,11 @@
 ##### Implementation of WENO-5 following §5.7 of Durran 2ed, Numerical Methods for Fluid Dynamics.
 #####
 
-# WENO-5 interpolation functions (or stencils)
+struct WENO5 <: AbstractAdvectionScheme end
+
+#####
+##### WENO-5 interpolation functions (or stencils)
+#####
 
 @inline px₀(i, j, k, grid, f) = @inbounds  1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] -  1/6 * f[i+1, j, k]
 @inline px₁(i, j, k, grid, f) = @inbounds -1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] +  1/3 * f[i,   j, k]
@@ -16,7 +20,9 @@
 @inline pz₁(i, j, k, grid, f) = @inbounds -1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] +  1/3 * f[i, j  , k]
 @inline pz₂(i, j, k, grid, f) = @inbounds  1/3 * f[i, j, k-3] - 7/6 * f[i, j, k-2] + 11/6 * f[i, j, k-1]
 
-# WENO-5 weight calculation
+#####
+##### WENO-5 weight calculation
+#####
 
 @inline βx₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * (3f[i-1, j, k] - 4f[i,   j, k] +  f[i+1, j, k])^2
 @inline βx₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k] -  f[i,   j, k])^2
@@ -30,13 +36,17 @@
 @inline βz₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2] -  f[i,   j, k])^2
 @inline βz₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-3] - 2f[i, j, k-2] + f[i, j, k-1])^2 + 1/4 * ( f[i, j, k-3] - 4f[i, j, k-2] + 3f[i, j, k-1])^2
 
-# WENO-5 (stencil size 3) optimal weights
+#####
+##### WENO-5 (stencil size 3) optimal weights
+#####
 
 const C3₀ = 3/10
 const C3₁ = 3/5
 const C3₂ = 1/10
 
-# WENO-5 raw weights
+#####
+##### WENO-5 raw weights
+#####
 
 const ε = 1e-6
 const ƞ = 2  # WENO exponent
@@ -53,7 +63,9 @@ const ƞ = 2  # WENO exponent
 @inline αz₁(i, j, k, grid, f) = C3₁ / (βz₁(i, j, k, grid, f) + ε)^ƞ
 @inline αz₂(i, j, k, grid, f) = C3₂ / (βz₂(i, j, k, grid, f) + ε)^ƞ
 
-# WENO-5 normalized weights
+#####
+##### WENO-5 normalized weights
+#####
 
 @inline function weno5_weights_x(i, j, k, grid, f)
     α₀ = αx₀(i, j, k, grid, f)
@@ -88,7 +100,9 @@ end
     return w₀, w₁, w₂
 end
 
-# WENO-5 flux reconstruction
+#####
+##### WENO-5 flux reconstruction
+#####
 
 @inline function weno5_flux_x(i, j, k, grid, f)
     w₀, w₁, w₂ = weno5_weights_x(i, j, k, grid, f)
@@ -105,13 +119,26 @@ end
     return w₀ * pz₀(i, j, k, grid, f) + w₁ * pz₁(i, j, k, grid, f) + w₂ * pz₂(i, j, k, grid, f)
 end
 
-struct FirstOrderUpwind <: AbstractAdvectionScheme end
-@inline ∂x_advective_flux(i, Δx, u, ϕ, ::FirstOrderUpwind) =
-    max(u[i], 0) * (ϕ[i] - ϕ[i-1])/Δx + min(u[i], 0) * (ϕ[i+1] - ϕ[i])/Δx
+#####
+##### Momentum advection fluxes
+#####
 
-struct SecondOrderCentered <: AbstractAdvectionScheme end
-@inline advective_flux(i, u, ϕ, ::SecondOrderCentered) = u[i] * (ϕ[i-1] + ϕ[i]) / 2
-@inline ∂x_advective_flux(i, Δx, u, ϕ, scheme) =
-    (advective_flux(i+1, u, ϕ, scheme) - advective_flux(i, u, ϕ, scheme)) / Δx
+@inline momentum_flux_uu(i, j, k, grid, ::WENO5, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, grid, u)
+@inline momentum_flux_uv(i, j, k, grid, ::WENO5, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, grid, u)
+@inline momentum_flux_uw(i, j, k, grid, ::WENO5, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, grid, u)
 
-@inline ∂x_advective_flux(i, Δx, u, ϕ, ::WENO5) = u[i] * (weno5_flux(i+1, ϕ) - weno5_flux(i, ϕ)) / Δx
+@inline momentum_flux_vu(i, j, k, grid, ::WENO5, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, grid, v)
+@inline momentum_flux_vv(i, j, k, grid, ::WENO5, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, grid, v)
+@inline momentum_flux_vw(i, j, k, grid, ::WENO5, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, grid, v)
+
+@inline momentum_flux_wu(i, j, k, grid, ::WENO5, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, grid, w)
+@inline momentum_flux_wv(i, j, k, grid, ::WENO5, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, grid, w)
+@inline momentum_flux_ww(i, j, k, grid, ::WENO5, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, grid, w)
+
+#####
+##### Advective tracer fluxes
+#####
+
+@inline advective_tracer_flux_x(i, j, k, grid, ::WENO5, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * weno5_flux_x(i, j, k, grid, c)
+@inline advective_tracer_flux_y(i, j, k, grid, ::WENO5, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * weno5_flux_y(i, j, k, grid, c)
+@inline advective_tracer_flux_z(i, j, k, grid, ::WENO5, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * weno5_flux_z(i, j, k, grid, c)
