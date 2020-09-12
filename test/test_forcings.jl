@@ -16,7 +16,7 @@ function time_step_with_forcing_functions(arch)
 
     forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, euler=true)
 
@@ -35,7 +35,7 @@ function time_step_with_parameterized_forcing(arch)
 
     forcing = ModelForcing(u=Fu, v=Fv, w=Fw)
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, euler=true)
 
@@ -49,7 +49,7 @@ function time_step_with_forcing_functions_sin_exp(arch)
 
     forcing = ModelForcing(u=Fu, T=FT)
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, euler=true)
 
@@ -59,7 +59,7 @@ end
 """ Take one time step with a SimpleForcing forcing function. """
 function time_step_with_simple_forcing(arch)
     u_forcing = SimpleForcing((x, y, z, t) -> sin(x))
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
@@ -68,7 +68,7 @@ end
 """ Take one time step with a SimpleForcing forcing function with parameters. """
 function time_step_with_simple_forcing_parameters(arch)
     u_forcing = SimpleForcing((x, y, z, t, p) -> sin(p.ω * x), parameters=(ω=π,))
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
@@ -77,7 +77,7 @@ end
 """ Take one time step with a SimpleForcing forcing function with parameters. """
 function time_step_with_simple_u_dependent_forcing(arch)
     u_forcing = SimpleForcing((x, y, z, t, u) -> -u, field_in_signature=true)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
@@ -86,7 +86,7 @@ end
 """ Take one time step with a SimpleForcing forcing function with parameters. """
 function time_step_with_simple_tracer_dependent_forcing(arch)
     u_forcing = SimpleForcing((x, y, z, t, u) -> -u, field_in_signature=true)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
@@ -97,7 +97,7 @@ end
 """ Take one time step with a SimpleForcing forcing function with parameters. """
 function time_step_with_simple_field_dependent_forcing_parameters(arch)
     u_forcing = SimpleForcing((x, y, z, t, u, p) -> sin(p.ω * x) * u, parameters=(ω=π,), field_in_signature=true)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=u_forcing))
     time_step!(model, 1, euler=true)
     return true
@@ -113,7 +113,7 @@ function relaxed_time_stepping(arch)
     z_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:z}(center=0.5, width=0.1),
                                       target = π)
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=ModelForcing(u=x_relax, v=y_relax, w=z_relax))
     time_step!(model, 1, euler=true)
