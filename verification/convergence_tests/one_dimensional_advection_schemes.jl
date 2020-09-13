@@ -9,7 +9,7 @@ using Oceananigans.Advection
 include("ConvergenceTests/ConvergenceTests.jl")
 
 using .ConvergenceTests
-using .ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
+using .ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test
 using .ConvergenceTests.OneDimensionalUtils: unpack_errors, defaultcolors, removespines
 
 """ Run advection test for all Nx in resolutions. """
@@ -27,7 +27,7 @@ function run_convergence_test(κ, U, resolutions, advection_scheme)
 
     # Run the tests
     results = [run_test(Nx=Nx, Δt=Δt, advection=advection_scheme, stop_iteration=stop_iteration,
-                        U=U, κ=κ, width=0.1) for Nx in resolutions]
+                        U=U, κ=κ) for Nx in resolutions]
 
     return results
 end
@@ -38,21 +38,20 @@ end
 
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
 
-Nx = Dict(CenteredSecondOrder => 2 .^ (6:8),
-          CenteredFourthOrder => 2 .^ (5:7),
-          WENO5               => 2 .^ (5:7))
+Nx = Dict(CenteredSecondOrder => 2 .^ (4:8),
+          CenteredFourthOrder => 2 .^ (4:8),
+          WENO5               => 2 .^ (4:8))
 
-# results = Dict()
-# for scheme in advection_schemes
-#     t_scheme = typeof(scheme)
-#     results[t_scheme] = run_convergence_test(1e-8, 3, Nx[t_scheme], scheme)
-# end
+results = Dict()
+for scheme in advection_schemes
+    t_scheme = typeof(scheme)
+    results[t_scheme] = run_convergence_test(1e-8, 3, Nx[t_scheme], scheme)
+end
 
 rate_of_convergence(::CenteredSecondOrder) = 2
 rate_of_convergence(::CenteredFourthOrder) = 4
 rate_of_convergence(::WENO5) = 5
 
-@testset "advection convergence" begin
 for (j, scheme) in enumerate(advection_schemes)
     t_scheme = typeof(scheme)
     name = string(t_scheme)
@@ -97,5 +96,4 @@ for (j, scheme) in enumerate(advection_schemes)
     filepath = joinpath(@__DIR__, "figs", "$(name)_one_dimensional_convergence.png")
     savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
     close(fig)
-end
 end
