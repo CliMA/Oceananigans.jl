@@ -19,13 +19,13 @@ def plot_tracer_advection_2d_frame(shape, scheme, N, CFL, n):
     print(f"{dir} frame {n}/{len(ds.time)}")
     
     fig, ax = plt.subplots(figsize=(9, 9))
-    c.plot.pcolormesh(vmin=-1, vmax=1, cmap=cmocean.cm.balance, robust=True)
-    ax.set_title(dir)
+    c.plot.pcolormesh(vmin=-1, vmax=1, cmap=cmocean.cm.balance, extend="both")
+    ax.set_title(f"{shape} {scheme} N={N:d} CFL={CFL:.2f}")
     ax.set_xlabel("y")
     ax.set_ylabel("z")
     ax.set_aspect("equal")
 
-    plt.savefig(f"{dir}/c_{n:03d}.png")
+    plt.savefig(f"{dir}/{dir}_c_{n:03d}.png")
     plt.close()
 
 for shape in shapes:
@@ -46,8 +46,8 @@ for shape in shapes:
 
                 (
                     ffmpeg
-                    .input(f"{dir}/c_%03d.png", framerate=30)
-                    .output(f"{dir}/c.mp4", crf=15, pix_fmt='yuv420p')
+                    .input(f"{dir}/{dir}_c_%03d.png", framerate=30)
+                    .output(f"{dir}/{dir}_c.mp4", crf=15, pix_fmt='yuv420p')
                     .overwrite_output()
                     .run()
                 )
