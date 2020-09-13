@@ -52,6 +52,9 @@ rate_of_convergence(::CenteredSecondOrder) = 2
 rate_of_convergence(::CenteredFourthOrder) = 4
 rate_of_convergence(::WENO5) = 5
 
+fig, ax = subplots()
+
+@testset "advection convergence" begin
 for (j, scheme) in enumerate(advection_schemes)
     t_scheme = typeof(scheme)
     name = string(t_scheme)
@@ -71,8 +74,6 @@ for (j, scheme) in enumerate(advection_schemes)
 
     @test u_L₁ ≈ v_L₁ ≈ cx_L₁ ≈ cy_L₁
     @test u_L∞ ≈ v_L∞ ≈ cx_L∞ ≈ cy_L∞
-    
-    fig, ax = subplots()
 
     common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
     loglog(Ns,  u_L₁; basex=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
@@ -86,14 +87,17 @@ for (j, scheme) in enumerate(advection_schemes)
     loglog(Ns, cy_L∞; basex=2, marker="s", label="\$L_\\infty\$-norm, \$y\$ tracer $name", common_kwargs...)
 
     label = raw"\sim N_x^{-" * "$roc" * raw"}" |> latexstring
-    loglog(Ns, cx_L₁[1] .* (Ns[1] ./ Ns) .^ roc, "k-", basex=2, alpha=0.8, label=label)
+    loglog(Ns, cx_L₁[1] .* (Ns[1] ./ Ns) .^ roc, color=defaultcolors[j], basex=2, alpha=0.8, label=label)
 
     xlabel(L"N_x")
     ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
     removespines("top", "right")
     lgd = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
 
-    filepath = joinpath(@__DIR__, "figs", "$(name)_one_dimensional_convergence.png")
-    savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
-    close(fig)
+    if j == length(advection_schemes)
+        filepath = joinpath(@__DIR__, "figs", "one_dimensional_convergence.png")
+        savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
+        close(fig)
+    end
+end
 end
