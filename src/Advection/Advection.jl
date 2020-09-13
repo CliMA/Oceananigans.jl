@@ -26,6 +26,7 @@ abstract type AbstractAdvectionScheme end
 
 include("centered_second_order.jl")
 include("centered_fourth_order.jl")
+include("weno_reconstruction.jl")
 include("weno5.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
