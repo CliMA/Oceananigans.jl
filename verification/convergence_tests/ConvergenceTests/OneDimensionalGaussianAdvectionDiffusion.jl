@@ -8,12 +8,12 @@ using Oceananigans.Grids
 
 include("analysis.jl")
 
-# Functions that define the forced flow problem
+# Advection and diffusion of a Gaussian.
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
 c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-(x - U * t)^2 / σ(t, κ, t₀))
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
-                  architecture = CPU(), topo = (Periodic, Periodic, Bounded))
+                  architecture = CPU(), topo = (Periodic, Periodic, Bounded), advection = CenteredSecondOrder())
 
     t₀ = width^2 / 4κ
 
@@ -21,14 +21,16 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     ##### Test c and v-advection
     #####
 
-    grid = RegularCartesianGrid(size=(Nx, 1, 1), x=(-1, 1.5), y=(0, 1), z=(0, 1), topology=topo)
+    domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(architecture = architecture,
-                                        grid = grid,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = :c,
-                                     closure = IsotropicDiffusivity(ν=κ, κ=κ))
+                                         grid = grid,
+                                    advection = advection,
+                                     coriolis = nothing,
+                                     buoyancy = nothing,
+                                      tracers = :c,
+                                      closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
