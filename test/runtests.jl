@@ -43,7 +43,6 @@ import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
 using Oceananigans.Diagnostics: run_diagnostic
-using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
 Logging.global_logger(OceananigansLogger())

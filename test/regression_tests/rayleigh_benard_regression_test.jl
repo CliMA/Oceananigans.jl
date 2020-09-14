@@ -114,32 +114,29 @@ function run_rayleigh_benard_regression_test(arch)
         time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(dirname(@__FILE__), "data", prefix * "_iteration$(spinup_steps+test_steps).jld2")
+    final_filename = joinpath(@__DIR__, "data", prefix * "_iteration$(spinup_steps+test_steps).jld2")
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    field_names = ["u", "v", "w", "b", "c"]
+    test_fields = (u = Array(interior(model.velocities.u)),
+                   v = Array(interior(model.velocities.v)),
+                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                   b = Array(interior(model.tracers.b)),
+                   c = Array(interior(model.tracers.c)))
 
-    test_fields = (model.velocities.u.data.parent,
-                   model.velocities.v.data.parent,
-                   model.velocities.w.data.parent,
-                   model.tracers.b.data.parent,
-                   model.tracers.c.data.parent)
+    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
+                      v = Array(interior(solution₁.v, model.grid)),
+                      w = Array(interior(solution₁.w, model.grid)),
+                      b = Array(interior(solution₁.b, model.grid)),
+                      c = Array(interior(solution₁.c, model.grid)))
 
-    correct_fields = (solution₁.u,
-                      solution₁.v,
-                      solution₁.w,
-                      solution₁.b,
-                      solution₁.c)
+    summarize_regression_test(test_fields, correct_fields)
 
-    summarize_regression_test(field_names, test_fields, correct_fields)
-
-    # Now test that the model state matches the regression output.
-    @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
-    @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))
-    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)[:, :, 1:Nz]))
-    @test all(Array(interior(solution₁.b, model.grid)) .≈ Array(interior(model.tracers.b)))
-    @test all(Array(interior(solution₁.c, model.grid)) .≈ Array(interior(model.tracers.c)))
+    @test all(test_fields.u .≈ correct_fields.u)
+    @test all(test_fields.v .≈ correct_fields.v)
+    @test all(test_fields.w .≈ correct_fields.w)
+    @test all(test_fields.b .≈ correct_fields.b)
+    @test all(test_fields.c .≈ correct_fields.c)
 
     return nothing
 end

@@ -1,5 +1,4 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
-using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 
 function pressure_solver_instantiates(FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))

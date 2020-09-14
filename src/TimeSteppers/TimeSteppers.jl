@@ -3,7 +3,6 @@ module TimeSteppers
 export
     AdamsBashforthTimeStepper,
     time_step!,
-    compute_w_from_continuity!,
     tendencies
 
 using CUDA

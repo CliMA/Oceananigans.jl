@@ -1,6 +1,6 @@
-function summarize_regression_test(field_names, fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(field_names, fields, correct_fields)
-        Δ = Array(φ) .- φ_c
+function summarize_regression_test(fields, correct_fields)
+    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
+        Δ = φ .- φ_c
 
         Δ_min      = minimum(Δ)
         Δ_max      = maximum(Δ)
@@ -8,8 +8,11 @@ function summarize_regression_test(field_names, fields, correct_fields)
         Δ_abs_mean = mean(abs, Δ)
         Δ_std      = std(Δ)
 
-        @info(@sprintf("Δ%s: min=%.6g, max=%.6g, mean=%.6g, absmean=%.6g, std=%.6g",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
+        matching    = sum(φ .≈ φ_c)
+        grid_points = length(φ_c)
+
+        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
+                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
     end
 end
 
@@ -19,29 +22,26 @@ function get_fields_from_checkpoint(filename)
     tracers = keys(file["tracers"])
     tracers = Tuple(Symbol(c) for c in tracers)
 
-    velocity_fields = (
-                       u = file["velocities/u/data"],
+    velocity_fields = (u = file["velocities/u/data"],
                        v = file["velocities/v/data"],
-                       w = file["velocities/w/data"],
-                      )
+                       w = file["velocities/w/data"])
 
-    tracer_fields = NamedTuple{tracers}(Tuple(file["tracers/$c/data"] for c in tracers))
+    tracer_fields =
+        NamedTuple{tracers}(Tuple(file["tracers/$c/data"] for c in tracers))
 
-    current_tendency_velocity_fields = (
-                                        u = file["timestepper/Gⁿ/u/data"],
+    current_tendency_velocity_fields = (u = file["timestepper/Gⁿ/u/data"],
                                         v = file["timestepper/Gⁿ/v/data"],
-                                        w = file["timestepper/Gⁿ/w/data"],
-                                       )
+                                        w = file["timestepper/Gⁿ/w/data"])
 
-    current_tendency_tracer_fields = NamedTuple{tracers}(Tuple(file["timestepper/Gⁿ/$c/data"] for c in tracers))
+    current_tendency_tracer_fields =
+        NamedTuple{tracers}(Tuple(file["timestepper/Gⁿ/$c/data"] for c in tracers))
 
-    previous_tendency_velocity_fields = (
-                                         u = file["timestepper/G⁻/u/data"],
+    previous_tendency_velocity_fields = (u = file["timestepper/G⁻/u/data"],
                                          v = file["timestepper/G⁻/v/data"],
-                                         w = file["timestepper/G⁻/w/data"],
-                                        )
+                                         w = file["timestepper/G⁻/w/data"])
 
-    previous_tendency_tracer_fields = NamedTuple{tracers}(Tuple(file["timestepper/G⁻/$c/data"] for c in tracers))
+    previous_tendency_tracer_fields =
+        NamedTuple{tracers}(Tuple(file["timestepper/G⁻/$c/data"] for c in tracers))
 
     close(file)
 
