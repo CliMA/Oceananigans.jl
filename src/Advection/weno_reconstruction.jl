@@ -42,3 +42,13 @@ function optimal_weights(k)
     Γ = C \ b
     return rationalize.(Γ, tol=√eps(Float64))
 end
+
+using SymPy
+
+x(j) = j
+
+ℓ(ξ, j, k, r) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k if m != j)
+
+L(ξ, k, r, ϕ) = sum(ℓ(ξ, j, k, r) * ϕ[j+1] for j in 0:k)
+
+β(ξ, k, r) = sum(integrate(diff(L(ξ, k, r, ϕ), ξ, l)^2, (ξ, -1/2, 1/2)) for l in 1:k)
