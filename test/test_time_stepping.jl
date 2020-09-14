@@ -32,10 +32,10 @@ end
 
 function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
-    
+
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
-    
+
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
     time_step!(model, 1, euler=true)
 
@@ -45,7 +45,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
-    
+
     @test all(interior(model.velocities.u) .≈ 0)
     @test all(interior(model.velocities.v) .≈ 0)
     @test all(interior(model.velocities.w) .≈ 0)
@@ -53,52 +53,6 @@ function run_first_AB2_time_step_tests(arch, FT)
     @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
-end
-
-"""
-    This test ensures that when we compute w from the continuity equation that the full velocity field
-    is divergence-free.
-"""
-function compute_w_from_continuity(arch, FT)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 16, 16, 16
-
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    U = VelocityFields(arch, grid)
-    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
-
-    interior(U.u) .= rand(FT, Nx, Ny, Nz)
-    interior(U.v) .= rand(FT, Nx, Ny, Nz)
-
-    state = (velocities=datatuple(U), tracers=(), diffusivities=nothing)
-    fill_halo_regions!(U, arch, nothing, state)
-
-    event = launch!(arch, grid, :xy,
-                    _compute_w_from_continuity!, (u=U.u.data, v=U.v.data, w=U.w.data), grid,
-                    dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
-
-    fill_halo_regions!(U, arch, nothing, state)
-
-    event = launch!(arch, grid, :xyz,
-                    divergence!, grid, U.u.data, U.v.data, U.w.data, div_U.data,
-                    dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
-
-    # Set div_U to zero at the top because the initial velocity field is not
-    # divergence-free so we end up some divergence at the top if we don't do this.
-    interior(div_U)[:, :, Nz] .= zero(FT)
-
-    min_div = minimum(interior(div_U))
-    max_div = maximum(interior(div_U))
-    sum_div = sum(interior(div_U))
-    abs_sum_div = sum(abs.(interior(div_U)))
-    @info "Velocity divergence after recomputing w [$(typeof(arch)), $FT]: " *
-          "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
-
-    return all(isapprox.(interior(div_U), 0, atol=5*eps(FT)))
 end
 
 """
@@ -130,16 +84,16 @@ function incompressible_in_time(arch, FT, Nt)
 
     min_div = minimum(interior(div_U))
     max_div = maximum(interior(div_U))
+    max_abs_div = maximum(abs, interior(div_U))
     sum_div = sum(interior(div_U))
-    abs_sum_div = sum(abs.(interior(div_U)))
+    sum_abs_div = sum(abs, interior(div_U))
     @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
-          "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
+          "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
     # Nx*Ny*Nz*eps(FT) but it's much higher than the observed abs_sum_div.
-    FT == Float64 && return isapprox(abs_sum_div, 0, atol=5e-16)
-    FT == Float32 && return isapprox(abs_sum_div, 0, atol=1e-7)
+    return isapprox(max_abs_div, 0, atol=5e-8)
 end
 
 """
@@ -178,11 +132,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     @info "Tracer conservation after $Nt time steps [$(typeof(arch)), $FT]: " *
           "⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
-    # Interestingly, it's very well conserved (almost to machine epsilon) for
-    # Float64, but not as close for Float32... But it does seem constant in time
-    # for Float32 so at least it is bounded.
-    FT == Float64 && return isapprox(Tavg, Tavg0, rtol=2e-14)
-    FT == Float32 && return isapprox(Tavg, Tavg0, rtol=2e-4)
+    return isapprox(Tavg, Tavg0, atol=Nx*Ny*Nz*eps(FT))
 end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
@@ -250,13 +200,6 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
         @info "  Testing 2nd-order Adams-Bashforth..."
         for arch in archs, FT in float_types
             run_first_AB2_time_step_tests(arch, FT)
-        end
-    end
-
-    @testset "Recomputing w from continuity" begin
-        @info "  Testing recomputing w from continuity..."
-        for arch in archs, FT in float_types
-            @test compute_w_from_continuity(arch, FT)
         end
     end
 
