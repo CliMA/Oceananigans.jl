@@ -12,43 +12,67 @@ Shu (2009) "High Order Weighted Essentially Nonoscillatory Schemes for Convectio
     DOI: https://doi.org/10.1137/070679065
 """
 
-# WENO weights on a uniform grid.
-# Equation (2.21) from Shu (1998) lecture notes.
+#####
+##### ENO reconstruction coefficients and WENO weights on a uniform grid
+##### Equation (2.21) from the Shu (1998) lecture notes.
+#####
 
-# Product in the numerator
-Up(r, k, l, m) = prod([r-q+1 for q in 0:k if q ∉ [m, l]])
+"""
+    UΠ(k, r, m, l)
 
-# Sum in the numerator
-Us(r, k, m) = sum([Up(r, k, l, m) for l in 0:k if l != m])
+Return the product in the numerator of equation (2.21) of Shu (1998) for the `l`th
+term of the `m`th Lagrange basis polynomial of an ENO reconstruction scheme with
+order `k` and left shift `r`.
+"""
+UΠ(k, r, l, m) = prod([r-q+1 for q in 0:k if q ∉ (m, l)])
 
-# Denominator
+"""
+    U(k, r, m)
+
+Return the numerator in equation (2.21) of Shu (1998) for the `m`th Lagrange basis
+polynomial of an ENO reconstruction scheme with order `k` and left shift `r`.
+"""
+U(k, r, m) = sum([UΠ(k, r, m, l) for l in 0:k if l != m])
+
+"""
+    D(k, m)
+
+Return the denominator in equation (2.21) of Shu (1998) for the `m`th Lagrange basis
+polynomial of an ENO reconstruction scheme with order `k`.
+"""
 D(k, m) = prod([m - l for l in 0:k if l != m])
 
-# Individual coefficient
-c_rj(k, r, j) = sum([Us(r, k, m)//D(k, m) for m in j+1:k])
+"""
+    eno_coefficient(k, r)
 
-# Array of coefficients
-coefficients(k, r) = [c_rj(k, r, j) for j in 0:k-1]
+Return the `j`th ENO coefficient used to reconstruct a value at the point x(i+½) with
+order of accuracy `k` (stencil size) and left shift `r`.
+"""
+eno_coefficient(k, r, j) = sum([U(k, r, m)//D(k, m) for m in j+1:k])
 
-# Optimal WENO reconstruction weights that reproduce the interpolant of order 2k-1.
-function optimal_weights(k)
+"""
+    eno_coefficients(k, r)
+
+Return an array of ENO coefficients to reconstruct a value at the point x(i+½) with
+order of accuracy `k` (stencil size) and left shift `r`. Note that when combined
+these produce a WENO scheme of order 2k-1.
+"""
+eno_coefficients(k, r) = [eno_coefficient(k, r, j) for j in 0:k-1]
+
+"""
+    optimal_weno_weights(k)
+
+Return the optimal weights that can be used to weigh ENO reconstruction schemes of
+order `k` to produce a WENO scheme of order 2k-1.
+"""
+function optimal_weno_weights(k)
     C = zeros(Rational, 2k-1, k)
-    b = coefficients(2k-1, k-1)
+    b = eno_coefficients(2k-1, k-1)
 
     for n in 0:k-1
-        C[n+1:n+k, n+1] .= coefficients(k, k-1-n)
+        C[n+1:n+k, n+1] .= eno_coefficients(k, k-1-n)
     end
 
     Γ = C \ b
     return rationalize.(Γ, tol=√eps(Float64))
 end
-
-using SymPy
-
-x(j) = j
-
-ℓ(ξ, j, k, r) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k if m != j)
-
-L(ξ, k, r, ϕ) = sum(ℓ(ξ, j, k, r) * ϕ[j+1] for j in 0:k)
-
-β(ξ, k, r) = sum(integrate(diff(L(ξ, k, r, ϕ), ξ, l)^2, (ξ, -1/2, 1/2)) for l in 1:k)
