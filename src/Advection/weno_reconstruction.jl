@@ -1,6 +1,9 @@
+using SymPy
+
 """
 WENO reconstruction schemes following the lecture notes by Shu (1998) and
-the review article by Shu (2009).
+the review article by Shu (2009). WENO smoothness indicators are due to
+Jiang & Shu (1996). 
 
 Shu (1998), "Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory
     Schemes for Hyperbolic Conservation Laws", In: Advanced Numerical Approximation
@@ -10,6 +13,10 @@ Shu (1998), "Essentially Non-Oscillatory and Weighted Essentially Non-Oscillator
 Shu (2009) "High Order Weighted Essentially Nonoscillatory Schemes for Convection
     Dominated Problems", SIAM Review 51(1), pp. 82–126.
     DOI: https://doi.org/10.1137/070679065
+
+Jiang & Shu (1996) "Efficient Implementation of Weighted ENO Schemes", Journal of
+    Computational Physics 126, pp. 202–228.
+    DOI: https://doi.org/10.1006/jcph.1996.0130
 """
 
 #####
@@ -76,3 +83,35 @@ function optimal_weno_weights(k)
     Γ = C \ b
     return rationalize.(Γ, tol=√eps(Float64))
 end
+
+#####
+##### Jiang & Shu (1996) WENO smoothness indicators β
+##### See equation (2.61) of Shu (1998).
+#####
+
+x(j) = j  # Assume uniform grid for now.
+
+"""
+    ℓ(ξ, k, r, j)
+
+Return a symbolic expression for the `j`th Lagrange basis polynomial ℓ(ξ) for an
+ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
+"""
+ℓ(ξ, k, r, j) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k if m != j)
+
+"""
+    L(ξ, k, r, ϕ)
+
+Return a symbolic expression for the interpolating Lagrange polynomial p(ξ) for an
+ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
+"""
+p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+r+1] for j in 0:k)
+
+"""
+    β(k, r, ϕ)
+
+Return a symbolic expression for the smoothness indicator β for an ENO reconstruction
+scheme of order `k` and left shift `r` (WENO scheme of order 2k-1). The field values
+are represented by the symbols in `ϕ` which should have length 2k-1.
+"""
+β(k, r, ϕ) = sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k)
