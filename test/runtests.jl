@@ -90,6 +90,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_surface_waves.jl")
+            include("test_weno_reconstruction.jl")
         end
     end
 
