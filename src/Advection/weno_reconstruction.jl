@@ -105,13 +105,16 @@ ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 Return a symbolic expression for the interpolating Lagrange polynomial p(ξ) for an
 ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 """
-p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+r+1] for j in 0:k)
+p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k)
 
 """
     β(k, r, ϕ)
 
 Return a symbolic expression for the smoothness indicator β for an ENO reconstruction
 scheme of order `k` and left shift `r` (WENO scheme of order 2k-1). The field values
-are represented by the symbols in `ϕ` which should have length 2k-1.
+are represented by the symbols in `ϕ` which should have length k.
 """
-β(k, r, ϕ) = sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k)
+function β(k, r, ϕ)
+    @vars ξ
+    return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k)
+end
