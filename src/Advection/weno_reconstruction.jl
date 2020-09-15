@@ -97,7 +97,7 @@ x(j) = j  # Assume uniform grid for now.
 Return a symbolic expression for the `j`th Lagrange basis polynomial ℓ(ξ) for an
 ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 """
-ℓ(ξ, k, r, j) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k if m != j)
+ℓ(ξ, k, r, j) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k-1 if m != j)
 
 """
     L(ξ, k, r, ϕ)
@@ -105,7 +105,7 @@ ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 Return a symbolic expression for the interpolating Lagrange polynomial p(ξ) for an
 ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 """
-p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k)
+p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k-1)
 
 """
     β(k, r, ϕ)
@@ -116,5 +116,5 @@ are represented by the symbols in `ϕ` which should have length k.
 """
 function β(k, r, ϕ)
     @vars ξ
-    return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k)
+    return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k-1)
 end

@@ -102,9 +102,9 @@ end
             ϕ₁ = ϕ[2:4]
             ϕ₂ = ϕ[3:5]
 
-            @test β(2, 0, reverse(ϕ₀)) |> expand == β₀_correct
-            @test β(2, 1, reverse(ϕ₁)) |> expand == β₁_correct
-            @test β(2, 2, reverse(ϕ₂)) |> expand == β₂_correct
+            @test β(3, 0, reverse(ϕ₀)) |> expand == β₀_correct
+            @test β(3, 1, reverse(ϕ₁)) |> expand == β₁_correct
+            @test β(3, 2, reverse(ϕ₂)) |> expand == β₂_correct
         end
     end
 end
