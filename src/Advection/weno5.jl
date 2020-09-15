@@ -1,43 +1,43 @@
 #####
-##### Implementation of WENO-5 following §5.7 of Durran 2ed, Numerical Methods for Fluid Dynamics.
+##### Weighted Essentially Non-Oscillatory (WENO) scheme of order 5
 #####
 
 struct WENO5 <: AbstractAdvectionScheme end
 
 #####
-##### WENO-5 interpolation functions (or stencils)
+##### ENO interpolants of size 3
 #####
 
-@inline px₀(i, j, k, grid, f) = @inbounds  1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] -  1/6 * f[i+1, j, k]
-@inline px₁(i, j, k, grid, f) = @inbounds -1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] +  1/3 * f[i,   j, k]
-@inline px₂(i, j, k, grid, f) = @inbounds  1/3 * f[i-3, j, k] - 7/6 * f[i-2, j, k] + 11/6 * f[i-1, j, k]
+@inline px₀(i, j, k, grid, f) = @inbounds  11/6 * f[i,   j, k] - 7/6 * f[i+1, j, k] + 1/3 * f[i+2, j, k]
+@inline px₁(i, j, k, grid, f) = @inbounds   1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] - 1/6 * f[i+1, j, k]
+@inline px₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] + 1/3 * f[i,   j, k]
 
-@inline py₀(i, j, k, grid, f) = @inbounds  1/3 * f[i, j-1, k] + 5/6 * f[i, j,   k] -  1/6 * f[i, j+1, k]
-@inline py₁(i, j, k, grid, f) = @inbounds -1/6 * f[i, j-2, k] + 5/6 * f[i, j-1, k] +  1/3 * f[i, j  , k]
-@inline py₂(i, j, k, grid, f) = @inbounds  1/3 * f[i, j-3, k] - 7/6 * f[i, j-2, k] + 11/6 * f[i, j-1, k]
+@inline py₀(i, j, k, grid, f) = @inbounds  11/6 * f[i, j,   k] - 7/6 * f[i, j+1, k] + 1/3 * f[i, j+2, k]
+@inline py₁(i, j, k, grid, f) = @inbounds   1/3 * f[i, j-1, k] + 5/6 * f[i, j,   k] - 1/6 * f[i, j+1, k]
+@inline py₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j-2, k] + 5/6 * f[i, j-1, k] + 1/3 * f[i, j,   k]
 
-@inline pz₀(i, j, k, grid, f) = @inbounds  1/3 * f[i, j, k-1] + 5/6 * f[i, j,   k] -  1/6 * f[i, j, k+1]
-@inline pz₁(i, j, k, grid, f) = @inbounds -1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] +  1/3 * f[i, j  , k]
-@inline pz₂(i, j, k, grid, f) = @inbounds  1/3 * f[i, j, k-3] - 7/6 * f[i, j, k-2] + 11/6 * f[i, j, k-1]
-
-#####
-##### WENO-5 weight calculation
-#####
-
-@inline βx₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * (3f[i-1, j, k] - 4f[i,   j, k] +  f[i+1, j, k])^2
-@inline βx₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k] -  f[i,   j, k])^2
-@inline βx₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i-3, j, k] - 2f[i-2, j, k] + f[i-1, j, k])^2 + 1/4 * ( f[i-3, j, k] - 4f[i-2, j, k] + 3f[i-1, j, k])^2
-
-@inline βy₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-1, k] - 2f[i,   j, k] + f[i, j+1, k])^2 + 1/4 * (3f[i, j-1, k] - 4f[i,   j, k] +  f[i, j+1, k])^2
-@inline βy₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-2, k] - 2f[i, j-1, k] + f[i,   j, k])^2 + 1/4 * ( f[i, j-2, k] -  f[i,   j, k])^2
-@inline βy₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-3, k] - 2f[i, j-2, k] + f[i, j-1, k])^2 + 1/4 * ( f[i, j-3, k] - 4f[i, j-2, k] + 3f[i, j-1, k])^2
-
-@inline βz₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-1] - 2f[i,   j, k] + f[i, j, k+1])^2 + 1/4 * (3f[i, j, k-1] - 4f[i,   j, k] +  f[i, j, k+1])^2
-@inline βz₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2] -  f[i,   j, k])^2
-@inline βz₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-3] - 2f[i, j, k-2] + f[i, j, k-1])^2 + 1/4 * ( f[i, j, k-3] - 4f[i, j, k-2] + 3f[i, j, k-1])^2
+@inline pz₀(i, j, k, grid, f) = @inbounds  11/6 * f[i, j,   k] - 7/6 * f[i, j, k+1] + 1/3 * f[i, j, k+2]
+@inline pz₁(i, j, k, grid, f) = @inbounds   1/3 * f[i, j, k-1] + 5/6 * f[i, j,   k] - 1/6 * f[i, j, k+1]
+@inline pz₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] + 1/3 * f[i, j,   k]
 
 #####
-##### WENO-5 (stencil size 3) optimal weights
+##### Jiang & Shu (1996) WENO smoothness indicators
+#####
+
+@inline βx₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i,   j, k] - 2f[i+1, j, k] + f[i+2, j, k])^2 + 1/4 * (3f[i,   j, k] - 4f[i+1, j, k] +  f[i+2, j, k])^2
+@inline βx₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * ( f[i-1, j, k]                 -  f[i+1, j, k])^2
+@inline βx₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k] - 4f[i-1, j, k] + 3f[i,   j, k])^2
+
+@inline βy₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j,   k] - 2f[i, j+1, k] + f[i, j+2, k])^2 + 1/4 * (3f[i, j,   k] - 4f[i, j+1, k] +  f[i, j+2, k])^2
+@inline βy₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-1, k] - 2f[i, j,   k] + f[i, j+1, k])^2 + 1/4 * ( f[i, j-1, k]                 -  f[i, j+1, k])^2
+@inline βy₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-2, k] - 2f[i, j-1, k] + f[i, j,   k])^2 + 1/4 * ( f[i, j-2, k] - 4f[i, j-1, k] + 3f[i, j,   k])^2
+
+@inline βz₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j,   k] - 2f[i, j, k+1] + f[i, j, k+2])^2 + 1/4 * (3f[i, j,   k] - 4f[i, j, k+1] +  f[i, j, k+2])^2
+@inline βz₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-1] - 2f[i, j,   k] + f[i, j, k+1])^2 + 1/4 * ( f[i, j, k-1]                 -  f[i, j, k+1])^2
+@inline βz₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2] - 4f[i, j, k-1] + 3f[i, j,   k])^2
+
+#####
+##### WENO-5 optimal weights
 #####
 
 const C3₀ = 3/10
