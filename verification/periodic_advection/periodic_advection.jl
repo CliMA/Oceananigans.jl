@@ -9,7 +9,7 @@ using Oceananigans.Grids: xnodes
 
 ENV["GKSwstype"] = "100"
 
-Logging.global_logger(OceananigansLogger())
+ 
 
 #####
 ##### Initial conditions and analytic solutions
@@ -42,7 +42,7 @@ function setup_model(N, L, U, ϕₐ, advection_scheme)
           closure = IsotropicDiffusivity(ν=0, κ=0)
     )
 
-    set!(model, u = U, c = (x, y, z) -> ϕₐ(x, 0; L=L))
+    set!(model, u = U, v = (x, y, z) -> ϕₐ(x, 0; L=L), c = (x, y, z) -> ϕₐ(x, 0; L=L))
 
     return model
 end
@@ -50,7 +50,7 @@ end
 function create_animation(N, L, CFL, ϕₐ, advection_scheme; U=1.0, T=2.0)
     model = setup_model(N, L, U, ϕₐ, advection_scheme)
     
-    c = model.tracers.c
+    v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
     Δt = CFL * model.grid.Δx / U
     Nt = ceil(Int, T/Δt)
@@ -73,7 +73,8 @@ function create_animation(N, L, CFL, ϕₐ, advection_scheme; U=1.0, T=2.0)
 
         title = @sprintf("%s N=%d CFL=%.2f", typeof(advection_scheme), N, CFL)
         plot(x, ϕ_analytic, lw=2, label="analytic", title=title, xlims=(-L/2, L/2), ylims=(-0.2, 1.2), dpi=200)
-        plot!(x, interior(c)[:], lw=2, label="Oceananigans")
+        plot!(x, interior(v)[:], ls=:solid, lw=2, label="Oceananigans v")
+        plot!(x, interior(c)[:], ls=:dot,   lw=2, label="Oceananigans c")
     end every every(Nt)
 
     mp4(anim, anim_filename, fps = 15)
@@ -82,14 +83,14 @@ function create_animation(N, L, CFL, ϕₐ, advection_scheme; U=1.0, T=2.0)
 end
 
 #####
-##### Run 1D tracer advection experiments
+##### Run 1D periodic advection experiments
 #####
 
 L = 1
 ϕs = (ϕ_Gaussian, ϕ_Square)
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
 Ns = [16, 32, 64]
-CFLs = (0.2, 0.5, 1.0)
+CFLs = (0.05, 0.3)
 
 for ϕ in ϕs, scheme in advection_schemes, N in Ns, CFL in CFLs
     @info @sprintf("Creating two-revolution animation [%s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), typeof(scheme), N, CFL)

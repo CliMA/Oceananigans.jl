@@ -55,7 +55,7 @@ end
             @test eno_coefficients(4, -1) == [25//12, -23//12,  13//12, -1//4 ]
             @test eno_coefficients(4,  0) == [ 1//4,   13//12,  -5//12,  1//12]
             @test eno_coefficients(4,  1) == [-1//12,   7//12,   7//12, -1//12]
-            @test eno_coefficients(4,  -2) == [ 1//12,  -5//12,  13//12,  1//4 ]
+            @test eno_coefficients(4,  2) == [ 1//12,  -5//12,  13//12,  1//4 ]
             @test eno_coefficients(4,  3) == [-1//4,   13//12, -23//12, 25//12]
         end
 
