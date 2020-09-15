@@ -5,31 +5,43 @@ using Dates: AbstractTime, Nanosecond
 """
     Clock{T<:Number}
 
-    Clock{T}(time, iteration)
 
 Keeps track of the current `time` and `iteration` number. The `time::T` can be either a number of a `DateTime` object.
 """
 mutable struct Clock{T}
          time :: T
     iteration :: Int
+        stage :: Int
 end
 
-Clock(; time, iteration=0) = Clock(time, iteration)
+"""
+    Clock(time, iteration=0, stage=1)
 
-Base.show(io::IO, c::Clock{FT}) where FT =
-    println(io, "Clock{$FT}: time = ", prettytime(c.time), ", iteration = ", c.iteration)
+Returns an initialized `Clock`.
+"""
+Clock(; time, iteration=0, stage=1) = Clock(time, iteration, stage)
 
-function tick!(clock, Δt)
-    clock.time += Δt
-    clock.iteration += 1
-    return nothing
-end
+Base.show(io::IO, c::Clock{T}) where T =
+    println(io, "Clock{$T}: time = ", prettytime(c.time),
+                    ", iteration = ", c.iteration,
+                        ", stage = ", c.stage)
 
-function tick!(clock::Clock{<:AbstractTime}, Δt)
-    clock.time += Nanosecond(round(Int, 1e9 * Δt))
-    clock.iteration += 1
+tick_time!(clock, Δt) = clock.time += Δt
+tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
+    
+function tick!(clock, Δt; stage=false)
+
+    tick_time!(clock, Δt)
+
+    if stage # tick a stage update
+        clock.stage += 1
+    else # tick an iteration and reset stage
+        clock.iteration += 1
+        clock.stage = 1
+    end
+
     return nothing
 end
 
 "Adapt `Clock` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, clock::Clock) = (time=clock.time, iteration=clock.iteration)
+Adapt.adapt_structure(to, clock::Clock) = (time=clock.time, iteration=clock.iteration, stage=clock.stage)

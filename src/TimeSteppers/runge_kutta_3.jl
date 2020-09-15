@@ -57,9 +57,9 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    first_substep_Δt  = γ¹ * Δt
-    second_substep_Δt = (γ² + ζ²) * Δt
-    third_substep_Δt  = (γ³ + ζ³) * Δt
+    first_stage_Δt  = γ¹ * Δt
+    second_stage_Δt = (γ² + ζ²) * Δt
+    third_stage_Δt  = (γ³ + ζ³) * Δt
 
     arch = model.architecture
     grid = model.grid
@@ -70,7 +70,7 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
                    model.timestepper.Gⁿ, model.timestepper.G⁻)
 
     #
-    # First substep
+    # First stage
     #
     
     precomputations!(diffusivities, pressures, velocities, tracers, model)
@@ -79,13 +79,13 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
     rk3_substep!(velocities, tracers, arch, grid, Δt, γ¹, nothing, Gⁿ, nothing)
 
-    calculate_pressure_correction!(pressures.pNHS, first_substep_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, first_substep_Δt, pressures.pNHS)
+    calculate_pressure_correction!(pressures.pNHS, first_stage_Δt, velocities, model)
+    pressure_correct_velocities!(velocities, arch, grid, first_stage_Δt, pressures.pNHS)
 
-    tick!(model.clock, first_substep_Δt)
+    tick!(model.clock, first_stage_Δt; stage=true)
 
     #
-    # Second substep
+    # Second stage
     #
     
     precomputations!(diffusivities, pressures, velocities, tracers, model)
@@ -95,13 +95,13 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
     rk3_substep!(velocities, tracers, arch, grid, Δt, γ², ζ², Gⁿ, G⁻)
 
-    calculate_pressure_correction!(pressures.pNHS, second_substep_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, second_substep_Δt, pressures.pNHS)
+    calculate_pressure_correction!(pressures.pNHS, second_stage_Δt, velocities, model)
+    pressure_correct_velocities!(velocities, arch, grid, second_stage_Δt, pressures.pNHS)
 
-    tick!(model.clock, second_substep_Δt)
+    tick!(model.clock, second_stage_Δt; stage=true)
 
     #
-    # Third substep
+    # Third stage
     #
     
     precomputations!(diffusivities, pressures, velocities, tracers, model)
@@ -111,10 +111,10 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
     rk3_substep!(velocities, tracers, arch, grid, Δt, γ³, ζ³, Gⁿ, G⁻)
 
-    calculate_pressure_correction!(pressures.pNHS, third_substep_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, third_substep_Δt, pressures.pNHS)
+    calculate_pressure_correction!(pressures.pNHS, third_stage_Δt, velocities, model)
+    pressure_correct_velocities!(velocities, arch, grid, third_stage_Δt, pressures.pNHS)
 
-    tick!(model.clock, third_substep_Δt)
+    tick!(model.clock, third_stage_Δt)
 
     return nothing
 end
