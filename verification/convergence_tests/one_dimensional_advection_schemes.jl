@@ -9,7 +9,7 @@ using Oceananigans.Advection
 include("ConvergenceTests/ConvergenceTests.jl")
 
 using .ConvergenceTests
-using .ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test
+using .ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
 using .ConvergenceTests.OneDimensionalUtils: unpack_errors, defaultcolors, removespines
 
 """ Run advection test for all Nx in resolutions. """
@@ -33,15 +33,19 @@ end
 #####
 
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
+# advection_schemes = (WENO5(),)
 
-Nx = Dict(CenteredSecondOrder => 2 .^ (3:12),
-          CenteredFourthOrder => 2 .^ (3:12),
-          WENO5               => 2 .^ (3:12))
+U = 3
+κ = 1e-8
+
+Nx = Dict(CenteredSecondOrder => 2 .^ (7:10),
+          CenteredFourthOrder => 2 .^ (7:10),
+          WENO5               => 2 .^ (7:10))
 
 results = Dict()
 for scheme in advection_schemes
     t_scheme = typeof(scheme)
-    results[t_scheme] = run_convergence_test(0, 3, Nx[t_scheme], scheme)
+    results[t_scheme] = run_convergence_test(κ, U, Nx[t_scheme], scheme)
 end
 
 rate_of_convergence(::CenteredSecondOrder) = 2
@@ -50,7 +54,6 @@ rate_of_convergence(::WENO5) = 5
 
 fig, ax = subplots()
 
-@testset "advection convergence" begin
 for (j, scheme) in enumerate(advection_schemes)
     t_scheme = typeof(scheme)
     name = string(t_scheme)
@@ -59,17 +62,23 @@ for (j, scheme) in enumerate(advection_schemes)
     
     u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞ = unpack_errors(results[typeof(scheme)])
 
-    test_rate_of_convergence(u_L₁,  Ns, expected=-roc, atol=Inf, name=name*" u_L₁")
-    test_rate_of_convergence(v_L₁,  Ns, expected=-roc, atol=Inf, name=name*" v_L₁")
-    test_rate_of_convergence(cx_L₁, Ns, expected=-roc, atol=Inf, name=name*" cx_L₁")
-    test_rate_of_convergence(cy_L₁, Ns, expected=-roc, atol=Inf, name=name*" cy_L₁")
-    test_rate_of_convergence(u_L∞,  Ns, expected=-roc, atol=Inf, name=name*" u_L∞")
-    test_rate_of_convergence(v_L∞,  Ns, expected=-roc, atol=Inf, name=name*" v_L∞")
-    test_rate_of_convergence(cx_L∞, Ns, expected=-roc, atol=Inf, name=name*" cx_L∞")
-    test_rate_of_convergence(cy_L∞, Ns, expected=-roc, atol=Inf, name=name*" cy_L∞")
+    atol = t_scheme == CenteredSecondOrder ? 0.05 :
+           t_scheme == CenteredFourthOrder ? 0.12 :
+           t_scheme == WENO5               ? 0.40 : Inf
 
-    @test u_L₁ ≈ v_L₁ ≈ cx_L₁ ≈ cy_L₁
-    @test u_L∞ ≈ v_L∞ ≈ cx_L∞ ≈ cy_L∞
+    test_rate_of_convergence(u_L₁,  Ns, expected=-roc, atol=atol, name=name*" u_L₁")
+    test_rate_of_convergence(v_L₁,  Ns, expected=-roc, atol=atol, name=name*" v_L₁")
+    test_rate_of_convergence(cx_L₁, Ns, expected=-roc, atol=atol, name=name*" cx_L₁")
+    test_rate_of_convergence(cy_L₁, Ns, expected=-roc, atol=atol, name=name*" cy_L₁")
+    test_rate_of_convergence(u_L∞,  Ns, expected=-roc, atol=atol, name=name*" u_L∞")
+    test_rate_of_convergence(v_L∞,  Ns, expected=-roc, atol=atol, name=name*" v_L∞")
+    test_rate_of_convergence(cx_L∞, Ns, expected=-roc, atol=atol, name=name*" cx_L∞")
+    test_rate_of_convergence(cy_L∞, Ns, expected=-roc, atol=atol, name=name*" cy_L∞")
+
+    @test  u_L₁ ≈  v_L₁
+    @test cx_L₁ ≈ cy_L₁
+    @test  u_L∞ ≈  v_L∞
+    @test cx_L∞ ≈ cy_L∞
 
     common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
     loglog(Ns,  u_L₁; basex=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
@@ -95,5 +104,4 @@ for (j, scheme) in enumerate(advection_schemes)
         savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
         close(fig)
     end
-end
 end

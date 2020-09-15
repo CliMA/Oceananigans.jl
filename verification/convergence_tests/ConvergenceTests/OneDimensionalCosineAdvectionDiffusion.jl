@@ -22,6 +22,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     grid = RegularCartesianGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(architecture = architecture,
+                                 timestepper = :RungeKutta3,
                                         grid = grid,
                                    advection = advection,
                                     coriolis = nothing,
@@ -58,6 +59,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     ygrid = RegularCartesianGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
 
     model = IncompressibleModel(architecture = architecture,
+                                 timestepper = :RungeKutta3,
                                         grid = ygrid,
                                    advection = advection,
                                     coriolis = nothing,
