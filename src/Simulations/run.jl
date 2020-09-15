@@ -1,4 +1,5 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper, RK3TimeStepper
 
 # Simulations are for running
 
@@ -56,6 +57,9 @@ get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:RK3TimeStepper}, Δt; euler) = time_step!(model, Δt)
+
 """
     run!(simulation)
 
@@ -80,7 +84,7 @@ function run!(sim)
 
         for n in 1:sim.iteration_interval
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
-            time_step!(model, get_Δt(sim.Δt), euler=euler)
+            ab2_or_rk3_time_step!(model, get_Δt(sim.Δt), euler=euler)
 
             [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(sim.diagnostics)]
             [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
