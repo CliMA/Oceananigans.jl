@@ -4,7 +4,6 @@ export
     AdamsBashforthTimeStepper,
     RK3TimeStepper,
     time_step!,
-    compute_w_from_continuity!,
     tendencies
 
 using CUDA

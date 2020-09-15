@@ -139,6 +139,7 @@ the `buoyancy_perturbation` downwards:
     end
 end
 
+<<<<<<< HEAD
 """
 Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
 
@@ -206,6 +207,3 @@ function store_tendencies!(G⁻, arch, grid, G⁰)
 
     return nothing
 end
-
-
-

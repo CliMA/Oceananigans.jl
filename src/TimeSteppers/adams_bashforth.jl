@@ -54,11 +54,6 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
 
     store_tendencies!(G⁻, model.architecture, model.grid, Gⁿ)
 
-    # Compute w from recontinuity
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
-
-    compute_w_from_continuity!(model)
-
     tick!(model.clock, Δt)
 
     return nothing
