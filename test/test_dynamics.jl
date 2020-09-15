@@ -1,8 +1,13 @@
+using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper, RK3TimeStepper
+
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
     set!(u_ans, (x, y, z) -> u(x, y, z, time))
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
+
+euler_or_rk3_time_step!(model::IncompressibleModel{<:AdamsBashforthTimestepper}, dt) = time_step!(model, dt, euler= n==1)
+euler_or_rk3_time_step!(model::IncompressibleModel{<:RK3Timestepper}, dt) = time_step!(model, dt)
 
 function test_diffusion_simple(fieldname, timestepper)
 
@@ -17,11 +22,7 @@ function test_diffusion_simple(fieldname, timestepper)
     interior(field) .= value
 
     for n in 1:10
-        if timestepper === :AdamsBashforth
-            time_step!(model, 1, euler= n==1)
-        elseif timestepper === :RK3
-            time_step!(model, 1, euler= n==1)
-        end
+        euler_or_rk3_time_step!(model, 1)
     end
 
     field_data = interior(field)
@@ -52,7 +53,7 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
 
     for n in 1:100
         # Very small time-steps required to bring error under machine precision
-        time_step!(model, 1e-4 * Δ^order / κ, euler= n==1)
+        euler_or_rk3_time_step!(model, 1e-4 * Δ^order / κ)
     end
 
     final_mean = mean(interior(field))
@@ -63,14 +64,15 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     return isapprox(init_mean, final_mean)
 end
 
-function test_diffusion_cosine(fieldname)
+function test_diffusion_cosine(fieldname, timestepper)
     Nz, Lz, κ, m = 128, π/2, 1, 2
 
     grid = RegularCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
-    model = IncompressibleModel(    grid = grid,
-                                 closure = IsotropicDiffusivity(ν=κ, κ=κ),
-                                buoyancy = nothing)
+    model = IncompressibleModel(timestepper = timestepper,
+                                       grid = grid,
+                                    closure = IsotropicDiffusivity(ν=κ, κ=κ),
+                                   buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
 
@@ -82,7 +84,7 @@ function test_diffusion_cosine(fieldname)
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * Lz^2 / κ
     for n in 1:100
-        time_step!(model, Δt, euler=n==1)
+        euler_or_rk3_time_step!(model, Δt)
     end
 
      numerical = interior(field)
@@ -91,7 +93,7 @@ function test_diffusion_cosine(fieldname)
     return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
 end
 
-function internal_wave_test(; N=128, Nt=10)
+function internal_wave_test(timestepper; N=128, Nt=10)
     # Internal wave parameters
      ν = κ = 1e-9
      L = 2π
@@ -126,23 +128,24 @@ function internal_wave_test(; N=128, Nt=10)
     w₀(x, y, z) = w(x, y, z, 0)
     b₀(x, y, z) = b(x, y, z, 0)
 
-    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
-                                 closure = IsotropicDiffusivity(ν=ν, κ=κ),
-                                buoyancy = BuoyancyTracer(),
-                                 tracers = :b,
-                                coriolis = FPlane(f=f))
+    model = IncompressibleModel(timestepper = timestepper,    
+                                       grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
+                                    closure = IsotropicDiffusivity(ν=ν, κ=κ),
+                                   buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
+                                   coriolis = FPlane(f=f))
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     for n in 1:Nt
-        time_step!(model, Δt, euler= n==1)
+        euler_or_rk3_time_step!(model, Δt)
     end
 
     # Tolerance was found by trial and error...
     return relative_error(model.velocities.u, u, model.clock.time) < 1e-4
 end
 
-function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
+function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100)
     L, U, V = 1.0, 0.5, 0.8
     δ, x₀, y₀ = L/15, L/2, L/2
 
@@ -155,12 +158,12 @@ function passive_tracer_advection_test(; N=128, κ=1e-12, Nt=100)
 
     grid = RegularCartesianGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
-    model = IncompressibleModel(grid=grid, closure=closure)
+    model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure)
 
     set!(model, u=u₀, v=v₀, T=T₀)
 
     for n in 1:Nt
-        time_step!(model, Δt, euler= n==1)
+        euler_or_rk3_time_step!(model, Δt)
     end
 
     # Error tolerance is a bit arbitrary
@@ -173,7 +176,7 @@ See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Gr
      and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application"
      by Hesthaven & Warburton.
 """
-function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
+function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
     Nx, Ny, Nz = N, N, 2
     Lx, Ly, Lz = 1, 1, 1
     ν = 1
@@ -188,6 +191,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
 
     model = IncompressibleModel(
         architecture = arch,
+         timestepper = timestepper,
                 grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
              closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
              tracers = nothing,
@@ -198,7 +202,7 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     set!(model, u=u₀, v=v₀)
 
     for n in 1:Nt
-        time_step!(model, Δt, euler = n==1)
+        euler_or_rk3_time_step!(model, Δt)
     end
 
     xF, yC, zC = nodes(model.velocities.u, reshape=true)
@@ -237,77 +241,91 @@ timesteppers = (:AdamsBashforth, :RK3)
 
     @testset "Budgets in isotropic diffusion" begin
         @info "  Testing model budgets with isotropic diffusion..."
-        for topology in ((Periodic, Periodic, Periodic),
-                         (Periodic, Periodic, Bounded),
-                         (Periodic, Bounded, Bounded),
-                         (Bounded, Bounded, Bounded))
+        for timestepper in timesteppers
+            for topology in ((Periodic, Periodic, Periodic),
+                             (Periodic, Periodic, Bounded),
+                             (Periodic, Bounded, Bounded),
+                             (Bounded, Bounded, Bounded))
 
-            fieldnames = [:T, :S]
+                fieldnames = [:T, :S]
 
-            topology[1] === Periodic && push!(fieldnames, :u)
-            topology[2] === Periodic && push!(fieldnames, :v)
-            #topology[3] === Periodic && push!(fieldnames, :w)
+                topology[1] === Periodic && push!(fieldnames, :u)
+                topology[2] === Periodic && push!(fieldnames, :v)
+                topology[3] === Periodic && push!(fieldnames, :w)
 
-            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
+                grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
 
-            model = IncompressibleModel(    grid = grid,
-                                         closure = IsotropicDiffusivity(ν=1, κ=1),
-                                        coriolis = nothing,
-                                        buoyancy = nothing)
-                
-            for fieldname in fieldnames
-                @info "    Testing $fieldname budget in a $topology domain with isotropic diffusion..."
-                @test test_isotropic_diffusion_budget(fieldname, model)
+                model = IncompressibleModel(timestepper = timestepper,
+                                                   grid = grid,
+                                                closure = IsotropicDiffusivity(ν=1, κ=1),
+                                               coriolis = nothing,
+                                               buoyancy = nothing)
+                    
+                for fieldname in fieldnames
+                    @info "    [$timestepper] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+                    @test test_isotropic_diffusion_budget(fieldname, model)
+                end
             end
         end
     end
 
     @testset "Budgets in biharmonic diffusion" begin
         @info "  Testing model budgets with biharmonic diffusion..."
-        for topology in ((Periodic, Periodic, Periodic),
-                         (Periodic, Periodic, Bounded),
-                         (Periodic, Bounded, Bounded),
-                         (Bounded, Bounded, Bounded))
+        for timestepper in timesteppers
+            for topology in ((Periodic, Periodic, Periodic),
+                             (Periodic, Periodic, Bounded),
+                             (Periodic, Bounded, Bounded),
+                             (Bounded, Bounded, Bounded))
 
-            fieldnames = [:T, :S]
+                fieldnames = [:T, :S]
 
-            topology[1] === Periodic && push!(fieldnames, :u)
-            topology[2] === Periodic && push!(fieldnames, :v)
-            #topology[3] === Periodic && push!(fieldnames, :w)
+                topology[1] === Periodic && push!(fieldnames, :u)
+                topology[2] === Periodic && push!(fieldnames, :v)
+                topology[3] === Periodic && push!(fieldnames, :w)
 
-            grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
+                grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
 
-            model = IncompressibleModel(    grid = grid,
-                                         closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
-                                        coriolis = nothing,
-                                        buoyancy = nothing)
-                
-            for fieldname in fieldnames
-                @info "    Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
-                @test test_biharmonic_diffusion_budget(fieldname, model)
+                model = IncompressibleModel(timestepper = timestepper,
+                                                   grid = grid,
+                                                closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
+                                               coriolis = nothing,
+                                               buoyancy = nothing)
+                    
+                for fieldname in fieldnames
+                    @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
+                    @test test_biharmonic_diffusion_budget(fieldname, model)
+                end
             end
         end
     end
 
     @testset "Diffusion cosine" begin
-        @info "  Testing diffusion cosine..."
-        for fieldname in (:u, :v, :T, :S)
-            @test test_diffusion_cosine(fieldname)
+        for timestepper in timesteppers
+            @info "  Testing diffusion cosine [$timestepper]..."
+            for fieldname in (:u, :v, :T, :S)
+                @test test_diffusion_cosine(fieldname, timestepper)
+            end
         end
     end
 
     @testset "Passive tracer advection" begin
-        @info "  Testing passive tracer advection..."
-        @test passive_tracer_advection_test()
+        for timestepper in timesteppers
+            @info "  Testing passive tracer advection [$timestepper]..."
+            @test passive_tracer_advection_test(timestepper)
+        end
     end
 
     @testset "Internal wave" begin
-        @info "  Testing internal wave..."
-        @test internal_wave_test()
+        for timestepper in timesteppers
+            @info "  Testing internal wave [$timestepper]..."
+            @test internal_wave_test(timesteppers)
+        end
     end
 
     @testset "Taylor-Green vortex" begin
-        @info "  Testing Taylor-Green vortex..."
-        @test taylor_green_vortex_test(CPU())
+        for timestepper in timesteppers
+            @info "  Testing Taylor-Green vortex [$timestepper]..."
+            @test taylor_green_vortex_test(CPU(), timestepper)
+        end
     end
 end
