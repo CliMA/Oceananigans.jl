@@ -12,12 +12,21 @@ julia:1.4:unit:
   tags:
     - nvidia
 
-julia:1.4:integration:
+julia:1.4:model:
   extends:
     - .julia:1.4
     - .test
   variables:
-    TEST_GROUP: 'integration'
+    TEST_GROUP: 'model'
+  tags:
+    - nvidia
+
+julia:1.4:simulation:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'simulation'
   tags:
     - nvidia
 

@@ -43,7 +43,6 @@ import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
 using Oceananigans.Diagnostics: run_diagnostic
-using Oceananigans.TimeSteppers: _compute_w_from_continuity!
 using Oceananigans.AbstractOperations: Computation, compute!
 
 Logging.global_logger(OceananigansLogger())
@@ -94,15 +93,20 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
         end
     end
 
-    if group == :integration || group == :all
-        @testset "Integration tests" begin
+    if group == :model || group == :all
+        @testset "Model tests" begin
             include("test_models.jl")
-            include("test_simulations.jl")
             include("test_time_stepping.jl")
             include("test_time_stepping_bcs.jl")
             include("test_forcings.jl")
             include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
+        end
+    end
+
+    if group == :simulation || group == :all
+        @testset "Simulation tests" begin
+            include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
             include("test_abstract_operations.jl")

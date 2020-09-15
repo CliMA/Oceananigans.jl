@@ -3,7 +3,6 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Fields
 using Oceananigans.Diagnostics: dims_to_result_size
 
-import Oceananigans.Diagnostics: get_kernel
 import Oceananigans.Fields: location, total_size, compute!
 
 """
@@ -144,13 +143,4 @@ function run_diagnostic(model, avg::Average{<:Computation})
     sum!(avg.result, parent(avg.field.result))
     normalize_sum!(avg)
     return nothing
-end
-
-#####
-##### Functionality for using computations with WindowedTimeAverage
-#####
-
-function get_kernel(computation::Computation)
-    compute!(computation)
-    return parent(computation.result)
 end

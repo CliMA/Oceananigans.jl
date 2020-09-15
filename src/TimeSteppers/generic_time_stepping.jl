@@ -3,11 +3,11 @@
 #####
 
 """
-    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+    precomputations!(diffusivities, pressures, velocities, tracers, model)
 
 Perform precomputations necessary for an explicit timestep or substep.
 """
-function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+function precomputations!(diffusivities, pressures, velocities, tracers, model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
@@ -68,12 +68,11 @@ end
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
+function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, velocities, model)
 
-    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture, model.clock, state(model))
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
-                        model.architecture, model.grid, Δt, predictor_velocities)
+    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver, model.architecture, model.grid, Δt, velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
@@ -85,22 +84,21 @@ end
 #####
 
 """
-Update the horizontal velocities u and v via
+Update the predictor velocities u, v, and w with the non-hydrostatic pressure via
 
-    `u^{n+1} = u^n + (Gu^{n+½} - δₓp_{NH} / Δx) Δt`
-
-Note that the vertical velocity is not explicitly time stepped.
+    `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
 """
-@kernel function _fractional_step_velocities!(U, grid, Δt, pNHS)
+@kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
     @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
     @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.w[i, j, k] -= ∂zᵃᵃᶠ(i, j, k, grid, pNHS) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
-function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS,
+function pressure_correct_velocities!(U, arch, grid, Δt, pNHS)
+    event = launch!(arch, grid, :xyz, _pressure_correct_velocities!, U, grid, Δt, pNHS,
                     dependencies=Event(device(arch))) 
     wait(device(arch), event)
     return nothing
