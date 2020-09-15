@@ -106,12 +106,12 @@ end
     stepped. It just initializes a cube shaped hot bubble perturbation in the center of the 3D domain to induce a
     velocity field.
 """
-function incompressible_in_time(arch, FT, Nt)
+function incompressible_in_time(arch, FT, Nt, timestepper)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, timestepper=timestepper)
 
     grid = model.grid
     u, v, w = model.velocities
@@ -122,7 +122,11 @@ function incompressible_in_time(arch, FT, Nt)
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
     for n in 1:Nt
-        time_step!(model, 0.05, euler = n==1)
+        if timestepper === :AdamsBashforth
+            time_step!(model, 0.05, euler = n==1)
+        elseif timestepper === :RK3
+            time_step!(model, 0.05)
+        end
     end
 
     event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
@@ -132,7 +136,7 @@ function incompressible_in_time(arch, FT, Nt)
     max_div = maximum(interior(div_U))
     sum_div = sum(interior(div_U))
     abs_sum_div = sum(abs.(interior(div_U)))
-    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
+    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT, $timestepper]: " *
           "min=$min_div, max=$max_div, sum=$sum_div, abs_sum=$abs_sum_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
@@ -191,6 +195,8 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
+
+timesteppers = (:AdamsBashforth, :RK3)
 
 @testset "Time stepping" begin
     @info "Testing time stepping..."
@@ -262,8 +268,8 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
 
     @testset "Incompressibility" begin
         @info "  Testing incompressibility..."
-        for arch in archs, FT in float_types, Nt in [1, 10, 100]
-            @test incompressible_in_time(arch, FT, Nt)
+        for arch in archs, FT in float_types, Nt in [1, 10, 100], timestepper in timesteppers
+            @test incompressible_in_time(arch, FT, Nt, timestepper)
         end
     end
 

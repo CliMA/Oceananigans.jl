@@ -11,20 +11,13 @@ struct AdamsBashforthTimeStepper{T, TG, P} <: AbstractTimeStepper
      χ :: T
     Gⁿ :: TG
     G⁻ :: TG
-    predictor_velocities :: P
 end
 
 function AdamsBashforthTimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
                                    Gⁿ = TendencyFields(arch, grid, tracers),
                                    G⁻ = TendencyFields(arch, grid, tracers))
 
-    u★ = Field{Face, Cell, Cell}(data(velocities.u), grid, velocities.u.boundary_conditions)
-    v★ = Field{Cell, Face, Cell}(data(velocities.v), grid, velocities.v.boundary_conditions)
-    w★ = Field{Cell, Cell, Face}(data(velocities.w), grid, velocities.w.boundary_conditions)
-
-    U★ = (u=u★, v=v★, w=w★)
-
-    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ), typeof(U★)}(χ, Gⁿ, G⁻, U★)
+    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 end
 
 #####
@@ -41,25 +34,25 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
-    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻, predictor_velocities =
+    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ =
         datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
-                   model.timestepper.Gⁿ, model.timestepper.G⁻, model.timestepper.predictor_velocities)
+                   model.timestepper.Gⁿ, model.timestepper.G⁻)
 
-    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+    precomputations!(diffusivities, pressures, velocities, tracers, model)
     
     calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
 
     ab2_time_step_tracers!(tracers, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
 
     # Fractional step. Note that predictor velocities share memory space with velocities.
-    ab2_update_predictor_velocities!(predictor_velocities, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
+    ab2_update_predictor_velocities!(velocities, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
 
-    calculate_pressure_correction!(pressures.pNHS, Δt, predictor_velocities, model)
+    calculate_pressure_correction!(pressures.pNHS, Δt, velocities, model)
 
     fractional_step_velocities!(velocities, tracers, model.architecture,
                                 model.grid, Δt, pressures.pNHS)
 
-    ab2_store_source_terms!(G⁻, model.architecture, model.grid, χ, Gⁿ)
+    store_tendencies!(G⁻, model.architecture, model.grid, Gⁿ)
 
     # Compute w from recontinuity
     fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
@@ -71,50 +64,6 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     return nothing
 end
 
-#####
-##### Source term storage
-#####
-
-""" Store source terms for `u`, `v`, and `w`. """
-@kernel function ab2_store_velocity_source_terms!(G⁻, grid::AbstractGrid{FT}, χ, Gⁿ) where FT
-    i, j, k = @index(Global, NTuple)
-    @inbounds G⁻.u[i, j, k] = Gⁿ.u[i, j, k]
-    @inbounds G⁻.v[i, j, k] = Gⁿ.v[i, j, k]
-    @inbounds G⁻.w[i, j, k] = Gⁿ.w[i, j, k]
-end
-
-""" Store previous source terms for a tracer before updating them. """
-@kernel function ab2_store_tracer_source_term!(Gc⁻, grid::AbstractGrid{FT}, χ, Gcⁿ) where FT
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc⁻[i, j, k] = Gcⁿ[i, j, k]
-end
-
-""" Store previous source terms before updating them. """
-function ab2_store_source_terms!(G⁻, arch, grid, χ, Gⁿ)
-
-    barrier = Event(device(arch))
-
-    workgroup, worksize = work_layout(grid, :xyz)
-
-    store_velocity_source_terms_kernel! = ab2_store_velocity_source_terms!(device(arch), workgroup, worksize)
-    store_tracer_source_term_kernel! = ab2_store_tracer_source_term!(device(arch), workgroup, worksize)
-
-    velocities_event = store_velocity_source_terms_kernel!(G⁻, grid, χ, Gⁿ, dependencies=barrier)
-
-    events = [velocities_event]
-
-    # Tracer fields
-    for i in 4:length(G⁻)
-        @inbounds Gc⁻ = G⁻[i]
-        @inbounds Gcⁿ = Gⁿ[i]
-        tracer_event = store_tracer_source_term_kernel!(Gc⁻, grid, χ, Gcⁿ, dependencies=barrier)
-        push!(events, tracer_event)
-    end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
-
-    return nothing
-end
 
 #####
 ##### Tracer time stepping and predictor velocity updating

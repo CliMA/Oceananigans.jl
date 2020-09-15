@@ -2,6 +2,7 @@ module TimeSteppers
 
 export
     AdamsBashforthTimeStepper,
+    RK3TimeStepper,
     time_step!,
     compute_w_from_continuity!,
     tendencies
@@ -57,5 +58,6 @@ include("generic_time_stepping.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("time_stepping_kernels.jl")
 include("adams_bashforth.jl")
+include("rk3.jl")
 
 end # module

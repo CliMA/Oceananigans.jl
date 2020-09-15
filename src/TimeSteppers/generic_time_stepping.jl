@@ -3,11 +3,11 @@
 #####
 
 """
-    time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+    precomputations!(diffusivities, pressures, velocities, tracers, model)
 
 Perform precomputations necessary for an explicit timestep or substep.
 """
-function time_step_precomputations!(diffusivities, pressures, velocities, tracers, model)
+function precomputations!(diffusivities, pressures, velocities, tracers, model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
@@ -68,12 +68,12 @@ end
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, predictor_velocities, model)
+function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, velocities, model)
 
-    fill_halo_regions!(model.timestepper.predictor_velocities, model.architecture, model.clock, state(model))
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
-                        model.architecture, model.grid, Δt, predictor_velocities)
+                        model.architecture, model.grid, Δt, velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 

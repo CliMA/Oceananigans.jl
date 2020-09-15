@@ -4,17 +4,24 @@ function relative_error(u_num, u, time)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
-function test_diffusion_simple(fieldname)
-    model = IncompressibleModel(    grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
-                                 closure = IsotropicDiffusivity(ν=1, κ=1),
-                                buoyancy = nothing)
+function test_diffusion_simple(fieldname, timestepper)
+
+    model = IncompressibleModel(timestepper = timestepper,    
+                                       grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                    closure = IsotropicDiffusivity(ν=1, κ=1),
+                                   buoyancy = nothing)
+                               
     field = get_model_field(fieldname, model)
 
     value = π
     interior(field) .= value
 
     for n in 1:10
-        time_step!(model, 1, euler= n==1)
+        if timestepper === :AdamsBashforth
+            time_step!(model, 1, euler= n==1)
+        elseif timestepper === :RK3
+            time_step!(model, 1, euler= n==1)
+        end
     end
 
     field_data = interior(field)
@@ -216,13 +223,15 @@ function taylor_green_vortex_test(arch; FT=Float64, N=64, Nt=10)
     u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
 end
 
+timesteppers = (:AdamsBashforth, :RK3)
+
 @testset "Dynamics" begin
     @info "Testing dynamics..."
 
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
-        for fieldname in (:u, :v, :T, :S)
-            @test test_diffusion_simple(fieldname)
+        for fieldname in (:u, :v, :T, :S), timestepper in timesteppers
+            @test test_diffusion_simple(fieldname, timestepper)
         end
     end
 
