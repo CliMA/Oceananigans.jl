@@ -8,17 +8,17 @@ struct WENO5 <: AbstractAdvectionScheme end
 ##### ENO interpolants of size 3
 #####
 
-@inline px₀(i, j, k, grid, f) = @inbounds  11/6 * f[i,   j, k] - 7/6 * f[i+1, j, k] + 1/3 * f[i+2, j, k]
-@inline px₁(i, j, k, grid, f) = @inbounds   1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] - 1/6 * f[i+1, j, k]
-@inline px₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] + 1/3 * f[i,   j, k]
+@inline px₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i,   j, k] + 5/6 * f[i+1, j, k] -  1/6 * f[i+2, j, k]
+@inline px₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i-1, j, k] + 5/6 * f[i,   j, k] +  1/3 * f[i+1, j, k]
+@inline px₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i-2, j, k] - 7/6 * f[i-1, j, k] + 11/6 * f[i,   j, k]
 
-@inline py₀(i, j, k, grid, f) = @inbounds  11/6 * f[i, j,   k] - 7/6 * f[i, j+1, k] + 1/3 * f[i, j+2, k]
-@inline py₁(i, j, k, grid, f) = @inbounds   1/3 * f[i, j-1, k] + 5/6 * f[i, j,   k] - 1/6 * f[i, j+1, k]
-@inline py₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j-2, k] + 5/6 * f[i, j-1, k] + 1/3 * f[i, j,   k]
+@inline py₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j,   k] + 5/6 * f[i, j+1, k] -  1/6 * f[i, j+2, k]
+@inline py₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j-1, k] + 5/6 * f[i, j,   k] +  1/3 * f[i, j+1, k]
+@inline py₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j-2, k] - 7/6 * f[i, j-1, k] + 11/6 * f[i, j,   k]
 
-@inline pz₀(i, j, k, grid, f) = @inbounds  11/6 * f[i, j,   k] - 7/6 * f[i, j, k+1] + 1/3 * f[i, j, k+2]
-@inline pz₁(i, j, k, grid, f) = @inbounds   1/3 * f[i, j, k-1] + 5/6 * f[i, j,   k] - 1/6 * f[i, j, k+1]
-@inline pz₂(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] + 1/3 * f[i, j,   k]
+@inline pz₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j,   k] + 5/6 * f[i, j, k+1] -  1/6 * f[i, j, k+2]
+@inline pz₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j, k-1] + 5/6 * f[i, j,   k] +  1/3 * f[i, j, k+1]
+@inline pz₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j, k-2] - 7/6 * f[i, j, k-1] + 11/6 * f[i, j,   k]
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators
