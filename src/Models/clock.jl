@@ -5,19 +5,28 @@ using Dates: AbstractTime, Nanosecond
 """
     Clock{T<:Number}
 
-
-Keeps track of the current `time` and `iteration` number. The `time::T` can be either a number of a `DateTime` object.
+Keeps track of the current `time`, `iteration` number, and time-stepping `stage`.
+The `time::T` can be either a number of a `DateTime` object.
 """
 mutable struct Clock{T}
          time :: T
     iteration :: Int
         stage :: Int
+    
+    """
+        Clock{T}(time, iteration, stage=1)
+    
+    Returns a `Clock` with time of type `T`, initialized to the first stage.
+    """
+    function Clock{T}(time, iteration, stage=1) where T
+        return new{T}(time, iteration, stage)
+    end
 end
 
 """
     Clock(time, iteration=0, stage=1)
 
-Returns an initialized `Clock`.
+Returns a `Clock` initialized to the zeroth iteration and first stage.
 """
 Clock(; time, iteration=0, stage=1) = Clock(time, iteration, stage)
 
