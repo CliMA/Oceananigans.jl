@@ -6,8 +6,8 @@ function relative_error(u_num, u, time)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
-euler_or_rk3_time_step!(model::IncompressibleModel{<:AdamsBashforthTimestepper}, dt) = time_step!(model, dt, euler= n==1)
-euler_or_rk3_time_step!(model::IncompressibleModel{<:RK3Timestepper}, dt) = time_step!(model, dt)
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt, n) = time_step!(model, Δt, euler= n==1)
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:RK3TimeStepper}, Δt, n) = time_step!(model, Δt)
 
 function test_diffusion_simple(fieldname, timestepper)
 
@@ -22,7 +22,7 @@ function test_diffusion_simple(fieldname, timestepper)
     interior(field) .= value
 
     for n in 1:10
-        euler_or_rk3_time_step!(model, 1)
+        ab2_or_rk3_time_step!(model, 1, n)
     end
 
     field_data = interior(field)
@@ -53,7 +53,7 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
 
     for n in 1:100
         # Very small time-steps required to bring error under machine precision
-        euler_or_rk3_time_step!(model, 1e-4 * Δ^order / κ)
+        ab2_or_rk3_time_step!(model, 1e-4 * Δ^order / κ, n)
     end
 
     final_mean = mean(interior(field))
@@ -84,7 +84,7 @@ function test_diffusion_cosine(fieldname, timestepper)
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * Lz^2 / κ
     for n in 1:100
-        euler_or_rk3_time_step!(model, Δt)
+        ab2_or_rk3_time_step!(model, Δt, n)
     end
 
      numerical = interior(field)
@@ -138,7 +138,7 @@ function internal_wave_test(timestepper; N=128, Nt=10)
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     for n in 1:Nt
-        euler_or_rk3_time_step!(model, Δt)
+        ab2_or_rk3_time_step!(model, Δt, n)
     end
 
     # Tolerance was found by trial and error...
@@ -163,7 +163,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100)
     set!(model, u=u₀, v=v₀, T=T₀)
 
     for n in 1:Nt
-        euler_or_rk3_time_step!(model, Δt)
+        ab2_or_rk3_time_step!(model, Δt, n)
     end
 
     # Error tolerance is a bit arbitrary
@@ -202,7 +202,7 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
     set!(model, u=u₀, v=v₀)
 
     for n in 1:Nt
-        euler_or_rk3_time_step!(model, Δt)
+        ab2_or_rk3_time_step!(model, Δt, n)
     end
 
     xF, yC, zC = nodes(model.velocities.u, reshape=true)
@@ -318,7 +318,7 @@ timesteppers = (:AdamsBashforth, :RK3)
     @testset "Internal wave" begin
         for timestepper in timesteppers
             @info "  Testing internal wave [$timestepper]..."
-            @test internal_wave_test(timesteppers)
+            @test internal_wave_test(timestepper)
         end
     end
 
