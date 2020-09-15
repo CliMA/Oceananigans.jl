@@ -15,18 +15,14 @@ using .ConvergenceTests.OneDimensionalUtils: unpack_errors, defaultcolors, remov
 """ Run advection test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions, advection_scheme)
 
-    # Determine save time-step
+    # Determine safe time-step
            Lx = 2.5
-    stop_time = 0.25
+    stop_time = 1e-3
             h = Lx / maximum(resolutions)
-           Δt = min(0.1 * h / U, 0.01 * h^2 / κ)
-
-    # Adjust time-step
-    stop_iteration = round(Int, stop_time / Δt)
-                Δt = stop_time / stop_iteration
+           Δt = min(1e-2 * h / U, 1e-3 * h^2 / κ)
 
     # Run the tests
-    results = [run_test(Nx=Nx, Δt=Δt, advection=advection_scheme, stop_iteration=stop_iteration,
+    results = [run_test(Nx=Nx, Δt=Δt, advection=advection_scheme, stop_iteration=1,
                         U=U, κ=κ) for Nx in resolutions]
 
     return results
@@ -38,14 +34,14 @@ end
 
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
 
-Nx = Dict(CenteredSecondOrder => 2 .^ (4:8),
-          CenteredFourthOrder => 2 .^ (4:8),
-          WENO5               => 2 .^ (4:8))
+Nx = Dict(CenteredSecondOrder => 2 .^ (3:12),
+          CenteredFourthOrder => 2 .^ (3:12),
+          WENO5               => 2 .^ (3:12))
 
 results = Dict()
 for scheme in advection_schemes
     t_scheme = typeof(scheme)
-    results[t_scheme] = run_convergence_test(1e-8, 3, Nx[t_scheme], scheme)
+    results[t_scheme] = run_convergence_test(0, 3, Nx[t_scheme], scheme)
 end
 
 rate_of_convergence(::CenteredSecondOrder) = 2

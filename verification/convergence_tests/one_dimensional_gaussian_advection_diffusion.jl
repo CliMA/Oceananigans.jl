@@ -14,7 +14,7 @@ using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_converg
 """ Run advection-diffusion test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions)
 
-    # Determine save time-step
+    # Determine safe time-step
            Lx = 2.5
     stop_time = 0.25
             h = Lx / maximum(resolutions)
