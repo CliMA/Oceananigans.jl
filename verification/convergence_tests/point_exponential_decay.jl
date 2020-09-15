@@ -31,8 +31,8 @@ unpack_errors(results) = map(r -> r.L₁, results)
 
 stop_time = 3
 Δt = 10 .^ range(-3, 0, length=30)  # Equally spaced in log space.
-ab2_results, Δt = run_convergence_test(stop_time, Δt, :AdamsBashforth)
-rk3_results, Δt = run_convergence_test(stop_time, Δt, :RK3)
+ab2_results, Δt = run_convergence_test(stop_time, Δt, :QuasiAdamsBashforth2)
+rk3_results, Δt = run_convergence_test(stop_time, Δt, :RungeKutta3)
 
 ab2_L₁ = unpack_errors(ab2_results)
 rk3_L₁ = unpack_errors(rk3_results)

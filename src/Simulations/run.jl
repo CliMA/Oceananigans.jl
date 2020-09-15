@@ -1,5 +1,5 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage
-using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper, RK3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 
 # Simulations are for running
 
@@ -57,8 +57,8 @@ get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
-ab2_or_rk3_time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
-ab2_or_rk3_time_step!(model::IncompressibleModel{<:RK3TimeStepper}, Δt; euler) = time_step!(model, Δt)
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
+ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
 
 """
     run!(simulation)

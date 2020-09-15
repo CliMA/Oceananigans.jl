@@ -1,10 +1,10 @@
 """
-    RK3TimeStepper{FT, TG} <: AbstractTimeStepper
+    RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by Le and Moin (1991).
 """
-struct RK3TimeStepper{FT, TG} <: AbstractTimeStepper
+struct RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
     γ¹ :: FT
     γ² :: FT
     γ³ :: FT
@@ -15,16 +15,16 @@ struct RK3TimeStepper{FT, TG} <: AbstractTimeStepper
 end
 
 """
-    RK3TimeStepper(float_type, arch, grid, tracers, χ=0.125;
+    RungeKutta3TimeStepper(float_type, arch, grid, tracers, χ=0.125;
                               Gⁿ = TendencyFields(arch, grid, tracers),
                               G⁻ = TendencyFields(arch, grid, tracers))
 
-Return an `RK3TimeStepper` object with tendency fields on `arch` and
+Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
-function RK3TimeStepper(float_type, arch, grid, velocities, tracers;
-                        Gⁿ = TendencyFields(arch, grid, tracers),
-                        G⁻ = TendencyFields(arch, grid, tracers))
+function RungeKutta3TimeStepper(float_type, arch, grid, velocities, tracers;
+                                Gⁿ = TendencyFields(arch, grid, tracers),
+                                G⁻ = TendencyFields(arch, grid, tracers))
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -33,7 +33,7 @@ function RK3TimeStepper(float_type, arch, grid, velocities, tracers;
     ζ² = -17 // 60
     ζ³ = -5 // 12
 
-    return RK3TimeStepper{eltype(grid), typeof(Gⁿ)}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻)
+    return RungeKutta3TimeStepper{eltype(grid), typeof(Gⁿ)}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻)
 end
 
 #####
@@ -41,14 +41,14 @@ end
 #####
 
 """
-    time_step!(model::IncompressibleModel{<:RK3TimeStepper}, Δt; euler=false)
+    time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to 
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::IncompressibleModel{<:RK3TimeStepper}, Δt)
+function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²

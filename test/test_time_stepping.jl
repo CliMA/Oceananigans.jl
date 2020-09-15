@@ -76,9 +76,9 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
     for n in 1:Nt
-        if timestepper === :AdamsBashforth
+        if timestepper === :QuasiAdamsBashforth2
             time_step!(model, 0.05, euler = n==1)
-        elseif timestepper === :RK3
+        elseif timestepper === :RungeKutta3
             time_step!(model, 0.05)
         end
     end
@@ -146,7 +146,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-timesteppers = (:AdamsBashforth, :RK3)
+timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Time stepping" begin
     @info "Testing time stepping..."

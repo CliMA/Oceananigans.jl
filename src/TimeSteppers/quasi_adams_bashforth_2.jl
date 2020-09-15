@@ -1,29 +1,29 @@
 """
-    AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+    QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
 
 Holds tendency fields and the parameter `χ` for a modified second-order
 Adams-Bashforth timestepping method.
 """
-struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+struct QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
      χ :: T
     Gⁿ :: TG
     G⁻ :: TG
 end
 
 """
-    AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
+    QuasiAdamsBashforth2TimeStepper(float_type, arch, grid, tracers, χ=0.125;
                               Gⁿ = TendencyFields(arch, grid, tracers),
                               G⁻ = TendencyFields(arch, grid, tracers))
 
-Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
+Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-function AdamsBashforthTimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
-                                   Gⁿ = TendencyFields(arch, grid, tracers),
-                                   G⁻ = TendencyFields(arch, grid, tracers))
+function QuasiAdamsBashforth2TimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
+                                         Gⁿ = TendencyFields(arch, grid, tracers),
+                                         G⁻ = TendencyFields(arch, grid, tracers))
 
-    return AdamsBashforthTimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
+    return QuasiAdamsBashforth2TimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 end
 
 #####
@@ -31,12 +31,12 @@ end
 #####
 
 """
-    time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
+    time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
-function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt; euler=false)
+function time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Convert NamedTuples of Fields to NamedTuples of OffsetArrays

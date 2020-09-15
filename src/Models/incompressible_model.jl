@@ -45,7 +45,7 @@ end
                 tracers = (:T, :S),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-            timestepper = :AdamsBashforth,
+            timestepper = :QuasiAdamsBashforth2,
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
@@ -84,7 +84,7 @@ function IncompressibleModel(;
                 tracers = (:T, :S),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-            timestepper = :AdamsBashforth,
+            timestepper = :QuasiAdamsBashforth2,
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
