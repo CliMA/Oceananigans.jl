@@ -8,33 +8,33 @@ struct WENO5 <: AbstractAdvectionScheme end
 ##### ENO interpolants of size 3
 #####
 
-@inline px₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i,   j, k] + 5/6 * f[i+1, j, k] -  1/6 * f[i+2, j, k]
-@inline px₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i-1, j, k] + 5/6 * f[i,   j, k] +  1/3 * f[i+1, j, k]
-@inline px₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i-2, j, k] - 7/6 * f[i-1, j, k] + 11/6 * f[i,   j, k]
+@inline px₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] -  1/6 * f[i+1, j, k]
+@inline px₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] +  1/3 * f[i,   j, k]
+@inline px₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i-3, j, k] - 7/6 * f[i-2, j, k] + 11/6 * f[i-1, j, k]
 
-@inline py₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j,   k] + 5/6 * f[i, j+1, k] -  1/6 * f[i, j+2, k]
-@inline py₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j-1, k] + 5/6 * f[i, j,   k] +  1/3 * f[i, j+1, k]
-@inline py₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j-2, k] - 7/6 * f[i, j-1, k] + 11/6 * f[i, j,   k]
+@inline py₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j-1, k] + 5/6 * f[i, j,   k] -  1/6 * f[i, j+1, k]
+@inline py₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j-2, k] + 5/6 * f[i, j-1, k] +  1/3 * f[i, j  , k]
+@inline py₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j-3, k] - 7/6 * f[i, j-2, k] + 11/6 * f[i, j-1, k]
 
-@inline pz₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j,   k] + 5/6 * f[i, j, k+1] -  1/6 * f[i, j, k+2]
-@inline pz₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j, k-1] + 5/6 * f[i, j,   k] +  1/3 * f[i, j, k+1]
-@inline pz₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j, k-2] - 7/6 * f[i, j, k-1] + 11/6 * f[i, j,   k]
+@inline pz₀(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j, k-1] + 5/6 * f[i, j,   k] -  1/6 * f[i, j, k+1]
+@inline pz₁(i, j, k, grid, f) = @inbounds - 1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] +  1/3 * f[i, j,   k]
+@inline pz₂(i, j, k, grid, f) = @inbounds + 1/3 * f[i, j, k-3] - 7/6 * f[i, j, k-2] + 11/6 * f[i, j, k-1]
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators
 #####
 
-@inline βx₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i,   j, k] - 2f[i+1, j, k] + f[i+2, j, k])^2 + 1/4 * (3f[i,   j, k] - 4f[i+1, j, k] +  f[i+2, j, k])^2
-@inline βx₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * ( f[i-1, j, k]                 -  f[i+1, j, k])^2
-@inline βx₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k] - 4f[i-1, j, k] + 3f[i,   j, k])^2
+@inline βx₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * (3f[i-1, j, k] - 4f[i,   j, k] +  f[i+1, j, k])^2
+@inline βx₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k]                 -  f[i,   j, k])^2
+@inline βx₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i-3, j, k] - 2f[i-2, j, k] + f[i-1, j, k])^2 + 1/4 * ( f[i-3, j, k] - 4f[i-2, j, k] + 3f[i-1, j, k])^2
 
-@inline βy₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j,   k] - 2f[i, j+1, k] + f[i, j+2, k])^2 + 1/4 * (3f[i, j,   k] - 4f[i, j+1, k] +  f[i, j+2, k])^2
-@inline βy₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-1, k] - 2f[i, j,   k] + f[i, j+1, k])^2 + 1/4 * ( f[i, j-1, k]                 -  f[i, j+1, k])^2
-@inline βy₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-2, k] - 2f[i, j-1, k] + f[i, j,   k])^2 + 1/4 * ( f[i, j-2, k] - 4f[i, j-1, k] + 3f[i, j,   k])^2
+@inline βy₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-1, k] - 2f[i, j,   k] + f[i, j+1, k])^2 + 1/4 * (3f[i, j-1, k] - 4f[i,   j, k] +  f[i, j+1, k])^2
+@inline βy₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-2, k] - 2f[i, j-1, k] + f[i, j,   k])^2 + 1/4 * ( f[i, j-2, k]                 -  f[i,   j, k])^2
+@inline βy₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j-3, k] - 2f[i, j-2, k] + f[i, j-1, k])^2 + 1/4 * ( f[i, j-3, k] - 4f[i, j-2, k] + 3f[i, j-1, k])^2
 
-@inline βz₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j,   k] - 2f[i, j, k+1] + f[i, j, k+2])^2 + 1/4 * (3f[i, j,   k] - 4f[i, j, k+1] +  f[i, j, k+2])^2
-@inline βz₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-1] - 2f[i, j,   k] + f[i, j, k+1])^2 + 1/4 * ( f[i, j, k-1]                 -  f[i, j, k+1])^2
-@inline βz₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2] - 4f[i, j, k-1] + 3f[i, j,   k])^2
+@inline βz₀(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-1] - 2f[i, j,   k] + f[i, j, k+1])^2 + 1/4 * (3f[i, j, k-1] - 4f[i, j,   k] +  f[i, j, k+1])^2
+@inline βz₁(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2]                 -  f[i, j,   k])^2
+@inline βz₂(i, j, k, grid, f) = @inbounds 13/12 * (f[i, j, k-3] - 2f[i, j, k-2] + f[i, j, k-1])^2 + 1/4 * ( f[i, j, k-3] - 4f[i, j, k-2] + 3f[i, j, k-1])^2
 
 #####
 ##### WENO-5 optimal weights
@@ -142,3 +142,11 @@ end
 @inline advective_tracer_flux_x(i, j, k, grid, ::WENO5, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * weno5_flux_x(i, j, k, grid, c)
 @inline advective_tracer_flux_y(i, j, k, grid, ::WENO5, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * weno5_flux_y(i, j, k, grid, c)
 @inline advective_tracer_flux_z(i, j, k, grid, ::WENO5, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * weno5_flux_z(i, j, k, grid, c)
+
+#####
+##### Need to advect momentum like tracers
+#####
+
+@inline div_ũu(i, j, k, grid, advection::WENO5, U) = div_uc(i, j, k, grid, advection, U, U.u)
+@inline div_ũv(i, j, k, grid, advection::WENO5, U) = div_uc(i, j, k, grid, advection, U, U.v)
+@inline div_ũw(i, j, k, grid, advection::WENO5, U) = div_uc(i, j, k, grid, advection, U, U.w)
