@@ -91,7 +91,7 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     max_abs_div = maximum(abs, interior(div_U))
     sum_div = sum(interior(div_U))
     sum_abs_div = sum(abs, interior(div_U))
-    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT]: " *
+    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT, $timestepper]: " *
           "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)

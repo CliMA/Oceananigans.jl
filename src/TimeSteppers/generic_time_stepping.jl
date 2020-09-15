@@ -72,8 +72,7 @@ function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, velocities
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver,
-                        model.architecture, model.grid, Δt, velocities)
+    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver, model.architecture, model.grid, Δt, velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
@@ -89,7 +88,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 
     `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
 """
-@kernel function _fractional_step_velocities!(U, grid, Δt, pNHS)
+@kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
     @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
@@ -98,8 +97,8 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 end
 
 "Update the solution variables (velocities and tracers)."
-function fractional_step_velocities!(U, C, arch, grid, Δt, pNHS)
-    event = launch!(arch, grid, :xyz, _fractional_step_velocities!, U, grid, Δt, pNHS,
+function pressure_correct_velocities!(U, arch, grid, Δt, pNHS)
+    event = launch!(arch, grid, :xyz, _pressure_correct_velocities!, U, grid, Δt, pNHS,
                     dependencies=Event(device(arch))) 
     wait(device(arch), event)
     return nothing

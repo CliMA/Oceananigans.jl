@@ -1,4 +1,16 @@
 """
+    AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+
+Holds tendency fields and the parameter `χ` for a modified second-order
+Adams-Bashforth timestepping method.
+"""
+struct AdamsBashforthTimeStepper{T, TG} <: AbstractTimeStepper
+     χ :: T
+    Gⁿ :: TG
+    G⁻ :: TG
+end
+
+"""
     AdamsBashforthTimeStepper(float_type, arch, grid, tracers, χ=0.125;
                               Gⁿ = TendencyFields(arch, grid, tracers),
                               G⁻ = TendencyFields(arch, grid, tracers))
@@ -7,12 +19,6 @@ Return an AdamsBashforthTimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-struct AdamsBashforthTimeStepper{T, TG, P} <: AbstractTimeStepper
-     χ :: T
-    Gⁿ :: TG
-    G⁻ :: TG
-end
-
 function AdamsBashforthTimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
                                    Gⁿ = TendencyFields(arch, grid, tracers),
                                    G⁻ = TendencyFields(arch, grid, tracers))
@@ -42,15 +48,11 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     
     calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
 
-    ab2_time_step_tracers!(tracers, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
-
-    # Fractional step. Note that predictor velocities share memory space with velocities.
-    ab2_update_predictor_velocities!(velocities, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
+    # Full step for tracers, fractional step for velocities.
+    ab2_step!(velocities, tracers, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
 
     calculate_pressure_correction!(pressures.pNHS, Δt, velocities, model)
-
-    fractional_step_velocities!(velocities, tracers, model.architecture,
-                                model.grid, Δt, pressures.pNHS)
+    pressure_correct_velocities!(velocities, model.architecture, model.grid, Δt, pressures.pNHS)
 
     store_tendencies!(G⁻, model.architecture, model.grid, Gⁿ)
 
@@ -59,40 +61,28 @@ function time_step!(model::IncompressibleModel{<:AdamsBashforthTimeStepper}, Δt
     return nothing
 end
 
-
 #####
 ##### Tracer time stepping and predictor velocity updating
 #####
 
-"""
-Time step tracers via
-
-    `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
-
-"""
-@kernel function ab2_time_step_tracer!(c, grid::AbstractGrid{FT}, Δt, χ, Gcⁿ, Gc⁻) where FT
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
-end
-
-ab2_time_step_tracers!(::Nothing, args...) = nothing
-
-function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
+function ab2_step!(U, C, arch, grid, Δt, χ, Gⁿ, G⁻)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
     barrier = Event(device(arch))
 
-    time_step_tracer_kernel! = ab2_time_step_tracer!(device(arch), workgroup, worksize)
+    step_velocities_kernel! = ab2_step_velocities!(device(arch), workgroup, worksize)
+    step_tracer_kernel! = ab2_step_tracer!(device(arch), workgroup, worksize)
 
-    events = []
+    velocities_event = step_velocities_kernel!(U, Δt, χ, Gⁿ, G⁻, dependencies=Event(device(arch)))
+
+    events = [velocities_event]
 
     for i in 1:length(C)
         @inbounds c = C[i]
         @inbounds Gcⁿ = Gⁿ[i+3]
         @inbounds Gc⁻ = G⁻[i+3]
-        event = time_step_tracer_kernel!(c, grid, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
+        event = step_tracer_kernel!(c, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
         push!(events, event)
     end
 
@@ -101,25 +91,30 @@ function ab2_time_step_tracers!(C, arch, grid, Δt, χ, Gⁿ, G⁻)
     return nothing
 end
 
+"""
+Time step tracers via
+
+    `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
+
+"""
+@kernel function ab2_step_tracer!(c, Δt, χ::FT, Gcⁿ, Gc⁻) where FT
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
+end
+
 """ Update predictor velocity field. """
-@kernel function _ab2_update_predictor_velocities!(U★, grid::AbstractGrid{FT}, Δt, χ, Gⁿ, G⁻) where FT
+@kernel function ab2_step_velocities!(U, Δt, χ::FT, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U★.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
-                                - (FT(0.5) + χ) * G⁻.u[i, j, k] )
+        U.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
+                               - (FT(0.5) + χ) * G⁻.u[i, j, k] )
 
-        U★.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
-                                - (FT(0.5) + χ) * G⁻.v[i, j, k] )
+        U.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
+                               - (FT(0.5) + χ) * G⁻.v[i, j, k] )
 
-        U★.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
-                                - (FT(0.5) + χ) * G⁻.w[i, j, k] )
+        U.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
+                               - (FT(0.5) + χ) * G⁻.w[i, j, k] )
     end
-end
-
-function ab2_update_predictor_velocities!(U★, arch, grid, Δt, χ, Gⁿ, G⁻)
-    event = launch!(arch, grid, :xyz, _ab2_update_predictor_velocities!, U★, grid, Δt, χ, Gⁿ, G⁻,
-                    dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    return nothing
 end
