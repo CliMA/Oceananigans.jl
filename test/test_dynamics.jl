@@ -51,7 +51,7 @@ end
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     init_mean = mean(interior(field))
 
-    for n in 1:100
+    for n in 1:10
         # Very small time-steps required to bring error under machine precision
         ab2_or_rk3_time_step!(model, 1e-4 * Δ^order / κ, n)
     end
@@ -83,7 +83,7 @@ function test_diffusion_cosine(fieldname, timestepper)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * Lz^2 / κ
-    for n in 1:100
+    for n in 1:10
         ab2_or_rk3_time_step!(model, Δt, n)
     end
 
@@ -247,18 +247,19 @@ timesteppers = (:AdamsBashforth, :RK3)
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
 
-                fieldnames = [:T, :S]
+                fieldnames = [:c]
 
                 topology[1] === Periodic && push!(fieldnames, :u)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology)
+                grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                 model = IncompressibleModel(timestepper = timestepper,
                                                    grid = grid,
                                                 closure = IsotropicDiffusivity(ν=1, κ=1),
                                                coriolis = nothing,
+                                                tracers = :c,
                                                buoyancy = nothing)
                     
                 for fieldname in fieldnames
@@ -277,18 +278,19 @@ timesteppers = (:AdamsBashforth, :RK3)
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
 
-                fieldnames = [:T, :S]
+                fieldnames = [:c]
 
                 topology[1] === Periodic && push!(fieldnames, :u)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
+                grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
 
                 model = IncompressibleModel(timestepper = timestepper,
                                                    grid = grid,
                                                 closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
                                                coriolis = nothing,
+                                                tracers = :c,
                                                buoyancy = nothing)
                     
                 for fieldname in fieldnames
