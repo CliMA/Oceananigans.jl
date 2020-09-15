@@ -17,9 +17,19 @@ julia:1.4:integration:
     - .julia:1.4
     - .test
   variables:
-    TEST_GROUP: 'integration'
+    TEST_GROUP: 'model'
   tags:
     - nvidia
+
+julia:1.4:integration:
+  extends:
+    - .julia:1.4
+    - .test
+  variables:
+    TEST_GROUP: 'simulation'
+  tags:
+    - nvidia
+
 
 julia:1.4:regression:
   extends:
