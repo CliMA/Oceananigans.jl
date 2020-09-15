@@ -101,6 +101,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
         end
+    end
 
     if group == :simulation || group == :all
         @testset "Simulation tests" begin
