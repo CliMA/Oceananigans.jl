@@ -41,11 +41,11 @@ end
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
-             velocities = VelocityFields(architecture, grid, boundary_conditions),
                 tracers = (:T, :S),
+            timestepper = :QuasiAdamsBashforth2,
+             velocities = VelocityFields(architecture, grid, boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-            timestepper = :QuasiAdamsBashforth2,
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
@@ -62,9 +62,11 @@ Keyword arguments
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: User-defined forcing functions that contribute to solution tendencies.
+    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                  preallocated `CellField`s.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+    - `timestepper`: A symbol that species the time-stepping method. Either `:QuasiAdamsBashforth2` or
+                     `:RungeKutta3`.
 """
 function IncompressibleModel(;
                    grid,
@@ -80,11 +82,11 @@ function IncompressibleModel(;
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
                            w=WVelocityBoundaryConditions(grid)),
-             velocities = VelocityFields(architecture, grid, boundary_conditions),
                 tracers = (:T, :S),
+            timestepper = :QuasiAdamsBashforth2,
+             velocities = VelocityFields(architecture, grid, boundary_conditions),
               pressures = PressureFields(architecture, grid, boundary_conditions),
           diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-            timestepper = :QuasiAdamsBashforth2,
         pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
     )
 
