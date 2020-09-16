@@ -14,6 +14,8 @@ function test_diffusion_simple(fieldname, timestepper)
     model = IncompressibleModel(timestepper = timestepper,    
                                        grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1),
+                                   coriolis = nothing,
+                                    tracers = :c,
                                    buoyancy = nothing)
                                
     field = get_model_field(fieldname, model)
@@ -31,7 +33,7 @@ function test_diffusion_simple(fieldname, timestepper)
 end
 
 function test_isotropic_diffusion_budget(fieldname, model)
-    set!(model; u=0, v=0, w=0, T=0, S=0)
+    set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
 
     field = get_model_field(fieldname, model)
@@ -40,7 +42,7 @@ function test_isotropic_diffusion_budget(fieldname, model)
 end
 
 function test_biharmonic_diffusion_budget(fieldname, model)
-    set!(model; u=0, v=0, w=0, T=0, S=0)
+    set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
 
     field = get_model_field(fieldname, model)
@@ -234,7 +236,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
-        for fieldname in (:u, :v, :T, :S), timestepper in timesteppers
+        for fieldname in (:u, :v, :c), timestepper in timesteppers
             @test test_diffusion_simple(fieldname, timestepper)
         end
     end

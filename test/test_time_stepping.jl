@@ -155,18 +155,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
             @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-            model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
-                clock = Clock(time=DateTime(2020))
-            )
+            model = IncompressibleModel(grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+                                        clock = Clock(time=DateTime(2020)))
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = IncompressibleModel(
-                 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
-                clock = Clock(time=TimeDate(2020))
-            )
+            model = IncompressibleModel(grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+                                        clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")

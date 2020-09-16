@@ -18,17 +18,17 @@ mutable struct Clock{T}
     
     Returns a `Clock` with time of type `T`, initialized to the first stage.
     """
-    function Clock{T}(time, iteration, stage=1) where T
+    function Clock{T}(time, iteration=0, stage=1) where T
         return new{T}(time, iteration, stage)
     end
 end
 
 """
-    Clock(time, iteration=0, stage=1)
+    Clock(; time, iteration=0, stage=1)
 
 Returns a `Clock` initialized to the zeroth iteration and first stage.
 """
-Clock(; time, iteration=0, stage=1) = Clock(time, iteration, stage)
+Clock(; time, iteration=0, stage=1) = Clock{typeof(time)}(time, iteration, stage)
 
 Base.show(io::IO, c::Clock{T}) where T =
     println(io, "Clock{$T}: time = ", prettytime(c.time),
