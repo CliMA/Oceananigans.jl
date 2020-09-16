@@ -5,20 +5,14 @@
 struct WENO5 <: AbstractAdvectionScheme end
 
 #####
-##### ENO interpolants of size 3
+##### ENO interpolants
 #####
 
-@inline px₀(i, j, k, f) = @inbounds + 1/3 * f[i-1, j, k] + 5/6 * f[i,   j, k] -  1/6 * f[i+1, j, k]
-@inline px₁(i, j, k, f) = @inbounds - 1/6 * f[i-2, j, k] + 5/6 * f[i-1, j, k] +  1/3 * f[i,   j, k]
-@inline px₂(i, j, k, f) = @inbounds + 1/3 * f[i-3, j, k] - 7/6 * f[i-2, j, k] + 11/6 * f[i-1, j, k]
+const C = eno_coefficients_matrix(Float64, 3)
 
-@inline py₀(i, j, k, f) = @inbounds + 1/3 * f[i, j-1, k] + 5/6 * f[i, j,   k] -  1/6 * f[i, j+1, k]
-@inline py₁(i, j, k, f) = @inbounds - 1/6 * f[i, j-2, k] + 5/6 * f[i, j-1, k] +  1/3 * f[i, j  , k]
-@inline py₂(i, j, k, f) = @inbounds + 1/3 * f[i, j-3, k] - 7/6 * f[i, j-2, k] + 11/6 * f[i, j-1, k]
-
-@inline pz₀(i, j, k, f) = @inbounds + 1/3 * f[i, j, k-1] + 5/6 * f[i, j,   k] -  1/6 * f[i, j, k+1]
-@inline pz₁(i, j, k, f) = @inbounds - 1/6 * f[i, j, k-2] + 5/6 * f[i, j, k-1] +  1/3 * f[i, j,   k]
-@inline pz₂(i, j, k, f) = @inbounds + 1/3 * f[i, j, k-3] - 7/6 * f[i, j, k-2] + 11/6 * f[i, j, k-1]
+@inline px(i, j, k, r, ϕ) = @inbounds sum(C[ℓ+1, r+1] * ϕ[i-r-1+ℓ, j, k] for ℓ in 0:2)
+@inline py(i, j, k, r, ϕ) = @inbounds sum(C[ℓ+1, r+1] * ϕ[i, j-r-1+ℓ, k] for ℓ in 0:2)
+@inline pz(i, j, k, r, ϕ) = @inbounds sum(C[ℓ+1, r+1] * ϕ[i, j, k-r-1+ℓ] for ℓ in 0:2)
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators
@@ -112,17 +106,17 @@ end
 
 @inline function weno5_flux_x(i, j, k, f)
     w₀, w₁, w₂ = weno5_weights_x(i, j, k, f)
-    return w₀ * px₀(i, j, k, f) + w₁ * px₁(i, j, k, f) + w₂ * px₂(i, j, k, f)
+    return w₀ * px(i, j, k, 0, f) + w₁ * px(i, j, k, 1, f) + w₂ * px(i, j, k, 2, f)
 end
 
 @inline function weno5_flux_y(i, j, k, f)
     w₀, w₁, w₂ = weno5_weights_y(i, j, k, f)
-    return w₀ * py₀(i, j, k, f) + w₁ * py₁(i, j, k, f) + w₂ * py₂(i, j, k, f)
+    return w₀ * py(i, j, k, 0, f) + w₁ * py(i, j, k, 1, f) + w₂ * py(i, j, k, 2, f)
 end
 
 @inline function weno5_flux_z(i, j, k, f)
     w₀, w₁, w₂ = weno5_weights_z(i, j, k, f)
-    return w₀ * pz₀(i, j, k, f) + w₁ * pz₁(i, j, k, f) + w₂ * pz₂(i, j, k, f)
+    return w₀ * pz(i, j, k, 0, f) + w₁ * pz(i, j, k, 1, f) + w₂ * pz(i, j, k, 2, f)
 end
 
 #####

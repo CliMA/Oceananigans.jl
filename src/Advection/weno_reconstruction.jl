@@ -1,3 +1,4 @@
+using StaticArrays
 using SymPy
 
 """
@@ -61,10 +62,19 @@ eno_coefficient(k, r, j) = sum([U(k, r, m)//D(k, m) for m in j+1:k])
     eno_coefficients(k, r)
 
 Return an array of ENO coefficients to reconstruct a value at the point x(i+½) with
-order of accuracy `k` (stencil size) and left shift `r`. Note that when combined
-these produce a WENO scheme of order 2k-1.
+order of accuracy `k` (stencil size) and left shift `r`.
 """
 eno_coefficients(k, r) = [eno_coefficient(k, r, j) for j in 0:k-1]
+
+"""
+    eno_coefficients_matrix(FT, k)
+
+Return a k×k static array containing ENO coefficients to reconstruct a value at the
+point x(i+½) with order of accuracy `k` (stencil size) with element type `FT`. Note
+that when combined these ENO interpolants produce a WENO scheme of order 2k-1.
+"""
+eno_coefficients_matrix(FT, k) =
+    cat([eno_coefficients(k, r) for r in 0:k-1]..., dims=1) |> SMatrix{k,k,FT}
 
 """
     optimal_weno_weights(k)
