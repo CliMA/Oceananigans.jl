@@ -162,6 +162,7 @@ include("velocity_tracer_gradients.jl")
 
 include("closure_tuples.jl")
 
+include("turbulence_closure_implementations/nothing_closure.jl")
 include("turbulence_closure_implementations/isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
