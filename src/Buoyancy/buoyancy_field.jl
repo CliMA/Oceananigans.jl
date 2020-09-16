@@ -1,6 +1,8 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractField, validate_field_data, new_data
+using Oceananigans.Fields: AbstractField, validate_field_data, new_data, datatuple, architecture
+using Oceananigans.Architectures: device
+using Oceananigans.Utils: work_layout
 
 import Oceananigans.Fields: compute!
 
