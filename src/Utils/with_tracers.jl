@@ -31,3 +31,6 @@ function with_tracers(tracer_names, initial_tuple::NamedTuple, tracer_default; w
 
     return NamedTuple{Tuple(solution_names)}(Tuple(solution_values))
 end
+
+# If the initial tuple is 'nothing', return nothing.
+with_tracers(tracer_names, ::Nothing, args...; kwargs...) = nothing
