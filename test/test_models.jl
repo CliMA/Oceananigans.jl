@@ -81,7 +81,7 @@ end
     @testset "Setting model fields" begin
         @info "  Testing setting model fields..."
         for arch in archs, FT in float_types
-            N = (16, 16, 8)
+            N = (4, 4, 4)
             L = (2π, 3π, 5π)
 
             grid = RegularCartesianGrid(FT, size=N, extent=L)

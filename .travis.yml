@@ -9,7 +9,8 @@ julia:
 env:
   jobs:
     - TEST_GROUP=unit
-    - TEST_GROUP=integration
+    - TEST_GROUP=model
+    - TEST_GROUP=simulation
     - TEST_GROUP=regression
     - TEST_GROUP=scripts
 
