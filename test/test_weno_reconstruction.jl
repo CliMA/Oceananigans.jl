@@ -30,6 +30,8 @@ end
     
     # Janky regression test
     
+    w5 = WENO(5)
+
     N = 10
     a = collect(Float64, (1:N) .^ 2)
     
@@ -40,9 +42,9 @@ end
     correct = [73//6, 121//6, 181//6, 253//6]
 
     inds = 4:N-3
-    @test rationalize.([weno_flux_x(i, 1, 1, ax) for i in inds]) == correct
-    @test rationalize.([weno_flux_y(1, j, 1, ay) for j in inds]) == correct
-    @test rationalize.([weno_flux_z(1, 1, k, az) for k in inds]) == correct
+    @test rationalize.([weno_flux_x(i, 1, 1, w5, ax) for i in inds]) == correct
+    @test rationalize.([weno_flux_y(1, j, 1, w5, ay) for j in inds]) == correct
+    @test rationalize.([weno_flux_z(1, 1, k, w5, az) for k in inds]) == correct
 
     @testset "ENO reconstruction weights" begin
         @testset "WENO-3" begin
