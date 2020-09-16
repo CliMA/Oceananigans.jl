@@ -1,6 +1,6 @@
 using SymPy
 using Oceananigans.Advection: eno_coefficients, optimal_weno_weights, β,
-                              weno5_flux_x, weno5_flux_y, weno5_flux_z
+                              weno_flux_x, weno_flux_y, weno_flux_z
 
 function print_eno_interpolant(k, r)
     cs = eno_coefficients(k, r)
@@ -22,7 +22,7 @@ function print_eno_interpolants(k)
         print_eno_interpolant(k, r)
     end
     Γ = optimal_weno_weights(k)
-    println("Optimal weights γᵣ: $Γ")
+    println("Optimal weights γ: $Γ")
 end
 
 @testset "WENO reconstruction" begin
@@ -40,9 +40,9 @@ end
     correct = [73//6, 121//6, 181//6, 253//6]
 
     inds = 4:N-3
-    @test rationalize.([weno5_flux_x(i, 1, 1, ax) for i in inds]) == correct
-    @test rationalize.([weno5_flux_y(1, j, 1, ay) for j in inds]) == correct
-    @test rationalize.([weno5_flux_z(1, 1, k, az) for k in inds]) == correct
+    @test rationalize.([weno_flux_x(i, 1, 1, ax) for i in inds]) == correct
+    @test rationalize.([weno_flux_y(1, j, 1, ay) for j in inds]) == correct
+    @test rationalize.([weno_flux_z(1, 1, k, az) for k in inds]) == correct
 
     @testset "ENO reconstruction weights" begin
         @testset "WENO-3" begin
@@ -91,18 +91,18 @@ end
     @testset "WENO optimal weights" begin
         @testset "WENO-3" begin
             # Compare with Table II of Jiang & Shu (1996).
-            @test optimal_weno_weights(2) == [1//3, 2//3]
+            @test optimal_weno_weights(2) == [2//3, 1//3]
         end
         
         @testset "WENO-5" begin
             # Compare with equation (2.15) of Shu (2009).
-            @test optimal_weno_weights(3) == [1//10, 3//5, 3//10]
+            @test optimal_weno_weights(3) == [3//10, 3//5, 1//10]
         end
 
         @testset "WENO-7" begin end
 
         @testset "WENO-9" begin
-            @test optimal_weno_weights(5) == [1//126, 10//63, 10//21, 20//63, 5//126]
+            @test optimal_weno_weights(5) == [5//126, 20//63, 10//21, 10//63, 1//126]
         end
     end
 

@@ -92,9 +92,9 @@ function optimal_weno_weights(FT, k)
         C[n+1:n+k, n+1] .= eno_coefficients(k, k-1-n)
     end
 
-    Γ = C \ b
-    Γ = rationalize.(Γ, tol=√eps(Float64)) |> reverse
-    return SVector{k,FT}(Γ)
+    γ = C \ b
+    γ = rationalize.(γ, tol=√eps(Float64)) |> reverse
+    return SVector{k,FT}(γ)
 end
 
 optimal_weno_weights(k) = optimal_weno_weights(Rational, k)
