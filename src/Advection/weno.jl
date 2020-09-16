@@ -11,9 +11,11 @@ struct WENO{K, FT, C, B, Γ} <: AbstractAdvectionScheme
 end
 
 function WENO(FT, n)
-    if n < 3 || iseven(n)
+    (n < 3 || iseven(n)) &&
         error("WENO schemes are only defined for order n = 3, 5, 7, 9, 11, ...")
-    end
+
+    n >= 7 &&
+        @info "Computing WENO-$n smoothness indicator coefficients. This could take a while for n >= 7..."
 
     k = Int((n + 1) / 2)
     C = eno_coefficients_matrix(FT, k)

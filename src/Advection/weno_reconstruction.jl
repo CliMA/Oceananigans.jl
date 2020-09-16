@@ -125,9 +125,9 @@ p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k-1)
 """
     β(k, r, ϕ)
 
-Return a symbolic expression for the smoothness indicator β for an ENO reconstruction
-scheme of order `k` and left shift `r` (WENO scheme of order 2k-1). The field values
-are represented by the symbols in `ϕ` which should have length k.
+Return a symbolic expression for the smoothness indicator β for a WENO reconstruction
+scheme with stencils of size `k` and left shift `r` (WENO scheme of order 2k-1). The
+field values are represented by the symbols in `ϕ` which should have length k.
 """
 function β(k, r, ϕ)
     @vars ξ
@@ -140,6 +140,17 @@ subscript_sign(n) = n > 0 ? "₊" : n < 0 ? "₋" : ""
 
 subscript_index(n) = n == 0 ? "" : subscript_sign(n) * subscript(abs(n))
 
+"""
+    β_coefficients([FT=Rational], k)
+
+Return a k×k×k static array containing the WENO smoothness indicator coefficients
+described by Jiang & Shu (1998) for a WENO reconstruction with stencils of size `k`
+(WENO scheme of order 2k-1) with element type `FT`.
+
+The `B[m, n, r]` coefficient corresponds to the coefficient of the
+`ϕ[r-k+m+1] * ϕ[r-k+n+1]` term where r-k+1 <= m, n <= r and `r` is the left shift of
+the ENO interpolants.
+"""
 function β_coefficients(FT, k)
     B = zeros(Float64, k, k, k)
     
