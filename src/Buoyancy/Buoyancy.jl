@@ -74,4 +74,6 @@ Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
 Base.show(io::IO, eos::LinearEquationOfState{FT}) where FT =
     println(io, "LinearEquationOfState{$FT}: ", @sprintf("α = %.2e, β = %.2e", eos.α, eos.β))
 
+include("buoyancy_field.jl")
+
 end

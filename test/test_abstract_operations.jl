@@ -282,6 +282,22 @@ function computation_including_boundaries(FT, arch)
     return all(interior(uvw) .!= 0)
 end
 
+function computations_with_buoyancy_field(FT, arch, buoyancy)
+    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
+    tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
+                                tracers=tracers, buoyancy=buoyancy)
+
+    b = BuoyancyField(model)
+    u, v, w = model.velocities
+
+    @compute ub = ComputedField(u * b)
+    @compute vb = ComputedField(v * b)
+    @compute wb = ComputedField(w * b)
+
+    return true # test that it doesn't error
+end
+
 @testset "Abstract operations" begin
     @info "Testing abstract operations..."
 
@@ -505,6 +521,19 @@ end
                 @testset "Faces along Bounded dimensions" begin
                     @info "      Testing compute! on faces along bounded dimensions..."
                     @test computation_including_boundaries(FT, arch)
+                end
+
+                EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState,
+                                    SeawaterPolynomials.TEOS10EquationOfState)
+
+                buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(FT),
+                              (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
+
+                for buoyancy in buoyancies
+                    @testset "BuoyancyField" begin
+                        @info "      Testing computations with BuoyancyField"
+                        @test computations_with_buoyancy_field(FT, arch, buoyancy)
+                    end
                 end
             end
         end
