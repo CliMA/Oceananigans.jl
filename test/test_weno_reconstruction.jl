@@ -1,5 +1,6 @@
 using SymPy
-using Oceananigans.Advection: eno_coefficients, optimal_weno_weights, β
+using Oceananigans.Advection: eno_coefficients, optimal_weno_weights, β,
+                              weno5_flux_x, weno5_flux_y, weno5_flux_z
 
 function print_eno_interpolant(k, r)
     cs = eno_coefficients(k, r)
@@ -27,8 +28,23 @@ end
 @testset "WENO reconstruction" begin
     @info "Testing WENO reconstruction..."
     
-    @testset "ENO reconstruction weights" begin
+    # Janky regression test
+    
+    N = 10
+    a = collect(Float64, (1:N) .^ 2)
+    
+    ax = reshape(a, (N, 1, 1))
+    ay = reshape(a, (1, N, 1))
+    az = reshape(a, (1, 1, N))
 
+    correct = [73//6, 121//6, 181//6, 253//6]
+
+    inds = 4:N-3
+    @test rationalize.([weno5_flux_x(i, 1, 1, ax) for i in inds]) == correct
+    @test rationalize.([weno5_flux_y(1, j, 1, ay) for j in inds]) == correct
+    @test rationalize.([weno5_flux_z(1, 1, k, az) for k in inds]) == correct
+
+    @testset "ENO reconstruction weights" begin
         @testset "WENO-3" begin
             @info "WENO-3 coefficients [Compare with Table 2.1 of Shu (1998)]:"
             print_eno_interpolants(2)
