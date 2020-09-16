@@ -27,12 +27,13 @@ schemes = [CenteredSecondOrder, CenteredFourthOrder, WENO5]
 for arch in archs, FT in float_types, Scheme in schemes
     N = arch isa CPU ? 64 : 256
     
-	grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, 1))
+    topo = (Periodic, Periodic, Periodic)
+    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), halo=(3, 3, 3), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, advection=Scheme())
 
     time_step!(model, 1)  # precompile
 
-    bn =  benchmark_name(N, string(Scheme), arch, FT)
+    bn =  benchmark_name((N, N, N), string(Scheme), arch, FT)
     @printf("Running benchmark: %s...\n", bn)
     for i in 1:Nt
         @timeit timer bn time_step!(model, 1)
