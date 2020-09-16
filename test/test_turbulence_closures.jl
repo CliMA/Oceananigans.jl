@@ -6,12 +6,12 @@ for closure in closures
     end
 end
 
-function test_closure_instantiation(closurename)
+function closure_instantiation(closurename)
     closure = getproperty(TurbulenceClosures, closurename)()
     return true
 end
 
-function test_constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
+function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
     closure = IsotropicDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
     return closure.ν == ν && closure.κ.T == κ
 end
@@ -21,7 +21,7 @@ function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(
     return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
 end
 
-function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
@@ -50,7 +50,7 @@ function test_constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=
             ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6ν )
 end
 
-function test_anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
+function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
        closure = AnisotropicDiffusivity(FT, νh=νh, νz=νz, κh=(T=κh, S=κh), κz=(T=κz, S=κz))
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
@@ -175,15 +175,15 @@ end
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
         for closure in closures
-            @test test_closure_instantiation(closure)
+            @test closure_instantiation(closure)
         end
     end
 
     @testset "Constant isotropic diffusivity" begin
         @info "  Testing constant isotropic diffusivity..."
         for T in float_types
-            @test test_constant_isotropic_diffusivity_basic(T)
-            @test test_constant_isotropic_diffusivity_fluxdiv(T)
+            @test constant_isotropic_diffusivity_basic(T)
+            @test constant_isotropic_diffusivity_fluxdiv(T)
         end
     end
 
@@ -191,8 +191,8 @@ end
         @info "  Testing constant anisotropic diffusivity..."
         for T in float_types
             @test anisotropic_diffusivity_convenience_kwarg(T)
-            @test test_anisotropic_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
-            @test test_anisotropic_diffusivity_fluxdiv(T)
+            @test anisotropic_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
+            @test anisotropic_diffusivity_fluxdiv(T)
         end
     end
 
