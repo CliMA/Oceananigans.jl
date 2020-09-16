@@ -6,6 +6,7 @@ using Dates: AbstractTime, Nanosecond
     Clock{T<:Number}
 
 Keeps track of the current `time`, `iteration` number, and time-stepping `stage`.
+`stage` is updated only for multi-stage time-stepping methods.
 The `time::T` can be either a number of a `DateTime` object.
 """
 mutable struct Clock{T}
@@ -26,7 +27,7 @@ end
 """
     Clock(; time, iteration=0, stage=1)
 
-Returns a `Clock` initialized to the zeroth iteration and first stage.
+Returns a `Clock` initialized to the zeroth iteration and first time step stage.
 """
 Clock(; time, iteration=0, stage=1) = Clock{typeof(time)}(time, iteration, stage)
 
