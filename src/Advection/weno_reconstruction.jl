@@ -67,7 +67,7 @@ order of accuracy `k` (stencil size) and left shift `r`.
 eno_coefficients(k, r) = [eno_coefficient(k, r, j) for j in 0:k-1]
 
 """
-    eno_coefficients_matrix(FT, k)
+    eno_coefficients_matrix([FT=Rational], k)
 
 Return a k×k static array containing ENO coefficients to reconstruct a value at the
 point x(i+½) with order of accuracy `k` (stencil size) with element type `FT`. Note
@@ -76,13 +76,15 @@ that when combined these ENO interpolants produce a WENO scheme of order 2k-1.
 eno_coefficients_matrix(FT, k) =
     cat([eno_coefficients(k, r) for r in 0:k-1]..., dims=1) |> SMatrix{k,k,FT}
 
-"""
-    optimal_weno_weights(k)
+eno_coefficients_matrix(k) = eno_coefficients_matrix(Rational, k) 
 
-Return the optimal weights that can be used to weigh ENO reconstruction schemes of
-order `k` to produce a WENO scheme of order 2k-1.
 """
-function optimal_weno_weights(k)
+    optimal_weno_weights([FT=Rational], k)
+
+Return a static vector containing the optimal weights that can be used to weigh ENO
+reconstruction schemes of order `k` to produce a WENO scheme of order 2k-1.
+"""
+function optimal_weno_weights(FT, k)
     C = zeros(Rational, 2k-1, k)
     b = eno_coefficients(2k-1, k-1)
 
@@ -91,8 +93,11 @@ function optimal_weno_weights(k)
     end
 
     Γ = C \ b
-    return rationalize.(Γ, tol=√eps(Float64))
+    Γ = rationalize.(Γ, tol=√eps(Float64)) |> reverse
+    return SVector{k,FT}(Γ)
 end
+
+optimal_weno_weights(k) = optimal_weno_weights(Rational, k)
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators β
@@ -128,3 +133,27 @@ function β(k, r, ϕ)
     @vars ξ
     return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k-1)
 end
+
+subscript(n) = join(Char(0x2080 + parse(Int, d)) for d in string(n))
+
+subscript_sign(n) = n > 0 ? "₊" : n < 0 ? "₋" : ""
+
+subscript_index(n) = n == 0 ? "" : subscript_sign(n) * subscript(abs(n))
+
+function β_coefficients(FT, k)
+    B = zeros(Float64, k, k, k)
+    
+    for r in 0:k-1
+        ϕ = [Sym("ϕᵢ" * subscript_index(n)) for n in r:-1:r-k+1]
+        β_symbolic = β(k, r, ϕ) |> expand
+
+        for m in 1:k, n in 1:k
+            B[m, n, r+1] = β_symbolic.coeff(ϕ[m] * ϕ[n])
+        end
+    end
+    
+    B = rationalize.(B, tol=√eps(Float64))
+    return SArray{Tuple{k,k,k},FT}(B)
+end
+
+β_coefficients(k) = β_coefficients(Rational, k)

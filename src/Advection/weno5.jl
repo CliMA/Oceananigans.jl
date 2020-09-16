@@ -18,21 +18,17 @@ const C = eno_coefficients_matrix(Float64, 3)
 ##### Jiang & Shu (1996) WENO smoothness indicators
 #####
 
-@inline βx₀(i, j, k, f) = @inbounds 13/12 * (f[i-1, j, k] - 2f[i,   j, k] + f[i+1, j, k])^2 + 1/4 * (3f[i-1, j, k] - 4f[i,   j, k] +  f[i+1, j, k])^2
-@inline βx₁(i, j, k, f) = @inbounds 13/12 * (f[i-2, j, k] - 2f[i-1, j, k] + f[i,   j, k])^2 + 1/4 * ( f[i-2, j, k]                 -  f[i,   j, k])^2
-@inline βx₂(i, j, k, f) = @inbounds 13/12 * (f[i-3, j, k] - 2f[i-2, j, k] + f[i-1, j, k])^2 + 1/4 * ( f[i-3, j, k] - 4f[i-2, j, k] + 3f[i-1, j, k])^2
+const B = β_coefficients(Float64, 3)
 
-@inline βy₀(i, j, k, f) = @inbounds 13/12 * (f[i, j-1, k] - 2f[i, j,   k] + f[i, j+1, k])^2 + 1/4 * (3f[i, j-1, k] - 4f[i,   j, k] +  f[i, j+1, k])^2
-@inline βy₁(i, j, k, f) = @inbounds 13/12 * (f[i, j-2, k] - 2f[i, j-1, k] + f[i, j,   k])^2 + 1/4 * ( f[i, j-2, k]                 -  f[i,   j, k])^2
-@inline βy₂(i, j, k, f) = @inbounds 13/12 * (f[i, j-3, k] - 2f[i, j-2, k] + f[i, j-1, k])^2 + 1/4 * ( f[i, j-3, k] - 4f[i, j-2, k] + 3f[i, j-1, k])^2
-
-@inline βz₀(i, j, k, f) = @inbounds 13/12 * (f[i, j, k-1] - 2f[i, j,   k] + f[i, j, k+1])^2 + 1/4 * (3f[i, j, k-1] - 4f[i, j,   k] +  f[i, j, k+1])^2
-@inline βz₁(i, j, k, f) = @inbounds 13/12 * (f[i, j, k-2] - 2f[i, j, k-1] + f[i, j,   k])^2 + 1/4 * ( f[i, j, k-2]                 -  f[i, j,   k])^2
-@inline βz₂(i, j, k, f) = @inbounds 13/12 * (f[i, j, k-3] - 2f[i, j, k-2] + f[i, j, k-1])^2 + 1/4 * ( f[i, j, k-3] - 4f[i, j, k-2] + 3f[i, j, k-1])^2
+@inline βx(i, j, k, r, ϕ) = @inbounds sum(B[m+1, n+1, r+1] * ϕ[i-r-1+m, j, k] * ϕ[i-r-1+n, j, k] for m in 0:2 for n in 0:m)
+@inline βy(i, j, k, r, ϕ) = @inbounds sum(B[m+1, n+1, r+1] * ϕ[i, j-r-1+m, k] * ϕ[i, j-r-1+n, k] for m in 0:2 for n in 0:m)
+@inline βz(i, j, k, r, ϕ) = @inbounds sum(B[m+1, n+1, r+1] * ϕ[i, j, k-r-1+m] * ϕ[i, j, k-r-1+n] for m in 0:2 for n in 0:m)
 
 #####
-##### WENO-5 optimal weights
+##### WENO optimal weights
 #####
+
+const γ = optimal_weno_weights(Float64, 3)
 
 const C3₀ = 3/10
 const C3₁ = 3/5
@@ -45,17 +41,17 @@ const C3₂ = 1/10
 const ε = 1e-6
 const ƞ = 2  # WENO exponent
 
-@inline αx₀(i, j, k, f) = C3₀ / (βx₀(i, j, k, f) + ε)^ƞ
-@inline αx₁(i, j, k, f) = C3₁ / (βx₁(i, j, k, f) + ε)^ƞ
-@inline αx₂(i, j, k, f) = C3₂ / (βx₂(i, j, k, f) + ε)^ƞ
+@inline αx₀(i, j, k, f) = C3₀ / (βx(i, j, k, 0, f) + ε)^ƞ
+@inline αx₁(i, j, k, f) = C3₁ / (βx(i, j, k, 1, f) + ε)^ƞ
+@inline αx₂(i, j, k, f) = C3₂ / (βx(i, j, k, 2, f) + ε)^ƞ
 
-@inline αy₀(i, j, k, f) = C3₀ / (βy₀(i, j, k, f) + ε)^ƞ
-@inline αy₁(i, j, k, f) = C3₁ / (βy₁(i, j, k, f) + ε)^ƞ
-@inline αy₂(i, j, k, f) = C3₂ / (βy₂(i, j, k, f) + ε)^ƞ
+@inline αy₀(i, j, k, f) = C3₀ / (βy(i, j, k, 0, f) + ε)^ƞ
+@inline αy₁(i, j, k, f) = C3₁ / (βy(i, j, k, 1, f) + ε)^ƞ
+@inline αy₂(i, j, k, f) = C3₂ / (βy(i, j, k, 2, f) + ε)^ƞ
 
-@inline αz₀(i, j, k, f) = C3₀ / (βz₀(i, j, k, f) + ε)^ƞ
-@inline αz₁(i, j, k, f) = C3₁ / (βz₁(i, j, k, f) + ε)^ƞ
-@inline αz₂(i, j, k, f) = C3₂ / (βz₂(i, j, k, f) + ε)^ƞ
+@inline αz₀(i, j, k, f) = C3₀ / (βz(i, j, k, 0, f) + ε)^ƞ
+@inline αz₁(i, j, k, f) = C3₁ / (βz(i, j, k, 1, f) + ε)^ƞ
+@inline αz₂(i, j, k, f) = C3₂ / (βz(i, j, k, 2, f) + ε)^ƞ
 
 #####
 ##### WENO-5 normalized weights
