@@ -3,7 +3,8 @@ module Buoyancy
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared,
+    BuoyancyField
 
 using Printf
 using Oceananigans.Grids
@@ -73,5 +74,7 @@ Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
 
 Base.show(io::IO, eos::LinearEquationOfState{FT}) where FT =
     println(io, "LinearEquationOfState{$FT}: ", @sprintf("α = %.2e, β = %.2e", eos.α, eos.β))
+
+include("buoyancy_field.jl")
 
 end
