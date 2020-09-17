@@ -22,6 +22,10 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     `a` and `b` to a common location.
     """
     function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
+
+        any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
+                                                           "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
+
         return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b),
                    typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
     end

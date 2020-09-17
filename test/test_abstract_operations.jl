@@ -1,4 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.Fields: PressureField
 using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -293,7 +294,7 @@ end
 function operations_with_averaged_field(model)
     u, v, w = model.velocities
     UV = AveragedField(u * v, dims=(1, 2))
-    @compute UVw = ComputedField(UV * w)
+    @compute wUV = ComputedField(w * UV)
     return true
 end
 
@@ -459,6 +460,8 @@ end
                     u, v, w = model.velocities
                     T, S = model.tracers
 
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
                             @test op(ϕ) isa UnaryOperation
@@ -550,6 +553,14 @@ end
 
                 @testset "Operations with AveragedField [$FT, $(typeof(arch))]" begin
                     @info "      Testing operations with AveragedField..."
+
+                    T, S = model.tracers
+
+                    TS = AveragedField(T * S, dims=(1, 2))
+
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+                    @test_throws ArgumentError TS * S
+
                     @test operations_with_averaged_field(model)
                 end
 
@@ -564,9 +575,9 @@ end
                 buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(FT),
                               (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
 
-                for buoyancy in buoyancies
-                    @testset "BuoyancyField" begin
-                        @info "      Testing computations with BuoyancyField"
+                @testset "BuoyancyField" begin
+                    for buoyancy in buoyancies
+                        @info "      Testing computations with BuoyancyField [$(typeof(buoyancy).name.wrapper)]"
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
                 end
