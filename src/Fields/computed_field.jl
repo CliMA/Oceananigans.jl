@@ -1,6 +1,6 @@
 using Adapt
 using Statistics
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: zero_halo_regions!
 
