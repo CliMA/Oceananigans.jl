@@ -283,6 +283,27 @@ function computation_including_boundaries(FT, arch)
     return all(interior(uvw) .!= 0)
 end
 
+function operations_with_computed_field(model)
+    u, v, w = model.velocities
+    uv = ComputedField(u * v)
+    @compute uvw = ComputedField(uv * w)
+    return true
+end
+
+function operations_with_averaged_field(model)
+    u, v, w = model.velocities
+    UV = AveragedField(u * v, dims=(1, 2))
+    @compute UVw = ComputedField(UV * w)
+    return true
+end
+
+function pressure_field(model)
+    p = PressureField(model)
+    u, v, w = model.velocities
+    @compute up = ComputedField(u * p)
+    return true
+end
+
 function computations_with_buoyancy_field(FT, arch, buoyancy)
     grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
@@ -499,6 +520,14 @@ end
                     @test compute_kinetic_energy(model)
                 end
 
+                @testset "Operations with ComputedField and PressureField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with ComputedField..."
+                    @test operations_with_computed_field(model)
+
+                    @info "      Testing PressureField..."
+                    @test pressure_field(model)
+                end
+
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
                     @info "      Testing horizontal averges..."
                     @test horizontal_average_of_plus(model)
@@ -517,6 +546,11 @@ end
                 @testset "Volume averages of operations [$FT, $(typeof(arch))]" begin
                     @info "      Testing volume averges..."
                     @test volume_average_of_times(model)
+                end
+
+                @testset "Operations with AveragedField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with AveragedField..."
+                    @test operations_with_averaged_field(model)
                 end
 
                 @testset "Faces along Bounded dimensions" begin
