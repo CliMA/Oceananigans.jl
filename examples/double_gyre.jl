@@ -4,7 +4,7 @@
 
 using Oceananigans.Grids
 
-grid = RegularCartesianGrid(size = (64, 64, 32),
+grid = RegularCartesianGrid(size = (128, 128, 64),
                                x = (-2e6, 2e6),
                                y = (-2e6, 2e6),
                                z = (-1e3, 0),
@@ -57,15 +57,11 @@ set!(model, b=b₀)
 
 using Oceananigans.OutputWriters
 
-## Create a NamedTuple containing all the fields to be outputted.
-fields_to_output = merge(model.velocities, model.tracers)
-nothing # hide
-
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
+field_writer = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                                 time_interval=2day,
-                                prefix="double_gyre",
+                                prefix="double_gyre2",
                                 force=true)
                                                                  
 # ## Running the simulation
@@ -73,7 +69,7 @@ field_writer = JLD2OutputWriter(model, FieldOutputs(fields_to_output);
 # To run the simulation, we instantiate a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
-wizard = TimeStepWizard(cfl = 0.20, Δt = 10minute, max_change = 1.1, max_Δt = 0.05*grid.Δz^2/closure[1].κz)
+wizard = TimeStepWizard(cfl = 0.20, Δt = 20minute, max_change = 1.1, max_Δt = minimum([0.03*grid.Δz^2/closure[1].κz, 0.03*grid.Δx^4/closure[2].κx]))
 nothing # hide
 
 # Finally, we set up and run the the simulation.
@@ -103,7 +99,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=10*365day, iteration_interval=100, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, stop_time=2*365day, iteration_interval=200, progress=print_progress)
 simulation.output_writers[:fields] = field_writer
 
 run!(simulation)
@@ -124,7 +120,7 @@ nothing # hide
 
 using JLD2, Plots
 
-file = jldopen(simulation.output_writers[:fields].filepath)
+file = jldopen("simulation.output_writers[:fields].filepath")
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 nothing # hide
@@ -153,8 +149,8 @@ anim = @animate for (i, iter) in enumerate(iterations)
     @info "Drawing frame $i from iteration $iter \n"
 
     ## Load 3D fields from file, omitting halo regions
-    u = file["timeseries/u/$iter"][3:end-2, 3:end-2, 3:end-2]
-    v = file["timeseries/v/$iter"][3:end-2, 3:end-2, 3:end-2]
+    u = file["timeseries/u/$iter"]
+    v = file["timeseries/v/$iter"]
     t = file["timeseries/t/$iter"]
 
     ## Extract slices
@@ -191,4 +187,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "double_gyre4.gif", fps = 12) # hide
+gif(anim, "double_gyre.gif", fps = 12) # hide
