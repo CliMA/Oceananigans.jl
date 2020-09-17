@@ -1,6 +1,6 @@
 using Oceananigans.Fields: AbstractField
 using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions, FieldBoundaryConditions
-using Oceananigans.TimeSteppers: AdamsBashforthTimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 
 #####
 ##### Output writer utilities
@@ -66,7 +66,8 @@ end
 # Special serializeproperty! for AB2 time stepper struct used by the checkpointer so
 # it only saves the fields and not the tendency BCs or χ value (as they can be
 # constructed by the `Model` constructor).
-function serializeproperty!(file, location, ts::AdamsBashforthTimeStepper)
+function serializeproperty!(file, location, 
+                            ts::Union{QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper})
     serializeproperty!(file, location * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, location * "/G⁻", ts.G⁻)
 end

@@ -122,7 +122,6 @@ XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid),
 YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
 ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
 
-@propagate_inbounds Base.getindex(f::Field, inds...) = @inbounds getindex(f.data, inds...)
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 
 gpufriendly(f::Field) = data(f)

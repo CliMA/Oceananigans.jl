@@ -130,6 +130,12 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
                             interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
 
 #####
+##### getindex
+#####
+
+@propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
+
+#####
 ##### Coordinates of fields
 #####
 

@@ -98,31 +98,29 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
         time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(dirname(@__FILE__), "data", name * "_iteration$(spinup_steps+test_steps).jld2")
+    final_filename = joinpath(@__DIR__, "data", name * "_iteration$(spinup_steps+test_steps).jld2")
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    field_names = ["u", "v", "w", "T", "S"]
+    test_fields = (u = Array(interior(model.velocities.u)),
+                   v = Array(interior(model.velocities.v)),
+                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                   T = Array(interior(model.tracers.T)),
+                   S = Array(interior(model.tracers.S)))
 
-    test_fields = (model.velocities.u.data.parent,
-                   model.velocities.v.data.parent,
-                   model.velocities.w.data.parent,
-                   model.tracers.T.data.parent,
-                   model.tracers.S.data.parent)
+    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
+                      v = Array(interior(solution₁.v, model.grid)),
+                      w = Array(interior(solution₁.w, model.grid)),
+                      T = Array(interior(solution₁.T, model.grid)),
+                      S = Array(interior(solution₁.S, model.grid)))
 
-    correct_fields = (solution₁.u,
-                      solution₁.v,
-                      solution₁.w,
-                      solution₁.T,
-                      solution₁.S)
+    summarize_regression_test(test_fields, correct_fields)
 
-    summarize_regression_test(field_names, test_fields, correct_fields)
-
-    @test all(Array(interior(solution₁.u, model.grid)) .≈ Array(interior(model.velocities.u)))
-    @test all(Array(interior(solution₁.v, model.grid)) .≈ Array(interior(model.velocities.v)))
-    @test all(Array(interior(solution₁.w, model.grid)) .≈ Array(interior(model.velocities.w)[:, :, 1:Nz]))
-    @test all(Array(interior(solution₁.T, model.grid)) .≈ Array(interior(model.tracers.T)))
-    @test all(Array(interior(solution₁.S, model.grid)) .≈ Array(interior(model.tracers.S)))
+    @test all(test_fields.u .≈ correct_fields.u)
+    @test all(test_fields.v .≈ correct_fields.v)
+    @test all(test_fields.w .≈ correct_fields.w)
+    @test all(test_fields.T .≈ correct_fields.T)
+    @test all(test_fields.S .≈ correct_fields.S)
 
     return nothing
 end

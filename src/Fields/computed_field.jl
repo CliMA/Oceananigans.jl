@@ -7,7 +7,7 @@ using Oceananigans.BoundaryConditions: zero_halo_regions!
 """
     struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
 
-Type representing a field computed from an operation.
+Type representing a field computed from an operand.
 """
 struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
        data :: A
@@ -64,10 +64,10 @@ function compute!(comp::ComputedField{X, Y, Z}) where {X, Y, Z}
     return nothing
 end
 
-"""Compute an `operation` and store in `data`."""
-@kernel function _compute!(data, operation)
+"""Compute an `operand` and store in `data`."""
+@kernel function _compute!(data, operand)
     i, j, k = @index(Global, NTuple)
-    @inbounds data[i, j, k] = operation[i, j, k]
+    @inbounds data[i, j, k] = operand[i, j, k]
 end
 
 #####
@@ -77,5 +77,4 @@ end
 Adapt.adapt_structure(to, computed_field::ComputedField{X, Y, Z}) where {X, Y, Z} = 
     ComputedField{X, Y, Z}(Adapt.adapt(to, computed_field.data),
                            Adapt.adapt(to, computed_field.grid),
-                           Adapt.adapt(to, computed_field.dims),
                            Adapt.adapt(to, computed_field.operand))

@@ -1,9 +1,9 @@
 module TimeSteppers
 
 export
-    AdamsBashforthTimeStepper,
+    QuasiAdamsBashforth2TimeStepper,
+    RungeKutta3TimeStepper,
     time_step!,
-    compute_w_from_continuity!,
     tendencies
 
 using CUDA
@@ -43,7 +43,7 @@ Returns a timestepper with name `name`, instantiated with `args...`.
 Example
 =======
 
-julia> stepper = TimeStepper(:AdamsBashforth, Float64, CPU(), grid, tracernames)
+julia> stepper = TimeStepper(:QuasiAdamsBashforth2, Float64, CPU(), grid, tracernames)
 """
 function TimeStepper(name::Symbol, args...)
     fullname = Symbol(name, :TimeStepper)
@@ -56,6 +56,7 @@ TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 include("generic_time_stepping.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("time_stepping_kernels.jl")
-include("adams_bashforth.jl")
+include("quasi_adams_bashforth_2.jl")
+include("runge_kutta_3.jl")
 
 end # module

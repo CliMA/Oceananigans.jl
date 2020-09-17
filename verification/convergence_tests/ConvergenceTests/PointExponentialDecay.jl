@@ -24,11 +24,12 @@ include("analysis.jl")
 c(t) = exp(-t)
 @inline Fᶜ(i, j, k, grid, clock, state) = @inbounds - state.tracers.c[i, j, k]
 
-function run_test(; Δt, stop_iteration, architecture = CPU())
+function run_test(; Δt, stop_iteration, timestepper, architecture = CPU())
 
     grid = RegularCartesianGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
 
     model = IncompressibleModel(architecture = architecture,
+                                 timestepper = timestepper,
                                         grid = grid,
                                     coriolis = nothing,
                                     buoyancy = nothing,
