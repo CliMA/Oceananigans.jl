@@ -115,7 +115,9 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
         wta.window_start_iteration = model.clock.iteration
         wta.previous_collection_time = model.clock.time
 
-    elseif model.clock.time - wta.window_start_time >= wta.time_window 
+    elseif model.clock.time >= obj.previous_interval_stop_time + obj.time_interval # output is imminent
+    #elseif model.clock.time - wta.window_start_time >= wta.time_window 
+     
         # The averaging window has been exceeded. Finalize averages and cease data collection.
         accumulate_result!(wta, model)
 
