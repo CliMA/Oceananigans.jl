@@ -98,7 +98,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
     # implies we are always collecting)
     
     initializing = model.clock.iteration == 0 &&
-        clock.time < wta.previous_interval_stop_time + wta.time_interval - wta.time_window
+        model.clock.time < wta.previous_interval_stop_time + wta.time_interval - wta.time_window
 
     if !(wta.collecting) && !(initializing)
         # run_diagnostic has been called, but we are not currently collecting data.
