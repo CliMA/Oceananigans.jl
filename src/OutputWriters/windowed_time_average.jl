@@ -87,10 +87,20 @@ end
 
 function run_diagnostic(model, wta::WindowedTimeAverage)
 
-    # Don't start collecting if we are just "initializing" at the beginning of a Simulation
-    initializing = model.clock.iteration > 0 && model.clock.time < wta.time_interval - wta.time_window
+    if model.clock.iteration == 0 # initialize previous interval stop time
+        wta.previous_interval_stop_time = model.clock.time
+    end
 
-    if !(wta.collecting) && !initializing
+    # Don't start collecting if we are *only* "initializing" run_diagnostic at the beginning
+    # of a Simulation.
+    #
+    # Note: this can be false at the first iteration if time_interval == time_window (which
+    # implies we are always collecting)
+    
+    initializing = model.clock.iteration == 0 &&
+        clock.time < wta.previous_interval_stop_time + wta.time_interval - wta.time_window
+
+    if !(wta.collecting) && !(initializing)
         # run_diagnostic has been called, but we are not currently collecting data.
         # Initialize data collection:
 
