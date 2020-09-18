@@ -4,10 +4,10 @@
 
 using Oceananigans.Grids
 
-grid = RegularCartesianGrid(size = (128, 128, 64),
-                               x = (-2e6, 2e6),
-                               y = (-2e6, 2e6),
-                               z = (-1e3, 0),
+grid = RegularCartesianGrid(size = (64, 64, 32),
+                               x = (-2.5e6, 2.5e6),
+                               y = (-2.5e6, 2.5e6),
+                               z = (-1.8e3, 0),
                             halo = (2, 2, 2),
                         topology = (Bounded, Bounded, Bounded))
 
@@ -26,14 +26,17 @@ using Oceananigans.Utils
 
 @inline buoyancy_flux(i, j, grid, clock, state, parameters) = @inbounds - parameters.μ * (state.tracers.b[i, j, grid.Nz] - b_reference(grid.yC[j], parameters))
 b_bcs = TracerBoundaryConditions(grid, 
-              top = BoundaryCondition(Flux, buoyancy_flux, discrete_form = true, parameters = (μ = 50 / 30day, Δb = 0.06, Ly = grid.Ly)))
+              top = BoundaryCondition(Flux, buoyancy_flux, discrete_form = true, parameters = (μ = 50 / 30day, Δb = 0.055, Ly = grid.Ly)))
 
 using Oceananigans, Oceananigans.TurbulenceClosures, Oceananigans.Advection
 
-closure = (AnisotropicDiffusivity(νh = 0*5e3, νz = 1e-2, κh = 0*500, κz = 1e-2),
-           AnisotropicBiharmonicDiffusivity(νh = 1e3*grid.Δx^2, νz = 0, κh = 100*grid.Δx^2, κz = 0))
+closure = AnisotropicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2)
+
+# closure = (AnisotropicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2),
+           # AnisotropicBiharmonicDiffusivity(νh = 1e-3*grid.Δx^4/day, νz = 0, κh = 1e-3*grid.Δx^4/day, κz = 0))
 
 model = IncompressibleModel(       architecture = CPU(),
+                                    timestepper = :RungeKutta3, 
                                       # advection = CenteredFourthOrder(),
                                            grid = grid,
                                        coriolis = BetaPlane(latitude = 45),
@@ -60,8 +63,9 @@ using Oceananigans.OutputWriters
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
 field_writer = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
-                                time_interval=2day,
-                                prefix="double_gyre2",
+                                time_interval=7day,
+                                prefix="double_gyre",
+                                field_slicer=FieldSlicer(k=model.grid.Nz),
                                 force=true)
                                                                  
 # ## Running the simulation
@@ -69,7 +73,13 @@ field_writer = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
 # To run the simulation, we instantiate a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 0.2.
 
-wizard = TimeStepWizard(cfl = 0.20, Δt = 20minute, max_change = 1.1, max_Δt = minimum([0.03*grid.Δz^2/closure[1].κz, 0.03*grid.Δx^4/closure[2].κx]))
+wizard = TimeStepWizard(cfl = 0.50,
+                         Δt = 120minute,
+                 max_change = 1.1,
+                     max_Δt = minimum([0.1*grid.Δz^2/closure.κz, 
+                                       0.1*grid.Δx^2/closure.νx]))
+                     # max_Δt = minimum([0.1*grid.Δz^2/closure[1].κz, 
+                     #                   0.1*grid.Δx^4/closure[2].κx]))
 nothing # hide
 
 # Finally, we set up and run the the simulation.
@@ -99,7 +109,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=2*365day, iteration_interval=200, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, stop_time=10*365day, iteration_interval=200, progress=print_progress)
 simulation.output_writers[:fields] = field_writer
 
 run!(simulation)
@@ -120,7 +130,7 @@ nothing # hide
 
 using JLD2, Plots
 
-file = jldopen("simulation.output_writers[:fields].filepath")
+file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 nothing # hide
@@ -151,11 +161,13 @@ anim = @animate for (i, iter) in enumerate(iterations)
     ## Load 3D fields from file, omitting halo regions
     u = file["timeseries/u/$iter"]
     v = file["timeseries/v/$iter"]
+    w = file["timeseries/w/$iter"]
     t = file["timeseries/t/$iter"]
 
     ## Extract slices
     uxy = 1/2 * (u[1:end-1, :, end] .+ u[2:end, :, end])
     vxy = 1/2 * (v[:, 1:end-1, end] .+ v[:, 2:end, end])
+    wxy = w[:, :, end-1]
     
     speed = @. sqrt(uxy^2 + vxy^2)
     
@@ -172,6 +184,16 @@ anim = @animate for (i, iter) in enumerate(iterations)
                              xlabel = "x (km)",
                              ylabel = "y (km)")
                         
+     wxy_plot = heatmap(x / 1e3, y / 1e3, wxy';
+                               color = :balance,
+                         aspectratio = :equal,
+                               # clims = (-1e-2, 1e-2),
+                              # levels = ulevels,
+                               xlims = (-grid.Lx/2e3, grid.Lx/2e3),
+                               ylims = (-grid.Ly/2e3, grid.Ly/2e3),
+                              xlabel = "x (km)",
+                              ylabel = "y (km)")
+                         
     speed_plot = heatmap(x / 1e3, y / 1e3 , speed';
                               color = :deep,
                         aspectratio = :equal,
@@ -182,7 +204,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
                              xlabel = "x (km)",
                              ylabel = "y (km)")
                              
-    plot(uxy_plot, speed_plot, size=(1100, 500), title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
+    plot(wxy_plot, speed_plot, size=(1100, 500), title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
 
     iter == iterations[end] && close(file)
 end
