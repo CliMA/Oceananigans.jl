@@ -13,6 +13,8 @@ env:
     - TEST_GROUP=simulation
     - TEST_GROUP=regression
     - TEST_GROUP=scripts
+  global:
+    - PYTHON=''
 
 notifications:
   email: true
