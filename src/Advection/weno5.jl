@@ -129,25 +129,141 @@ end
 ##### Momentum advection fluxes
 #####
 
-@inline momentum_flux_uu(i, j, k, grid, ::WENO5, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, u)
-@inline momentum_flux_uv(i, j, k, grid, ::WENO5, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, u)
-@inline momentum_flux_uw(i, j, k, grid, ::WENO5, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, u)
+@inline momentum_flux_uu_weno5(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, u)
+@inline momentum_flux_uv_weno5(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, u)
+@inline momentum_flux_uw_weno5(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, u)
 
-@inline momentum_flux_vu(i, j, k, grid, ::WENO5, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, v)
-@inline momentum_flux_vv(i, j, k, grid, ::WENO5, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, v)
-@inline momentum_flux_vw(i, j, k, grid, ::WENO5, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, v)
+@inline momentum_flux_vu_weno5(i, j, k, grid, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, v)
+@inline momentum_flux_vv_weno5(i, j, k, grid, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, v)
+@inline momentum_flux_vw_weno5(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, v)
 
-@inline momentum_flux_wu(i, j, k, grid, ::WENO5, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, w)
-@inline momentum_flux_wv(i, j, k, grid, ::WENO5, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, w)
-@inline momentum_flux_ww(i, j, k, grid, ::WENO5, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, w)
+@inline momentum_flux_wu_weno5(i, j, k, grid, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k, w)
+@inline momentum_flux_wv_weno5(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k, w)
+@inline momentum_flux_ww_weno5(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k, w)
+
+# Periodic directions
+
+@inline momentum_flux_uu(i, j, k, grid, ::WENO5, u)    = momentum_flux_uu_weno5(i, j, k, grid, u)
+@inline momentum_flux_uv(i, j, k, grid, ::WENO5, u, v) = momentum_flux_uv_weno5(i, j, k, grid, u, v)
+@inline momentum_flux_uw(i, j, k, grid, ::WENO5, u, w) = momentum_flux_uw_weno5(i, j, k, grid, u, w)
+
+@inline momentum_flux_vu(i, j, k, grid, ::WENO5, u, v) = momentum_flux_vu_weno5(i, j, k, grid, u, v)
+@inline momentum_flux_vv(i, j, k, grid, ::WENO5, v)    = momentum_flux_vv_weno5(i, j, k, grid, v)
+@inline momentum_flux_vw(i, j, k, grid, ::WENO5, v, w) = momentum_flux_vw_weno5(i, j, k, grid, v, w)
+
+@inline momentum_flux_wu(i, j, k, grid, ::WENO5, u, w) = momentum_flux_wu_weno5(i, j, k, grid, w, u)
+@inline momentum_flux_wv(i, j, k, grid, ::WENO5, v, w) = momentum_flux_wv_weno5(i, j, k, grid, w, v)
+@inline momentum_flux_ww(i, j, k, grid, ::WENO5, w)    = momentum_flux_ww_weno5(i, j, k, grid, w)
+
+# Bounded directions
+
+@inline function momentum_flux_uu(i, j, k, grid::AbstractGrid{FT, <:Bounded}, ::WENO5, u) where FT
+    if i > 2 && i < grid.Nx - 1
+        return momentum_flux_uu_weno5(i, j, k, grid, u)
+    else
+        return momentum_flux_uu(i, j, k, grid, centered_second_order, u)
+    end
+end
+
+@inline function momentum_flux_uv(i, j, k, grid::AbstractGrid{FT, TX, <:Bounded}, ::WENO5, u, v) where {FT, TX}
+    if j > 2 && j < grid.Ny - 1
+        return momentum_flux_uv_weno5(i, j, k, grid, u, v)
+    else
+        return momentum_flux_uv(i, j, k, grid, centered_second_order, u, v)
+    end
+end
+
+@inline function momentum_flux_uw(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::WENO5, u, w) where {FT, TX, TY}
+    if k > 2 && k < grid.Nz - 1
+        return momentum_flux_uw_weno5(i, j, k, grid, u, w)
+    else
+        return momentum_flux_uw(i, j, k, grid, centered_second_order, u, w)
+    end
+end
+
+@inline function momentum_flux_vu(i, j, k, grid::AbstractGrid{FT, <:Bounded}, ::WENO5, u, v) where {FT}
+    if i > 2 && i < grid.Nx - 1
+        return momentum_flux_vu_weno5(i, j, k, grid, u, v)
+    else
+        return momentum_flux_vu(i, j, k, grid, centered_second_order, u, v)
+    end
+end
+
+@inline function momentum_flux_vv(i, j, k, grid::AbstractGrid{FT, TX, <:Bounded}, ::WENO5, v) where {FT, TX}
+    if j > 2 && j < grid.Ny - 1
+        return momentum_flux_vv_weno5(i, j, k, grid, v)
+    else
+        return momentum_flux_vv(i, j, k, grid, centered_second_order, v)
+    end
+end
+
+@inline function momentum_flux_vw(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::WENO5, v, w) where {FT, TX, TY}
+    if k > 2 && k < grid.Nz - 1
+        return momentum_flux_vw_weno5(i, j, k, grid, v, w)
+    else
+        return momentum_flux_vw(i, j, k, grid, centered_second_order, v, w)
+    end
+end
+
+@inline function momentum_flux_wu(i, j, k, grid::AbstractGrid{FT, <:Bounded}, ::WENO5, u, w) where FT
+    if i > 2 && i < grid.Nx - 1
+        return momentum_flux_wu_weno5(i, j, k, grid, u, w)
+    else
+        return momentum_flux_wu(i, j, k, grid, centered_second_order, u, w)
+    end
+end
+
+@inline function momentum_flux_wv(i, j, k, grid::AbstractGrid{FT, TX, <:Bounded}, ::WENO5, v, w) where {FT, TX}
+    if j > 2 && j < grid.Ny - 1
+        return momentum_flux_wv_weno5(i, j, k, grid, v, w)
+    else
+        return momentum_flux_wv(i, j, k, grid, centered_second_order, v, w)
+    end
+end
+
+@inline function momentum_flux_ww(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::WENO5, w) where {FT, TX, TY}
+    if k > 2 && i < grid.Nz - 1
+        return momentum_flux_ww_weno5(i, j, k, grid, w)
+    else
+        return momentum_flux_ww(i, j, k, grid, centered_second_order, w)
+    end
+end
 
 #####
 ##### Advective tracer fluxes
 #####
 
-@inline advective_tracer_flux_x(i, j, k, grid, ::WENO5, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * weno5_flux_x(i, j, k, c)
-@inline advective_tracer_flux_y(i, j, k, grid, ::WENO5, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * weno5_flux_y(i, j, k, c)
-@inline advective_tracer_flux_z(i, j, k, grid, ::WENO5, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * weno5_flux_z(i, j, k, c)
+@inline advective_tracer_flux_x_weno5(i, j, k, grid, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * weno5_flux_x(i, j, k, c)
+@inline advective_tracer_flux_y_weno5(i, j, k, grid, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * weno5_flux_y(i, j, k, c)
+@inline advective_tracer_flux_z_weno5(i, j, k, grid, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * weno5_flux_z(i, j, k, c)
+
+@inline advective_tracer_flux_x(i, j, k, grid, ::WENO5, u, c) = advective_tracer_flux_x_weno5(i, j, k, grid, u, c)
+@inline advective_tracer_flux_y(i, j, k, grid, ::WENO5, v, c) = advective_tracer_flux_y_weno5(i, j, k, grid, v, c)
+@inline advective_tracer_flux_z(i, j, k, grid, ::WENO5, w, c) = advective_tracer_flux_z_weno5(i, j, k, grid, w, c)
+
+@inline function advective_tracer_flux_x(i, j, k, grid::AbstractGrid{FT, <:Bounded}, ::WENO5, u, c) where FT
+    if i > 2 && i < grid.Nx - 1
+        return advective_tracer_flux_x_weno5(i, j, k, grid, u, c)
+    else
+        return advective_tracer_flux_x(i, j, k, grid, centered_second_order, u, c)
+    end
+end
+
+@inline function advective_tracer_flux_y(i, j, k, grid::AbstractGrid{FT, TX, <:Bounded}, ::WENO5, v, c) where {FT, TX}
+    if j > 2 && i < grid.Ny - 1
+        return advective_tracer_flux_y_weno5(i, j, k, grid, v, c)
+    else
+        return advective_tracer_flux_y(i, j, k, grid, centered_second_order, v, c)
+    end
+end
+
+@inline function advective_tracer_flux_z(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::WENO5, w, c) where {FT, TX, TY}
+    if k > 2 && i < grid.Nz - 1
+        return advective_tracer_flux_z_weno5(i, j, k, grid, w, c)
+    else
+        return advective_tracer_flux_z(i, j, k, grid, centered_second_order, w, c)
+    end
+end
 
 #####
 ##### Need to advect momentum like tracers
