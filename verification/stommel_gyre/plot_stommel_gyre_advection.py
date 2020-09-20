@@ -11,7 +11,7 @@ Ns = (32, 256)
 CFLs = (0.05, 0.30)
 
 def plot_tracer_advection_2d_frame(shape, scheme, N, CFL, n):
-    dir = f"{shape}_{scheme}_N{N:d}_CFL{CFL:.2f}"
+    dir = f"stommel_gyre_{shape}_{scheme}_N{N:d}_CFL{CFL:.2f}"
     filename = dir + ".nc"
     ds = xr.open_dataset(filename)
     c = ds.c.isel(time=n).squeeze()
@@ -32,7 +32,7 @@ for shape in shapes:
     for scheme in schemes:
         for N in Ns:
             for CFL in CFLs:
-                dir = f"{shape}_{scheme}_N{N:d}_CFL{CFL:.2f}"
+                dir = f"stommel_gyre_{shape}_{scheme}_N{N:d}_CFL{CFL:.2f}"
                 if not os.path.exists(dir):
                     os.mkdir(dir)
 

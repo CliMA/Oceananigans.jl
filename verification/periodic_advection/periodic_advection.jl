@@ -52,6 +52,8 @@ function short_name(ts)
     ts == :RungeKutta3 && return "RK3"
 end
 
+weno_order(::WENO{K}) where K = 2K-1
+
 function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.0, T=2.0)
     model = setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     
@@ -67,14 +69,16 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
         512 < n        && return 8
     end
 
-    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), time_stepper, typeof(advection_scheme), N, CFL)
+    scheme_name = advection_scheme isa WENO ? "WENO$(weno_order(advection_scheme))" : typeof(advection_scheme)
+
+    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f.mp4", ic_name(ϕₐ), time_stepper, scheme_name, N, CFL)
 
     anim = @animate for iter in 0:Nt
         iter % 10 == 0 && @info "$anim_filename, iter = $iter/$Nt"
 
         ϕ_analytic = ϕₐ.(x, model.clock.time; L=L)
 
-        title = @sprintf("%s %s N=%d CFL=%.2f", short_name(time_stepper), typeof(advection_scheme), N, CFL)
+        title = @sprintf("%s %s N=%d CFL=%.2f", short_name(time_stepper), scheme_name, N, CFL)
         plot(x, ϕ_analytic, lw=2, label="analytic", title=title, xlims=(-L/2, L/2), ylims=(-0.2, 1.2), dpi=200)
         plot!(x, interior(v)[:], ls=:solid, lw=2, label="Oceananigans v")
         plot!(x, interior(c)[:], ls=:dot,   lw=2, label="Oceananigans c")
@@ -103,6 +107,7 @@ Ns = [16, 32, 64]
 CFLs = (0.05, 0.3, 0.5, 1.0)
 
 for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs
-    @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), ts, typeof(scheme), N, CFL)
+    scheme_name = scheme isa WENO ? "WENO$(weno_order(scheme))" : typeof(scheme)
+    @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), ts, scheme_name, N, CFL)
     create_animation(N, L, CFL, ϕ, ts, scheme)
 end
