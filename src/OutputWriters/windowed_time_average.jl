@@ -94,7 +94,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
     # Don't start collecting if we are *only* "initializing" run_diagnostic at the beginning
     # of a Simulation.
     #
-    # Note: this can be false at the first iteration if time_interval == time_window (which
+    # Note: this can be false at the zeroth iteration if time_interval == time_window (which
     # implies we are always collecting)
     
     initializing = model.clock.iteration == 0 &&
@@ -115,10 +115,8 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
         wta.window_start_iteration = model.clock.iteration
         wta.previous_collection_time = model.clock.time
 
-    elseif model.clock.time >= wta.previous_interval_stop_time + wta.time_interval # output is imminent
-    #elseif model.clock.time - wta.window_start_time >= wta.time_window 
-     
-        # The averaging window has been exceeded. Finalize averages and cease data collection.
+    elseif model.clock.time >= wta.previous_interval_stop_time + wta.time_interval
+        # Output is imminent. Finalize averages and cease data collection.
         accumulate_result!(wta, model)
 
         # Averaging period is complete.
