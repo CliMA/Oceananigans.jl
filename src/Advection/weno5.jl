@@ -129,17 +129,17 @@ end
 ##### Momentum advection fluxes
 #####
 
-@inline momentum_flux_uu_weno5(i, j, k, grid, u)    = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i+1, j, k, u)
-@inline momentum_flux_uv_weno5(i, j, k, grid, u, v) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i,   j, k, u)
-@inline momentum_flux_uw_weno5(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i,   j, k, u)
+@inline momentum_flux_uu_weno5(i, j, k, grid, u)    = Axᵃᵃᶠ(i, j, k, grid) * weno5_flux_x(i+1, j, k, u) * weno5_flux_x(i+1, j, k, u)
+@inline momentum_flux_uv_weno5(i, j, k, grid, u, v) = Ayᵃᵃᶠ(i, j, k, grid) * weno5_flux_x(i,   j, k, v) * weno5_flux_y(i,   j, k, u)
+@inline momentum_flux_uw_weno5(i, j, k, grid, u, w) = Azᵃᵃᵃ(i, j, k, grid) * weno5_flux_x(i,   j, k, w) * weno5_flux_z(i,   j, k, u)
 
-@inline momentum_flux_vu_weno5(i, j, k, grid, u, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j,   k, v)
-@inline momentum_flux_vv_weno5(i, j, k, grid, v)    = ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j+1, k, v)
-@inline momentum_flux_vw_weno5(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j,   k, v)
+@inline momentum_flux_vu_weno5(i, j, k, grid, u, v) = Axᵃᵃᶠ(i, j, k, grid) * weno5_flux_y(i, j,   k, u) * weno5_flux_x(i, j,   k, v)
+@inline momentum_flux_vv_weno5(i, j, k, grid, v)    = Ayᵃᵃᶠ(i, j, k, grid) * weno5_flux_y(i, j+1, k, v) * weno5_flux_y(i, j+1, k, v)
+@inline momentum_flux_vw_weno5(i, j, k, grid, v, w) = Azᵃᵃᵃ(i, j, k, grid) * weno5_flux_y(i, j,   k, w) * weno5_flux_z(i, j,   k, v)
 
-@inline momentum_flux_wu_weno5(i, j, k, grid, u, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, u) * weno5_flux_x(i, j, k,   w)
-@inline momentum_flux_wv_weno5(i, j, k, grid, v, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, v) * weno5_flux_y(i, j, k,   w)
-@inline momentum_flux_ww_weno5(i, j, k, grid, w)    = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, w) * weno5_flux_z(i, j, k+1, w)
+@inline momentum_flux_wu_weno5(i, j, k, grid, u, w) = Axᵃᵃᶠ(i, j, k, grid) * weno5_flux_z(i, j, k,   u) * weno5_flux_x(i, j, k,   w)
+@inline momentum_flux_wv_weno5(i, j, k, grid, v, w) = Ayᵃᵃᶠ(i, j, k, grid) * weno5_flux_z(i, j, k,   v) * weno5_flux_y(i, j, k,   w)
+@inline momentum_flux_ww_weno5(i, j, k, grid, w)    = Azᵃᵃᵃ(i, j, k, grid) * weno5_flux_z(i, j, k+1, w) * weno5_flux_z(i, j, k+1, w)
 
 # Periodic directions
 
