@@ -1,4 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.Fields: PressureField
 using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -283,6 +284,27 @@ function computation_including_boundaries(FT, arch)
     return all(interior(uvw) .!= 0)
 end
 
+function operations_with_computed_field(model)
+    u, v, w = model.velocities
+    uv = ComputedField(u * v)
+    @compute uvw = ComputedField(uv * w)
+    return true
+end
+
+function operations_with_averaged_field(model)
+    u, v, w = model.velocities
+    UV = AveragedField(u * v, dims=(1, 2))
+    @compute wUV = ComputedField(w * UV)
+    return true
+end
+
+function pressure_field(model)
+    p = PressureField(model)
+    u, v, w = model.velocities
+    @compute up = ComputedField(u * p)
+    return true
+end
+
 function computations_with_buoyancy_field(FT, arch, buoyancy)
     grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
@@ -438,6 +460,8 @@ end
                     u, v, w = model.velocities
                     T, S = model.tracers
 
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
                             @test op(ϕ) isa UnaryOperation
@@ -499,6 +523,14 @@ end
                     @test compute_kinetic_energy(model)
                 end
 
+                @testset "Operations with ComputedField and PressureField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with ComputedField..."
+                    @test operations_with_computed_field(model)
+
+                    @info "      Testing PressureField..."
+                    @test pressure_field(model)
+                end
+
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
                     @info "      Testing horizontal averges..."
                     @test horizontal_average_of_plus(model)
@@ -519,6 +551,19 @@ end
                     @test volume_average_of_times(model)
                 end
 
+                @testset "Operations with AveragedField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with AveragedField..."
+
+                    T, S = model.tracers
+
+                    TS = AveragedField(T * S, dims=(1, 2))
+
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+                    @test_throws ArgumentError TS * S
+
+                    @test operations_with_averaged_field(model)
+                end
+
                 @testset "Faces along Bounded dimensions" begin
                     @info "      Testing compute! on faces along bounded dimensions..."
                     @test computation_including_boundaries(FT, arch)
@@ -530,9 +575,9 @@ end
                 buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(FT),
                               (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
 
-                for buoyancy in buoyancies
-                    @testset "BuoyancyField" begin
-                        @info "      Testing computations with BuoyancyField"
+                @testset "BuoyancyField" begin
+                    for buoyancy in buoyancies
+                        @info "      Testing computations with BuoyancyField [$(typeof(buoyancy).name.wrapper)]"
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
                 end

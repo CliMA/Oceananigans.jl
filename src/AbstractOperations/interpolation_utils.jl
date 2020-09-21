@@ -7,12 +7,18 @@ interpolation."""
 
 # Utilities for inferring the interpolation function needed to
 # interpolate a field from one location to the next.
+interpolation_code(from, to) = interpolation_code(to)
+
 interpolation_code(::Type{Face}) = :ᶠ
 interpolation_code(::Type{Cell}) = :ᶜ
 interpolation_code(::Face) = :ᶠ
 interpolation_code(::Cell) = :ᶜ
+
+# Intercept non-interpolations
 interpolation_code(from::L, to::L) where L = :ᵃ
-interpolation_code(from, to) = interpolation_code(to)
+interpolation_code(::Nothing, to) = :ᵃ
+interpolation_code(from, ::Nothing) = :ᵃ
+interpolation_code(::Nothing, ::Nothing) = :ᵃ
 
 for ξ in ("x", "y", "z")
     ▶sym = Symbol(:ℑ, ξ, :sym)
