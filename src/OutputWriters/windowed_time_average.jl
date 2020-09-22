@@ -49,8 +49,8 @@ function WindowedTimeAverage(operand, model=nothing; time_window, time_interval,
 
     return WindowedTimeAverage(result,
                                operand,
-                               time_window,
-                               time_interval,
+                               Float64(time_window),
+                               Float64(time_interval),
                                stride,
                                field_slicer,
                                0.0, 0, 0.0, 0.0, false)
