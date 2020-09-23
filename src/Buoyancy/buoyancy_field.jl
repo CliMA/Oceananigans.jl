@@ -24,7 +24,7 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
     Returns a `BuoyancyField` with `data` on `grid` corresponding to
     `buoyancy` computed from `tracers`.
     """
-    function BuoyancyField(data, grid, buoyancy, tracers)
+    function BuoyancyField(data, grid, buoyancy, tracers, recompute_safely)
 
         validate_field_data(Cell, Cell, Cell, data, grid)
 
@@ -42,7 +42,7 @@ Returns a `BuoyancyField` corresponding to `model.buoyancy`.
 Calling `compute!(b::BuoyancyField)` computes the current buoyancy field
 associated with `model` and stores the result in `b.data`.
 """
-BuoyancyField(model; data=nothing) = _buoyancy_field(model.buoyancy, model.tracers, model.architecture, model.grid; data=data)
+BuoyancyField(model; kwargs...) = _buoyancy_field(model.buoyancy, model.tracers, model.architecture, model.grid; kwargs...)
 
 # Convenience for buoyancy=nothing
 _buoyancy_field(::Nothing, args...; kwargs...) = nothing
@@ -52,7 +52,7 @@ _buoyancy_field(::Nothing, args...; kwargs...) = nothing
 #####
 
 _buoyancy_field(buoyancy::BuoyancyTracer, tracers, arch, grid; kwargs...) =
-    BuoyancyField(tracers.b.data, grid, buoyancy, tracers)
+    BuoyancyField(tracers.b.data, grid, buoyancy, tracers, false)
 
 compute!(::BuoyancyField{<:BuoyancyTracer}) = nothing
  
@@ -60,13 +60,14 @@ compute!(::BuoyancyField{<:BuoyancyTracer}) = nothing
 ##### Other buoyancy types
 #####
 
-function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid; data=nothing)
+function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid; data=nothing, recompute_safely=false)
 
     if isnothing(data)
         data = new_data(arch, grid, (Cell, Cell, Cell))
+        recompute_safely = true
     end
 
-    return BuoyancyField(data, grid, buoyancy, tracers)
+    return BuoyancyField(data, grid, buoyancy, tracers, recompute_safely)
 end
 
 """
