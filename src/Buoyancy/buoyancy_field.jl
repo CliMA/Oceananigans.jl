@@ -11,11 +11,12 @@ import Oceananigans.Fields: compute!
 
 Type representing buoyancy computed on the model grid.
 """
-struct BuoyancyField{B, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
+struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
         data :: A
         grid :: G
     buoyancy :: B
      tracers :: T
+      status :: S
 
     """
         BuoyancyField(data, grid, buoyancy, tracers)
@@ -27,8 +28,10 @@ struct BuoyancyField{B, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
 
         validate_field_data(Cell, Cell, Cell, data, grid)
 
-        return new{typeof(buoyancy), typeof(data),
-                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers)
+        status = recompute_safely ? FieldStatus(0.0) : nothing
+
+        return new{typeof(buoyancy), typeof(status), typeof(data),
+                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
     end
 end
 
@@ -89,6 +92,9 @@ function compute!(buoyancy_field::BuoyancyField)
 
     return nothing
 end
+
+compute!(b::BuoyancyField{B, <:FieldStatus}, time) where B =
+    conditional_compute!(b, time)
 
 """Compute an `operation` and store in `data`."""
 @kernel function compute_buoyancy!(data, grid, buoyancy, C)

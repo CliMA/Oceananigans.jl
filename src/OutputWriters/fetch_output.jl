@@ -3,7 +3,7 @@ using Oceananigans.Fields: AbstractField, compute!
 fetch_output(output, model, field_slicer) = output(model)
 
 function fetch_output(field::AbstractField, model, field_slicer)
-    compute!(field)
+    compute!(field, model.clock.time)
     return slice_parent(field_slicer, field)
 end
 
