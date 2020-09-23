@@ -23,7 +23,7 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
 
         status = recompute_safely ? FieldStatus(0.0) : nothing
         
-        return new{X, Y, Z, typeof(data),
+        return new{X, Y, Z, typeof(status), typeof(data),
                    typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
                                                                 operand, status)
     end
