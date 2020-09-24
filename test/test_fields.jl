@@ -127,29 +127,6 @@ end
         end
     end
 
-    @testset "Conditional computation" begin
-        for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(size=(2, 2, 2), extent=(1, 1, 1)) 
-            c = CellField(FT, arch, grid)
-
-            for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
-                C = AveragedField(c, dims=dims)
-
-                # Test conditional computation
-                set!(c, 1)
-                compute!(C, 1.0)
-                @test all(C.data .== 1)
-
-                set!(c, 2)
-                compute!(C, 1.0)
-                @test all(C.data .== 1)
-
-                compute!(C, 2.0)
-                @test all(C.data .== 2)
-            end
-        end
-    end
-
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
