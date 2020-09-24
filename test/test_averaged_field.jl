@@ -48,5 +48,29 @@ using Oceananigans.Grids: halo_size
                 @test Array(ŵ[1, 1:Ny, 1:Nz+1]) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
             end
         end
+
+        @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
+            @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
+            for FT in float_types
+                grid = RegularCartesianGrid(size=(2, 2, 2), extent=(1, 1, 1)) 
+                c = CellField(FT, arch, grid)
+
+                for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
+                    C = AveragedField(c, dims=dims)
+
+                    # Test conditional computation
+                    set!(c, 1)
+                    compute!(C, 1.0)
+                    @test all(interior(C) .== 1)
+
+                    set!(c, 2)
+                    compute!(C, 1.0)
+                    @test all(interior(C) .== 1)
+
+                    compute!(C, 2.0)
+                    @test all(interior(C) .== 2)
+                end
+            end
+        end
     end
 end

@@ -314,6 +314,7 @@ function computations_with_buoyancy_field(FT, arch, buoyancy)
     b = BuoyancyField(model)
     u, v, w = model.velocities
 
+    compute!(b)
     @compute ub = ComputedField(u * b)
     @compute vb = ComputedField(v * b)
     @compute wb = ComputedField(w * b)
@@ -445,20 +446,26 @@ end
 
     for arch in archs
         @testset "AbstractOperations and ComputedFields [$(typeof(arch))]" begin
+
             @info "  Testing combined binary operations and derivatives..."
+
             for FT in float_types
-                model = IncompressibleModel(
-                    architecture = arch,
-                      float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
-                                                        topology=(Periodic, Periodic, Bounded))
-                )
+
+                grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded))
+
+                buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
+                                                     equation_of_state = LinearEquationOfState(α=1, β=1))
+
+                model = IncompressibleModel(architecture = arch,
+                                              float_type = FT,
+                                                    grid = grid,
+                                                buoyancy = buoyancy)
 
                 @testset "Construction of abstract operations [$FT, $(typeof(arch))]" begin
                     @info "    Testing construction of abstract operations [$FT, $(typeof(arch))]..."
 
-                    u, v, w = model.velocities
-                    T, S = model.tracers
+                    u, v, w, T, S = fields(model)
 
                     @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
 
@@ -575,11 +582,40 @@ end
                 buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(FT),
                               (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
 
-                @testset "BuoyancyField" begin
-                    for buoyancy in buoyancies
-                        @info "      Testing computations with BuoyancyField [$(typeof(buoyancy).name.wrapper)]"
+                for buoyancy in buoyancies
+                    @testset "BuoyancyField computations [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
+                        @info "      Testing computations with BuoyancyField..."
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
+                end
+
+                @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing conditional computation of ComputedField and BuoyancyField..."
+
+                    set!(model, u=2, v=0, w=0, T=3, S=0)
+                    u, v, w, T, S = fields(model)
+
+                    uT = ComputedField(u * T)
+
+                    α = model.buoyancy.equation_of_state.α
+                    g = model.buoyancy.gravitational_acceleration
+                    b = BuoyancyField(model)
+
+                    compute!(uT, 1.0)
+                    compute!(b, 1.0)
+                    @test all(interior(uT) .== 6)
+                    @test all(interior(b) .== g * α * 3) 
+
+                    set!(model, u=2, T=4)
+                    compute!(uT, 1.0)
+                    compute!(b, 1.0)
+                    @test all(interior(uT) .== 6) 
+                    @test all(interior(b) .== g * α * 3) 
+
+                    compute!(uT, 2.0)
+                    compute!(b, 2.0)
+                    @test all(interior(uT) .== 8) 
+                    @test all(interior(b) .== g * α * 4) 
                 end
             end
         end
