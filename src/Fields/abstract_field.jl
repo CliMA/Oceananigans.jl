@@ -69,7 +69,7 @@ function conditional_compute!(field, time)
 
     if time != field.status.time
         compute!(field)
-        avg.status.time = time
+        field.status.time = time
     end
 
     return nothing
