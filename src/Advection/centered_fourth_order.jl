@@ -115,7 +115,7 @@ end
 end
 
 @inline function momentum_flux_ww(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::C4, w) where {FT, TX, TY}
-    if k > 1 && i < grid.Nz
+    if k > 1 && k < grid.Nz
         return fourth_order_momentum_flux_ww(i, j, k, grid, w)
     else
         return momentum_flux_ww(i, j, k, grid, centered_second_order, w)
@@ -142,7 +142,7 @@ end
 end
 
 @inline function advective_tracer_flux_y(i, j, k, grid::AbstractGrid{FT, TX, <:Bounded}, ::C4, v, c) where {FT, TX}
-    if j > 1 && i < grid.Ny
+    if j > 1 && j < grid.Ny
         return fourth_order_advective_tracer_flux_y(i, j, k, grid, v, c)
     else
         return advective_tracer_flux_y(i, j, k, grid, centered_second_order, v, c)
@@ -150,7 +150,7 @@ end
 end
 
 @inline function advective_tracer_flux_z(i, j, k, grid::AbstractGrid{FT, TX, TY, <:Bounded}, ::C4, w, c) where {FT, TX, TY}
-    if k > 1 && i < grid.Nz
+    if k > 1 && k < grid.Nz
         return fourth_order_advective_tracer_flux_z(i, j, k, grid, w, c)
     else
         return advective_tracer_flux_z(i, j, k, grid, centered_second_order, w, c)
