@@ -75,6 +75,10 @@ function conditional_compute!(field, time)
     return nothing
 end
 
+# This edge case occurs if `fetch_output` is called with `model::Nothing`.
+# We do the safe thing here and always compute.
+conditional_compute!(field, ::Nothing) = compute!(field)
+
 """
     @compute(exprs...)
 

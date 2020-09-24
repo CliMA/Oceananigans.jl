@@ -2,8 +2,12 @@ using Oceananigans.Fields: AbstractField, compute!
 
 fetch_output(output, model, field_slicer) = output(model)
 
+# Needed to support `fetch_output` with `model::Nothing`.
+time(model) = model.clock.time
+time(::Nothing) = nothing
+
 function fetch_output(field::AbstractField, model, field_slicer)
-    compute!(field, model.clock.time)
+    compute!(field, time(model))
     return slice_parent(field_slicer, field)
 end
 
