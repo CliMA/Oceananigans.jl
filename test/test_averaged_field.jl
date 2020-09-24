@@ -24,7 +24,13 @@ using Oceananigans.Grids: halo_size
                 set!(w, trilinear)
 
                 @compute T̃ = mean(T, dims=(1, 2, 3))
+
+                # Note: halo regions must be *filled* prior to computing an average
+                # if the average within halo regions is to be correct.
+                fill_halo_regions!(T, arch)
                 @compute T̅ = mean(T, dims=(1, 2))
+
+                fill_halo_regions!(T, arch)
                 @compute T̂ = mean(T, dims=1)
 
                 @compute w̃ = mean(w, dims=(1, 2, 3))
@@ -34,8 +40,8 @@ using Oceananigans.Grids: halo_size
                 Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
                 @test T̃[1, 1, 1] ≈ 3
-                @test Array(T̅[1, 1, 1:Nz]) ≈ [2.5, 3.5]
-                @test Array(T̂[1, 1:Ny, 1:Nz]) ≈ [[2, 3] [3, 4]]
+                @test Array(parent(T̅)[1, 1, :]) ≈ [2.5, 2.5, 3.5, 3.5]
+                @test Array(parent(T̂)[1, :, :]) ≈ [[3, 2, 3, 2] [3, 2, 3, 2] [4, 3, 4, 3] [4, 3, 4, 3]]
 
                 @test w̃[1, 1, 1] ≈ 4.5
                 @test Array(w̅[1, 1, 1:Nz+1]) ≈ [2, 3, 4]
