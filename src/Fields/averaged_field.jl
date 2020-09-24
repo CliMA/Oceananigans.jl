@@ -46,7 +46,7 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 function compute!(avg::AveragedField)
     compute!(avg.operand)
 
-    zero_halo_regions!(avg.operand)
+    zero_halo_regions!(avg.operand, dims=avg.dims)
 
     sum!(parent(avg.data), parent(avg.operand))
 
