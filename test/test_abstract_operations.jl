@@ -447,12 +447,17 @@ end
         @testset "AbstractOperations and ComputedFields [$(typeof(arch))]" begin
             @info "  Testing combined binary operations and derivatives..."
             for FT in float_types
-                model = IncompressibleModel(
-                    architecture = arch,
-                      float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
-                                                        topology=(Periodic, Periodic, Bounded))
-                )
+
+                grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded),
+
+                buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
+                                                     equation_of_state = LinearEquationOfState(α=1, β=1))
+
+                model = IncompressibleModel(architecture = arch,
+                                              float_type = FT,
+                                                    grid = grid,
+                                                buoyancy = buoyancy)
 
                 @testset "Construction of abstract operations [$FT, $(typeof(arch))]" begin
                     @info "    Testing construction of abstract operations [$FT, $(typeof(arch))]..."
@@ -580,6 +585,27 @@ end
                         @info "      Testing computations with BuoyancyField [$(typeof(buoyancy).name.wrapper)]"
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
+                end
+
+                @testset "Conditional computation of ComputedField and BuoyancyField" begin
+                    u, v, w, T, S = fields(model)
+                    uT = ComputedField(u * T)
+                    b = BuoyancyField(model) # using linear equation of state with g=α=1
+
+                    set!(model, u=2, T=3)
+                    compute!(uT, 1.0)
+                    compute!(b, 1.0)
+                    @test all(uT .== 6) 
+                    @test all(b .== 3) 
+
+                    set!(model, u=2, T=4)
+                    compute!(uT, 1.0)
+                    @test all(uT .== 6) 
+                    @test all(b .== 3) 
+
+                    compute!(uT, 2.0)
+                    @test all(uT .== 8) 
+                    @test all(b .== 4) 
                 end
             end
         end
