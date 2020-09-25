@@ -1,6 +1,9 @@
 #####
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
+##### See topologically_conditional_interpolation.jl for an explanation of the underscore-prepended
+##### functions _symmetric_interpolate_*, _left_biased_interpolate_*, and _right_biased_interpolate_*.
+#####
 
 @inline upwind_biased_product(ũ, ψᴸ, ψᴿ) = ((ũ + abs(ũ)) * ψᴸ + (ũ - abs(ũ)) * ψᴿ) / 2
 

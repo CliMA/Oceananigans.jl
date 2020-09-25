@@ -1,11 +1,15 @@
 #####
 ##### Momentum and tracer advection operators for centered advection schemes
 #####
+##### See topologically_conditional_interpolation.jl for an explanation of the underscore-prepended functions _symmetric_interpolate_*.
+#####
 
 const Centered = AbstractCenteredAdvectionScheme
 
 #####
 ##### Momentum advection operators
+#####
+##### Note the convention "momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
 #####
 
 @inline momentum_flux_uu(i, j, k, grid, scheme::Centered, u)    = Axᵃᵃᶠ(i, j, k, grid) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
@@ -24,6 +28,6 @@ const Centered = AbstractCenteredAdvectionScheme
 ##### Tracer advection operators
 #####
     
-@inline advective_tracer_flux_x(i, j, k, grid, scheme::Centered, u, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, u) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_y(i, j, k, grid, scheme::Centered, v, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, v) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_z(i, j, k, grid, scheme::Centered, w, c) = Az_ψᵃᵃᵃ(i, j, k, grid, w) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_x(i, j, k, grid, scheme::Centered, u, c) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k] * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_y(i, j, k, grid, scheme::Centered, v, c) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * v[i, j, k] * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_z(i, j, k, grid, scheme::Centered, w, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * w[i, j, k] * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
