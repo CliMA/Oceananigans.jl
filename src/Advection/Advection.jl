@@ -22,7 +22,12 @@ export
 using Oceananigans.Operators
 
 abstract type AbstractAdvectionScheme end
+abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
+abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
 
+include("topologically_conditional_interpolation.jl")
+include("centered_advective_fluxes.jl")
+include("upwind_biased_advective_fluxes.jl")
 include("centered_second_order.jl")
 include("centered_fourth_order.jl")
 include("momentum_advection_operators.jl")
