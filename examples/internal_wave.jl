@@ -1,4 +1,4 @@
-# # Internal wave example
+# ## Internal wave example
 #
 # In this example, we initialize an internal wave packet in two-dimensions
 # and watch it propagate.
