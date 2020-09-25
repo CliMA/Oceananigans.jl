@@ -90,7 +90,8 @@ function run!(sim)
             [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
         end
 
-        sim.progress isa Function && sim.progress(sim)
+        sim.progress(sim)
+
         sim.Δt isa TimeStepWizard && update_Δt!(sim.Δt, model)
 
         time_after = time()

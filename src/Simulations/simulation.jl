@@ -1,5 +1,7 @@
 # It's not a model --- its a simulation!
 
+default_progress(simulation) = nothing
+
 mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F, Π}
                  model :: M
                     Δt :: Δ
@@ -53,7 +55,7 @@ function Simulation(model; Δt,
       wall_time_limit = Inf,
           diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
        output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-             progress = nothing,
+             progress = default_progress,
    iteration_interval = 1,
            parameters = nothing)
 
