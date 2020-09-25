@@ -4,7 +4,7 @@ using Oceananigans.Grids
 ##### Centered fourth-order advection scheme
 #####
 
-struct CenteredFourthOrder <: AbstractAdvectionScheme end
+struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme end
 
 @inline halo_buffer(::CenteredFourthOrder) = 1
 

@@ -17,6 +17,7 @@ export
     advective_tracer_flux_z,
 
     CenteredSecondOrder,
+    UpwindBiasedThirdOrder,
     CenteredFourthOrder
 
 using Oceananigans.Operators
@@ -29,6 +30,7 @@ include("topologically_conditional_interpolation.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 include("centered_second_order.jl")
+include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
