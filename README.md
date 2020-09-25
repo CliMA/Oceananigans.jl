@@ -19,6 +19,9 @@
   <a href="https://github.com/clima/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
+  <a href="https://doi.org/10.21105/joss.02018">
+    <img alt="JOSS" src="https://joss.theoj.org/papers/10.21105/joss.02018/status.svg">
+  </a>
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
   </a>
