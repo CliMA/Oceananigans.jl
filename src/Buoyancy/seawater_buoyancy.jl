@@ -24,8 +24,15 @@ required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EO
 Returns parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called 'g'), and an
 `equation_of_state` that related temperature and salinity (or conservative temperature
-and absolute salinity) to density anomalies and buoyancy. If either `temperature` or `salinity`
-are specified, buoyancy is calculated
+and absolute salinity) to density anomalies and buoyancy.
+
+`constant_temperature` indicates that buoyancy depends only on salinity. For a nonlinear 
+equation of state, `constant_temperature` is used as the temperature of the system.
+`true`. The same logic with the role of salinity and temperature reversed holds when `constant_salinity`
+is provided.
+
+For a linear equation of state, the values of `constant_temperature` or `constant_salinity` are irrelevant;
+in this case, `constant_temperature=true` (and similar for `constant_salinity`) is valid input.
 """
 function SeawaterBuoyancy(                        FT = Float64;
                           gravitational_acceleration = g_Earth,
