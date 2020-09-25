@@ -15,11 +15,11 @@ ENV["GKSwstype"] = "100"
 #####
 
 # Convert x to periodic range in [-L/2, L/2] assuming u = 1.
-@inline x′(x, t, L) = mod(x + L/2 - t, L) - L/2
+@inline x′(x, t, L, U) = mod(x + L/2 - U * t, L) - L/2
 
 # Analytic solutions
-@inline ϕ_Gaussian(x, t; L, a=1, c=1/8) = a * exp(-x′(x, t, L)^2 / (2c^2))
-@inline ϕ_Square(x, t; L, w=0.15) = -w <= x′(x, t, L) <= w ? 1.0 : 0.0
+@inline ϕ_Gaussian(x, t; L, U, a=1, c=1/8) = a * exp(-x′(x, t, L, U)^2 / (2c^2))
+@inline ϕ_Square(x, t; L, U, w=0.15) = -w <= x′(x, t, L, U) <= w ? 1.0 : 0.0
 
 ic_name(::typeof(ϕ_Gaussian)) = "Gaussian"
 ic_name(::typeof(ϕ_Square))   = "Square"
@@ -31,7 +31,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
     domain = (x=(-L/2, L/2), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topology, size=(N, 1, 1), halo=(3, 3, 3); domain...)
+    grid = RegularCartesianGrid(topology=topology, size=(N, 1, 1), halo=(9, 9, 9); domain...)
 
     model = IncompressibleModel(
                grid = grid,
@@ -42,7 +42,7 @@ function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
             closure = IsotropicDiffusivity(ν=0, κ=0)
     )
 
-    set!(model, u = U, v = (x, y, z) -> ϕₐ(x, 0; L=L), c = (x, y, z) -> ϕₐ(x, 0; L=L))
+    set!(model, u = U, v = (x, y, z) -> ϕₐ(x, 0; L=L, U=U), c = (x, y, z) -> ϕₐ(x, 0; L=L, U=U))
 
     return model
 end
@@ -59,7 +59,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
     
     v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
-    Δt = CFL * model.grid.Δx / U
+    Δt = CFL * model.grid.Δx / abs(U)
     Nt = ceil(Int, T/Δt)
 
     function every(n)
@@ -76,7 +76,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
     anim = @animate for iter in 0:Nt
         iter % 10 == 0 && @info "$anim_filename, iter = $iter/$Nt"
 
-        ϕ_analytic = ϕₐ.(x, model.clock.time; L=L)
+        ϕ_analytic = ϕₐ.(x, model.clock.time; L=L, U=U)
 
         title = @sprintf("%s %s N=%d CFL=%.2f", short_name(time_stepper), scheme_name, N, CFL)
         plot(x, ϕ_analytic, lw=2, label="analytic", title=title, xlims=(-L/2, L/2), ylims=(-0.2, 1.2), dpi=200)
@@ -100,14 +100,14 @@ end
 #####
 
 L = 1
-ϕs = (ϕ_Gaussian, ϕ_Square)
-time_steppers = (:QuasiAdamsBashforth2, :RungeKutta3)
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
-Ns = [16, 32, 64]
-CFLs = (0.05, 0.3, 0.5, 1.0)
+ϕs = (ϕ_Gaussian,)
+time_steppers = (:RungeKutta3,)
+advection_schemes = (WENO5(),)
+Ns = [64]
+CFLs = (0.5,)
 
 for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs
     scheme_name = scheme isa WENO ? "WENO$(weno_order(scheme))" : typeof(scheme)
     @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), ts, scheme_name, N, CFL)
-    create_animation(N, L, CFL, ϕ, ts, scheme)
+    create_animation(N, L, CFL, ϕ, ts, scheme, U=-1)
 end
