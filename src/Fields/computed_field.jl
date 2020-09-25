@@ -9,14 +9,19 @@ using Oceananigans.BoundaryConditions: zero_halo_regions!
 
 Type representing a field computed from an operand.
 """
-struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
+struct ComputedField{X, Y, Z, S, A, G, O} <: AbstractField{X, Y, Z, A, G}
        data :: A
        grid :: G
     operand :: O
+     status :: S
 
-    function ComputedField{X, Y, Z}(data, grid, operand) where {X, Y, Z}
+    function ComputedField{X, Y, Z}(data, grid, operand, recompute_safely) where {X, Y, Z}
         validate_field_data(X, Y, Z, data, grid)
-        return new{X, Y, Z, typeof(data), typeof(grid), typeof(operand)}(data, grid, operand)
+
+        status = recompute_safely ? FieldStatus(0.0) : nothing
+
+        return new{X, Y, Z, typeof(status), typeof(data),
+                   typeof(grid), typeof(operand)}(data, grid, operand, status)
     end
 end
 
@@ -27,7 +32,7 @@ Returns a field whose data is `computed` from `operand`.
 If the keyword argument `data` is not provided, memory is allocated to store
 the result. The `arch`itecture of `data` is inferred from `operand`.
 """
-function ComputedField(operand; data=nothing)
+function ComputedField(operand; data=nothing, recompute_safely=false)
     
     loc = location(operand)
     arch = architecture(operand)
@@ -35,9 +40,10 @@ function ComputedField(operand; data=nothing)
 
     if isnothing(data)
         data = new_data(arch, grid, loc)
+        recompute_safely = true
     end
 
-    return ComputedField{loc[1], loc[2], loc[3]}(data, grid, operand)
+    return ComputedField{loc[1], loc[2], loc[3]}(data, grid, operand, recompute_safely)
 end
 
 """
@@ -64,6 +70,9 @@ function compute!(comp::ComputedField{X, Y, Z}) where {X, Y, Z}
     return nothing
 end
 
+compute!(field::ComputedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+    conditional_compute!(field, time)
+
 """Compute an `operand` and store in `data`."""
 @kernel function _compute!(data, operand)
     i, j, k = @index(Global, NTuple)
@@ -77,4 +86,5 @@ end
 Adapt.adapt_structure(to, computed_field::ComputedField{X, Y, Z}) where {X, Y, Z} = 
     ComputedField{X, Y, Z}(Adapt.adapt(to, computed_field.data),
                            Adapt.adapt(to, computed_field.grid),
-                           Adapt.adapt(to, computed_field.operand))
+                           Adapt.adapt(to, computed_field.operand),
+                           Adapt.adapt(to, computed_field.status))

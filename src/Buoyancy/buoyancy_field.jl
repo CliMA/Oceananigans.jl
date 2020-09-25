@@ -1,6 +1,7 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractField, validate_field_data, new_data, datatuple, architecture
+using Oceananigans.Fields: AbstractField, FieldStatus, validate_field_data, new_data, conditional_compute!
+using Oceananigans.Fields: datatuple, architecture
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
@@ -11,11 +12,12 @@ import Oceananigans.Fields: compute!
 
 Type representing buoyancy computed on the model grid.
 """
-struct BuoyancyField{B, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
+struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
         data :: A
         grid :: G
     buoyancy :: B
      tracers :: T
+      status :: S
 
     """
         BuoyancyField(data, grid, buoyancy, tracers)
@@ -23,12 +25,14 @@ struct BuoyancyField{B, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
     Returns a `BuoyancyField` with `data` on `grid` corresponding to
     `buoyancy` computed from `tracers`.
     """
-    function BuoyancyField(data, grid, buoyancy, tracers)
+    function BuoyancyField(data, grid, buoyancy, tracers, recompute_safely)
 
         validate_field_data(Cell, Cell, Cell, data, grid)
 
-        return new{typeof(buoyancy), typeof(data),
-                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers)
+        status = recompute_safely ? FieldStatus(0.0) : nothing
+
+        return new{typeof(buoyancy), typeof(status), typeof(data),
+                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
     end
 end
 
@@ -39,7 +43,7 @@ Returns a `BuoyancyField` corresponding to `model.buoyancy`.
 Calling `compute!(b::BuoyancyField)` computes the current buoyancy field
 associated with `model` and stores the result in `b.data`.
 """
-BuoyancyField(model; data=nothing) = _buoyancy_field(model.buoyancy, model.tracers, model.architecture, model.grid; data=data)
+BuoyancyField(model; kwargs...) = _buoyancy_field(model.buoyancy, model.tracers, model.architecture, model.grid; kwargs...)
 
 # Convenience for buoyancy=nothing
 _buoyancy_field(::Nothing, args...; kwargs...) = nothing
@@ -49,7 +53,7 @@ _buoyancy_field(::Nothing, args...; kwargs...) = nothing
 #####
 
 _buoyancy_field(buoyancy::BuoyancyTracer, tracers, arch, grid; kwargs...) =
-    BuoyancyField(tracers.b.data, grid, buoyancy, tracers)
+    BuoyancyField(tracers.b.data, grid, buoyancy, tracers, false)
 
 compute!(::BuoyancyField{<:BuoyancyTracer}) = nothing
  
@@ -57,13 +61,14 @@ compute!(::BuoyancyField{<:BuoyancyTracer}) = nothing
 ##### Other buoyancy types
 #####
 
-function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid; data=nothing)
+function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid; data=nothing, recompute_safely=false)
 
     if isnothing(data)
         data = new_data(arch, grid, (Cell, Cell, Cell))
+        recompute_safely = true
     end
 
-    return BuoyancyField(data, grid, buoyancy, tracers)
+    return BuoyancyField(data, grid, buoyancy, tracers, recompute_safely)
 end
 
 """
@@ -89,6 +94,9 @@ function compute!(buoyancy_field::BuoyancyField)
 
     return nothing
 end
+
+compute!(b::BuoyancyField{B, <:FieldStatus}, time) where B =
+    conditional_compute!(b, time)
 
 """Compute an `operation` and store in `data`."""
 @kernel function compute_buoyancy!(data, grid, buoyancy, C)

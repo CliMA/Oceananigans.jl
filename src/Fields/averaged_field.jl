@@ -8,24 +8,33 @@ using Oceananigans.BoundaryConditions: zero_halo_regions!
 
 Type representing an average over a field-like object.
 """
-struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
+struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
        data :: A
        grid :: G
        dims :: NTuple{N, Int}
     operand :: O
+     status :: S
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand) where {X, Y, Z}
+    function AveragedField{X, Y, Z}(data, grid, dims, operand, recompute_safely) where {X, Y, Z}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
+
+        status = recompute_safely ? FieldStatus(0.0) : nothing
         
-        return new{X, Y, Z, typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims, operand)
+        return new{X, Y, Z, typeof(status), typeof(data),
+                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
+                                                                operand, status)
     end
 end
 
-function AveragedField(operand::AbstractField; dims, data=nothing)
+"""
+    AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
+
+Returns an AveragedField.
+"""
+function AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
     
     arch = architecture(operand)
     loc = reduced_location(location(operand), dims=dims)
@@ -33,9 +42,10 @@ function AveragedField(operand::AbstractField; dims, data=nothing)
 
     if isnothing(data)
         data = new_data(arch, grid, loc)
+        recompute_safely = true
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand)
+    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand, recompute_safely)
 end
 
 """
@@ -46,7 +56,7 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 function compute!(avg::AveragedField)
     compute!(avg.operand)
 
-    zero_halo_regions!(avg.operand)
+    zero_halo_regions!(avg.operand, dims=avg.dims)
 
     sum!(parent(avg.data), parent(avg.operand))
 
@@ -55,6 +65,9 @@ function compute!(avg::AveragedField)
 
     return nothing
 end
+
+compute!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+    conditional_compute!(avg, time)
 
 #####
 ##### Very sugar
@@ -70,4 +83,5 @@ Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z
     AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data),
                            Adapt.adapt(to, averaged_field.grid),
                            Adapt.adapt(to, averaged_field.dims),
-                           Adapt.adapt(to, averaged_field.operand))
+                           Adapt.adapt(to, averaged_field.operand),
+                           Adapt.adapt(to, averaged_field.status))
