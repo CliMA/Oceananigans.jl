@@ -175,7 +175,7 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     # Restore time stepper
     kwargs[:timestepper] =
-        QuasiAdamsBashforth2TimeStepper(eltype(grid), arch, grid, kwargs[:velocities], tracer_names;
+        QuasiAdamsBashforth2TimeStepper(arch, grid, tracer_names;
                                         G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
                                         Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
 
