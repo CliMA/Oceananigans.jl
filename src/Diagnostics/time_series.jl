@@ -51,7 +51,7 @@ end
 
 @inline (time_series::TimeSeries)(model) = time_series.diagnostic(model)
 
-function run_diagnostic(model, diag::TimeSeries)
+function run_diagnostic!!(model, diag::TimeSeries)
     push!(diag.data, diag(model))
     push!(diag.time, model.clock.time)
     return nothing
@@ -109,7 +109,7 @@ function (time_series::TimeSeries{<:NamedTuple})(model)
     return NamedTuple{names}(Tuple(diag(model) for diag in time_series.diagnostics))
 end
 
-function run_diagnostic(model, diag::TimeSeries{<:NamedTuple})
+function run_diagnostic!!(model, diag::TimeSeries{<:NamedTuple})
     ntuple(Val(length(diag.diagnostic))) do i
         Base.@_inline_meta
         push!(diag.data[i], diag.diagnostic[i](model))

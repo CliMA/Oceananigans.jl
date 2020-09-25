@@ -175,7 +175,7 @@ function JLD2OutputWriter(model, outputs; prefix,
                             jld2_kw)
 end
 
-function write_output(model, writer::JLD2OutputWriter)
+function write_output!(writer::JLD2OutputWriter, model)
 
     verbose = writer.verbose
 
