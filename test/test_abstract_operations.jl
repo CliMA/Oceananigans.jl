@@ -1,4 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.Fields: PressureField
+using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -282,6 +284,44 @@ function computation_including_boundaries(FT, arch)
     return all(interior(uvw) .!= 0)
 end
 
+function operations_with_computed_field(model)
+    u, v, w = model.velocities
+    uv = ComputedField(u * v)
+    @compute uvw = ComputedField(uv * w)
+    return true
+end
+
+function operations_with_averaged_field(model)
+    u, v, w = model.velocities
+    UV = AveragedField(u * v, dims=(1, 2))
+    @compute wUV = ComputedField(w * UV)
+    return true
+end
+
+function pressure_field(model)
+    p = PressureField(model)
+    u, v, w = model.velocities
+    @compute up = ComputedField(u * p)
+    return true
+end
+
+function computations_with_buoyancy_field(FT, arch, buoyancy)
+    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
+    tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
+    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
+                                tracers=tracers, buoyancy=buoyancy)
+
+    b = BuoyancyField(model)
+    u, v, w = model.velocities
+
+    compute!(b)
+    @compute ub = ComputedField(u * b)
+    @compute vb = ComputedField(v * b)
+    @compute wb = ComputedField(w * b)
+
+    return true # test that it doesn't error
+end
+
 @testset "Abstract operations" begin
     @info "Testing abstract operations..."
 
@@ -406,20 +446,28 @@ end
 
     for arch in archs
         @testset "AbstractOperations and ComputedFields [$(typeof(arch))]" begin
+
             @info "  Testing combined binary operations and derivatives..."
+
             for FT in float_types
-                model = IncompressibleModel(
-                    architecture = arch,
-                      float_type = FT,
-                            grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
-                                                        topology=(Periodic, Periodic, Bounded))
-                )
+
+                grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded))
+
+                buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
+                                                     equation_of_state = LinearEquationOfState(α=1, β=1))
+
+                model = IncompressibleModel(architecture = arch,
+                                              float_type = FT,
+                                                    grid = grid,
+                                                buoyancy = buoyancy)
 
                 @testset "Construction of abstract operations [$FT, $(typeof(arch))]" begin
                     @info "    Testing construction of abstract operations [$FT, $(typeof(arch))]..."
 
-                    u, v, w = model.velocities
-                    T, S = model.tracers
+                    u, v, w, T, S = fields(model)
+
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
 
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
@@ -482,6 +530,14 @@ end
                     @test compute_kinetic_energy(model)
                 end
 
+                @testset "Operations with ComputedField and PressureField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with ComputedField..."
+                    @test operations_with_computed_field(model)
+
+                    @info "      Testing PressureField..."
+                    @test pressure_field(model)
+                end
+
                 @testset "Horizontal averages of operations [$FT, $(typeof(arch))]" begin
                     @info "      Testing horizontal averges..."
                     @test horizontal_average_of_plus(model)
@@ -502,9 +558,64 @@ end
                     @test volume_average_of_times(model)
                 end
 
+                @testset "Operations with AveragedField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing operations with AveragedField..."
+
+                    T, S = model.tracers
+
+                    TS = AveragedField(T * S, dims=(1, 2))
+
+                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+                    @test_throws ArgumentError TS * S
+
+                    @test operations_with_averaged_field(model)
+                end
+
                 @testset "Faces along Bounded dimensions" begin
                     @info "      Testing compute! on faces along bounded dimensions..."
                     @test computation_including_boundaries(FT, arch)
+                end
+
+                EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState,
+                                    SeawaterPolynomials.TEOS10EquationOfState)
+
+                buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(FT),
+                              (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
+
+                for buoyancy in buoyancies
+                    @testset "BuoyancyField computations [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
+                        @info "      Testing computations with BuoyancyField..."
+                        @test computations_with_buoyancy_field(FT, arch, buoyancy)
+                    end
+                end
+
+                @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
+                    @info "      Testing conditional computation of ComputedField and BuoyancyField..."
+
+                    set!(model, u=2, v=0, w=0, T=3, S=0)
+                    u, v, w, T, S = fields(model)
+
+                    uT = ComputedField(u * T)
+
+                    α = model.buoyancy.equation_of_state.α
+                    g = model.buoyancy.gravitational_acceleration
+                    b = BuoyancyField(model)
+
+                    compute!(uT, 1.0)
+                    compute!(b, 1.0)
+                    @test all(interior(uT) .== 6)
+                    @test all(interior(b) .== g * α * 3) 
+
+                    set!(model, u=2, T=4)
+                    compute!(uT, 1.0)
+                    compute!(b, 1.0)
+                    @test all(interior(uT) .== 6) 
+                    @test all(interior(b) .== g * α * 3) 
+
+                    compute!(uT, 2.0)
+                    compute!(b, 2.0)
+                    @test all(interior(uT) .== 8) 
+                    @test all(interior(b) .== g * α * 4) 
                 end
             end
         end

@@ -1,6 +1,6 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, tick!, state
+export IncompressibleModel, NonDimensionalModel, Clock, tick!, state, fields
 
 using Adapt
 
@@ -30,6 +30,8 @@ corresponding to `NamedTuple`s of `OffsetArray`s that reference each of the fiel
 @inline state(model) = (   velocities = datatuple(model.velocities),
                               tracers = datatuple(model.tracers),
                         diffusivities = datatuple(model.diffusivities))
+
+fields(model) = merge(model.velocities, model.tracers)
 
 include("clock.jl")
 include("incompressible_model.jl")

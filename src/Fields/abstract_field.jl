@@ -1,5 +1,6 @@
 using Base: @propagate_inbounds
 using CUDA
+using Adapt
 using OffsetArrays
 using Oceananigans.Architectures
 using Oceananigans.Utils
@@ -36,12 +37,47 @@ end
 
 # Note: overload compute! for custom fields to produce non-default behavior
 
+
 """
     compute!(field)
 
 Computes `field.data` if needed.
 """
 compute!(field) = nothing
+
+"""
+    compute!(field, time)
+
+Computes `field.data` if needed. Falls back to compute!(field), 
+unless a special method is defined that avoids recomputing `field` at
+`time` if it has already been computed.
+"""
+compute!(field, time) = compute!(field)
+
+mutable struct FieldStatus
+    time :: Float64
+end
+
+Adapt.adapt_structure(to, status::FieldStatus) = (time = status.time,)
+
+"""
+    conditional_compute!(field, time)
+
+Computes `field.data` if `time != field.status.time`.
+"""
+function conditional_compute!(field, time)
+
+    if time != field.status.time
+        compute!(field)
+        field.status.time = time
+    end
+
+    return nothing
+end
+
+# This edge case occurs if `fetch_output` is called with `model::Nothing`.
+# We do the safe thing here and always compute.
+conditional_compute!(field, ::Nothing) = compute!(field)
 
 """
     @compute(exprs...)
@@ -128,6 +164,12 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
     @inbounds f.data.parent[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
                             interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
                             interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+
+#####
+##### getindex
+#####
+
+@propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
 
 #####
 ##### Coordinates of fields

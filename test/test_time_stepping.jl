@@ -18,6 +18,21 @@ function time_stepping_works_with_closure(arch, FT, Closure)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
+function time_stepping_works_with_advection_scheme(arch, advection_scheme)
+    # Use halo=(2, 2, 2) to accomodate fourth-order advection scheme
+    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+    model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
+    time_step!(model, 1, euler=true)
+    return true  # Test that no errors/crashes happen when time stepping.
+end
+
+function time_stepping_works_with_nothing_closure(arch, FT)
+    grid = RegularCartesianGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=nothing)
+    time_step!(model, 1, euler=true)
+    return true  # Test that no errors/crashes happen when time stepping.
+end
+
 function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     grid = RegularCartesianGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
 
@@ -146,6 +161,8 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
+advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder())
+
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Time stepping" begin
@@ -176,14 +193,27 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
+    @testset "Advection schemes" begin
+        for arch in archs, advection_scheme in advection_schemes
+            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
+            @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
+        end
+    end
+
     @testset "Turbulence closures" begin
-        for arch in archs, FT in [Float64], Closure in Closures
-            @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-            if Closure === TwoDimensionalLeith
-                # This test is extremely slow; skipping for now.
-                @test_skip time_stepping_works_with_closure(arch, FT, Closure)
-            else
-                @test time_stepping_works_with_closure(arch, FT, Closure)
+        for arch in archs, FT in [Float64]
+
+            @info "  Testing that time stepping works [$(typeof(arch)), $FT, nothing]..."
+            @test time_stepping_works_with_nothing_closure(arch, FT)
+
+            for Closure in Closures
+                @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
+                if Closure === TwoDimensionalLeith
+                    # This test is extremely slow; skipping for now.
+                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                else
+                    @test time_stepping_works_with_closure(arch, FT, Closure)
+                end
             end
         end
     end

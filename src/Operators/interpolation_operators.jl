@@ -32,17 +32,6 @@ const RCG = RegularCartesianGrid
 @inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
 
 #####
-##### "Flux interpolation" operators of the form ℑ(A*f) where A is an area and f is an array.
-#####
-
-@inline ℑᴶxᶜᵃᵃ(i, j, k, grid, u) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_u, u)
-@inline ℑᴶxᶠᵃᵃ(i, j, k, grid, c) = ℑxᶠᵃᵃ(i, j, k, grid, Ax_c, c)
-@inline ℑᴶyᵃᶜᵃ(i, j, k, grid, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_v, v)
-@inline ℑᴶyᵃᶠᵃ(i, j, k, grid, c) = ℑyᵃᶠᵃ(i, j, k, grid, Ay_c, c)
-@inline ℑᴶzᵃᵃᶜ(i, j, k, grid, w) = ℑzᵃᵃᶜ(i, j, k, grid, Az_w, w)
-@inline ℑᴶzᵃᵃᶠ(i, j, k, grid, c) = ℑzᵃᵃᶠ(i, j, k, grid, Az_c, c)
-
-#####
 ##### Convenience operators for "interpolating constants"
 #####
 

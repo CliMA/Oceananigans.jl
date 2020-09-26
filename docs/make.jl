@@ -99,9 +99,9 @@ numerical_pages = [
 ]
 
 verification_pages = [
-    "Taylor-Green vortex" => "verification/taylor_green_vortex.md",
-    "Stratified Couette flow" => "verification/stratified_couette_flow.md",
-    "Convergence tests" => "verification/convergence_tests.md"
+    "Convergence tests" => "verification/convergence_tests.md",
+    "Lid-driven cavity" => "verification/lid_driven_cavity.md",
+    "Stratified Couette flow" => "verification/stratified_couette_flow.md"
 ]
 
 appendix_pages = [
