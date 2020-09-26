@@ -1,3 +1,5 @@
+using Oceananigans.Operators: interpolation_code
+
 """
     Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
 
