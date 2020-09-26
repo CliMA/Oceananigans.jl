@@ -3,7 +3,7 @@ using SymPy
 using Oceananigans.Advection:
     eno_coefficients, optimal_weno_weights, β,
     weno_flux_x, weno_flux_y, weno_flux_z,
-    weno5_reconstructᶠᵃᵃ, weno5_reconstructᵃᶠᵃ, weno5_reconstructᵃᵃᶠ
+    left_biased_interpolate_xᶠᵃᵃ, left_biased_interpolate_yᵃᶠᵃ, left_biased_interpolate_zᵃᵃᶠ
 
 function print_eno_interpolant(k, r)
     cs = eno_coefficients(k, r)
@@ -33,7 +33,7 @@ end
     
     # Janky regression test
     
-    w5 = WENO(5)
+    weno5 = WENO(5)
 
     N = 10
     a = collect(Float64, (1:N) .^ 2)
@@ -45,13 +45,13 @@ end
     correct = [73//6, 121//6, 181//6, 253//6]
 
     inds = 4:N-3
-    @test all([weno_flux_x(i, 1, 1, w5, ax) for i in inds] .≈ correct) 
-    @test all([weno_flux_y(1, j, 1, w5, ay) for j in inds] .≈ correct)
-    @test all([weno_flux_z(1, 1, k, w5, az) for k in inds] .≈ correct)
+    @test all([weno_flux_x(i, 1, 1, weno5, ax) for i in inds] .≈ correct) 
+    @test all([weno_flux_y(1, j, 1, weno5, ay) for j in inds] .≈ correct)
+    @test all([weno_flux_z(1, 1, k, weno5, az) for k in inds] .≈ correct)
 
-    @test rationalize.([weno5_reconstructᶠᵃᵃ(i, 1, 1, nothing, ax) for i in inds]) == correct
-    @test rationalize.([weno5_reconstructᵃᶠᵃ(1, j, 1, nothing, ay) for j in inds]) == correct
-    @test rationalize.([weno5_reconstructᵃᵃᶠ(1, 1, k, nothing, az) for k in inds]) == correct
+    @test rationalize.([left_biased_interpolate_xᶠᵃᵃ(i, 1, 1, nothing, WENO5(), ax) for i in inds]) == correct
+    @test rationalize.([left_biased_interpolate_yᵃᶠᵃ(1, j, 1, nothing, WENO5(), ay) for j in inds]) == correct
+    @test rationalize.([left_biased_interpolate_zᵃᵃᶠ(1, 1, k, nothing, WENO5(), az) for k in inds]) == correct
 
     @testset "ENO reconstruction weights" begin
         @testset "WENO-3" begin

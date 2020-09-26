@@ -134,6 +134,12 @@ function β(k, r, ϕ)
     return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k-1)
 end
 
+"""
+    subscript(n)
+
+Convert the integer `n` to a subscript in the form of a unicode string. Note
+that `0x2080` is the unicode encoding for the subscript 0.
+"""
 subscript(n) = join(Char(0x2080 + parse(Int, d)) for d in string(n))
 
 subscript_sign(n) = n > 0 ? "₊" : n < 0 ? "₋" : ""

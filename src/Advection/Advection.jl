@@ -37,8 +37,8 @@ include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 
 include("weno_reconstruction.jl")
-include("weno.jl")
-include("weno5.jl")
+include("weno_nth_order.jl")
+include("weno_fifth_order.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")

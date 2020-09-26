@@ -7,6 +7,7 @@ using Oceananigans.Grids
 struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme end
 
 const C4 = CenteredFourthOrder
+const centered_fourth_order = C4()
 
 @inline boundary_buffer(::C4) = 1
 
