@@ -40,14 +40,14 @@ Examples
 =======
 
 # Unparameterized forcing function
-simple_nonlinear_source(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds model_fields.tracers.c[i, j, k]^2
+simple_nonlinear_source(i, j, k, grid, clock, model_fields) =
+    @inbounds model_fields.c[i, j, k]^2
 
 simple_forcing = DiscreteForcing(simple_nonlinear_source)
 
 # Forcing function with parameters
 masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * model_fields.velocities.u[i, j, k]
+    @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = DiscreteForcing(masked_damping, parameters=(μ=42, λ=π))
 """

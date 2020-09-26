@@ -57,11 +57,11 @@ grid = RegularCartesianGrid(size=(Nh, Nh, Nz), halo=(2, 2, 2),
 
 bc_parameters = (μ=μ, H=Lz)
 
-@inline τ₁₃_linear_drag(i, j, grid, clock, state, params) =
-    @inbounds params.μ * params.H * state.velocities.u[i, j, 1]
+@inline τ₁₃_linear_drag(i, j, grid, clock, model_fields, params) =
+    @inbounds params.μ * params.H * model_fields.u[i, j, 1]
 
-@inline τ₂₃_linear_drag(i, j, grid, clock, state, params) =
-    @inbounds params.μ * params.H * state.velocities.v[i, j, 1]
+@inline τ₂₃_linear_drag(i, j, grid, clock, model_fields, params) =
+    @inbounds params.μ * params.H * model_fields.v[i, j, 1]
 
 ubcs = UVelocityBoundaryConditions(grid, bottom = BoundaryCondition(Flux, τ₁₃_linear_drag,
                                                                     discrete_form=true, parameters=bc_parameters))
@@ -95,9 +95,9 @@ forcing_parameters = (α=α, f=f, H=Lz)
 #
 # is applied at location `(f, c, c)`.
 
-function Fu_eady_func(i, j, k, grid, clock, state, p)
-    return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, state.velocities.w)
-                      - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, state.velocities.u))
+function Fu_eady_func(i, j, k, grid, clock, model_fields, p)
+    return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, model_fields.w)
+                      - p.α * (grid.zC[k] + p.H) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, model_fields.u))
 end
 
 # The $y$-momentum forcing
@@ -106,8 +106,8 @@ end
 #
 # is applied at location `(c, f, c)`.
 
-function Fv_eady_func(i, j, k, grid, clock, state, p)
-    return @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.v)
+function Fv_eady_func(i, j, k, grid, clock, model_fields, p)
+    return @inbounds -p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.v)
 end
 
 # The $z$-momentum forcing
@@ -116,8 +116,8 @@ end
 #
 # is applied at location `(c, c, f)`.
 
-function Fw_eady_func(i, j, k, grid, clock, state, p)
-    return @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.velocities.w)
+function Fw_eady_func(i, j, k, grid, clock, model_fields, p)
+    return @inbounds -p.α * (grid.zF[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.w)
 end
 
 # The buoyancy forcing
@@ -126,9 +126,9 @@ end
 #
 # is applied at location `(c, c, c)`.
 
-function Fb_eady_func(i, j, k, grid, clock, state, p)
-    return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, state.tracers.b)
-                      + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
+function Fb_eady_func(i, j, k, grid, clock, model_fields, p)
+    return @inbounds (- p.α * (grid.zC[k] + p.H) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.b)
+                      + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, model_fields.v))
 end
 
 Fu_eady = Forcing(Fu_eady_func, parameters=forcing_parameters, discrete_form=true)

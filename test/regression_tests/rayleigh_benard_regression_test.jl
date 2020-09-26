@@ -28,7 +28,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Cell, i, grid), znode(Cell, k, grid)) - state.tracers.c[i, j, k])
+    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Cell, i, grid), znode(Cell, k, grid)) - model_fields.c[i, j, k])
 
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))
