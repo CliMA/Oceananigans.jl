@@ -58,6 +58,9 @@ struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
 @inline left_biased_βz₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k-2] - 2ψ[i, j, k-1] + ψ[i, j,   k])^2 + 1/4 * ( ψ[i, j, k-2]                 -  ψ[i, j,   k])^2
 @inline left_biased_βz₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k-3] - 2ψ[i, j, k-2] + ψ[i, j, k-1])^2 + 1/4 * ( ψ[i, j, k-3] - 4ψ[i, j, k-2] + 3ψ[i, j, k-1])^2
 
+# Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
+# indicators around grid point `i-1/2`.
+
 @inline right_biased_βx₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i,   j, k] - 2ψ[i+1, j, k] + ψ[i+2, j, k])^2 + 1/4 * ( ψ[i,   j, k] - 4ψ[i+1, j, k] + 3ψ[i+2, j, k])^2
 @inline right_biased_βx₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-1, j, k] - 2ψ[i,   j, k] + ψ[i+1, j, k])^2 + 1/4 * ( ψ[i-1, j, k]                 -  ψ[i+1, j, k])^2
 @inline right_biased_βx₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-2, j, k] - 2ψ[i-1, j, k] + ψ[i,   j, k])^2 + 1/4 * (3ψ[i-2, j, k] - 4ψ[i-1, j, k] +  ψ[i,   j, k])^2
