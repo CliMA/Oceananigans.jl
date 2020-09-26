@@ -32,9 +32,9 @@ end
 ##### Run test
 #####
 
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), WENO5())
 
-U = 3
+U = -3
 κ = 1e-8
 Nx = 2 .^ (7:10)
 
@@ -46,11 +46,13 @@ end
 
 rate_of_convergence(::CenteredSecondOrder) = 2
 rate_of_convergence(::CenteredFourthOrder) = 4
+rate_of_convergence(::UpwindBiasedThirdOrder) = 3
 rate_of_convergence(::WENO5) = 5
 rate_of_convergence(::WENO{K}) where K = 2K-1
 
 fig, ax = subplots()
 
+@testset "tmp" begin
 for (j, scheme) in enumerate(advection_schemes)
     t_scheme = typeof(scheme)
     name = string(t_scheme)
@@ -100,4 +102,5 @@ for (j, scheme) in enumerate(advection_schemes)
         savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
         close(fig)
     end
+end
 end

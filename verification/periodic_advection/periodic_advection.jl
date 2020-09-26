@@ -100,15 +100,14 @@ end
 #####
 
 L = 1
-ϕs = (ϕ_Square,)
+ϕs = (ϕ_Gaussian, ϕ_Square)
 time_steppers = (:RungeKutta3,)
-advection_schemes = (WENO5(),)
-Ns = [64]
-CFLs = (0.5,)
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), WENO5())
+Ns = [16, 64]
+CFLs = (0.1, 0.5, 1.0)
+Us = [+1, -1]
 
-for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs
+for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs, U in Us
     scheme_name = scheme isa WENO ? "WENO$(weno_order(scheme))" : typeof(scheme)
-    @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f]...", ic_name(ϕ), ts, scheme_name, N, CFL)
-    create_animation(N, L, CFL, ϕ, ts, scheme, U=+1)
-    create_animation(N, L, CFL, ϕ, ts, scheme, U=-1)
+    @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f, U=%+d]...", ic_name(ϕ), ts, scheme_name, N, CFL, U)
 end

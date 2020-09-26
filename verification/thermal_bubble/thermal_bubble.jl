@@ -7,10 +7,6 @@ using Oceananigans.Advection
 using Oceananigans.OutputWriters
 using Oceananigans.Utils
 
-using Oceananigans.Grids: ynodes, znodes
-
-include("stommel_gyre.jl")
-
 ENV["GKSwstype"] = "100"
 pyplot()
 
@@ -39,7 +35,7 @@ function setup_simulation(N, advection_scheme)
                grid = grid,
         timestepper = :RungeKutta3,
           advection = advection_scheme,
-            closure = IsotropicDiffusivity(ν=1e-1, κ=1e-1)
+            closure = IsotropicDiffusivity(ν=0, κ=0)
     )
 
     x₀, z₀ = L/2, -L/2
@@ -73,7 +69,7 @@ function print_progress(simulation)
                    progress, i, t, u_max, w_max, T_min, T_max, CFL)
 end
 
-schemes = (WENO5(),)
+schemes = (WENO5(), CenteredFourthOrder())
 Ns = (32, 128)
 
 for scheme in schemes, N in Ns

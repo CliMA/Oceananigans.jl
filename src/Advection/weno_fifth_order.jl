@@ -34,13 +34,13 @@ struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
 @inline right_biased_px₁(i, j, k, ψ) = @inbounds +  1/3 * ψ[i-1, j, k] + 5/6 * ψ[i,   j, k] - 1/6 * ψ[i+1, j, k]
 @inline right_biased_px₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i-2, j, k] + 5/6 * ψ[i-1, j, k] + 1/3 * ψ[i,   j, k]
 
-@inline right_biased_py₀(i, j, k, ψ) = @inbounds + 11/6 * ψ[i, j+1, k] - 7/6 * ψ[i, j+2, k] + 1/3 * ψ[i, j+3, k]
-@inline right_biased_py₁(i, j, k, ψ) = @inbounds +  1/3 * ψ[i,   j, k] + 5/6 * ψ[i, j+1, k] - 1/6 * ψ[i, j+2, k]
-@inline right_biased_py₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i, j-1, k] + 5/6 * ψ[i,   j, k] + 1/3 * ψ[i, j+1, k]
+@inline right_biased_py₀(i, j, k, ψ) = @inbounds + 11/6 * ψ[i,   j, k] - 7/6 * ψ[i, j+1, k] + 1/3 * ψ[i, j+2, k]
+@inline right_biased_py₁(i, j, k, ψ) = @inbounds +  1/3 * ψ[i, j-1, k] + 5/6 * ψ[i,   j, k] - 1/6 * ψ[i, j+1, k]
+@inline right_biased_py₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i, j-2, k] + 5/6 * ψ[i, j-1, k] + 1/3 * ψ[i,   j, k]
 
-@inline right_biased_pz₀(i, j, k, ψ) = @inbounds + 11/6 * ψ[i, j, k+1] - 7/6 * ψ[i, j, k+2] + 1/3 * ψ[i, j, k+3]
-@inline right_biased_pz₁(i, j, k, ψ) = @inbounds +  1/3 * ψ[i, j,   k] + 5/6 * ψ[i, j, k+1] - 1/6 * ψ[i, j, k+2]
-@inline right_biased_pz₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i, j, k-1] + 5/6 * ψ[i, j,   k] + 1/3 * ψ[i, j, k+1]
+@inline right_biased_pz₀(i, j, k, ψ) = @inbounds + 11/6 * ψ[i, j,   k] - 7/6 * ψ[i, j, k+1] + 1/3 * ψ[i, j, k+2]
+@inline right_biased_pz₁(i, j, k, ψ) = @inbounds +  1/3 * ψ[i, j, k-1] + 5/6 * ψ[i, j,   k] - 1/6 * ψ[i, j, k+1]
+@inline right_biased_pz₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i, j, k-2] + 5/6 * ψ[i, j, k-1] + 1/3 * ψ[i, j,   k]
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators
@@ -62,13 +62,13 @@ struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
 @inline right_biased_βx₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-1, j, k] - 2ψ[i,   j, k] + ψ[i+1, j, k])^2 + 1/4 * ( ψ[i-1, j, k]                 -  ψ[i+1, j, k])^2
 @inline right_biased_βx₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-2, j, k] - 2ψ[i-1, j, k] + ψ[i,   j, k])^2 + 1/4 * (3ψ[i-2, j, k] - 4ψ[i-1, j, k] +  ψ[i,   j, k])^2
 
-@inline right_biased_βy₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j+1, k] - 2ψ[i, j+2, k] + ψ[i, j+3, k])^2 + 1/4 * ( ψ[i, j+1, k] - 4ψ[i, j+2, k] + 3ψ[i, j+3, k])^2
-@inline right_biased_βy₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j,   k] - 2ψ[i, j+1, k] + ψ[i, j+2, k])^2 + 1/4 * ( ψ[i,   j, k]                 -  ψ[i, j+2, k])^2
-@inline right_biased_βy₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j-1, k] - 2ψ[i, j,   k] + ψ[i, j+1, k])^2 + 1/4 * (3ψ[i, j-1, k] - 4ψ[i, j,   k] +  ψ[i, j+1, k])^2
+@inline right_biased_βy₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j,   k] - 2ψ[i, j+1, k] + ψ[i, j+2, k])^2 + 1/4 * ( ψ[i,   j, k] - 4ψ[i, j+1, k] + 3ψ[i, j+2, k])^2
+@inline right_biased_βy₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j-1, k] - 2ψ[i, j,   k] + ψ[i, j+1, k])^2 + 1/4 * ( ψ[i, j-1, k]                 -  ψ[i, j+1, k])^2
+@inline right_biased_βy₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j-2, k] - 2ψ[i, j-1, k] + ψ[i, j,   k])^2 + 1/4 * (3ψ[i, j-2, k] - 4ψ[i, j-1, k] +  ψ[i,   j, k])^2
 
-@inline right_biased_βz₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k+1] - 2ψ[i, j, k+2] + ψ[i, j, k+3])^2 + 1/4 * ( ψ[i, j, k+1] - 4ψ[i, j, k+2] + 3ψ[i, j, k+3])^2
-@inline right_biased_βz₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j,   k] - 2ψ[i, j, k+1] + ψ[i, j, k+2])^2 + 1/4 * ( ψ[i, j,   k]                 -  ψ[i, j, k+2])^2
-@inline right_biased_βz₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k-1] - 2ψ[i, j,   k] + ψ[i, j, k+1])^2 + 1/4 * (3ψ[i, j, k-1] - 4ψ[i, j,   k] +  ψ[i, j, k+1])^2
+@inline right_biased_βz₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j,   k] - 2ψ[i, j, k+1] + ψ[i, j, k+2])^2 + 1/4 * ( ψ[i, j,   k] - 4ψ[i, j, k+1] + 3ψ[i, j, k+2])^2
+@inline right_biased_βz₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k-1] - 2ψ[i, j,   k] + ψ[i, j, k+1])^2 + 1/4 * ( ψ[i, j, k-1]                 -  ψ[i, j, k+1])^2
+@inline right_biased_βz₂(i, j, k, ψ) = @inbounds 13/12 * (ψ[i, j, k-2] - 2ψ[i, j, k-1] + ψ[i, j,   k])^2 + 1/4 * (3ψ[i, j, k-2] - 4ψ[i, j, k-1] +  ψ[i, j,   k])^2
 
 #####
 ##### WENO-5 optimal weights
