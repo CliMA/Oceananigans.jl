@@ -14,6 +14,8 @@ function WENO(FT, n)
     (n < 3 || iseven(n)) &&
         error("WENO schemes are only defined for order n = 3, 5, 7, 9, 11, ...")
 
+    @warn "Generated WENO schemes are experimental! They may be very slow (allocate tons of memory) and may not work on GPUs."
+
     n >= 7 &&
         @info "Computing WENO-$n smoothness indicator coefficients. This could take a while for n >= 7..."
 
