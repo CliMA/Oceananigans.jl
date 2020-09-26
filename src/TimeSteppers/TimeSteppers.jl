@@ -43,7 +43,7 @@ Returns a timestepper with name `name`, instantiated with `args...`.
 Example
 =======
 
-julia> stepper = TimeStepper(:QuasiAdamsBashforth2, Float64, CPU(), grid, tracernames)
+julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
 function TimeStepper(name::Symbol, args...)
     fullname = Symbol(name, :TimeStepper)
