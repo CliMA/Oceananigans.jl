@@ -2,31 +2,21 @@
 @inline onefunction(args...) = 1
 
 """
-    struct RelaxingFunction{R, M, T}
+    struct Relaxation{R, M, T}
 
 Callable object for restoring fields to a `target` at
 some `rate` and within a `mask`ed region in `x, y, z`. 
 """
-struct RelaxingFunction{R, M, T}
+struct Relaxation{R, M, T}
       rate :: R
       mask :: M
     target :: T
 end
 
-@inline (f::RelaxingFunction)(x, y, z, t, field) =
-    f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
-
-@inline (f::RelaxingFunction{R, M, <:Number})(x, y, z, t, field) where {R, M} =
-    f.rate * f.mask(x, y, z) * (f.target - field)
-
-#####
-##### Relaxing forcing
-#####
-
 """
     Relaxation(; rate, mask=onefunction, target=zerofunction)
 
-Returns a `SimpleForcing` that restores a field to `target(x, y, z, t)`
+Returns a `Forcing` that restores a field to `target(x, y, z, t)`
 at the specified `rate`, in the region `mask(x, y, z)`.
 
 Example
@@ -36,12 +26,45 @@ Example
   to one minute if the time units of the simulation are seconds).
 
 ```julia
-julia> restore_stratification = Relaxation(; rate = 1/60, target = (x, y, z, t) -> z)
-```
-"""
-Relaxation(; rate, mask=onefunction, target=zerofunction) =
-    SimpleForcing(RelaxingFunction(rate, mask, target); field_in_signature=true)
+julia> dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
 
+julia> T₀ = 20 # ⁰C, surface temperature at z=0
+
+julia> restore_stratification = Relaxation(; rate = 1/60, target = LinearTarget(gradient=dTdz, intercept=T₀))
+```
+
+Example
+=======
+
+* Restore a field to a linear z-gradient at the bottom of a domain on a timescale of "60" (equal
+  to one minute if the time units of the simulation are seconds).
+
+```julia
+julia> dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
+
+julia> T₀ = 20 # ⁰C, surface temperature at z=0
+
+julia> Lz = 100 # m, depth of domain
+
+julia> bottom_sponge_layer = Relaxation(; rate = 1/60,
+                                          target = LinearTarget(gradient=dTdz, intercept=T₀),
+                                          mask = GaussianMask(center=-3Lz/4, width=Lz/4))
+```
+
+"""
+Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
+
+""" Wrap `forcing::Relaxation` in `ContinuousForcing` and add the appropriate field dependency. """
+function regularize_forcing(forcing::Relaxation, field_name)
+    X, Y, Z = assumed_field_location(field_name)
+    return ContinuousForcing{X, Y, Z}(forcing, nothing, field_name)
+end
+
+@inline (f::Relaxation)(x, y, z, t, field) =
+    f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
+
+@inline (f::Relaxation{R, M, <:Number})(x, y, z, t, field) where {R, M} =
+    f.rate * f.mask(x, y, z) * (f.target - field)
 
 #####
 ##### Sponge layer functions

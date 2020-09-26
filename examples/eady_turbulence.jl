@@ -131,10 +131,10 @@ function Fb_eady_func(i, j, k, grid, clock, state, p)
                       + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, state.velocities.v))
 end
 
-Fu_eady = ParameterizedForcing(Fu_eady_func, forcing_parameters)
-Fv_eady = ParameterizedForcing(Fv_eady_func, forcing_parameters)
-Fw_eady = ParameterizedForcing(Fw_eady_func, forcing_parameters)
-Fb_eady = ParameterizedForcing(Fb_eady_func, forcing_parameters)
+Fu_eady = Forcing(Fu_eady_func, parameters=forcing_parameters, discrete_form=true)
+Fv_eady = Forcing(Fv_eady_func, parameters=forcing_parameters, discrete_form=true)
+Fw_eady = Forcing(Fw_eady_func, parameters=forcing_parameters, discrete_form=true)
+Fb_eady = Forcing(Fb_eady_func, parameters=forcing_parameters, discrete_form=true)
 
 # # Turbulence closures
 #
@@ -162,7 +162,7 @@ model = IncompressibleModel(               grid = grid,
                                        coriolis = FPlane(f=f),
                                        buoyancy = BuoyancyTracer(),
                                         tracers = :b,
-                                        forcing = ModelForcing(u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
+                                        forcing = (u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
                                         closure = closure,
                             boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))
 

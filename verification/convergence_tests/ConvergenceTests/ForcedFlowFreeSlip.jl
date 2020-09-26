@@ -47,8 +47,8 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     buoyancy = nothing,
                                      tracers = nothing,
                                      closure = IsotropicDiffusivity(ν=1),
-                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t)),
-                                                            w = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t)))
+                                     forcing = (u = (x, y, z, t) -> Fᵘ(x, z, t),
+                                                w = (x, y, z, t) -> Fᵛ(x, z, t))
                                 )
 
     set!(model, u = (x, y, z) -> u(x, z, 0),
