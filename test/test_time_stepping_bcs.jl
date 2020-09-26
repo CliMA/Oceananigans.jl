@@ -38,7 +38,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
 
     field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
-    return bcs.z.top[1, 2] == bcarray[1, 2]
+    return bcs.top[1, 2] == bcarray[1, 2]
 end
 
 function test_flux_budget(arch, FT, fldname)
