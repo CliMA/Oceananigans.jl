@@ -43,7 +43,7 @@ struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
 @inline right_biased_pz₂(i, j, k, ψ) = @inbounds -  1/6 * ψ[i, j, k-2] + 5/6 * ψ[i, j, k-1] + 1/3 * ψ[i, j,   k]
 
 #####
-##### Jiang & Shu (1996) WENO smoothness indicators
+##### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998).
 #####
 
 @inline left_biased_βx₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-1, j, k] - 2ψ[i,   j, k] + ψ[i+1, j, k])^2 + 1/4 * (3ψ[i-1, j, k] - 4ψ[i,   j, k] +  ψ[i+1, j, k])^2
