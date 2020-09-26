@@ -181,3 +181,27 @@ TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(gr
 
 const PressureBoundaryConditions = TracerBoundaryConditions
 const DiffusivityBoundaryConditions = TracerBoundaryConditions
+
+# Here we overload setproperty! and getproperty to permit users to call
+# the 'left' and 'right' bcs in the z-direction 'bottom' and 'top'
+# and the 'left' and 'right' bcs in the y-direction 'south' and 'north'.
+Base.setproperty!(bcs::FieldBoundaryConditions, side::Symbol, bc) = setbc!(bcs, Val(side), bc)
+
+setbc!(bcs::FieldBoundaryConditions, ::Val{S}, bc) where S = setfield!(bcs, S, bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:west},   bc) = setfield!(bcs.x, :left,  bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:east},   bc) = setfield!(bcs.x, :right, bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:south},  bc) = setfield!(bcs.y, :left,  bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:north},  bc) = setfield!(bcs.y, :right, bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:bottom}, bc) = setfield!(bcs.z, :left,  bc)
+setbc!(bcs::FieldBoundaryConditions, ::Val{:top},    bc) = setfield!(bcs.z, :right, bc)
+
+@inline Base.getproperty(bcs::FieldBoundaryConditions, side::Symbol) = getbc(bcs, Val(side))
+
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{S}) where S = getfield(bcs, S)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:west})   = getfield(bcs.x, :left)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:east})   = getfield(bcs.x, :right)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:south})  = getfield(bcs.y, :left)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:north})  = getfield(bcs.y, :right)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:bottom}) = getfield(bcs.z, :left)
+@inline getbc(bcs::FieldBoundaryConditions, ::Val{:top})    = getfield(bcs.z, :right)
+
