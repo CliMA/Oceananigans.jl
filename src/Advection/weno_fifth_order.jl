@@ -85,6 +85,7 @@ const C3₂ = 1/10
 ##### WENO-5 raw weights
 #####
 
+# Note: these constants may need to be changed for smooth solutions and/or fine grid.
 const ε = 1e-6
 const ƞ = 2  # WENO exponent
 
