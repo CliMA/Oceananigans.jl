@@ -110,4 +110,5 @@ Us = [+1, -1]
 for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs, U in Us
     scheme_name = scheme isa WENO ? "WENO$(weno_order(scheme))" : typeof(scheme)
     @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f, U=%+d]...", ic_name(ϕ), ts, scheme_name, N, CFL, U)
+    create_animation(N, L, CFL, ϕ, ts, scheme, U=U)
 end

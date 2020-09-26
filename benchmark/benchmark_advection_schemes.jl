@@ -18,7 +18,7 @@ Nt = 10  # Number of iterations to use for benchmarking time stepping.
          archs = [CPU()]         # Architectures to benchmark on.
 @hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
 
-Schemes = (CenteredSecondOrder, CenteredFourthOrder, WENO5)
+Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, WENO5)
 
 #####
 ##### Run benchmarks

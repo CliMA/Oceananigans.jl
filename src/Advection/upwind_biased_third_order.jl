@@ -1,7 +1,5 @@
-using Oceananigans.Grids
-
 #####
-##### Centered fourth-order advection scheme
+##### Upwind-biased 3rd-order advection scheme
 #####
 
 struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme end

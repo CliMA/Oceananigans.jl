@@ -1,5 +1,3 @@
-using Oceananigans.Grids
-
 #####
 ##### Centered fourth-order advection scheme
 #####

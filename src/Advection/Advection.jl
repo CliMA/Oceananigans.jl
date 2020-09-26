@@ -21,6 +21,7 @@ export
     CenteredFourthOrder,
     WENO, WENO5
 
+using Oceananigans.Grids
 using Oceananigans.Operators
 
 abstract type AbstractAdvectionScheme end
