@@ -10,8 +10,7 @@
 using Random, Printf
 
 using Oceananigans, Oceananigans.Grids, Oceananigans.Diagnostics, Oceananigans.OutputWriters,
-      Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions,
-      Oceananigans.Forcing
+      Oceananigans.AbstractOperations, Oceananigans.Utils, Oceananigans.BoundaryConditions
 
 using Oceananigans.Simulations: update_Δt!
 
