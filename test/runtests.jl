@@ -42,7 +42,6 @@ using KernelAbstractions: @kernel, @index, Event
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
-using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.AbstractOperations: Computation, compute!
 
 Logging.global_logger(OceananigansLogger())

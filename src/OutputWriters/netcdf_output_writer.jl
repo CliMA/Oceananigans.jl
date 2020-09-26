@@ -320,12 +320,12 @@ function save_output_to_netcdf!(nc, model, output, name, time_index)
 end
 
 """
-    write_output(model, OutputWriter)
+    write_output!(output_writer, model)
 
-Writes output to the netcdf file at specified intervals. Increments the `time` dimension
+Writes output to netcdf file `output_writer.filename` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output(model, ow::NetCDFOutputWriter)
+function write_output!(ow::NetCDFOutputWriter, model)
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filename
 
     time_index = length(ds["time"]) + 1

@@ -2,6 +2,7 @@ using KernelAbstractions
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields
 using Oceananigans.Diagnostics: dims_to_result_size
+import Oceananigans.Diagnostics: run_diagnostic!
 
 import Oceananigans.Fields: location, total_size, compute!
 
@@ -137,7 +138,7 @@ function Average(field::Computation; dims, iteration_interval=nothing, time_inte
 end
 
 """Compute the average of a computation."""
-function run_diagnostic(model, avg::Average{<:Computation})
+function run_diagnostic!(avg::Average{<:Computation}, model)
     compute!(avg.field)
     zero_halo_regions!(parent(avg.field.result), (Cell, Cell, Cell), model.grid)
     sum!(avg.result, parent(avg.field.result))

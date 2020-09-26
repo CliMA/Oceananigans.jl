@@ -78,16 +78,16 @@ function run!(sim)
         time_before = time()
 
         if clock.iteration == 0
-            [run_diagnostic(sim.model, diag) for diag in values(sim.diagnostics)]
-            [write_output(sim.model, out)    for out  in values(sim.output_writers)]
+            [run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+            [write_output!(out, sim.model)    for out  in values(sim.output_writers)]
         end
 
         for n in 1:sim.iteration_interval
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, get_Δt(sim.Δt), euler=euler)
 
-            [time_to_run(clock, diag) && run_diagnostic(sim.model, diag) for diag in values(sim.diagnostics)]
-            [time_to_run(clock, out)  && write_output(sim.model, out)    for out  in values(sim.output_writers)]
+            [time_to_run(clock, diag) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+            [time_to_run(clock, out)  && write_output!(out, sim.model)    for out  in values(sim.output_writers)]
         end
 
         sim.progress(sim)
