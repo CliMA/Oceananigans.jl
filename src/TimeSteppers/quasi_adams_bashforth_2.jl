@@ -11,19 +11,19 @@ struct QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(float_type, arch, grid, tracers, χ=0.125;
-                              Gⁿ = TendencyFields(arch, grid, tracers),
-                              G⁻ = TendencyFields(arch, grid, tracers))
+    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+                                    Gⁿ = TendencyFields(arch, grid, tracers),
+                                    G⁻ = TendencyFields(arch, grid, tracers))
 
 Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-function QuasiAdamsBashforth2TimeStepper(float_type, arch, grid, velocities, tracers, χ=0.1;
+function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
                                          Gⁿ = TendencyFields(arch, grid, tracers),
                                          G⁻ = TendencyFields(arch, grid, tracers))
 
-    return QuasiAdamsBashforth2TimeStepper{float_type, typeof(Gⁿ)}(χ, Gⁿ, G⁻)
+    return QuasiAdamsBashforth2TimeStepper{eltype(grid), typeof(Gⁿ)}(χ, Gⁿ, G⁻)
 end
 
 #####

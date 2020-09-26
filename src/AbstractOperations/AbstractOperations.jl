@@ -24,7 +24,6 @@ using Oceananigans.Diagnostics: Average, normalize_sum!
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: data, compute!
-import Oceananigans.Diagnostics: run_diagnostic
 
 #####
 ##### Basic functionality

@@ -15,14 +15,14 @@ struct RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(float_type, arch, grid, tracers, χ=0.125;
-                              Gⁿ = TendencyFields(arch, grid, tracers),
-                              G⁻ = TendencyFields(arch, grid, tracers))
+    RungeKutta3TimeStepper(arch, grid, tracers,
+                           Gⁿ = TendencyFields(arch, grid, tracers),
+                           G⁻ = TendencyFields(arch, grid, tracers))
 
 Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
-function RungeKutta3TimeStepper(float_type, arch, grid, velocities, tracers;
+function RungeKutta3TimeStepper(arch, grid, tracers;
                                 Gⁿ = TendencyFields(arch, grid, tracers),
                                 G⁻ = TendencyFields(arch, grid, tracers))
 

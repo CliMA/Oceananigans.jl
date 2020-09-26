@@ -73,7 +73,7 @@ function Checkpointer(model; iteration_interval=nothing, time_interval=nothing,
     return Checkpointer(iteration_interval, time_interval, 0.0, dir, prefix, properties, force, verbose)
 end
 
-function write_output(model, c::Checkpointer)
+function write_output!(c::Checkpointer, model)
     filepath = joinpath(c.dir, c.prefix * "_iteration" * string(model.clock.iteration) * ".jld2")
     c.verbose && @info "Checkpointing to file $filepath..."
 
@@ -175,7 +175,7 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     # Restore time stepper
     kwargs[:timestepper] =
-        QuasiAdamsBashforth2TimeStepper(eltype(grid), arch, grid, kwargs[:velocities], tracer_names;
+        QuasiAdamsBashforth2TimeStepper(arch, grid, tracer_names;
                                         G⁻ = TendencyFields(arch, grid, tracer_names; G⁻_tendency_field_kwargs...),
                                         Gⁿ = TendencyFields(arch, grid, tracer_names; Gⁿ_tendency_field_kwargs...))
 

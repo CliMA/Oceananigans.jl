@@ -16,25 +16,6 @@ function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     return model isa IncompressibleModel
 end
 
-function test_z_boundary_condition_top_bottom_alias(arch, FT, fldname)
-    N, val = 16, 1.0
-    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(0.1, 0.2, 0.3))
-
-    top_bc    = BoundaryCondition(Value,  val)
-    bottom_bc = BoundaryCondition(Value, -val)
-    field_bcs = TracerBoundaryConditions(grid, top=top_bc, bottom=bottom_bc)
-    model_bcs = NamedTuple{(fldname,)}((field_bcs,))
-
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
-                                boundary_conditions=model_bcs)
-
-    time_step!(model, 1e-16, euler=true)
-
-    field = get_model_field(fldname, model)
-    bcs = field.boundary_conditions
-    return bcs.z.top.condition == val && bcs.z.bottom.condition == -val
-end
-
 function test_z_boundary_condition_array(arch, FT, fldname)
     Nx = Ny = Nz = 16
 
@@ -57,7 +38,7 @@ function test_z_boundary_condition_array(arch, FT, fldname)
 
     field = get_model_field(fldname, model)
     bcs = field.boundary_conditions
-    return bcs.z.top[1, 2] == bcarray[1, 2]
+    return bcs.top[1, 2] == bcarray[1, 2]
 end
 
 function test_flux_budget(arch, FT, fldname)
@@ -169,7 +150,6 @@ end
                         end
                     end
 
-                    @test test_z_boundary_condition_top_bottom_alias(arch, FT, fld)
                     @test test_z_boundary_condition_array(arch, FT, fld)
                     @test test_flux_budget(arch, FT, fld)
                 end

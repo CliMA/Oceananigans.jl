@@ -73,11 +73,11 @@ function normalize_sum!(avg)
 end
 
 """
-    run_diagnostic(model, avg::Average)
+    run_diagnostic!(avg::Average, model)
 
 Compute the horizontal average of `avg.field` and store the result in `avg.result`.
 """
-function run_diagnostic(model, avg::Average)
+function run_diagnostic!(avg::Average, model)
     zero_halo_regions!(parent(avg.field), location(avg.field), avg.field.grid)
     sum!(avg.result, parent(avg.field))
     normalize_sum!(avg)
@@ -85,7 +85,7 @@ function run_diagnostic(model, avg::Average)
 end
 
 function (avg::Average)(model)
-    run_diagnostic(model, avg)
+    run_diagnostic!(avg, model)
     result = avg.return_type(avg.result)
 
     if avg.with_halos

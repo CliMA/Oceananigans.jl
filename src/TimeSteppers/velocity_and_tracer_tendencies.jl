@@ -22,9 +22,6 @@ forces, surface waves, and the prescribed turbulence closure.
 The arguments `U`, `C`, and `K` are `NamedTuple`s with the three velocity components,
 tracer fields, and precalculated diffusivities where applicable. `F` is a named tuple of 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
-
-`parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `clock` is the physical clock of the model.
 """
 @inline function u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, clock)
@@ -57,9 +54,6 @@ forces, surface waves, and the prescribed turbulence closure.
 The arguments `U`, `C`, and `K` are `NamedTuple`s with the three velocity components,
 tracer fields, and precalculated diffusivities where applicable. `F` is a named tuple of 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
-
-`parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `clock` is the physical clock of the model.
 """
 @inline function v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, pHY′, clock)
@@ -90,9 +84,6 @@ forces, surface waves, and the prescribed turbulence closure.
 The arguments `U`, `C`, and `K` are `NamedTuple`s with the three velocity components,
 tracer fields, and precalculated diffusivities where applicable. `F` is a named tuple of 
 forcing functions, `pHY′` is the hydrostatic pressure anomaly.
-
-`parameters` is a `NamedTuple` of scalar parameters for user-defined forcing functions 
-and `clock` is the physical clock of the model.
 """
 @inline function w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                                      closure, U, C, K, F, clock)

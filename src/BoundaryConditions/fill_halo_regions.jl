@@ -27,12 +27,12 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
 
     barrier = Event(device(arch))
 
-      west_event =   fill_west_halo!(c, fieldbcs.x.left,   arch, barrier, grid, args...)
-      east_event =   fill_east_halo!(c, fieldbcs.x.right,  arch, barrier, grid, args...)
-     south_event =  fill_south_halo!(c, fieldbcs.y.left,   arch, barrier, grid, args...)
-     north_event =  fill_north_halo!(c, fieldbcs.y.right,  arch, barrier, grid, args...)
-    bottom_event = fill_bottom_halo!(c, fieldbcs.z.bottom, arch, barrier, grid, args...)
-       top_event =    fill_top_halo!(c, fieldbcs.z.top,    arch, barrier, grid, args...)
+      west_event =   fill_west_halo!(c, fieldbcs.west,   arch, barrier, grid, args...)
+      east_event =   fill_east_halo!(c, fieldbcs.east,   arch, barrier, grid, args...)
+     south_event =  fill_south_halo!(c, fieldbcs.south,  arch, barrier, grid, args...)
+     north_event =  fill_north_halo!(c, fieldbcs.north,  arch, barrier, grid, args...)
+    bottom_event = fill_bottom_halo!(c, fieldbcs.bottom, arch, barrier, grid, args...)
+       top_event =    fill_top_halo!(c, fieldbcs.top,    arch, barrier, grid, args...)
 
     # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]

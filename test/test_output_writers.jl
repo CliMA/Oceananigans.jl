@@ -449,7 +449,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
     checkpointer = Checkpointer(model)
-    write_output(model, checkpointer)
+    write_output!(checkpointer, model)
     model = nothing
 
     restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2")
@@ -519,7 +519,7 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
     checkpointer = Checkpointer(model)
-    write_output(model, checkpointer)
+    write_output!(checkpointer, model)
     model = nothing
 
     restored_model = restore_from_checkpoint("checkpoint_iteration0.jld2", architecture=arch2)
