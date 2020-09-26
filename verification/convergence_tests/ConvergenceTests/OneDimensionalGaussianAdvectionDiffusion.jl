@@ -8,23 +8,26 @@ using Oceananigans.Grids
 
 include("analysis.jl")
 
-# Functions that define the forced flow problem
+# Advection and diffusion of a Gaussian.
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
 c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-(x - U * t)^2 / σ(t, κ, t₀))
 
 function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
-                  architecture = CPU(), topo = (Periodic, Periodic, Bounded))
+                  architecture = CPU(), topo = (Periodic, Periodic, Bounded), advection = CenteredSecondOrder())
 
     t₀ = width^2 / 4κ
 
     #####
-    ##### Test c and v-advection
+    ##### Test cx and v-advection
     #####
 
-    grid = RegularCartesianGrid(size=(Nx, 1, 1), x=(-1, 1.5), y=(0, 1), z=(0, 1), topology=topo)
+    domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(architecture = architecture,
+                                 timestepper = :RungeKutta3,
                                         grid = grid,
+                                   advection = advection,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
@@ -36,7 +39,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for v and c with Nx = $Nx and Δt = $Δt..."
+    @info "Running Gaussian advection diffusion test for v and cx with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
 
     x = xnodes(model.tracers.c)
@@ -52,13 +55,16 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     v_errors = compute_error(v_simulation, c_analytical)
 
     #####
-    ##### Test u-advection
+    ##### Test cy and u-advection
     #####
 
-    ygrid = RegularCartesianGrid(size=(1, Nx, 1), x=(0, 1), y=(-1, 1.5), z=(0, 1), topology=topo)
+    ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
+    ygrid = RegularCartesianGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
 
     model = IncompressibleModel(architecture = architecture,
+                                 timestepper = :RungeKutta3,
                                         grid = ygrid,
+                                   advection = advection,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
@@ -70,7 +76,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for u with Nx = $Nx and Δt = $Δt..."
+    @info "Running Gaussian advection diffusion test for u and cy with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
 
     # Calculate errors

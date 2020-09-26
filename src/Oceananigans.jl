@@ -15,6 +15,9 @@ export
     Periodic, Bounded, Flat,
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
+    # Advection schemes
+    CenteredSecondOrder, CenteredFourthOrder, WENO5,
+
     # Boundary conditions
     BoundaryCondition,
     Flux, Value, Gradient, NormalFlow,

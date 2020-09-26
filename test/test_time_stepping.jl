@@ -19,8 +19,8 @@ function time_stepping_works_with_closure(arch, FT, Closure)
 end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
-    # Use halo=(2, 2, 2) to accomodate fourth-order advection scheme
-    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+    # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
+    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -161,7 +161,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder())
+advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

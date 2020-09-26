@@ -2,6 +2,8 @@
 
 using PyPlot
 
+using Oceananigans.Advection
+
 # Define a few utilities for running tests and unpacking and plotting results
 include("ConvergenceTests/ConvergenceTests.jl")
 
@@ -10,9 +12,9 @@ using .ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
 using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!, unpack_errors
 
 """ Run advection-diffusion test for all Nx in resolutions. """
-function run_convergence_test(κ, U, resolutions...)
+function run_convergence_test(κ, U, resolutions)
 
-    # Determine save time-step
+    # Determine safe time-step
            Lx = 2.5
     stop_time = 0.25
             h = Lx / maximum(resolutions)
@@ -33,9 +35,9 @@ end
 #####
 
 Nx = 2 .^ (6:8) # N = 64 through N = 256
-diffusion_results = run_convergence_test(1e-1, 0, Nx...)
-advection_results = run_convergence_test(1e-6, 3, Nx...)
-advection_diffusion_results = run_convergence_test(1e-2, 1, Nx...)
+diffusion_results = run_convergence_test(1e-1, 0, Nx)
+advection_results = run_convergence_test(1e-6, 3, Nx)
+advection_diffusion_results = run_convergence_test(1e-2, 1, Nx)
 
 #####
 ##### Plot solution and error profile
