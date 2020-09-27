@@ -1,7 +1,7 @@
 using Oceananigans.Advection
 
-@inline regularize_diffusivities_tuple(tup::Tuple) = (diffusivities=K,)
-@inline regularize_diffusivities_tuple(tup::NamedTuple) = tup
+@inline regularize_diffusivities_tuple(diffusivities::Tuple) = (diffusivities=diffusivities,)
+@inline regularize_diffusivities_tuple(diffusivities::NamedTuple) = diffusivities 
 @inline regularize_diffusivities_tuple(::Nothing) = NamedTuple()
 
 """
