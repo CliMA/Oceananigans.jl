@@ -1,10 +1,10 @@
 # Forcing functions
 
-"Forcings" are user-defined terms that are appended to right-hand side of
+"Forcings" are user-defined terms appended to right-hand side of
 the momentum or tracer evolution equations. In `Oceananigans`, momentum
 and tracer forcings are defined via julia functions. `Oceananigans` includes
 an interface for implementing forcing functions that depend on spatial coordinates,
-time, other model fields, and external parameters.
+time, model velocity and tracer fields, and external parameters.
 
 ```@meta
 DocTestSetup = quote
@@ -13,7 +13,7 @@ end
 ```
 
 Forcings are added to `Oceananigans` models by passing a `NamedTuple` of functions
-or forcing objects to the constructor for `IncompressibleModel`.
+or forcing objects to the `forcing` keyword argument in `IncompressibleModel`'s constructor.
 By default, momentum and tracer forcing functions are assumed to be functions of
 `x, y, z, t`. A basic example is
 
@@ -32,28 +32,31 @@ ContinuousForcing{Nothing} at (Face, Cell, Cell)
 └── field dependencies: ()
 ```
 
-More general forcing functions are built via the `Forcing` constructor.
-`Oceananigans` also provides a convenience type called `Relaxation` that
-specifies "relaxation", or damping terms that restore a field to a
-target distribution outside of a masked region of space.
+More general forcing functions are built via the `Forcing` constructor
+described below. `Oceananigans` also provides a convenience type called `Relaxation`
+that specifies "relaxation", or damping terms that restore a field to a
+target distribution outside of a masked region of space. `Relaxation` can be
+used to implement sponge layers near the boundaries of a domain.
 
 ## The `Forcing` constructor
 
 The `Forcing` constructor provides an interface for specifying forcing functions that
 
-1. Depend on external parameters;
-2. Depend on model fields at the `x, y, z` location that forcing is applied; or
-3. The discrete grid and global model field data.
+1. Depend on external parameters; and
+2. Depend on model fields at the `x, y, z` location that forcing is applied; and/or
+3. Require access to discrete model data.
 
 ### Forcing functions with external parameters
 
-Here's an example of a `forcing_func`tion that depends on a `NamedTuple` of parameters, `p`:
+Most forcings involve external, changeable parameters.
+Here are two examples of `forcing_func`tions that depend on 
+_(i)_ a single scalar parameter `s`, and _(ii)_ a `NamedTuple` of parameters, `p`:
 
-```jldoctest
+```jldoctest parameterized_forcing
 # Forcing that depends on a scalar parameter `s`
 u_forcing_func(x, y, z, t, s) = s * z
 
-u_forcing = Forcing(u_forcing_func, parameters=1)
+u_forcing = Forcing(u_forcing_func, parameters=0.1)
 
 # Forcing that depends on a `NamedTuple` of parameters `p`
 T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω * t)
@@ -72,16 +75,26 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Flo
 └── field dependencies: ()
 ```
 
-In the above example, the objects passed to the `parameters` keyword in the construction of
-`u_forcing` and `T_forcing` --- an integer for `u_forcing`, and a `NamedTuple` of parameters
-for `T_forcing` --- are passed on to `u_forcing_func` and `T_forcing_func` when they are
-called during time-stepping. The object passed to `parameters` is in principle arbitrary.
+```jldoctest parameterized_forcing
+model.forcing.u
+
+# output
+ContinuousForcing{Float64} at (Face, Cell, Cell)
+├── func: u_forcing_func
+├── parameters: 0.1
+└── field dependencies: ()
+```
+
+In this example, the objects passed to the `parameters` keyword in the construction of
+`u_forcing` and `T_forcing` --- a floating point number for `u_forcing`, and a `NamedTuple`
+of parameters for `T_forcing` --- are passed on to `u_forcing_func` and `T_forcing_func` when
+they are called during time-stepping. The object passed to `parameters` is in principle arbitrary.
 However, if using the GPU, then `typeof(parameters)` may be restricted by the requirements
 of GPU-compiliability.
 
 ### Forcing functions that depend on model fields
 
-Forcing functions may depend on other model fields at the location at which forcing is applied.
+Forcing functions may depend on model fields evaluated at the `x, y, z` where forcing is applied.
 Here's a somewhat non-sensical example:
 
 ```jldoctest field_dependent_forcing
@@ -90,7 +103,7 @@ w_forcing_func(x, y, z, t, u, v, w) = - (u^2 + v^2 + w^2) / 2
 
 w_forcing = Forcing(w_forcing_func, field_dependencies=(:u, :v, :w))
 
-# Forcing that depends on temperature `T` and a scalar parameter
+# Forcing that depends on salinity `S` and a scalar parameter
 S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
 S_forcing = Forcing(S_forcing_func, parameters=1/60, field_dependencies=:S)
@@ -122,21 +135,24 @@ the order they are specified in `Forcing`.
 If both `field_dependencies` and `parameters` are specified, then the `field_dependencies`
 arguments follow `x, y, z, t`, and `parameters` follow `field_dependencies`.
 
+Model fields that arise in the arguments of continuous `Forcing` `func`tions are
+automatically interpolated to the staggered grid location at which the forcing is applied.
+
 ### "Discrete form" forcing functions
 
 "Discrete form" forcing functions are either called with the signature
 
 ```julia
-f(i, j, k, grid, clock, model_fields)
+func(i, j, k, grid, clock, model_fields)
 ```
 
-or, when specified with parameters, are called with
+or the parameterized form
 
 ```julia
-f(i, j, k, grid, clock, model_fields, parameters)
+func(i, j, k, grid, clock, model_fields, parameters)
 ```
 
-Discrete form forcing functions give users access to the entirety of model field
+Discrete form forcing functions can access the entirety of model field
 data through the argument `model_fields`. The object `model_fields` is a `NamedTuple`
 whose properties include the velocity fields `model_fields.u`, `model_fields.v`,
 `model_fields.w`, all fields in `model.tracers`, and the fields in `model.diffusivities`.
@@ -144,16 +160,16 @@ Note that in the special case that a _tuple_ of turbulence closures is provided,
 the `diffusivities` associated with `closure[i]` is accessible via
 `model_fields.diffusivities[i]`.
 
-Using discrete forcing functions often requires an understanding of the
-staggered arrangement of variables employed in Oceananigans.
+Using discrete forcing functions may require understanding the
+staggered arrangement of velocity fields and tracers in `Oceananigans`.
 Here's a slightly non-sensical example in which the vertical derivative of a buoyancy
 tracer is used as a time-scale for damping the u-velocity field:
 
 ```jldoctest discrete_forcing
-# A damping term that depends on a "local average" of `u`:
-local_average(i, j, k, grid, c) = @inbounds (6 * c[i, j, k] + c[i-1, j, k] + c[i+1, j, k] +
-                                                              c[i, j-1, k] + c[i, j+1, k] +
-                                                              c[i, j, k-1] + c[i, j, k+1])
+# A damping term that depends on a "local average":
+local_average(i, j, k, grid, c) = @inbounds (c[i, j, k] + c[i-1, j, k] + c[i+1, j, k] +
+                                                          c[i, j-1, k] + c[i, j+1, k] +
+                                                          c[i, j, k-1] + c[i, j, k+1]) / 7
 
 b_forcing_func(i, j, k, grid, clock, model_fields) = - local_average(i, j, k, grid, model_fields.b)
 
@@ -169,7 +185,7 @@ function u_forcing_func(i, j, k, grid, clock, model_fields, ε)
     # Set to zero in unstable stratification where N² < 0:
     N² = max(N², zero(typeof(N²)))
 
-    return @inbounds - ε / sqrt(N²) * model_fields.u[i, j, k]
+    return @inbounds - ε * sqrt(N²) * model_fields.u[i, j, k]
 end
 
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
@@ -199,10 +215,11 @@ of the fields in `model_fields`.
 
 ## `Relaxation`
 
-`Relaxation` defines a special forcing function restores a field at a specified `rate` to
-a `target` distribution within a region uncovered by a `mask`ing function.
+`Relaxation` defines a special forcing function that restores a field at a specified `rate` to
+a `target` distribution, within a region uncovered by a `mask`ing function.
+`Relaxation` is useful for implementing sponge layers, as shown in the second example.
 
-For example, the following code constructs a model in which all components
+The following code constructs a model in which all components
 of the velocity field are damped to zero everywhere on a time-scale of 1 hour:
 
 ```jldoctest
@@ -215,24 +232,26 @@ model.forcing.w
 
 # output
 ContinuousForcing{Nothing} at (Cell, Cell, Face)
-├── func: Relaxation(rate=0.0002777777777777778, mask=onefunction, target=zerofunction)
+├── func: Relaxation(rate=0.0002777777777777778, mask=1, target=0)
 ├── parameters: nothing
 └── field dependencies: (:w,)
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
 which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z)`
-distribution for the quantity in question.
+distribution for the quantity in question. By default, `mask` uncovered the whole domain
+and `target` restores the field in question to 0
 
-We illustrate this by implementing a sponge layer that relaxes the velocity fields to
-zero, and the temperature field to a linear gradient in the bottom 1/10 of the domain:
+We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
+velocity fields to zero and restores temperature to a linear gradient in the bottom
+1/10th of the domain:
 
 ```jldoctest sponge_layer
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+grid = RegularCartesianGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
         damping_rate = 1/600 # relax fields on a 10 minute time-scale
-temperature_gradient = 0.001 # ⁰C m⁻¹, temperature gradient
- surface_temperature = 20    # ⁰C, surface temperature at z=0
+temperature_gradient = 0.001 # ⁰C m⁻¹
+ surface_temperature = 20    # ⁰C (at z=0)
 
 target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=temperature_gradient)
        bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
