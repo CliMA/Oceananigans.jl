@@ -1,8 +1,6 @@
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Fields: assumed_field_location
-
-tuple_it(it) = tuple(it)
-tuple_it(it::Tuple) = it
+using Oceananigans.Utils: tupleit
 
 """
     ContinuousForcing{X, Y, Z, P, N, F, I}
@@ -18,7 +16,7 @@ struct ContinuousForcing{X, Y, Z, P, N, F, I}
 
     function ContinuousForcing{X, Y, Z}(func, parameters, field_dependencies) where {X, Y, Z}
 
-        field_dependencies = tuple_it(field_dependencies)
+        field_dependencies = tupleit(field_dependencies)
 
         ℑ_field_dependencies = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
                                      for name in field_dependencies)
