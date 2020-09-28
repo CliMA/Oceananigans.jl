@@ -64,7 +64,6 @@ grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
 
 # output
-model = IncompressibleModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
 IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
@@ -87,20 +86,19 @@ Here's a somewhat non-sensical example:
 
 ```jldoctest
 # Forcing that depends on the velocity fields `u`, `v`, and `w`
-w_forcing_func(x, y, z, u, v, w) = - (u^2 + v^2 + w^2) / 2
+w_forcing_func(x, y, z, t, u, v, w) = - (u^2 + v^2 + w^2) / 2
 
 w_forcing = Forcing(w_forcing_func, field_dependencies=(:u, :v, :w))
 
 # Forcing that depends on temperature `T` and a scalar parameter
-S_forcing_func(x, y, z, S, μ) = - μ * S
+S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
-S_forcing = Forcing(u_forcing_func, parameters=1/60, field_dependencies=:S)
+S_forcing = Forcing(S_forcing_func, parameters=1/60, field_dependencies=:S)
 
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
 
 # output
-model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
 IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
@@ -108,6 +106,11 @@ IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
+
+The `field_dependencies` arguments follow `x, y, z, t` in the forcing `func`tion in
+the order they are specified in `Forcing`.
+If both `field_dependencies` and `parameters` are specified, then the `field_dependencies`
+arguments follow `x, y, z, t`, and `parameters` follow `field_dependencies`.
 
 ### "Discrete form" forcing functions
 
@@ -144,7 +147,7 @@ local_average(i, j, k, grid, c) = @inbounds (6 * c[i, j, k] + c[i-1, j, k] + c[i
 
 b_forcing_func(i, j, k, grid, clock, model_fields) = - local_average(i, j, k, grid, model_fields.b)
 
-b_forcing = Forcing(T_forcing_func, discrete_form=true)
+b_forcing = Forcing(b_forcing_func, discrete_form=true)
 
 # A term that damps the local velocity field in the presence of stratification
 using Oceananigans.Operators: ∂zᵃᵃᶠ, ℑxzᶠᵃᶜ
@@ -165,7 +168,6 @@ grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
 # output
-model = IncompressibleModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:b,)
