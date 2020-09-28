@@ -230,17 +230,15 @@ zero, and the temperature field to a linear gradient in the bottom 1/10 of the d
 ```jldoctest sponge_layer
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
 
-damping_rate = 1/600 # 10 minute time-scale
+        damping_rate = 1/600 # relax fields on a 10 minute time-scale
+temperature_gradient = 0.001 # ⁰C m⁻¹, temperature gradient
+ surface_temperature = 20    # ⁰C, surface temperature at z=0
 
-uvw_sponge = Relaxation(rate = 1/60,
-                        mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10))
+target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=temperature_gradient)
+       bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
 
-dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
-T₀ = 20      # ⁰C, surface temperature at z=0
-
-T_sponge = Relaxation(rate = 1/60,
-                      target = LinearTarget{:z}(intercept=T₀, gradient=dTdz),
-                      mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10))
+uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
+  T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
 model = IncompressibleModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge))
 
@@ -248,7 +246,7 @@ model.forcing.u
 
 # output
 ContinuousForcing{Nothing} at (Face, Cell, Cell)
-├── func: Relaxation(rate=0.016666666666666666, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=zerofunction)
+├── func: Relaxation(rate=0.0016666666666666668, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
 ```

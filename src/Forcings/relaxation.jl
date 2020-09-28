@@ -3,6 +3,12 @@ import Oceananigans: short_show
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
 
+T_zerofunction = typeof(zerofunction)
+T_onefunction = typeof(onefunction)
+
+short_show(::T_zerofunction) = "0"
+short_show(::T_onefunction) = "1"
+
 """
     struct Relaxation{R, M, T}
 
@@ -38,8 +44,8 @@ damping = Relaxation(rate = 1/3600)
 # output
 Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
 ├── rate: 0.0002777777777777778
-├── mask: onefunction
-└── target: zerofunction
+├── mask: 1
+└── target: 0
 ```
 
 * Restore a field to a linear z-gradient within the bottom 1/4 of a domain
@@ -60,8 +66,8 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
 # output
 Relaxation{Float64, GaussianMask{:z,Float64}, LinearTarget{:z,Float64}}
 ├── rate: 0.016666666666666666
-├── mask: GaussianMask{:z}(center=-100.0, width=25.0)
-└── target: LinearTarget{:z}(intercept=20.0, gradient=0.001)
+├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+└── target: 20.0 + 0.001 * z
 ```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
@@ -104,7 +110,7 @@ Examples
 * Create a Gaussian mask centered on `z=0` with width `1` meter.
 
 ```julia
-julia> mask = GaussianMask{:z}(0, 1)
+julia> mask = GaussianMask{:z}(center=0, width=1)
 ```
 """
 struct GaussianMask{D, T}
@@ -145,7 +151,7 @@ Examples
   `z=0` and with gradient 10⁻⁶:
 
 ```julia
-julia> target = LinearTarget{:z}(0, 1e-6)
+julia> target = LinearTarget{:z}(intercept=0, gradient=1e-6)
 ```
 """
 struct LinearTarget{D, T}
