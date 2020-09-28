@@ -61,17 +61,17 @@ WENO(n) = WENO(Float64, n)
 #####
 
 @inline function weno_weights_x(i, j, k, weno::WENO{K}, ϕ) where K
-    α = [αx(i, j, k, weno, r, ϕ) for r in 0:K-1]
+    α = ntuple(n -> αx(i, j, k, weno, n-1, ϕ), Val(K))
     return α ./ sum(α)
 end
 
 @inline function weno_weights_y(i, j, k, weno::WENO{K}, ϕ) where K
-    α = [αy(i, j, k, weno, r, ϕ) for r in 0:K-1]
+    α = ntuple(n -> αy(i, j, k, weno, n-1, ϕ), Val(K))
     return α ./ sum(α)
 end
 
 @inline function weno_weights_z(i, j, k, weno::WENO{K}, ϕ) where K
-    α = [αz(i, j, k, weno, r, ϕ) for r in 0:K-1]
+    α = ntuple(n -> αz(i, j, k, weno, n-1, ϕ), Val(K))
     return α ./ sum(α)
 end
 
