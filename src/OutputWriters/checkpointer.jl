@@ -1,3 +1,5 @@
+using Oceananigans.Fields: offset_data
+
 """
     Checkpointer{I, T, P} <: AbstractOutputWriter
 
