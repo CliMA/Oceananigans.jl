@@ -18,6 +18,7 @@ export
 
     CenteredSecondOrder,
     UpwindBiasedThirdOrder,
+    UpwindBiasedFifthOrder,
     CenteredFourthOrder,
     WENO, WENO5
 
@@ -36,6 +37,7 @@ include("upwind_biased_advective_fluxes.jl")
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
+include("upwind_biased_fifth_order.jl")
 
 include("weno_reconstruction.jl")
 include("weno_nth_order.jl")
