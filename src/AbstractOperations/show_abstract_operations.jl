@@ -1,4 +1,5 @@
-using Oceananigans.Grids: domain_string, short_show
+using Oceananigans: short_show
+using Oceananigans.Grids: domain_string
 using Oceananigans.Fields: show_location
 
 for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")

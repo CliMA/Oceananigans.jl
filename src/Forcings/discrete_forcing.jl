@@ -1,3 +1,5 @@
+using Oceananigans: short_show
+
 """
     struct DiscreteForcing{P, F}
 
@@ -47,5 +49,5 @@ DiscreteForcing(func; parameters=nothing) = DiscreteForcing(func, parameters)
 """Show the innards of a `DiscreteForcing` in the REPL."""
 Base.show(io::IO, forcing::DiscreteForcing{P}) where P =
     print(io, "DiscreteForcing{$P}", '\n',
-        "├── func: $(string(Symbol(forcing.func)))", '\n',
+        "├── func: $(short_show(forcing.func))", '\n',
         "└── parameters: $(forcing.parameters)")

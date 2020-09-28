@@ -1,3 +1,5 @@
+import Oceananigans: short_show
+
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
 
@@ -19,38 +21,48 @@ end
 Returns a `Forcing` that restores a field to `target(x, y, z, t)`
 at the specified `rate`, in the region `mask(x, y, z)`.
 
-Example
-=======
-
-* Restore a field to a linear z-gradient everywhere on a timescale of "60" (equal
-  to one minute if the time units of the simulation are seconds).
-
-```julia
-julia> dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
-
-julia> T₀ = 20 # ⁰C, surface temperature at z=0
-
-julia> restore_stratification = Relaxation(; rate = 1/60, target = LinearTarget(gradient=dTdz, intercept=T₀))
-```
+The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
+Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
 
 Example
 =======
 
-* Restore a field to a linear z-gradient at the bottom of a domain on a timescale of "60" (equal
-  to one minute if the time units of the simulation are seconds).
+* Restore a field to zero on a timescale of "3600" (equal
+  to one hour if the time units of the simulation are seconds).
 
-```julia
-julia> dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
+```jldoctest relaxation
+using Oceananigans
 
-julia> T₀ = 20 # ⁰C, surface temperature at z=0
+damping = Relaxation(rate = 1/3600)
 
-julia> Lz = 100 # m, depth of domain
-
-julia> bottom_sponge_layer = Relaxation(; rate = 1/60,
-                                          target = LinearTarget(gradient=dTdz, intercept=T₀),
-                                          mask = GaussianMask(center=-3Lz/4, width=Lz/4))
+# output
+Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
+├── rate: 0.0002777777777777778
+├── mask: onefunction
+└── target: zerofunction
 ```
 
+* Restore a field to a linear z-gradient within the bottom 1/4 of a domain
+  on a timescale of "60" (equal to one minute if the time units of the simulation
+  are seconds).
+
+```jldoctest relaxation
+dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
+
+T₀ = 20 # ⁰C, surface temperature at z=0
+
+Lz = 100 # m, depth of domain
+
+bottom_sponge_layer = Relaxation(; rate = 1/60,
+                                   target = LinearTarget{:z}(intercept=T₀, gradient=dTdz),
+                                   mask = GaussianMask{:z}(center=-Lz, width=Lz/4))
+
+# output
+Relaxation{Float64, GaussianMask{:z,Float64}, LinearTarget{:z,Float64}}
+├── rate: 0.016666666666666666
+├── mask: GaussianMask{:z}(center=-100.0, width=25.0)
+└── target: LinearTarget{:z}(intercept=20.0, gradient=0.001)
+```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
 
@@ -65,6 +77,16 @@ end
 
 @inline (f::Relaxation{R, M, <:Number})(x, y, z, t, field) where {R, M} =
     f.rate * f.mask(x, y, z) * (f.target - field)
+
+"""Show the innards of a `Relaxation` in the REPL."""
+Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
+    print(io, "Relaxation{$R, $M, $T}", '\n',
+        "├── rate: $(relaxation.rate)", '\n',
+        "├── mask: $(short_show(relaxation.mask))", '\n',
+        "└── target: $(short_show(relaxation.target))")
+
+short_show(relaxation::Relaxation) =
+    "Relaxation(rate=$(relaxation.rate), mask=$(short_show(relaxation.mask)), target=$(short_show(relaxation.target)))"
 
 #####
 ##### Sponge layer functions
@@ -99,6 +121,13 @@ end
 @inline (g::GaussianMask{:y})(x, y, z) = exp(-(y - g.center)^2 / (2 * g.width^2))
 @inline (g::GaussianMask{:z})(x, y, z) = exp(-(z - g.center)^2 / (2 * g.width^2))
 
+show_exp_arg(D, c) = c == 0 ? "$D^2" :
+                     c > 0  ? "($D - $c)^2" :
+                              "($D + $(-c))^2"
+
+short_show(g::GaussianMask{D}) where D =
+    "exp(-$(show_exp_arg(D, g.center)) / (2 * $(g.width)^2))"
+
 #####
 ##### Linear target functions
 #####
@@ -132,3 +161,7 @@ end
 @inline (p::LinearTarget{:x})(x, y, z, t) = p.intercept + p.gradient * x
 @inline (p::LinearTarget{:y})(x, y, z, t) = p.intercept + p.gradient * y
 @inline (p::LinearTarget{:z})(x, y, z, t) = p.intercept + p.gradient * z
+
+short_show(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
+short_show(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
+short_show(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"

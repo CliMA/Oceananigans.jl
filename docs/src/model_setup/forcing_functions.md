@@ -23,13 +23,13 @@ u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(u=u_forcing,))
 
+model.forcing.u
+
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
-└── coriolis: Nothing
+ContinuousForcing{Nothing} at (Face, Cell, Cell)
+├── func: u_forcing
+├── parameters: nothing
+└── field dependencies: ()
 ```
 
 More general forcing functions are built via the `Forcing` constructor.
@@ -63,13 +63,13 @@ T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
 
+model.forcing.T
+
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
-└── coriolis: Nothing
+ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Float64}}} at (Cell, Cell, Cell)
+├── func: T_forcing_func
+├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
+└── field dependencies: ()
 ```
 
 In the above example, the objects passed to the `parameters` keyword in the construction of
@@ -84,7 +84,7 @@ of GPU-compiliability.
 Forcing functions may depend on other model fields at the location at which forcing is applied.
 Here's a somewhat non-sensical example:
 
-```jldoctest
+```jldoctest field_dependent_forcing
 # Forcing that depends on the velocity fields `u`, `v`, and `w`
 w_forcing_func(x, y, z, t, u, v, w) = - (u^2 + v^2 + w^2) / 2
 
@@ -98,13 +98,23 @@ S_forcing = Forcing(S_forcing_func, parameters=1/60, field_dependencies=:S)
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
 
+model.forcing.w
+
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
-└── coriolis: Nothing
+ContinuousForcing{Nothing} at (Cell, Cell, Face)
+├── func: w_forcing_func
+├── parameters: nothing
+└── field dependencies: (:u, :v, :w)
+```
+
+```jldoctest field_dependent_forcing
+model.forcing.S
+
+# output
+ContinuousForcing{Float64} at (Cell, Cell, Cell)
+├── func: S_forcing_func
+├── parameters: 0.016666666666666666
+└── field dependencies: (:S,)
 ```
 
 The `field_dependencies` arguments follow `x, y, z, t` in the forcing `func`tion in
@@ -139,7 +149,7 @@ staggered arrangement of variables employed in Oceananigans.
 Here's a slightly non-sensical example in which the vertical derivative of a buoyancy
 tracer is used as a time-scale for damping the u-velocity field:
 
-```jldoctest
+```jldoctest discrete_forcing
 # A damping term that depends on a "local average" of `u`:
 local_average(i, j, k, grid, c) = @inbounds (6 * c[i, j, k] + c[i-1, j, k] + c[i+1, j, k] +
                                                               c[i, j-1, k] + c[i, j+1, k] +
@@ -167,14 +177,88 @@ u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
+model.forcing.b
+
 # output
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:b,)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
-├── buoyancy: BuoyancyTracer
-└── coriolis: Nothing
+DiscreteForcing{Nothing}
+├── func: b_forcing_func
+└── parameters: nothing
+```
+
+```jldoctest discrete_forcing
+model.forcing.u
+
+# output
+DiscreteForcing{Float64}
+├── func: u_forcing_func
+└── parameters: 0.001
 ```
 
 The annotation `@inbounds` is crucial for performance when accessing array indices
 of the fields in `model_fields`.
+
+## `Relaxation`
+
+`Relaxation` defines a special forcing function restores a field at a specified `rate` to
+a `target` distribution within a region uncovered by a `mask`ing function.
+
+For example, the following code constructs a model in which all components
+of the velocity field are damped to zero everywhere on a time-scale of 1 hour:
+
+```jldoctest
+damping = Relaxation(rate = 1/3600)
+
+grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+model = IncompressibleModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
+
+model.forcing.w
+
+# output
+ContinuousForcing{Nothing} at (Cell, Cell, Face)
+├── func: Relaxation(rate=0.0002777777777777778, mask=onefunction, target=zerofunction)
+├── parameters: nothing
+└── field dependencies: (:w,)
+```
+
+The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
+which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z)`
+distribution for the quantity in question.
+
+We illustrate this by implementing a sponge layer that relaxes the velocity fields to
+zero, and the temperature field to a linear gradient in the bottom 1/10 of the domain:
+
+```jldoctest sponge_layer
+grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+
+damping_rate = 1/600 # 10 minute time-scale
+
+uvw_sponge = Relaxation(rate = 1/60,
+                        mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10))
+
+dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
+T₀ = 20      # ⁰C, surface temperature at z=0
+
+T_sponge = Relaxation(rate = 1/60,
+                      target = LinearTarget{:z}(intercept=T₀, gradient=dTdz),
+                      mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10))
+
+model = IncompressibleModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge))
+
+model.forcing.u
+
+# output
+ContinuousForcing{Nothing} at (Face, Cell, Cell)
+├── func: Relaxation(rate=0.016666666666666666, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=zerofunction)
+├── parameters: nothing
+└── field dependencies: (:u,)
+```
+
+```jldoctest sponge_layer
+model.forcing.T
+
+# output
+ContinuousForcing{Nothing} at (Cell, Cell, Cell)
+├── func: Relaxation(rate=0.016666666666666666, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
+├── parameters: nothing
+└── field dependencies: (:T,)
+```

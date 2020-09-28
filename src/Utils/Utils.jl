@@ -14,12 +14,17 @@ export
     versioninfo_with_gpu, oceananigans_versioninfo,
     instantiate
 
+import Oceananigans: short_show
+
 #####
 ##### Misc. small utils
 #####
 
 instantiate(x) = x
 instantiate(X::DataType) = X()
+
+short_show(a) = string(a) # fallback
+short_show(f::Function) = string(Symbol(f))
 
 #####
 ##### Include utils

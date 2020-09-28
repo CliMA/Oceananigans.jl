@@ -1,5 +1,5 @@
 import Base: show
-import Oceananigans.Grids: short_show
+import Oceananigans: short_show
 
 location_str(::Face) = "Face"
 location_str(::Cell) = "Cell"

@@ -1,3 +1,4 @@
+using Oceananigans: short_show
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Fields: assumed_field_location, show_location
 using Oceananigans.Utils: tupleit
@@ -96,6 +97,6 @@ end
 """Show the innards of a `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{X, Y, Z, P}) where {X, Y, Z, P} =
     print(io, "ContinuousForcing{$P} at ", show_location(X, Y, Z), '\n',
-        "├── func: $(string(Symbol(forcing.func)))", '\n',
+        "├── func: $(short_show(forcing.func))", '\n',
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
