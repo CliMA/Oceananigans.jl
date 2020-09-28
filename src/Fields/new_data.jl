@@ -24,13 +24,13 @@ Return a range of indices for a field along a 'reduced' dimension.
 offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
 
 """
-    offset_underlying_data(underlying_data, grid::AbstractGrid, loc)
+    offset_data(underlying_data, grid::AbstractGrid, loc)
 
 Returns an `OffsetArray` that maps to `underlying_data` in memory,
 with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
-function offset_underlying_data(underlying_data, grid::AbstractGrid, loc)
+function offset_data(underlying_data, grid::AbstractGrid, loc)
     ii = offset_indices(loc[1], topology(grid, 1), grid.Nx, grid.Hx)
     jj = offset_indices(loc[2], topology(grid, 2), grid.Ny, grid.Hy)
     kk = offset_indices(loc[3], topology(grid, 3), grid.Nz, grid.Hz)
@@ -50,7 +50,7 @@ function new_data(FT, ::CPU, grid, loc)
                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
-    return offset_underlying_data(underlying_data, grid, loc)
+    return offset_data(underlying_data, grid, loc)
 end
 
 """
@@ -67,7 +67,7 @@ function new_data(FT, ::GPU, grid, loc)
 
     underlying_data .= 0 # Ensure data is initially 0.
 
-    return offset_underlying_data(underlying_data, grid, loc)
+    return offset_data(underlying_data, grid, loc)
 end
 
 # Default to type of Grid

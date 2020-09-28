@@ -102,7 +102,7 @@ end
 
 function restore_field(file, address, arch, grid, loc, kwargs)
     field_address = file[address * "/location"]
-    data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
+    data = offset_data(convert_to_arch(arch, file[address * "/data"]), grid, loc)
 
     # Extract field name from address. We use 2:end so "tracers/T "gets extracted
     # as :T while "timestepper/Gⁿ/T" gets extracted as :Gⁿ/T (we don't want to
