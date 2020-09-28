@@ -3,13 +3,17 @@ using Oceananigans.Fields: assumed_field_location
 
 @inline zeroforcing(args...) = 0
 
-# `regularize_forcing` is used to "regularize", or add information to,
-# user-defined forcing objects that are passed to the `IncompressibleModel`
-# constructor. In particular, it is only until `model_forcing` is called that the
-# *names* of various forcing fields are available. The field_name can be used to infer
-# the location at which the forcing is applied, or to add a field dependency
-# to a special forcing object, as for Relxation.
+"""
+    regularize_forcing(forcing, field_name)
 
+"Regularizes" or "adds information" to
+user-defined forcing objects that are passed to the `IncompressibleModel`
+constructor. `regularize_forcing` is called inside `model_forcing`.
+We need `regularize_forcing` because it is only until `model_forcing` is called that
+the *names* of various forcing fields are available. The `field_name` can be used to infer
+the location at which the forcing is applied, or to add a field dependency
+to a special forcing object, as for `Relxation`.
+"""
 regularize_forcing(forcing, field_name) = forcing # fallback
 
 """ Move `forcing` to the location of `field_name`. """
@@ -18,7 +22,7 @@ function regularize_forcing(forcing::ContinuousForcing, field_name)
     return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, forcing.field_dependencies)
 end
 
-# Default for user-defined forcing
+""" Wrap `forcing` in a `ContinuousForcing` at the location of `field_name`. """
 function regularize_forcing(forcing::Function, field_name)
     X, Y, Z = assumed_field_location(field_name)
     return ContinuousForcing{X, Y, Z}(forcing, nothing, ())
