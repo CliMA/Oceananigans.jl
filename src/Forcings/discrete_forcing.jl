@@ -35,21 +35,6 @@ When `parameters` _is_ specified, `func` must be callable with the signature.
     
 `parameters` is arbitrary in principle, however GPU compilation can place
 constraints on `typeof(parameters)`.
-
-Examples
-=======
-
-# Unparameterized forcing function
-simple_nonlinear_source(i, j, k, grid, clock, model_fields) =
-    @inbounds model_fields.c[i, j, k]^2
-
-simple_forcing = DiscreteForcing(simple_nonlinear_source)
-
-# Forcing function with parameters
-masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * model_fields.u[i, j, k]
-
-masked_damping_forcing = DiscreteForcing(masked_damping, parameters=(μ=42, λ=π))
 """
 DiscreteForcing(func; parameters=nothing) = DiscreteForcing(func, parameters)
 
@@ -58,3 +43,9 @@ DiscreteForcing(func; parameters=nothing) = DiscreteForcing(func, parameters)
 
 @inline (forcing::DiscreteForcing{<:Nothing})(i, j, k, grid, clock, model_fields) =
     forcing.func(i, j, k, grid, clock, model_fields)
+
+"""Show the innards of a `DiscreteForcing` in the REPL."""
+Base.show(io::IO, forcing::DiscreteForcing{P}) where P =
+    print(io, "DiscreteForcing{$P}", '\n',
+        "├── func: $(string(Symbol(forcing.func)))", '\n',
+        "└── parameters: $(forcing.parameters)")

@@ -1,5 +1,5 @@
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Fields: assumed_field_location
+using Oceananigans.Fields: assumed_field_location, show_location
 using Oceananigans.Utils: tupleit
 
 """
@@ -61,44 +61,6 @@ callable with the signature
 
     `func(x, y, z, t, u, v, w, c, parameters)`
 
-Examples
-========
-
-* The simplest case: no parameters, additive forcing:
-
-```julia
-julia> const a = 2.1
-
-julia> fun_forcing(x, y, z, t) = a * exp(z) * cos(t)
-
-julia> u_forcing = ContinuousForcing(fun_forcing)
-```
-
-* Parameterized, additive forcing:
-
-```julia
-julia> parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
-
-julia> v_forcing = ContinuousForcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
-```
-
-* Field-dependent forcing with no parameters:
-
-```julia
-julia> growth_in_sunlight(x, y, z, t, P) = exp(z) * P
-
-julia> plankton_forcing = ContinuousForcing(growth_in_sunlight, field_dependencies=:P)
-```
-
-* Field-dependent forcing with parameters. This example relaxes a tracer to some reference
-    linear profile.
-
-```julia
-julia> tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c) 
-
-julia> c_forcing = ContinuousForcing(tracer_relaxation, parameters=(μ=1/60, λ=10, H=1000, dCdz=1), 
-                                     field_dependencies=:c)
-```
 """
 ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing{Cell, Cell, Cell}(func, parameters, field_dependencies)
@@ -130,3 +92,10 @@ end
                            znode(Z, k, grid),
                            clock.time,
                            forcing_func_arguments(i, j, k, grid, fields, forcing)...)
+
+"""Show the innards of a `ContinuousForcing` in the REPL."""
+Base.show(io::IO, forcing::ContinuousForcing{X, Y, Z, P}) where {X, Y, Z, P} =
+    print(io, "ContinuousForcing{$P} at ", show_location(X, Y, Z), '\n',
+        "├── func: $(string(Symbol(forcing.func)))", '\n',
+        "├── parameters: $(forcing.parameters)", '\n',
+        "└── field dependencies: $(forcing.field_dependencies)")
