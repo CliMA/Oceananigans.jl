@@ -109,17 +109,18 @@ Pages   = [
 ]
 ```
 
-## Forcing
+## Forcings
 
 ```@autodocs
-Modules = [Oceananigans.Forcing]
+Modules = [Oceananigans.Forcings]
 Private = false
 Pages   = [
-    "Forcing/Forcing.jl",
-    "Forcing/simple_forcing.jl",
-    "Forcing/model_forcing.jl",
-    "Forcing/parameterized_forcing.jl",
-    "Forcing/relaxation.jl"
+    "Forcings/Forcing.jl",
+    "Forcings/continuous_forcing.jl",
+    "Forcings/discrete_forcing.jl",
+    "Forcings/forcing.jl",
+    "Forcings/model_forcing.jl",
+    "Forcings/relaxation.jl"
 ]
 ```
 
