@@ -37,11 +37,11 @@ end
 @inline call_boundary_function(func, ξ, η, t, ::Nothing) = func(ξ, η, t)
 @inline call_boundary_function(func, ξ, η, t, parameters) = func(ξ, η, t, parameters)
 
-@inline (bc::BoundaryFunction{:x, Y, Z})(j, k, grid, clock, state) where {Y, Z} =
+@inline (bc::BoundaryFunction{:x, Y, Z})(j, k, grid, clock, model_fields) where {Y, Z} =
     call_boundary_function(bc.func, ynode(Y, j, grid), znode(Z, k, grid), clock.time, bc.parameters)
 
-@inline (bc::BoundaryFunction{:y, X, Z})(i, k, grid, clock, state) where {X, Z} =
+@inline (bc::BoundaryFunction{:y, X, Z})(i, k, grid, clock, model_fields) where {X, Z} =
     call_boundary_function(bc.func, xnode(X, i, grid), znode(Z, k, grid), clock.time, bc.parameters)
 
-@inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, clock, state) where {X, Y} =
+@inline (bc::BoundaryFunction{:z, X, Y})(i, j, grid, clock, model_fields) where {X, Y} =
     call_boundary_function(bc.func, xnode(X, i, grid), ynode(Y, j, grid), clock.time, bc.parameters)
