@@ -22,7 +22,8 @@ using Plots, Statistics
 using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids, Oceananigans.Advection
 
 # `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
-# model with a simple isotropic diffusivity.
+# model with a simple isotropic diffusivity. We also use a 4-th order advection scheme and
+# Runge-Kutta 3rd order time-stepping scheme.
 
 model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
