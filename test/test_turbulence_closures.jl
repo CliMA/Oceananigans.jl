@@ -39,8 +39,8 @@ function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.
         interior(T)[:, 1, k] .= [0, -1, 0]
     end
 
-    state = (velocities=datatuple(velocities), tracers=datatuple(tracers), diffusivities=nothing)
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, state)
+    model_fields = merge(datatuple(velocities), datatuple(tracers))
+    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
 
     U, C = datatuples(velocities, tracers)
 
@@ -78,8 +78,8 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
     interior(T)[:, 1, 3] .= [0, -4, 0]
     interior(T)[:, 1, 4] .= [0,  1, 0]
 
-    state = (velocities=datatuple(velocities), tracers=datatuple(tracers), diffusivities=nothing)
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, state)
+    model_fields = merge(datatuple(velocities), datatuple(tracers))
+    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
 
     U, C = datatuples(velocities, tracers)
 

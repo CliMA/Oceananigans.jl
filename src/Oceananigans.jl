@@ -32,7 +32,7 @@ export
     interior, set!,
 
     # Forcing functions
-    ModelForcing, SimpleForcing, ParameterizedForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask,
 
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
@@ -114,6 +114,7 @@ function TimeStepper end
 function run_diagnostic! end
 function write_output! end
 function location end
+function short_show end
 
 #####
 ##### Include all the submodules
@@ -132,7 +133,7 @@ include("Buoyancy/Buoyancy.jl")
 include("SurfaceWaves.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Solvers/Solvers.jl")
-include("Forcing/Forcing.jl")
+include("Forcings/Forcings.jl")
 include("Models/Models.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Diagnostics/Diagnostics.jl")
@@ -155,7 +156,7 @@ using .Buoyancy
 using .SurfaceWaves
 using .TurbulenceClosures
 using .Solvers
-using .Forcing
+using .Forcings
 using .Models
 using .TimeSteppers
 using .Simulations

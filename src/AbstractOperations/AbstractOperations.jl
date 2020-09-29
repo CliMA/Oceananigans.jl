@@ -2,7 +2,6 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
 
-import Base: identity
 using Base: @propagate_inbounds
 
 import Adapt
@@ -18,10 +17,10 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Fields: gpufriendly
 
+using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Diagnostics: Average, normalize_sum!
-using Oceananigans.Utils: instantiate
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: data, compute!
@@ -45,7 +44,7 @@ Base.parent(op::AbstractOperation) = op
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("interpolation_utils.jl")
+include("at.jl")
 include("grid_validation.jl")
 
 include("unary_operations.jl")

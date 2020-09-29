@@ -4,20 +4,26 @@
 A wrapper for boundary condition functions implemented as functions with parameters.
 The boundary condition `func` is called with the signature
 
-    `func(i, j, grid, clock, state, parameters)`
+    `func(i, j, grid, clock, model_fields, parameters)`
 
-where `i, j` are the indices along the boundary, `grid` and `clock` are `model.grid` and
-`model.clock`, and `state` is a `NamedTuple` with fields `velocities`, `tracers`,
-and `diffusivities`, which are each `NamedTuple`s of `OffsetArray`s that reference
-the data associated with their corresponding fields.
+where `i, j` are the indices along the boundary,
+where `grid` is `model.grid`, `clock.time` is the current simulation time and
+`clock.iteration` is the current model iteration, and
+`model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
+and the fields in `model.diffusivities`, each of which is an `OffsetArray`s (or `NamedTuple`s
+of `OffsetArray`s depending on the turbulence closure) of field data.
+
+*Note* that the index `end` does *not* access the final physical grid point of
+a model field in any direction. The final grid point must be explictly specified, as
+in `model_fields.u[i, j, grid.Nz]`*.
 
 Example
 =======
 
-@inline linear_drag(i, j, grid, clock, state, parameters) = 
-    @inbounds - parameters.μ * state.velocities.u[i, j, 1]
+@inline linear_bottom_drag(i, j, grid, clock, model_fields, parameters) = 
+    @inbounds - parameters.μ * model_fields.u[i, j, 1]
 
-u_boundary_condition = ParameterizedBoundaryCondition(linear_drag, (μ=π,))
+u_boundary_condition = ParameterizedBoundaryCondition(linear_bottom_drag, (μ=π,))
 """
 struct ParameterizedDiscreteBoundaryFunction{F, P} <: Function
     func :: F

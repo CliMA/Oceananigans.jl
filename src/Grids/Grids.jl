@@ -9,6 +9,8 @@ export
 
 import Base: size, length, eltype, show
 
+import Oceananigans: short_show
+
 using Oceananigans
 using Oceananigans.Architectures
 
