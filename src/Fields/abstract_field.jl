@@ -142,7 +142,7 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 @hascuda const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
 
 @hascuda @inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
-    OffsetArray(Array(parent(f)), f.grid, location(f))
+    offset_data(Array(parent(f)), f.grid, location(f))
 
 # Endpoint for recursive `datatuple` function:
 @inline datatuple(obj::AbstractField) = data(obj)
