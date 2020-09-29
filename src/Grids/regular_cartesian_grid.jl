@@ -123,8 +123,9 @@ function RegularCartesianGrid(FT=Float64;
                               )
 
     TX, TY, TZ = validate_topology(topology)
-    size, halo = validate_grid_size_and_halo(TX, TY, TZ, size, halo)
-    Lx, Ly, Lz, x, y, z = validate_regular_grid_extent(TX, TY, TZ, FT, extent, x, y, z)
+    size = validate_size(TX, TY, TZ, size)
+    halo = validate_halo(TX, TY, TZ, halo)
+    Lx, Ly, Lz, x, y, z = validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
 
     # Unpacking
     Nx, Ny, Nz = N = size
