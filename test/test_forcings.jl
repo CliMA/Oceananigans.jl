@@ -1,5 +1,3 @@
-using Oceananigans.Forcings: model_forcing
-
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
     @inline Fu(x, y, z, t) = exp(π * z)
@@ -95,7 +93,7 @@ function relaxed_time_stepping(arch)
     return true
 end
 
-@testset "Forcing" begin
+@testset "Forcings" begin
     @info "Testing forcings..."
 
     for arch in archs

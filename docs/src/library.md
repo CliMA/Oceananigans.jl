@@ -115,7 +115,7 @@ Pages   = [
 Modules = [Oceananigans.Forcings]
 Private = false
 Pages   = [
-    "Forcings/Forcing.jl",
+    "Forcings/Forcings.jl",
     "Forcings/continuous_forcing.jl",
     "Forcings/discrete_forcing.jl",
     "Forcings/forcing.jl",

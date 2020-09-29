@@ -88,8 +88,8 @@ end
 
 function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR)
 
-    u_forcing = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t))
-    w_forcing = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t))
+    u_forcing(x, y, z, t) = Fᵘ(x, z, t)
+    w_forcing(x, y, z, t) = Fᵛ(x, z, t)
 
     grid = RegularCartesianGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
@@ -105,7 +105,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                             tracers = nothing,
                                             closure = IsotropicDiffusivity(ν=1),
                                 boundary_conditions = (u=u_bcs,),
-                                            forcing = ModelForcing(u=u_forcing, w=w_forcing))
+                                            forcing = (u=u_forcing, w=w_forcing))
 
     set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))
