@@ -1,7 +1,7 @@
 steps:
   - label: "Run units tests GPU"
     commands:
-        - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()"
-        -  "julia --color=yes --project -e 'using Pkg; Pkg.test()"
+        - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+        - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
         queue: tartarus
