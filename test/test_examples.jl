@@ -23,7 +23,7 @@ example_filepath(example_name, examples_dir="../examples/") =
         replace_strings = [
             ("size=(128, 128, 1)", "size=(16, 16, 1)"),
             ("for i=1:100", "for i=1:1"),
-            ("stop_iteration += 10", "stop_iteration += 1"),
+            ("stop_iteration += 20", "stop_iteration += 1"),
             ("mp4(", "# mp4(")
         ]
 
