@@ -3,7 +3,6 @@ module ForcedFlowFreeSlip
 using Printf
 
 using Oceananigans
-using Oceananigans.Forcing
 using Oceananigans.BoundaryConditions
 using Oceananigans.OutputWriters
 using Oceananigans.Fields
