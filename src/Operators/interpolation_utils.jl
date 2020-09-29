@@ -1,4 +1,5 @@
 using Oceananigans.Utils: instantiate
+using Oceananigans.Grids: Face, Cell
 
 import Base: identity
 
