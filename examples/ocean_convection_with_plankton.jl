@@ -53,7 +53,7 @@ nothing # hide
 # (with a penetration depth of 16 meters here), and death due to viruses and grazing
 # by zooplankton at a rate of 1 phytoplankton unit per second (which is shockingly fast).
 
-growth_and_decay = SimpleForcing((x, y, z, t) -> exp(z/16) - 1)
+growth_and_decay(x, y, z, t) = exp(z/16) - 1
 
 ## Instantiate the model
 model = IncompressibleModel(
@@ -62,7 +62,7 @@ model = IncompressibleModel(
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :plankton),
                buoyancy = BuoyancyTracer(),
-                forcing = ModelForcing(plankton=growth_and_decay),
+                forcing = (plankton=growth_and_decay,),
     boundary_conditions = (b=buoyancy_bcs,)
 )
 nothing # hide

@@ -1,4 +1,4 @@
-import Oceananigans.Grids: short_show
+import Oceananigans: short_show
 
 #####
 ##### BoundaryCondition

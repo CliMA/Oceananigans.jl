@@ -70,7 +70,7 @@ T_bcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Flux, Qᵀ),
                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
 
 ## Salinity flux: Qˢ = - E * S
-@inline Qˢ(i, j, grid, clock, state, evaporation) = @inbounds - evaporation * state.tracers.S[i, j, 1]
+@inline Qˢ(i, j, grid, clock, model_fields, evaporation) = @inbounds - evaporation * model_fields.S[i, j, 1]
 
 S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qˢ, discrete_form=true, parameters=evaporation))
 nothing # hide

@@ -12,8 +12,8 @@ bc_location(bc::BoundaryFunction{B, X, Y}) where {B, X, Y} = (B, X, Y)
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 simple_parameterized_bc(ξ, η, t, p) = p.a * exp(ξ) * cos(η) * sin(t)
 
-complicated_bc(i, j, grid, clock, state) = rand()
-complicated_parameterized_bc(i, j, grid, clock, state, p) = p.a * rand()
+complicated_bc(i, j, grid, clock, model_fields) = rand()
+complicated_parameterized_bc(i, j, grid, clock, model_fields, p) = p.a * rand()
 
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
