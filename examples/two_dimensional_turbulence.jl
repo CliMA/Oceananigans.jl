@@ -16,7 +16,7 @@ using Oceananigans, Oceananigans.Advection
 # advection scheme and Runge-Kutta 3rd order time-stepping scheme.
 
 model = IncompressibleModel(
-        grid = RegularCartesianGrid(size=(128, 128, 1), halo=(2, 2, 2), extent=(2π, 2π, eps(Float64))),
+        grid = RegularCartesianGrid(size=(128, 128, 1), halo=(2, 2, 2), extent=(2π, 2π, 2π)),
  timestepper = :RungeKutta3, 
    advection = CenteredFourthOrder(),
     buoyancy = nothing,
