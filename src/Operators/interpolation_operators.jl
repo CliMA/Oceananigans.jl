@@ -1,9 +1,4 @@
-#####
-##### Convinient aliases
-#####
-
-const AG  = AbstractGrid
-const RCG = RegularCartesianGrid
+using Oceananigans.Grids: Flat
 
 #####
 ##### Base interpolation operators
@@ -78,3 +73,26 @@ const RCG = RegularCartesianGrid
 @inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i-1, j, k] + c[i, j, k])
 @inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j-1, k] + c[i, j, k])
 @inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j, k])
+
+#####
+##### Support for Flat Earths
+#####
+
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, u) where FT = @inbounds u[i, j, k]
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, c) where FT = @inbounds c[i, j, k]
+
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, w) where {FT, TX} = @inbounds w[i, j, k]
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, c) where {FT, TX} = @inbounds c[i, j, k]
+
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, w) where {FT, TX, TY} = @inbounds w[i, j, k]
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, c) where {FT, TX, TY} = @inbounds c[i, j, k]
+
+
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, f::F, args...) where {FT, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, f::F, args...) where {FT, F<:Function} = f(i, j, k, grid, args...)
+
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, f::F, args...) where {FT, TX, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, f::F, args...) where {FT, TX, F<:Function} = f(i, j, k, grid, args...)
+
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, k, grid, args...)

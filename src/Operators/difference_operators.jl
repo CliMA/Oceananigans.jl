@@ -1,3 +1,5 @@
+using Oceananigans.Grids: Flat
+
 #####
 ##### Base difference operators
 #####
@@ -49,3 +51,16 @@
 @inline δᴶyᵃᶠᶠ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, c)
 @inline δᴶzᵃᵃᶜ(i, j, k, grid, c) = δzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
 @inline δᴶzᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, Az_ψᵃᵃᵃ, c)
+
+#####
+##### Support for Flat Earths
+#####
+
+@inline δxᶜᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, args...) where FT = zero(FT)
+@inline δxᶠᵃᵃ(i, j, k, grid::AG{FT, <:Flat}, args...) where FT = zero(FT)
+
+@inline δyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, args...) where {FT, TX} = zero(FT)
+@inline δyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, <:Flat}, args...) where {FT, TX} = zero(FT)
+
+@inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, args...) where {FT, TX, TY} = zero(FT)
+@inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, <:Flat}, args...) where {FT, TX, TY} = zero(FT)
