@@ -19,16 +19,18 @@ using Plots, Statistics
 # and the `Face` and `Cell` types to will aid in the calculation
 # and visualization of voriticty.
 
-using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
+using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids, Oceananigans.Advection
 
 # `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
 # model with a simple isotropic diffusivity.
 
 model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
+ timestepper = :RungeKutta3, 
+   advection = CenteredFourthOrder(),
     buoyancy = nothing,
      tracers = nothing,
-     closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3)
+     closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4)
 )
 nothing # hide
 
@@ -73,14 +75,19 @@ nothing # hide
 simulation = Simulation(model, Δt=0.1, stop_iteration=0)
 
 anim = @animate for i=1:100
-    simulation.stop_iteration += 10
+    simulation.stop_iteration += 20
     run!(simulation)
 
     compute!(vorticity_computation)
 
     x, y = xnodes(ω)[:], ynodes(ω)[:]
-    heatmap(x, y, interior(ω)[:, :, 1]', xlabel="x", ylabel="y",
-            color=:balance, clims=(-0.1, 0.1))
+    heatmap(x, y, interior(ω)[:, :, 1]',
+            xlabel="x", ylabel="y",
+            aspectratio=1,
+            color=:balance,
+            clims=(-0.2, 0.2),
+            xlims=(0, model.grid.Lx),
+            ylims=(0, model.grid.Ly))
 end
 
 mp4(anim, "2d_turbulence_vorticity.mp4", fps = 15) # hide
