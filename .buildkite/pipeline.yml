@@ -1,11 +1,12 @@
 env:
+  JULIA_PATH: "/home/alir/julia-1.4.2/bin/julia"
   CUDA_VISIBLE_DEVICES: 3
 
 steps:
   - label: ":rabbit2: unit tests"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
@@ -13,8 +14,8 @@ steps:
 
   - label: ":dolphin: model tests"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
@@ -22,8 +23,8 @@ steps:
 
   - label: ":whale: simulation tests"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
@@ -31,8 +32,8 @@ steps:
  
   - label: ":camel: regression tests"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
@@ -40,8 +41,8 @@ steps:
 
   - label: ":gorilla: scripts"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
@@ -49,8 +50,8 @@ steps:
 
   - label: ":sauropod: convergence tests"
     commands:
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
     env:
