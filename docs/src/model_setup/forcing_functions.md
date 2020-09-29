@@ -106,7 +106,7 @@ w_forcing = Forcing(w_forcing_func, field_dependencies=(:u, :v, :w))
 # Forcing that depends on salinity `S` and a scalar parameter
 S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
-S_forcing = Forcing(S_forcing_func, parameters=1/60, field_dependencies=:S)
+S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
@@ -126,7 +126,7 @@ model.forcing.S
 # output
 ContinuousForcing{Float64} at (Cell, Cell, Cell)
 ├── func: S_forcing_func
-├── parameters: 0.016666666666666666
+├── parameters: 0.01
 └── field dependencies: (:S,)
 ```
 
@@ -220,10 +220,10 @@ a `target` distribution, within a region uncovered by a `mask`ing function.
 `Relaxation` is useful for implementing sponge layers, as shown in the second example.
 
 The following code constructs a model in which all components
-of the velocity field are damped to zero everywhere on a time-scale of 1 hour:
+of the velocity field are damped to zero everywhere on a time-scale of 1000 seconds, or ~17 minutes:
 
 ```jldoctest
-damping = Relaxation(rate = 1/3600)
+damping = Relaxation(rate = 1/1000)
 
 grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
 model = IncompressibleModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
@@ -232,7 +232,7 @@ model.forcing.w
 
 # output
 ContinuousForcing{Nothing} at (Cell, Cell, Face)
-├── func: Relaxation(rate=0.0002777777777777778, mask=1, target=0)
+├── func: Relaxation(rate=0.001, mask=1, target=0)
 ├── parameters: nothing
 └── field dependencies: (:w,)
 ```
@@ -249,7 +249,7 @@ velocity fields to zero and restores temperature to a linear gradient in the bot
 ```jldoctest sponge_layer
 grid = RegularCartesianGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
-        damping_rate = 1/600 # relax fields on a 10 minute time-scale
+        damping_rate = 1/100 # relax fields on a 100 second time-scale
 temperature_gradient = 0.001 # ⁰C m⁻¹
  surface_temperature = 20    # ⁰C (at z=0)
 
@@ -265,7 +265,7 @@ model.forcing.u
 
 # output
 ContinuousForcing{Nothing} at (Face, Cell, Cell)
-├── func: Relaxation(rate=0.0016666666666666668, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
 ```
@@ -275,7 +275,7 @@ model.forcing.T
 
 # output
 ContinuousForcing{Nothing} at (Cell, Cell, Cell)
-├── func: Relaxation(rate=0.016666666666666666, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
+├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
