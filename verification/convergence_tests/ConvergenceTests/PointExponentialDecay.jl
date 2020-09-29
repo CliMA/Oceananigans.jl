@@ -22,7 +22,7 @@ include("analysis.jl")
 
 # Simple Exponential decay
 c(t) = exp(-t)
-@inline Fᶜ(i, j, k, grid, clock, state) = @inbounds - state.tracers.c[i, j, k]
+Fᶜ = Relaxation(rate=1)
 
 function run_test(; Δt, stop_iteration, timestepper, architecture = CPU())
 
@@ -34,7 +34,7 @@ function run_test(; Δt, stop_iteration, timestepper, architecture = CPU())
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     forcing = ModelForcing(c=Fᶜ))
+                                     forcing = (c=Fᶜ,))
 
     set!(model, c=1)
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)

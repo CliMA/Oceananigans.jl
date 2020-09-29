@@ -87,7 +87,7 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, state)
+function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, model_fields)
 
     barrier = Event(device(arch))
 
@@ -95,18 +95,18 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, sta
 
     # Velocity fields
     for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, barrier, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, state)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end

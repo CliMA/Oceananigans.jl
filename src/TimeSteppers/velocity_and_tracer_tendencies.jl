@@ -1,5 +1,9 @@
 using Oceananigans.Advection
 
+@inline regularize_diffusivities_tuple(diffusivities::Tuple) = (diffusivities=diffusivities,)
+@inline regularize_diffusivities_tuple(diffusivities::NamedTuple) = diffusivities 
+@inline regularize_diffusivities_tuple(::Nothing) = NamedTuple()
+
 """
     u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
                         closure, U, C, K, F, pHY′, clock)
@@ -29,7 +33,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, U, K)
              + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_uˢ(i, j, k, grid, surface_waves, clock.time)
-             + F.u(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
+             + F.u(i, j, k, grid, clock, merge(U, C, regularize_diffusivities_tuple(K))))
 end
 
 """
@@ -61,7 +65,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, U, K)
              + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_vˢ(i, j, k, grid, surface_waves, clock.time)
-             + F.v(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
+             + F.v(i, j, k, grid, clock, merge(U, C, regularize_diffusivities_tuple(K))))
 end
 
 """
@@ -90,7 +94,7 @@ forcing functions, `pHY′` is the hydrostatic pressure anomaly.
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, U, K)
              + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, U, clock.time)
              + ∂t_wˢ(i, j, k, grid, surface_waves, clock.time)
-             + F.w(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
+             + F.w(i, j, k, grid, clock, merge(U, C, regularize_diffusivities_tuple(K))))
 end
 
 """
@@ -118,5 +122,5 @@ tracer fields, and  precalculated diffusivities where applicable.
 
     return ( - div_uc(i, j, k, grid, advection, U, c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, tracer_index, K, C, buoyancy)
-             + Fc(i, j, k, grid, clock, (velocities=U, tracers=C, diffusivities=K)))
+             + Fc(i, j, k, grid, clock, merge(U, C, regularize_diffusivities_tuple(K))))
 end

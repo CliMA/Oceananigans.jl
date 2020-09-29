@@ -37,12 +37,12 @@ the boundary as explained above.
 
 If `discrete_form=true`, the function `condition` is assumed to have the "discrete form",
 
-    `condition(i, j, grid, clock, state)`,
+    `condition(i, j, grid, clock, model_fields)`,
 
 where `i`, and `j` are indices that vary along the boundary. If `discrete_form=true` and
 `parameters` is not `nothing`, the function `condition` is called with
 
-    `condition(i, j, grid, clock, state, parameters)`.
+    `condition(i, j, grid, clock, model_fields, parameters)`.
 """
 function BoundaryCondition(TBC, condition::Function; parameters=nothing, discrete_form=false)
 
@@ -97,7 +97,7 @@ NormalFlowBoundaryCondition(val; kwargs...) = BoundaryCondition(NormalFlow, val;
 # Support for various types of boundary conditions
 @inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
 @inline getbc(bc::BC{C, <:Number},        args...)                  where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, state) where C = @inbounds bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, state) where C = bc.condition(i, j, grid, clock, state)
+@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, model_fields) where C = @inbounds bc.condition[i, j]
+@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields) where C = bc.condition(i, j, grid, clock, model_fields)
 
 @inline Base.getindex(bc::BC{C, <:AbstractArray}, i, j) where C = getindex(bc.condition, i, j)
