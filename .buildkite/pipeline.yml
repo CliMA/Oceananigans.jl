@@ -2,7 +2,7 @@ env:
   CUDA_VISIBLE_DEVICES: 3
 
 steps:
-      - label: ":rabbit2: unit tests"
+  - label: ":rabbit2: unit tests"
     commands:
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
