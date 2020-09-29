@@ -1,7 +1,7 @@
 module Advection
 
 export 
-    div_uc, div_ũu, div_ũv, div_ũw,
+    div_ũu, div_ũv, div_ũw, div_uc,
 
     momentum_flux_uu,
     momentum_flux_uv,
@@ -18,8 +18,10 @@ export
 
     CenteredSecondOrder,
     UpwindBiasedThirdOrder,
-    CenteredFourthOrder
+    CenteredFourthOrder,
+    WENO, WENO5
 
+using Oceananigans.Grids
 using Oceananigans.Operators
 
 abstract type AbstractAdvectionScheme end
@@ -34,6 +36,10 @@ include("upwind_biased_advective_fluxes.jl")
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
+
+include("weno_reconstruction.jl")
+include("weno_nth_order.jl")
+include("weno_fifth_order.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
