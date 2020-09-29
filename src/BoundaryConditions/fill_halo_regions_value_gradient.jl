@@ -12,7 +12,7 @@ using Oceananigans.Operators: ΔzC
 @inline  left_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 @inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
-@kernel function _fill_west_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_west_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
            #  ↑ x ↑  interior
            #  -----  interior face
@@ -23,11 +23,11 @@ using Oceananigans.Operators: ΔzC
     j, k = @index(Global, NTuple)
 
     Δ = Δx(iᴮ, j, k, grid) # Δ between first interior and first west halo point, defined at cell face.
-    @inbounds ∇c = left_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, clock, state)
+    @inbounds ∇c = left_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, clock, model_fields)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, -Δ) # extrapolate westward in -x direction.
 end
 
-@kernel function _fill_east_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_east_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
                      #  ↑ x ↑
     iᴴ = grid.Nx + 1 #    *   halo cell
@@ -39,11 +39,11 @@ end
     j, k = @index(Global, NTuple)
 
     Δ = Δx(iᴮ, j, k, grid) # Δ between last interior and first east halo point, defined at cell face. 
-    @inbounds ∇c = right_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, clock, state)
+    @inbounds ∇c = right_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, clock, model_fields)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, Δ) # extrapolate eastward in +x direction.
 end
 
-@kernel function _fill_south_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_south_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
            #  ↑ y ↑  interior
            #  -----  interior face
@@ -54,11 +54,11 @@ end
     i, k = @index(Global, NTuple)
 
     Δ = Δy(i, jᴮ, k, grid) # Δ between first interior and first south halo point, defined at cell face.
-    @inbounds ∇c = left_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, clock, state)
+    @inbounds ∇c = left_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, clock, model_fields)
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, -Δ) # extrapolate southward in -y direction.
 end
 
-@kernel function _fill_north_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_north_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
                      #  ↑ y ↑
     jᴴ = grid.Ny + 1 #    *   halo cell
@@ -70,11 +70,11 @@ end
     i, k = @index(Global, NTuple)
 
     Δ = Δy(i, jᴮ, k, grid) # Δ between first interior and first north halo point, defined at cell face.
-    @inbounds ∇c = right_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, clock, state)
+    @inbounds ∇c = right_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, clock, model_fields)
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, Δ) # extrapolate northward in +y direction.
 end
 
-@kernel function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_bottom_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
            #  ↑ z ↑  interior
            #  -----  interior face
@@ -85,12 +85,12 @@ end
     i, j = @index(Global, NTuple)
 
     Δ = ΔzC(i, j, kᴮ, grid) # Δ between first interior and first bottom halo point, defined at cell face.
-    @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, clock, state)
+    @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, clock, model_fields)
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
 end
 
 
-@kernel function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, clock, state)
+@kernel function _fill_top_halo!(c, bc::Union{VBC, GBC}, grid, clock, model_fields)
 
                      #  ↑ z ↑
     kᴴ = grid.Nz + 1 #    *    halo cell
@@ -101,7 +101,7 @@ end
     i, j = @index(Global, NTuple)
 
     Δ = ΔzC(i, j, kᴮ, grid) # Δ between first interior and first top halo point, defined at cell face.
-    @inbounds ∇c = right_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, clock, state)
+    @inbounds ∇c = right_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, clock, model_fields)
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, Δ) # extrapolate upward in +z direction.
 end
 
@@ -109,9 +109,9 @@ end
 ##### Kernel callers
 #####
 
-  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, clock, state, dependencies=dep)
-  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, clock, state, dependencies=dep)
- fill_south_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, clock, state, dependencies=dep)
- fill_north_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, clock, state, dependencies=dep)
-fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, clock, state, dependencies=dep)
-   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, state) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, clock, state, dependencies=dep)
+  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, clock, model_fields, dependencies=dep)
+  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, clock, model_fields, dependencies=dep)
+ fill_south_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, clock, model_fields, dependencies=dep)
+ fill_north_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, clock, model_fields, dependencies=dep)
+fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, clock, model_fields, dependencies=dep)
+   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, clock, model_fields) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, clock, model_fields, dependencies=dep)
