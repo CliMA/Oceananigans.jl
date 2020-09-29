@@ -11,6 +11,24 @@ steps:
     env:
       TEST_GROUP: "unit"
 
+  - label: ":dolphin: model tests"
+    commands:
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "model"
+
+  - label: ":whale: simulation tests"
+    commands:
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "simulation"
+ 
   - label: ":camel: regression tests"
     commands:
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
@@ -19,7 +37,7 @@ steps:
       queue: tartarus
     env:
       TEST_GROUP: "regression"
-  
+
   - label: ":dolphin: scripts"
     commands:
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
@@ -28,3 +46,13 @@ steps:
       queue: tartarus
     env:
       TEST_GROUP: "scripts"
+
+  - label: ":sauropod: convergence tests"
+    commands:
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "convergence"
+
