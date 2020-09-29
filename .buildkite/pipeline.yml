@@ -38,7 +38,7 @@ steps:
     env:
       TEST_GROUP: "regression"
 
-  - label: ":dolphin: scripts"
+  - label: ":gorilla: scripts"
     commands:
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
