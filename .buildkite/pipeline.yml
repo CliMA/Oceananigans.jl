@@ -48,12 +48,12 @@ steps:
     env:
       TEST_GROUP: "scripts"
 
-  - label: ":sauropod: convergence tests"
-    commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: tartarus
-    env:
-      TEST_GROUP: "convergence"
+# - label: ":sauropod: convergence tests"
+#   commands:
+#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+#   agents:
+#     queue: tartarus
+#   env:
+#     TEST_GROUP: "convergence"
 
