@@ -23,6 +23,7 @@ RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
                  topology: (Periodic, Periodic, Bounded)
   resolution (Nx, Ny, Nz): (32, 64, 256)
    halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
 ```
 
 !!! info "Default domain"
