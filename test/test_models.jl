@@ -85,7 +85,7 @@ end
         model = IncompressibleModel(grid=funny_grid)
         @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
 
-        # Model ensures that halos are at least of size 2 with CenteredFourthOrder advection
+        # Model ensures that halos are at least of size 2
         for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
             model = IncompressibleModel(advection=scheme, grid=default_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
@@ -94,7 +94,7 @@ end
             @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
-        # Model ensures that halos are at least of size 3 with CenteredFourthOrder advection
+        # Model ensures that halos are at least of size 3
         for scheme in (WENO5(), UpwindBiasedFifthOrder())
             model = IncompressibleModel(advection=scheme, grid=default_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
