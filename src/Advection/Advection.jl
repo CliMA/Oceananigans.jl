@@ -25,9 +25,13 @@ export
 using Oceananigans.Grids
 using Oceananigans.Operators
 
+import Oceananigans.Utils: required_halo_size
+
 abstract type AbstractAdvectionScheme end
 abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
 abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
+
+required_halo_size(scheme::AbstractAdvectionScheme) = boundary_buffer(scheme) + 1
 
 include("topologically_conditional_interpolation.jl")
 

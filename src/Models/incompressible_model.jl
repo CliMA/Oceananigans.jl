@@ -39,9 +39,7 @@ end
           surface_waves = nothing,
                 forcing = nothing,
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
-    boundary_conditions = (u=UVelocityBoundaryConditions(grid),
-                           v=VVelocityBoundaryConditions(grid),
-                           w=WVelocityBoundaryConditions(grid)),
+    boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
              velocities = VelocityFields(architecture, grid, boundary_conditions),
@@ -66,7 +64,7 @@ Keyword arguments
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                  preallocated `CellField`s.
-    - `timestepper`: A symbol that species the time-stepping method. Either `:QuasiAdamsBashforth2` or
+    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
 function IncompressibleModel(;
@@ -80,15 +78,13 @@ function IncompressibleModel(;
           surface_waves = nothing,
                 forcing = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
-    boundary_conditions = (u=UVelocityBoundaryConditions(grid),
-                           v=VVelocityBoundaryConditions(grid),
-                           w=WVelocityBoundaryConditions(grid)),
+    boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
-             velocities = VelocityFields(architecture, grid, boundary_conditions),
-              pressures = PressureFields(architecture, grid, boundary_conditions),
-          diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
+             velocities = nothing,
+              pressures = nothing,
+          diffusivities = nothing,
+        pressure_solver = nothing,
     )
 
     if architecture == GPU() && !has_cuda()
@@ -101,8 +97,21 @@ function IncompressibleModel(;
     forcing = model_forcing(tracernames(tracers); forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
-    # Instantiate tracer fields if not already instantiated
-    tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
+    # Adjust halos when the advection scheme or turbulence closure requires it.
+    # Note that halos are isotropic by default; however we respect user-input here
+    # by adjusting each (x, y, z) halo individually.
+    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection, closure)
+    grid = with_halo((Hx, Hy, Hz), grid)
+
+    # Either check grid-correctness, or construct tuples of fields
+    velocities = VelocityFields(velocities, architecture, grid, boundary_conditions)
+    tracer_fields = TracerFields(tracers, architecture, grid, boundary_conditions)
+    pressures = PressureFields(pressures, architecture, grid, boundary_conditions)
+
+    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers),
+                                      boundary_conditions, closure)
+
+    pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))

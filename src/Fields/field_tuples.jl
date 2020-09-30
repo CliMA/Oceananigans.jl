@@ -29,8 +29,13 @@ function VelocityFields(arch, grid, bcs::NamedTuple)
     return (u=u, v=v, w=w)
 end
 
+VelocityFields(::Nothing, arch, grid, bcs) = VelocityFields(arch, grid, bcs)
+
+VelocityFields(velocities::NamedTuple{(:u, :v, :w)}, arch, grid, bcs) =
+    validate_field_tuple_grid("velocities", velocities, grid)
+
 """
-    TracerFields(arch, grid, tracer_names; kwargs...)
+    TracerFields(tracer_names, arch, grid; kwargs...)
 
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
 `CellField`s on the architecture `arch` and `grid`. Fields may be passed via optional
@@ -46,7 +51,7 @@ noisy_field = CellField(arch, grid, TracerBoundaryConditions(grid), randn(16, 16
 tracer_fields = TracerFields(arch, grid, tracers, random=noisy_field)
 ```
 """
-function TracerFields(arch, grid, names; kwargs...)
+function TracerFields(names, arch, grid; kwargs...)
     tracer_names = tracernames(names) # filter `names` if it contains velocity fields
     tracer_fields =
         Tuple(c ∈ keys(kwargs) ?
@@ -57,13 +62,13 @@ function TracerFields(arch, grid, names; kwargs...)
 end
 
 """
-    TracerFields(arch, grid, tracer_names, bcs)
+    TracerFields(tracer_names, arch, grid, bcs)
 
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
 `CellField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(arch, grid, names, bcs)
+function TracerFields(names, arch, grid, bcs)
     tracer_names = tracernames(names) # filter `names` if it contains velocity fields
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
@@ -73,17 +78,18 @@ function TracerFields(arch, grid, names, bcs)
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
-TracerFields(arch, grid, ::Union{Tuple{}, Nothing}, args...; kwargs...) = NamedTuple()
-TracerFields(arch, grid, tracer::Symbol; kwargs...) = TracerFields(arch, grid, tuple(tracer); kwargs...)
+TracerFields(::Union{Tuple{}, Nothing}, arch, grid, args...; kwargs...) = NamedTuple()
+TracerFields(tracer::Symbol, arch, grid, bcs) = TracerFields(arch, grid, tuple(tracer), bcs)
 
 """
-    TracerFields(arch, grid, tracer_fields::NamedTuple; kwargs...)
+    TracerFields(tracer_fields::NamedTuple, arch, grid; kwargs...)
 
 Convenience method for restoring checkpointed models that returns the already-instantiated
 `tracer_fields` with non-default boundary conditions.
 """
-function TracerFields(arch, grid, proposed_tracer_fields::NamedTuple, bcs; kwargs...)
-    grid = proposed_tracer_fields[1].grid
+function TracerFields(proposed_tracer_fields::NamedTuple, arch, grid, bcs; kwargs...)
+
+    validate_field_tuple_grid("tracers", proposed_tracer_fields, grid)
 
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
@@ -95,7 +101,7 @@ function TracerFields(arch, grid, proposed_tracer_fields::NamedTuple, bcs; kwarg
 end
 
 "Shortcut constructor for empty tracer fields."
-TracerFields(arch, grid, empty_tracer_fields::NamedTuple{(),Tuple{}}, args...; kwargs...) = NamedTuple()
+TracerFields(empty_tracer_fields::NamedTuple{(),Tuple{}}, arch, grid, args...; kwargs...) = NamedTuple()
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
 has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
@@ -140,6 +146,11 @@ function PressureFields(arch, grid, bcs::NamedTuple)
     return (pHY′=pHY′, pNHS=pNHS)
 end
 
+PressureFields(::Nothing, arch, grid; kwargs...) = PressureFields(arch, grid)
+
+PressureFields(pressures::NamedTuple{(:pHY′, :pNHS)}, arch, grid; kwargs...) =
+    validate_field_tuple_grid("pressures", pressures, grid)
+
 """
     TendencyFields(arch, grid, tracer_names; kwargs...)
 
@@ -156,4 +167,28 @@ function TendencyFields(arch, grid, tracer_names;
     velocities = (u=u, v=v, w=w)
     tracers = TracerFields(arch, grid, tracer_names; kwargs...)
     return merge(velocities, tracers)
+end
+
+#####
+##### Construction utils
+#####
+
+validate_field_grid(grid, field) = grid === field.grid
+
+validate_field_grid(grid, field_tuple::NamedTuple) =
+    all(validate_field_grid(grid, field) for field in field_tuple)
+
+"""
+    validate_field_tuple_grid(tuple_name, field_tuple, arch, grid, bcs)
+
+Validates the grids associated with grids in the (possibly nested) `field_tuple`,
+and returns `field_tuple` if validation succeeds.
+"""
+function validate_field_tuple_grid(tuple_name, field_tuple, grid)
+
+    all(validate_field_grid(grid, field) for field in field_tuple) ||
+        throw(ArgumentError("Model grid and $tuple_name grid are not identical! " *
+                            "Check that the grid used to construct $tuple_name has the correct halo size."))
+
+    return field_tuple
 end

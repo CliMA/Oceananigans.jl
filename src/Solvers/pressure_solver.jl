@@ -19,6 +19,16 @@ struct Box                  <: PressureSolverType end
 poisson_bc_symbol(::BC) = :N
 poisson_bc_symbol(::BC{<:Periodic}) = :P
 
+#####
+##### Special forms for IncompressibleModel constructor
+#####
+
+PressureSolver(::Nothing, arch, grid, pressure_bcs) = PressureSolver(arch, grid, pressure_bcs)
+
+# In principle we should check that the grid used to construct pressure_solver
+# and the argument `grid` are identical. We don't this right now.
+PressureSolver(pressure_solver::PressureSolver, arch, grid, pressure_bcs) = pressure_solver
+
 function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     x = poisson_bc_symbol(pressure_bcs.x.left)
     y = poisson_bc_symbol(pressure_bcs.y.left)

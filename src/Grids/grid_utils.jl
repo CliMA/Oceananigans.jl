@@ -79,12 +79,12 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
 # Grid domains
-@inline domain(ξ, topo) = ξ[1], ξ[end]
-@inline domain(ξ, ::Type{Bounded}) = ξ[1], ξ[end-1]
+@inline domain(topo, ξ, N) = ξ[1], ξ[N]
+@inline domain(::Type{Bounded}, ξ, N) = ξ[1], ξ[N+1]
 
-@inline x_domain(grid) = domain(grid.xF, topology(grid, 1))
-@inline y_domain(grid) = domain(grid.yF, topology(grid, 2))
-@inline z_domain(grid) = domain(grid.zF, topology(grid, 3))
+@inline x_domain(grid) = domain(topology(grid, 1), grid.xF, grid.Nx)
+@inline y_domain(grid) = domain(topology(grid, 2), grid.yF, grid.Ny)
+@inline z_domain(grid) = domain(topology(grid, 3), grid.zF, grid.Nz)
 
 #####
 ##### << Indexing >>
