@@ -70,6 +70,8 @@ closures = (
 ##### Run tests!
 #####
 
+CUDA.allowscalar(true)
+
 include("runtests_utils.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
