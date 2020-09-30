@@ -4,6 +4,8 @@
 
 struct CenteredSecondOrder <: AbstractAdvectionScheme end
 
+boundary_buffer(::CenteredSecondOrder) = 0
+
 const C2 = CenteredSecondOrder
 
 @inline momentum_flux_uu(i, j, k, grid, ::C2, U, u) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, U) * ℑxᶜᵃᵃ(i, j, k, grid, u)

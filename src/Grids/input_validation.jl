@@ -20,10 +20,10 @@ inflate_tuple(::Type{Flat}, ::Type{Flat}, ::Type{Flat}, tup; default) = (default
 topological_tuple_length(TX, TY, TZ) = sum(T === Flat ? 0 : 1 for T in (TX, TY, TZ))
 
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
-function validate_tupled_argument(arg, argtype, argname, len=3)
+function validate_tupled_argument(arg, argtype, argname, len=3; greater_than=0)
     length(arg) == len      || throw(ArgumentError("length($argname) must be $len."))
     all(isa.(arg, argtype)) || throw(ArgumentError("$argname=$arg must contain $argtype s."))
-    all(arg .> 0)           || throw(ArgumentError("Elements of $argname=$arg must be > 0!"))
+    all(arg .> greater_than)  || throw(ArgumentError("Elements of $argname=$arg must be > $(greater_than)!"))
     return nothing
 end
 

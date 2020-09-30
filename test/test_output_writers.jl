@@ -20,13 +20,12 @@ function run_thermal_bubble_netcdf_tests(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    outputs = Dict(
-        "v" => model.velocities.v,
-        "u" => model.velocities.u,
-        "w" => model.velocities.w,
-        "T" => model.tracers.T,
-        "S" => model.tracers.S
-    )
+    outputs = Dict("v" => model.velocities.v,
+                   "u" => model.velocities.u,
+                   "w" => model.velocities.w,
+                   "T" => model.tracers.T,
+                   "S" => model.tracers.S)
+
     nc_filename = "test_dump_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filename, iteration_interval=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
@@ -812,8 +811,7 @@ end
 
             @test windowed_time_average.collecting
 
-            # Step forward such that time_window is not reached, but
-            # output will occur.
+            # Step forward such that time_window is not reached, but output will occur.
             simulation.Δt = π - 3 + 0.01 # ≈ 0.15 < 1.0
             simulation.stop_iteration = 3
             run!(simulation) # model.clock.time ≈ 3.15, after output
