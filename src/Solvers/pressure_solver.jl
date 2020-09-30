@@ -18,6 +18,7 @@ struct Box                  <: PressureSolverType end
 
 poisson_bc_symbol(::BC) = :N
 poisson_bc_symbol(::BC{<:Periodic}) = :P
+poisson_bc_symbol(::Nothing) = :P
 
 function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
     x = poisson_bc_symbol(pressure_bcs.x.left)
