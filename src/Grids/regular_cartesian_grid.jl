@@ -222,21 +222,6 @@ function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY
 end
 
 """
-    pop_flat_elements(tup, topo)
-
-Returns a new tuple that contains the elements of `tup`,
-except for those elements corresponding to the `Flat` directions
-in `topo`.
-"""
-function pop_flat_elements(tup, topo)
-    new_tup = []
-    for i = 1:3
-        topo[i] != Flat && push!(new_tup, tup[i])
-    end
-    return Tuple(new_tup)
-end
-
-"""
     with_halo(new_halo, old_grid::RegularCartesianGrid)
 
 Returns a new `RegularCartesianGrid` with the same properties as
@@ -244,8 +229,8 @@ Returns a new `RegularCartesianGrid` with the same properties as
 
 Note that in contrast to the constructor for `RegularCartesianGrid`,
 `new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
-of `new_halo` corresponding to `Flat` directions are removed prior to
-constructing the new `RegularCartesianGrid`.
+of `new_halo` corresponding to `Flat` directions are removed (and are
+therefore ignored) prior to constructing the new `RegularCartesianGrid`.
 """
 function with_halo(new_halo, old_grid::RegularCartesianGrid)
 
@@ -253,9 +238,9 @@ function with_halo(new_halo, old_grid::RegularCartesianGrid)
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid) 
 
-    x = (grid.xF[1], grid.xF[Nx+1])
-    y = (grid.yF[1], grid.yF[Ny+1])
-    z = (grid.zF[1], grid.zF[Nz+1])
+    x = x_domain(old_grid)
+    y = y_domain(old_grid)
+    z = z_domain(old_grid)
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor

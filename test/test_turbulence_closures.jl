@@ -26,7 +26,7 @@ function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularCartesianGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(arch, grid)
-       tracers = TracerFields(arch, grid, (:T, :S))
+       tracers = TracerFields((:T, :S), arch, grid)
          clock = Clock(time=0.0)
 
     u, v, w = velocities
@@ -57,7 +57,7 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
     velocities = VelocityFields(arch, grid)
-       tracers = TracerFields(arch, grid, (:T, :S))
+    tracers = TracerFields((:T, :S), arch, grid)
          clock = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)
@@ -94,10 +94,10 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
           closure = getproperty(TurbulenceClosures, closurename)(FT, kwargs...)
           closure = with_tracers(tracernames, closure)
              grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
-    diffusivities = DiffusivityFields(arch, grid, tracernames, closure)
+    diffusivities = DiffusivityFields(arch, grid, tracernames, NamedTuple(), closure)
          buoyancy = BuoyancyTracer()
        velocities = VelocityFields(arch, grid)
-          tracers = TracerFields(arch, grid, tracernames)
+          tracers = TracerFields(tracernames, arch, grid)
 
     U, C, K = datatuples(velocities, tracers, diffusivities)
     calculate_diffusivities!(K, arch, grid, closure, buoyancy, U, C)

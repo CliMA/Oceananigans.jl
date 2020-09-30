@@ -79,12 +79,12 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
 # Grid domains
-@inline domain(topo, ξ, N) = ξ[1], ξ[N]
-@inline domain(::Type{Bounded}, ξ, N) = ξ[1], ξ[N+1]
+@inline domain(topo, N, ξ) = ξ[1], ξ[N+1]
+@inline domain(::Type{Flat}, N, ξ) = ξ[1], ξ[1]
 
-@inline x_domain(grid) = domain(topology(grid, 1), grid.xF, grid.Nx)
-@inline y_domain(grid) = domain(topology(grid, 2), grid.yF, grid.Ny)
-@inline z_domain(grid) = domain(topology(grid, 3), grid.zF, grid.Nz)
+@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xF)
+@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)
+@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zF)
 
 #####
 ##### << Indexing >>
@@ -285,3 +285,18 @@ unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
 flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
+
+"""
+    pop_flat_elements(tup, topo)
+
+Returns a new tuple that contains the elements of `tup`,
+except for those elements corresponding to the `Flat` directions
+in `topo`.
+"""
+function pop_flat_elements(tup, topo)
+    new_tup = []
+    for i = 1:3
+        topo[i] != Flat && push!(new_tup, tup[i])
+    end
+    return Tuple(new_tup)
+end

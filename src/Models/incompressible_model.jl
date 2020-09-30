@@ -2,8 +2,12 @@ using CUDA
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Advection
+
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
+
 using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Grids: with_halo
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 using Oceananigans.Forcings: model_forcing
@@ -91,11 +95,8 @@ function IncompressibleModel(;
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
+    tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
-
-    # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
-    closure = with_tracers(tracernames(tracers), closure)
 
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
@@ -104,19 +105,22 @@ function IncompressibleModel(;
     grid = with_halo((Hx, Hy, Hz), grid)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities = VelocityFields(velocities, architecture, grid, boundary_conditions)
-    tracer_fields = TracerFields(tracers, architecture, grid, boundary_conditions)
-    pressures = PressureFields(pressures, architecture, grid, boundary_conditions)
-
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers),
-                                      boundary_conditions, closure)
-
+    velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
+    tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
+    pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
+    diffusivities = DiffusivityFields(diffusivities, architecture, grid,
+                                      tracernames(tracers), boundary_conditions, closure)
+                                      
     pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
+    # Regularize forcing and closure for model tracer and velocity fields.
+    forcing = model_forcing(tracernames(tracers); forcing...)
+    closure = with_tracers(tracernames(tracers), closure)
+
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, velocities, tracer_fields, pressures, diffusivities,
+                               forcing, closure, velocities, tracers, pressures, diffusivities,
                                timestepper, pressure_solver)
 end

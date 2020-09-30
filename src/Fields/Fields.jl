@@ -31,6 +31,8 @@ include("computed_field.jl")
 include("pressure_field.jl")
 include("function_field.jl")
 include("set!.jl")
+include("tracer_names.jl")
+include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("show_fields.jl")
 
