@@ -48,15 +48,6 @@ Return a NamedTuple with tracer fields specified by `tracer_names` initialized a
 keyword arguments `kwargs` for each field.
 
 This function is used by OutputWriters.Checkpointer.
-
-# Examples
-```julia
-arch = CPU()
-topology = (Periodic, Periodic, Bounded)
-grid = RegularCartesianGrid(topology=topology, size=(16, 16, 16), size=(1, 2, 3))
-tracers = (:T, :S, :random)
-noisy_field = CellField(arch, grid, TracerBoundaryConditions(grid), randn(16, 16))
-tracer_fields = TracerFields(tracers, arch, grid, random=noisy_field)
 ```
 """
 function TracerFields(names, arch, grid; kwargs...)
