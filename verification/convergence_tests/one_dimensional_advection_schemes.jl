@@ -32,8 +32,8 @@ end
 ##### Run test
 #####
 
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), WENO5())
-#advection_schemes = (UpwindBiasedThirdOrder(),)
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(),
+                     UpwindBiasedFifthOrder(), WENO5())
 
 U = 1
 κ = 1e-8
@@ -42,16 +42,19 @@ Nx = [8, 16, 32, 64, 96, 128, 192, 256, 384, 512]
 tolerance(::CenteredSecondOrder)    = 0.05
 tolerance(::CenteredFourthOrder)    = 0.05
 tolerance(::UpwindBiasedThirdOrder) = 0.30
+tolerance(::UpwindBiasedFifthOrder) = 0.30
 tolerance(::WENO5)                  = 0.40
 
 test_resolution(::CenteredSecondOrder)    = 512
 test_resolution(::CenteredFourthOrder)    = 512
 test_resolution(::UpwindBiasedThirdOrder) = 128
+test_resolution(::UpwindBiasedFifthOrder) = 128
 test_resolution(::WENO5)                  = 512
 
 rate_of_convergence(::CenteredSecondOrder) = 2
 rate_of_convergence(::CenteredFourthOrder) = 4
 rate_of_convergence(::UpwindBiasedThirdOrder) = 3
+rate_of_convergence(::UpwindBiasedFifthOrder) = 5
 rate_of_convergence(::WENO5) = 5
 rate_of_convergence(::WENO{K}) where K = 2K-1
 
