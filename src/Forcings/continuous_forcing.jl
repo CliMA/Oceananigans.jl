@@ -1,3 +1,5 @@
+using Adapt
+
 using Oceananigans: short_show
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Fields: assumed_field_location, show_location
@@ -100,3 +102,7 @@ Base.show(io::IO, forcing::ContinuousForcing{X, Y, Z, P}) where {X, Y, Z, P} =
         "├── func: $(short_show(forcing.func))", '\n',
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
+
+Adapt.adapt_structure(to, forcing::ContinuousForcing{X, Y, Z}) where {X, Y, Z} =
+    ContinuousForcing{X, Y, Z}(Adapt.adapt(to, forcing.func), Adapt.adapt(to, forcing.parameters),
+                               Adapt.adapt(to, forcing.field_dependencies))
