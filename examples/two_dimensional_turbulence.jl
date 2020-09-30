@@ -41,8 +41,8 @@ set!(model, u=u₀, v=u₀)
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-# Next we create an object called an `ComputedField` that calculates vorticity.
-# We'll use this object to calculate vorticity on-line as the simulation progresses.
+# Next we create an object called an `ComputedField` that calculates vorticity. We'll use
+# this object to calculate vorticity on-line and output it as the simulation progresses.
 
 u, v, w = model.velocities
 
