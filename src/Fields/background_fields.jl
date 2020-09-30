@@ -23,3 +23,29 @@ function BackgroundFields(background_fields, tracer_names, grid, clock)
     tracers = BackgroundTracerFields(background_fields, tracer_names, grid, clock)
     return (velocities=velocities, tracers=tracers)
 end
+
+"""
+    BackgroundField(func; parameters=nothing)
+
+Returns a `BackgroundField` to be passed to `IncompressibleModel` for use
+as a background velocity or tracer field.
+
+If `parameters` is not provided, `func` must be callable with the signature
+
+```julia
+func(x, y, z, t)
+```
+
+If `parameters` is provided, `func` must be callable with the signature
+
+```julia
+func(x, y, z, t, parameters)
+```
+
+Note: `BackgroundField` is re-wrapped in a new `FunctionField` at the correct
+location, on the correct `grid`, and with the correct `clock` within the
+constructor for `IncompressibleModel`.
+"""
+BackgroundField(func; parameters=nothing) =
+    FunctionField{Cell, Cell, Cell}(func, nothing; parameters=parameters)
+

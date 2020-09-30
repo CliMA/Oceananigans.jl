@@ -3,7 +3,7 @@ module Fields
 export
     Face, Cell,
     AbstractField, Field, CellField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField, ComputedField,
+    ReducedField, AveragedField, ComputedField, BackgroundField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
