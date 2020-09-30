@@ -187,7 +187,9 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     # Restore the remaining checkpointed properties
     for p in cps
-        kwargs[p] = file["$p"]
+        if !haskey(kwargs, p)
+            kwargs[p] = file["$p"]
+        end
     end
 
     close(file)

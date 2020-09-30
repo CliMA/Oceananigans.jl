@@ -57,17 +57,17 @@ end
     for topo in topos
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
-            for arch in archs
-                for FT in float_types
-                    grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+            for arch in archs, FT in float_types
+		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                    # Just testing that the model was constructed with no errors/crashes.
-                    @test model isa IncompressibleModel
+                grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-                    # Test that the grid didn't get mangled
-                    @test grid === model.grid
-                end
+                # Just testing that the model was constructed with no errors/crashes.
+                @test model isa IncompressibleModel
+
+                # Test that the grid didn't get mangled
+                @test grid === model.grid
             end
         end
     end
