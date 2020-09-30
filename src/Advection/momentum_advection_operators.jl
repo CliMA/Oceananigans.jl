@@ -1,11 +1,9 @@
-using Oceananigans.Advection
-
 #####
 ##### Momentum advection operators
 #####
 
 """
-    u∇u(i, j, k, grid, U)
+    div_ũu(i, j, k, grid, advection, U)
 
 Calculate the advection of momentum in the x-direction U·∇u
 
@@ -20,7 +18,7 @@ which will end up at the location `fcc`.
 end
 
 """
-    u∇v(i, j, k, grid, U)
+    div_ũv(i, j, k, grid, advection, U)
 
 Calculates the advection of momentum in the y-direction U·∇v
 
@@ -35,7 +33,7 @@ which will end up at the location `cfc`.
 end
 
 """
-    u∇w(i, j, k, grid, U)
+    div_ũw(i, j, k, grid, advection, U)
 
 Calculates the advection of momentum in the z-direction U·∇w
 

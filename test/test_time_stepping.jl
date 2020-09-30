@@ -19,8 +19,8 @@ function time_stepping_works_with_closure(arch, FT, Closure)
 end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
-    # Use halo=(2, 2, 2) to accomodate fourth-order advection scheme
-    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+    # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
+    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -51,7 +51,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -161,7 +161,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder())
+advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

@@ -146,10 +146,10 @@ Boundary conditions may also depend on model fields. For example, a linear drag 
 is implemented with
 
 ```jldoctest
-julia> @inline linear_drag(i, j, grid, clock, state) = @inbounds - 0.2 * state.velocities.u[i, j, 1];
+julia> @inline linear_drag(i, j, grid, clock, model_fields) = @inbounds - 0.2 * model_fields.u[i, j, 1];
 
 julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, discrete_form=true)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in Main at none:1
+BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fields) in Main at none:1
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
@@ -157,11 +157,11 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
     are called with the signature 
     ```julia
-    f(i, j, grid, clock, state)
+    f(i, j, grid, clock, model_fields)
     ```
     where `i, j` are grid indices that vary along the boundary, `grid` is `model.grid`,
-    `clock` is the `model.clock`, and `state` is a `NamedTuple`
-    containing `state.velocities`, `state.tracers`, and `state.diffusivities`.
+    `clock` is the `model.clock`, and `model_fields` is a `NamedTuple`
+    containing `u, v, w`, the fields in `model.tracers`, and the fields in `model.diffusivities`.
     The signature is similar for $x$ and $y$ boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
@@ -170,17 +170,17 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state) in
 ```jldoctest
 julia> Cd = 0.2;  # drag coefficient
 
-julia> @inline linear_drag(i, j, grid, clock, state, Cd) = @inbounds - Cd * state.velocities.u[i, j, 1];
+julia> @inline linear_drag(i, j, grid, clock, model_fields, Cd) = @inbounds - Cd * model_fields.u[i, j, 1];
 
 julia> u_bottom_bc = BoundaryCondition(Flux, linear_drag, discrete_form=true, parameters=Cd)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, state, Cd) in Main at none:1
+BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fields, Cd) in Main at none:1
 ```
 
 !!! info "Inlining and avoiding bounds-checking in boundary condition functions"
     Boundary condition functions should be decorated with `@inline` when running on CPUs for performance reasons.
     On the GPU, all functions are force-inlined by default.
     In addition, the annotation `@inbounds` should be used when accessing the elements of an array
-    in a boundary condition function (such as `state.velocities[i, j, 1]` in the above example).
+    in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
 ##### 7. A random, spatially-varying, constant-in-time temperature flux specified by an array

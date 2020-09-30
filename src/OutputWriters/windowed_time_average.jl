@@ -3,7 +3,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 import Oceananigans.Utils: time_to_run
 import Oceananigans.Fields: AbstractField, compute!
 import Oceananigans.OutputWriters: fetch_output
-import Oceananigans.Diagnostics: run_diagnostic
+import Oceananigans.Diagnostics: run_diagnostic!
 
 """
     WindowedTimeAverage{R, OP, FS} <: AbstractDiagnostic
@@ -85,13 +85,13 @@ function accumulate_result!(wta, model)
     return nothing
 end
 
-function run_diagnostic(model, wta::WindowedTimeAverage)
+function run_diagnostic!(wta::WindowedTimeAverage, model)
 
     if model.clock.iteration == 0 # initialize previous interval stop time
         wta.previous_interval_stop_time = model.clock.time
     end
 
-    # Don't start collecting if we are *only* "initializing" run_diagnostic at the beginning
+    # Don't start collecting if we are *only* "initializing" run_diagnostic! at the beginning
     # of a Simulation.
     #
     # Note: this can be false at the zeroth iteration if time_interval == time_window (which
@@ -101,7 +101,7 @@ function run_diagnostic(model, wta::WindowedTimeAverage)
         model.clock.time < wta.previous_interval_stop_time + wta.time_interval - wta.time_window
 
     if !(wta.collecting) && !(initializing)
-        # run_diagnostic has been called, but we are not currently collecting data.
+        # run_diagnostic! has been called, but we are not currently collecting data.
         # Initialize data collection:
 
         # Start averaging period

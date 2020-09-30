@@ -19,7 +19,7 @@ function NaNChecker(model; iteration_interval, fields)
     return NaNChecker(iteration_interval, fields)
 end
 
-function run_diagnostic(model, nc::NaNChecker)
+function run_diagnostic!(nc::NaNChecker, model)
     for (name, field) in nc.fields
         if any(isnan, field.data.parent)
             t, i = model.clock.time, model.clock.iteration

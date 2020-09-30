@@ -6,6 +6,7 @@ using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
+using Oceananigans.Forcings: model_forcing
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                                    V, S, K} <: AbstractModel
@@ -36,7 +37,7 @@ end
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
-                forcing = ModelForcing(),
+                forcing = nothing,
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
@@ -61,7 +62,7 @@ Keyword arguments
     - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: User-defined forcing functions that contribute to solution tendencies.
+    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                  preallocated `CellField`s.
@@ -77,7 +78,7 @@ function IncompressibleModel(;
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
-                forcing = ModelForcing(),
+                forcing = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = (u=UVelocityBoundaryConditions(grid),
                            v=VVelocityBoundaryConditions(grid),
@@ -96,15 +97,15 @@ function IncompressibleModel(;
 
     validate_buoyancy(buoyancy, tracernames(tracers))
 
-    # Regularize forcing and closure for given tracer fields.
-    forcing = ModelForcing(tracernames(tracers), forcing)
+    # Regularize forcing and closure for model tracer and velocity fields.
+    forcing = model_forcing(tracernames(tracers); forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     # Instantiate tracer fields if not already instantiated
     tracer_fields = TracerFields(architecture, grid, tracers, boundary_conditions)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, float_type, architecture, grid, velocities, tracernames(tracers))
+    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
                                forcing, closure, velocities, tracer_fields, pressures, diffusivities,

@@ -81,17 +81,17 @@ BetaPlane{Float64}: f₀ = -2.53e-05, β = 2.25e-11
 
 in which case $f_0 = 2\Omega\sin\varphi$ and $\beta = 2\Omega\cos\varphi / R$.
 
-## Traditional $\beta$-plane
+## Non-traditional $\beta$-plane
 
-To set up a non-traditional $\beta$-plane you can directly specify the 5 parameters (by default Earth's radius and
-rotation rate are used)
+A non-traditional $\beta$-plane requires either 5 parameters (by default Earth's radius and
+rotation rate are used):
 
 ```jldoctest
 julia> NonTraditionalBetaPlane(fz=1e-4, fy=2e-4, β=4e-11, γ=-8e-11)
 NonTraditionalBetaPlane{Float64}: fz = 1.00e-04, fy = 2.00e-04, β = 4.00e-11, γ = -8.00e-11, R = 6.37e+06
 ```
 
-or you can specify the rotation rate, radius, and latitude
+or the rotation rate, radius, and latitude:
 
 ```jldoctest
 julia> NonTraditionalBetaPlane(rotation_rate=5.31e-5, radius=252.1e3, latitude=10)

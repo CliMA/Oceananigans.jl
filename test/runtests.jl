@@ -20,7 +20,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
-using Oceananigans.Forcing
+using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models
 using Oceananigans.Simulations
@@ -42,7 +42,6 @@ using KernelAbstractions: @kernel, @index, Event
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
-using Oceananigans.Diagnostics: run_diagnostic
 using Oceananigans.AbstractOperations: Computation, compute!
 
 Logging.global_logger(OceananigansLogger())
@@ -89,6 +88,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_surface_waves.jl")
+            include("test_weno_reconstruction.jl")
         end
     end
 
