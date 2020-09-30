@@ -15,7 +15,7 @@ may involve defining more grid spacing operators, potentially up to eight per di
 although not all may be used in practice.
 """
 
-using Oceananigans.Grids
+using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 #####
 ##### Grid spacings

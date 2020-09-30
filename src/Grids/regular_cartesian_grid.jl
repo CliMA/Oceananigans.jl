@@ -42,23 +42,26 @@ Creates a `RegularCartesianGrid` with `size = (Nx, Ny, Nz)` grid points.
 Keyword arguments
 =================
 
-- `size` (required): A 3-tuple `(Nx, Ny, Nz)` prescribing the number of grid points in `x, y, z`
-
-- `extent`: A 3-tuple `(Lx, Ly, Lz)` prescribing the physical extent of the grid.
-                     The origin is the oceanic default `(0, 0, -Lz)`.
-
-- `x`, `y`, and `z`: Each of `x, y, z` are 2-tuples that specify the end points of the domain
-                     in their respect directions.
-
-*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
+- `size` (required): A tuple prescribing the number of grid points in non-`Flat` directions.
+                     `size` is a 3-tuple for 3D models, a 2-tuple for 2D models, and either a
+                     scalar or 1-tuple for 1D models.
 
 - `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
               `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
-              `Periodic`, `Bounded`, or `Flat`. In a `Flat` direction, derivatives are
-              zero. The default is `(Periodic, Periodic, Bounded)`.
+              `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
+              not vary in that directions so that derivatives and interpolation are zero.
+              The default is `topology=(Periodic, Periodic, Bounded)`.
 
-- `halo`: A 3-tuple of integers that specifies the size of the halo region of cells surrounding
-          the physical interior in `x`, `y`, and `z`.
+- `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
+            The origin for three-dimensional domains is the oceanic default `(0, 0, -Lz)`.
+
+- `x`, `y`, and `z`: Each of `x, y, z` are 2-tuples that specify the end points of the domain
+                     in their respect directions. Scalar values may be used in `Flat` directions.
+
+*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
+
+- `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
+          the physical interior for each non-`Flat` direction.
 
 The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
 indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` or via
@@ -66,7 +69,7 @@ the `extent` argument, e.g. `extent=(Lx, Ly, Lz)` which specifies the extent of 
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
 A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
-to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Flat)`
+to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
 is assumed.
 
 Constants are stored using floating point values of type `FT`. By default this is `Float64`.
@@ -90,6 +93,8 @@ Grid properties
 Examples
 ========
 
+* A default grid with Float64 type:
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -102,6 +107,8 @@ RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
 grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
 ```
 
+* A default grid with Float32 type:
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -113,17 +120,47 @@ RegularCartesianGrid{Float32, Periodic, Periodic, Bounded}
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
 ```
+
+* A two-dimenisional, horizontally-periodic grid:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RegularCartesianGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
+RegularCartesianGrid{Float64, Periodic, Periodic, Flat}
+                   domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [0.0, 0.0]
+                 topology: (Periodic, Periodic, Flat)
+  resolution (Nx, Ny, Nz): (32, 32, 1)
+   halo size (Hx, Hy, Hz): (1, 1, 0)
+grid spacing (Δx, Δy, Δz): (0.19634954084936207, 0.39269908169872414, 0.0)
+```
+
+* A one-dimensional "column" grid:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RegularCartesianGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
+RegularCartesianGrid{Float64, Flat, Flat, Bounded}
+                   domain: x ∈ [0.0, 0.0], y ∈ [0.0, 0.0], z ∈ [-128.0, 0.0]
+                 topology: (Flat, Flat, Bounded)
+  resolution (Nx, Ny, Nz): (1, 1, 256)
+   halo size (Hx, Hy, Hz): (0, 0, 1)
+grid spacing (Δx, Δy, Δz): (0.0, 0.0, 0.5)
+```
 """
 function RegularCartesianGrid(FT=Float64;
                                   size,
                                      x = nothing, y = nothing, z = nothing,
                                 extent = nothing,
                               topology = (Periodic, Periodic, Bounded),
-                                  halo = (1, 1, 1),
+                                  halo = nothing
                               )
 
     TX, TY, TZ = validate_topology(topology)
-    Lx, Ly, Lz, x, y, z = validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
+    size = validate_size(TX, TY, TZ, size)
+    halo = validate_halo(TX, TY, TZ, halo)
+    Lx, Ly, Lz, x, y, z = validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
 
     # Unpacking
     Nx, Ny, Nz = N = size

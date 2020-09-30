@@ -18,6 +18,7 @@ struct Box                  <: PressureSolverType end
 
 poisson_bc_symbol(::BC) = :N
 poisson_bc_symbol(::BC{<:Periodic}) = :P
+poisson_bc_symbol(::Nothing) = :P
 
 #####
 ##### Special forms for IncompressibleModel constructor
