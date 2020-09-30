@@ -58,6 +58,8 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
+		arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
+
                 grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
