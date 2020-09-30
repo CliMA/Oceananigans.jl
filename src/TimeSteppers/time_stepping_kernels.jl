@@ -3,8 +3,19 @@
 #####
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(G, arch, grid, advection, coriolis, buoyancy, surface_waves, closure, 
-                                                    U, C, pHY′, K, F, clock)
+function calculate_interior_tendency_contributions!(G, arch, grid,
+                                                    advection,
+                                                    coriolis,
+                                                    buoyancy,
+                                                    surface_waves,
+                                                    closure,
+                                                    background_fields,
+                                                    velocities,
+                                                    tracers,
+                                                    hydrostatic_pressure,
+                                                    diffusivities,
+                                                    forcings,
+                                                    clock)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
@@ -16,23 +27,26 @@ function calculate_interior_tendency_contributions!(G, arch, grid, advection, co
     barrier = Event(device(arch))
 
     Gu_event = calculate_Gu_kernel!(G.u, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, pHY′, clock, dependencies=barrier)
+                                    background_fields, velocities, tracers, diffusivities,
+                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gv_event = calculate_Gv_kernel!(G.v, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, pHY′, clock, dependencies=barrier)
+                                    background_fields, velocities, tracers, diffusivities,
+                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gw_event = calculate_Gw_kernel!(G.w, grid, advection, coriolis, surface_waves, closure,
-                                    U, C, K, F, clock, dependencies=barrier)
+                                    background_fields, velocities, tracers, diffusivities,
+                                    forcings, clock, dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]
 
     for tracer_index in 1:length(C)
         @inbounds Gc = G[tracer_index+3]
-        @inbounds Fc = F[tracer_index+3]
-        @inbounds  c = C[tracer_index]
+        @inbounds forcing = F[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(Gc, grid, c, Val(tracer_index), advection, closure,
-                                        buoyancy, U, C, K, Fc, clock, dependencies=barrier)
+        Gc_event = calculate_Gc_kernel!(Gc, grid, Val(tracer_index), advection, closure, buoyancy,
+                                        background_fields, velocities, tracers, diffusivities,
+                                        forcing, clock, dependencies=barrier)
 
         push!(events, Gc_event)
     end
@@ -47,27 +61,68 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, grid, advection, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+@kernel function calculate_Gu!(Gu,
+                               grid,
+                               advection,
+                               coriolis,
+                               surface_waves,
+                               closure,
+                               background_fields,
+                               velocities,
+                               tracers,
+                               diffusivities,
+                               forcings,
+                               hydrostatic_pressure,
+                               clock)
+
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, U, C, K, F, pHY′, clock)
+                                                closure, background_fields, velocities, tracers,
+                                                diffusivities, forcings, hydrostatic_pressure, clock)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, grid, advection, coriolis, surface_waves, closure, U, C, K, F, pHY′, clock)
+@kernel function calculate_Gv!(Gv,
+                               grid,
+                               advection,
+                               coriolis,
+                               surface_waves,
+                               closure,
+                               background_fields,
+                               velocities,
+                               tracers,
+                               diffusivities,
+                               forcings,
+                               hydrostatic_pressure,
+                               clock)
+
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, U, C, K, F, pHY′, clock)
+                                                closure, background_fields, velocities, tracers,
+                                                diffusivities, forcings, hydrostatic_pressure, clock)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, grid, advection, coriolis, surface_waves, closure, U, C, K, F, clock)
+@kernel function calculate_Gw!(Gw,
+                               grid,
+                               advection,
+                               coriolis,
+                               surface_waves,
+                               closure,
+                               background_fields,
+                               velocities,
+                               tracers,
+                               diffusivities,
+                               forcings,
+                               clock)
+
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, U, C, K, F, clock)
+                                                closure, background_fields, velocities, tracers,
+                                                diffusivities, forcings, clock)
 end
 
 #####
@@ -75,11 +130,24 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, grid, c, tracer_index, advection, closure, buoyancy, U, C, K, Fc, clock)
+@kernel function calculate_Gc!(Gc,
+                               grid,
+                               tracer_index,
+                               advection,
+                               closure,
+                               buoyancy,
+                               background_fields,
+                               velocities,
+                               tracers,
+                               diffusivities,
+                               forcing,
+                               clock)
+
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, c, tracer_index,
-                                            advection, closure, buoyancy, U, C, K, Fc, clock)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure,
+                                            buoyancy, background_fields, velocities, tracers,
+                                            diffusivities, forcing, clock)
 end
 
 #####
@@ -87,7 +155,7 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, model_fields)
+function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
 
     barrier = Event(device(arch))
 
@@ -95,18 +163,18 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, U, C, clock, mod
 
     # Velocity fields
     for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], U[i], arch, barrier, clock, model_fields)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end
 
     # Tracer fields
     for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], C[i-3], arch, barrier, clock, model_fields)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
 
         push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
     end

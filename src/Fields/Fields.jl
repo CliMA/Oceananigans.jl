@@ -25,6 +25,7 @@ assumed_field_location(name) = name === :u ? (Face, Cell, Cell) :
 include("new_data.jl")
 include("abstract_field.jl")
 include("field.jl")
+include("zero_field.jl")
 include("reduced_field.jl")
 include("averaged_field.jl")
 include("computed_field.jl")
@@ -32,6 +33,7 @@ include("pressure_field.jl")
 include("function_field.jl")
 include("set!.jl")
 include("field_tuples.jl")
+include("background_fields.jl")
 include("show_fields.jl")
 
 end
