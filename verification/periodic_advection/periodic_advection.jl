@@ -71,7 +71,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
 
     scheme_name = advection_scheme isa WENO ? "WENO$(weno_order(advection_scheme))" : typeof(advection_scheme)
 
-    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f_U%+d.mp4", ic_name(ϕₐ), time_stepper, scheme_name, N, CFL, U)
+    anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f_U%+d.gif", ic_name(ϕₐ), time_stepper, scheme_name, N, CFL, U)
 
     anim = @animate for iter in 0:Nt
         iter % 10 == 0 && @info "$anim_filename, iter = $iter/$Nt"
@@ -90,7 +90,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
         end
     end every every(Nt)
 
-    mp4(anim, anim_filename, fps=15)
+    gif(anim, anim_filename, fps=15)
 
     return model
 end
@@ -102,9 +102,9 @@ end
 L = 1
 ϕs = (ϕ_Gaussian, ϕ_Square)
 time_steppers = (:RungeKutta3,)
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), WENO5())
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), UpwindBiasedFifthOrder(), WENO5())
 Ns = [16, 64]
-CFLs = (0.1, 0.5, 1.0)
+CFLs = (0.5, 1.7)
 Us = [+1, -1]
 
 for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs, U in Us

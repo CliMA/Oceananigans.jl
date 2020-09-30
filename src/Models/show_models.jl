@@ -1,5 +1,5 @@
-using Oceananigans.Grids: short_show
 using Oceananigans.Utils: prettytime, ordered_dict_show
+using Oceananigans: short_show
 
 """Show the innards of a `Model` in the REPL."""
 Base.show(io::IO, model::IncompressibleModel{TS, C, A}) where {TS, C, A} =

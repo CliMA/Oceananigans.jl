@@ -51,7 +51,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -161,7 +161,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), WENO5())
+advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

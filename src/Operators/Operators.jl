@@ -25,5 +25,6 @@ include("derivative_operators.jl")
 include("interpolation_operators.jl")
 include("divergence_operators.jl")
 include("laplacian_operators.jl")
+include("interpolation_utils.jl")
 
 end

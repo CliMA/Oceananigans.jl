@@ -1,11 +1,11 @@
 # Setting initial conditions
+
 Initial conditions are imposed after model construction. This can be easily done using the the `set!` function, which
 allows the setting of initial conditions using constant values, arrays, or functions.
 
 ```@meta
 DocTestSetup = quote
     using Oceananigans
-    using Oceananigans.Forcing
 end
 ```
 
