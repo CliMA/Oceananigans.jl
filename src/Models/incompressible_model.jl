@@ -41,15 +41,15 @@ end
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
-                forcing = nothing,
+                forcing = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
-             velocities = VelocityFields(architecture, grid, boundary_conditions),
-              pressures = PressureFields(architecture, grid, boundary_conditions),
-          diffusivities = DiffusivityFields(architecture, grid, tracernames(tracers), boundary_conditions, closure),
-        pressure_solver = PressureSolver(architecture, grid, PressureBoundaryConditions(grid))
+             velocities = nothing,
+              pressures = nothing,
+          diffusivities = nothing,
+        pressure_solver = nothing
     )
 
 Construct an incompressible `Oceananigans.jl` model on `grid`.

@@ -159,7 +159,9 @@ function TendencyFields(arch, grid, tracer_names;
                         kwargs...)
 
     velocities = (u=u, v=v, w=w)
+
     tracers = TracerFields(tracer_names, arch, grid; kwargs...)
+
     return merge(velocities, tracers)
 end
 
