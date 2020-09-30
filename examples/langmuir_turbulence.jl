@@ -273,9 +273,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     @info "Drawing frame $i from iteration $iter \n"
 
-    ## Load 3D fields from file, omitting halo regions
-    w = file["timeseries/w/$iter"][2:end-1, 2:end-1, 2:end-1]
-    u = file["timeseries/u/$iter"][2:end-1, 2:end-1, 2:end-1]
+    ## Load 3D fields from file
+    w = file["timeseries/w/$iter"]
+    u = file["timeseries/u/$iter"]
 
     ## Extract slices
     wxy = w[:, :, k]
