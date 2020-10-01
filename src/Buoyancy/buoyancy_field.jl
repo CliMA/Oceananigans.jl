@@ -99,9 +99,9 @@ compute!(b::BuoyancyField{B, <:FieldStatus}, time) where B =
     conditional_compute!(b, time)
 
 """Compute an `operation` and store in `data`."""
-@kernel function compute_buoyancy!(data, grid, buoyancy, C)
+@kernel function compute_buoyancy!(data, grid, buoyancy, tracers)
     i, j, k = @index(Global, NTuple)
-    @inbounds data[i, j, k] = buoyancy_perturbation(i, j, k, grid, buoyancy, C)
+    @inbounds data[i, j, k] = buoyancy_perturbation(i, j, k, grid, buoyancy, tracers)
 end
 
 #####
