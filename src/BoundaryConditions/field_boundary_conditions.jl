@@ -15,11 +15,18 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
 """
-    DefaultBoundaryCondition(::Union{Type{Periodic}, Type{Flat}}, loc)
+    DefaultBoundaryCondition(::Type{Periodic}, loc)
 
 Returns [`PeriodicBoundaryCondition`](@ref).
 """
-DefaultBoundaryCondition(::Union{Type{Grids.Periodic}, Type{Flat}}, loc) = PeriodicBoundaryCondition()
+DefaultBoundaryCondition(::Type{Grids.Periodic}, loc) = PeriodicBoundaryCondition()
+
+"""
+    DefaultBoundaryCondition(::Type{Flat}, loc)
+
+Returns `nothing`.
+"""
+DefaultBoundaryCondition(::Type{Flat}, loc) = nothing
 
 """
     DefaultBoundaryCondition(::Type{Bounded}, ::Type{Cell})

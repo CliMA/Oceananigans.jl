@@ -17,7 +17,14 @@ export
     hdivᶜᶜᵃ, divᶜᶜᶜ, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, div_yzᵃᶜᶜ,
     ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ
 
-using Oceananigans.Grids
+#####
+##### Convinient aliases
+#####
+
+using Oceananigans.Grids: AbstractGrid, RegularCartesianGrid
+
+const AG  = AbstractGrid
+const RCG = RegularCartesianGrid
 
 include("areas_and_volumes.jl")
 include("difference_operators.jl")
