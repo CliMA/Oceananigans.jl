@@ -11,33 +11,36 @@ using Oceananigans.Utils: tupleit
 A callable object that implements a "continuous form" forcing function
 on a field at the location `X, Y, Z` with optional parameters.
 """
-struct ContinuousForcing{X, Y, Z, P, F, D, I}
-                    func :: F
-              parameters :: P
-      field_dependencies :: D
-    ℑ_field_dependencies :: I
+struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
+                          func :: F
+                    parameters :: P
+            field_dependencies :: D
+    field_dependencies_indices :: I
+     field_dependencies_interp :: ℑ
 
-    function ContinuousForcing{X, Y, Z}(func, parameters, field_dependencies) where {X, Y, Z}
-
+    # Non-public "temporary" constructor that stores func, parameters, and field_dependencies
+    # for later regularization
+    function ContinuousForcing(func, parameters, field_dependencies)
         field_dependencies = tupleit(field_dependencies)
 
-        ℑ_field_dependencies = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
-                                     for name in field_dependencies)
-
-        return new{X, Y, Z, 
+        return new{Nothing, Nothing, Nothing,
                    typeof(parameters), 
                    typeof(func), 
                    typeof(field_dependencies),
-                   typeof(ℑ_field_dependencies)}(func, parameters, field_dependencies, ℑ_field_dependencies)
-                   
+                   Nothing,
+                   Nothing}(func, parameters, field_dependencies, nothing, nothing)
     end
 
-    function ContinuousForcing{X, Y, Z}(func, parameters, field_dependencies, ℑ_field_dependencies) where {X, Y, Z}
+    # Non-public "final" constructor.
+    function ContinuousForcing{X, Y, Z}(func, parameters=nothing, field_dependencies=(),
+                                        field_dependencies_indices=(), field_dependencies_interp=()) where {X, Y, Z}
         return new{X, Y, Z,
                    typeof(parameters),
                    typeof(func),
                    typeof(field_dependencies),
-                   typeof(ℑ_field_dependencies)}(func, parameters, field_dependencies, ℑ_field_dependencies)
+                   typeof(field_dependencies_indices),
+                   typeof(field_dependencies_interp)}(func, parameters, field_dependencies,
+                                                      field_dependencies_indices, field_dependencies_interp)
     end
 end
 
@@ -77,7 +80,7 @@ callable with the signature
 
 """
 ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
-    ContinuousForcing{Cell, Cell, Cell}(func, parameters, field_dependencies)
+    ContinuousForcing(func, parameters, field_dependencies)
 
 """ 
     regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
@@ -87,62 +90,63 @@ Regularize `forcing::ContinuousForcing` for use during time-stepping in an `Inco
 To do this, we
 
     * Obtain the location `X, Y, Z` at which `ContinuousForcing` is applied
-    * Convert `field_dependencies` tuple of `Symbols` to a tuple of integers
-      for use on the GPU
-    * Diagnose the interpolation operators `ℑ_field_dependencies` needed to interpolate
+    * Use `field_dependencies` tuple of `Symbols` to infer the tuple `field_dependencies_indices`
+      that maps `field_dependencies` to `model_fields` (for use on the GPU)
+    * Diagnose the interpolation operators `field_dependencies_interp` needed to interpolate
       `field_dependencies` to `X, Y, Z`
 """
 function regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
 
     X, Y, Z = assumed_field_location(field_name)
 
-    ℑ_field_dependencies = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
-                                 for name in forcing.field_dependencies)
+    field_dependencies_interp = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
+                                      for name in forcing.field_dependencies)
 
-    field_dependencies = ntuple(length(forcing.field_dependencies)) do i
+    field_dependencies_indices = ntuple(length(forcing.field_dependencies)) do i
         name = forcing.field_dependencies[i]
         findfirst(isequal(name), model_field_names)
     end
 
-    return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, field_dependencies, ℑ_field_dependencies)
+    return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, forcing.field_dependencies,
+                                      field_dependencies_indices, field_dependencies_interp)
 end
 
 #####
 ##### Functions for calling ContinuousForcing in a time-stepping kernel
 #####
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{1}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),)
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{1}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),)
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{2}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),
-               ℑ[2](i, j, k, grid, model_fields[field_indices[2]]))
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{2}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),
+               ℑ[2](i, j, k, grid, model_fields[idx[2]]))
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{3}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),
-               ℑ[2](i, j, k, grid, model_fields[field_indices[2]]),
-               ℑ[3](i, j, k, grid, model_fields[field_indices[3]]))
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{3}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),
+               ℑ[2](i, j, k, grid, model_fields[idx[2]]),
+               ℑ[3](i, j, k, grid, model_fields[idx[3]]))
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{N}) where N =
-    @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[field_indices[n]]), Val(N))
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N =
+    @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[idx[n]]), Val(N))
 
 """ Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object without parameters. """
 @inline function forcing_func_arguments(i, j, k, grid, model_fields, ::Nothing, forcing)
 
-    ℑ = forcing.ℑ_field_dependencies
-    dependencies = forcing.field_dependencies
+    ℑ = forcing.field_dependencies_interp
+    idx = forcing.field_dependencies_indices
 
-    return field_arguments(i, j, k, grid, model_fields, ℑ, dependencies)
+    return field_arguments(i, j, k, grid, model_fields, ℑ, idx)
 end
 
 """ Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object with parameters. """
 @inline function forcing_func_arguments(i, j, k, grid, model_fields, parameters, forcing)
 
-    ℑ = forcing.ℑ_field_dependencies
-    dependencies = forcing.field_dependencies
+    ℑ = forcing.field_dependencies_interp
+    idx = forcing.field_dependencies_indices
     parameters = forcing.parameters
 
-    field_args = field_arguments(i, j, k, grid, model_fields, ℑ, dependencies)
+    field_args = field_arguments(i, j, k, grid, model_fields, ℑ, idx)
 
     return tuple(field_args..., parameters)
 end
@@ -164,5 +168,6 @@ Base.show(io::IO, forcing::ContinuousForcing{X, Y, Z, P}) where {X, Y, Z, P} =
 Adapt.adapt_structure(to, forcing::ContinuousForcing{X, Y, Z}) where {X, Y, Z} =
     ContinuousForcing{X, Y, Z}(Adapt.adapt(to, forcing.func),
                                Adapt.adapt(to, forcing.parameters),
-                               Adapt.adapt(to, forcing.field_dependencies),
-                               Adapt.adapt(to, forcing.ℑ_field_dependencies))
+                               nothing,
+                               Adapt.adapt(to, forcing.field_dependencies_indices),
+                               Adapt.adapt(to, forcing.field_dependencies_interp))

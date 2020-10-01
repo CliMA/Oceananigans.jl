@@ -19,7 +19,7 @@ regularize_forcing(forcing, field_name, model_field_names) = forcing # fallback
 """ Wrap `forcing` in a `ContinuousForcing` at the location of `field_name`. """
 function regularize_forcing(forcing::Function, field_name, model_field_names)
     X, Y, Z = assumed_field_location(field_name)
-    return ContinuousForcing{X, Y, Z}(forcing, nothing, ())
+    return ContinuousForcing{X, Y, Z}(forcing)
 end
 
 regularize_forcing(::Nothing, field_name, model_field_names) = zeroforcing
