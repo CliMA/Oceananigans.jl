@@ -6,12 +6,12 @@ using Oceananigans.Fields: assumed_field_location, show_location
 using Oceananigans.Utils: tupleit
 
 """
-    ContinuousForcing{X, Y, Z, F, P, D, I}
+    ContinuousForcing{X, Y, Z, P, F, D, I}
 
 A callable object that implements a "continuous form" forcing function
 on a field at the location `X, Y, Z` with optional parameters.
 """
-struct ContinuousForcing{X, Y, Z, F, P, D, I}
+struct ContinuousForcing{X, Y, Z, P, F, D, I}
                     func :: F
               parameters :: P
       field_dependencies :: D
@@ -25,8 +25,8 @@ struct ContinuousForcing{X, Y, Z, F, P, D, I}
                                      for name in field_dependencies)
 
         return new{X, Y, Z, 
-                   typeof(func), 
                    typeof(parameters), 
+                   typeof(func), 
                    typeof(field_dependencies),
                    typeof(ℑ_field_dependencies)}(func, parameters, field_dependencies, ℑ_field_dependencies)
                    
@@ -34,8 +34,8 @@ struct ContinuousForcing{X, Y, Z, F, P, D, I}
 
     function ContinuousForcing{X, Y, Z}(func, parameters, field_dependencies, ℑ_field_dependencies) where {X, Y, Z}
         return new{X, Y, Z,
-                   typeof(func),
                    typeof(parameters),
+                   typeof(func),
                    typeof(field_dependencies),
                    typeof(ℑ_field_dependencies)}(func, parameters, field_dependencies, ℑ_field_dependencies)
     end
