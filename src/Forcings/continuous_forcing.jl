@@ -79,27 +79,54 @@ callable with the signature
 ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing{Cell, Cell, Cell}(func, parameters, field_dependencies)
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_names::NTuple{1}) =
-    @inbounds (ℑ[1](i, j, k, grid, getproperty(model_fields, field_names[1])),)
+""" 
+    regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_names::NTuple{2}) =
-    @inbounds (ℑ[1](i, j, k, grid, getproperty(model_fields, field_names[1])),
-               ℑ[2](i, j, k, grid, getproperty(model_fields, field_names[2])))
+Regularize `forcing::ContinuousForcing` for use during time-stepping in an `IncompressibleModel`.
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_names::NTuple{3}) =
-    @inbounds (ℑ[1](i, j, k, grid, getproperty(model_fields, field_names[1])),
-               ℑ[2](i, j, k, grid, getproperty(model_fields, field_names[2])),
-               ℑ[3](i, j, k, grid, getproperty(model_fields, field_names[3])))
+To do this, we
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_names::NTuple{4}) =
-    @inbounds (ℑ[1](i, j, k, grid, getproperty(model_fields, field_names[1])),
-               ℑ[2](i, j, k, grid, getproperty(model_fields, field_names[2])),
-               ℑ[3](i, j, k, grid, getproperty(model_fields, field_names[3])),
-               ℑ[4](i, j, k, grid, getproperty(model_fields, field_names[4])))
+    * Obtain the location `X, Y, Z` at which `ContinuousForcing` is applied
+    * Convert `field_dependencies` tuple of `Symbols` to a tuple of integers
+      for use on the GPU
+    * Diagnose the interpolation operators `ℑ_field_dependencies` needed to interpolate
+      `field_dependencies` to `X, Y, Z`
+"""
+function regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_names::NTuple{N}) where N =
-    ntuple(n -> ℑ[n](i, j, k, grid, getproperty(model_fields, field_names[n])), Val(N))
+    X, Y, Z = assumed_field_location(field_name)
 
+    ℑ_field_dependencies = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
+                                 for name in forcing.field_dependencies)
+
+    field_dependencies = ntuple(length(forcing.field_dependencies)) do i
+        name = forcing.field_dependencies[i]
+        findfirst(isequal(name), model_field_names)
+    end
+
+    return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, field_dependencies, ℑ_field_dependencies)
+end
+
+#####
+##### Functions for calling ContinuousForcing in a time-stepping kernel
+#####
+
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{1}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),)
+
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{2}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),
+               ℑ[2](i, j, k, grid, model_fields[field_indices[2]]))
+
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{3}) =
+    @inbounds (ℑ[1](i, j, k, grid, model_fields[field_indices[1]]),
+               ℑ[2](i, j, k, grid, model_fields[field_indices[2]]),
+               ℑ[3](i, j, k, grid, model_fields[field_indices[3]]))
+
+@inline field_arguments(i, j, k, grid, model_fields, ℑ, field_indices::NTuple{N}) where N =
+    @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[field_indices[n]]), Val(N))
+
+""" Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object without parameters. """
 @inline function forcing_func_arguments(i, j, k, grid, model_fields, ::Nothing, forcing)
 
     ℑ = forcing.ℑ_field_dependencies
@@ -108,6 +135,7 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     return field_arguments(i, j, k, grid, model_fields, ℑ, dependencies)
 end
 
+""" Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object with parameters. """
 @inline function forcing_func_arguments(i, j, k, grid, model_fields, parameters, forcing)
 
     ℑ = forcing.ℑ_field_dependencies
@@ -119,9 +147,9 @@ end
     return tuple(field_args..., parameters)
 end
 
-@inline function (forcing::ContinuousForcing{X, Y, Z, F})(i, j, k, grid, clock, fields) where {X, Y, Z, F}
+@inline function (forcing::ContinuousForcing{X, Y, Z, F})(i, j, k, grid, clock, model_fields) where {X, Y, Z, F}
 
-    args = forcing_func_arguments(i, j, k, grid, fields, forcing.parameters, forcing)
+    args = forcing_func_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
     return @inbounds forcing.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), clock.time, args...)
 end
