@@ -60,14 +60,17 @@ using Oceananigans.Grids: halo_size
 
                     # Test conditional computation
                     set!(c, 1)
-                    compute!(C, 1.0)
+                    compute!(C, FT(1)) # will compute
                     @test all(interior(C) .== 1)
+                    @test C.status.time == FT(1)
 
                     set!(c, 2)
-                    compute!(C, 1.0)
+                    compute!(C, FT(1)) # will not compute because status == 1
+                    @test C.status.time == FT(1)
                     @test all(interior(C) .== 1)
 
-                    compute!(C, 2.0)
+                    compute!(C, FT(2))
+                    @test C.status.time == FT(2)
                     @test all(interior(C) .== 2)
                 end
             end

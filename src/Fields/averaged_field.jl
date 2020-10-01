@@ -21,7 +21,7 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
 
-        status = recompute_safely ? FieldStatus(0.0) : nothing
+        status = recompute_safely ? nothing : FieldStatus(0.0)
         
         return new{X, Y, Z, typeof(status), typeof(data),
                    typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
