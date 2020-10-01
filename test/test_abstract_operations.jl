@@ -326,17 +326,18 @@ function computations_with_buoyancy_field(FT, arch, buoyancy)
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
                                 tracers=tracers, buoyancy=buoyancy)
 
-    #b = BuoyancyField(model)
-    #u, v, w = model.velocities
+    b = BuoyancyField(model)
+    u, v, w = model.velocities
 
-    #compute!(b)
-    #ub = ComputedField(u * b)
-    #vb = ComputedField(v * b)
-    #wb = ComputedField(w * b)
+    compute!(b)
 
-    #compute!(ub)
-    #compute!(vb)
-    #compute!(wb)
+    ub = ComputedField(b * u)
+    vb = ComputedField(b * v)
+    wb = ComputedField(b * w)
+
+    compute!(ub)
+    compute!(vb)
+    compute!(wb)
 
     return true # test that it doesn't error
 end
