@@ -28,6 +28,8 @@ function regularize_forcing(forcing::Function, field_name)
     return ContinuousForcing{X, Y, Z}(forcing, nothing, ())
 end
 
+regularize_forcing(::Nothing, field_name) = zeroforcing
+
 """
     model_forcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forcings...)
 
@@ -35,7 +37,7 @@ Return a named tuple of forcing functions for each solution field, wrapping
 forcing function in `ContinuousForcing`s and ensuring that
 `ContinuousForcing`s are located correctly for velocity fields.
 """
-function model_forcing(tracer_names; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forcings...)
+function model_forcing(tracer_names; u=nothing, v=nothing, w=nothing, tracer_forcings...)
     u = regularize_forcing(u, :u)
     v = regularize_forcing(v, :v)
     w = regularize_forcing(w, :w)
