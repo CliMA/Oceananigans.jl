@@ -62,16 +62,13 @@ parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
 v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}} at (Cell, Cell, Cell)
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}}
 ├── func: parameterized_func
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
 
-Note that the location of `ContinuousForcing` may be incorrect at first sight.
-For example, in the above output the `Forcing` is located at `Cell, Cell, Cell`,
-despite that `v`-forcing is applied at `Cell, Face, Cell`.
-Never fear, because forcing locations are regularized within the
+Note that because forcing locations are regularized within the
 `IncompressibleModel` constructor:
 
 ```jldoctest forcing
@@ -87,8 +84,8 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}
 └── field dependencies: ()
 ```
 
-After passing through the constructor for `IncompressibleModel`, the `v`-forcing is located at
-`Cell, Face, Cell`: the correct location for v-velocity forcing.
+After passing through the constructor for `IncompressibleModel`, the `v`-forcing location
+information is available and set to `Cell, Face, Cell`.
 
 ```jldoctest forcing
 # Field-dependent forcing
@@ -97,7 +94,7 @@ growth_in_sunlight(x, y, z, t, P) = exp(z) * P
 plankton_forcing = Forcing(growth_in_sunlight, field_dependencies=:P)
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Cell)
+ContinuousForcing{Nothing}
 ├── func: growth_in_sunlight
 ├── parameters: nothing
 └── field dependencies: (:P,)
@@ -112,7 +109,7 @@ c_forcing = Forcing(tracer_relaxation,
                             parameters = (μ=1/60, λ=10, H=1000, dCdz=1))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz),Tuple{Float64,Int64,Int64,Int64}}} at (Cell, Cell, Cell)
+ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz),Tuple{Float64,Int64,Int64,Int64}}}
 ├── func: tracer_relaxation
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
 └── field dependencies: (:c,)
