@@ -375,7 +375,7 @@ end
             grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
 
             u, v, w = VelocityFields(arch, grid)
-            T, S = TracerFields(arch, grid, (:T, :S))
+            T, S = TracerFields((:T, :S), arch, grid)
 
             for op in (+, *, -, /)
                 @test simple_binary_operation(op, u, v, num1, num2)
@@ -395,7 +395,7 @@ end
                                         topology=(Periodic, Periodic, Periodic))
 
             u, v, w = VelocityFields(arch, grid)
-            T, S = TracerFields(arch, grid, (:T, :S))
+            T, S = TracerFields((:T, :S), arch, grid)
             for a in (u, v, w, T)
                 @test x_derivative(a)
                 @test y_derivative(a)

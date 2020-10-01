@@ -65,7 +65,62 @@ end
 
                 # Just testing that the model was constructed with no errors/crashes.
                 @test model isa IncompressibleModel
+
+                # Test that the grid didn't get mangled
+                @test grid === model.grid
             end
+        end
+    end
+
+    @testset "Adjustment of halos in IncompressibleModel constructor" begin
+        @info "  Testing adjustment of halos in IncompressibleModel constructor..."
+
+        default_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        funny_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+
+        # Model ensures that halos are at least of size 1
+        model = IncompressibleModel(grid=default_grid)
+        @test model.grid.Hx == 1 && model.grid.Hy == 1 && model.grid.Hz == 1
+
+        model = IncompressibleModel(grid=funny_grid)
+        @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
+
+        # Model ensures that halos are at least of size 2
+        for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
+            model = IncompressibleModel(advection=scheme, grid=default_grid)
+            @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
+
+            model = IncompressibleModel(advection=scheme, grid=funny_grid)
+            @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+        end
+
+        # Model ensures that halos are at least of size 3
+        for scheme in (WENO5(), UpwindBiasedFifthOrder())
+            model = IncompressibleModel(advection=scheme, grid=default_grid)
+            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
+
+            model = IncompressibleModel(advection=scheme, grid=funny_grid)
+            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
+        end
+
+        # Model ensures that halos are at least of size 2 with AnisotropicBiharmonicDiffusivity
+        model = IncompressibleModel(closure=AnisotropicBiharmonicDiffusivity(), grid=default_grid)
+        @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
+
+        model = IncompressibleModel(closure=AnisotropicBiharmonicDiffusivity(), grid=funny_grid)
+        @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+    end
+
+    @testset "Model construction with single tracer and nothing tracer" begin
+        @info "  Testing model construction with single tracer and nothing tracer..."
+        for arch in archs
+            grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
+
+            model = IncompressibleModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
+            @test model isa IncompressibleModel
+
+            model = IncompressibleModel(grid=grid, architecture=arch, tracers=nothing, buoyancy=nothing)
+            @test model isa IncompressibleModel
         end
     end
 
