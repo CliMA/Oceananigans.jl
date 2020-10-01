@@ -4,11 +4,11 @@
 
 using Oceananigans.Grids
 
-grid = RegularCartesianGrid(size = (64, 64, 32),
+grid = RegularCartesianGrid(size = (128, 128, 32),
                                x = (-2.5e6, 2.5e6),
                                y = (-2.5e6, 2.5e6),
                                z = (-1.8e3, 0),
-                            halo = (2, 2, 2),
+                            halo = (3, 3, 3),
                         topology = (Bounded, Bounded, Bounded))
 
 # ## Boundary conditions
@@ -24,7 +24,7 @@ b_reference(y, parameters) = parameters.Δb / parameters.Ly * y
 
 using Oceananigans.Utils
 
-@inline buoyancy_flux(i, j, grid, clock, state, parameters) = @inbounds - parameters.μ * (state.tracers.b[i, j, grid.Nz] - b_reference(grid.yC[j], parameters))
+@inline buoyancy_flux(i, j, grid, clock, model_fields, parameters) = @inbounds - parameters.μ * (model_fields.b[i, j, grid.Nz] - b_reference(grid.yC[j], parameters))
 b_bcs = TracerBoundaryConditions(grid, 
               top = BoundaryCondition(Flux, buoyancy_flux, discrete_form = true, parameters = (μ = 50 / 30day, Δb = 0.055, Ly = grid.Ly)))
 
@@ -37,7 +37,7 @@ closure = AnisotropicDiffusivity(νh = 5e3, νz = 1e-2, κh = 500, κz = 1e-2)
 
 model = IncompressibleModel(       architecture = CPU(),
                                     timestepper = :RungeKutta3, 
-                                      # advection = CenteredFourthOrder(),
+                                      advection = CenteredFourthOrder(),
                                            grid = grid,
                                        coriolis = BetaPlane(latitude = 45),
                                        buoyancy = BuoyancyTracer(),
@@ -47,7 +47,7 @@ model = IncompressibleModel(       architecture = CPU(),
 nothing # hide
 
 ## Temperature initial condition: a stable density gradient with random noise superposed.
-b₀(x, y, z) = b_bcs.z.top.condition.parameters.Δb * (1 + z / grid.Lz)
+b₀(x, y, z) = b_bcs.top.condition.parameters.Δb * (1 + z / grid.Lz)
 
 set!(model, b=b₀)
 
@@ -63,7 +63,7 @@ using Oceananigans.OutputWriters
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
 field_writer = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
-                                time_interval=7day,
+                                time_interval=1day,
                                 prefix="double_gyre",
                                 field_slicer=FieldSlicer(k=model.grid.Nz),
                                 force=true)
@@ -167,7 +167,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     ## Extract slices
     uxy = 1/2 * (u[1:end-1, :, end] .+ u[2:end, :, end])
     vxy = 1/2 * (v[:, 1:end-1, end] .+ v[:, 2:end, end])
-    wxy = w[:, :, end-1]
+    wxy = w[:, :, 1]
     
     speed = @. sqrt(uxy^2 + vxy^2)
     
@@ -177,7 +177,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     uxy_plot = heatmap(x / 1e3, y / 1e3, uxy';
                               color = :balance,
                         aspectratio = :equal,
-                              clims = (-2, 2),
+                              # clims = (-2, 2),
                              # levels = ulevels,
                               xlims = (-grid.Lx/2e3, grid.Lx/2e3),
                               ylims = (-grid.Ly/2e3, grid.Ly/2e3),
@@ -204,7 +204,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
                              xlabel = "x (km)",
                              ylabel = "y (km)")
                              
-    plot(wxy_plot, speed_plot, size=(1100, 500), title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
+    plot(uxy_plot, speed_plot, size=(1100, 500), title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
 
     iter == iterations[end] && close(file)
 end
