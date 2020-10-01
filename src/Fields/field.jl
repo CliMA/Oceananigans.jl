@@ -127,5 +127,3 @@ ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid),
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 
 gpufriendly(f::Field) = data(f)
-
-Adapt.adapt_structure(to, field::Field) = Adapt.adapt(to, averaged_field.data)
