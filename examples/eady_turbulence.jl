@@ -92,7 +92,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = linear_drag_v)
 # `closure` a tuple of two closures.
 
 κ₂z = 1e-4             # Laplacian vertical viscosity and diffusivity, [m² s⁻¹]
-κ₄h = 1e-6 / grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
+κ₄h = 1e-6 * grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -123,8 +123,7 @@ model = IncompressibleModel(
 Ξ(z) = rand() * z/grid.Lz * (z/grid.Lz + 1)
 
 ## Large amplitude noise to rapidly stimulate instability
-u₀(x, y, z) = background_parameters.α * grid.Lz * (cos(10 * 2π/grid.Lx * x) + 1e-1 * Ξ(z))
-#u₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
+u₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
 v₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
 w₀(x, y, z) = background_parameters.α * grid.Lz * 1e-4 * Ξ(z)
 
@@ -144,7 +143,7 @@ set!(model, u=u₀, v=v₀, w=w₀)
 
 using Oceananigans.Utils: minute, hour, day
 
-wizard = TimeStepWizard(cfl=0.5, Δt=1hour, max_change=1.1, max_Δt=1day)
+wizard = TimeStepWizard(cfl=0.5, Δt=10minute, max_change=1.1, max_Δt=1day)
 
 # ## A progress messenger
 #
@@ -170,7 +169,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
 # every 100 iterations,
 
 simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
-                                                     stop_time = 20day,
+                                                     stop_time = 10day,
                                                       progress = progress)
 
 # and then we spinup the Eady problem!
@@ -180,7 +179,7 @@ run!(simulation)
 # ## Output and plotting
 #
 # With perfect confidence that the Eady problem has spun up, we prepare a
-# secondary simulation that visualizes the ensuring baroclinic turbulence.
+# secondary simulation for the purpose of visualizing the ensuring baroclinic turbulence.
 # We'd like to plot vertical vorticity and divergence, so we create
 # ComputedFields that will compute and save them during our second "diagnostic"
 # simulation.
@@ -206,7 +205,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (w=model.velocities
 # Finally, we run `simulation` for 100 more iterations
 
 simulation.stop_time = Inf
-simulation.stop_iteration = simulation.model.clock.iteration + 100
+simulation.stop_iteration = simulation.model.clock.iteration + 200
 run!(simulation)
 
 # # Visualizing Eady turbulence
