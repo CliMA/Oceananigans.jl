@@ -80,8 +80,6 @@ model_setup_pages = [
 
 physics_pages = [
     "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
-    "Coordinate system and notation" => "physics/coordinate_system_and_notation.md",
-    "The Boussinesq approximation" => "physics/boussinesq_approximation.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
     "Buoyancy model and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
