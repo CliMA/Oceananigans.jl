@@ -15,14 +15,25 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     operand :: O
      status :: S
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand, recompute_safely) where {X, Y, Z}
+    function AveragedField{X, Y, Z}(data, grid, dims, operand; recompute_safely=true) where {X, Y, Z}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
 
-        status = recompute_safely ? FieldStatus(0.0) : nothing
+        status = recompute_safely ? nothing : FieldStatus(0.0)
         
+        return new{X, Y, Z, typeof(status), typeof(data),
+                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
+                                                                operand, status)
+    end
+
+    function AveragedField{X, Y, Z}(data, grid, dims, operand, status) where {X, Y, Z}
+
+        dims = validate_reduced_dims(dims)
+        validate_reduced_locations(X, Y, Z, dims)
+        validate_field_data(X, Y, Z, data, grid)
+
         return new{X, Y, Z, typeof(status), typeof(data),
                    typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
                                                                 operand, status)
@@ -34,7 +45,7 @@ end
 
 Returns an AveragedField.
 """
-function AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
+function AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=true)
     
     arch = architecture(operand)
     loc = reduced_location(location(operand), dims=dims)
@@ -42,10 +53,10 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
 
     if isnothing(data)
         data = new_data(arch, grid, loc)
-        recompute_safely = true
+        recompute_safely = false
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand, recompute_safely)
+    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand, recompute_safely=recompute_safely)
 end
 
 """
@@ -58,7 +69,9 @@ function compute!(avg::AveragedField)
 
     zero_halo_regions!(avg.operand, dims=avg.dims)
 
-    sum!(parent(avg.data), parent(avg.operand))
+    operand_parent = parent(avg.operand)
+
+    sum!(avg.data.parent, operand_parent)
 
     sz = size(avg.grid)
     avg.data.parent ./= prod(sz[d] for d in avg.dims)

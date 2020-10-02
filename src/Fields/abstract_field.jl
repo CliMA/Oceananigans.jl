@@ -54,8 +54,8 @@ unless a special method is defined that avoids recomputing `field` at
 """
 compute!(field, time) = compute!(field)
 
-mutable struct FieldStatus
-    time :: Float64
+mutable struct FieldStatus{T}
+    time :: T
 end
 
 Adapt.adapt_structure(to, status::FieldStatus) = (time = status.time,)
