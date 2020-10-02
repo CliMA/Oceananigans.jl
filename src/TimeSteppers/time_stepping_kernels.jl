@@ -1,9 +1,11 @@
 #####
-##### Navier-Stokes and tracer advection equations
+##### Navier-Stokes momentum conservation and tracer conservation equations
 #####
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(G, arch, grid,
+function calculate_interior_tendency_contributions!(tendencies,
+                                                    arch,
+                                                    grid,
                                                     advection,
                                                     coriolis,
                                                     buoyancy,
@@ -26,25 +28,25 @@ function calculate_interior_tendency_contributions!(G, arch, grid,
 
     barrier = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(G.u, grid, advection, coriolis, surface_waves, closure,
+    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, surface_waves, closure,
                                     background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(G.v, grid, advection, coriolis, surface_waves, closure,
+    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, surface_waves, closure,
                                     background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(G.w, grid, advection, coriolis, surface_waves, closure,
+    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, surface_waves, closure,
                                     background_fields, velocities, tracers, diffusivities,
                                     forcings, clock, dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]
 
-    for tracer_index in 1:length(C)
-        @inbounds Gc = G[tracer_index+3]
-        @inbounds forcing = F[tracer_index+3]
+    for tracer_index in 1:length(tracers)
+        @inbounds c_tendency = tendencies[tracer_index+3]
+        @inbounds forcing = forcings[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(Gc, grid, Val(tracer_index), advection, closure, buoyancy,
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, buoyancy,
                                         background_fields, velocities, tracers, diffusivities,
                                         forcing, clock, dependencies=barrier)
 

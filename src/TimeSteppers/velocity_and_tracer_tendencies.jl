@@ -116,7 +116,7 @@ pressure anomaly.
 
     return ( - div_ũv(i, j, k, grid, advection, velocities, velocities.v)
              - div_ũv(i, j, k, grid, advection, background_fields.velocities, velocities.v)
-             - div_ũv(i, j, k, grid, advection, velocities, background_fields.velocities)
+             - div_ũv(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)

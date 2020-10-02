@@ -117,7 +117,7 @@ function IncompressibleModel(;
                                       
     pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
 
-    background_fields = BackgroundFields(background_fields, tracernames(tracers), clock, grid)
+    background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
@@ -127,6 +127,6 @@ function IncompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, background_fields, velocities, tracer_fields, pressures,
+                               forcing, closure, background_fields, velocities, tracers, pressures,
                                diffusivities, timestepper, pressure_solver)
 end

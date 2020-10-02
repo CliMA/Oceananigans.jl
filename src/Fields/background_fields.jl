@@ -1,14 +1,16 @@
 function BackgroundVelocityFields(bg, grid, clock)
-    u = :u ∈ keys(bg) ? FunctionField{Face, Cell, Cell}(bg.u, grid, clock=clock) : ZeroField()
-    v = :v ∈ keys(bg) ? FunctionField{Cell, Face, Cell}(bg.v, grid, clock=clock) : ZeroField()
-    w = :w ∈ keys(bg) ? FunctionField{Cell, Cell, Face}(bg.w, grid, clock=clock) : ZeroField()
+    u = :u ∈ keys(bg) ? regularize_background_field(Face, Cell, Cell, bg[:u], grid, clock) : ZeroField()
+    v = :v ∈ keys(bg) ? regularize_background_field(Cell, Face, Cell, bg[:v], grid, clock) : ZeroField()
+    w = :w ∈ keys(bg) ? regularize_background_field(Cell, Cell, Face, bg[:w], grid, clock) : ZeroField()
 
     return (u=u, v=v, w=w)
 end
 
 function BackgroundTracerFields(bg, tracer_names, grid, clock)
     tracer_fields =
-        Tuple(c ∈ keys(bg) ? FunctionField{Cell, Cell, Cell}(getproperty(bg, c), grid, clock=clock) : ZeroField()
+        Tuple(c ∈ keys(bg) ?
+              regularize_background_field(Cell, Cell, Cell, getindex(bg, c), grid, clock) :
+              ZeroField()
               for c in tracer_names)
         
     return NamedTuple{tracer_names}(tracer_fields)
@@ -22,6 +24,16 @@ function BackgroundFields(background_fields, tracer_names, grid, clock)
     velocities = BackgroundVelocityFields(background_fields, grid, clock)
     tracers = BackgroundTracerFields(background_fields, tracer_names, grid, clock)
     return (velocities=velocities, tracers=tracers)
+end
+
+"""
+    BackgroundField{F, P}
+
+Temporary container for storing information about BackgroundFields.
+"""
+struct BackgroundField{F, P}
+    func:: F
+    parameters :: P
 end
 
 """
@@ -41,11 +53,11 @@ If `parameters` is provided, `func` must be callable with the signature
 ```julia
 func(x, y, z, t, parameters)
 ```
-
-Note: `BackgroundField` is re-wrapped in a new `FunctionField` at the correct
-location, on the correct `grid`, and with the correct `clock` within the
-constructor for `IncompressibleModel`.
 """
-BackgroundField(func; parameters=nothing) =
-    FunctionField{Cell, Cell, Cell}(func, nothing; parameters=parameters)
+BackgroundField(func; parameters=nothing) = BackgroundField(func, parameters)
 
+regularize_background_field(X, Y, Z, f::BackgroundField{<:Function}, grid, clock) =
+    FunctionField{X, Y, Z}(f.func, grid; clock=clock, parameters=f.parameters)
+
+regularize_background_field(X, Y, Z, func::Function, grid, clock) =
+    FunctionField{X, Y, Z}(func, grid; clock=clock)
