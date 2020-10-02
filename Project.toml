@@ -26,7 +26,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 Adapt = "^2"
-CUDA = "^1"
+CUDA = "^1, 2.0"
 Crayons = "^4"
 FFTW = "^1"
 JLD2 = "^0.1.2, ^1"
