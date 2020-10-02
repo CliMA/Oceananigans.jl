@@ -77,3 +77,10 @@ Adapt.adapt_structure(to, f::FunctionField{X, Y, Z}) where {X, Y, Z} =
                            f.grid,
                            clock = Adapt.adapt(to, f.clock),
                            parameters = Adapt.adapt(to, f.parameters))
+
+Base.show(io::IO, field::FunctionField) =
+    print(io, "FunctionField located at ", show_location(field), '\n',
+          "├── func: $(short_show(field.func))", '\n',
+          "├── grid: $(short_show(field.grid))\n",
+          "├── clock: $(short_show(field.clock))\n",
+          "└── parameters: $(field.parameters)")

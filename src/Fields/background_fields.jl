@@ -61,3 +61,8 @@ regularize_background_field(X, Y, Z, f::BackgroundField{<:Function}, grid, clock
 
 regularize_background_field(X, Y, Z, func::Function, grid, clock) =
     FunctionField{X, Y, Z}(func, grid; clock=clock)
+
+Base.show(io::IO, field::BackgroundField{F, P}) where {F, P} =
+    print(io, "BackgroundField{$F, $P}", '\n',
+          "├── func: $(short_show(field.func))", '\n',
+          "└── parameters: $(field.parameters)")
