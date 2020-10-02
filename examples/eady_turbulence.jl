@@ -5,13 +5,18 @@
 #
 #   * How to use a tuple of turbulence closures
 #   * How to use biharmonic diffusivity
-#   * How to implement a background flow (a background geostrophic shear)
+#   * How to create computed fields for output
+#   * How to implement a background velocity and tracer distribution
 
 # # The grid
+#
+# We use a three-dimensional grid with a depth of 1000 m and a 
+# horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
+# with characteristic scales of 50-200 km.
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 64, 16), x=(-1e5, 1e5), y=(-1e5, 1e5), z=(-1e3, 0))
+grid = RegularCartesianGrid(size=(64, 64, 16), x=(-5e5, 5e5), y=(-5e5, 5e5), z=(-1e3, 0))
 
 # # Rotation
 #
@@ -22,46 +27,43 @@ coriolis = FPlane(f=1e-4) # [s⁻¹]
                             
 # # The background flow
 #
-# The Eady problem is non-linearized around a geostrophic flow
+# The Eady problem is non-linearized around a geostrophic basic state
+# represented by the streamfunction,
 #
-# $ ψ(y, z) = - α y (z + L_z) $,
+# $ ψ(y, z) = - α f y (z + L_z) $,
 #
-# where $α$ is the geostrophic shear and horizontal buoyancy gradient
-# and $L_z$ is the depth of the domain. The background buoyancy,
-# including both the geostrophic flow component
+# where $f$ is the Coriolis parameter, $α$ is the geostrophic shear
+# and horizontal buoyancy gradient, and $L_z$ is the depth of the domain.
+# The background buoyancy, including both the geostrophic flow component
 # and a background stable stratification component, is
 #
-# $ b + N^2 z = f ∂_z ψ + N^2 z = - α f y + N^2 z$
+# $ B = B'(y) + N^2 z = f ∂_z ψ + N^2 z = - α f y + N^2 z$
 #
 # The background velocity field is
 #
-# $ u = - ∂_y ψ = α (z + L_z) $
+# $ U(z) = - ∂_y ψ = α (z + L_z) $
 #
-# To impose this background flow with user-defined forcing functions we
-# require parameters that specify the veritcal shear, the Coriolis parameter
-# and the domain depth.
+# The parameters $α$, $N$, $f$ and $L_z$ determine the Eady basic state.
+# We have set the Coriolis parameter $f$ and $L_z$ above, and further
+# choose $α$ and $N$,
+
+background_parameters = ( α = 2.5e-4,       # s⁻¹, geostrophic shear
+                          f = coriolis.f,   # s⁻¹, Coriolis parameter
+                          N = 1e-2,         # s⁻¹, buoyancy frequency
+                         Lz = grid.Lz)      # m, ocean depth
+
+# The resulting Rossby radius of deformation is $R = N L_z / f = 1,000 \rm{m}$.
+#
+# With the parameters in hand, we construct the background fields $U$ and $B$
 
 using Oceananigans.Fields: BackgroundField
 
-background_parameters = (α=2.5e-4, f=coriolis.f, N=2.5e-3, Lz=grid.Lz)
-
-# We can then build out background fields
-
+## Background fields are defined via function of x, y, z, t, and optional parameters
 U(x, y, z, t, p) = + p.α * (z + p.Lz)
 B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z
 
 U_field = BackgroundField(U, parameters=background_parameters)
 B_field = BackgroundField(B, parameters=background_parameters)
-
-stratification = BackgroundField((x, y, z, t, p) -> p.N^2 * z, parameters=background_parameters)
-
-# # Friction coefficients
-
-Δh = grid.Lx / grid.Nx     # [meters] horizontal grid spacing for diffusivity calculations
-Δz = grid.Lz / grid.Nz     # [meters] vertical grid spacing for diffusivity calculations
-
-κ₂z = 1e-3 # Laplacian vertical diffusivity, [m² s⁻¹]
-κ₄h = 1e-4 * (Δh / Δz)^4 * κ₂z # Biharmonic horizontal diffusivity, [m⁴ s⁻¹]
 
 # # Boundary conditions
 #
@@ -69,118 +71,84 @@ stratification = BackgroundField((x, y, z, t, p) -> p.N^2 * z, parameters=backgr
 # condition. We also fix the surface and bottom buoyancy to enforce a buoyancy
 # gradient `N²`.
 
-bc_parameters = (μ=1e-6, Lz=grid.Lz)
+drag_parameters = (Cd = 2e-3, # drag coefficient
+                    f = coriolis.f,
+                   Lz = grid.Lz)
 
-@inline τ₁₃(i, j, grid, clock, model_fields, params) = @inbounds params.μ * params.Lz * model_fields.u[i, j, 1]
-@inline τ₂₃(i, j, grid, clock, model_fields, params) = @inbounds params.μ * params.Lz * model_fields.v[i, j, 1]
+@inline bottom_stress_xz(i, j, grid, clock, model_fields, p) = @inbounds p.Cd * p.f * p.Lz * model_fields.u[i, j, 1]
+@inline bottom_stress_yz(i, j, grid, clock, model_fields, p) = @inbounds p.Cd * p.f * p.Lz * model_fields.v[i, j, 1]
 
-linear_drag_u = BoundaryCondition(Flux, τ₁₃, discrete_form=true, parameters=bc_parameters)
-linear_drag_v = BoundaryCondition(Flux, τ₂₃, discrete_form=true, parameters=bc_parameters)
+linear_drag_u = BoundaryCondition(Flux, bottom_stress_xz, discrete_form=true, parameters=drag_parameters)
+linear_drag_v = BoundaryCondition(Flux, bottom_stress_yz, discrete_form=true, parameters=drag_parameters)
 
 u_bcs = UVelocityBoundaryConditions(grid, bottom = linear_drag_u) 
 v_bcs = VVelocityBoundaryConditions(grid, bottom = linear_drag_v)
-
-using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂xᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ
-
-# The $x$-momentum forcing
-#
-# $ F_u = - α w - α (z + H) ∂ₓu $
-#
-# is applied at location `(f, c, c)`.
-
-function Fu_eady_func(i, j, k, grid, clock, model_fields, p)
-    return @inbounds (- p.α * ℑxzᶠᵃᶜ(i, j, k, grid, model_fields.w)
-                      - p.α * (grid.zC[k] + p.Lz) * ∂xᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, model_fields.u))
-end
-
-# The $y$-momentum forcing
-#
-# $ F_v = - α (z + H) ∂ₓv
-#
-# is applied at location `(c, f, c)`.
-
-function Fv_eady_func(i, j, k, grid, clock, model_fields, p)
-    return @inbounds -p.α * (grid.zC[k] + p.Lz) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.v)
-end
-
-# The $z$-momentum forcing
-#
-# $ F_w = - α (z + H) ∂ₓw
-#
-# is applied at location `(c, c, f)`.
-
-function Fw_eady_func(i, j, k, grid, clock, model_fields, p)
-    return @inbounds -p.α * (grid.zF[k] + p.Lz) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.w)
-end
-
-# The buoyancy forcing
-#
-# $ F_b = - α (z + H) ∂ₓb + α f v $
-#
-# is applied at location `(c, c, c)`.
-
-function Fb_eady_func(i, j, k, grid, clock, model_fields, p)
-    return @inbounds (- p.α * (grid.zC[k] + p.Lz) * ∂xᶜᵃᵃ(i, j, k, grid, ℑxᶠᵃᵃ, model_fields.b)
-                      + p.f * p.α * ℑyᵃᶜᵃ(i, j, k, grid, model_fields.v))
-end
-
-Fu_eady = Forcing(Fu_eady_func, parameters=background_parameters, discrete_form=true)
-Fv_eady = Forcing(Fv_eady_func, parameters=background_parameters, discrete_form=true)
-Fw_eady = Forcing(Fw_eady_func, parameters=background_parameters, discrete_form=true)
-Fb_eady = Forcing(Fb_eady_func, parameters=background_parameters, discrete_form=true)
 
 # # Turbulence closures
 #
 # We use a horizontal biharmonic diffusivity and a Laplacian vertical diffusivity
 # to dissipate energy in the Eady problem.
 # To use both of these closures at the same time, we set the keyword argument
-# `closure` a tuple of two closures. Note that the "2D Leith" parameterization may
-# also be a sensible choice to pair with a Laplacian vertical diffusivity for this problem.
+# `closure` a tuple of two closures.
 
-closure = (AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z),
-           AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h))
-           #TwoDimensionalLeith())
+κ₂z = 1e-4             # Laplacian vertical viscosity and diffusivity, [m² s⁻¹]
+κ₄h = 1e-6 / grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
+
+Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
+biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
 # # Model instantiation
 
 using Oceananigans.Advection: WENO5
 
-model = IncompressibleModel(               grid = grid,
-                                   architecture = CPU(),
-                                      advection = WENO5(),
-                                    timestepper = :RungeKutta3,
-                                       coriolis = coriolis,
-                                       buoyancy = BuoyancyTracer(),
-                                        tracers = :b,
-                              background_fields = (b=B_field, u=U_field),
-                              #background_fields = (b=stratification,),
-                              #          forcing = (u=Fu_eady, v=Fv_eady, w=Fw_eady, b=Fb_eady),
-                                        closure = closure,
-                            boundary_conditions = (u=u_bcs, v=v_bcs))
+model = IncompressibleModel(
+           architecture = CPU(),        
+                   grid = grid,
+              advection = WENO5(),
+            timestepper = :RungeKutta3,
+               coriolis = coriolis,
+                tracers = :b,
+               buoyancy = BuoyancyTracer(),
+      background_fields = (b=B_field, u=U_field),
+                closure = (Laplacian_vertical_diffusivity, biharmonic_horizontal_diffusivity),
+    boundary_conditions = (u=u_bcs, v=v_bcs)
+)
 
 # # Initial conditions
 #
 # For initial conditions we impose a linear stratifificaiton with some
 # random noise.
 
-## A noise function, damped at the boundaries
+## A noise function, damped at the top and bottom
 Ξ(z) = rand() * z/grid.Lz * (z/grid.Lz + 1)
 
-## Buoyancy: linear stratification plus noise
-u₀(x, y, z) = 1e-1 * background_parameters.α * grid.Lz * Ξ(z)
+## Large amplitude noise to rapidly stimulate instability
+u₀(x, y, z) = background_parameters.α * grid.Lz * (cos(10 * 2π/grid.Lx * x) + 1e-1 * Ξ(z))
+#u₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
+v₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
+w₀(x, y, z) = background_parameters.α * grid.Lz * 1e-4 * Ξ(z)
 
-set!(model, u=u₀)
+set!(model, u=u₀, v=v₀, w=w₀)
 
-# # The `TimeStepWizard`
+# # Simulation set-up
+#
+# We set up a simulation involving a preliminary integration for 10 days.
+# We then stop the simulation and add a JLD2OutputWriter that saves the vertical
+# velocity, vertical vorticity, and divergence every 2 iterations.
+# We then run for 100 more iterations and plot the 50 frames into an animation.
+#
+# ## The `TimeStepWizard`
 #
 # The TimeStepWizard manages the time-step adaptively, keeping the CFL close to a
 # desired value.
 
 using Oceananigans.Utils: minute, hour, day
 
-wizard = TimeStepWizard(cfl=0.5, Δt=10minute, max_change=1.1, max_Δt=10minute)
+wizard = TimeStepWizard(cfl=0.5, Δt=1hour, max_change=1.1, max_Δt=1day)
 
-# Set up the simulation with a progress messenger
+# ## A progress messenger
+#
+# We write a function that prints out a helpful progress message while the simulation runs.
 
 using Printf
 using Oceananigans.Diagnostics: AdvectiveCFL
@@ -196,54 +164,74 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(sim.Δt.Δt),
                         CFL(sim.model))
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 10,
-                                                stop_iteration = 1000,
+# ## Build the simulation
+#
+# We're ready to build and run the simulation. We ask for a progress message and time-step update
+# every 100 iterations,
+
+simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
+                                                     stop_time = 20day,
                                                       progress = progress)
 
-using Oceananigans.Diagnostics: NaNChecker
-
-push!(simulation.diagnostics, NaNChecker(model; iteration_interval=1, fields=Dict(:u=>model.velocities.u)))
+# and then we spinup the Eady problem!
 
 run!(simulation)
 
-# ## Custom output
+# ## Output and plotting
 #
-# We also create objects for computing the vertical vorticity and divergence
-# for plotting purposes.
+# With perfect confidence that the Eady problem has spun up, we prepare a
+# secondary simulation that visualizes the ensuring baroclinic turbulence.
+# We'd like to plot vertical vorticity and divergence, so we create
+# ComputedFields that will compute and save them during our second "diagnostic"
+# simulation.
 
 using Oceananigans.OutputWriters, Oceananigans.AbstractOperations
 using Oceananigans.Fields: ComputedField
 
-u, v, w = model.velocities
+u, v, w = model.velocities # extract velocities
 
+## ComputedFields take "AbstractOperations" on Fields as input:
 ζ = ComputedField(∂x(v) - ∂y(u))
 δ = ComputedField(-∂z(w))
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model,
-                     merge(model.velocities, model.tracers, (ζ=ζ, δ=δ)),
-                                  prefix = "eady_turbulence",
-                      iteration_interval = 5,
-                                   force = true)
+# With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
+# we create a JLD2OutputWriter that saves `w`, `ζ`, and `δ` and add it to 
+# `simulation`:
 
-simulation.stop_iteration += 400
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (w=model.velocities.w, ζ=ζ, δ=δ),
+                                                                  prefix = "eady_turbulence",
+                                                      iteration_interval = 2,
+                                                                   force = true)
+
+# Finally, we run `simulation` for 100 more iterations
+
+simulation.stop_time = Inf
+simulation.stop_iteration = simulation.model.clock.iteration + 100
 run!(simulation)
 
-# Finally, we animate the results by opening the JLD2 file, extract the
-# iterations we ended up saving at, and plot the evolution of the
-# temperature profile in a loop over the iterations.
+# # Visualizing Eady turbulence
+#
+# We animate the results by opening the JLD2 file, extracting data for
+# the iterations we ended up saving at, and ploting slices of the saved
+# fields. We prepare for animating the flow by creating coordinate arrays,
+# opening the file, building a vector of the iterations that we saved
+# data at, and defining a function for computing colorbar limits: 
 
 using JLD2, Plots, Printf, Oceananigans.Grids
-using Oceananigans.Grids: x_domain, y_domain, z_domain
 
-pyplot()
+using Oceananigans.Grids: x_domain, y_domain, z_domain # for nice domain limits
 
+pyplot() # pyplot backend is a bit nicer than GR
+
+## Coordinate arrays
 xζ, yζ, zζ = nodes(ζ)
 xδ, yδ, zδ = nodes(δ)
 xw, yw, zw = nodes(w)
 
+## Open the file with our data
 file = jldopen(simulation.output_writers[:fields].filepath)
 
+## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
 function nice_divergent_levels(c, clim)
@@ -258,6 +246,8 @@ function nice_divergent_levels(c, clim)
     return levels
 end
 
+# Now we're ready to animate.
+
 @info "Making an animation from saved data..."
 
 anim = @animate for (i, iter) in enumerate(iterations)
@@ -269,9 +259,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
     δ = file["timeseries/δ/$iter"][:, :, grid.Nz]
     w = file["timeseries/w/$iter"][:, 1, :]
 
-    ζlim = max(0.5 * maximum(abs, ζ), 1e-9)
-    δlim = max(0.5 * maximum(abs, δ), 1e-9)
-    wlim = max(0.5 * maximum(abs, w), 1e-9)
+    ζlim = 0.5 * maximum(abs, ζ)
+    δlim = 0.5 * maximum(abs, δ)
+    wlim = 0.5 * maximum(abs, w)
 
     ζlevels = nice_divergent_levels(ζ, ζlim)
     δlevels = nice_divergent_levels(δ, δlim)
@@ -314,5 +304,3 @@ anim = @animate for (i, iter) in enumerate(iterations)
 end
 
 mp4(anim, "eady_turbulence.mp4", fps = 4) # hide
-
-`open -a VLC eady_turbulence.mp4`
