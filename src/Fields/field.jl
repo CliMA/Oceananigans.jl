@@ -1,3 +1,5 @@
+using Adapt
+
 """
     Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
 

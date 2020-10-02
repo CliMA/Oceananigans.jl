@@ -57,3 +57,9 @@ steps:
 #   env:
 #     TEST_GROUP: "convergence"
 
+  - label: ":owl: documentation"
+    commands:
+      - "$JULIA_PATH --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$JULIA_PATH --color=yes --project=docs/ docs/make.jl"
+    agents:
+      queue: tartarus
