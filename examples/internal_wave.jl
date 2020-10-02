@@ -4,15 +4,15 @@
 # and watch it propagate. This example illustrates how to set up a two-dimensional
 # model, set initial conditions, and how to use `BackgroundField`s.
 
-using Oceananigans, Oceananigans.Grids, Plots, Printf
-
 # ## Numerical, domain, and internal wave parameters
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
-# that's periodic in $(x, z)$:
+# that's periodic in $(x, y, z)$:
 
-grid = RegularCartesianGrid(size=(128, 128), x=(-π, π), z=(-π, π),
-                            topology=(Periodic, Flat, Periodic))
+using Oceananigans, Oceananigans.Grids
+
+grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
+                            topology=(Periodic, Periodic, Periodic))
 
 # Inertia-gravity waves propagate in fluids that are both _(i)_ rotating, and
 # _(ii)_ density-stratified. We use Oceananigans' coriolis abstraction
@@ -36,10 +36,11 @@ N = 1 ## buoyancy frequency
 
 using Oceananigans.Fields: BackgroundField
 
-## Background fields are functions of `x, y, z, t`, and optional parameters
-background_b_func(x, y, z, t, N²) = N² * z
+## Background fields are functions of `x, y, z, t`, and optional parameters.
+## Here we have one parameter, the buoyancy frequency
+B_func(x, y, z, t, N) = N^2 * z
 
-background_b = BackgroundField(background_b_func, parameters=N^2)
+B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
 # and `background_b` to the `IncompressibleModel` constructor. In addition,
@@ -49,10 +50,11 @@ background_b = BackgroundField(background_b_func, parameters=N^2)
   
 model = IncompressibleModel(
                  grid = grid, 
+          timestepper = :RungeKutta3,
               closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
              coriolis = coriolis,
               tracers = :b,
-    background_fields = (b=background_b,), # `background_fields` is a `NamedTuple`
+    background_fields = (b=B,), # `background_fields` is a `NamedTuple`
              buoyancy = BuoyancyTracer()
 )
 
@@ -90,58 +92,78 @@ A = 1e-9
 a(x, z) = A * exp( -( x^2 + z^2 ) / 2δ^2 )
 nothing # hide
 
-# The internal wave polarization relations follow from the linearized
-# Boussinesq equations. They determine the amplitude of `u`, `v`, `w`,
-# and the buoyancy perturbation `b`.
+# An inertia-gravity wave is a linear solution to the Boussinesq equations.
+# In order that our initial condition excites an inertia-gravity wave, we
+# initialize the velocity and buoyancy perturbation fields to be consistent
+# with the pressure field $p = a \, \cos(kx + mx - ωt)$ at $t=0$.
+# These relations are sometimes called the "polarization
+# relations". At $t=0$, the polarization relations yield
 
-## Solution amplitudes
-U = k * ω   / (ω^2 - f^2)
-V = k * f   / (ω^2 - f^2)
-W = m * ω   / (ω^2 - N^2)
-B = m * N^2 / (ω^2 - N^2)
-
-## Polarization relations
-u₀(x, y, z) = a(x, z) * U * cos(k*x + m*z)
-v₀(x, y, z) = a(x, z) * V * sin(k*x + m*z)
-w₀(x, y, z) = a(x, z) * W * cos(k*x + m*z)
-b₀(x, y, z) = a(x, z) * B * sin(k*x + m*z)
-nothing # hide
-
-# We initialize the velocity and buoyancy fields
-# with our internal wave initial condition.
+u₀(x, y, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k*x + m*z)
+v₀(x, y, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k*x + m*z)
+w₀(x, y, z) = a(x, z) * m * ω   / (ω^2 - N^2) * cos(k*x + m*z)
+b₀(x, y, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k*x + m*z)
 
 set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
+# Recall that the buoyancy `b` is a perturbation, so that the total buoyancy field
+# is $N^2 z + b$.
+
 # ## A wave packet on the loose
 #
-# Finally, we release the packet and watch it go!
+# We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.001 * 2π/ω,
-                        #stop_iteration = 2000, iteration_interval = 20)
-                        stop_iteration = 0, iteration_interval = 20)
+simulation = Simulation(model, Δt = 0.02 * 2π/ω, stop_iteration = 100)
+                        
+# and add an output writer that saves the vertical velocity field every two iterations:
 
-# output...
+using Oceananigans.OutputWriters: JLD2OutputWriter
+
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                          iteration_interval = 2,
+                                                                      prefix = "internal_wave",
+                                                                       force = true)
+
+# With initial conditions set and an output writer at the ready, we run the simulation
+
 run!(simulation)
 
-anim = @animate for i=0:100
-    x, z = xnodes(Cell, model.grid)[:], znodes(Face, model.grid)[:]
-    w = model.velocities.w
+# ## Animating a propagating packet
+#
+# To visualize the solution, we load snapshots of the data and use it to make contour
+# plots of vertical velocity.
 
-    contourf(x, z, w.data[1:Nx, 1, 1:Nx+1]',
-                   title = @sprintf("ωt = %.2f", ω * model.clock.time),
-                  levels = range(-1e-8, stop=1e-8, length=10),
-                   clims = (-1e-8, 1e-8),
-                  xlabel = "x",
-                  ylabel = "z",
-                   xlims = (0, Lx),
-                   ylims = (-Lx, 0),
-               linewidth = 0,
-                   color = :balance,
-                  legend = false,
-             aspectratio = :equal)
+using JLD2, Plots, Printf
 
-    simulation.stop_iteration += 20
-    run!(simulation)
+# We use coordinate arrays appropriate for the vertical velocity field,
+
+x, y, z = nodes(model.velocities.w)
+
+# open the jld2 file with the data,
+
+file = jldopen(simulation.output_writers[:velocities].filepath)
+
+## Extracts a vector of `iterations` at which data was saved.
+iterations = parse.(Int, keys(file["timeseries/t"]))
+
+# and makes an animation with Plots.jl:
+
+anim = @animate for (i, iter) in enumerate(iterations)
+
+    w = file["timeseries/w/$iter"][:, 1, :]
+    t = file["timeseries/t/$iter"]
+
+    contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
+                      levels = range(-1e-8, stop=1e-8, length=10),
+                       clims = (-1e-8, 1e-8),
+                      xlabel = "x",
+                      ylabel = "z",
+                       xlims = (-π, π),
+                       ylims = (-π, π),
+                   linewidth = 0,
+                       color = :balance,
+                      legend = false,
+                 aspectratio = :equal)
 end
 
-mp4(anim, "internal_wave.mp4", fps = 15) # hide
+mp4(anim, "internal_wave.mp4", fps = 8) # hide
