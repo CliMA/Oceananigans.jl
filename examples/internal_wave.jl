@@ -9,7 +9,7 @@
 # First, we pick a resolution and domain size. We use a two-dimensional domain
 # that's periodic in $(x, y, z)$:
 
-using Oceananigans, Oceananigans.Grids
+using Oceananigans
 
 grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
                             topology=(Periodic, Periodic, Periodic))

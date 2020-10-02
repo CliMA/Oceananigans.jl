@@ -53,9 +53,11 @@ pressure anomaly.
                                      hydrostatic_pressure,
                                      clock)
  
-    return ( - div_ũu(i, j, k, grid, advection, velocities, velocities.u)
-             - div_ũu(i, j, k, grid, advection, background_fields.velocities, velocities.u)
-             - div_ũu(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+    return ( - div_Uu(i, j, k, grid, advection, velocities, velocities.u)
+             - div_Uu(i, j, k, grid, advection, background_fields.velocities, velocities.u)
+             - div_Uu(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+             #- U_grad_u(i, j, k, grid, advection, background_fields.velocities, velocities.u)
+             #- U_grad_u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
@@ -114,9 +116,11 @@ pressure anomaly.
                                      hydrostatic_pressure,
                                      clock)
 
-    return ( - div_ũv(i, j, k, grid, advection, velocities, velocities.v)
-             - div_ũv(i, j, k, grid, advection, background_fields.velocities, velocities.v)
-             - div_ũv(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+    return ( - div_Uv(i, j, k, grid, advection, velocities, velocities.v)
+             - div_Uv(i, j, k, grid, advection, background_fields.velocities, velocities.v)
+             - div_Uv(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+            # - U_grad_v(i, j, k, grid, advection, background_fields.velocities, velocities.v)
+            # - U_grad_v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
@@ -170,9 +174,11 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      forcings,
                                      clock)
 
-    return ( - div_ũw(i, j, k, grid, advection, velocities, velocities.w)
-             - div_ũw(i, j, k, grid, advection, background_fields.velocities, velocities.w)
-             - div_ũw(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+    return ( - div_Uw(i, j, k, grid, advection, velocities, velocities.w)
+             - div_Uw(i, j, k, grid, advection, background_fields.velocities, velocities.w)
+             - div_Uw(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+             #- U_grad_w(i, j, k, grid, advection, background_fields.velocities, velocities.w)
+             #- U_grad_w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
@@ -230,9 +236,11 @@ velocity components, tracer fields, and precalculated diffusivities where applic
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]
 
-    return ( - div_uc(i, j, k, grid, advection, velocities, c)
-             - div_uc(i, j, k, grid, advection, background_fields.velocities, c)
-             - div_uc(i, j, k, grid, advection, velocities, background_fields_c)
+    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+             - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)
+             - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
+             #- U_grad_c(i, j, k, grid, advection, background_fields.velocities, c)
+             #- U_grad_c(i, j, k, grid, advection, velocities, background_fields_c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
              + forcing(i, j, k, grid, clock,
                        merge(velocities, tracers, regularize_diffusivities_tuple(diffusivities))))
