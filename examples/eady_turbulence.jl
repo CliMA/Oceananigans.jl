@@ -94,7 +94,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = linear_drag_v)
 using Oceananigans.Utils: day
 
 κ₂z = 1e-6 # Laplacian vertical viscosity and diffusivity, [m² s⁻¹]
-κ₄h = 1e-2/day * grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
+κ₄h = 1e-2 / day * grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -170,7 +170,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
 # every 100 iterations,
 
 simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
-                                                     stop_time = 10day,
+                                                     stop_time = 2day,
                                                       progress = progress)
 
 # and then we spinup the Eady problem!
