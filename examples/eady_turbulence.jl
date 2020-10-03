@@ -16,7 +16,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 64, 16), x=(-5e5, 5e5), y=(-5e5, 5e5), z=(-1e3, 0))
+grid = RegularCartesianGrid(size=(64, 64, 24), x=(-5e5, 5e5), y=(-5e5, 5e5), z=(-4e3, 0))
 
 # # Rotation
 #
@@ -47,12 +47,12 @@ coriolis = FPlane(f=1e-4) # [s⁻¹]
 # We have set the Coriolis parameter $f$ and $L_z$ above, and further
 # choose $α$ and $N$,
 
-background_parameters = ( α = 2.5e-4,       # s⁻¹, geostrophic shear
-                          f = coriolis.f,   # s⁻¹, Coriolis parameter
-                          N = 1e-2,         # s⁻¹, buoyancy frequency
-                         Lz = grid.Lz)      # m, ocean depth
+background_parameters = ( α = 3e-4,      # s⁻¹, geostrophic shear
+                          f = coriolis.f,  # s⁻¹, Coriolis parameter
+                          N = 2e-3,      # s⁻¹, buoyancy frequency
+                         Lz = grid.Lz)     # m, ocean depth
 
-# The resulting Rossby radius of deformation is $R = N L_z / f = 1,000 \rm{m}$.
+# The resulting Rossby radius of deformation is $R = N L_z / f = 25 \rm{km}$.
 #
 # With the parameters in hand, we construct the background fields $U$ and $B$
 
@@ -91,8 +91,10 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = linear_drag_v)
 # To use both of these closures at the same time, we set the keyword argument
 # `closure` a tuple of two closures.
 
-κ₂z = 1e-4             # Laplacian vertical viscosity and diffusivity, [m² s⁻¹]
-κ₄h = 1e-6 * grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
+using Oceananigans.Utils: day
+
+κ₂z = 1e-6 # Laplacian vertical viscosity and diffusivity, [m² s⁻¹]
+κ₄h = 1e-2/day * grid.Δx^4 # Biharmonic horizontal viscosity and diffusivity, [m⁴ s⁻¹]
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -116,25 +118,24 @@ model = IncompressibleModel(
 
 # # Initial conditions
 #
-# For initial conditions we impose a linear stratifificaiton with some
-# random noise.
+# We add a bit of noise to the horizontal velocity components in
+# the initial condition to stimulate the growth of baroclinic instability.
 
 ## A noise function, damped at the top and bottom
 Ξ(z) = rand() * z/grid.Lz * (z/grid.Lz + 1)
 
-## Large amplitude noise to rapidly stimulate instability
-u₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
-v₀(x, y, z) = background_parameters.α * grid.Lz * 1e-1 * Ξ(z)
-w₀(x, y, z) = background_parameters.α * grid.Lz * 1e-4 * Ξ(z)
+u₀(x, y, z) = background_parameters.α * grid.Lz * 5e-1 * Ξ(z)
+v₀(x, y, z) = background_parameters.α * grid.Lz * 5e-1 * Ξ(z)
 
-set!(model, u=u₀, v=v₀, w=w₀)
+set!(model, u=u₀, v=v₀)
 
 # # Simulation set-up
 #
-# We set up a simulation involving a preliminary integration for 10 days.
+# We set up a simulation and run it for 10 days.
 # We then stop the simulation and add a JLD2OutputWriter that saves the vertical
 # velocity, vertical vorticity, and divergence every 2 iterations.
-# We then run for 100 more iterations and plot the 50 frames into an animation.
+# We then continue the run for 100 iterations and plot the resulting 50 frames of
+# saved data in an animation.
 #
 # ## The `TimeStepWizard`
 #
@@ -143,7 +144,7 @@ set!(model, u=u₀, v=v₀, w=w₀)
 
 using Oceananigans.Utils: minute, hour, day
 
-wizard = TimeStepWizard(cfl=0.5, Δt=10minute, max_change=1.1, max_Δt=1day)
+wizard = TimeStepWizard(cfl=0.5, Δt=5minute, max_change=1.1, max_Δt=30minute)
 
 # ## A progress messenger
 #
@@ -261,6 +262,8 @@ anim = @animate for (i, iter) in enumerate(iterations)
     ζlim = 0.5 * maximum(abs, ζ)
     δlim = 0.5 * maximum(abs, δ)
     wlim = 0.5 * maximum(abs, w)
+
+    @info "Max Rossby number at the surface is $(maximum(abs, ζ) / coriolis.f)"
 
     ζlevels = nice_divergent_levels(ζ, ζlim)
     δlevels = nice_divergent_levels(δ, δlim)

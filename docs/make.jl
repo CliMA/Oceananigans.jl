@@ -39,6 +39,7 @@ examples = [
     "ocean_convection_with_plankton.jl",
     "internal_wave.jl",
     "langmuir_turbulence.jl"
+    "eady_turbulence.jl"
 ]
 
 for example in examples
@@ -57,6 +58,7 @@ example_pages = [
     "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
     "Internal wave"                    => "generated/internal_wave.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md"
+    "Eady turbulence"                  => "generated/eady_turbulence.md"
 ]
 
 model_setup_pages = [
