@@ -171,6 +171,8 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100)
     end
 
     # Error tolerance is a bit arbitrary
+    @show relative_error(model.tracers.T, T, model.clock.time)
+
     return relative_error(model.tracers.T, T, model.clock.time) < 1e-4
 end
 
@@ -197,7 +199,7 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
         architecture = arch,
          timestepper = timestepper,
                 grid = RegularCartesianGrid(FT, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat)),
-             closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
+             closure = IsotropicDiffusivity(FT, ν=ν),
              tracers = nothing,
             buoyancy = nothing)
 
@@ -288,7 +290,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1), halo=(2, 2, 2), topology=topology)
+                grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                 model = IncompressibleModel(timestepper = timestepper,
                                                    grid = grid,

@@ -37,6 +37,7 @@ include("topologically_conditional_interpolation.jl")
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
+include("flat_advective_fluxes.jl")
 
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")

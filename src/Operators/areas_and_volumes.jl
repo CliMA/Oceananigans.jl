@@ -31,6 +31,17 @@ using Oceananigans.Grids
 @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
 #####
+##### "Spacings" in Flat directions. Here we dispatch to `one`. This abuse of notation
+##### makes volumes correct, and avoids issues with derivatives such as those involved
+##### in the pressure correction step.
+#####
+
+@inline Δx(i, j, k,  grid::AbstractGrid{FT, Flat})         where FT           = one(FT)
+@inline Δy(i, j, k,  grid::AbstractGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
+@inline ΔzC(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline ΔzF(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+
+#####
 ##### Areas
 #####
 
@@ -48,19 +59,3 @@ using Oceananigans.Grids
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat}) where FT = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat}) where FT = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat, Flat}) where FT = ΔzF(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat, Flat}) where FT = ΔzC(i, j, k, grid)
-
-@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, TX, Flat}) where {FT, TX} = Δx(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, TX, Flat}) where {FT, TX} = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-
-@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat, Flat, Flat}) where FT = 1
-@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat, Flat, Flat}) where FT = 1 
-

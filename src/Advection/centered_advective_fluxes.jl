@@ -9,7 +9,7 @@ const Centered = AbstractCenteredAdvectionScheme
 #####
 ##### Momentum flux operators
 #####
-##### Note the convention "momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
+##### Note the convention "momentum_flux_AB" corresponds to the advection _of_ A _by_ B.
 #####
 
 @inline momentum_flux_uu(i, j, k, grid, scheme::Centered, u)    = Axᵃᵃᶠ(i, j, k, grid) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u) * _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)

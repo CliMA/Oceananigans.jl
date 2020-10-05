@@ -84,6 +84,6 @@ function λk(grid, ::NoFluxBC)
 end
 
 # For Flat dimensions
-λi(grid::AbstractGrid{FT, <:Flat}, ::Nothing) where FT = reshape([zero(FT)], 1, 1, 1)
-λj(grid::AbstractGrid{FT, TX, <:Flat}, ::Nothing) where {FT, TX} = reshape([zero(FT)], 1, 1, 1)
-λk(grid::AbstractGrid{FT, TX, TY, <:Flat}, ::Nothing) where {FT, TX, TY} = reshape([zero(FT)], 1, 1, 1)
+λi(grid::AbstractGrid{FT, Flat, TY, TZ}, ::Nothing) where {FT, TY, TZ} = reshape([zero(FT)], 1, 1, 1)
+λj(grid::AbstractGrid{FT, TX, Flat, TZ}, ::Nothing) where {FT, TX, TZ} = reshape([zero(FT)], 1, 1, 1)
+λk(grid::AbstractGrid{FT, TX, TY, Flat}, ::Nothing) where {FT, TX, TY} = reshape([zero(FT)], 1, 1, 1)
