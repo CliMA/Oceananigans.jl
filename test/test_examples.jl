@@ -88,9 +88,7 @@ example_filepath(example_name, examples_dir="../examples/") =
 
         replace_strings = [
                            ("size=(64, 64, 16)", "size=(1, 1, 1)"),
-                           ("stop_iteration = 1000", "stop_iteration = 1"),
-                           ("stop_iteration += 100", "stop_iteration += 2"),
-                           ("pyplot()", ""),
+                           ("stop_time = 32day", "stop_time = 10minute"),
                           ]
 
         @test run_script(replace_strings, "eady_turbulence", example_filepath("eady_turbulence"))
