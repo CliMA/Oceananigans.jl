@@ -48,3 +48,19 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
+
+@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat}) where FT = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat}) where FT = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
+
+@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat, Flat}) where FT = ΔzF(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat, Flat}) where FT = ΔzC(i, j, k, grid)
+
+@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, TX, Flat}) where {FT, TX} = Δx(i, j, k, grid) * ΔzF(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, TX, Flat}) where {FT, TX} = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
+
+@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+
+@inline Vᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT, Flat, Flat, Flat}) where FT = 1
+@inline Vᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT, Flat, Flat, Flat}) where FT = 1 
+
