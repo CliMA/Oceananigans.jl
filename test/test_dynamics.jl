@@ -11,8 +11,10 @@ ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt,
 
 function test_diffusion_simple(fieldname, timestepper)
 
+    grid = RegularCartesianGrid(size=(1, 1, 16), extent=1, topology=(Flat, Flat, Bounded))
+    
     model = IncompressibleModel(timestepper = timestepper,    
-                                       grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                       grid = grid,
                                     closure = IsotropicDiffusivity(ν=1, κ=1),
                                    coriolis = nothing,
                                     tracers = :c,
@@ -69,7 +71,7 @@ end
 function test_diffusion_cosine(fieldname, timestepper)
     Nz, Lz, κ, m = 128, π/2, 1, 2
 
-    grid = RegularCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+    grid = RegularCartesianGrid(size=Nz, z=(0, Lz), topology=(Flat, Flat, Bounded))
 
     model = IncompressibleModel(timestepper = timestepper,
                                        grid = grid,
@@ -131,7 +133,7 @@ function internal_wave_test(timestepper; N=128, Nt=10)
     b₀(x, y, z) = b(x, y, z, 0)
 
     model = IncompressibleModel(timestepper = timestepper,    
-                                       grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
+                                       grid = RegularCartesianGrid(size=(N, N), extent=(L, L), topology=(Periodic, Flat, Periodic)),
                                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
@@ -158,7 +160,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100)
     v₀(x, y, z) = V
     T₀(x, y, z) = T(x, y, z, 0)
 
-    grid = RegularCartesianGrid(size=(N, N, 2), extent=(L, L, L))
+    grid = RegularCartesianGrid(size=(N, N), extent=(L, L), topology=(Periodic, Periodic, Flat))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure)
 
@@ -179,8 +181,8 @@ See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Gr
      by Hesthaven & Warburton.
 """
 function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
-    Nx, Ny, Nz = N, N, 2
-    Lx, Ly, Lz = 1, 1, 1
+    Nx, Ny = N, N
+    Lx, Ly = 1, 1
     ν = 1
 
     # Choose a very small time step as we are diffusion-limited in this test: Δt ≤ Δx² / 2ν
@@ -194,7 +196,7 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
     model = IncompressibleModel(
         architecture = arch,
          timestepper = timestepper,
-                grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+                grid = RegularCartesianGrid(FT, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat)),
              closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
              tracers = nothing,
             buoyancy = nothing)
