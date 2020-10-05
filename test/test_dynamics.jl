@@ -11,7 +11,7 @@ ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt,
 
 function test_diffusion_simple(fieldname, timestepper)
 
-    grid = RegularCartesianGrid(size=(1, 1, 16), extent=1, topology=(Flat, Flat, Bounded))
+    grid = RegularCartesianGrid(size=16, extent=1, topology=(Flat, Flat, Bounded))
     
     model = IncompressibleModel(timestepper = timestepper,    
                                        grid = grid,
