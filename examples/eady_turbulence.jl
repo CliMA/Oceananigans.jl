@@ -157,7 +157,7 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 using Oceananigans.Advection: WENO5
 
 model = IncompressibleModel(
-           architecture = GPU(),
+           architecture = CPU(),
                    grid = grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,
