@@ -157,7 +157,7 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 using Oceananigans.Advection: WENO5
 
 model = IncompressibleModel(
-           architecture = CPU(),        
+           architecture = GPU(),
                    grid = grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,
@@ -189,14 +189,16 @@ bᵢ(x, y, z) = B̃ * Ξ(z)
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
 # We subtract off any residual mean velocity to avoid exciting domain-scale
-# inertial oscillations. The `parent` wrapping `u` and `v` ensures this operation
-# is efficient on the GPU (set `architecture = GPU()` in `IncompressibleModel` constructor
-# to run this problem on the GPU if one is available).
+# inertial oscillations. We use a `sum` over the entire `parent` arrays or data
+# to ensure this operation is efficient on the GPU (set `architecture = GPU()`
+# in `IncompressibleModel` constructor to run this problem on the GPU if one
+# is available).
 
-using Statistics: mean
+Ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
+V̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
-parent(model.velocities.u) .-= mean(interior(model.velocities.u))
-parent(model.velocities.v) .-= mean(interior(model.velocities.v))
+model.velocities.u.data.parent .-= Ū
+model.velocities.v.data.parent .-= V̄
 
 # # Simulation set-up
 #
@@ -213,11 +215,13 @@ parent(model.velocities.v) .-= mean(interior(model.velocities.v))
 
 using Oceananigans.Utils: minute
 
-## Use the magnitude of the background velocity at the surface to place an
-## absolute limit on time-step size
+## Calculate absolute limit on time-step using diffusivities and 
+## background velocity.
 Ū = background_parameters.α * grid.Lz
 
-wizard = TimeStepWizard(cfl=1.0, Δt=grid.Δx/Ū, max_change=1.1, max_Δt=grid.Δx/Ū)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z)
+
+wizard = TimeStepWizard(cfl=1.0, Δt=0.1*max_Δt, max_change=1.1, max_Δt=max_Δt)
 
 # ## A progress messenger
 #
