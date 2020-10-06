@@ -295,7 +295,7 @@ using JLD2, Plots, Printf, Oceananigans.Grids
 
 using Oceananigans.Grids: x_domain, y_domain, z_domain # for nice domain limits
 
-pyplot() # pyplot backend is a bit nicer than GR
+##pyplot() # uncomment to use pyplot backend, which is a bit nicer than GR
 
 ## Coordinate arrays
 xζ, yζ, zζ = nodes(ζ)
