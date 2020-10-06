@@ -38,7 +38,7 @@ examples = [
     "ocean_wind_mixing_and_convection.jl",
     "ocean_convection_with_plankton.jl",
     "internal_wave.jl",
-    "langmuir_turbulence.jl"
+    "langmuir_turbulence.jl",
     "eady_turbulence.jl"
 ]
 
