@@ -67,7 +67,7 @@ end
 
 Returns a view over parent(field) associated with slice.i, slice.j, slice.k.
 """
-function slice_parent(slicer, field)
+function slice_parent(slicer, field::AbstractField)
 
     # Unpack
     Nx, Ny, Nz = field.grid.Nx, field.grid.Ny, field.grid.Nz
@@ -84,7 +84,7 @@ function slice_parent(slicer, field)
     y_parent_range = parent_slice_indices(Ly, Ty, Ny, Hy, y_data_range, slicer.with_halos)
     z_parent_range = parent_slice_indices(Lz, Tz, Nz, Hz, z_data_range, slicer.with_halos)
 
-    return view(parent(field), x_parent_range, y_parent_range, z_parent_range)
+    return field.data.parent[x_parent_range, y_parent_range, z_parent_range]
 end
 
 slice_parent(::Nothing, field) = parent(field)
