@@ -213,11 +213,11 @@ parent(model.velocities.v) .-= mean(interior(model.velocities.v))
 
 using Oceananigans.Utils: minute
 
+## Use the magnitude of the background velocity at the surface to place an
+## absolute limit on time-step size
 Ū = background_parameters.α * grid.Lz
 
-wizard = TimeStepWizard(cfl=1.0, Δt=10minute, max_change=1.1, max_Δt=0.5 * grid.Δx / Ū)
-
-@show wizard
+wizard = TimeStepWizard(cfl=1.0, Δt=grid.Δx/Ū, max_change=1.1, max_Δt=grid.Δx/Ū)
 
 # ## A progress messenger
 #
@@ -268,7 +268,7 @@ u, v, w = model.velocities # unpack velocity `Field`s
 # `simulation`.
 
 using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.Utils: day
+using Oceananigans.Utils: hour
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
                                                       time_interval = 2hour,
@@ -305,12 +305,12 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
-function nice_divergent_levels(c, clim)
+function nice_divergent_levels(c, clim, nlevels=30)
     levels = range(-clim, stop=clim, length=10)
 
     cmax = maximum(abs, c)
     if clim < cmax # add levels on either end
-        levels = vcat([-cmax], range(-clim, stop=clim, length=10), [cmax])
+        levels = vcat([-cmax], range(-clim, stop=clim, length=nlevels), [cmax])
     end
 
     return levels
@@ -395,4 +395,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-mp4(anim, "eady_turbulence.mp4", fps = 8) # hide
+gif(anim, "eady_turbulence.gif", fps = 8) # hide
