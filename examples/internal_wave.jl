@@ -133,7 +133,7 @@ run!(simulation)
 # To visualize the solution, we load snapshots of the data and use it to make contour
 # plots of vertical velocity.
 
-using JLD2, Plots, Printf
+using JLD2, Plots, Printf, Oceananigans.Grids
 
 # We use coordinate arrays appropriate for the vertical velocity field,
 
