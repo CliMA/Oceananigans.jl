@@ -4,77 +4,76 @@ env:
 
 steps:
   - label: ":rabbit2: unit tests"
+    env:
+      TEST_GROUP: "unit"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
-    env:
-      TEST_GROUP: "unit"
 
 
   - label: ":dolphin: model tests"
-    commands:
-      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: tartarus
     env:
       TEST_GROUP: "model"
+    commands:
+      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
 
   - label: ":whale: simulation tests"
-    commands:
-      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: tartarus
     env:
       TEST_GROUP: "simulation"
+    commands:
+      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
  
   - label: ":camel: regression tests"
-    commands:
-      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: tartarus
     env:
       TEST_GROUP: "regression"
-
-  - label: ":gorilla: scripts"
-
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+  - label: ":gorilla: scripts"
     env:
       TEST_GROUP: "scripts"
+    commands:
+      - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
 
   # - label: ":sauropod: convergence tests"
+  #   env:
+  #     TEST_GROUP: "convergence"
   #   commands:
   #     - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-  #     - "eval "$(bash install_julia.sh $JULIA_VERSION)"
+  #     - "eval \$(bash install_julia.sh $JULIA_VERSION)"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
   #     queue: tartarus
-  #   env:
-  #     TEST_GROUP: "convergence"
 
   - label: ":owl: documentation"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval "$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval \$(bash install_julia.sh $JULIA_VERSION)"
       - "julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
       - "julia --color=yes --project=docs/ docs/make.jl"
     agents:
