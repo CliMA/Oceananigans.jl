@@ -16,7 +16,7 @@ on index `i` out of `N`.
 Undo the permutation [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
 on index `i` out of `N`.
 """
-@inline _unpermute_index(i, N) = i <= N/2 ? 2i-1 : 2(N-i+1)
+@inline _unpermute_index(i, N) = ifelse(i <= N/2, 2i-1, 2(N-i+1))
 
 @inline   permute_index(::TriplyPeriodic, ::GPU, i, j, k, Nx, Ny, Nz) = i, j, k
 @inline unpermute_index(::TriplyPeriodic, ::GPU, i, j, k, Nx, Ny, Nz) = i, j, k
