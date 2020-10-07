@@ -5,6 +5,8 @@ env:
 
 steps:
   - label: "🏕️ initialize environment"
+    env:
+      TEST_GROUP: "init"
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
       - "wget -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
@@ -14,6 +16,7 @@ steps:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
       # force the initialization of the CUDA runtime as it is lazily loaded by default
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
