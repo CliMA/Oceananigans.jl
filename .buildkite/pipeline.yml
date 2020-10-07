@@ -6,11 +6,15 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
+      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      # force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
 
   - wait
 
-  - label: ":rabbit2: unit tests"
+  - label: "🐇 unit tests"
     env:
       TEST_GROUP: "unit"
     commands:
@@ -21,7 +25,7 @@ steps:
       queue: tartarus
 
 
-  - label: ":dolphin: model tests"
+  - label: "🐬 model tests"
     env:
       TEST_GROUP: "model"
     commands:
@@ -31,7 +35,7 @@ steps:
     agents:
       queue: tartarus
 
-  - label: ":whale: simulation tests"
+  - label: "🐳 simulation tests"
     env:
       TEST_GROUP: "simulation"
     commands:
@@ -41,7 +45,7 @@ steps:
     agents:
       queue: tartarus
  
-  - label: ":camel: regression tests"
+  - label: "🐫 regression tests"
     env:
       TEST_GROUP: "regression"
     commands:
@@ -51,7 +55,7 @@ steps:
     agents:
       queue: tartarus
 
-  - label: ":gorilla: scripts"
+  - label: "🦍 scripts"
     env:
       TEST_GROUP: "scripts"
     commands:
@@ -61,7 +65,7 @@ steps:
     agents:
       queue: tartarus
 
-  # - label: ":sauropod: convergence tests"
+  # - label: "🦕 convergence tests"
   #   env:
   #     TEST_GROUP: "convergence"
   #   commands:
@@ -72,7 +76,7 @@ steps:
   #   agents:
   #     queue: tartarus
 
-  - label: ":owl: documentation"
+  - label: "🦉 documentation"
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
