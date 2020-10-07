@@ -1,5 +1,5 @@
 env:
-  JULIA_DEPOT_PATH: "$HOME/.julia"
+  JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   CUDA_VISIBLE_DEVICES: 3
   JULIA_CUDA_MEMORY_LIMIT: 2147483648  # 2 GiB
 
@@ -77,3 +77,10 @@ steps:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: tartarus
+
+  - wait: ~
+    continue_on_failure: true
+
+  - label: "🧹 clean up environment"
+    commands:
+      - "rm -rf $JULIA_DEPOT_PATH"
