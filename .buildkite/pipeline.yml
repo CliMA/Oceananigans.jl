@@ -1,5 +1,5 @@
 env:
-  JULIA_DEPOT_PATH: "$PWD/.julia"
+  JULIA_DEPOT_PATH: "$HOME/.julia"
   CUDA_VISIBLE_DEVICES: 3
 
 steps:
@@ -23,7 +23,6 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
@@ -35,7 +34,6 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
@@ -46,7 +44,6 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
@@ -57,7 +54,6 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
@@ -68,7 +64,6 @@ steps:
     commands:
       - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
       - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-      - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
@@ -79,7 +74,6 @@ steps:
   #   commands:
   #     - "wget https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
   #     - "tar xf julia-1.4.2-linux-x86_64.tar.gz"
-  #     - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
   #     - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
   #     queue: tartarus
