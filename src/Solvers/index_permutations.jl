@@ -8,7 +8,7 @@
 Perform the permutation [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
 on index `i` out of `N`.
 """
-@inline _permute_index(i, N)::Int = isodd(i) ? floor(i/2) + 1 : N - floor((i-1)/2)
+@inline _permute_index(i, N)::Int = ifelse(isodd(i), floor(i/2) + 1, N - floor((i-1)/2))
 
 """
     _permute_index(i, N)
