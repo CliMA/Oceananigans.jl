@@ -18,15 +18,20 @@ export
 
     CenteredSecondOrder,
     UpwindBiasedThirdOrder,
+    UpwindBiasedFifthOrder,
     CenteredFourthOrder,
     WENO, WENO5
 
 using Oceananigans.Grids
 using Oceananigans.Operators
 
+import Oceananigans.Utils: required_halo_size
+
 abstract type AbstractAdvectionScheme end
 abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
 abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
+
+required_halo_size(scheme::AbstractAdvectionScheme) = boundary_buffer(scheme) + 1
 
 include("topologically_conditional_interpolation.jl")
 
@@ -36,6 +41,7 @@ include("upwind_biased_advective_fluxes.jl")
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
+include("upwind_biased_fifth_order.jl")
 
 include("weno_reconstruction.jl")
 include("weno_nth_order.jl")

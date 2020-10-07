@@ -1,4 +1,4 @@
-using Oceananigans.Grids: unpack_grid
+using Oceananigans.Grids: unpack_grid, AbstractGrid
 using Oceananigans.BoundaryConditions: PBC, ZFBC
 
 const PeriodicBC = PBC
@@ -82,3 +82,8 @@ function λk(grid, ::NoFluxBC)
     ks = reshape(1:Nz, 1, 1, Nz)
     return @. (2sin((ks - 1) * π / 2Nz) / (Lz / Nz))^2
 end
+
+# For Flat dimensions
+λi(grid::AbstractGrid{FT, <:Flat}, ::Nothing) where FT = reshape([zero(FT)], 1, 1, 1)
+λj(grid::AbstractGrid{FT, TX, <:Flat}, ::Nothing) where {FT, TX} = reshape([zero(FT)], 1, 1, 1)
+λk(grid::AbstractGrid{FT, TX, TY, <:Flat}, ::Nothing) where {FT, TX, TY} = reshape([zero(FT)], 1, 1, 1)

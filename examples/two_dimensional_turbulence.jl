@@ -1,34 +1,27 @@
 # # Two dimensional turbulence example
 #
-# In this example, we initialize a random velocity field and observe its viscous,
-# turbulent decay in a two-dimensional domain. This example demonstrates:
+# In this example, we initialize a random velocity field and observe its turbulent decay 
+# in a two-dimensional domain. This example demonstrates:
 #
 #   * How to run a model with no buoyancy equation or tracers;
 #   * How to create user-defined fields
 #   * How to use differentiation functions
+#   * How to save a computed field
 
 # ## Model setup
 
-# For this example, we need `Plots` for plotting and `Statistics` for setting up
-# a random initial condition with zero mean velocity.
+# We instantiate the model with a simple isotropic diffusivity. We also use a 4-th order 
+# advection scheme and Runge-Kutta 3rd order time-stepping scheme.
 
-using Plots, Statistics
-
-# In addition to importing plotting and statistics packages, we import
-# `Oceananigans`, its `AbstractOperations` and `Grids` submodules,
-# and the `Face` and `Cell` types to will aid in the calculation
-# and visualization of voriticty.
-
-using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
-
-# `Face` and `Cell` represent "locations" on the staggered grid. We instantiate the
-# model with a simple isotropic diffusivity.
+using Oceananigans, Oceananigans.Advection
 
 model = IncompressibleModel(
-        grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
+        grid = RegularCartesianGrid(size=(128, 128, 1), halo=(2, 2, 2), extent=(2π, 2π, 2π)),
+ timestepper = :RungeKutta3, 
+   advection = CenteredFourthOrder(),
     buoyancy = nothing,
      tracers = nothing,
-     closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3)
+     closure = IsotropicDiffusivity(ν=1e-4)
 )
 nothing # hide
 
@@ -37,6 +30,8 @@ nothing # hide
 # Our initial condition randomizes `u` and `v`. We also ensure that both have
 # zero mean for purely aesthetic reasons.
 
+using Statistics
+
 u₀ = rand(size(model.grid)...)
 u₀ .-= mean(u₀)
 
@@ -44,43 +39,69 @@ set!(model, u=u₀, v=u₀)
 
 # ## Calculating vorticity
 
-# Next we create an object called an `Operation` that represents a vorticity calculation.
-# We'll use this object to calculate vorticity on-line as the simulation progresses.
+using Oceananigans.Fields, Oceananigans.AbstractOperations
+
+# Next we create an object called an `ComputedField` that calculates vorticity. We'll use
+# this object to calculate vorticity on-line and output it as the simulation progresses.
 
 u, v, w = model.velocities
+
+ω = ComputedField(∂x(v) - ∂y(u))
 nothing # hide
 
-# Create an object that represents the 'operation' required to compute vorticity.
-vorticity_operation = ∂x(v) - ∂y(u)
+# Now we construct a simulation.
+
+simulation = Simulation(model, Δt=0.1, stop_iteration=2000)
+
+# ## Output
+#
+# We set up an output writer for the simulation that saves the vorticity every 20 iterations.
+
+using Oceananigans.OutputWriters
+
+simulation.output_writers[:fields] =
+    JLD2OutputWriter(model, (ω = ω,), iteration_interval = 20,
+                     prefix = "2d_turbulence_vorticity", force = true)
+
+# ## Running the simulation
+#
+# Finally, we run the simulation.
+
+run!(simulation)
+
+# # Visualizing the results
+#
+# We load the output and make a movie.
+
+using JLD2
+
+file = jldopen(simulation.output_writers[:fields].filepath)
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
 nothing # hide
 
-# The instance `vorticity_operation` is a binary subtraction between two derivative operations
-# acting on `OffsetArrays` (the underyling representation of `u`, and `v`). In order to use
-# `vorticity_operation` we create a field `ω` to store the result of the operation, and a
-# `Computation` object for coordinate the computation of vorticity and storage in `ω`:
+# Construct the $x$, $y$ grid for plotting purposes,
 
-ω = Field(Face, Face, Cell, model.architecture, model.grid)
+using Oceananigans.Grids
 
-vorticity_computation = Computation(vorticity_operation, ω)
+x, y = xnodes(ω)[:], ynodes(ω)[:]
 nothing # hide
 
-# We ask for computation of vorticity by writing `compute!(vorticity_computation)`
-# as shown below.
+# and animate the vorticity.
 
-# ## Visualizing the simulation
+using Plots
 
-# Finally, we run the model and animate the vorticity field.
-simulation = Simulation(model, Δt=0.1, stop_iteration=0)
+anim = @animate for iteration in iterations
+    
+    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
 
-anim = @animate for i=1:100
-    simulation.stop_iteration += 10
-    run!(simulation)
-
-    compute!(vorticity_computation)
-
-    x, y = xnodes(ω)[:], ynodes(ω)[:]
-    heatmap(x, y, interior(ω)[:, :, 1]', xlabel="x", ylabel="y",
-            color=:balance, clims=(-0.1, 0.1))
+    heatmap(x, y, ω_snapshot',
+            xlabel="x", ylabel="y",
+            aspectratio=1,
+            color=:balance,
+            clims=(-0.2, 0.2),
+            xlims=(0, model.grid.Lx),
+            ylims=(0, model.grid.Ly))
 end
 
 mp4(anim, "2d_turbulence_vorticity.mp4", fps = 15) # hide

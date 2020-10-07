@@ -11,13 +11,13 @@ function precomputations!(diffusivities, pressures, velocities, tracers, model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
-                       model.clock, state(model))
+                       model.clock, all_model_fields(model))
 
     # Calculate diffusivities
     calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, velocities, tracers)
 
-    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, state(model))
+    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, all_model_fields(model))
 
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
@@ -58,7 +58,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ, model.architecture, model.velocities,
-                                               model.tracers, model.clock, state(model))
+                                               model.tracers, model.clock, all_model_fields(model))
 
     return nothing
 end
@@ -70,7 +70,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 """
 function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, velocities, model)
 
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, state(model))
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, all_model_fields(model))
 
     solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver, model.architecture, model.grid, Δt, velocities)
 

@@ -47,7 +47,7 @@ end
 
 function regular_cartesian_correct_coordinate_lengths(FT)
     grid = RegularCartesianGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
-                                topology=(Periodic, Bounded, Flat))
+                                topology=(Periodic, Bounded, Bounded))
 
     return (
             length(grid.xC) == 4 &&
@@ -55,7 +55,7 @@ function regular_cartesian_correct_coordinate_lengths(FT)
             length(grid.zC) == 6 &&
             length(grid.xF) == 4 &&
             length(grid.yF) == 6 &&
-            length(grid.zF) == 6
+            length(grid.zF) == 7
            )
 end
 
@@ -82,8 +82,8 @@ function regular_cartesian_correct_end_faces(FT)
     N, L = 4, 2.0
     Δ = L / N
     grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
-                                topology=(Periodic, Bounded, Flat))
-    return grid.xF[end] == L && grid.yF[end] == L + Δ && grid.zF[end] == L
+                                topology=(Periodic, Bounded, Bounded))
+    return grid.xF[end] == L && grid.yF[end] == L + Δ && grid.zF[end] == L + Δ
 end
 
 function regular_cartesian_ranges_have_correct_length(FT)
@@ -172,6 +172,22 @@ function vertically_stretched_grid_properties_are_same_type(FT)
            all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
+function flat_size_regular_cartesian_grid(FT; topology, size, extent)
+    grid = RegularCartesianGrid(FT; size=size, topology=topology, extent=extent)
+    return grid.Nx, grid.Ny, grid.Nz
+end
+
+function flat_halo_regular_cartesian_grid(FT; topology, size, halo, extent)
+    grid = RegularCartesianGrid(FT; size=size, halo=halo, topology=topology, extent=extent)
+    return grid.Hx, grid.Hy, grid.Hz
+end
+
+function flat_extent_regular_cartesian_grid(FT; topology, size, extent)
+    grid = RegularCartesianGrid(FT; size=size, topology=topology, extent=extent)
+    return grid.Lx, grid.Ly, grid.Lz
+end
+
+
 #####
 ##### Test the tests
 #####
@@ -242,6 +258,62 @@ end
                 @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
 
                 @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
+
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
+
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
+                
+                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+            end
+        end
+
+        @testset "Grids with flat dimensions" begin
+            @info "    Testing construction of grids with Flat dimensions..."
+
+            for FT in float_types
+                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+
+                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+
+                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
+                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
+
+                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
+
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
+
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+
+                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
+
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (0, 1, 1)
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 0, 1)
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 0)
+
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 0, 0)
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) == (0, 1, 0)
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Flat, Periodic), size=2, extent=1) == (0, 0, 1)
+
+                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) == (0, 0, 0)
             end
         end
 

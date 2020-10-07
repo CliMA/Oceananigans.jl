@@ -3,7 +3,6 @@ module ForcedFlowFreeSlip
 using Printf
 
 using Oceananigans
-using Oceananigans.Forcing
 using Oceananigans.BoundaryConditions
 using Oceananigans.OutputWriters
 using Oceananigans.Fields
@@ -47,8 +46,8 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     buoyancy = nothing,
                                      tracers = nothing,
                                      closure = IsotropicDiffusivity(ν=1),
-                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, z, t)),
-                                                            w = SimpleForcing((x, y, z, t) -> Fᵛ(x, z, t)))
+                                     forcing = (u = (x, y, z, t) -> Fᵘ(x, z, t),
+                                                w = (x, y, z, t) -> Fᵛ(x, z, t))
                                 )
 
     set!(model, u = (x, y, z) -> u(x, z, 0),
@@ -87,8 +86,8 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     buoyancy = nothing,
                                      tracers = nothing,
                                      closure = IsotropicDiffusivity(ν=1),
-                                     forcing = ModelForcing(u = SimpleForcing((x, y, z, t) -> Fᵘ(x, y, t)),
-                                                            v = SimpleForcing((x, y, z, t) -> Fᵛ(x, y, t)))
+                                     forcing = (u = (x, y, z, t) -> Fᵘ(x, y, t),
+                                                v = (x, y, z, t) -> Fᵛ(x, y, t))
                                 )
 
     set!(model, u = (x, y, z) -> u(x, y, 0),

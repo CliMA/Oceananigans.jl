@@ -9,6 +9,8 @@ export
 
 import Base: size, length, eltype, show
 
+import Oceananigans: short_show
+
 using Oceananigans
 using Oceananigans.Architectures
 
@@ -79,6 +81,7 @@ topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
 
 include("grid_utils.jl")
+include("input_validation.jl")
 include("regular_cartesian_grid.jl")
 include("vertically_stretched_cartesian_grid.jl")
 

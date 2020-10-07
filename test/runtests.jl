@@ -20,7 +20,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
 using Oceananigans.Buoyancy
-using Oceananigans.Forcing
+using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models
 using Oceananigans.Simulations
@@ -69,6 +69,8 @@ closures = (
 #####
 ##### Run tests!
 #####
+
+CUDA.allowscalar(true)
 
 include("runtests_utils.jl")
 

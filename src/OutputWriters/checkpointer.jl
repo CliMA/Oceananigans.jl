@@ -1,3 +1,5 @@
+using Oceananigans.Fields: offset_data
+
 """
     Checkpointer{I, T, P} <: AbstractOutputWriter
 
@@ -102,7 +104,7 @@ end
 
 function restore_field(file, address, arch, grid, loc, kwargs)
     field_address = file[address * "/location"]
-    data = OffsetArray(convert_to_arch(arch, file[address * "/data"]), grid, loc)
+    data = offset_data(convert_to_arch(arch, file[address * "/data"]), grid, loc)
 
     # Extract field name from address. We use 2:end so "tracers/T "gets extracted
     # as :T while "timestepper/Gⁿ/T" gets extracted as :Gⁿ/T (we don't want to
@@ -149,17 +151,19 @@ function restore_from_checkpoint(filepath; kwargs...)
     grid = file["grid"]
 
     # Restore velocity fields
-    kwargs[:velocities] =
-        VelocityFields(arch, grid, u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
-                                   v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
-                                   w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
+    kwargs[:velocities] = VelocityFields(arch, grid, 
+                                         u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
+                                         v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
+                                         w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
+
     filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 
     # Restore tracer fields
-    tracer_names = Tuple(Symbol.(keys(file["tracers"])))
-    tracer_fields = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location, kwargs) for c in tracer_names)
+    tracer_names         = Tuple(Symbol.(keys(file["tracers"])))
+    tracer_fields        = Tuple(restore_field(file, "tracers/$c", arch, grid, c_location, kwargs) for c in tracer_names)
     tracer_fields_kwargs = NamedTuple{tracer_names}(tracer_fields)
-    kwargs[:tracers] = TracerFields(arch, grid, tracer_names; tracer_fields_kwargs...)
+
+    kwargs[:tracers] = TracerFields(tracer_names, arch, grid; tracer_fields_kwargs...)
 
     filter!(p -> p ≠ :tracers, cps) # pop :tracers from checkpointed properties
 
@@ -183,7 +187,9 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     # Restore the remaining checkpointed properties
     for p in cps
-        kwargs[p] = file["$p"]
+        if !haskey(kwargs, p)
+            kwargs[p] = file["$p"]
+        end
     end
 
     close(file)

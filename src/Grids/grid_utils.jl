@@ -79,12 +79,12 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
 # Grid domains
-@inline domain(ξ, topo) = ξ[1], ξ[end]
-@inline domain(ξ, ::Type{Bounded}) = ξ[1], ξ[end-1]
+@inline domain(topo, N, ξ) = ξ[1], ξ[N+1]
+@inline domain(::Type{Flat}, N, ξ) = ξ[1], ξ[1]
 
-@inline x_domain(grid) = domain(grid.xF, topology(grid, 1))
-@inline y_domain(grid) = domain(grid.yF, topology(grid, 2))
-@inline z_domain(grid) = domain(grid.zF, topology(grid, 3))
+@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xF)
+@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)
+@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zF)
 
 #####
 ##### << Indexing >>
@@ -283,86 +283,20 @@ end
 
 unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
-#####
-##### Input validation
-#####
+flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
+flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 
-function validate_topology(topology)
-    for T in topology
-        if !isa(T(), AbstractTopology)
-            e = "$T is not a valid topology! " *
-                "Valid topologies are: Periodic, Bounded, Flat."
-            throw(ArgumentError(e))
-        end
+"""
+    pop_flat_elements(tup, topo)
+
+Returns a new tuple that contains the elements of `tup`,
+except for those elements corresponding to the `Flat` directions
+in `topo`.
+"""
+function pop_flat_elements(tup, topo)
+    new_tup = []
+    for i = 1:3
+        topo[i] != Flat && push!(new_tup, tup[i])
     end
-
-    return topology
-end
-
-"""Validate that an argument tuple is the right length and has elements of type `argtype`."""
-function validate_tupled_argument(arg, argtype, argname)
-    length(arg) == 3        || throw(ArgumentError("length($argname) must be 3."))
-    all(isa.(arg, argtype)) || throw(ArgumentError("$argname=$arg must contain $argtype s."))
-    all(arg .> 0)           || throw(ArgumentError("Elements of $argname=$arg must be > 0!"))
-    return nothing
-end
-
-coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
-
-function validate_dimension_specification(i, c)
-    name = coordinate_name(i)
-    length(c) == 2       || throw(ArgumentError("$name length($c) must be 2."))
-    all(isa.(c, Number)) || throw(ArgumentError("$name=$c should contain numbers."))
-    c[2] >= c[1]         || throw(ArgumentError("$name=$c should be an increasing interval."))
-    return nothing
-end
-
-function validate_regular_grid_size_and_extent(FT, size, extent, halo, x, y, z)
-    validate_tupled_argument(size, Integer, "size")
-    validate_tupled_argument(halo, Integer, "halo")
-
-    # Find domain endpoints or domain extent, depending on user input:
-    if !isnothing(extent) # the user has specified an extent!
-
-        (!isnothing(x) || !isnothing(y) || !isnothing(z)) &&
-            throw(ArgumentError("Cannot specify both length and x, y, z keyword arguments."))
-
-        validate_tupled_argument(extent, Number, "extent")
-
-        Lx, Ly, Lz = extent
-
-        # An "oceanic" default domain:
-        x = (  0, Lx)
-        y = (  0, Ly)
-        z = (-Lz,  0)
-
-    else # isnothing(extent) === true implies that user has not specified a length
-
-        (isnothing(x) || isnothing(y) || isnothing(z)) &&
-            throw(ArgumentError("Must supply length or x, y, z keyword arguments."))
-
-        for (i, c) in enumerate((x, y, z))
-            validate_dimension_specification(i, c)
-        end
-
-        Lx = x[2] - x[1]
-        Ly = y[2] - y[1]
-        Lz = z[2] - z[1]
-    end
-
-    return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
-end
-
-function validate_vertically_stretched_grid_size_and_xy(FT, size, halo, x, y)
-    validate_tupled_argument(size, Integer, "size")
-    validate_tupled_argument(halo, Integer, "halo")
-
-    for (i, c) in enumerate((x, y))
-            validate_dimension_specification(i, c)
-        end
-
-        Lx = x[2] - x[1]
-        Ly = y[2] - y[1]
-
-    return FT(Lx), FT(Ly), FT.(x), FT.(y)
+    return Tuple(new_tup)
 end

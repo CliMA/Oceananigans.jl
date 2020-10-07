@@ -1,0 +1,65 @@
+env:
+  JULIA_PATH: "/home/alir/julia-1.4.2/bin/julia"
+  CUDA_VISIBLE_DEVICES: 3
+
+steps:
+  - label: ":rabbit2: unit tests"
+    commands:
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "unit"
+
+  - label: ":dolphin: model tests"
+    commands:
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "model"
+
+  - label: ":whale: simulation tests"
+    commands:
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "simulation"
+ 
+  - label: ":camel: regression tests"
+    commands:
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "regression"
+
+  - label: ":gorilla: scripts"
+    commands:
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: tartarus
+    env:
+      TEST_GROUP: "scripts"
+
+# - label: ":sauropod: convergence tests"
+#   commands:
+#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
+#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+#   agents:
+#     queue: tartarus
+#   env:
+#     TEST_GROUP: "convergence"
+
+  - label: ":owl: documentation"
+    commands:
+      - "$JULIA_PATH --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$JULIA_PATH --color=yes --project=docs/ docs/make.jl"
+    agents:
+      queue: tartarus

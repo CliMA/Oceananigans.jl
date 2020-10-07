@@ -1,3 +1,14 @@
+using Oceananigans.Grids: topological_tuple_length
+
+function time_stepping_works_with_flat_dimensions(arch, topology)
+    size = Tuple(1 for i = 1:topological_tuple_length(topology...))
+    extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
+    grid = RegularCartesianGrid(size=size, extent=extent, topology=topology)
+    model = IncompressibleModel(grid=grid, architecture=arch)
+    time_step!(model, 1, euler=true)
+    return true # Test that no errors/crashes happen when time stepping.
+end
+
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
@@ -51,7 +62,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=ModelForcing(T=add_ones))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -161,7 +172,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), WENO5())
+advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
@@ -183,6 +194,20 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+        end
+    end
+
+   @testset "Flat dimensions" begin
+        for arch in archs
+            for topology in ((Flat, Periodic, Periodic),
+                             (Periodic, Flat, Periodic),
+                             (Periodic, Periodic, Flat),
+                             (Flat, Flat, Bounded))
+
+                TX, TY, TZ = topology
+                @info "  Testing that time stepping works with flat dimensions [$(typeof(arch)), $TX, $TY, $TZ]..."
+                @test time_stepping_works_with_flat_dimensions(arch, topology)
+            end
         end
     end
 

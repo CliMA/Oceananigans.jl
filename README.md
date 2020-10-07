@@ -25,8 +25,8 @@
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
   </a>
-  <a href="https://clima.github.io/OceananigansDocumentation/latest">
-    <img alt="Latest documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
+  <a href="https://clima.github.io/OceananigansDocumentation/dev">
+    <img alt="Development documentation" src="https://img.shields.io/badge/docs-dev-blue.svg?style=flat-square">
   </a>
 </p>
 
