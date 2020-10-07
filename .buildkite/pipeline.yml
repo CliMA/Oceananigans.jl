@@ -11,6 +11,8 @@ steps:
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
       # force the initialization of the CUDA runtime as it is lazily loaded by default
       - "./julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+    agents:
+      queue: tartarus
 
   - wait
 
