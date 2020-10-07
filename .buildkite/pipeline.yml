@@ -1,6 +1,7 @@
 env:
   JULIA_DEPOT_PATH: "$HOME/.julia"
   CUDA_VISIBLE_DEVICES: 3
+  JULIA_CUDA_MEMORY_LIMIT: 2147483648  # 2 GiB
 
 steps:
   - label: "🏕️ initialize environment"
