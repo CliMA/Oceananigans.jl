@@ -1,65 +1,86 @@
 env:
-  JULIA_PATH: "/home/alir/julia-1.4.2/bin/julia"
+  JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   CUDA_VISIBLE_DEVICES: 3
+  JULIA_CUDA_MEMORY_LIMIT: 2147483648  # 2 GiB
 
 steps:
-  - label: ":rabbit2: unit tests"
+  - label: "🏕️ initialize environment"
+    env:
+      TEST_GROUP: "init"
     commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "rm -rf $JULIA_DEPOT_PATH"
+      - "wget -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
+      - "tar xf $HOME/julia-1.4.2-linux-x86_64.tar.gz -C $HOME"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      # force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+  - wait
+
+  - label: "🐇 unit tests"
     env:
       TEST_GROUP: "unit"
-
-  - label: ":dolphin: model tests"
     commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+
+  - label: "🐬 model tests"
     env:
       TEST_GROUP: "model"
-
-  - label: ":whale: simulation tests"
     commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+  - label: "🐳 simulation tests"
     env:
       TEST_GROUP: "simulation"
- 
-  - label: ":camel: regression tests"
     commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+ 
+  - label: "🐫 regression tests"
     env:
       TEST_GROUP: "regression"
-
-  - label: ":gorilla: scripts"
     commands:
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+  - label: "🦍 scripts"
     env:
       TEST_GROUP: "scripts"
-
-# - label: ":sauropod: convergence tests"
-#   commands:
-#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-#     - "$JULIA_PATH --color=yes --project -e 'using Pkg; Pkg.test()'"
-#   agents:
-#     queue: tartarus
-#   env:
-#     TEST_GROUP: "convergence"
-
-  - label: ":owl: documentation"
     commands:
-      - "$JULIA_PATH --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
-      - "$JULIA_PATH --color=yes --project=docs/ docs/make.jl"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
+
+  # - label: "🦕 convergence tests"
+  #   env:
+  #     TEST_GROUP: "convergence"
+  #   commands:
+  #     - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+  #   agents:
+  #     queue: tartarus
+
+  - label: "🦉 documentation"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ docs/make.jl"
+    agents:
+      queue: tartarus
+
+  - wait: ~
+    continue_on_failure: true
+
+  - label: "🧹 clean up environment"
+    commands:
+      - "rm -rf $JULIA_DEPOT_PATH"
