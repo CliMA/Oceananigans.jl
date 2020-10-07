@@ -9,14 +9,14 @@ steps:
       TEST_GROUP: "init"
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
-      - "wget -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.2-linux-x86_64.tar.gz"
-      - "tar xf $HOME/julia-1.4.2-linux-x86_64.tar.gz -C $HOME"
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "wget -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/1.5/julia-1.5.1-linux-x86_64.tar.gz"
+      - "tar xf $HOME/julia-1.5.1-linux-x86_64.tar.gz -C $HOME"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
       # force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
@@ -26,7 +26,7 @@ steps:
     env:
       TEST_GROUP: "unit"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
@@ -35,7 +35,7 @@ steps:
     env:
       TEST_GROUP: "model"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
@@ -43,7 +43,7 @@ steps:
     env:
       TEST_GROUP: "simulation"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
  
@@ -51,7 +51,7 @@ steps:
     env:
       TEST_GROUP: "regression"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
@@ -59,7 +59,7 @@ steps:
     env:
       TEST_GROUP: "scripts"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: tartarus
 
@@ -67,14 +67,14 @@ steps:
   #   env:
   #     TEST_GROUP: "convergence"
   #   commands:
-  #     - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+  #     - "$HOME/julia-1.5.1/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
   #     queue: tartarus
 
   - label: "🦉 documentation"
     commands:
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
-      - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ docs/make.jl"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$HOME/julia-1.5.1/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: tartarus
 
