@@ -7,7 +7,7 @@ steps:
       TEST_GROUP: "unit"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -19,7 +19,7 @@ steps:
       TEST_GROUP: "model"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -30,7 +30,7 @@ steps:
       TEST_GROUP: "simulation"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -41,7 +41,7 @@ steps:
       TEST_GROUP: "regression"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -52,7 +52,7 @@ steps:
       TEST_GROUP: "scripts"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -63,7 +63,7 @@ steps:
   #     TEST_GROUP: "convergence"
   #   commands:
   #     - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-  #     - "eval $$(bash install_julia.sh 1.4)"
+  #     - "eval $$(bash install-julia.sh 1.4)"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
@@ -72,7 +72,7 @@ steps:
   - label: ":owl: documentation"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh"
-      - "eval $$(bash install_julia.sh 1.4)"
+      - "eval $$(bash install-julia.sh 1.4)"
       - "julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
       - "julia --color=yes --project=docs/ docs/make.jl"
     agents:
