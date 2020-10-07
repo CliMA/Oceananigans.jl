@@ -1,5 +1,4 @@
 env:
-  JULIA_VERSION: 1.4
   CUDA_VISIBLE_DEVICES: 3
 
 steps:
@@ -8,7 +7,7 @@ steps:
       TEST_GROUP: "unit"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -20,7 +19,7 @@ steps:
       TEST_GROUP: "model"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -31,7 +30,7 @@ steps:
       TEST_GROUP: "simulation"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -42,7 +41,7 @@ steps:
       TEST_GROUP: "regression"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -53,7 +52,7 @@ steps:
       TEST_GROUP: "scripts"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
       - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -64,7 +63,7 @@ steps:
   #     TEST_GROUP: "convergence"
   #   commands:
   #     - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-  #     - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+  #     - "eval $$(bash install_julia.sh 1.4)"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
   #     - "julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
@@ -73,7 +72,7 @@ steps:
   - label: ":owl: documentation"
     commands:
       - "wget -nv https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/install_julia.sh"
-      - "eval $$(bash install_julia.sh $JULIA_VERSION)"
+      - "eval $$(bash install_julia.sh 1.4)"
       - "julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
       - "julia --color=yes --project=docs/ docs/make.jl"
     agents:
