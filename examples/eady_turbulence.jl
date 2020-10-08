@@ -102,7 +102,7 @@ using Oceananigans.Utils: hour, day
 
 # ## The grid
 #
-# We use a three-dimensional grid with a depth of 1000 m and a 
+# We use a three-dimensional grid with a depth of 4000 m and a 
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
@@ -139,7 +139,7 @@ B_field = BackgroundField(B, parameters=background_parameters)
 #
 # These boundary conditions prescribe a quadratic drag at the bottom as a flux
 # condition. We also fix the surface and bottom buoyancy to enforce a buoyancy
-# gradient `N²`.
+# gradient `N^2`.
 
 drag_coefficient = 1e-4
 
@@ -160,7 +160,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
 # We use a horizontal biharmonic diffusivity and a Laplacian vertical diffusivity
 # to dissipate energy in the Eady problem.
 # To use both of these closures at the same time, we set the keyword argument
-# `closure` a tuple of two closures.
+# `closure` to a tuple of two closures.
 
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
 κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] biharmonic horizontal viscosity and diffusivity
@@ -169,6 +169,9 @@ Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
 # ## Model instantiation
+#
+# We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
+# Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
 using Oceananigans.Advection: WENO5
 
@@ -306,8 +309,6 @@ run!(simulation)
 using JLD2, Plots
 
 using Oceananigans.Grids: nodes, x_domain, y_domain, z_domain # for nice domain limits
-
-##pyplot() # uncomment to use pyplot backend, which is a bit nicer than GR
 
 ## Coordinate arrays
 xζ, yζ, zζ = nodes(ζ)
