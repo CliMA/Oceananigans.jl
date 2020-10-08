@@ -3,7 +3,7 @@ using JULES: LazyVelocityFields, LazyTracerFields
 @testset "Lazy fields" begin
     @info "Testing lazy fields..."
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
     model = CompressibleModel(grid=grid, gases=DryEarth(),
                               thermodynamic_variable=Energy())
 
@@ -22,7 +22,7 @@ using JULES: LazyVelocityFields, LazyTracerFields
 
     @test primitive_tracers.e[10, 11, 12] == 4/π
 
-    grid = RegularCartesianGrid(size=(16, 16, 16), length=(1, 1, 1))
+    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
     model = CompressibleModel(grid=grid, gases=DryEarth(),
                               thermodynamic_variable=Entropy())
 

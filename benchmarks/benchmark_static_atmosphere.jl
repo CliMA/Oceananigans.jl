@@ -6,7 +6,7 @@ using JULES
 const timer = TimerOutput()
 const Δt = 1
 
-grid = RegularCartesianGrid(size=(32, 32, 32), length=(1, 1, 1), halo=(2, 2, 2))
+grid = RegularCartesianGrid(size=(32, 32, 32), extent=(1, 1, 1), halo=(2, 2, 2))
 model = CompressibleModel(grid=grid, thermodynamic_variable=Energy())
 time_step!(model, Δt)  # warmup to compile
 
