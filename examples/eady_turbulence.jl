@@ -40,7 +40,7 @@
 # The background velocity field is related to the geostrophic streamfunction via
 # $ U = - ∂_y ψ$ such that
 #
-# $ U(z) = α (z + L_z) \, ,$
+# $ U(z) = α (z + L_z) \, .$
 #
 # ### Boundary conditions
 #
@@ -52,14 +52,18 @@
 # where $z=0$. At the bottom, we impose a momentum flux that extracts momentum and
 # energy from the flow.
 #
-# #### Quadratic bottom drag
+# #### Bottom boundary condition: quadratic bottom drag
 #
-# We model the presence of a turbulent bottom boundary layer
-# with quadratic bottom drag. We impose bottom drag by specifying a vertical flux
+# We model the effects of a turbulent bottom boundary layer on the eddy momentum budget
+# with quadratic bottom drag. A quadratic cottom drag is introduced by imposing a vertical flux
 # of horizontal momentum that removes momentum from the layer immediately above: in other words,
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
 # positive (upwards) with the velocity at the bottom boundary is negative.
-# For example, the $x$-component of the bottom drag, which acts on the $u$-velocity, is
+# This drag term is "quadratic" because the rate at which momentum is removed is proportional
+# to $\bm{u}_h \sqrt{u^2 + v^2}$, where $\bm{u}_h = u \bm{\hat x} + v \bm{\hat{v}$ is the
+# horizontal velocity.
+#
+# The $x$-component of the quadratic bottom drag is thus
 #
 # $ τ_{xz}(z=L_z) = - cᴰ u \sqrt{u^2 + v^2} \, , $
 #
@@ -67,9 +71,8 @@
 #
 # $ τ_{yz}(z=L_z) = - cᴰ v \sqrt{u^2 + v^2} \, , $
 #
-# where $τ_{xz}(z=L_z)$ and $τ_{yz}(z=L_z)$ denote the flux of $u$ and $v$ momentum at
-# the bottom of the domain where $z = L_z$, and $cᴰ$ is a
-# dimensionless drag coefficient.
+# where $c^D$ is a dimensionless drag coefficient and $τ_{xz}(z=L_z)$ and $τ_{yz}(z=L_z)$
+# denote the flux of $u$ and $v$ momentum at $z = L_z$, the bottom of the domain.
 #
 # ### Vertical and horizontal viscosity and diffusivity
 #
