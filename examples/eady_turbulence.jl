@@ -8,7 +8,7 @@
 #   * How to implement background velocity and tracer distributions
 #   * How to create `ComputedField`s for output
 #
-# # The Eady problem 
+# ## The Eady problem 
 #
 # The "Eady problem" simulates the baroclinic instability problem proposed by Eric Eady in
 # his classic paper
@@ -24,79 +24,95 @@
 # and serves as a crude model for the drag associated with an unresolved and small-scale
 # turbulent bottom boundary layer.
 # 
-# ## The geostrophic basic state
+# ### The geostrophic basic state
 #
 # The geostrophic basic state in the Eady problem is represented by the streamfunction,
 #
-# $ ψ(y, z) = - α f y (z + L_z) $,
+# $ ψ(y, z) = - α y (z + L_z) \, ,$
 #
-# where $f$ is the Coriolis parameter, $α$ is the geostrophic shear
-# and horizontal buoyancy gradient, and $L_z$ is the depth of the domain.
-# The background buoyancy, including both the geostrophic flow component
-# and a background stable stratification component, is
+# where $α$ is the geostrophic shear and $L_z$ is the depth of the domain.
+# The background buoyancy includes both the geostrophic flow component,
+# $f ∂_z ψ$, where $f$ is the Coriolis parameter, and a background stable stratification
+# component, $N^2 z$, where $N$ is the buoyancy frequency:
 #
-# $ B = B'(y) + N^2 z = f ∂_z ψ + N^2 z = - α f y + N^2 z$
+# $ B(y, z) = f ∂_z ψ + N^2 z = - α f y + N^2 z \, .$
 #
-# The background velocity field is
+# The background velocity field is related to the geostrophic streamfunction via
+# $ U = - ∂_y ψ$ such that
 #
-# $ U(z) = - ∂_y ψ = α (z + L_z) $
+# $ U(z) = α (z + L_z) \, ,$
 #
-# ## Quadratic bottom drag
+# ### Boundary conditions
 #
-# In this example, we model the presence of a turbulent bottom boundary layer
-# with a quadratic bottom drag that fluxes momentum out of the domain.
+# All fields are periodic in the horizontal directions.
+# We use "insulating", or zero-flux boundary conditions on the buoyancy perturbation
+# at the top and bottom. We thus implicitly assume that the background vertical density
+# gradient, $N^2 z$, is maintained by a process external to our simulation.
+# We use free-slip, or zero-flux boundary conditions on $u$ and $v$ at the surface
+# where $z=0$. At the bottom, we impose a momentum flux that extracts momentum and
+# energy from the flow.
+#
+# #### Quadratic bottom drag
+#
+# We model the presence of a turbulent bottom boundary layer
+# with quadratic bottom drag. We impose bottom drag by specifying a vertical flux
+# of horizontal momentum that removes momentum from the layer immediately above: in other words,
+# the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
+# positive (upwards) with the velocity at the bottom boundary is negative.
 # For example, the $x$-component of the bottom drag, which acts on the $u$-velocity, is
 #
-# $ Q_u = - c^D \sqrt(u^2 + v^2) u \, ,$
+# $ τ_{xz}(z=L_z) = - cᴰ u \sqrt{u^2 + v^2} \, , $
 #
 # while the $y$-component is
 #
-# $ Q_v = - c^D \sqrt(u^2 + v^2) v \, ,$
+# $ τ_{yz}(z=L_z) = - cᴰ v \sqrt{u^2 + v^2} \, , $
 #
-# where $Q_u$ and $Q_v$ denote the flux of $u$ and $v$ momentum and $c^D$ is a
+# where $τ_{xz}(z=L_z)$ and $τ_{yz}(z=L_z)$ denote the flux of $u$ and $v$ momentum at
+# the bottom of the domain where $z = L_z$, and $cᴰ$ is a
 # dimensionless drag coefficient.
 #
-# ## Vertical and horizontal viscosity and diffusivity
+# ### Vertical and horizontal viscosity and diffusivity
 #
-# Vertical and horizontal viscosties and diffusivities are generally required
-# to stabilize the Eady problem and can be used to model the presence of
-# turbulent mixing below the grid scale. For this example, we use the same Laplacian
-# vertical diffusivity and a biharmonic horizontal diffusivity for tracers
-# and momentum. For a tracer $c$ our diffusion model thus takes the form
+# Vertical and horizontal viscosties and diffusivities are required
+# to stabilize the Eady problem and can be idealized as modeling the effect of
+# turbulent mixing below the grid scale. For both tracers and velocities we use
+# a Laplacian vertical diffusivity $κ_z ∂_z^2 c$ and a biharmonic horizontal
+# diffusivity $ϰ_h (∂_x^4 + ∂_y^4) c$. 
 #
-# $ \Big [ \kappa_{2,z} \partial_z^2 + \kappa_{4,h} \left ( \partial_x^4 + \partial_y^4 \right ) \Big ] c \, .$
+# ### Eady problem summary and parameters
 #
-# ## Eady problem summary and parameters
-#
-# To summarize, the Eady problem parameters (and the values we use for this example) are
+# To summarize, the Eady problem parameters along with the values we use in this example are
 #
 # | Parameter name | Description | Value | Units |
 # | -------------- | ----------- | ----- | ----- | 
 # | $ f $          | Coriolis parameter | $ 10^{-4} $ | $ \mathrm{s^{-1}} $ |
-# | $ N $          | Buoyancy frequency (square root of background buoyancy gradient) | $ 5 \times 10^{-3} $ | $ \mathrm{s^{-1}} $ |
-# | $ \alpha $     | Background vertical shear / horizontal buoyancy gradient | $ 10^{-3} $ | $ \mathrm{s^{-1}} $ |
-# | $ c\^D $       | Bottom drag coefficient | $ 10^{-4} $ | none |
-# | $ κ_{2,z} $    | Laplacian vertical diffusivity | $ 10^{-2} $ | $ \mathrm{m^2 s^{-1}} $ |
-# | $ κ_{4,h} $    | Biharmonic horizontal diffusivity | $ 10^{-2} \times \Delta x^4 / \mathrm{day} $ | $ \mathrm{m^4 s^{-1}} $ |
+# | $ N $          | Buoyancy frequency (square root of $\partial_z B$) | $ 10^{-3} $ | $ \mathrm{s^{-1}} $ |
+# | $ \alpha $     | Background vertical shear $\partial_z U$ | $ 10^{-3} $ | $ \mathrm{s^{-1}} $ |
+# | $ c^D $        | Bottom quadratic drag coefficient | $ 10^{-4} $ | none |
+# | $ κ_z $    | Laplacian vertical diffusivity | $ 10^{-2} $ | $ \mathrm{m^2 s^{-1}} $ |
+# | $ \varkappa_h $    | Biharmonic horizontal diffusivity | $ 10^{-2} \times \Delta x^4 / \mathrm{day} $ | $ \mathrm{m^4 s^{-1}} $ |
+#
+# We start off by importing `Oceananigans` and some convenient aliases for dimensions:
 
-# # The grid
+using Oceananigans, Printf
+using Oceananigans.Utils: hour, day
+
+# ## The grid
 #
 # We use a three-dimensional grid with a depth of 1000 m and a 
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
-using Oceananigans
-
 grid = RegularCartesianGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
 
-# # Rotation
+# ## Rotation
 #
 # The classical Eady problem is posed on an $f$-plane. We use a Coriolis parameter
 # typical to mid-latitudes on Earth,
 
 coriolis = FPlane(f=1e-4) # [s⁻¹]
                             
-# # The background flow
+# ## The background flow
 #
 # We build a `NamedTuple` of parameters that describe the background flow,
 
@@ -116,7 +132,7 @@ B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z
 U_field = BackgroundField(U, parameters=background_parameters)
 B_field = BackgroundField(B, parameters=background_parameters)
 
-# # Boundary conditions
+# ## Boundary conditions
 #
 # These boundary conditions prescribe a quadratic drag at the bottom as a flux
 # condition. We also fix the surface and bottom buoyancy to enforce a buoyancy
@@ -136,23 +152,20 @@ drag_bc_v = BoundaryCondition(Flux, bottom_drag_v, discrete_form=true, parameter
 u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u) 
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
 
-# # Turbulence closures
+# ## Turbulence closures
 #
 # We use a horizontal biharmonic diffusivity and a Laplacian vertical diffusivity
 # to dissipate energy in the Eady problem.
 # To use both of these closures at the same time, we set the keyword argument
 # `closure` a tuple of two closures.
 
-using Oceananigans.Utils: day
-
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
-κ₂h = 0.0  # [m² s⁻¹] Laplacian horizontal viscosity and diffusivity
 κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] biharmonic horizontal viscosity and diffusivity
 
-Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=κ₂h, κh=κ₂h, νz=κ₂z, κz=κ₂z)
+Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
-# # Model instantiation
+# ## Model instantiation
 
 using Oceananigans.Advection: WENO5
 
@@ -169,7 +182,7 @@ model = IncompressibleModel(
     boundary_conditions = (u=u_bcs, v=v_bcs)
 )
 
-# # Initial conditions
+# ## Initial conditions
 #
 # We use non-trivial initial conditions consisting of an array of vortices superposed
 # with large-amplitude noise to (hopefully) stimulate the rapid growth of
@@ -199,21 +212,17 @@ V̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
 model.velocities.u.data.parent .-= Ū
 model.velocities.v.data.parent .-= V̄
+nothing # hide
 
-# # Simulation set-up
+# ## Simulation set-up
 #
-# We set up a simulation and run it for 10 days.
-# We then stop the simulation and add a JLD2OutputWriter that saves the vertical
-# velocity, vertical vorticity, and divergence every 2 iterations.
-# We then continue the run for 100 iterations and plot the resulting 50 frames of
-# saved data in an animation.
+# We set up a simulation that runs for 10 days with a `JLD2OutputWriter` that saves the
+# vertical vorticity and divergence every 2 hours.
 #
-# ## The `TimeStepWizard`
+# ### The `TimeStepWizard`
 #
 # The TimeStepWizard manages the time-step adaptively, keeping the CFL close to a
 # desired value.
-
-using Oceananigans.Utils: minute
 
 ## Calculate absolute limit on time-step using diffusivities and 
 ## background velocity.
@@ -223,11 +232,10 @@ max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z)
 
 wizard = TimeStepWizard(cfl=1.0, Δt=0.1*max_Δt, max_change=1.1, max_Δt=max_Δt)
 
-# ## A progress messenger
+# ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
 
-using Printf
 using Oceananigans.Diagnostics: AdvectiveCFL
 
 CFL = AdvectiveCFL(wizard)
@@ -241,16 +249,16 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(sim.Δt.Δt),
                         CFL(sim.model))
 
-# ## Build the simulation
+# ### Build the simulation
 #
 # We're ready to build and run the simulation. We ask for a progress message and time-step update
-# every 100 iterations,
+# every 20 iterations,
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 10,
+simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
                                                      stop_time = 10day,
                                                       progress = progress)
 
-# ## Output and plotting
+# ### Output
 #
 # To visualize the baroclinic turbulence ensuing in the Eady problem,
 # we use `ComputedField`s to diagnose and output vertical vorticity and divergence.
@@ -266,24 +274,25 @@ u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
 δ = ComputedField(-∂z(w))
+nothing # hide
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
-# we create a JLD2OutputWriter that saves `ζ` and `δ` and add it to 
+# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add it to 
 # `simulation`.
 
 using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.Utils: hour
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
                                                       time_interval = 2hour,
                                                              prefix = "eady_turbulence",
                                                               force = true)
+nothing # hide
 
-# Press the big red button:
+# All that's left is to press the big red button:
 
 run!(simulation)
 
-# # Visualizing Eady turbulence
+# ## Visualizing Eady turbulence
 #
 # We animate the results by opening the JLD2 file, extracting data for
 # the iterations we ended up saving at, and ploting slices of the saved
@@ -291,9 +300,9 @@ run!(simulation)
 # opening the file, building a vector of the iterations that we saved
 # data at, and defining a function for computing colorbar limits: 
 
-using JLD2, Plots, Printf, Oceananigans.Grids
+using JLD2, Plots
 
-using Oceananigans.Grids: x_domain, y_domain, z_domain # for nice domain limits
+using Oceananigans.Grids: nodes, x_domain, y_domain, z_domain # for nice domain limits
 
 ##pyplot() # uncomment to use pyplot backend, which is a bit nicer than GR
 
@@ -310,7 +319,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 # This utility is handy for calculating nice contour intervals:
 
 function nice_divergent_levels(c, clim, nlevels=30)
-    levels = range(-clim, stop=clim, length=10)
+    levels = range(-clim, stop=clim, length=nlevels)
 
     cmax = maximum(abs, c)
     if clim < cmax # add levels on either end
@@ -347,8 +356,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
                    i, iter, maximum(abs, surface_R))
 
     R_xy = contourf(xζ, yζ, surface_R';
-                          color = :balance,
                     aspectratio = 1,
+                      linewidth = 0,
+                          color = :balance,
                          legend = false,
                           clims = (-Rlim, Rlim),
                          levels = Rlevels,
@@ -358,8 +368,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
                          ylabel = "y (m)")
     
     δ_xy = contourf(xδ, yδ, surface_δ';
-                          color = :balance,
                     aspectratio = 1,
+                      linewidth = 0,
+                          color = :balance,
                          legend = false,
                           clims = (-δlim, δlim),
                          levels = δlevels,
@@ -370,6 +381,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     R_xz = contourf(xζ, zζ, slice_R';
                     aspectratio = grid.Lx / grid.Lz * 0.5,
+                      linewidth = 0,
                           color = :balance,
                          legend = false,
                           clims = (-Rlim, Rlim),
@@ -381,6 +393,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     δ_xz = contourf(xδ, zδ, slice_δ';
                     aspectratio = grid.Lx / grid.Lz * 0.5,
+                      linewidth = 0,
                           color = :balance,
                          legend = false,
                           clims = (-δlim, δlim),
@@ -399,4 +412,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "eady_turbulence.gif", fps = 8) # hide
+mp4(anim, "eady_turbulence.mp4", fps = 8) # hide
