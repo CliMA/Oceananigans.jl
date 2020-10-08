@@ -34,7 +34,7 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
                           grid = grid,
                          gases = DryEarth(),
         thermodynamic_variable = tvar,
-                       closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
+                       closure = IsotropicDiffusivity(ν=75.0, κ=75.0)
     )
 
     #####

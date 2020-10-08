@@ -98,7 +98,7 @@ end
         numerator = ρc̃.ρe.data[i,j,k]
         denominator = zero(FT)
         KE = kinetic_energy(i, j, k, grid, ρ, ρũ)
-        Φ = gravity * grid.zC[grid.Hz + clamp(k, 1, grid.Nz)]
+        Φ = gravity * grid.zC[clamp(k, 1, grid.Nz)]
         for (gas_index, gas) in enumerate(gases)
             ρᵅ = ρc̃[gas_index+1].data[i,j,k]
             numerator += -ρᵅ*(gas.u₀ + Φ + KE - gas.cᵥ*gas.T₀)

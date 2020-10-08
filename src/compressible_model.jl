@@ -48,7 +48,7 @@ function CompressibleModel(;
              extra_tracers = nothing,
                tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
                   coriolis = nothing,
-                   closure = ConstantIsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
+                   closure = IsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
              diffusivities = DiffusivityFields(architecture, grid, tracernames, closure),
                    forcing = ModelForcing(),
                    gravity = g_Earth,
