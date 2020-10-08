@@ -67,7 +67,7 @@ end
 
 Returns a view over parent(field) associated with slice.i, slice.j, slice.k.
 """
-function slice_parent(slicer, field::AbstractField)
+function slice_parent(slicer, field)
 
     # Unpack
     Nx, Ny, Nz = field.grid.Nx, field.grid.Ny, field.grid.Nz
