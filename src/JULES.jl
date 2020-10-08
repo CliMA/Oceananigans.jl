@@ -26,14 +26,4 @@ include("time_stepping_kernels.jl")
 include("time_stepping.jl")
 include("utils.jl")
 
-#####
-##### Preserving old behavior
-#####
-
-export IsotropicDiffusivity
-
-using Oceananigans.TurbulenceClosures: ConstantIsotropicDiffusivity
-
-IsotropicDiffusivity(FT; ν, κ) = ConstantIsotropicDiffusivity(FT; ν=ν, κ=κ)
-
 end # module

@@ -164,7 +164,7 @@ function simulate_three_gas_dry_rising_thermal_bubble(;
         sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄s̄ᵢ=ρ̄s̄ᵢ)
     end
 
-    simulation = Simulation(model, Δt=0.1, stop_time=end_time, progress_frequency=50,
+    simulation = Simulation(model, Δt=0.1, stop_time=end_time, iteration_interval=50,
                             progress=print_progress_and_make_plots, parameters=sim_parameters)
     run!(simulation)
 
@@ -253,7 +253,7 @@ function print_progress_and_make_plots(simulation)
         p = plot(ρ₁_plot, ρ₂_plot, ρ₃_plot, ρ_plot, ρ′_plot, tvar_plot,
                  layout=(2, 3), show=true, dpi=200)
 
-        n = Int(model.clock.iteration / simulation.progress_frequency)
+        n = Int(model.clock.iteration / simulation.iteration_interval)
         n == 1 && !isdir("frames") && mkdir("frames")
         savefig(p, @sprintf("frames/three_gas_thermal_bubble_%s_%03d.png", typeof(tvar), n))
     end

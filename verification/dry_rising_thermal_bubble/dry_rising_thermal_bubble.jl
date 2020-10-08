@@ -130,7 +130,7 @@ function simulate_dry_rising_thermal_bubble(; thermodynamic_variable, end_time=1
         sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄s̄ᵢ=ρ̄s̄ᵢ)
     end
 
-    simulation = Simulation(model, Δt=0.1, stop_time=end_time, progress_frequency=50,
+    simulation = Simulation(model, Δt=0.1, stop_time=end_time, iteration_interval=50,
                             progress=print_progress_and_make_plots, parameters=sim_parameters)
     run!(simulation)
 
@@ -209,7 +209,7 @@ function print_progress_and_make_plots(simulation)
 
         p = plot(u_plot, w_plot, ρ_plot, tvar_plot, layout=(2, 2), dpi=200, show=true)
 
-        n = Int(model.clock.iteration / simulation.progress_frequency)
+        n = Int(model.clock.iteration / simulation.iteration_interval)
         n == 1 && !isdir("frames") && mkdir("frames")
         savefig(p, @sprintf("frames/thermal_bubble_%s_%03d.png", typeof(tvar), n))
     end
