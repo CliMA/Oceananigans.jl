@@ -1,8 +1,8 @@
 using Oceananigans.Fields: interiorparent
 
-function summarize_regression_test(field_names, fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(field_names, fields, correct_fields)
-        Δ = Array(φ) .- φ_c
+function summarize_regression_test(fields, correct_fields)
+    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
+        Δ = φ .- φ_c
 
         Δ_min      = minimum(Δ)
         Δ_max      = maximum(Δ)
@@ -10,8 +10,11 @@ function summarize_regression_test(field_names, fields, correct_fields)
         Δ_abs_mean = mean(abs, Δ)
         Δ_std      = std(Δ)
 
-        @info(@sprintf("Δ%s: min=%.6e, max=%.6e, mean=%.6e, absmean=%.6e, std=%.6e",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std))
+        matching    = sum(φ .≈ φ_c)
+        grid_points = length(φ_c)
+
+        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
+                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
     end
 end
 
@@ -61,7 +64,9 @@ end
                 push!(correct_fields, file["ρs"])
             end
 
-            summarize_regression_test(field_names, fields, correct_fields)
+            fields = NamedTuple{Tuple(field_names)}(Tuple(fields))
+            correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
+            summarize_regression_test(fields, correct_fields)
 
             @test all(isapprox.(interior(model.momenta.ρu), file["ρu"], atol=1e-12))
 
@@ -125,7 +130,9 @@ end
                 push!(correct_fields, file["ρs"])
             end
 
-            summarize_regression_test(field_names, fields, correct_fields)
+            fields = NamedTuple{Tuple(field_names)}(Tuple(fields))
+            correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
+            summarize_regression_test(fields, correct_fields)
 
             @test all(isapprox.(interior(model.momenta.ρu), file["ρu"], atol=1e-12))
 
