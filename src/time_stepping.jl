@@ -43,13 +43,16 @@ function time_step!(model::CompressibleModel, Δt; kwargs...)
 
     @debug "Computing slow forcings..."
     update_total_density!(ρ, model.grid, model.gases, ρc̃)
-    fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture)
+    fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture, model.clock, nothing)
+
+    fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
 
     compute_slow_forcings!(
         F̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
         model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock.time)
 
-    fill_halo_regions!(F̃.ρw, model.architecture)
+    fill_halo_regions!(F̃.ρw, model.architecture, model.clock, nothing)
 
     for rk3_iter in 1:3
         @debug "RK3 step #$rk3_iter..."
@@ -60,14 +63,17 @@ function time_step!(model::CompressibleModel, Δt; kwargs...)
                                 model.gases, model.gravity, ρ, ρũ, ρc̃, F̃)
 
             update_total_density!(ρ, model.grid, model.gases, ρc̃)
-            fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture)
+            fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture, model.clock, nothing)
         else
             compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
                                 model.gases, model.gravity, ρ, IV_ρũ, IV_ρc̃, F̃)
 
             update_total_density!(ρ, model.grid, model.gases, IV_ρc̃)
-            fill_halo_regions!(merge((Σρ=ρ,), IV_ρũ, IV_ρc̃), model.architecture)
+            fill_halo_regions!(merge((Σρ=ρ,), IV_ρũ, IV_ρc̃), model.architecture, model.clock, nothing)
         end
+
+        fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
+        fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
 
         compute_right_hand_sides!(compute_rhs_args...)
 
