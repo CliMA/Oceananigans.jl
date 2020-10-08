@@ -31,6 +31,7 @@ coriolis = FPlane(f=0.2)
 # We choose
 
 N = 1 ## buoyancy frequency
+nothing # hide
 
 # and then construct the background buoyancy,
 
@@ -138,6 +139,7 @@ using JLD2, Plots, Printf, Oceananigans.Grids
 # We use coordinate arrays appropriate for the vertical velocity field,
 
 x, y, z = nodes(model.velocities.w)
+nothing # hide
 
 # open the jld2 file with the data,
 
