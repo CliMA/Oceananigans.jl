@@ -1,6 +1,6 @@
 env:
   JULIA_PATH: "/home/alir/julia-1.4.2/bin/julia"
-  CUDA_VISIBLE_DEVICES: 3
+  CUDA_VISIBLE_DEVICES: 1
 
 steps:
   - label: ":rabbit2: unit tests"
