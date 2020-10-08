@@ -11,12 +11,12 @@ using Oceananigans.Utils: tupleit
 A callable object that implements a "continuous form" forcing function
 on a field at the location `X, Y, Z` with optional parameters.
 """
-struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
+struct ContinuousForcing{X, Y, Z, D, ℑ, F, P, TD, Tℑ, I}
                           func :: F
                     parameters :: P
             field_dependencies :: D
-    field_dependencies_indices :: I
      field_dependencies_interp :: ℑ
+    field_dependencies_indices :: I
 
     # Non-public "temporary" constructor that stores func, parameters, and field_dependencies
     # for later regularization
@@ -24,8 +24,10 @@ struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
         field_dependencies = tupleit(field_dependencies)
 
         return new{Nothing, Nothing, Nothing,
-                   typeof(parameters), 
+                   field_dependencies,
+                   Nothing,
                    typeof(func), 
+                   typeof(parameters), 
                    typeof(field_dependencies),
                    Nothing,
                    Nothing}(func, parameters, field_dependencies, nothing, nothing)
@@ -35,12 +37,14 @@ struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
     function ContinuousForcing{X, Y, Z}(func, parameters=nothing, field_dependencies=(),
                                         field_dependencies_indices=(), field_dependencies_interp=()) where {X, Y, Z}
         return new{X, Y, Z,
-                   typeof(parameters),
+                   field_dependencies,
+                   field_dependencies_interp,
                    typeof(func),
+                   typeof(parameters),
                    typeof(field_dependencies),
-                   typeof(field_dependencies_indices),
-                   typeof(field_dependencies_interp)}(func, parameters, field_dependencies,
-                                                      field_dependencies_indices, field_dependencies_interp)
+                   typeof(field_dependencies_interp),
+                   typeof(field_dependencies_indices)}(func, parameters, field_dependencies,
+                                                       field_dependencies_interp, field_dependencies_indices)
     end
 end
 
