@@ -3,9 +3,9 @@
 #####
 
 """
-    div_ũu(i, j, k, grid, advection, U, u)
+    div_Uu(i, j, k, grid, advection, U, u)
 
-Calculate the advection of momentum in the x-direction using the conserative form, ∇·(Uu)
+Calculate the advection of momentum in the x-direction using the conservative form, ∇·(Uu)
 
     1/Vᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u)) + δz_fac(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(u))]
 
@@ -18,9 +18,9 @@ which will end up at the location `fcc`.
 end
 
 """
-    div_ũv(i, j, k, grid, advection, U, v)
+    div_Uv(i, j, k, grid, advection, U, v)
 
-Calculate the advection of momentum in the y-direction using the conserative form, ∇·(Uv)
+Calculate the advection of momentum in the y-direction using the conservative form, ∇·(Uv)
 
     1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(w))]
 
@@ -33,9 +33,9 @@ which will end up at the location `cfc`.
 end
 
 """
-    div_ũw(i, j, k, grid, advection, U, w)
+    div_Uw(i, j, k, grid, advection, U, w)
 
-Calculate the advection of momentum in the z-direction using the conserative form, ∇·(Uw)
+Calculate the advection of momentum in the z-direction using the conservative form, ∇·(Uw)
 
     1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
 
