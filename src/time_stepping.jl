@@ -2,7 +2,9 @@ using JULES.Operators
 
 using Oceananigans: datatuple
 using Oceananigans.BoundaryConditions
-import Oceananigans: time_step!
+
+import Oceananigans.TimeSteppers: time_step!
+import Oceananigans.Simulations: ab2_or_rk3_time_step!
 
 #####
 ##### Utilities for time stepping
@@ -18,8 +20,10 @@ end
 ##### Time-stepping algorithm
 #####
 
+ab2_or_rk3_time_step!(model::CompressibleModel, Δt; euler) = time_step!(model, Δt)
+
 # Adding kwargs... so this time_step! can work with Oceananigans.Simulation
-function time_step!(model::CompressibleModel, Δt; kwargs...)
+function time_step!(model::CompressibleModel, Δt)
     ρ  = model.total_density
     ρũ = model.momenta
     ρc̃ = model.tracers
