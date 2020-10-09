@@ -28,8 +28,8 @@ function time_step!(model::CompressibleModel, Δt)
     ρũ = model.momenta
     ρc̃ = model.tracers
     K̃  = model.diffusivities
-    F̃  = model.slow_forcings
-    R̃  = model.right_hand_sides
+    S̃  = model.slow_source_terms
+    F̃  = model.fast_source_terms
     IV = model.intermediate_variables
 
     # On third RK3 step, we update Φ⁺ instead of model.intermediate_variables
@@ -52,25 +52,25 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
 
-    compute_slow_forcings!(
-        F̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+    compute_slow_source_terms!(
+        S̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
         model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock)
 
-    fill_halo_regions!(F̃.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(S̃.ρw, model.architecture, model.clock, nothing)
 
     for rk3_iter in 1:3
         @debug "RK3 step #$rk3_iter..."
         @debug "  Computing right hand sides..."
 
         if rk3_iter == 1
-            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
-                                model.gases, model.gravity, ρ, ρũ, ρc̃, F̃)
+            compute_rhs_args = (F̃, model.grid, model.thermodynamic_variable,
+                                model.gases, model.gravity, ρ, ρũ, ρc̃, S̃)
 
             update_total_density!(ρ, model.grid, model.gases, ρc̃)
             fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture, model.clock, nothing)
         else
-            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
-                                model.gases, model.gravity, ρ, IV_ρũ, IV_ρc̃, F̃)
+            compute_rhs_args = (F̃, model.grid, model.thermodynamic_variable,
+                                model.gases, model.gravity, ρ, IV_ρũ, IV_ρc̃, S̃)
 
             update_total_density!(ρ, model.grid, model.gases, IV_ρc̃)
             fill_halo_regions!(merge((Σρ=ρ,), IV_ρũ, IV_ρc̃), model.architecture, model.clock, nothing)
@@ -79,11 +79,11 @@ function time_step!(model::CompressibleModel, Δt)
         fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
         fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
 
-        compute_right_hand_sides!(compute_rhs_args...)
+        compute_fast_source_terms!(compute_rhs_args...)
 
         @debug "  Advancing variables..."
         LHS = rk3_iter == 3 ? Φ⁺ : IV
-        advance_variables!(LHS, model.grid, ρũ, ρc̃, R̃; Δt=rk3_time_step(rk3_iter, Δt))
+        advance_variables!(LHS, model.grid, ρũ, ρc̃, F̃; Δt=rk3_time_step(rk3_iter, Δt))
     end
 
     model.clock.iteration += 1

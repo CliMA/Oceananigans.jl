@@ -20,7 +20,7 @@ include("thermodynamics.jl")
 include("pressure_gradients.jl")
 include("compressible_model.jl")
 
-include("right_hand_sides.jl")
+include("source_terms.jl")
 include("time_stepping_kernels.jl")
 include("time_stepping.jl")
 include("utils.jl")

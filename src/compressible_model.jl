@@ -22,8 +22,8 @@ mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S,
                   coriolis :: X
                    closure :: C
                    forcing :: F
-             slow_forcings :: S
-          right_hand_sides :: R
+         slow_source_terms :: S
+         fast_source_terms :: R
     intermediate_variables :: I
 end
 
@@ -49,9 +49,9 @@ function CompressibleModel(;
              diffusivities = DiffusivityFields(architecture, grid, tracernames, boundary_conditions, closure),
                    forcing = NamedTuple(),
                    gravity = g_Earth,
-             slow_forcings = ForcingFields(architecture, grid, tracernames),
-          right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
-    intermediate_variables = RightHandSideFields(architecture, grid, tracernames))
+         slow_source_terms = SlowSourceTermFields(architecture, grid, tracernames),
+         fast_source_terms = FastSourceTermFields(architecture, grid, tracernames),
+    intermediate_variables = FastSourceTermFields(architecture, grid, tracernames))
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
@@ -65,7 +65,7 @@ function CompressibleModel(;
     return CompressibleModel(
         architecture, grid, clock, total_density, momenta, velocities, tracers,
         lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
-        coriolis, closure, forcing, slow_forcings, right_hand_sides,
+        coriolis, closure, forcing, slow_source_terms, fast_source_terms,
         intermediate_variables)
 end
 
@@ -118,7 +118,7 @@ function TracerFields(arch, grid, tracernames)
     return NamedTuple{tracernames}(tracerfields)
 end
 
-function ForcingFields(arch, grid, tracernames)
+function SlowSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)
@@ -126,7 +126,7 @@ function ForcingFields(arch, grid, tracernames)
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
 
-function RightHandSideFields(arch, grid, tracernames)
+function FastSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)

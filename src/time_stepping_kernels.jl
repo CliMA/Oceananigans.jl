@@ -15,12 +15,12 @@ update_total_density!(model) =
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F̃, grid, tvar, gases, gravity, coriolis, closure, ρ, ρũ, ρc̃, K̃, forcing, clock)
+function compute_slow_source_terms!(F̃, grid, tvar, gases, gravity, coriolis, closure, ρ, ρũ, ρc̃, K̃, forcing, clock)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F̃.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.u(i, j, k, grid, clock, nothing)
-            F̃.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.v(i, j, k, grid, clock, nothing)
-            F̃.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.w(i, j, k, grid, clock, nothing)
+            F̃.ρu[i, j, k] = SU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.u(i, j, k, grid, clock, nothing)
+            F̃.ρv[i, j, k] = SV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.v(i, j, k, grid, clock, nothing)
+            F̃.ρw[i, j, k] = SW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.w(i, j, k, grid, clock, nothing)
         end
 
         for (tracer_index, ρc_name) in enumerate(propertynames(ρc̃))
@@ -28,12 +28,12 @@ function compute_slow_forcings!(F̃, grid, tvar, gases, gravity, coriolis, closu
             F_ρc = getproperty(F̃.tracers, ρc_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                F_ρc[i, j, k] = FC(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃)
+                F_ρc[i, j, k] = SC(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃)
             end
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F̃.tracers[1].data[i, j, k] += FT(i, j, k, grid, closure, tvar, gases, gravity, ρ, ρũ, ρc̃, K̃)
+            F̃.tracers[1].data[i, j, k] += ST(i, j, k, grid, closure, tvar, gases, gravity, ρ, ρũ, ρc̃, K̃)
         end
 
     end
@@ -42,12 +42,12 @@ end
 """
 Fast forcings include advection, pressure gradient, and buoyancy terms.
 """
-function compute_right_hand_sides!(R̃, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃)
+function compute_fast_source_terms!(R̃, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R̃.ρu[i, j, k] = RU(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρu)
-            R̃.ρv[i, j, k] = RV(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρv)
-            R̃.ρw[i, j, k] = RW(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρw)
+            R̃.ρu[i, j, k] = FU(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρu)
+            R̃.ρv[i, j, k] = FV(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρv)
+            R̃.ρw[i, j, k] = FW(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, F̃.ρw)
         end
 
         for ρc_name in propertynames(ρc̃)
@@ -56,12 +56,12 @@ function compute_right_hand_sides!(R̃, grid, tvar, gases, gravity, ρ, ρũ, �
             F_ρc = getproperty(F̃.tracers, ρc_name)
 
             for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-                R_ρc[i, j, k] = RC(i, j, k, grid, ρ, ρũ, ρc, F_ρc)
+                R_ρc[i, j, k] = FC(i, j, k, grid, ρ, ρũ, ρc, F_ρc)
             end
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            R̃.tracers[1].data[i, j, k] += RT(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+            R̃.tracers[1].data[i, j, k] += FT(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
         end
 
     end
