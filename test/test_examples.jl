@@ -86,7 +86,7 @@ example_filepath(example_name, examples_dir="../examples/") =
 
         replace_strings = [
                            ("size=(48, 48, 16)", "size=(1, 1, 1)"),
-                           ("stop_time = 10day", "stop_time = 10minute"),
+                           ("stop_time = 10day", "stop_time = 600"),
                           ]
 
         @test run_script(replace_strings, "eady_turbulence", example_filepath("eady_turbulence"))
