@@ -6,7 +6,7 @@ using Oceananigans.Forcings: model_forcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, P, F, S, R, I, W} <: AbstractModel
+mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S, R, I} <: AbstractModel
               architecture :: A
                       grid :: Ω
                      clock :: Clock{FT}
@@ -21,12 +21,10 @@ mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, P, F,
                    gravity :: FT
                   coriolis :: X
                    closure :: C
-              microphysics :: P
                    forcing :: F
-             slow_forcings :: S
-          right_hand_sides :: R
-    intermediate_variables :: I
-     acoustic_time_stepper :: W
+         slow_source_terms :: S
+         fast_source_terms :: R
+       intermediate_fields :: I
 end
 
 #####
@@ -44,19 +42,16 @@ function CompressibleModel(;
                    momenta = MomentumFields(architecture, grid),
                      gases = DryEarth(float_type),
     thermodynamic_variable = Energy(),
-              microphysics = nothing,
-             extra_tracers = nothing,
-               tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
+               tracernames = collect_tracers(thermodynamic_variable, gases),
                   coriolis = nothing,
                    closure = IsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
        boundary_conditions = NamedTuple(),
              diffusivities = DiffusivityFields(architecture, grid, tracernames, boundary_conditions, closure),
                    forcing = NamedTuple(),
                    gravity = g_Earth,
-             slow_forcings = ForcingFields(architecture, grid, tracernames),
-          right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
-    intermediate_variables = RightHandSideFields(architecture, grid, tracernames),
-     acoustic_time_stepper = nothing)
+         slow_source_terms = SlowSourceTermFields(architecture, grid, tracernames),
+         fast_source_terms = FastSourceTermFields(architecture, grid, tracernames),
+       intermediate_fields = FastSourceTermFields(architecture, grid, tracernames))
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
@@ -70,8 +65,8 @@ function CompressibleModel(;
     return CompressibleModel(
         architecture, grid, clock, total_density, momenta, velocities, tracers,
         lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
-        coriolis, closure, microphysics, forcing, slow_forcings, right_hand_sides,
-        intermediate_variables, acoustic_time_stepper)
+        coriolis, closure, forcing, slow_source_terms, fast_source_terms,
+        intermediate_fields)
 end
 
 using Oceananigans.Grids: short_show
@@ -82,16 +77,14 @@ Base.show(io::IO, model::CompressibleModel{A, FT}) where {A, FT} =
         "├── grid: $(short_show(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
         "├── closure: $(typeof(model.closure))\n",
-        "├── coriolis: $(typeof(model.coriolis))\n",
-        "├── microphysics: $(typeof(model.microphysics))\n",
-        "└── acoustic time stepper: $(typeof(model.acoustic_time_stepper))")
+        "└── coriolis: $(typeof(model.coriolis))\n")
 
 #####
 ##### Utilities for constructing compressible models
 #####
 
-generate_key(tvar::Entropy) = :ρs
-generate_key(tvar::Energy) = :ρe
+generate_key(::Entropy) = :ρs
+generate_key(::Energy) = :ρe
 
 function collect_tracers(thermodynamic_variable, args...)
     list = [generate_key(thermodynamic_variable)]
@@ -125,7 +118,7 @@ function TracerFields(arch, grid, tracernames)
     return NamedTuple{tracernames}(tracerfields)
 end
 
-function ForcingFields(arch, grid, tracernames)
+function SlowSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)
@@ -133,7 +126,7 @@ function ForcingFields(arch, grid, tracernames)
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
 
-function RightHandSideFields(arch, grid, tracernames)
+function FastSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)

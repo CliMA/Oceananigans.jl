@@ -1,93 +1,105 @@
 using JULES.Operators
 
-using Oceananigans: datatuple
 using Oceananigans.BoundaryConditions
+
+using Oceananigans.TimeSteppers: tick!
 
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Simulations: ab2_or_rk3_time_step!
 
-#####
-##### Utilities for time stepping
-#####
-
-function rk3_time_step(rk3_iter, Δt)
-    rk3_iter == 1 && return Δt/3
-    rk3_iter == 2 && return Δt/2
-    rk3_iter == 3 && return Δt
-end
-
-#####
-##### Time-stepping algorithm
-#####
-
 ab2_or_rk3_time_step!(model::CompressibleModel, Δt; euler) = time_step!(model, Δt)
 
-# Adding kwargs... so this time_step! can work with Oceananigans.Simulation
 function time_step!(model::CompressibleModel, Δt)
-    ρ  = model.total_density
-    ρũ = model.momenta
-    ρc̃ = model.tracers
-    K̃  = model.diffusivities
-    F̃  = model.slow_forcings
-    R̃  = model.right_hand_sides
-    IV = model.intermediate_variables
+    total_density  = model.total_density
+    momenta = model.momenta
+    tracers = model.tracers
+    diffusivities  = model.diffusivities
+    slow_source_terms  = model.slow_source_terms
+    fast_source_terms  = model.fast_source_terms
+    intermediate_fields = model.intermediate_fields
 
-    # On third RK3 step, we update Φ⁺ instead of model.intermediate_variables
-    Φ⁺ = (ρũ..., tracers = ρc̃)
+    first_stage_Δt  = Δt / 3
+    second_stage_Δt = Δt / 2
+    third_stage_Δt  = Δt
 
-    # On the first and second RK3 steps we want to update intermediate ρũ and ρc̃.
-    ρũ_names = propertynames(ρũ)
-    ρc̃_names = propertynames(ρc̃)
+    momenta_names = propertynames(momenta)
+    tracers_names = propertynames(tracers)
 
-    IV_ρũ_fields = [getproperty(IV, ρu)         for ρu in ρũ_names]
-    IV_ρc̃_fields = [getproperty(IV.tracers, ρc) for ρc in ρc̃_names]
+    intermediate_momenta_fields = [getproperty(intermediate_fields, ρu)         for ρu in momenta_names]
+    intermediate_tracers_fields = [getproperty(intermediate_fields.tracers, ρc) for ρc in tracers_names]
 
-    IV_ρũ = NamedTuple{ρũ_names}(IV_ρũ_fields)
-    IV_ρc̃ = NamedTuple{ρc̃_names}(IV_ρc̃_fields)
+    intermediate_momenta = NamedTuple{momenta_names}(intermediate_momenta_fields)
+    intermediate_tracers = NamedTuple{tracers_names}(intermediate_tracers_fields)
 
-    @debug "Computing slow forcings..."
-    update_total_density!(ρ, model.grid, model.gases, ρc̃)
-    fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture, model.clock, nothing)
+    #####
+    ##### Compute slow source terms
+    #####
 
-    fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
-    fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
+    update_total_density!(total_density, model.grid, model.gases, tracers)
+    
+    fill_halo_regions!(merge((Σρ=total_density,), momenta, tracers), model.architecture, model.clock, nothing)
+    fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_slow_forcings!(
-        F̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
-        model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock)
+    compute_slow_source_terms!(
+        slow_source_terms, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        model.coriolis, model.closure, total_density, momenta, tracers, diffusivities, model.forcing, model.clock)
 
-    fill_halo_regions!(F̃.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(slow_source_terms.ρw, model.architecture, model.clock, nothing)
 
-    for rk3_iter in 1:3
-        @debug "RK3 step #$rk3_iter..."
-        @debug "  Computing right hand sides..."
+    #####
+    ##### Stage 1
+    #####
 
-        if rk3_iter == 1
-            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
-                                model.gases, model.gravity, ρ, ρũ, ρc̃, F̃)
+    update_total_density!(total_density, model.grid, model.gases, tracers)
 
-            update_total_density!(ρ, model.grid, model.gases, ρc̃)
-            fill_halo_regions!(merge((Σρ=ρ,), ρũ, ρc̃), model.architecture, model.clock, nothing)
-        else
-            compute_rhs_args = (R̃, model.grid, model.thermodynamic_variable,
-                                model.gases, model.gravity, ρ, IV_ρũ, IV_ρc̃, F̃)
+    fill_halo_regions!(merge((Σρ=total_density,), momenta, tracers), model.architecture, model.clock, nothing)    
+    fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-            update_total_density!(ρ, model.grid, model.gases, IV_ρc̃)
-            fill_halo_regions!(merge((Σρ=ρ,), IV_ρũ, IV_ρc̃), model.architecture, model.clock, nothing)
-        end
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
+                               model.gases, model.gravity, total_density, momenta, tracers, slow_source_terms)
 
-        fill_halo_regions!(ρũ.ρw, model.architecture, model.clock, nothing)
-        fill_halo_regions!(IV_ρũ.ρw, model.architecture, model.clock, nothing)
+    advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
-        compute_right_hand_sides!(compute_rhs_args...)
+    tick!(model.clock, first_stage_Δt; stage=true)
 
-        @debug "  Advancing variables..."
-        LHS = rk3_iter == 3 ? Φ⁺ : IV
-        advance_variables!(LHS, model.grid, ρũ, ρc̃, R̃; Δt=rk3_time_step(rk3_iter, Δt))
-    end
+    #####
+    ##### Stage 2
+    #####
 
-    model.clock.iteration += 1
-    model.clock.time += Δt
+    update_total_density!(total_density, model.grid, model.gases, intermediate_tracers)
+
+    fill_halo_regions!(merge((Σρ=total_density,), intermediate_momenta, intermediate_tracers), model.architecture, model.clock, nothing)
+    fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
+
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
+                               model.gases, model.gravity, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+
+    advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
+
+    tick!(model.clock, second_stage_Δt; stage=true)
+
+    #####
+    ##### Stage 3
+    #####
+
+    compute_rhs_args = ()
+
+    update_total_density!(total_density, model.grid, model.gases, intermediate_tracers)
+
+    fill_halo_regions!(merge((Σρ=total_density,), intermediate_momenta, intermediate_tracers), model.architecture, model.clock, nothing)
+    fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
+    fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
+
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
+                               model.gases, model.gravity, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+
+    state_variables = (momenta..., tracers = tracers)
+    advance_variables!(state_variables, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)
+
+    tick!(model.clock, third_stage_Δt)
 
     return nothing
 end
