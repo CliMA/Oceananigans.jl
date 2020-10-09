@@ -6,12 +6,12 @@
 #   * How to use a tuple of turbulence closures
 #   * How to use biharmonic diffusivity
 #   * How to implement background velocity and tracer distributions
-#   * How to create `ComputedField`s for output
+#   * How to use `ComputedField`s for output
 #
 # ## The Eady problem 
 #
 # The "Eady problem" simulates the baroclinic instability problem proposed by Eric Eady in
-# his classic paper
+# the classic paper
 # ["Long waves and cyclone waves," Tellus (1949)](https://www.tandfonline.com/doi/abs/10.3402/tellusa.v1i3.8507).
 # The Eady problem is a simple, canonical model for the generation of mid-latitude
 # atmospheric storms and the ocean eddies that permeate the world sea.
