@@ -4,7 +4,7 @@
     @testset "Energy thermodynamic variable" begin
         @info "  Testing time stepping with energy thermodynamic variable..."
 
-        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), length=(1, 1, 1))
+        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), extent=(1, 1, 1))
         model = CompressibleModel(grid = grid, gases = DryEarth(),
                                   thermodynamic_variable = Energy())
         time_step!(model, 1)
@@ -14,7 +14,7 @@
     @testset "Entropy thermodynamic variable" begin
         @info "  Testing time stepping with entropy thermodynamic variable..."
 
-        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), length=(1, 1, 1))
+        grid = RegularCartesianGrid(size=(16, 16, 16), halo=(2, 2, 2), extent=(1, 1, 1))
         model = CompressibleModel(grid = grid, gases = DryEarth(),
                                   thermodynamic_variable = Entropy())
         time_step!(model, 1)

@@ -39,7 +39,7 @@ model = CompressibleModel(
                       grid = grid,
                      gases = DryEarth(),
     thermodynamic_variable = tvar,
-                   closure = ConstantIsotropicDiffusivity(ν=75.0, κ=75.0)
+                   closure = IsotropicDiffusivity(ν=75.0, κ=75.0)
 )
 
 #####

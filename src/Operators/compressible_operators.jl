@@ -102,7 +102,7 @@
             * ∂zᵃᵃᶠ(i, j, k, grid, p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃))
 end
 
-@inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tracer_index, ρ, ρc, args...)
+@inline function ∂ⱼDᶜⱼ(i, j, k, grid, closure::IsotropicDiffusivity, tracer_index, ρ, ρc, args...)
     @inbounds κ = closure.κ[tracer_index]
     return (1/Vᵃᵃᶜ(i, j, k, grid)
             * (  δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, κ, ρ, ρc)
@@ -110,7 +110,7 @@ end
                + δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, κ, ρ, ρc)))
 end
 
-@inline function ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tvar_diag,
+@inline function ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure::IsotropicDiffusivity, tvar_diag,
                          tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc, args...)
 
     @inbounds κ = closure.κ[tracer_index]
@@ -120,7 +120,7 @@ end
                   + δzᵃᵃᶜ(i, j, k, grid, diffusive_tvar_flux_z, κ, tvar_diag, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)))
 end
 
-@inline function ∂ⱼDᵖⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, tracer_index,
+@inline function ∂ⱼDᵖⱼ(i, j, k, grid, closure::IsotropicDiffusivity, tracer_index,
                        p_over_ρ_diag, tvar, gases, gravity, ρ, ρũ, ρc̃, args ...)
 
     @inbounds κ = closure.κ[tracer_index]
@@ -189,34 +189,34 @@ end
 @inline viscous_flux_wx(i, j, k, grid, νᶠᶜᶠ, ρ, ρw, ρu) = ℑxzᶠᵃᶠ(i, j, k, grid, ρ) * νᶠᶜᶠ * Axᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wx(i, j, k, grid, ρ, ρw, ρu)
 @inline viscous_flux_wy(i, j, k, grid, νᶜᶠᶠ, ρ, ρw, ρv) = ℑyzᵃᶠᶠ(i, j, k, grid, ρ) * νᶜᶠᶠ * Ayᵃᵃᶠ(i, j, k, grid) * strain_rate_tensor_wy(i, j, k, grid, ρ, ρw, ρv)
 
-@inline ∂ⱼτ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline ∂ⱼτ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     (1/Vᵃᵃᶜ(i, j, k, grid)
         * (  δxᶠᵃᵃ(i, j, k, grid, viscous_flux_ux, closure.ν, ρ, ρũ.ρu)
            + δyᵃᶜᵃ(i, j, k, grid, viscous_flux_uy, closure.ν, ρ, ρũ.ρu, ρũ.ρv)
            + δzᵃᵃᶜ(i, j, k, grid, viscous_flux_uz, closure.ν, ρ, ρũ.ρu, ρũ.ρw)))
 
-@inline ∂ⱼτ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline ∂ⱼτ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     (1/Vᵃᵃᶜ(i, j, k, grid)
         * (  δxᶜᵃᵃ(i, j, k, grid, viscous_flux_vx, closure.ν, ρ, ρũ.ρv, ρũ.ρu)
            + δyᵃᶠᵃ(i, j, k, grid, viscous_flux_vy, closure.ν, ρ, ρũ.ρv)
            + δzᵃᵃᶜ(i, j, k, grid, viscous_flux_vz, closure.ν, ρ, ρũ.ρv, ρũ.ρw)))
 
-@inline ∂ⱼτ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline ∂ⱼτ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     (1/Vᵃᵃᶠ(i, j, k, grid)
         * (  δxᶜᵃᵃ(i, j, k, grid, viscous_flux_wx, closure.ν, ρ, ρũ.ρw, ρũ.ρu)
            + δyᵃᶜᵃ(i, j, k, grid, viscous_flux_wy, closure.ν, ρ, ρũ.ρw, ρũ.ρv)
            + δzᵃᵃᶠ(i, j, k, grid, viscous_flux_wz, closure.ν, ρ, ρũ.ρw)))
 
-@inline u₁∂ⱼτ₁ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline u₁∂ⱼτ₁ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     U_over_ρ(i, j, k, grid, ρ, ρũ.ρu) * ∂ⱼτ₁ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
 
-@inline u₂∂ⱼτ₂ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline u₂∂ⱼτ₂ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     V_over_ρ(i, j, k, grid, ρ, ρũ.ρv) * ∂ⱼτ₂ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
 
-@inline u₃∂ⱼτ₃ⱼ(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline u₃∂ⱼτ₃ⱼ(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     W_over_ρ(i, j, k, grid, ρ, ρũ.ρw) * ∂ⱼτ₃ⱼ(i, j, k, grid, closure, ρ, ρũ, args...)
 
-@inline Q_dissipation(i, j, k, grid, closure::ConstantIsotropicDiffusivity, ρ, ρũ, args...) =
+@inline Q_dissipation(i, j, k, grid, closure::IsotropicDiffusivity, ρ, ρũ, args...) =
     (  ℑxᶜᵃᵃ(i, j, k, grid, u₁∂ⱼτ₁ⱼ, closure, ρ, ρũ, args...)
      + ℑyᵃᶜᵃ(i, j, k, grid, u₂∂ⱼτ₂ⱼ, closure, ρ, ρũ, args...)
      + ℑzᵃᵃᶜ(i, j, k, grid, u₃∂ⱼτ₃ⱼ, closure, ρ, ρũ, args...))

@@ -5,6 +5,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 
 using Oceananigans: AbstractGrid
+using Oceananigans.TurbulenceClosures: IsotropicDiffusivity
 
 export
     kinetic_energy,
