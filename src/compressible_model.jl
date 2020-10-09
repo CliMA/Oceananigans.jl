@@ -24,7 +24,7 @@ mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S,
                    forcing :: F
          slow_source_terms :: S
          fast_source_terms :: R
-    intermediate_variables :: I
+       intermediate_fields :: I
 end
 
 #####
@@ -51,7 +51,7 @@ function CompressibleModel(;
                    gravity = g_Earth,
          slow_source_terms = SlowSourceTermFields(architecture, grid, tracernames),
          fast_source_terms = FastSourceTermFields(architecture, grid, tracernames),
-    intermediate_variables = FastSourceTermFields(architecture, grid, tracernames))
+       intermediate_fields = FastSourceTermFields(architecture, grid, tracernames))
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
@@ -66,7 +66,7 @@ function CompressibleModel(;
         architecture, grid, clock, total_density, momenta, velocities, tracers,
         lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
         coriolis, closure, forcing, slow_source_terms, fast_source_terms,
-        intermediate_variables)
+        intermediate_fields)
 end
 
 using Oceananigans.Grids: short_show
