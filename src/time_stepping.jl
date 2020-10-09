@@ -63,7 +63,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
-    tick!(model.clock, first_stage_Δt; stage=true)
+    tick!(model.clock, 0; stage=true)
 
     #####
     ##### Stage 2
@@ -80,7 +80,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
 
-    tick!(model.clock, second_stage_Δt; stage=true)
+    tick!(model.clock, 0; stage=true)
 
     #####
     ##### Stage 3
@@ -100,7 +100,7 @@ function time_step!(model::CompressibleModel, Δt)
     state_variables = (momenta..., tracers = tracers)
     advance_variables!(state_variables, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)
 
-    tick!(model.clock, third_stage_Δt)
+    tick!(model.clock, Δt)
 
     return nothing
 end
