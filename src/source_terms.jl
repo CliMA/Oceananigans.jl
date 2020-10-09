@@ -32,7 +32,7 @@ using Oceananigans.Coriolis
             ρc = ρc̃[tracer_index]
             Ṡ += ∂ⱼtᶜDᶜⱼ(i, j, k, grid, closure, diagnose_ρs, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃, ρc)
         end
-        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        T = diagnose_temperature(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
         Ṡ += Q_dissipation(i, j, k, grid, closure, ρ, ρũ) / T
         return Ṡ
     end

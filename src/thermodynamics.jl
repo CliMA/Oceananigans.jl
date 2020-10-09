@@ -73,14 +73,14 @@ struct Energy  <: AbstractThermodynamicVariable end
 
 @inline function diagnose_ρs(i, j, k, grid::AbstractGrid{FT}, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        T = diagnose_temperature(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
         ρᵅ = ρc̃[tracer_index].data[i, j, k]
         gas = gases[tracer_index-1]
         return ρᵅ > zero(FT) ? ρᵅ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρᵅ/gas.ρ₀)) : zero(FT)
     end
 end
 
-@inline function diagnose_T(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where FT
+@inline function diagnose_temperature(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
         numerator = ρc̃.ρs.data[i, j, k]
         denominator = zero(FT)
@@ -93,7 +93,7 @@ end
     end
 end
 
-@inline function diagnose_T(i, j, k, grid::AbstractGrid{FT}, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) where FT
+@inline function diagnose_temperature(i, j, k, grid::AbstractGrid{FT}, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
         numerator = ρc̃.ρe.data[i,j,k]
         denominator = zero(FT)
@@ -108,9 +108,9 @@ end
     end
 end
 
-@inline function diagnose_p(i, j, k, grid::AbstractGrid{FT}, tvar, gases, gravity, ρ, ρũ, ρc̃) where FT
+@inline function diagnose_pressure(i, j, k, grid::AbstractGrid{FT}, tvar, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
-        T = diagnose_T(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        T = diagnose_temperature(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
         p = zero(FT)
         for gas_index in 1:length(gases)
             R = gases[gas_index].R
@@ -133,7 +133,7 @@ end
 
 @inline function diagnose_p_over_ρ(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
     @inbounds begin
-        p = diagnose_p(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
+        p = diagnose_pressure(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
         return p / ρ[i, j, k]
     end
 end
