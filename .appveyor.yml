@@ -1,15 +1,10 @@
 # Documentation: https://github.com/JuliaCI/Appveyor.jl
 environment:
   matrix:
-  - julia_version: 1.3
-  - julia_version: nightly
+  - julia_version: 1.5
 
 platform:
   - x64
-
-matrix:
-  allow_failures:
-    - julia_version: nightly
 
 branches:
   only:
