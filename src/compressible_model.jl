@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Models: AbstractModel, Clock, tracernames
-using Oceananigans.Forcing: zeroforcing
+using Oceananigans.Forcings: model_forcing
 
 #####
 ##### Definition of a compressible model
@@ -49,8 +49,9 @@ function CompressibleModel(;
                tracernames = collect_tracers(thermodynamic_variable, gases, microphysics, extra_tracers),
                   coriolis = nothing,
                    closure = IsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
-             diffusivities = DiffusivityFields(architecture, grid, tracernames, closure),
-                   forcing = ModelForcing(),
+       boundary_conditions = NamedTuple(),
+             diffusivities = DiffusivityFields(architecture, grid, tracernames, boundary_conditions, closure),
+                   forcing = NamedTuple(),
                    gravity = g_Earth,
              slow_forcings = ForcingFields(architecture, grid, tracernames),
           right_hand_sides = RightHandSideFields(architecture, grid, tracernames),
@@ -59,7 +60,7 @@ function CompressibleModel(;
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
-    forcing = ModelForcing(tracernames, forcing)
+    forcing = model_forcing(tracernames; forcing...)
     closure = with_tracers(tracernames, closure)
     total_density = CellField(architecture, grid)
 

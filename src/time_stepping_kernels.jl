@@ -15,12 +15,12 @@ update_total_density!(model) =
 """
 Slow forcings include viscous dissipation, diffusion, and Coriolis terms.
 """
-function compute_slow_forcings!(F̃, grid, tvar, gases, gravity, coriolis, closure, ρ, ρũ, ρc̃, K̃, forcing, time)
+function compute_slow_forcings!(F̃, grid, tvar, gases, gravity, coriolis, closure, ρ, ρũ, ρc̃, K̃, forcing, clock)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            F̃.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.u(i, j, k, grid, time, ρũ, ρc̃, nothing)
-            F̃.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.v(i, j, k, grid, time, ρũ, ρc̃, nothing)
-            F̃.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.w(i, j, k, grid, time, ρũ, ρc̃, nothing)
+            F̃.ρu[i, j, k] = FU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.u(i, j, k, grid, clock, nothing)
+            F̃.ρv[i, j, k] = FV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.v(i, j, k, grid, clock, nothing)
+            F̃.ρw[i, j, k] = FW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) + forcing.w(i, j, k, grid, clock, nothing)
         end
 
         for (tracer_index, ρc_name) in enumerate(propertynames(ρc̃))

@@ -54,7 +54,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     compute_slow_forcings!(
         F̃, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
-        model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock.time)
+        model.coriolis, model.closure, ρ, ρũ, ρc̃, K̃, model.forcing, model.clock)
 
     fill_halo_regions!(F̃.ρw, model.architecture, model.clock, nothing)
 
