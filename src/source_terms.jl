@@ -5,26 +5,26 @@ using Oceananigans.Coriolis
 #### Element-wise forcing and right-hand-side calculations
 ####
 
-@inline SU(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+@inline ρu_slow_source_term(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
     (- x_f_cross_U(i, j, k, grid, coriolis, ρũ)
      + ∂ⱼτ₁ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
 
 
-@inline SV(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+@inline ρv_slow_source_term(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
     (- y_f_cross_U(i, j, k, grid, coriolis, ρũ)
      + ∂ⱼτ₂ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
 
-@inline SW(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
+@inline ρw_slow_source_term(i, j, k, grid, coriolis, closure, ρ, ρũ, K̃) =
     (- z_f_cross_U(i, j, k, grid, coriolis, ρũ)
      + ∂ⱼτ₃ⱼ(i, j, k, grid, closure, ρ, ρũ, K̃))
 
-@inline SC(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃) =
+@inline ρc_slow_source_term(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃) =
     ∂ⱼDᶜⱼ(i, j, k, grid, closure, tracer_index, ρ, ρc, K̃)
 
-@inline ST(i, j, k, grid, closure, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃, K̃) =
+@inline ρt_slow_source_term(i, j, k, grid, closure, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃, K̃) =
     ∂ⱼDᵖⱼ(i, j, k, grid, closure, 1, diagnose_p_over_ρ, tvar, gases, gravity, ρ, ρũ, ρc̃, K̃)
 
-@inline function ST(i, j, k, grid, closure, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃, K̃)
+@inline function ρt_slow_source_term(i, j, k, grid, closure, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃, K̃)
     @inbounds begin
         Ṡ = 0.0
         for gas_index = 1:length(gases)
@@ -38,7 +38,7 @@ using Oceananigans.Coriolis
     end
 end
 
-@inline function FU(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
+@inline function ρu_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂x(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -46,7 +46,7 @@ end
     end
 end
 
-@inline function FV(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
+@inline function ρv_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂y(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -54,7 +54,7 @@ end
     end
 end
 
-@inline function FW(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
+@inline function ρw_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂z(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -63,13 +63,13 @@ end
     end
 end
 
-@inline function FC(i, j, k, grid, ρ, ρũ, ρc, FC)
+@inline function ρc_slow_source_term(i, j, k, grid, ρ, ρũ, ρc, FC)
     @inbounds begin
         return -div_uc(i, j, k, grid, ρ, ρũ, ρc) + FC[i, j, k]
     end
 end
 
-@inline FT(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
+@inline ρc_slow_source_term(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
 
-@inline FT(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
+@inline ρc_slow_source_term(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
     -∂ⱼpuⱼ(i, j, k, grid, diagnose_p, tvar, gases, gravity, ρ, ρũ, ρc̃)

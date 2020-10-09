@@ -121,7 +121,7 @@ end
     end
 end
 
-@inline function diagnose_ρ(i, j, k, grid::AbstractGrid{FT}, gases, ρc̃) where FT
+@inline function diagnose_density(i, j, k, grid::AbstractGrid{FT}, gases, ρc̃) where FT
     @inbounds begin
         ρ = zero(FT)
         for gas_index in 1:length(gases)
