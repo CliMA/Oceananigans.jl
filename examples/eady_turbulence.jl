@@ -260,8 +260,8 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
 # We're ready to build and run the simulation. We ask for a progress message and time-step update
 # every 20 iterations,
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
-                                                     stop_time = 10day,
+simulation = Simulation(model, Δt = wizard, iteration_interval = 10,
+                                                     stop_time = 10 * day,
                                                       progress = progress)
 
 # ### Output
