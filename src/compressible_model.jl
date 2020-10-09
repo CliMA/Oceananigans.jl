@@ -6,7 +6,7 @@ using Oceananigans.Forcings: model_forcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S, R, I} <: AbstractModel
+mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S} <: AbstractModel
               architecture :: A
                       grid :: Ω
                      clock :: Clock{FT}
@@ -22,9 +22,7 @@ mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S,
                   coriolis :: X
                    closure :: C
                    forcing :: F
-         slow_source_terms :: S
-         fast_source_terms :: R
-       intermediate_fields :: I
+              time_stepper :: S
 end
 
 #####
@@ -49,9 +47,7 @@ function CompressibleModel(;
              diffusivities = DiffusivityFields(architecture, grid, tracernames, boundary_conditions, closure),
                    forcing = NamedTuple(),
                    gravity = g_Earth,
-         slow_source_terms = SlowSourceTermFields(architecture, grid, tracernames),
-         fast_source_terms = FastSourceTermFields(architecture, grid, tracernames),
-       intermediate_fields = FastSourceTermFields(architecture, grid, tracernames))
+              time_stepper = WickerSkamarockTimeStepper(architecture, grid, tracernames))
 
     gravity = float_type(gravity)
     tracers = TracerFields(architecture, grid, tracernames)
@@ -65,8 +61,7 @@ function CompressibleModel(;
     return CompressibleModel(
         architecture, grid, clock, total_density, momenta, velocities, tracers,
         lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
-        coriolis, closure, forcing, slow_source_terms, fast_source_terms,
-        intermediate_fields)
+        coriolis, closure, forcing, time_stepper)
 end
 
 using Oceananigans.Grids: short_show
@@ -116,20 +111,4 @@ end
 function TracerFields(arch, grid, tracernames)
     tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
     return NamedTuple{tracernames}(tracerfields)
-end
-
-function SlowSourceTermFields(arch, grid, tracernames)
-    ρu = XFaceField(arch, grid)
-    ρv = YFaceField(arch, grid)
-    ρw = ZFaceField(arch, grid)
-    tracers = TracerFields(arch, grid, tracernames)
-    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
-end
-
-function FastSourceTermFields(arch, grid, tracernames)
-    ρu = XFaceField(arch, grid)
-    ρv = YFaceField(arch, grid)
-    ρw = ZFaceField(arch, grid)
-    tracers = TracerFields(arch, grid, tracernames)
-    return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end

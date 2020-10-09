@@ -1,10 +1,13 @@
 using Test
-
+using Logging
 using Statistics
 using Printf
 using JLD2
+
 using Oceananigans
 using JULES
+
+Logging.global_logger(OceananigansLogger())
 
 @testset "JULES" begin
     include("test_models.jl")

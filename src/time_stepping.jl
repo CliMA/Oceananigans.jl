@@ -14,9 +14,10 @@ function time_step!(model::CompressibleModel, Δt)
     momenta = model.momenta
     tracers = model.tracers
     diffusivities  = model.diffusivities
-    slow_source_terms  = model.slow_source_terms
-    fast_source_terms  = model.fast_source_terms
-    intermediate_fields = model.intermediate_fields
+
+    slow_source_terms   = model.time_stepper.slow_source_terms
+    fast_source_terms   = model.time_stepper.fast_source_terms
+    intermediate_fields = model.time_stepper.intermediate_fields
 
     first_stage_Δt  = Δt / 3
     second_stage_Δt = Δt / 2

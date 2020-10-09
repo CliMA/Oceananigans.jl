@@ -18,6 +18,7 @@ include("Operators/Operators.jl")
 include("lazy_fields.jl")
 include("thermodynamics.jl")
 include("pressure_gradients.jl")
+include("time_steppers.jl")
 include("compressible_model.jl")
 
 include("source_terms.jl")

@@ -208,12 +208,12 @@ function print_progress_and_make_plots(simulation)
                 model.clock.time, cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
     end
 
-    ∂tρ₁ = maximum(interior(model.slow_source_terms.tracers.ρ₁))
-    ∂tρ₂ = maximum(interior(model.slow_source_terms.tracers.ρ₂))
-    ∂tρ₃ = maximum(interior(model.slow_source_terms.tracers.ρ₃))
-    ∂tρ  = maximum(interior(model.slow_source_terms.tracers.ρ₁) .+
-                   interior(model.slow_source_terms.tracers.ρ₂) .+
-                   interior(model.slow_source_terms.tracers.ρ₃))
+    ∂tρ₁ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₁))
+    ∂tρ₂ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₂))
+    ∂tρ₃ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₃))
+    ∂tρ  = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₁) .+
+                   interior(model.time_stepper.slow_source_terms.tracers.ρ₂) .+
+                   interior(model.time_stepper.slow_source_terms.tracers.ρ₃))
     @printf("Maximum mass tendencies from diffusion: ")
     @printf("ρ₁: %.2e, ρ₂: %.2e, ρ₃: %.2e, ρ: %.2e\n", ∂tρ₁, ∂tρ₂, ∂tρ₃, ∂tρ)
 
