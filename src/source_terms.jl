@@ -69,7 +69,7 @@ end
     end
 end
 
-@inline ρc_fast_source_term(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
+@inline ρt_fast_source_term(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
 
-@inline ρc_fast_source_term(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
+@inline ρt_fast_source_term(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
     -∂ⱼpuⱼ(i, j, k, grid, diagnose_pressure, tvar, gases, gravity, ρ, ρũ, ρc̃)

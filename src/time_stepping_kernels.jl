@@ -61,7 +61,7 @@ function compute_fast_source_terms!(fast_source_terms, grid, thermodynamic_varia
         end
 
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            fast_source_terms.tracers[1].data[i, j, k] += ρc_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+            fast_source_terms.tracers[1].data[i, j, k] += ρt_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
         end
 
     end
