@@ -38,25 +38,25 @@ using Oceananigans.Coriolis
     end
 end
 
-@inline function ρu_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
+@inline function ρu_fast_source_term(i, j, k, grid, tvar, gases, gravity, advection_scheme, ρ, ρũ, ρc̃, FU)
     @inbounds begin
-        return (- div_ρuũ(i, j, k, grid, ρ, ρũ)
+        return (- div_ρuũ(i, j, k, grid, advection_scheme, ρ, ρũ)
                 - ∂p∂x(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
                 + FU[i, j, k])
     end
 end
 
-@inline function ρv_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
+@inline function ρv_fast_source_term(i, j, k, grid, tvar, gases, gravity, advection_scheme, ρ, ρũ, ρc̃, FV)
     @inbounds begin
-        return (- div_ρvũ(i, j, k, grid, ρ, ρũ)
+        return (- div_ρvũ(i, j, k, grid, advection_scheme, ρ, ρũ)
                 - ∂p∂y(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
                 + FV[i, j, k])
     end
 end
 
-@inline function ρw_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
+@inline function ρw_fast_source_term(i, j, k, grid, tvar, gases, gravity, advection_scheme, ρ, ρũ, ρc̃, FW)
     @inbounds begin
-        return (- div_ρwũ(i, j, k, grid, ρ, ρũ)
+        return (- div_ρwũ(i, j, k, grid, advection_scheme, ρ, ρũ)
                 - ∂p∂z(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
                 - gravity * ℑzᵃᵃᶠ(i, j, k, grid, ρ)
                 + FW[i, j, k])

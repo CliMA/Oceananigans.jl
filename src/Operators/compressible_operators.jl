@@ -1,3 +1,5 @@
+using Oceananigans.Advection
+
 #####
 ##### Legend:
 ##### ρ  -> density fields
@@ -51,8 +53,6 @@
 #####
 ##### Tracer advection
 #####
-
-using Oceananigans.Advection: advective_tracer_flux_x, advective_tracer_flux_y, advective_tracer_flux_z
 
 @inline tracer_flux_ρuc(i, j, k, grid, scheme, ρ, ρu, ρc) = advective_tracer_flux_x(i, j, k, grid, scheme, ρu, ρc) / ℑxᶠᵃᵃ(i, j, k, grid, ρ)
 @inline tracer_flux_ρvc(i, j, k, grid, scheme, ρ, ρv, ρc) = advective_tracer_flux_y(i, j, k, grid, scheme, ρv, ρc) / ℑyᵃᶠᵃ(i, j, k, grid, ρ)
@@ -136,34 +136,34 @@ end
 ##### Momentum advection
 #####
 
-@inline momentum_flux_ρuu(i, j, k, grid, ρ, ρu) = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶜᵃᵃ(i, j, k, grid, ρu) / ρ[i, j, k]
-@inline momentum_flux_ρvv(i, j, k, grid, ρ, ρv) = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶜᵃ(i, j, k, grid, ρv) / ρ[i, j, k]
-@inline momentum_flux_ρww(i, j, k, grid, ρ, ρw) = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶜ(i, j, k, grid, ρw) / ρ[i, j, k]
+@inline momentum_flux_ρuu(i, j, k, grid, scheme, ρ, ρu) = @inbounds momentum_flux_uu(i, j, k, grid, scheme, ρu) / ρ[i, j, k]
+@inline momentum_flux_ρvv(i, j, k, grid, scheme, ρ, ρv) = @inbounds momentum_flux_vv(i, j, k, grid, scheme, ρv) / ρ[i, j, k]
+@inline momentum_flux_ρww(i, j, k, grid, scheme, ρ, ρw) = @inbounds momentum_flux_ww(i, j, k, grid, scheme, ρw) / ρ[i, j, k]
 
-@inline momentum_flux_ρuv(i, j, k, grid, ρ, ρu, ρv) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρu) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
-@inline momentum_flux_ρuw(i, j, k, grid, ρ, ρu, ρw) = ℑxᶠᵃᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρu) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
-@inline momentum_flux_ρvu(i, j, k, grid, ρ, ρu, ρv) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
-@inline momentum_flux_ρvw(i, j, k, grid, ρ, ρv, ρw) = ℑyᵃᶠᵃ(i, j, k, grid, Az_ψᵃᵃᵃ, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρv) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
-@inline momentum_flux_ρwu(i, j, k, grid, ρ, ρu, ρw) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_ψᵃᵃᶠ, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
-@inline momentum_flux_ρwv(i, j, k, grid, ρ, ρv, ρw) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_ψᵃᵃᶠ, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρuv(i, j, k, grid, scheme, ρ, ρu, ρv) = momentum_flux_uv(i, j, k, grid, scheme, ρu, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
+@inline momentum_flux_ρuw(i, j, k, grid, scheme, ρ, ρu, ρw) = momentum_flux_uw(i, j, k, grid, scheme, ρu, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρvu(i, j, k, grid, scheme, ρ, ρu, ρv) = momentum_flux_vu(i, j, k, grid, scheme, ρu, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
+@inline momentum_flux_ρvw(i, j, k, grid, scheme, ρ, ρv, ρw) = momentum_flux_vw(i, j, k, grid, scheme, ρv, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρwu(i, j, k, grid, scheme, ρ, ρu, ρw) = momentum_flux_wu(i, j, k, grid, scheme, ρu, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρwv(i, j, k, grid, scheme, ρ, ρv, ρw) = momentum_flux_wv(i, j, k, grid, scheme, ρv, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
 
-@inline div_ρuũ(i, j, k, grid, ρ, ρũ) =
+@inline div_ρuũ(i, j, k, grid, scheme, ρ, ρũ) =
     (1/Vᵃᵃᶜ(i, j, k, grid)
-        * (  δxᶠᵃᵃ(i, j, k, grid, momentum_flux_ρuu, ρ, ρũ.ρu)
-           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρuv, ρ, ρũ.ρu, ρũ.ρv)
-           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρuw, ρ, ρũ.ρu, ρũ.ρw)))
+        * (  δxᶠᵃᵃ(i, j, k, grid, momentum_flux_ρuu, scheme, ρ, ρũ.ρu)
+           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρuv, scheme, ρ, ρũ.ρu, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρuw, scheme, ρ, ρũ.ρu, ρũ.ρw)))
 
-@inline div_ρvũ(i, j, k, grid, ρ, ρũ) =
+@inline div_ρvũ(i, j, k, grid, scheme, ρ, ρũ) =
     (1/Vᵃᵃᶜ(i, j, k, grid)
-        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρvu, ρ, ρũ.ρu, ρũ.ρv)
-           + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_ρvv, ρ, ρũ.ρv)
-           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρvw, ρ, ρũ.ρv, ρũ.ρw)))
+        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρvu, scheme, ρ, ρũ.ρu, ρũ.ρv)
+           + δyᵃᶠᵃ(i, j, k, grid, momentum_flux_ρvv, scheme, ρ, ρũ.ρv)
+           + δzᵃᵃᶜ(i, j, k, grid, momentum_flux_ρvw, scheme, ρ, ρũ.ρv, ρũ.ρw)))
 
-@inline div_ρwũ(i, j, k, grid, ρ, ρũ) =
+@inline div_ρwũ(i, j, k, grid, scheme, ρ, ρũ) =
     (1/Vᵃᵃᶠ(i, j, k, grid)
-        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρwu, ρ, ρũ.ρu, ρũ.ρw)
-           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, ρ, ρũ.ρv, ρũ.ρw)
-           + δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, ρ, ρũ.ρw)))
+        * (  δxᶜᵃᵃ(i, j, k, grid, momentum_flux_ρwu, scheme, ρ, ρũ.ρu, ρũ.ρw)
+           + δyᵃᶜᵃ(i, j, k, grid, momentum_flux_ρwv, scheme, ρ, ρũ.ρv, ρũ.ρw)
+           + δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ρww, scheme, ρ, ρũ.ρw)))
 
 #####
 ##### Viscous dissipation

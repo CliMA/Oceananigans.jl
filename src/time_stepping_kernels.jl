@@ -45,9 +45,9 @@ Fast forcings include advection, pressure gradient, and buoyancy terms.
 function compute_fast_source_terms!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
     @inbounds begin
         for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-            fast_source_terms.ρu[i, j, k] = ρu_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, slow_source_terms.ρu)
-            fast_source_terms.ρv[i, j, k] = ρv_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, slow_source_terms.ρv)
-            fast_source_terms.ρw[i, j, k] = ρw_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, slow_source_terms.ρw)
+            fast_source_terms.ρu[i, j, k] = ρu_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρu)
+            fast_source_terms.ρv[i, j, k] = ρv_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρv)
+            fast_source_terms.ρw[i, j, k] = ρw_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρw)
         end
 
         for ρc_name in propertynames(tracers)
