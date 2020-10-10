@@ -9,8 +9,8 @@ ENV["GKSwstype"] = "100"
 
 N = 64
 L = 1
-T = 1
-Δt = 1e-2
+T = 1000
+Δt = 1e1
 Nt = Int(T/Δt)
 
 topo = (Periodic, Periodic, Periodic)
@@ -42,6 +42,7 @@ update_total_density!(model)
 
 @inline x′(x, t, L, U) = mod(x + L/2 - U * t, L) - L/2
 @inline ϕ_Gaussian(x, t; L, U, a=1, c=1/8) = a * exp(-x′(x, t, L, U)^2 / (2c^2))
+@inline ϕ_Square(x, t; L, U, w=0.15) = -w <= x′(x, t, L, U) <= w ? 1.0 : 0.0
 ρc₀(x, y, z) = ϕ_Gaussian(x, 0, L=L, U=1)
 set!(model.tracers.ρc, ρc₀)
 
@@ -53,7 +54,7 @@ anim = @animate for n in 1:Nt
 
     x = xnodes(Cell, grid)
     ρc = interior(model.tracers.ρc)[:]
-    plot(x, ρc, lw=2, label="", title=title, xlims=(-1, 1), ylims=(0, 1), dpi=200)
+    plot(x, ρc, lw=2, label="", title=title, xlims=(-L/2, L/2), ylims=(0, 1), dpi=200)
 end
 
 mp4(anim, "periodic_advection.mp4", fps=15)
