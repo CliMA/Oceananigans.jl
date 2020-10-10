@@ -2,6 +2,7 @@ using Printf
 using Plots
 using JULES
 using Oceananigans
+using Oceananigans.Advection
 
 using JULES: IdealGas
 using Oceananigans.Grids: Cell, xnodes
@@ -22,6 +23,7 @@ grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(4, 4, 4); domai
 
 model = CompressibleModel(
                       grid = grid,
+                 advection = WENO5(),
                      gases = (ρ=ideal_gas,),
     thermodynamic_variable = Entropy(),
                    closure = IsotropicDiffusivity(ν=0, κ=0),
