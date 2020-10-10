@@ -1,4 +1,5 @@
 using Oceananigans
+using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.Models: AbstractModel, Clock, tracernames
 using Oceananigans.Forcings: model_forcing
 
@@ -6,10 +7,11 @@ using Oceananigans.Forcings: model_forcing
 ##### Definition of a compressible model
 #####
 
-mutable struct CompressibleModel{A, FT, Ω, D, M, V, T, L, K, Θ, G, X, C, F, S} <: AbstractModel
+mutable struct CompressibleModel{A, FT, Ω, ∇, D, M, V, T, L, K, Θ, G, X, C, F, S} <: AbstractModel
               architecture :: A
                       grid :: Ω
                      clock :: Clock{FT}
+                 advection :: ∇
              total_density :: D
                    momenta :: M
                 velocities :: V
@@ -37,6 +39,7 @@ function CompressibleModel(;
               architecture = CPU(),
                 float_type = Float64,
                      clock = Clock{float_type}(0, 0),
+                 advection = CenteredSecondOrder(),
                    momenta = MomentumFields(architecture, grid),
                      gases = DryEarth(float_type),
     thermodynamic_variable = Energy(),
@@ -59,7 +62,7 @@ function CompressibleModel(;
     lazy_tracers = LazyTracerFields(architecture, grid, total_density, tracers)
 
     return CompressibleModel(
-        architecture, grid, clock, total_density, momenta, velocities, tracers,
+        architecture, grid, clock, advection, total_density, momenta, velocities, tracers,
         lazy_tracers, diffusivities, thermodynamic_variable, gases, gravity,
         coriolis, closure, forcing, time_stepper)
 end

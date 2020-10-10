@@ -63,9 +63,9 @@ end
     end
 end
 
-@inline function ρc_fast_source_term(i, j, k, grid, ρ, ρũ, ρc, FC)
+@inline function ρc_fast_source_term(i, j, k, grid, advection_scheme, ρ, ρũ, ρc, FC)
     @inbounds begin
-        return -div_uc(i, j, k, grid, ρ, ρũ, ρc) + FC[i, j, k]
+        return -div_ρUc(i, j, k, grid, advection_scheme, ρ, ρũ, ρc) + FC[i, j, k]
     end
 end
 

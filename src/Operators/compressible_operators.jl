@@ -52,15 +52,17 @@
 ##### Tracer advection
 #####
 
-@inline advective_tracer_flux_x(i, j, k, grid, ρ, ρu, ρc) = Ax_ψᵃᵃᶠ(i, j, k, grid, ρu) * ℑxᶠᵃᵃ(i, j, k, grid, ρc) / ℑxᶠᵃᵃ(i, j, k, grid, ρ)
-@inline advective_tracer_flux_y(i, j, k, grid, ρ, ρv, ρc) = Ay_ψᵃᵃᶠ(i, j, k, grid, ρv) * ℑyᵃᶠᵃ(i, j, k, grid, ρc) / ℑyᵃᶠᵃ(i, j, k, grid, ρ)
-@inline advective_tracer_flux_z(i, j, k, grid, ρ, ρw, ρc) = Az_ψᵃᵃᵃ(i, j, k, grid, ρw) * ℑzᵃᵃᶠ(i, j, k, grid, ρc) / ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+using Oceananigans.Advection: advective_tracer_flux_x, advective_tracer_flux_y, advective_tracer_flux_z
 
-@inline div_uc(i, j, k, grid, ρ, ρũ, ρc) =
+@inline tracer_flux_ρuc(i, j, k, grid, scheme, ρ, ρu, ρc) = advective_tracer_flux_x(i, j, k, grid, scheme, ρu, ρc) / ℑxᶠᵃᵃ(i, j, k, grid, ρ)
+@inline tracer_flux_ρvc(i, j, k, grid, scheme, ρ, ρv, ρc) = advective_tracer_flux_y(i, j, k, grid, scheme, ρv, ρc) / ℑyᵃᶠᵃ(i, j, k, grid, ρ)
+@inline tracer_flux_ρwc(i, j, k, grid, scheme, ρ, ρw, ρc) = advective_tracer_flux_z(i, j, k, grid, scheme, ρw, ρc) / ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+
+@inline div_ρUc(i, j, k, grid, scheme, density, momenta, ρc) =
     (1/Vᵃᵃᶜ(i, j, k, grid)
-        * (  δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, ρ, ρũ.ρu, ρc)
-           + δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, ρ, ρũ.ρv, ρc)
-           + δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, ρ, ρũ.ρw, ρc)))
+        * (  δxᶜᵃᵃ(i, j, k, grid, tracer_flux_ρuc, scheme, density, momenta.ρu, ρc)
+           + δyᵃᶜᵃ(i, j, k, grid, tracer_flux_ρvc, scheme, density, momenta.ρv, ρc)
+           + δzᵃᵃᶜ(i, j, k, grid, tracer_flux_ρwc, scheme, density, momenta.ρw, ρc)))
 
 #####
 ##### Diffusion

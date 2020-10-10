@@ -58,8 +58,8 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
-                               model.gases, model.gravity, total_density, momenta, tracers, slow_source_terms)
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+                               model.advection, total_density, momenta, tracers, slow_source_terms)
 
     advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
@@ -75,8 +75,8 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
-                               model.gases, model.gravity, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+                               model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
     advance_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
 
@@ -94,8 +94,8 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable,
-                               model.gases, model.gravity, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+    compute_fast_source_terms!(fast_source_terms, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+                               model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
     state_variables = (momenta..., tracers = tracers)
     advance_variables!(state_variables, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)
