@@ -9,7 +9,7 @@ ENV["GKSwstype"] = "100"
 
 N = 512
 L = 1
-T = 0.5
+T = 0.25
 Δt = 1e-3
 Nt = Int(T/Δt)
 
@@ -20,7 +20,7 @@ grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(2, 2, 2); domai
 model = CompressibleModel(
                       grid = grid,
                      gases = DryEarth(),
-    thermodynamic_variable = Energy(),
+    thermodynamic_variable = Entropy(),
                    closure = IsotropicDiffusivity(ν=0, κ=0)
 )
 
@@ -38,10 +38,10 @@ p₀(x, y, z) = x < 0.5 ? pₗ : pᵣ
 u₀(x, y, z) = x < 0.5 ? uₗ : uᵣ
 
 T₀(x, y, z) = p₀(x, y, z) / (R*ρ₀(x, y, z))
-ρe₀(x, y, z) = ρ₀(x, y, z) * (u₀₀ + cᵥ * (T₀(x, y, z) - T₀₀) + g*z)
+ρs₀(x, y, z) = ρ₀(x, y, z) * (s₀₀ + cᵥ * log(T₀(x, y, z)/T₀₀) - R * log(ρ₀(x, y, z)/ρ₀₀))
 
 set!(model.tracers.ρ, ρ₀)
-set!(model.tracers.ρe, ρe₀)
+set!(model.tracers.ρs, ρs₀)
 update_total_density!(model)
 
 anim = @animate for n in 1:Nt
