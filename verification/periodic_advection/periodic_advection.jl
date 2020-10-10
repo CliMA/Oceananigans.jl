@@ -3,23 +3,26 @@ using Plots
 using JULES
 using Oceananigans
 
+using JULES: IdealGas
 using Oceananigans.Grids: Cell, xnodes
 
 ENV["GKSwstype"] = "100"
 
 N = 64
 L = 1
-T = 1000
-Δt = 1e1
+T = 2
+Δt = 1e-2
 Nt = Int(T/Δt)
+
+ideal_gas = IdealGas(Float64, JULES.R⁰, 1; T₀=1, p₀=1, s₀=1, u₀=0)
 
 topo = (Periodic, Periodic, Periodic)
 domain = (x=(-L/2, L/2), y=(0, 1), z=(0, 1))
-grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(2, 2, 2); domain...)
+grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(4, 4, 4); domain...)
 
 model = CompressibleModel(
                       grid = grid,
-                     gases = DryEarth(),
+                     gases = (ρ=ideal_gas,),
     thermodynamic_variable = Entropy(),
                    closure = IsotropicDiffusivity(ν=0, κ=0),
                    gravity = 0.0,
@@ -43,7 +46,7 @@ update_total_density!(model)
 @inline x′(x, t, L, U) = mod(x + L/2 - U * t, L) - L/2
 @inline ϕ_Gaussian(x, t; L, U, a=1, c=1/8) = a * exp(-x′(x, t, L, U)^2 / (2c^2))
 @inline ϕ_Square(x, t; L, U, w=0.15) = -w <= x′(x, t, L, U) <= w ? 1.0 : 0.0
-ρc₀(x, y, z) = ϕ_Gaussian(x, 0, L=L, U=1)
+ρc₀(x, y, z) = ϕ_Square(x, 0, L=L, U=1)
 set!(model.tracers.ρc, ρc₀)
 
 anim = @animate for n in 1:Nt
@@ -54,7 +57,7 @@ anim = @animate for n in 1:Nt
 
     x = xnodes(Cell, grid)
     ρc = interior(model.tracers.ρc)[:]
-    plot(x, ρc, lw=2, label="", title=title, xlims=(-L/2, L/2), ylims=(0, 1), dpi=200)
+    plot(x, ρc, lw=2, label="", title=title, xlims=(-L/2, L/2), ylims=(-0.2, 1.1), dpi=200)
 end
 
 mp4(anim, "periodic_advection.mp4", fps=15)
