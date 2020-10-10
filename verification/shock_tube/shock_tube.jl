@@ -2,6 +2,7 @@ using Printf
 using Plots
 using JULES
 using Oceananigans
+using Oceananigans.Advection
 
 using Oceananigans.Grids: Cell, xnodes
 
@@ -15,10 +16,11 @@ Nt = Int(T/Δt)
 
 topo = (Bounded, Periodic, Periodic)
 domain = (x=(0, L), y=(0, 1), z=(0, 1))
-grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(2, 2, 2); domain...)
+grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), halo=(4, 4, 4); domain...)
 
 model = CompressibleModel(
                       grid = grid,
+                 advection = WENO5(),
                      gases = DryEarth(),
     thermodynamic_variable = Entropy(),
                    closure = IsotropicDiffusivity(ν=0, κ=0)
