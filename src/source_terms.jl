@@ -38,7 +38,7 @@ using Oceananigans.Coriolis
     end
 end
 
-@inline function ρu_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
+@inline function ρu_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FU)
     @inbounds begin
         return (- div_ρuũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂x(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -46,7 +46,7 @@ end
     end
 end
 
-@inline function ρv_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
+@inline function ρv_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FV)
     @inbounds begin
         return (- div_ρvũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂y(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -54,7 +54,7 @@ end
     end
 end
 
-@inline function ρw_slow_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
+@inline function ρw_fast_source_term(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃, FW)
     @inbounds begin
         return (- div_ρwũ(i, j, k, grid, ρ, ρũ)
                 - ∂p∂z(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
@@ -63,13 +63,13 @@ end
     end
 end
 
-@inline function ρc_slow_source_term(i, j, k, grid, ρ, ρũ, ρc, FC)
+@inline function ρc_fast_source_term(i, j, k, grid, ρ, ρũ, ρc, FC)
     @inbounds begin
         return -div_uc(i, j, k, grid, ρ, ρũ, ρc) + FC[i, j, k]
     end
 end
 
-@inline ρc_slow_source_term(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
+@inline ρc_fast_source_term(i, j, k, grid::AbstractGrid{T}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where T = zero(T)
 
-@inline ρc_slow_source_term(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
+@inline ρc_fast_source_term(i, j, k, grid, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) =
     -∂ⱼpuⱼ(i, j, k, grid, diagnose_pressure, tvar, gases, gravity, ρ, ρũ, ρc̃)
