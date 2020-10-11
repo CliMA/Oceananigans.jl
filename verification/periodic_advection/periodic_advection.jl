@@ -1,8 +1,9 @@
 using Printf
 using Plots
-using JULES
+
 using Oceananigans
 using Oceananigans.Advection
+using JULES
 
 using JULES: IdealGas
 using Oceananigans.Grids: Cell, xnodes
