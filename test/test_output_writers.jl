@@ -8,7 +8,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    topo = (Periodic, Periodic, Bounded)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -30,18 +31,14 @@ function run_thermal_bubble_netcdf_tests(arch)
     nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, iteration_interval=10, verbose=true)
     push!(simulation.output_writers, nc_writer)
 
-    xC_slice = 1:10
-    xF_slice = 2:11
-    yC_slice = 10:15
-    yF_slice = 1
-    zC_slice = 10
-    zF_slice = 9:11
+    i_slice = 1:10
+    j_slice = 13
+    k_slice = 9:11
+    field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
 
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
-    nc_sliced_writer =
-        NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, iteration_interval=10, verbose=true,
-                           xC=xC_slice, xF=xF_slice, yC=yC_slice,
-                           yF=yF_slice, zC=zC_slice, zF=zF_slice)
+    nc_sliced_writer = NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, iteration_interval=10,
+                                          field_slicer=field_slicer, verbose=true)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
@@ -94,26 +91,26 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
     @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
 
-    @test length(ds2["xC"]) == length(xC_slice)
-    @test length(ds2["xF"]) == length(xF_slice)
-    @test length(ds2["yC"]) == length(yC_slice)
-    @test length(ds2["yF"]) == length(yF_slice)
-    @test length(ds2["zC"]) == length(zC_slice)
-    @test length(ds2["zF"]) == length(zF_slice)
+    @test length(ds2["xC"]) == length(i_slice)
+    @test length(ds2["xF"]) == length(i_slice)
+    @test length(ds2["yC"]) == length(j_slice)
+    @test length(ds2["yF"]) == length(j_slice)
+    @test length(ds2["zC"]) == length(k_slice)
+    @test length(ds2["zF"]) == length(k_slice)
 
-    @test ds2["xC"][1] == grid.xC[xC_slice[1]]
-    @test ds2["xF"][1] == grid.xF[xF_slice[1]]
-    @test ds2["yC"][1] == grid.yC[yC_slice[1]]
-    @test ds2["yF"][1] == grid.yF[yF_slice]
-    @test ds2["zC"][1] == grid.zC[zC_slice]
-    @test ds2["zF"][1] == grid.zF[zF_slice[1]]
+    @test ds2["xC"][1] == grid.xC[i_slice[1]]
+    @test ds2["xF"][1] == grid.xF[i_slice[1]]
+    @test ds2["yC"][1] == grid.yC[j_slice[1]]
+    @test ds2["yF"][1] == grid.yF[j_slice[1]]
+    @test ds2["zC"][1] == grid.zC[k_slice[1]]
+    @test ds2["zF"][1] == grid.zF[k_slice[1]]
 
-    @test ds2["xC"][end] == grid.xC[xC_slice[end]]
-    @test ds2["xF"][end] == grid.xF[xF_slice[end]]
-    @test ds2["yC"][end] == grid.yC[yC_slice[end]]
-    @test ds2["yF"][end] == grid.yF[yF_slice]
-    @test ds2["zC"][end] == grid.zC[zC_slice]
-    @test ds2["zF"][end] == grid.zF[zF_slice[end]]
+    @test ds2["xC"][end] == grid.xC[i_slice[end]]
+    @test ds2["xF"][end] == grid.xF[i_slice[end]]
+    @test ds2["yC"][end] == grid.yC[j_slice[end]]
+    @test ds2["yF"][end] == grid.yF[j_slice[end]]
+    @test ds2["zC"][end] == grid.zC[k_slice[end]]
+    @test ds2["zF"][end] == grid.zF[k_slice[end]]
 
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
@@ -123,18 +120,19 @@ function run_thermal_bubble_netcdf_tests(arch)
 
     close(ds2)
 
-    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[xF_slice, yC_slice, zC_slice])
-    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[xC_slice, yF_slice, zC_slice])
-    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[xC_slice, yC_slice, zF_slice])
-    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[xC_slice, yC_slice, zC_slice])
-    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[xC_slice, yC_slice, zC_slice])
+    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[i_slice, j_slice, k_slice])
+    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[i_slice, j_slice, k_slice])
+    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[i_slice, j_slice, k_slice])
+    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[i_slice, j_slice, k_slice])
+    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[i_slice, j_slice, k_slice])
 end
 
 function run_thermal_bubble_netcdf_tests_with_halos(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    topo = (Periodic, Periodic, Bounded)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -154,7 +152,8 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
         "S" => model.tracers.S
     )
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, iteration_interval=10, with_halos=true)
+    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, iteration_interval=10,
+                                   field_slicer=FieldSlicer(with_halos=true))
     push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
@@ -233,8 +232,8 @@ function run_netcdf_function_output_tests(arch)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs;
-            iteration_interval=1, filepath=nc_filepath, dimensions=dims, verbose=true,
+        NetCDFOutputWriter(model, outputs; filepath=nc_filepath,
+            iteration_interval=1, dimensions=dims, array_type=Array{Float64}, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
@@ -307,8 +306,8 @@ function run_netcdf_function_output_tests(arch)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs;
-            iteration_interval=1, filepath=nc_filepath, mode="a", dimensions=dims, verbose=true,
+        NetCDFOutputWriter(model, outputs; filepath=nc_filepath, mode="a",
+            iteration_interval=1, array_type=Array{Float64}, dimensions=dims, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
@@ -358,7 +357,7 @@ function run_jld2_file_splitting_tests(arch)
     @test filesize("test_part3.jld2") < 200KiB
 
     for n in string.(1:3)
-        filename = "test_part" * n * ".jld2"
+        filename = "test_part$n.jld2"
         jldopen(filename, "r") do file
             # Test to make sure all files contain structs from `including`.
             @test file["grid/Nx"] == 16

@@ -1,16 +1,29 @@
-using Dates: now
 using NCDatasets
 
 using Oceananigans.Fields
-using Oceananigans.Fields: cpudata
-using Oceananigans.Diagnostics: Average
-using Oceananigans.Utils: validate_intervals, versioninfo_with_gpu, oceananigans_versioninfo
-using Oceananigans.Grids: topology, interior_x_indices, interior_y_indices, interior_z_indices,
-                          all_x_indices, all_y_indices, all_z_indices
 
-# Possibly should
-collect_face_nodes(topo, ξF) = collect(ξF)[1:end-1]
-collect_face_nodes(::Bounded, ξF) = collect(ξF)
+using Dates: now
+using Oceananigans.Grids: topology, halo_size
+using Oceananigans.Utils: validate_intervals, versioninfo_with_gpu, oceananigans_versioninfo
+
+xdim(::Type{Face}) = "xF"
+ydim(::Type{Face}) = "yF"
+zdim(::Type{Face}) = "zF"
+
+xdim(::Type{Cell}) = "xC"
+ydim(::Type{Cell}) = "yC"
+zdim(::Type{Cell}) = "zC"
+
+netcdf_spatial_dimensions(::Field{LX, LY, LZ}) where {LX, LY, LZ} = xdim(LX), ydim(LY), zdim(LZ)
+
+const default_dimension_attributes = Dict(
+    "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+    "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+    "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+    "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m")
+)
 
 const default_output_attributes = Dict(
     "u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
@@ -26,14 +39,15 @@ const default_output_attributes = Dict(
 
 An output writer for writing to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{D, O, I, T, S, A} <: AbstractOutputWriter
               filepath :: String
                dataset :: D
                outputs :: O
     iteration_interval :: I
          time_interval :: T
                   mode :: String
-                slices :: S
+          field_slicer :: S
+            array_type :: A
               previous :: Float64
                verbose :: Bool
 end
@@ -157,62 +171,40 @@ NetCDFOutputWriter (iteration_interval=1): things.nc
 ```
 """
 function NetCDFOutputWriter(model, outputs; filepath,
-    iteration_interval = nothing,
-         time_interval = nothing,
-     global_attributes = Dict(),
-     output_attributes = Dict(),
-            dimensions = Dict(),
-                  mode = "c",
-           compression = 0,
-            with_halos = false,
-               verbose = false,
-    xC = with_halos ? all_x_indices(Cell, model.grid) : interior_x_indices(Cell, model.grid),
-    xF = with_halos ? all_x_indices(Face, model.grid) : interior_x_indices(Face, model.grid),
-    yC = with_halos ? all_y_indices(Cell, model.grid) : interior_y_indices(Cell, model.grid),
-    yF = with_halos ? all_y_indices(Face, model.grid) : interior_y_indices(Face, model.grid),
-    zC = with_halos ? all_z_indices(Cell, model.grid) : interior_z_indices(Cell, model.grid),
-    zF = with_halos ? all_z_indices(Face, model.grid) : interior_z_indices(Face, model.grid)
-    )
+                            iteration_interval = nothing,
+                                 time_interval = nothing,
+                                    array_type = Array{Float32},
+                                  field_slicer = FieldSlicer(),
+                             global_attributes = Dict(),
+                             output_attributes = Dict(),
+                                    dimensions = Dict(),
+                                          mode = "c",
+                                   compression = 0,
+                                       verbose = false)
 
     validate_intervals(iteration_interval, time_interval)
 
     # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
 
-    # Generates a dictionary with keys "xC", "xF", etc, whose values give the slices to be saved.
-    slice_keywords = Dict(name => a for (name, a) in zip(("xC", "yC", "zC", "xF", "yF", "zF"),
-                                                         ( xC,   yC,   zC,   xF,   yF,   zF )))
-
-    # Allow values to be of Any type as OffsetArrays may get modified below.
-    grid = model.grid
-    dims = Dict{String,Any}(
-        "xC" => with_halos ? grid.xC : collect(xnodes(Cell, grid)),
-        "xF" => with_halos ? grid.xF : collect(xnodes(Face, grid)),
-        "yC" => with_halos ? grid.yC : collect(ynodes(Cell, grid)),
-        "yF" => with_halos ? grid.yF : collect(ynodes(Face, grid)),
-        "zC" => with_halos ? grid.zC : collect(znodes(Cell, grid)),
-        "zF" => with_halos ? grid.zF : collect(znodes(Face, grid))
-    )
-
-    dim_attribs = Dict(
-        "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-        "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-        "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-        "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-        "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-        "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m")
-    )
-
     # Add useful metadata as global attributes
     global_attributes["date"] = "This file was generated on $(now())."
     global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
     global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
 
-    # Slice coordinate arrays stored in the dims dict
-    for (dim, indices) in slice_keywords
-        dim = string(dim) # convert symbol to string
-        dims[dim] = dims[dim][get_slice(indices)] # overwrite entries in dims Dict
-    end
+    grid = model.grid
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    TX, TY, TZ = topology(grid)
+
+    dims = Dict(
+        "xC" => grid.xC.parent[parent_slice_indices(Cell, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => grid.xF.parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "yC" => grid.yC.parent[parent_slice_indices(Cell, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => grid.yF.parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "zC" => grid.zC.parent[parent_slice_indices(Cell, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)]
+    )
 
     # Open the NetCDF dataset file
     dataset = Dataset(filepath, mode, attrib=global_attributes)
@@ -221,29 +213,28 @@ function NetCDFOutputWriter(model, outputs; filepath,
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, dim_array, (dim_name,),
-                   compression=compression, attrib=dim_attribs[dim_name])
+                   compression=compression, attrib=default_dimension_attributes[dim_name])
         end
 
-        # Creates an unliimited dimension "time"
+        # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", Float64, ("time",))
+        defVar(dataset, "time", typeof(model.clock.time), ("time",))
 
-        # Ensure we have an attribute for every output. Use reasonable defaults if
-        # none were specified by the user.
+        # Use default output attributes for known outputs if the user has not specified any.
+        # Unknown outputs get an empty tuple (no output attributes).
         for c in keys(outputs)
             if !haskey(output_attributes, c)
-                output_attributes[c] = default_output_attributes[c]
+                output_attributes[c] = c in keys(default_output_attributes) ? default_output_attributes[c] : ()
             end
         end
 
-        # Initiates empty variables for fields from the user-supplied variable outputs
+        # Initiates empty variables for fields from the user-supplied `outputs`.
         for (name, output) in outputs
             if output isa Field
-                FT = eltype(output.grid)
-                defVar(dataset, name, FT, (netcdf_spatial_dimensions(output)..., "time"),
+                defVar(dataset, name, eltype(array_type), (netcdf_spatial_dimensions(output)..., "time"),
                        compression=compression, attrib=output_attributes[name])
             else
-                defVar(dataset, name, Float64, (dimensions[name]..., "time"),
+                defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
                        compression=compression, attrib=output_attributes[name])
             end
         end
@@ -251,73 +242,12 @@ function NetCDFOutputWriter(model, outputs; filepath,
         sync(dataset)
     end
 
-    # extract outputs whose values are Fields
-    field_outputs = filter(o -> o.second isa Field, outputs)
-
-    # Store a slice specification for each field.
-    slices = Dict(name => slice_indices(field; xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
-                  for (name, field) in field_outputs)
-
     return NetCDFOutputWriter(filepath, dataset, outputs, iteration_interval, time_interval,
-                              mode, slices, 0.0, verbose)
+                              mode, field_slicer, array_type, 0.0, verbose)
 end
 
 Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filepath, "a")
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
-
-"""
-    netcdf_spatial_dimensions(::field)
-
-Returns the NetCDF dimensions associated with a field.
-
-Examples
-========
-julia> netcdf_spatial_dimensions(model.velocities.u)
-("xF", "yC", "zC")
-
-julia> netcdf_spatial_dimensions(model.tracers.T)
-("xC", "yC", "zC")
-"""
-netcdf_spatial_dimensions(::Field{LX, LY, LZ}) where {LX, LY, LZ} = xdim(LX), ydim(LY), zdim(LZ)
-
-xdim(::Type{Face}) = "xF"
-ydim(::Type{Face}) = "yF"
-zdim(::Type{Face}) = "zF"
-
-xdim(::Type{Cell}) = "xC"
-ydim(::Type{Cell}) = "yC"
-zdim(::Type{Cell}) = "zC"
-
-# This function allows users to specify slices with integers; eg xC=3.
-# Note: size(a[3:3, :, :]) = (1, Ny, Nz) versus size(a[3, :, :]) = (Ny, Nz)
-get_slice(n::Integer) = n:n
-get_slice(n::UnitRange) = n
-
-"""
-    slice_indices(field; slice_specs...)
-
-Returns an array of indices that specify a view over a field's data.
-"""
-slice_indices(field; slice_specs...) =
-    [get_slice(slice_specs[Symbol(dim)]) for dim in netcdf_spatial_dimensions(field)]
-
-function save_output_to_netcdf!(nc, model, f::Field, name, time_index)
-    data = cpudata(f) # Transfer data to CPU if parent(output) is a CuArray
-    nc.dataset[name][:, :, :, time_index] = view(data, nc.slices[name]...)
-end
-
-function save_output_to_netcdf!(nc, model, avg::Average, name, time_index)
-    data = avg(model)
-    data = dropdims(data, dims=avg.dims)
-    colons = Tuple(Colon() for _ in 1:ndims(data))
-    nc.dataset[name][colons..., time_index] = data
-end
-
-function save_output_to_netcdf!(nc, model, output, name, time_index)
-    data = output(model)
-    colons = Tuple(Colon() for _ in 1:ndims(data))
-    nc.dataset[name][colons..., time_index] = data
-end
 
 """
     write_output!(output_writer, model)
@@ -343,7 +273,9 @@ function write_output!(ow::NetCDFOutputWriter, model)
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        save_output_to_netcdf!(ow, model, output, name, time_index)
+        data = fetch_and_convert_output(output, model, ow)
+        colons = Tuple(Colon() for _ in 1:ndims(data))
+        ds[name][colons..., time_index] = data
 
         if verbose
             # Time after computing this output.
