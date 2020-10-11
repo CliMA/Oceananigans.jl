@@ -27,7 +27,7 @@ const default_output_attributes = Dict(
 An output writer for writing to NetCDF files.
 """
 mutable struct NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
-              filename :: String
+              filepath :: String
                dataset :: D
                outputs :: O
     iteration_interval :: I
@@ -39,7 +39,7 @@ mutable struct NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, iteration_interval=nothing, time_interval=nothing,
+    NetCDFOutputWriter(model, outputs; filepath, iteration_interval=nothing, time_interval=nothing,
                        global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
                        mode="c", compression=0, with_halos=false, verbose=false, slice_kwargs...)
 
@@ -55,7 +55,7 @@ Keyword arguments
 
 - `time_interval`: Save output every `t` units of model clock time.
 
-- `filename`: Filepath to save output to.
+- `filepath`: Filepath to save output to.
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
@@ -96,7 +96,7 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="fields.nc", time_interval=60)
+    NetCDFOutputWriter(model, fields, filepath="fields.nc", time_interval=60)
 
 # output
 NetCDFOutputWriter (time_interval=60): fields.nc
@@ -106,7 +106,7 @@ NetCDFOutputWriter (time_interval=60): fields.nc
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
+    NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
                        time_interval=60, zC=grid.Nz, zF=grid.Nz+1)
 
 # output
@@ -147,7 +147,7 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       iteration_interval=1, filename="things.nc", dimensions=dims, verbose=true,
+                       iteration_interval=1, filepath="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
@@ -156,7 +156,7 @@ NetCDFOutputWriter (iteration_interval=1): things.nc
 └── 3 outputs: ["profile", "slice", "scalar"]
 ```
 """
-function NetCDFOutputWriter(model, outputs; filename,
+function NetCDFOutputWriter(model, outputs; filepath,
     iteration_interval = nothing,
          time_interval = nothing,
      global_attributes = Dict(),
@@ -215,7 +215,7 @@ function NetCDFOutputWriter(model, outputs; filename,
     end
 
     # Open the NetCDF dataset file
-    dataset = Dataset(filename, mode, attrib=global_attributes)
+    dataset = Dataset(filepath, mode, attrib=global_attributes)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -258,11 +258,11 @@ function NetCDFOutputWriter(model, outputs; filename,
     slices = Dict(name => slice_indices(field; xC=xC, yC=yC, zC=zC, xF=xF, yF=yF, zF=zF)
                   for (name, field) in field_outputs)
 
-    return NetCDFOutputWriter(filename, dataset, outputs, iteration_interval, time_interval,
+    return NetCDFOutputWriter(filepath, dataset, outputs, iteration_interval, time_interval,
                               mode, slices, 0.0, verbose)
 end
 
-Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filename, "a")
+Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filepath, "a")
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
 
 """
@@ -322,11 +322,11 @@ end
 """
     write_output!(output_writer, model)
 
-Writes output to netcdf file `output_writer.filename` at specified intervals. Increments the `time` dimension
+Writes output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFOutputWriter, model)
-    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filename
+    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
     ds["time"][time_index] = model.clock.time
@@ -375,7 +375,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
                  for dim in keys(ow.dataset.dim)])[1:end-2]
 
-    print(io, "NetCDFOutputWriter $freq_int: $(ow.filename)\n",
+    print(io, "NetCDFOutputWriter $freq_int: $(ow.filepath)\n",
         "├── dimensions: $dims\n",
         "└── $(length(ow.outputs)) outputs: $(keys(ow.outputs))")
 end
