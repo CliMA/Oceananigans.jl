@@ -324,6 +324,9 @@ function run_netcdf_function_output_tests(arch)
             time_interval=Δt, dimensions=dims, array_type=Array{Float64}, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
+    # We should have no problem with time_interval=Δt=1.25 as 1.25 can be represented exactly with
+    # a floating-point number.
+
     run!(simulation)
 
     ds = Dataset(nc_filepath, "r")
@@ -899,6 +902,70 @@ function jld2_time_averaging_of_horizontal_averages(model)
     return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
 
+function run_netcdf_time_averaging_tests(arch)
+    topo = (Periodic, Periodic, Periodic)
+    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RegularCartesianGrid(topology=topo, size=(4, 4, 4); domain...)
+
+    λ(x, y, z) = x + (1 - y)^2 + tanh(z)
+    Fc(x, y, z, t, c) = - λ(x, y, z) * c
+
+    c_forcing = Forcing(Fc, field_dependencies=(:c,))
+
+    model = IncompressibleModel(
+                grid = grid,
+        architecture = arch,
+         timestepper = :RungeKutta3,
+             tracers = :c,
+             forcing = (c=c_forcing,),
+            coriolis = nothing,
+            buoyancy = nothing,
+             closure = nothing
+    )
+
+    set!(model, c=1)
+
+    Δt = 1/512  # Nice floating-point number
+    simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+
+    ∫c_dxdy = AveragedField(model.tracers.c, dims=(1, 2))
+    
+    nc_outputs = Dict("c" => ∫c_dxdy)
+    nc_dimensions = Dict("c" => ("zC",))
+
+    nc_filepath = "decay_windowed_time_average_test.nc"
+    simulation.output_writers[:nc] =
+        NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath, dimensions=nc_dimensions,
+                           
+                           array_type=Array{Float64}, time_interval=10Δt, verbose=true)
+
+    run!(simulation)
+
+    close(simulation.output_writers[:nc].dataset)
+
+    ds = NCDataset(nc_filepath)
+
+    # Horizontal average should evaluate to
+    #
+    #     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
+    #             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
+    #
+    # which we can compute analytically.
+
+    Nx, Ny, Nz = size(grid)
+    xs, ys, zs = nodes(model.tracers.c)
+
+    c̄(z, t) = 1 / (Nx * Ny) * sum(exp(-λ(x, y, z) * t) for x in xs for y in ys)
+
+    for (n, t) in enumerate(ds["time"])
+        @test ds["c"][:, n] ≈ c̄.(zs, t)
+    end
+
+
+
+    return nothing
+end
+
 #####
 ##### Run output writer tests!
 #####
@@ -959,6 +1026,8 @@ end
             run_windowed_time_averaging_simulation_tests!(model)
                 
             @test jld2_time_averaging_of_horizontal_averages(model)
+
+            run_netcdf_time_averaging_tests(arch)
         end
     end
 end
