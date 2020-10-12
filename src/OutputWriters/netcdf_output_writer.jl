@@ -321,6 +321,13 @@ function write_output!(ow::NetCDFOutputWriter, model)
         verbose && (t0′ = time_ns())
 
         data = fetch_and_convert_output(output, model, ow)
+
+        if output isa AveragedField
+            data = dropdims(data, dims=output.dims)
+        elseif output isa TimeWindowAverage && output.operand isa AveragedField
+            data = dropdims(data, dims=output.operand.dims)
+        end
+
         colons = Tuple(Colon() for _ in 1:ndims(data))
         ds[name][colons..., time_index] = data
 
