@@ -10,6 +10,7 @@ import Oceananigans.Simulations: ab2_or_rk3_time_step!
 ab2_or_rk3_time_step!(model::CompressibleModel, Δt; euler) = time_step!(model, Δt)
 
 function time_step!(model::CompressibleModel, Δt)
+    arch = model.architecture
     total_density  = model.total_density
     momenta = model.momenta
     tracers = model.tracers
@@ -36,7 +37,12 @@ function time_step!(model::CompressibleModel, Δt)
     ##### Compute slow source terms
     #####
 
-    update_total_density!(total_density, model.grid, model.gases, tracers)
+    density_update_event =
+        launch!(arch, model.grid, :xyz, update_total_density!,
+                total_density, model.grid, model.gases, tracers,
+                dependencies=Event(device(arch)))
+
+    wait(device(arch), density_update_event)
     
     fill_halo_regions!(merge((Σρ=total_density,), momenta, tracers), model.architecture, model.clock, nothing)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
@@ -52,7 +58,12 @@ function time_step!(model::CompressibleModel, Δt)
     ##### Stage 1
     #####
 
-    update_total_density!(total_density, model.grid, model.gases, tracers)
+    density_update_event =
+        launch!(arch, model.grid, :xyz, update_total_density!,
+                total_density, model.grid, model.gases, tracers,
+                dependencies=Event(device(arch)))
+
+    wait(device(arch), density_update_event)
 
     fill_halo_regions!(merge((Σρ=total_density,), momenta, tracers), model.architecture, model.clock, nothing)    
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
@@ -63,13 +74,18 @@ function time_step!(model::CompressibleModel, Δt)
 
     advance_state_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
-    tick!(model.clock, 0; stage=true)
+    tick!(model.clock, 0, stage=true)
 
     #####
     ##### Stage 2
     #####
 
-    update_total_density!(total_density, model.grid, model.gases, intermediate_tracers)
+    density_update_event =
+        launch!(arch, model.grid, :xyz, update_total_density!,
+                total_density, model.grid, model.gases, intermediate_tracers,
+                dependencies=Event(device(arch)))
+
+    wait(device(arch), density_update_event)
 
     fill_halo_regions!(merge((Σρ=total_density,), intermediate_momenta, intermediate_tracers), model.architecture, model.clock, nothing)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
@@ -80,15 +96,18 @@ function time_step!(model::CompressibleModel, Δt)
 
     advance_state_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
 
-    tick!(model.clock, 0; stage=true)
+    tick!(model.clock, 0, stage=true)
 
     #####
     ##### Stage 3
     #####
 
-    compute_rhs_args = ()
+    density_update_event =
+        launch!(arch, model.grid, :xyz, update_total_density!,
+                total_density, model.grid, model.gases, intermediate_tracers,
+                dependencies=Event(device(arch)))
 
-    update_total_density!(total_density, model.grid, model.gases, intermediate_tracers)
+    wait(device(arch), density_update_event)
 
     fill_halo_regions!(merge((Σρ=total_density,), intermediate_momenta, intermediate_tracers), model.architecture, model.clock, nothing)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)

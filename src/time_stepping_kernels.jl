@@ -1,17 +1,26 @@
-"""
-    update_total_density!(total_density, grid, gases, tracers)
+using KernelAbstractions
+using Oceananigans.Utils
+using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type
+using Oceananigans.Fields: datatuple
 
-Compute total density from densities of massive tracers.
-"""
-function update_total_density!(total_density, grid, gases, tracers)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds total_density[i, j, k] = diagnose_density(i, j, k, grid, gases, tracers)
-    end
-    return nothing
+@kernel function update_total_density!(total_density, grid, gases, tracers)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds total_density[i, j, k] = diagnose_density(i, j, k, grid, gases, tracers)
 end
 
-update_total_density!(model) =
-    update_total_density!(model.total_density, model.grid, model.gases, model.tracers)
+# This is for users. Do not use in time_stepping.jl as it doesn't make use of intermediate fields.
+function update_total_density!(model)
+
+    density_update_event =
+        launch!(model.architecture, model.grid, :xyz, update_total_density!,
+                model.total_density, model.grid, model.gases, model.tracers,
+                dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), density_update_event)
+
+    return nothing
+end
 
 #####
 ##### Computing slow source terms (viscous dissipation, diffusion, and Coriolis terms).
