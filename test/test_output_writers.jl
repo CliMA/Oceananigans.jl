@@ -35,6 +35,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     j_slice = 13
     k_slice = 9:11
     field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
+    j_slice = j_slice:j_slice  # So we can correctly index with it for later tests.
 
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
     nc_sliced_writer = NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, iteration_interval=10,
@@ -663,7 +664,89 @@ function jld2_sliced_field_output(model)
     return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
 end
 
+function run_dependency_adding_tests(model)
 
+    windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
+
+    output = Dict("time_average" => windowed_time_average)
+    attributes = Dict("time_average" => Dict("longname" => "A time average",  "units" => "arbitrary"))
+    dimensions = Dict("time_average" => ("xF", "yC", "zC"))
+
+    # JLD2 dependencies test
+    jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, dir=".", prefix="test", force=true)
+
+    @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
+
+    # NetCDF dependency test
+    netcdf_output_writer = NetCDFOutputWriter(model, output,
+                                                  time_interval = 4.0,
+                                                       filepath = "test.nc",
+                                              output_attributes = attributes,
+                                                     dimensions = dimensions)
+
+    @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
+
+    return nothing
+end
+
+function run_windows_time_averaging_simulation_tests!(model)
+    model.clock.iteration = model.clock.time = 0
+    simulation = Simulation(model, Δt=1.0, stop_iteration=0)
+
+    jld2_output_writer = JLD2OutputWriter(model, model.velocities, 
+                                                  time_interval = π,
+                                          time_averaging_window = 1.0,
+                                                         prefix = "test", 
+                                                          force = true)
+
+    outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
+
+    @test all(outputs_are_time_averaged)
+    
+    # Test the collection does *not* start when a simulation is initialized
+    # when time_interval ≠ time_averaging_window
+    simulation.output_writers[:jld2] = jld2_output_writer
+
+    run!(simulation)
+
+    windowed_time_average = simulation.output_writers[:jld2].outputs.u
+
+    @test !(windowed_time_average.collecting)
+
+    # Test that time-averaging is finalized prior to output even when averaging over 
+    # time_window is not fully realized. For this, step forward to a time at which
+    # collection should start. Note that time_interval = π and time_window = 1.0.
+    simulation.Δt = 1.5
+    simulation.stop_iteration = 2
+    run!(simulation) # model.clock.time = 3.0, just before output but after average-collection.
+
+    @test windowed_time_average.collecting
+
+    # Step forward such that time_window is not reached, but output will occur.
+    simulation.Δt = π - 3 + 0.01 # ≈ 0.15 < 1.0
+    simulation.stop_iteration = 3
+    run!(simulation) # model.clock.time ≈ 3.15, after output
+
+    @test windowed_time_average.previous_interval_stop_time == 
+        model.clock.time - rem(model.clock.time, windowed_time_average.time_interval)
+
+    # Test the collection does start when a simulation is initialized and
+    # time_interval = time_averaging_window
+    model.clock.iteration = model.clock.time = 0
+    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities, 
+                                                                time_interval = π,
+                                                        time_averaging_window = π,
+                                                                    prefix = "test", 
+                                                                        force = true)
+
+    run!(simulation)
+
+    windowed_time_average = simulation.output_writers[:jld2].outputs.u
+
+    @test windowed_time_average.collecting
+
+    return nothing
+end
 
 function jld2_time_averaging_of_horizontal_averages(model)
 
@@ -749,87 +832,15 @@ end
 
             @testset "Dependency-adding" begin
                 @info "      Testing dependency-adding [$(typeof(arch))]..."
-
-                windowed_time_average = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
-
-                output = Dict("time_average" => windowed_time_average)
-                attributes = Dict("time_average" => Dict("longname" => "A time average",  "units" => "arbitrary"))
-                dimensions = Dict("time_average" => ("xF", "yC", "zC"))
-
-                # JLD2 dependencies test
-                jld2_output_writer = JLD2OutputWriter(model, output, time_interval=4.0, dir=".", prefix="test", force=true)
-
-                @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
-
-                # NetCDF dependency test
-                netcdf_output_writer = NetCDFOutputWriter(model, output,
-                                                              time_interval = 4.0,
-                                                                   filepath = "test.nc",
-                                                          output_attributes = attributes,
-                                                                 dimensions = dimensions)
-
-                @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
+                run_dependency_adding_tests(model)
             end
 
             @testset "Time-stepping and Simulations.run! with WindowedTimeAverage [$(typeof(arch))]" begin
                 @info "      Testing time-stepping and Simulations.run! with WindowedTimeAverage [$(typeof(arch))]..."
             
                 @test time_step_with_windowed_time_average(model)
-
-                model.clock.iteration = model.clock.time = 0
-                simulation = Simulation(model, Δt=1.0, stop_iteration=0)
-
-                jld2_output_writer = JLD2OutputWriter(model, model.velocities, 
-                                                              time_interval = π,
-                                                      time_averaging_window = 1.0,
-                                                                     prefix = "test", 
-                                                                      force = true)
-
-                outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
-
-                @test all(outputs_are_time_averaged)
                 
-                # Test the collection does *not* start when a simulation is initialized
-                # when time_interval ≠ time_averaging_window
-                simulation.output_writers[:jld2] = jld2_output_writer
-
-                run!(simulation)
-
-                windowed_time_average = simulation.output_writers[:jld2].outputs.u
-
-                @test !(windowed_time_average.collecting)
-
-                # Test that time-averaging is finalized prior to output even when averaging over 
-                # time_window is not fully realized. For this, step forward to a time at which
-                # collection should start. Note that time_interval = π and time_window = 1.0.
-                simulation.Δt = 1.5
-                simulation.stop_iteration = 2
-                run!(simulation) # model.clock.time = 3.0, just before output but after average-collection.
-
-                @test windowed_time_average.collecting
-
-                # Step forward such that time_window is not reached, but output will occur.
-                simulation.Δt = π - 3 + 0.01 # ≈ 0.15 < 1.0
-                simulation.stop_iteration = 3
-                run!(simulation) # model.clock.time ≈ 3.15, after output
-
-                @test windowed_time_average.previous_interval_stop_time == 
-                    model.clock.time - rem(model.clock.time, windowed_time_average.time_interval)
-
-                # Test the collection does start when a simulation is initialized and
-                # time_interval = time_averaging_window
-                model.clock.iteration = model.clock.time = 0
-                simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities, 
-                                                                            time_interval = π,
-                                                                    time_averaging_window = π,
-                                                                                   prefix = "test", 
-                                                                                    force = true)
-
-                run!(simulation)
-
-                windowed_time_average = simulation.output_writers[:jld2].outputs.u
-
-                @test windowed_time_average.collecting
+                run_windows_time_averaging_simulation_tests!(model)
                 
                 @test jld2_time_averaging_of_horizontal_averages(model)
             end
