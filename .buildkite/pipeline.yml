@@ -84,3 +84,6 @@ steps:
   - label: "🧹 clean up environment"
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
+    agents:
+      queue: tartarus
+
