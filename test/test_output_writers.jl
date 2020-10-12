@@ -84,6 +84,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
     @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
     @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
+    @test haskey(ds3.attrib, "iteration_interval") && ds3.attrib["iteration_interval"] == 10
+    @test haskey(ds3.attrib, "output iteration interval") && !isnothing(ds3.attrib["output iteration interval"])
 
     @test eltype(ds3["time"]) == eltype(model.clock.time)
 
@@ -140,6 +142,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
     @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
     @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
+    @test haskey(ds2.attrib, "iteration_interval") && ds2.attrib["iteration_interval"] == 10
+    @test haskey(ds2.attrib, "output iteration interval") && !isnothing(ds2.attrib["output iteration interval"])
 
     @test eltype(ds2["time"]) == eltype(model.clock.time)
 
@@ -229,6 +233,8 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+    @test haskey(ds.attrib, "iteration_interval") && ds.attrib["iteration_interval"] == 10
+    @test haskey(ds.attrib, "output iteration interval") && !isnothing(ds.attrib["output iteration interval"])
 
     @test eltype(ds["time"]) == eltype(model.clock.time)
 
@@ -288,7 +294,8 @@ function run_netcdf_function_output_tests(arch)
     Δt = 1.25
     iters = 3
 
-    model = IncompressibleModel(grid=RegularCartesianGrid(size=(N, N, N), extent=(L, 2L, 3L)))
+    grid = RegularCartesianGrid(size=(N, N, N), extent=(L, 2L, 3L))
+    model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
 
@@ -314,7 +321,7 @@ function run_netcdf_function_output_tests(arch)
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
     simulation.output_writers[:food] =
         NetCDFOutputWriter(model, outputs; filepath=nc_filepath,
-            iteration_interval=1, dimensions=dims, array_type=Array{Float64}, verbose=true,
+            time_interval=Δt, dimensions=dims, array_type=Array{Float64}, verbose=true,
             global_attributes=global_attributes, output_attributes=output_attributes)
 
     run!(simulation)
@@ -324,6 +331,8 @@ function run_netcdf_function_output_tests(arch)
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+    @test haskey(ds.attrib, "time_interval") && !isnothing(ds.attrib["time_interval"])
+    @test haskey(ds.attrib, "output time interval") && !isnothing(ds.attrib["output time interval"])
 
     @test eltype(ds["time"]) == eltype(model.clock.time)
 

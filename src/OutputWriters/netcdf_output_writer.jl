@@ -197,13 +197,42 @@ function NetCDFOutputWriter(model, outputs; filepath,
                    for name in keys(outputs))
     end
 
-    # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
+    # Ensure we can add any kind of metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
 
-    # Add useful metadata as global attributes
+    # Add useful metadata
     global_attributes["date"] = "This file was generated on $(now())."
     global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
     global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
+
+    # Add useful metadata about intervals and time averaging
+    if isnothing(time_averaging_window)
+        if !isnothing(iteration_interval)
+            global_attributes["iteration_interval"] = iteration_interval
+            global_attributes["output iteration interval"] =
+                "Output was saved every $iteration_interval iteration(s)."
+        end
+
+        if !isnothing(time_interval)
+            global_attributes["time_interval"] = time_interval
+            global_attributes["output time interval"] =
+                "Output was saved every $(prettytime(time_interval))."
+        end
+    else
+        global_attributes["time_interval"] = time_interval
+        global_attributes["output time interval"] =
+            "Output was time averaged and saved every $(prettytime(time_interval))."
+
+        global_attributes["time_averaging_window"] = time_averaging_window
+        global_attributes["time averaging window"] =
+            "Output was time averaged with a window size of $(prettytime(time_averaging_window))"
+
+        if time_averaging_stride != 1
+            global_attributes["time_averaging_stride"] = time_averaging_stride
+            global_attributes["time averaging stride"] =
+                "Output was time averaged with a stride of $time_averaging_stride iteration(s) within the time averaging window."	
+        end
+    end
 
     grid = model.grid
     Nx, Ny, Nz = size(grid)
@@ -251,7 +280,7 @@ function NetCDFOutputWriter(model, outputs; filepath,
                        compression=compression, attrib=output_attributes[name])
             else
                 name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
-                
+
                 defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
                        compression=compression, attrib=output_attributes[name])
             end
