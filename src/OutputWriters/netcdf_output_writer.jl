@@ -171,18 +171,31 @@ NetCDFOutputWriter (iteration_interval=1): things.nc
 ```
 """
 function NetCDFOutputWriter(model, outputs; filepath,
-                            iteration_interval = nothing,
-                                 time_interval = nothing,
-                                    array_type = Array{Float32},
-                                  field_slicer = FieldSlicer(),
-                             global_attributes = Dict(),
-                             output_attributes = Dict(),
-                                    dimensions = Dict(),
-                                          mode = "c",
-                                   compression = 0,
-                                       verbose = false)
+                               iteration_interval = nothing,
+                                    time_interval = nothing,
+                            time_averaging_window = nothing,
+                            time_averaging_stride = 1,
+                                       array_type = Array{Float32},
+                                     field_slicer = FieldSlicer(),
+                                global_attributes = Dict(),
+                                output_attributes = Dict(),
+                                       dimensions = Dict(),
+                                             mode = "c",
+                                      compression = 0,
+                                          verbose = false)
 
     validate_intervals(iteration_interval, time_interval)
+
+    # Convert each output to WindowedTimeAverage if time_averaging_window is specified
+    if !isnothing(time_averaging_window)
+
+        !isnothing(iteration_interval) && error("Cannot specify iteration_interval with time_averaging_window.")
+
+        outputs = Dict(name => WindowedTimeAverage(outputs[name], model, time_interval = time_interval,
+                                               time_window = time_averaging_window, stride = time_averaging_stride,
+                                               field_slicer = field_slicer)
+                   for name in keys(outputs))
+    end
 
     # Ensure we can add metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
@@ -233,7 +246,12 @@ function NetCDFOutputWriter(model, outputs; filepath,
             if output isa Field
                 defVar(dataset, name, eltype(array_type), (netcdf_spatial_dimensions(output)..., "time"),
                        compression=compression, attrib=output_attributes[name])
+            elseif output isa WindowedTimeAverage && output.operand isa Field
+                defVar(dataset, name, eltype(array_type), (netcdf_spatial_dimensions(output.operand)..., "time"),
+                       compression=compression, attrib=output_attributes[name])
             else
+                name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
+                
                 defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
                        compression=compression, attrib=output_attributes[name])
             end

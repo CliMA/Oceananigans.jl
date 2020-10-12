@@ -719,19 +719,29 @@ function run_windowed_time_averaging_simulation_tests!(model)
                                                          prefix = "test", 
                                                           force = true)
 
-    outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
+    nc_filepath = "windowed_time_average_test1.nc"
+    nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
+    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+                                          time_interval = π, time_averaging_window = 1.0)
 
-    @test all(outputs_are_time_averaged)
+    jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
+      nc_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in values(nc_output_writer.outputs))
+
+    @test all(jld2_outputs_are_time_averaged)
+    @test all(nc_outputs_are_time_averaged)
     
-    # Test the collection does *not* start when a simulation is initialized
+    # Test that the collection does *not* start when a simulation is initialized
     # when time_interval ≠ time_averaging_window
     simulation.output_writers[:jld2] = jld2_output_writer
+    simulation.output_writers[:nc] = nc_output_writer
 
     run!(simulation)
-
-    windowed_time_average = simulation.output_writers[:jld2].outputs.u
-
-    @test !(windowed_time_average.collecting)
+    
+    jld2_u_windowed_time_average = simulation.output_writers[:jld2].outputs.u
+    nc_w_windowed_time_average = simulation.output_writers[:nc].outputs["w"]
+    
+    @test !(jld2_u_windowed_time_average.collecting)
+    @test !(nc_w_windowed_time_average.collecting)
 
     # Test that time-averaging is finalized prior to output even when averaging over 
     # time_window is not fully realized. For this, step forward to a time at which
@@ -740,30 +750,39 @@ function run_windowed_time_averaging_simulation_tests!(model)
     simulation.stop_iteration = 2
     run!(simulation) # model.clock.time = 3.0, just before output but after average-collection.
 
-    @test windowed_time_average.collecting
+    @test jld2_u_windowed_time_average.collecting
+    @test nc_w_windowed_time_average.collecting
 
     # Step forward such that time_window is not reached, but output will occur.
     simulation.Δt = π - 3 + 0.01 # ≈ 0.15 < 1.0
     simulation.stop_iteration = 3
     run!(simulation) # model.clock.time ≈ 3.15, after output
 
-    @test windowed_time_average.previous_interval_stop_time == 
-        model.clock.time - rem(model.clock.time, windowed_time_average.time_interval)
+    @test jld2_u_windowed_time_average.previous_interval_stop_time == 
+        model.clock.time - rem(model.clock.time, jld2_u_windowed_time_average.time_interval)
 
-    # Test the collection does start when a simulation is initialized and
-    # time_interval = time_averaging_window
+    @test nc_w_windowed_time_average.previous_interval_stop_time == 
+        model.clock.time - rem(model.clock.time, nc_w_windowed_time_average.time_interval)
+
+    # Test that collection does start when a simulation is initialized and
+    # time_interval == time_averaging_window
     model.clock.iteration = model.clock.time = 0
+
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities, 
                                                                 time_interval = π,
                                                         time_averaging_window = π,
-                                                                    prefix = "test", 
+                                                                       prefix = "test", 
                                                                         force = true)
+
+    nc_filepath = "windowed_time_average_test2.nc"
+    nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
+    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+                                                        time_interval = π, time_averaging_window = π)
 
     run!(simulation)
 
-    windowed_time_average = simulation.output_writers[:jld2].outputs.u
-
-    @test windowed_time_average.collecting
+    @test simulation.output_writers[:jld2].outputs.u.collecting
+    @test simulation.output_writers[:nc].outputs["w"].collecting
 
     return nothing
 end
