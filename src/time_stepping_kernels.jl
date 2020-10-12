@@ -79,44 +79,54 @@ end
 ##### Computing fast source terms (advection, pressure gradient, and buoyancy terms).
 #####
 
+function compute_fast_source_terms!(fast_source_terms, arch, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
 
-function compute_fast_source_terms!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
+    workgroup, worksize = work_layout(grid, :xyz)
+    barrier = Event(device(arch))
 
-    compute_fast_momentum_source_terms!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
+    momentum_kernel! = compute_fast_momentum_source_terms!(device(arch), workgroup, worksize)
+    tracer_kernel! = compute_fast_tracer_source_terms!(device(arch), workgroup, worksize)
+    thermodynamic_variable_kernel! = compute_fast_thermodynamic_variable_source_terms!(device(arch), workgroup, worksize)
+
+    momentum_event = momentum_kernel!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms, dependencies=barrier)
+
+    events = [momentum_event]
 
     for ρc_name in propertynames(tracers)
         ρc   = getproperty(tracers, ρc_name)
         F_ρc = getproperty(fast_source_terms.tracers, ρc_name)
         S_ρc = getproperty(slow_source_terms.tracers, ρc_name)
-        compute_fast_tracer_source_terms!(F_ρc, grid, advection_scheme, total_density, momenta, ρc, S_ρc)
+
+        tracer_event = tracer_kernel!(F_ρc, grid, advection_scheme, total_density, momenta, ρc, S_ρc, dependencies=barrier)
+        push!(events, tracer_event)
     end
     
-    compute_fast_thermodynamic_source_terms!(fast_source_terms.tracers[1], grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+    thermodynamic_variable_event = thermodynamic_variable_kernel!(fast_source_terms.tracers[1], grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, dependencies=barrier)
+    push!(events, thermodynamic_variable_event)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
-function compute_fast_momentum_source_terms!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds fast_source_terms.ρu[i, j, k] = ρu_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρu)
-        @inbounds fast_source_terms.ρv[i, j, k] = ρv_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρv)
-        @inbounds fast_source_terms.ρw[i, j, k] = ρw_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρw)
-    end
-    return nothing
+@kernel function compute_fast_momentum_source_terms!(fast_source_terms, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds fast_source_terms.ρu[i, j, k] = ρu_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρu)
+    @inbounds fast_source_terms.ρv[i, j, k] = ρv_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρv)
+    @inbounds fast_source_terms.ρw[i, j, k] = ρw_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms.ρw)
 end
 
-function compute_fast_tracer_source_terms!(F_ρc, grid, advection_scheme, total_density, momenta, ρc, S_ρc)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds F_ρc[i, j, k] = ρc_fast_source_term(i, j, k, grid, advection_scheme, total_density, momenta, ρc, S_ρc)
-    end
-    return nothing
+@kernel function compute_fast_tracer_source_terms!(F_ρc, grid, advection_scheme, total_density, momenta, ρc, S_ρc)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds F_ρc[i, j, k] = ρc_fast_source_term(i, j, k, grid, advection_scheme, total_density, momenta, ρc, S_ρc)
 end
 
-function compute_fast_thermodynamic_source_terms!(F_ρt, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds F_ρt[i, j, k] += ρt_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
-    end
-    return nothing
+@kernel function compute_fast_thermodynamic_variable_source_terms!(F_ρt, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds F_ρt[i, j, k] += ρt_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
 end
 
 #####
