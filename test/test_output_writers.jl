@@ -793,7 +793,8 @@ function run_windowed_time_averaging_simulation_tests!(model)
     nc_filepath = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
     nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
-                                          time_interval = π, time_averaging_window = 1.0)
+                                          # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
+                                          time_interval = Float64(π), time_averaging_window = 1.0)
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
       nc_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in values(nc_output_writer.outputs))
