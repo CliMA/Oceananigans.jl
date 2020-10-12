@@ -324,7 +324,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
 
         if output isa AveragedField
             data = dropdims(data, dims=output.dims)
-        elseif output isa TimeWindowAverage && output.operand isa AveragedField
+        elseif output isa WindowedTimeAverage && output.operand isa AveragedField
             data = dropdims(data, dims=output.operand.dims)
         end
 
