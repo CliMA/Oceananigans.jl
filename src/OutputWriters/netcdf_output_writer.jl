@@ -121,7 +121,7 @@ NetCDFOutputWriter (time_interval=60): fields.nc
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
-                       time_interval=60, zC=grid.Nz, zF=grid.Nz+1)
+                       time_interval=60, field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
 NetCDFOutputWriter (time_interval=60): surface_xy_slice.nc

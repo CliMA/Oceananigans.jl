@@ -28,7 +28,7 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="output_fields.nc", time_interval=60)
+    NetCDFOutputWriter(model, fields, filepath="output_fields.nc", time_interval=60)
 
 # output
 NetCDFOutputWriter (time_interval=60): output_fields.nc
@@ -38,8 +38,8 @@ NetCDFOutputWriter (time_interval=60): output_fields.nc
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="output_surface_xy_slice.nc",
-                       time_interval=60, zC=grid.Nz, zF=grid.Nz+1)
+    NetCDFOutputWriter(model, fields, filepath="output_surface_xy_slice.nc",
+                       time_interval=60, field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
 NetCDFOutputWriter (time_interval=60): output_surface_xy_slice.nc
@@ -79,7 +79,7 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
 
 simulation.output_writers[:stuff] =
     NetCDFOutputWriter(model, outputs,
-                       iteration_interval=1, filename="stuff.nc", dimensions=dims, verbose=true,
+                       iteration_interval=1, filepath="stuff.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
