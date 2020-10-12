@@ -849,7 +849,8 @@ function run_windowed_time_averaging_simulation_tests!(model)
     nc_filepath = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
     simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
-                                                        time_interval = π, time_averaging_window = π)
+                                                        # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
+                                                        time_interval = Float64(π), time_averaging_window = Float64(π))
 
     run!(simulation)
 
