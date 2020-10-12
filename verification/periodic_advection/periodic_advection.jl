@@ -56,6 +56,8 @@ function periodic_advection_verification(N, L, T, U, CFL, advection, solution)
 
     initial_condition(x, y, z) = solution(x, 0)
     set!(model.tracers.ρc, initial_condition)
+    set!(model.momenta.ρv, initial_condition)
+    set!(model.momenta.ρw, initial_condition)
 
     anim = @animate for n in 1:Nt
         @info "Running periodic advection [N=$N, CFL=$CFL, $(typeof(advection)), U=$U]... iteration $n/$Nt"
@@ -65,10 +67,15 @@ function periodic_advection_verification(N, L, T, U, CFL, advection, solution)
         x = xnodes(Cell, grid)
         analytic_solution = solution.(x, model.clock.time)
         ρc = interior(model.tracers.ρc)[:]
+        ρv = interior(model.momenta.ρv)[:]
+        ρw = interior(model.momenta.ρv)[:]
 
         title = @sprintf("N=%d, CFL=%.2f %s", N, CFL, typeof(advection))
         plot(x, analytic_solution, lw=2, label="analytic", title=title, xlims=(-L/2, L/2), ylims=(-0.2, 1.2), dpi=200)
         plot!(x, ρc, lw=2, ls=:solid, label="Oceananigans ρc")
+        plot!(x, ρv, lw=2, ls=:dash,  label="Oceananigans ρv")
+        plot!(x, ρw, lw=2, ls=:dot,   label="Oceananigans ρw")
+
     end every every(Nt)
 
     filename = @sprintf("periodic_advection_N%d_CFL%.2f_%s_U%+d.mp4", N, CFL, typeof(advection), U)
@@ -80,8 +87,8 @@ L = 1
 
 Ns = [64]
 Us = [+1, -1]
-CFLs = [0.5]
-advection_schemes = [CenteredSecondOrder(), WENO5()]
+CFLs = [0.1]
+advection_schemes = [CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), UpwindBiasedFifthOrder(), WENO5()]
 
 for N in Ns, CFL in CFLs, scheme in advection_schemes, U in Us
     @info "Running periodic advection [N=$N, CFL=$CFL, $(typeof(scheme)), U=$U]..."
