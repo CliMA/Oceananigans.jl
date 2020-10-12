@@ -49,7 +49,7 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
     compute_slow_source_terms!(
-        slow_source_terms, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        slow_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
         model.coriolis, model.closure, total_density, momenta, tracers, diffusivities, model.forcing, model.clock)
 
     fill_halo_regions!(slow_source_terms.ρw, model.architecture, model.clock, nothing)
