@@ -4,6 +4,40 @@ using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
 using Oceananigans.Diagnostics
 using Oceananigans.Fields
 
+function instantiate_windowed_time_average(model)
+
+    set!(model, u = (x, y, z) -> rand())
+
+    u, v, w = model.velocities
+
+    u₀ = similar(interior(u))
+    u₀ .= interior(u)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=1.0, time_interval=10.0)
+
+    return all(wta(model) .== u₀)
+end
+
+function time_step_with_windowed_time_average(model)
+    
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u=0, v=0, w=0, T=0, S=0)
+
+    wta = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
+
+    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
+    simulation.diagnostics[:u_avg] = wta
+    run!(simulation)
+
+    return all(wta(model) .== interior(model.velocities.u))
+end
+
+#####
+##### NetCDFOutputWriter tests
+#####
+
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -334,8 +368,87 @@ function run_netcdf_function_output_tests(arch)
     return nothing
 end
 
+#####
+##### JLD2OutputWriter tests
+#####
+
+function jld2_field_output(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand(),
+                T = 0,
+                S = 0)
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                              time_interval = 1.0,
+                                                                        dir = ".",
+                                                                     prefix = "test",
+                                                                      force = true)
+
+    u₀ = data(model.velocities.u)[3, 3, 3]
+    v₀ = data(model.velocities.v)[3, 3, 3]
+    w₀ = data(model.velocities.w)[3, 3, 3]
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    # Data is saved without halos by default
+    u₁ = file["timeseries/u/0"][3, 3, 3]
+    v₁ = file["timeseries/v/0"][3, 3, 3]
+    w₁ = file["timeseries/w/0"][3, 3, 3]
+
+    close(file)
+
+    rm("test.jld2")
+
+    FT = typeof(u₁)
+
+    return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
+end
+
+function jld2_sliced_field_output(model)
+
+    model.clock.iteration = 0
+    model.clock.time = 0.0
+
+    set!(model, u = (x, y, z) -> rand(),
+                v = (x, y, z) -> rand(),
+                w = (x, y, z) -> rand())
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    simulation.output_writers[:velocities] = 
+        JLD2OutputWriter(model, model.velocities,
+                                time_interval = 1.0,
+                                 field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
+                                          dir = ".",
+                                       prefix = "test",
+                                        force = true)
+
+    run!(simulation)
+
+    file = jldopen("test.jld2")
+
+    u₁ = file["timeseries/u/0"]
+    v₁ = file["timeseries/v/0"]
+    w₁ = file["timeseries/w/0"]
+
+    close(file)
+
+    rm("test.jld2")
+
+    return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
+end
+
 function run_jld2_file_splitting_tests(arch)
-    model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+    model = IncompressibleModel(architecture=arch, grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -371,6 +484,10 @@ function run_jld2_file_splitting_tests(arch)
         rm(filename)
     end
 end
+
+#####
+##### Checkpointer tests
+#####
 
 """
 Run two coarse rising thermal bubble simulations and make sure that when
@@ -547,35 +664,9 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
-function instantiate_windowed_time_average(model)
-
-    set!(model, u = (x, y, z) -> rand())
-
-    u, v, w = model.velocities
-
-    u₀ = similar(interior(u))
-    u₀ .= interior(u)
-
-    wta = WindowedTimeAverage(model.velocities.u, time_window=1.0, time_interval=10.0)
-
-    return all(wta(model) .== u₀)
-end
-
-function time_step_with_windowed_time_average(model)
-    model.clock.iteration = 0
-    model.clock.time = 0.0
-
-    set!(model, u=0, v=0, w=0, T=0, S=0)
-
-    wta = WindowedTimeAverage(model.velocities.u, time_window=2.0, time_interval=4.0)
-
-    simulation = Simulation(model, Δt=1.0, stop_time=4.0)
-    simulation.diagnostics[:u_avg] = wta
-    run!(simulation)
-
-    return all(wta(model) .== interior(model.velocities.u))
-end
-
+#####
+##### Dependency adding tests
+#####
 
 function dependencies_added_correctly!(model, windowed_time_average, output_writer)
 
@@ -587,81 +678,6 @@ function dependencies_added_correctly!(model, windowed_time_average, output_writ
     run!(simulation)
 
     return windowed_time_average ∈ values(simulation.diagnostics)
-end
-
-function jld2_field_output(model)
-
-    model.clock.iteration = 0
-    model.clock.time = 0.0
-
-    set!(model, u = (x, y, z) -> rand(),
-                v = (x, y, z) -> rand(),
-                w = (x, y, z) -> rand(),
-                T = 0,
-                S = 0)
-
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-
-    simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                              time_interval = 1.0,
-                                                                        dir = ".",
-                                                                     prefix = "test",
-                                                                      force = true)
-
-    u₀ = data(model.velocities.u)[3, 3, 3]
-    v₀ = data(model.velocities.v)[3, 3, 3]
-    w₀ = data(model.velocities.w)[3, 3, 3]
-
-    run!(simulation)
-
-    file = jldopen("test.jld2")
-
-    # Data is saved without halos by default
-    u₁ = file["timeseries/u/0"][3, 3, 3]
-    v₁ = file["timeseries/v/0"][3, 3, 3]
-    w₁ = file["timeseries/w/0"][3, 3, 3]
-
-    close(file)
-
-    rm("test.jld2")
-
-    FT = typeof(u₁)
-
-    return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
-end
-
-function jld2_sliced_field_output(model)
-
-    model.clock.iteration = 0
-    model.clock.time = 0.0
-
-    set!(model, u = (x, y, z) -> rand(),
-                v = (x, y, z) -> rand(),
-                w = (x, y, z) -> rand())
-
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-
-    simulation.output_writers[:velocities] = 
-        JLD2OutputWriter(model, model.velocities,
-                                time_interval = 1.0,
-                                 field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
-                                          dir = ".",
-                                       prefix = "test",
-                                        force = true)
-
-    run!(simulation)
-
-    file = jldopen("test.jld2")
-
-    u₁ = file["timeseries/u/0"]
-    v₁ = file["timeseries/v/0"]
-    w₁ = file["timeseries/w/0"]
-
-    close(file)
-
-    rm("test.jld2")
-
-    return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
 end
 
 function run_dependency_adding_tests(model)
@@ -689,7 +705,11 @@ function run_dependency_adding_tests(model)
     return nothing
 end
 
-function run_windows_time_averaging_simulation_tests!(model)
+#####
+##### Time averaging of output tests
+#####
+
+function run_windowed_time_averaging_simulation_tests!(model)
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
@@ -792,58 +812,66 @@ function jld2_time_averaging_of_horizontal_averages(model)
     return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
 
+#####
+##### Run output writer tests!
+#####
+
 @testset "Output writers" begin
     @info "Testing output writers..."
 
+    @testset "FieldSlicer" begin
+        @info "  Testing FieldSlicer..."
+        @test FieldSlicer() isa FieldSlicer
+    end
+
     for arch in archs
-         @testset "NetCDF [$(typeof(arch))]" begin
-             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
-             run_thermal_bubble_netcdf_tests(arch)
-             run_thermal_bubble_netcdf_tests_with_halos(arch)
-             run_netcdf_function_output_tests(arch)
-         end
+        # Some tests can reuse this same grid and model.
+        grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        model = IncompressibleModel(architecture=arch, grid=grid)
+
+        @testset "WindowedTimeAverage" begin
+            @info "  Testing WindowedTimeAverage..."
+            @test instantiate_windowed_time_average(model)
+            @test time_step_with_windowed_time_average(model)
+        end
+
+        @testset "NetCDF [$(typeof(arch))]" begin
+            @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+            run_thermal_bubble_netcdf_tests(arch)
+            run_thermal_bubble_netcdf_tests_with_halos(arch)
+            run_netcdf_function_output_tests(arch)
+        end
 
         @testset "JLD2 [$(typeof(arch))]" begin
             @info "  Testing JLD2 output writer [$(typeof(arch))]..."
+            
+            @test jld2_field_output(model)
+            @test jld2_sliced_field_output(model)
+            
             run_jld2_file_splitting_tests(arch)
         end
 
         @testset "Checkpointer [$(typeof(arch))]" begin
             @info "  Testing Checkpointer [$(typeof(arch))]..."
+            
             run_thermal_bubble_checkpointer_tests(arch)
             run_checkpoint_with_function_bcs_tests(arch)
+            
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
 
-        grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1))
-        model = IncompressibleModel(architecture=arch, grid=grid)
+        @testset "Dependency adding [$(typeof(arch))]" begin
+            @info "    Testing dependency adding [$(typeof(arch))]..."
+            run_dependency_adding_tests(model)
+        end
 
-        @testset "WindowedTimeAverage and FieldSlicer [$(typeof(arch))]" begin
-            @info "  Testing WindowedTimeAverage and FieldSlicer [$(typeof(arch))]"
-
-            @testset "Field slicing and field output" begin
-                @info "      Testing field slicing and field output [$(typeof(arch))]..."
-
-                @test FieldSlicer() isa FieldSlicer
-                @test instantiate_windowed_time_average(model)
-                @test jld2_field_output(model)
-            end
-
-            @testset "Dependency-adding" begin
-                @info "      Testing dependency-adding [$(typeof(arch))]..."
-                run_dependency_adding_tests(model)
-            end
-
-            @testset "Time-stepping and Simulations.run! with WindowedTimeAverage [$(typeof(arch))]" begin
-                @info "      Testing time-stepping and Simulations.run! with WindowedTimeAverage [$(typeof(arch))]..."
+        @testset "Time averaging of output [$(typeof(arch))]" begin
+            @info "    Testing time averaging of output [$(typeof(arch))]..."
             
-                @test time_step_with_windowed_time_average(model)
+            run_windowed_time_averaging_simulation_tests!(model)
                 
-                run_windows_time_averaging_simulation_tests!(model)
-                
-                @test jld2_time_averaging_of_horizontal_averages(model)
-            end
+            @test jld2_time_averaging_of_horizontal_averages(model)
         end
     end
 end
