@@ -85,6 +85,15 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
     @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
 
+    @test eltype(ds3["time"]) == eltype(model.clock.time)
+
+    @test eltype(ds3["xC"]) == Float64
+    @test eltype(ds3["xF"]) == Float64
+    @test eltype(ds3["yC"]) == Float64
+    @test eltype(ds3["yF"]) == Float64
+    @test eltype(ds3["zC"]) == Float64
+    @test eltype(ds3["zF"]) == Float64
+
     @test length(ds3["xC"]) == Nx
     @test length(ds3["yC"]) == Ny
     @test length(ds3["zC"]) == Nz
@@ -106,6 +115,12 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test ds3["zC"][end] == grid.zC[Nz]
     @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
 
+    @test eltype(ds3["u"]) == Float32
+    @test eltype(ds3["v"]) == Float32
+    @test eltype(ds3["w"]) == Float32
+    @test eltype(ds3["T"]) == Float32
+    @test eltype(ds3["S"]) == Float32
+
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
     w = ds3["w"][:, :, :, end]
@@ -125,6 +140,15 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
     @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
     @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
+
+    @test eltype(ds2["time"]) == eltype(model.clock.time)
+
+    @test eltype(ds2["xC"]) == Float64
+    @test eltype(ds2["xF"]) == Float64
+    @test eltype(ds2["yC"]) == Float64
+    @test eltype(ds2["yF"]) == Float64
+    @test eltype(ds2["zC"]) == Float64
+    @test eltype(ds2["zF"]) == Float64
 
     @test length(ds2["xC"]) == length(i_slice)
     @test length(ds2["xF"]) == length(i_slice)
@@ -146,6 +170,12 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test ds2["yF"][end] == grid.yF[j_slice[end]]
     @test ds2["zC"][end] == grid.zC[k_slice[end]]
     @test ds2["zF"][end] == grid.zF[k_slice[end]]
+
+    @test eltype(ds2["u"]) == Float32
+    @test eltype(ds2["v"]) == Float32
+    @test eltype(ds2["w"]) == Float32
+    @test eltype(ds2["T"]) == Float32
+    @test eltype(ds2["S"]) == Float32
 
     u_sliced = ds2["u"][:, :, :, end]
     v_sliced = ds2["v"][:, :, :, end]
@@ -186,6 +216,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
         "T" => model.tracers.T,
         "S" => model.tracers.S
     )
+
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, iteration_interval=10,
                                    field_slicer=FieldSlicer(with_halos=true))
@@ -198,6 +229,15 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
+
+    @test eltype(ds["time"]) == eltype(model.clock.time)
+
+    @test eltype(ds["xC"]) == Float64
+    @test eltype(ds["xF"]) == Float64
+    @test eltype(ds["yC"]) == Float64
+    @test eltype(ds["yF"]) == Float64
+    @test eltype(ds["zC"]) == Float64
+    @test eltype(ds["zF"]) == Float64
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     @test length(ds["xC"]) == Nx+2Hx
@@ -220,6 +260,12 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test ds["yF"][end] == grid.yF[Ny+Hy]
     @test ds["zC"][end] == grid.zC[Nz+Hz]
     @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+
+    @test eltype(ds["u"]) == Float32
+    @test eltype(ds["v"]) == Float32
+    @test eltype(ds["w"]) == Float32
+    @test eltype(ds["T"]) == Float32
+    @test eltype(ds["S"]) == Float32
 
     u = ds["u"][:, :, :, end]
     v = ds["v"][:, :, :, end]
@@ -279,6 +325,15 @@ function run_netcdf_function_output_tests(arch)
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
 
+    @test eltype(ds["time"]) == eltype(model.clock.time)
+
+    @test eltype(ds["xC"]) == Float64
+    @test eltype(ds["xF"]) == Float64
+    @test eltype(ds["yC"]) == Float64
+    @test eltype(ds["yF"]) == Float64
+    @test eltype(ds["zC"]) == Float64
+    @test eltype(ds["zF"]) == Float64
+
     @test length(ds["xC"]) == N
     @test length(ds["yC"]) == N
     @test length(ds["zC"]) == N
@@ -302,6 +357,10 @@ function run_netcdf_function_output_tests(arch)
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
+
+    @test eltype(ds["scalar"]) == Float64
+    @test eltype(ds["profile"]) == Float64
+    @test eltype(ds["slice"]) == Float64
 
     @test length(ds["time"]) == iters+1
     @test ds["time"][:] == [n*Δt for n in 0:iters]
