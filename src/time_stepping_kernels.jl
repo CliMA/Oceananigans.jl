@@ -133,32 +133,42 @@ end
 ##### Advancing state variables
 #####
 
-function advance_state_variables!(state_variables, grid, momenta, tracers, fast_source_terms; Δt)
+function advance_state_variables!(state_variables, arch, grid, momenta, tracers, fast_source_terms; Δt)
     
-    advance_momentum!(state_variables, grid, momenta, fast_source_terms, Δt)
-    
+    workgroup, worksize = work_layout(grid, :xyz)
+    barrier = Event(device(arch))
+
+    momentum_kernel! = advance_momentum!(device(arch), workgroup, worksize)
+    tracer_kernel! = advance_tracer!(device(arch), workgroup, worksize)
+
+    momentum_event = momentum_kernel!(state_variables, grid, momenta, fast_source_terms, Δt, dependencies=barrier)
+
+    events = [momentum_event]
+
     for ρc_name in propertynames(tracers)
         ρc   = getproperty(tracers, ρc_name)
         ρc⁺  = getproperty(state_variables.tracers, ρc_name)
         F_ρc = getproperty(fast_source_terms.tracers, ρc_name)
-        advance_tracer!(ρc⁺, grid, ρc, F_ρc, Δt)
+        
+        tracer_event = tracer_kernel!(ρc⁺, grid, ρc, F_ρc, Δt, dependencies=barrier)
+        push!(events, tracer_event)
     end
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
-function advance_momentum!(momenta⁺, grid, momenta, fast_source_terms, Δt)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds momenta⁺.ρu[i, j, k] = momenta.ρu[i, j, k] + Δt * fast_source_terms.ρu[i, j, k]
-        @inbounds momenta⁺.ρv[i, j, k] = momenta.ρv[i, j, k] + Δt * fast_source_terms.ρv[i, j, k]
-        @inbounds momenta⁺.ρw[i, j, k] = momenta.ρw[i, j, k] + Δt * fast_source_terms.ρw[i, j, k]
-    end
-    return nothing
+@kernel function advance_momentum!(momenta⁺, grid, momenta, fast_source_terms, Δt)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds momenta⁺.ρu[i, j, k] = momenta.ρu[i, j, k] + Δt * fast_source_terms.ρu[i, j, k]
+    @inbounds momenta⁺.ρv[i, j, k] = momenta.ρv[i, j, k] + Δt * fast_source_terms.ρv[i, j, k]
+    @inbounds momenta⁺.ρw[i, j, k] = momenta.ρw[i, j, k] + Δt * fast_source_terms.ρw[i, j, k]
 end
 
-function advance_tracer!(ρc⁺, grid, ρc, F_ρc, Δt)
-    for k in 1:grid.Nz, j in 1:grid.Ny, i in 1:grid.Nx
-        @inbounds ρc⁺[i, j, k] = ρc[i, j, k] + Δt * F_ρc[i, j, k]
-    end
-    return nothing
+@kernel function advance_tracer!(ρc⁺, grid, ρc, F_ρc, Δt)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds ρc⁺[i, j, k] = ρc[i, j, k] + Δt * F_ρc[i, j, k]
 end

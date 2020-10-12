@@ -72,7 +72,7 @@ function time_step!(model::CompressibleModel, Δt)
     compute_fast_source_terms!(fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
                                model.advection, total_density, momenta, tracers, slow_source_terms)
 
-    advance_state_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
+    advance_state_variables!(intermediate_fields, arch, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
     tick!(model.clock, 0, stage=true)
 
@@ -94,7 +94,7 @@ function time_step!(model::CompressibleModel, Δt)
     compute_fast_source_terms!(fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
                                model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
-    advance_state_variables!(intermediate_fields, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
+    advance_state_variables!(intermediate_fields, arch, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
 
     tick!(model.clock, 0, stage=true)
 
@@ -117,7 +117,7 @@ function time_step!(model::CompressibleModel, Δt)
                                model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
     state_variables = (momenta..., tracers = tracers)
-    advance_state_variables!(state_variables, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)
+    advance_state_variables!(state_variables, arch, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)
 
     tick!(model.clock, Δt)
 
