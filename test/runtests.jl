@@ -24,5 +24,3 @@ CUDA.allowscalar(true)
     include("test_regression.jl")
 end
 
-include("../benchmarks/benchmark_static_atmosphere.jl")
-println()
