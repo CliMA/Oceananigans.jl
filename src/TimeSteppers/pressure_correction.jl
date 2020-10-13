@@ -5,7 +5,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 """
 function calculate_pressure_correction!(model, Δt)
 
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, all_model_fields(model))
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.architecture, model.grid, Δt, model.velocities)
 

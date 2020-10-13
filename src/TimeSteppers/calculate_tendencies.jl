@@ -39,7 +39,7 @@ function calculate_tendencies!(model)
                                                model.velocities,
                                                model.tracers,
                                                model.clock,
-                                               all_model_fields(model))
+                                               fields(model))
 
     return nothing
 end

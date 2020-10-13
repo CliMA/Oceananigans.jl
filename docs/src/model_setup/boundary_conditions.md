@@ -161,7 +161,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     ```
     where `i, j` are grid indices that vary along the boundary, `grid` is `model.grid`,
     `clock` is the `model.clock`, and `model_fields` is a `NamedTuple`
-    containing `u, v, w`, the fields in `model.tracers`, and the fields in `model.diffusivities`.
+    containing `u, v, w` and the fields in `model.tracers`.
     The signature is similar for $x$ and $y$ boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
