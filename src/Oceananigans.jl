@@ -29,7 +29,7 @@ export
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,
-    interior, set!,
+    BackgroundField, interior, set!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,

@@ -139,7 +139,7 @@ end
         Nx = Ny = 16
         for arch in archs
 	    ArrayType = array_type(arch)
-            for FT in float_types
+            for FT in (Float64,) #float_types
                 @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
 
                 for fld in (:u, :v, :T, :S)
@@ -158,7 +158,7 @@ end
     end
 
     @testset "Custom diffusivity boundary conditions" begin
-        for arch in archs, FT in float_types
+        for arch in archs, FT in (Float64,) #float_types
             @info "  Testing flux budgets with custom diffusivity boundary conditions [$(typeof(arch)), $FT]..."
             @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
         end

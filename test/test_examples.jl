@@ -8,7 +8,7 @@ example_filepath(example_name, examples_dir="../examples/") =
         @info "  Testing one-dimensional diffusion example"
 
         replace_strings = [
-            ("size = (1, 1, 128)", "size = (1, 1, 16)"),
+            ("size = (1, 1, 128)", "size = (1, 1, 1)"),
             ("stop_iteration = 1000", "stop_iteration = 1"),
             ("simulation.stop_iteration += 10000", "simulation.stop_iteration += 100"),
             ("mp4(", "# mp4(")
@@ -35,7 +35,7 @@ example_filepath(example_name, examples_dir="../examples/") =
             @info "  Testing wind and convection-driven mixing example [$(typeof(arch))]"
 
             replace_strings = [
-                ("Nz = 32", "Nz = 16"),
+                ("Nz = 32", "Nz = 1"),
                 ("iteration_interval=10", "iteration_interval=1"),
                 ("for i in 1:100", "for i in 1:1"),
                 ("stop_iteration += 10", "stop_iteration += 1"),
@@ -58,7 +58,7 @@ example_filepath(example_name, examples_dir="../examples/") =
         @info "  Testing ocean convection with plankton example"
 
         replace_strings = [
-            ("Nz = 128", "Nz = 16"),
+            ("Nz = 128", "Nz = 1"),
             ("iteration_interval=100", "iteration_interval=1"),
             ("for i = 1:100", "for i = 1:1"),
             ("stop_iteration += 100", "stop_iteration += 1"),
@@ -73,12 +73,10 @@ example_filepath(example_name, examples_dir="../examples/") =
         @info "  Testing internal wave example"
 
         replace_strings = [
-            ("Nx = 128", "Nx = 16"),
-            ("iteration_interval = 20", "iteration_interval = 1"),
-            ("for i=0:100", "for i=1:1"),
-            ("stop_iteration += 20", "stop_iteration += 1"),
-            ("mp4(", "# mp4(")
-        ]
+                           ("size=(128, 1, 128)", "size=(1, 1, 1)"),
+                           ("stop_iteration = 100", "stop_iteration = 1"),
+                           ("mp4(", "# mp4(")
+                          ]
 
         @test run_script(replace_strings, "internal_wave", example_filepath("internal_wave"))
     end
@@ -87,19 +85,9 @@ example_filepath(example_name, examples_dir="../examples/") =
         @info "  Testing Eady turbulence example"
 
         replace_strings = [
-            ("Nh = 64", "Nh = 16"),
-            ("Nz = 32", "Nz = 16"),
-            ("end_time = 3day", "end_time = 1"),
-            # Get rid of anything PyPlot/PyCall related
-            ("using PyPlot, PyCall", ""),
-            ("GridSpec =", "#"),
-            ("fig =", "#"),
-            ("gs =", "#"),
-            ("fig.add_subplot", "#"),
-            ("gcf()", "#"),
-            ("makeplot!", "#makeplot!"),
-            ("function #makeplot!(axs, model)", "function makeplot!(axs, model)")
-        ]
+                           ("size=(48, 48, 16)", "size=(1, 1, 1)"),
+                           ("stop_time = 10day", "stop_time = 600"),
+                          ]
 
         @test run_script(replace_strings, "eady_turbulence", example_filepath("eady_turbulence"))
     end

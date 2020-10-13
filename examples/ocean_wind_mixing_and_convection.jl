@@ -165,7 +165,7 @@ anim = @animate for i in 1:100
     xC, zF, zC = xnodes(Cell, grid)[:], znodes(Face, grid)[:], znodes(Cell, grid)[:]
 
     ## Slices to plots.
-    jhalf = floor(Int, model.grid.Ny/2)
+    jhalf = ceil(Int, model.grid.Ny/2)
     w = Array(interior(model.velocities.w))[:, jhalf, :]
     T = Array(interior(model.tracers.T))[:, jhalf, :]
     S = Array(interior(model.tracers.S))[:, jhalf, :]
