@@ -4,6 +4,7 @@ authors = ["Tristan Abbott", "Ali Ramadhan", "Raphael Rousseau-Rizzi"]
 version = "0.1.0"
 
 [deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"

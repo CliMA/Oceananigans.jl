@@ -2,18 +2,24 @@ using Printf
 using Plots
 using VideoIO
 using FileIO
-using JULES
 using Oceananigans
+using JULES
 
-using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.Architectures: @hascuda
 using Oceananigans.Fields: interiorparent
+
+# temporary fix
+@hascuda begin
+    using CUDA
+    CUDA.allowscalar(true)
+end
+
 interiorxz(field) = dropdims(interiorparent(field), dims=2)
 
 const km = 1000.0
 const hPa = 100.0
 
-function simulate_three_gas_dry_rising_thermal_bubble(;
-        thermodynamic_variable, end_time=1000.0, make_plots=true)
+function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_variable, end_time=1000.0, make_plots=true)
 
     tvar = thermodynamic_variable
 
@@ -29,6 +35,7 @@ function simulate_three_gas_dry_rising_thermal_bubble(;
                                 x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
 
     model = CompressibleModel(
+                  architecture = architecture,
                           grid = grid,
                          gases = DryEarth3(),
         thermodynamic_variable = tvar,
