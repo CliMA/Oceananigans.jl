@@ -1,11 +1,11 @@
 env:
-  JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   JULIA_VERSION: "1.4.2"
   JULIA_MINOR_VERSION: "1.4"
 
 steps:
   - label: "🏕️ initialize environment"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -27,6 +27,7 @@ steps:
 
   - label: "🏕️ initialize environment"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
     commands:
       # Download julia binaries
@@ -53,6 +54,7 @@ steps:
 
   - label: "🐇 unit tests"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "unit"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -76,6 +78,7 @@ steps:
 
   - label: "🐬 model tests"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "model"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -100,6 +103,7 @@ steps:
 
   - label: "🐳 simulation tests"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
     commands:
       - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -123,6 +127,7 @@ steps:
 
   - label: "🐫 regression tests"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
     commands:
       - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -146,6 +151,7 @@ steps:
 
   - label: "🦍 scripts"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
     commands:
       - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -155,6 +161,7 @@ steps:
 
   - label: "🦍 scripts"
     env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -177,6 +184,8 @@ steps:
 #####
 
   - label: "🦉 documentation"
+    env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     commands:
       - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
       - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
@@ -187,8 +196,25 @@ steps:
   - wait: ~
     continue_on_failure: true
 
+#####
+##### Clean up
+#####
+
   - label: "🧹 clean up environment"
+    env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
     agents:
       queue: Oceananigans
+      architecture: CPU
+
+  - label: "🧹 clean up environment"
+    env:
+      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    commands:
+      - "rm -rf $JULIA_DEPOT_PATH"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
