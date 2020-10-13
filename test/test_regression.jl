@@ -73,10 +73,12 @@ for Arch in Archs
                 correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
                 summarize_regression_test(test_fields, correct_fields)
 
+                # https://github.com/thabbott/JULES.jl/pull/91#issuecomment-707666010
+                @test all(isapprox.(test_fields.ρu, correct_fields.ρu, atol=1e-12))
+                @test all(isapprox.(test_fields.ρw, correct_fields.ρw, atol=1e-12))
+
                 @test all(test_fields.ρ  .≈ correct_fields.ρ)
-                @test all(test_fields.ρu .≈ correct_fields.ρu)
                 @test all(test_fields.ρv .≈ correct_fields.ρv)
-                @test all(test_fields.ρw .≈ correct_fields.ρw)
 
                 if Tvar == Energy
                     @test all(test_fields.ρe .≈ correct_fields.ρe)
@@ -144,10 +146,12 @@ for Arch in Archs
                 correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
                 summarize_regression_test(test_fields, correct_fields)
 
+                # https://github.com/thabbott/JULES.jl/pull/91#issuecomment-707666010
+                @test all(isapprox.(test_fields.ρu, correct_fields.ρu, atol=1e-12))
+                @test all(isapprox.(test_fields.ρw, correct_fields.ρw, atol=1e-12))
+
                 @test all(test_fields.ρ  .≈ correct_fields.ρ)
-                @test all(test_fields.ρu .≈ correct_fields.ρu)
                 @test all(test_fields.ρv .≈ correct_fields.ρv)
-                @test all(test_fields.ρw .≈ correct_fields.ρw)
                 @test all(test_fields.ρ₁ .≈ correct_fields.ρ₁)
                 @test all(test_fields.ρ₂ .≈ correct_fields.ρ₂)
                 @test all(test_fields.ρ₃ .≈ correct_fields.ρ₃)
