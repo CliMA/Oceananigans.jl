@@ -1,7 +1,8 @@
 module Utils
 
 export
-    second, minute, hour, day, meter, kilometer,
+    second, minute, hour, day, year, meter, kilometer,
+    seconds, minutes, hours, days, years, meters, kilometers,
     KiB, MiB, GiB, TiB,
     launch_config, work_layout, launch!,
     cell_advection_timescale,
