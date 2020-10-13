@@ -52,33 +52,36 @@ for Arch in Archs
 
                 field_names = [:ρ, :ρu, :ρv, :ρw]
 
-                fields = [interior(model.total_density), interior(model.momenta.ρu),
-                          interior(model.momenta.ρv), interior(model.momenta.ρw)[:, :, 1:end-1]]
+                test_fields = [Array(interior(model.total_density)),
+                               Array(interior(model.momenta.ρu)),
+                               Array(interior(model.momenta.ρv)),
+                               Array(interior(model.momenta.ρw)[:, :, 1:end-1])]
 
                 correct_fields = [file["ρ"], file["ρu"], file["ρv"], file["ρw"]]
 
                 if Tvar == Energy
                     push!(field_names, :ρe)
-                    push!(fields, interior(model.tracers.ρe))
+                    push!(test_fields, Array(interior(model.tracers.ρe)))
                     push!(correct_fields, file["ρe"])
                 elseif Tvar == Entropy
                     push!(field_names, :ρs)
-                    push!(fields, interior(model.tracers.ρs))
+                    push!(test_fields, Array(interior(model.tracers.ρs)))
                     push!(correct_fields, file["ρs"])
                 end
 
-                fields = NamedTuple{Tuple(field_names)}(Tuple(fields))
+                test_fields = NamedTuple{Tuple(field_names)}(Tuple(test_fields))
                 correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
-                summarize_regression_test(fields, correct_fields)
+                summarize_regression_test(test_fields, correct_fields)
 
-                @test all(interior(model.total_density) .≈ file["ρ"])
-                @test all(interior(model.momenta.ρu)    .≈ file["ρu"])
-                @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
-                @test all(interior(model.momenta.ρw)[:, :, 1:end-1]    .≈ file["ρw"])
+                @test all(test_fields.ρ  .≈ correct_fields.ρ)
+                @test all(test_fields.ρu .≈ correct_fields.ρu)
+                @test all(test_fields.ρv .≈ correct_fields.ρv)
+                @test all(test_fields.ρw .≈ correct_fields.ρw)
+
                 if Tvar == Energy
-                    @test all(interior(model.tracers.ρe) .≈ file["ρe"])
+                    @test all(test_fields.ρe .≈ correct_fields.ρe)
                 elseif Tvar == Entropy
-                    @test all(interior(model.tracers.ρs) .≈ file["ρs"])
+                    @test all(test_fields.ρs .≈ correct_fields.ρs)
                 end
             end
         end
@@ -116,40 +119,43 @@ for Arch in Archs
 
                 field_names = [:ρ, :ρu, :ρv, :ρw, :ρ₁, :ρ₂, :ρ₃]
                 
-                fields = [interior(model.total_density), interior(model.momenta.ρu),
-                          interior(model.momenta.ρv), interior(model.momenta.ρw)[:, :, 1:end-1],
-                          interior(model.tracers.ρ₁), interior(model.tracers.ρ₂),
-                          interior(model.tracers.ρ₃)]
+                test_fields = [Array(interior(model.total_density)),
+                               Array(interior(model.momenta.ρu)),
+                               Array(interior(model.momenta.ρv)),
+                               Array(interior(model.momenta.ρw)[:, :, 1:end-1]),
+                               Array(interior(model.tracers.ρ₁)),
+                               Array(interior(model.tracers.ρ₂)),
+                               Array(interior(model.tracers.ρ₃))]
                 
                 correct_fields = [file["ρ"], file["ρu"], file["ρv"], file["ρw"],
                                   file["ρ₁"], file["ρ₂"], file["ρ₃"]]
 
                 if Tvar == Energy
                     push!(field_names, :ρe)
-                    push!(fields, interior(model.tracers.ρe))
+                    push!(test_fields, Array(interior(model.tracers.ρe)))
                     push!(correct_fields, file["ρe"])
                 elseif Tvar == Entropy
                     push!(field_names, :ρs)
-                    push!(fields, interior(model.tracers.ρs))
+                    push!(test_fields, Array(interior(model.tracers.ρs)))
                     push!(correct_fields, file["ρs"])
                 end
 
-                fields = NamedTuple{Tuple(field_names)}(Tuple(fields))
+                test_fields = NamedTuple{Tuple(field_names)}(Tuple(test_fields))
                 correct_fields = NamedTuple{Tuple(field_names)}(Tuple(correct_fields))
-                summarize_regression_test(fields, correct_fields)
+                summarize_regression_test(test_fields, correct_fields)
 
-                @test all(interior(model.total_density) .≈ file["ρ"])
-                @test all(interior(model.momenta.ρu)    .≈ file["ρu"])
-                @test all(interior(model.momenta.ρv)    .≈ file["ρv"])
-                @test all(interior(model.momenta.ρw)[:, :, 1:end-1]    .≈ file["ρw"])
-                @test all(interior(model.tracers.ρ₁)    .≈ file["ρ₁"])
-                @test all(interior(model.tracers.ρ₂)    .≈ file["ρ₂"])
-                @test all(interior(model.tracers.ρ₃)    .≈ file["ρ₃"])
+                @test all(test_fields.ρ  .≈ correct_fields.ρ)
+                @test all(test_fields.ρu .≈ correct_fields.ρu)
+                @test all(test_fields.ρv .≈ correct_fields.ρv)
+                @test all(test_fields.ρw .≈ correct_fields.ρw)
+                @test all(test_fields.ρ₁ .≈ correct_fields.ρ₁)
+                @test all(test_fields.ρ₂ .≈ correct_fields.ρ₂)
+                @test all(test_fields.ρ₃ .≈ correct_fields.ρ₃)
 
                 if Tvar == Energy
-                    @test all(interior(model.tracers.ρe) .≈ file["ρe"])
+                    @test all(test_fields.ρe .≈ correct_fields.ρe)
                 elseif Tvar == Entropy
-                    @test all(interior(model.tracers.ρs) .≈ file["ρs"])
+                    @test all(test_fields.ρs .≈ correct_fields.ρs)
                 end
             end
         end
