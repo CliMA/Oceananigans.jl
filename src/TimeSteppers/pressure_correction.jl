@@ -1,5 +1,5 @@
 """
-    calculate_pressure_correction!(nonhydrostatic_pressure, Δt, tendencies, velocities, model)
+    calculate_pressure_correction!(model, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """

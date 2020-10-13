@@ -10,39 +10,95 @@ A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts,
 const second = 1.0
 
 """
+    seconds
+
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Δt = 7seconds`.
+"""
+const seconds = second
+
+"""
     minute
 
-A `Float64` constant equal to 60`second`. Useful for increasing the clarity of scripts, e.g. `Δt = 15minute`.
+A `Float64` constant equal to 60`seconds`. Useful for increasing the clarity of scripts, e.g. `Δt = 1minute`.
 """
-const minute = 60second
+const minute = 60seconds
+
+"""
+    minutes
+
+A `Float64` constant equal to 60`seconds`. Useful for increasing the clarity of scripts, e.g. `Δt = 15minutes`.
+"""
+const minutes = minute
 
 """
     hour
 
-A `Float64` constant equal to 60`minute`. Useful for increasing the clarity of scripts, e.g. `Δt = 3hour`.
+A `Float64` constant equal to 60`minutes`. Useful for increasing the clarity of scripts, e.g. `Δt = 1hour`.
 """
-const hour   = 60minute
+const hour = 60minutes
+
+"""
+    hours
+
+A `Float64` constant equal to 60`minutes`. Useful for increasing the clarity of scripts, e.g. `Δt = 3hours`.
+"""
+const hours = hour
 
 """
     day
 
-A `Float64` constant equal to 24`hour`. Useful for increasing the clarity of scripts, e.g. `Δt = 0.5day`.
+A `Float64` constant equal to 24`hours`. Useful for increasing the clarity of scripts, e.g. `stop_time = 1day`.
 """
-const day    = 24hour
+const day = 24hours
+
+"""
+    days
+
+A `Float64` constant equal to 24`hours`. Useful for increasing the clarity of scripts, e.g. `stop_time = 7days`.
+"""
+const days = day
+
+"""
+    year
+
+A `Float64` constant equal to 365`days`. Useful for increasing the clarity of scripts, e.g. `stop_time = 1year`.
+"""
+const year = 365days
+
+"""
+    years
+
+A `Float64` constant equal to 365`days`. Useful for increasing the clarity of scripts, e.g. `stop_time = 100years`.
+"""
+const years = year
 
 """
     meter
 
-A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 100meter`.
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 1meter`.
 """
 const meter = 1.0
 
 """
+    meters
+
+A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 50meters`.
+"""
+const meters = meter
+
+"""
     kilometer
 
-A `Float64` constant equal to 1000`meter`. Useful for increasing the clarity of scripts, e.g. `Lx = 250kilometer`.
+A `Float64` constant equal to 1000`meters`. Useful for increasing the clarity of scripts, e.g. `Lx = 1kilometer`.
 """
-const kilometer = 1000meter
+const kilometer = 1000meters
+
+"""
+    kilometers
+
+A `Float64` constant equal to 1000`meters`. Useful for increasing the clarity of scripts, e.g. `Lx = 5000kilometers`.
+"""
+const kilometers = kilometer
 
 """
     KiB
