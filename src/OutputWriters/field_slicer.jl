@@ -31,7 +31,7 @@ FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
 #####
 
 # Integer slice
-parent_slice_indices(loc, topo, N, H, i::Int, with_halos) = UnitRange(i, i)
+parent_slice_indices(loc, topo, N, H, i::Int, with_halos) = UnitRange(i + H, i + H)
 
 # Colon slicing
 parent_slice_indices(loc, topo, N, H, 

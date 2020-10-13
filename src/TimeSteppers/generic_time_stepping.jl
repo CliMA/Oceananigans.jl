@@ -50,15 +50,30 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(tendencies, model.architecture, model.grid, model.advection,
-                                               model.coriolis, model.buoyancy, model.surface_waves,
-                                               model.closure, velocities, tracers, pressures.pHY′,
-                                               diffusivities, model.forcing, model.clock)
+    calculate_interior_tendency_contributions!(tendencies,
+                                               model.architecture,
+                                               model.grid,
+                                               model.advection,
+                                               model.coriolis,
+                                               model.buoyancy,
+                                               model.surface_waves,
+                                               model.closure,
+                                               model.background_fields,
+                                               velocities,
+                                               tracers,
+                                               pressures.pHY′,
+                                               diffusivities,
+                                               model.forcing,
+                                               model.clock)
                                                
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ, model.architecture, model.velocities,
-                                               model.tracers, model.clock, all_model_fields(model))
+    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                               model.architecture,
+                                               model.velocities,
+                                               model.tracers,
+                                               model.clock,
+                                               all_model_fields(model))
 
     return nothing
 end
