@@ -49,6 +49,9 @@ Also note: a unary function in `Base` must be imported to be extended: use `impo
 Example
 =======
 
+```jldoctest
+julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
+
 julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
@@ -62,17 +65,16 @@ julia> @unary square_it
  :-
  :square_it
 
-julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1)));
+julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
 UnaryOperation at (Cell, Cell, Cell)
-├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
-│   ├── size: (1, 1, 16)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-
-square_it at (Cell, Cell, Cell) via identity
-└── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+    square_it at (Cell, Cell, Cell) via identity
+    └── Field located at (Cell, Cell, Cell)
+```
 """
 macro unary(ops...)
     expr = Expr(:block)

@@ -105,6 +105,8 @@ Example
 =======
 
 ```jldoctest
+julia> using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
+
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
 
@@ -117,18 +119,16 @@ julia> @binary plus_or_times
  :*
  :plus_or_times
 
-julia> c, d = (Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1))) for i = 1:2);
+julia> c, d = (Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Cell, Cell, Cell)
-├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
-│   ├── size: (1, 1, 16)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-
-plus_or_times at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-└── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+    plus_or_times at (Cell, Cell, Cell) via identity
+    ├── Field located at (Cell, Cell, Cell)
+    └── Field located at (Cell, Cell, Cell)
 """
 macro binary(ops...)
     expr = Expr(:block)

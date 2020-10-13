@@ -12,8 +12,7 @@ end
 Base.show(io::IO, operation::AbstractOperation) =
     print(io,
           operation_name(operation), " at ", show_location(operation), '\n',
-          "├── grid: ", typeof(operation.grid), '\n',
-          "│   ├── size: ", size(operation.grid), '\n',
+          "├── grid: ", short_show(operation.grid), '\n',
           "│   └── domain: ", domain_string(operation.grid), '\n',
           "└── tree: ", "\n", "    ", tree_show(operation, 1, 0))
 
