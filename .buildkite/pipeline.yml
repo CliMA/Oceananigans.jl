@@ -5,26 +5,7 @@ env:
   TARTARUS_HOME: "/var/lib/buildkite-agent"
 
 steps:
-  - label: "🏕️ initialize environment"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
-      CUDA_VISIBLE_DEVICES: "-1"
-    commands:
-      # Download julia binaries
-      - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
-
-      # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-
-  - label: "🏕️ initialize environment"
+  - label: "🎪 initialize GPU environment"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
@@ -47,6 +28,26 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
+  - label: "🏕️ initialize CPU environment"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "init"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      # Download julia binaries
+      - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
+      - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
+
+      # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+
+
   # Wait until initialization completes before continuing to subsequent tasks 
   - wait
 
@@ -54,7 +55,7 @@ steps:
 ##### Unit tests
 #####
 
-  - label: "🐇 unit tests"
+  - label: "🐀 GPU unit tests"
     env:
       TEST_GROUP: "unit"
     commands:
@@ -63,7 +64,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐇 unit tests"
+  - label: "🐇 CPU unit tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "unit"
@@ -78,7 +79,7 @@ steps:
 ##### Model
 #####
 
-  - label: "🐬 model tests"
+  - label: "🦈 GPU model tests"
     env:
       TEST_GROUP: "model"
     commands:
@@ -87,7 +88,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐬 model tests"
+  - label: "🐬 CPU model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "model"
@@ -102,7 +103,7 @@ steps:
 ##### Simulation
 #####
 
-  - label: "🐳 simulation tests"
+  - label: "🐳 GPU simulation tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
@@ -112,7 +113,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐳 simulation tests"
+  - label: "🐋 CPU simulation tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
@@ -127,7 +128,7 @@ steps:
 ##### Regression
 #####
 
-  - label: "🐫 regression tests"
+  - label: "🐫 GPU regression tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
@@ -137,7 +138,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐫 regression tests"
+  - label: "🐪 CPU regression tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
@@ -152,7 +153,7 @@ steps:
 ##### Scripts
 #####
 
-  - label: "🦍 scripts"
+  - label: "🦧 GPU scripts"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
@@ -162,7 +163,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🦍 scripts"
+  - label: "🦍 CPU scripts"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
@@ -173,7 +174,7 @@ steps:
       queue: Oceananigans
       architecture: CPU
 
-  # - label: "🦕 convergence tests"
+  # - label: "🦖 🦕 convergence tests"
   #   env:
   #     TEST_GROUP: "convergence"
   #   commands:
@@ -203,7 +204,7 @@ steps:
 ##### Clean up
 #####
 
-  - label: "🧹 clean up environment"
+  - label: "🧻 clean up GPU environment"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     commands:
@@ -212,7 +213,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🧹 clean up environment"
+  - label: "🧹 clean up CPU environment"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       CUDA_VISIBLE_DEVICES: "-1"
