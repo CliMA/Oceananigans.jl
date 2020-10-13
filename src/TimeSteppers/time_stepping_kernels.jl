@@ -245,7 +245,7 @@ function store_tendencies!(model)
     events = [velocities_event]
 
     # Tracer fields
-    for i in 4:length(G⁻)
+    for i in 4:length(model.timestepper.G⁻)
         @inbounds Gc⁻ = model.timestepper.G⁻[i]
         @inbounds Gc⁰ = model.timestepper.Gⁿ[i]
         tracer_event = store_tracer_tendency_kernel!(Gc⁻, model.grid, Gc⁰, dependencies=barrier)
