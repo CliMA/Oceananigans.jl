@@ -1,5 +1,5 @@
 """
-    precomputations!(diffusivities, pressures, velocities, tracers, model)
+    precomputations!(model)
 
 Perform precomputations necessary for an explicit timestep or substep.
 """
