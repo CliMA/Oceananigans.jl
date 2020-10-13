@@ -2,6 +2,7 @@ using JULES.Operators
 
 using Oceananigans.BoundaryConditions
 
+using Oceananigans.Fields: datatuple
 using Oceananigans.TimeSteppers: tick!
 
 import Oceananigans.TimeSteppers: time_step!
@@ -20,10 +21,6 @@ function time_step!(model::CompressibleModel, Δt)
     fast_source_terms   = model.time_stepper.fast_source_terms
     intermediate_fields = model.time_stepper.intermediate_fields
 
-    first_stage_Δt  = Δt / 3
-    second_stage_Δt = Δt / 2
-    third_stage_Δt  = Δt
-
     momenta_names = propertynames(momenta)
     tracers_names = propertynames(tracers)
 
@@ -33,13 +30,17 @@ function time_step!(model::CompressibleModel, Δt)
     intermediate_momenta = NamedTuple{momenta_names}(intermediate_momenta_fields)
     intermediate_tracers = NamedTuple{tracers_names}(intermediate_tracers_fields)
 
+    first_stage_Δt  = Δt / 3
+    second_stage_Δt = Δt / 2
+    third_stage_Δt  = Δt
+
     #####
     ##### Compute slow source terms
     #####
 
     density_update_event =
         launch!(arch, model.grid, :xyz, update_total_density!,
-                total_density, model.grid, model.gases, tracers,
+                datatuple(total_density), model.grid, model.gases, datatuple(tracers),
                 dependencies=Event(device(arch)))
 
     wait(device(arch), density_update_event)
@@ -60,7 +61,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     density_update_event =
         launch!(arch, model.grid, :xyz, update_total_density!,
-                total_density, model.grid, model.gases, tracers,
+                datatuple(total_density), model.grid, model.gases, datatuple(tracers),
                 dependencies=Event(device(arch)))
 
     wait(device(arch), density_update_event)
@@ -69,8 +70,9 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
-                               model.advection, total_density, momenta, tracers, slow_source_terms)
+    compute_fast_source_terms!(
+        fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        model.advection, total_density, momenta, tracers, slow_source_terms)
 
     advance_state_variables!(intermediate_fields, arch, model.grid, momenta, tracers, fast_source_terms, Δt=first_stage_Δt)
 
@@ -82,7 +84,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     density_update_event =
         launch!(arch, model.grid, :xyz, update_total_density!,
-                total_density, model.grid, model.gases, intermediate_tracers,
+                datatuple(total_density), model.grid, model.gases, datatuple(intermediate_tracers),
                 dependencies=Event(device(arch)))
 
     wait(device(arch), density_update_event)
@@ -91,8 +93,9 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
-                               model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+    compute_fast_source_terms!(
+        fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
     advance_state_variables!(intermediate_fields, arch, model.grid, momenta, tracers, fast_source_terms, Δt=second_stage_Δt)
 
@@ -104,7 +107,7 @@ function time_step!(model::CompressibleModel, Δt)
 
     density_update_event =
         launch!(arch, model.grid, :xyz, update_total_density!,
-                total_density, model.grid, model.gases, intermediate_tracers,
+                datatuple(total_density), model.grid, model.gases, datatuple(intermediate_tracers),
                 dependencies=Event(device(arch)))
 
     wait(device(arch), density_update_event)
@@ -113,8 +116,9 @@ function time_step!(model::CompressibleModel, Δt)
     fill_halo_regions!(momenta.ρw, model.architecture, model.clock, nothing)
     fill_halo_regions!(intermediate_momenta.ρw, model.architecture, model.clock, nothing)
 
-    compute_fast_source_terms!(fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
-                               model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
+    compute_fast_source_terms!(
+        fast_source_terms, arch, model.grid, model.thermodynamic_variable, model.gases, model.gravity,
+        model.advection, total_density, intermediate_momenta, intermediate_tracers, slow_source_terms)
 
     state_variables = (momenta..., tracers = tracers)
     advance_state_variables!(state_variables, arch, model.grid, momenta, tracers, fast_source_terms, Δt=third_stage_Δt)

@@ -74,7 +74,7 @@ struct Energy  <: AbstractThermodynamicVariable end
 @inline function diagnose_ρs(i, j, k, grid::AbstractGrid{FT}, tracer_index, tvar, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
         T = diagnose_temperature(i, j, k, grid, tvar, gases, gravity, ρ, ρũ, ρc̃)
-        ρᵅ = ρc̃[tracer_index].data[i, j, k]
+        ρᵅ = ρc̃[tracer_index][i, j, k]
         gas = gases[tracer_index-1]
         return ρᵅ > zero(FT) ? ρᵅ*(gas.s₀ + gas.cᵥ*log(T/gas.T₀) - gas.R*log(ρᵅ/gas.ρ₀)) : zero(FT)
     end
@@ -82,10 +82,10 @@ end
 
 @inline function diagnose_temperature(i, j, k, grid::AbstractGrid{FT}, tvar::Entropy, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
-        numerator = ρc̃.ρs.data[i, j, k]
+        numerator = ρc̃.ρs[i, j, k]
         denominator = zero(FT)
         for (gas_index, gas) in enumerate(gases)
-            ρᵅ = ρc̃[gas_index+1].data[i, j, k]
+            ρᵅ = ρc̃[gas_index+1][i, j, k]
             numerator += ρᵅ > 0 ? (ρᵅ*gas.R*log(ρᵅ/gas.ρ₀) - ρᵅ*gas.s₀) : zero(FT)
             denominator += ρᵅ*gas.cᵥ
         end
@@ -95,12 +95,12 @@ end
 
 @inline function diagnose_temperature(i, j, k, grid::AbstractGrid{FT}, tvar::Energy, gases, gravity, ρ, ρũ, ρc̃) where FT
     @inbounds begin
-        numerator = ρc̃.ρe.data[i,j,k]
+        numerator = ρc̃.ρe[i,j,k]
         denominator = zero(FT)
         KE = kinetic_energy(i, j, k, grid, ρ, ρũ)
         Φ = gravity * grid.zC[clamp(k, 1, grid.Nz)]
         for (gas_index, gas) in enumerate(gases)
-            ρᵅ = ρc̃[gas_index+1].data[i,j,k]
+            ρᵅ = ρc̃[gas_index+1][i,j,k]
             numerator += -ρᵅ*(gas.u₀ + Φ + KE - gas.cᵥ*gas.T₀)
             denominator += ρᵅ*gas.cᵥ
         end
@@ -114,7 +114,7 @@ end
         p = zero(FT)
         for gas_index in 1:length(gases)
             R = gases[gas_index].R
-            ρᵅ = ρc̃[gas_index+1].data[i, j, k]
+            ρᵅ = ρc̃[gas_index+1][i, j, k]
             p += ρᵅ*R*T
         end
         return p
@@ -125,7 +125,7 @@ end
     @inbounds begin
         ρ = zero(FT)
         for gas_index in 1:length(gases)
-            ρ += ρc̃[gas_index+1].data[i, j, k]
+            ρ += ρc̃[gas_index+1][i, j, k]
         end
         return ρ
     end

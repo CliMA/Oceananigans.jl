@@ -14,7 +14,7 @@ function update_total_density!(model)
 
     density_update_event =
         launch!(model.architecture, model.grid, :xyz, update_total_density!,
-                model.total_density, model.grid, model.gases, model.tracers,
+                datatuple(model.total_density), model.grid, model.gases, datatuple(model.tracers),
                 dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), density_update_event)
@@ -27,6 +27,9 @@ end
 #####
 
 function compute_slow_source_terms!(slow_source_terms, arch, grid, thermodynamic_variable, gases, gravity, coriolis, closure, total_density, momenta, tracers, diffusivities, forcing, clock)
+
+    slow_source_terms, total_density, momenta, tracers, diffusivities =
+        datatuples(slow_source_terms, total_density, momenta, tracers, diffusivities)
 
     workgroup, worksize = work_layout(grid, :xyz)
     barrier = Event(device(arch))
@@ -72,7 +75,7 @@ end
 @kernel function compute_slow_thermodynamic_variable_source_terms!(S_ρt, grid, thermodynamic_variable, gases, gravity, closure, total_density, momenta, tracers, diffusivities)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds S_ρt.data[i, j, k] += ρt_slow_source_term(i, j, k, grid, closure, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, diffusivities)
+    @inbounds S_ρt[i, j, k] += ρt_slow_source_term(i, j, k, grid, closure, thermodynamic_variable, gases, gravity, total_density, momenta, tracers, diffusivities)
 end
 
 #####
@@ -80,6 +83,9 @@ end
 #####
 
 function compute_fast_source_terms!(fast_source_terms, arch, grid, thermodynamic_variable, gases, gravity, advection_scheme, total_density, momenta, tracers, slow_source_terms)
+
+    fast_source_terms, total_density, momenta, tracers, slow_source_terms =
+        datatuples(fast_source_terms, total_density, momenta, tracers, slow_source_terms)
 
     workgroup, worksize = work_layout(grid, :xyz)
     barrier = Event(device(arch))
@@ -135,6 +141,9 @@ end
 
 function advance_state_variables!(state_variables, arch, grid, momenta, tracers, fast_source_terms; Δt)
     
+    state_variables, momenta, tracers, fast_source_terms =
+        datatuples(state_variables, momenta, tracers, fast_source_terms )
+
     workgroup, worksize = work_layout(grid, :xyz)
     barrier = Event(device(arch))
 
