@@ -20,7 +20,7 @@ end
 
 function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(gpufriendly(a) for a in args), ▶, grid)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
 end
 
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""

@@ -33,7 +33,7 @@ end
 result from `Larg` to `L`."""
 function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, gpufriendly(arg), ▶, grid)
+    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
 end
 
 """

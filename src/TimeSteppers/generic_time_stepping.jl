@@ -7,21 +7,21 @@
 
 Perform precomputations necessary for an explicit timestep or substep.
 """
-function precomputations!(diffusivities, pressures, velocities, tracers, model)
+function precomputations!(model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
                        model.clock, all_model_fields(model))
 
     # Calculate diffusivities
-    calculate_diffusivities!(diffusivities, model.architecture, model.grid, model.closure,
-                             model.buoyancy, velocities, tracers)
+    calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,
+                             model.buoyancy, model.velocities, model.tracers)
 
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, all_model_fields(model))
 
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
-                                   pressures.pHY′, model.grid, model.buoyancy, tracers,
+                                   model.pressures.pHY′, model.grid, model.buoyancy, model.tracers,
                                    dependencies=Event(device(model.architecture)))
 
     # Fill halo regions for pressure
@@ -38,7 +38,7 @@ end
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffusivities, model)
+function calculate_tendencies!(model)
 
     # Note:
     #
@@ -50,7 +50,7 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
     
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(tendencies,
+    calculate_interior_tendency_contributions!(model.timestepper.Gⁿ,
                                                model.architecture,
                                                model.grid,
                                                model.advection,
@@ -59,10 +59,10 @@ function calculate_tendencies!(tendencies, velocities, tracers, pressures, diffu
                                                model.surface_waves,
                                                model.closure,
                                                model.background_fields,
-                                               velocities,
-                                               tracers,
-                                               pressures.pHY′,
-                                               diffusivities,
+                                               model.velocities,
+                                               model.tracers,
+                                               model.pressures.pHY′,
+                                               model.diffusivities,
                                                model.forcing,
                                                model.clock)
                                                
@@ -83,11 +83,11 @@ end
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(nonhydrostatic_pressure, Δt, velocities, model)
+function calculate_pressure_correction!(model, Δt)
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, all_model_fields(model))
 
-    solve_for_pressure!(nonhydrostatic_pressure, model.pressure_solver, model.architecture, model.grid, Δt, velocities)
+    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.architecture, model.grid, Δt, model.velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
@@ -112,9 +112,17 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 end
 
 "Update the solution variables (velocities and tracers)."
-function pressure_correct_velocities!(U, arch, grid, Δt, pNHS)
-    event = launch!(arch, grid, :xyz, _pressure_correct_velocities!, U, grid, Δt, pNHS,
-                    dependencies=Event(device(arch))) 
-    wait(device(arch), event)
+function pressure_correct_velocities!(model, Δt)
+
+    event = launch!(model.architecture, model.grid, :xyz,
+                    _pressure_correct_velocities!,
+                    model.velocities,
+                    model.grid,
+                    Δt,
+                    model.pressures.pNHS,
+                    dependencies=Event(device(model.architecture))) 
+
+    wait(device(model.architecture), event)
+
     return nothing
 end

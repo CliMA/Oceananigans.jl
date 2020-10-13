@@ -32,7 +32,7 @@ end
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, gpufriendly(arg), ▶, grid)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, grid)
 end
 
 """Return `Cell` if given `Face` or `Face` if given `Cell`."""

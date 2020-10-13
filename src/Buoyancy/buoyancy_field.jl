@@ -29,8 +29,6 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
 
         validate_field_data(Cell, Cell, Cell, data, grid)
 
-        tracers = datatuple(tracers)
-
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
         return new{typeof(buoyancy), typeof(status), typeof(data),
@@ -39,7 +37,6 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
 
     function BuoyancyField(data, grid, buoyancy, tracers, status)
         validate_field_data(Cell, Cell, Cell, data, grid)
-        tracers = datatuple(tracers)
         return new{typeof(buoyancy), typeof(status), typeof(data),
                    typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
     end
@@ -120,9 +117,4 @@ end
 ##### Adapt
 #####
 
-Adapt.adapt_structure(to, buoyancy_field::BuoyancyField) =
-    BuoyancyField(Adapt.adapt(to, buoyancy_field.data),
-                  Adapt.adapt(to, buoyancy_field.grid),
-                  Adapt.adapt(to, buoyancy_field.buoyancy),
-                  Adapt.adapt(to, buoyancy_field.tracers),
-                  Adapt.adapt(to, buoyancy_field.status))
+Adapt.adapt_structure(to, buoyancy_field::BuoyancyField) = Adapt.adapt(to, buoyancy_field.data)

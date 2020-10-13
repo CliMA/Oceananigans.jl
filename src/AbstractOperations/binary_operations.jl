@@ -43,7 +43,7 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
      ▶a = interpolation_operator(La, Lab)
      ▶b = interpolation_operator(Lb, Lab)
     ▶op = interpolation_operator(Lab, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, gpufriendly(a), gpufriendly(b), ▶a, ▶b, ▶op, grid)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
 end
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""

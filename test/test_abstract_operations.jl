@@ -309,7 +309,8 @@ end
 function operations_with_averaged_field(model)
     u, v, w = model.velocities
     UV = AveragedField(u * v, dims=(1, 2))
-    @compute wUV = ComputedField(w * UV)
+    wUV = ComputedField(w * UV)
+    compute!(wUV)
     return true
 end
 
@@ -604,13 +605,60 @@ end
 
                 for buoyancy in buoyancies
                     @testset "Computations with BuoyancyFields [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
-                        @info "      Testing computations with BuoyancyField..."
+                        @info "      Testing computations with BuoyancyField " *
+                              "[$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]..."
+
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
                 end
 
+                @testset "Computations with AveragedFields [$FT, $(typeof(arch))]" begin
+                    @info "      Testing computations with AveragedField [$FT, $(typeof(arch))]..."
+
+                    u, v, w, T, S = fields(model)
+
+                    set!(model, u = (x, y, z) -> z, v = 2)
+
+                    w.data.parent .= 3 # fill halos too
+
+                    # Two ways to compute turbulent kinetic energy
+                    U = AveragedField(u, dims=(1, 2))
+                    V = AveragedField(v, dims=(1, 2))
+
+                    u′ = ComputedField(u - U)
+                    v′ = ComputedField(v - V)
+
+                    e1_op = @at (Cell, Cell, Cell) ((u - U)^2  + (v - V)^2 + w^2) / 2
+                    e1 = ComputedField(e1_op)
+                    compute!(e1)
+
+                    @test all(interior(e1) .== 9/2)
+
+                    #=
+                    e2_op = @at (Cell, Cell, Cell) (u′^2  + v′^2 + w^2) / 2
+                    e2 = ComputedField(e2_op)
+                    compute!(e2)
+
+                    @test all(interior(e2) .== 9/2)
+                    =#
+
+                    # This tests a vertical derivative of an AveragedField
+                    shear_production_op = @at (Cell, Cell, Cell) u * w * ∂z(U)
+                    shear = ComputedField(shear_production_op)
+                    compute!(shear)
+
+                    set!(model, T = (x, y, z) -> 3 * z)
+                    @test all(interior(shear) .== interior(T)) 
+
+                    E = AveragedField(e_op, dims=(1, 2))
+                    compute!(E)
+
+                    @test all(interior(E) .== 9/2)
+                end
+
                 @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
-                    @info "      Testing conditional computation of ComputedField and BuoyancyField..."
+                    @info "      Testing conditional computation of ComputedField and BuoyancyField " *
+                          "[$FT, $(typeof(arch))]..."
 
                     set!(model, u=2, v=0, w=0, T=3, S=0)
                     u, v, w, T, S = fields(model)

@@ -91,8 +91,4 @@ end
 ##### Adapt
 #####
 
-Adapt.adapt_structure(to, computed_field::ComputedField{X, Y, Z}) where {X, Y, Z} = 
-    ComputedField{X, Y, Z}(Adapt.adapt(to, computed_field.data),
-                           Adapt.adapt(to, computed_field.grid),
-                           Adapt.adapt(to, computed_field.operand),
-                           Adapt.adapt(to, computed_field.status))
+Adapt.adapt_structure(to, computed_field::ComputedField) = Adapt.adapt(to, computed_field.data)

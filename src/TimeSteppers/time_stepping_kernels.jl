@@ -228,28 +228,31 @@ end
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(G⁻, arch, grid, G⁰)
+function store_tendencies!(model)
 
-    barrier = Event(device(arch))
+    barrier = Event(device(model.architecture))
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(model.grid, :xyz)
 
-    store_velocity_tendencies_kernel! = store_velocity_tendencies!(device(arch), workgroup, worksize)
-    store_tracer_tendency_kernel! = store_tracer_tendency!(device(arch), workgroup, worksize)
+    store_velocity_tendencies_kernel! = store_velocity_tendencies!(device(model.architecture), workgroup, worksize)
+    store_tracer_tendency_kernel! = store_tracer_tendency!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = store_velocity_tendencies_kernel!(G⁻, grid, G⁰, dependencies=barrier)
+    velocities_event = store_velocity_tendencies_kernel!(model.timestepper.G⁻,
+                                                         model.grid,
+                                                         model.timestepper.Gⁿ,
+                                                         dependencies=barrier)
 
     events = [velocities_event]
 
     # Tracer fields
     for i in 4:length(G⁻)
-        @inbounds Gc⁻ = G⁻[i]
-        @inbounds Gc⁰ = G⁰[i]
-        tracer_event = store_tracer_tendency_kernel!(Gc⁻, grid, Gc⁰, dependencies=barrier)
+        @inbounds Gc⁻ = model.timestepper.G⁻[i]
+        @inbounds Gc⁰ = model.timestepper.Gⁿ[i]
+        tracer_event = store_tracer_tendency_kernel!(Gc⁻, model.grid, Gc⁰, dependencies=barrier)
         push!(events, tracer_event)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
