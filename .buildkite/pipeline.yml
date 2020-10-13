@@ -1,7 +1,5 @@
 env:
   JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-  CUDA_VISIBLE_DEVICES: 0
-  JULIA_CUDA_MEMORY_LIMIT: 2147483648  # 2 GiB
 
 steps:
   - label: "🏕️ initialize environment"
@@ -18,9 +16,23 @@ steps:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
+      queue: Oceananigans
 
   - wait
+
+#####
+##### Unit tests
+#####
+
+  - label: "🐇 unit tests"
+    env:
+      TEST_GROUP: "unit"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
 
   - label: "🐇 unit tests"
     env:
@@ -28,7 +40,22 @@ steps:
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
+      queue: Oceananigans
+      architecture: GPU
+
+#####
+##### Model
+#####
+
+  - label: "🐬 model tests"
+    env:
+      TEST_GROUP: "model"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
 
 
   - label: "🐬 model tests"
@@ -37,7 +64,12 @@ steps:
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
+      queue: Oceananigans
+      architecture: GPU
+
+#####
+##### Simulation
+#####
 
   - label: "🐳 simulation tests"
     env:
@@ -45,15 +77,45 @@ steps:
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
- 
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🐳 simulation tests"
+    env:
+      TEST_GROUP: "simulation"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+
+#####
+##### Regression
+#####
+
   - label: "🐫 regression tests"
     env:
       TEST_GROUP: "regression"
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🐫 regression tests"
+    env:
+      TEST_GROUP: "regression"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+
+#####
+##### Scripts
+#####
 
   - label: "🦍 scripts"
     env:
@@ -61,7 +123,18 @@ steps:
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      queue: tartarus
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🦍 scripts"
+    env:
+      TEST_GROUP: "scripts"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
 
   # - label: "🦕 convergence tests"
   #   env:
@@ -69,14 +142,20 @@ steps:
   #   commands:
   #     - "$HOME/julia-1.4.2/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
-  #     queue: tartarus
+  #    queue: Oceananigans
+  #    architecture: CPU
+
+#####
+##### Documentation
+#####
 
   - label: "🦉 documentation"
     commands:
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
       - "$HOME/julia-1.4.2/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
-      queue: tartarus
+      queue: Oceananigans
+      architecture: CPU
 
   - wait: ~
     continue_on_failure: true
@@ -85,5 +164,4 @@ steps:
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
     agents:
-      queue: tartarus
-
+      queue: Oceananigans
