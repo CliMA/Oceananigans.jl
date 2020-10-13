@@ -1,47 +1,45 @@
 env:
   JULIA_VERSION: "1.4.2"
   JULIA_MINOR_VERSION: "1.4"
+  SVERDRUP_HOME: "/data5/glwagner"
+  TARTARUS_HOME: "/var/lib/buildkite-agent"
 
 steps:
   - label: "🏕️ initialize environment"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       # Download julia binaries
-      - "wget -N -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $HOME"
+      - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
+      - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
 
       # Setup Oceananigans
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
-
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
     agents:
       queue: Oceananigans
       architecture: CPU
 
   - label: "🏕️ initialize environment"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
     commands:
       # Download julia binaries
-      - "wget -N -P $HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $HOME"
+      - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
+      - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
 
       # Setup Oceananigans
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -54,23 +52,23 @@ steps:
 
   - label: "🐇 unit tests"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "unit"
-      CUDA_VISIBLE_DEVICES: "-1"
-    commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-
-  - label: "🐇 unit tests"
-    env:
       TEST_GROUP: "unit"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
+
+  - label: "🐇 unit tests"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "unit"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
 
 #####
 ##### Model
@@ -78,24 +76,23 @@ steps:
 
   - label: "🐬 model tests"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "model"
-      CUDA_VISIBLE_DEVICES: "-1"
-    commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-
-
-  - label: "🐬 model tests"
-    env:
       TEST_GROUP: "model"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
+
+  - label: "🐬 model tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "model"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
 
 #####
 ##### Simulation
@@ -103,20 +100,21 @@ steps:
 
   - label: "🐳 simulation tests"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🐳 simulation tests"
     env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -127,20 +125,21 @@ steps:
 
   - label: "🐫 regression tests"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🐫 regression tests"
     env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -151,21 +150,21 @@ steps:
 
   - label: "🦍 scripts"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🦍 scripts"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -174,7 +173,7 @@ steps:
   #   env:
   #     TEST_GROUP: "convergence"
   #   commands:
-  #     - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
   #    queue: Oceananigans
   #    architecture: CPU
@@ -185,10 +184,10 @@ steps:
 
   - label: "🦉 documentation"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     commands:
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
-      - "$HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -202,19 +201,19 @@ steps:
 
   - label: "🧹 clean up environment"
     env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    commands:
+      - "rm -rf $JULIA_DEPOT_PATH"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🧹 clean up environment"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "rm -rf $JULIA_DEPOT_PATH"
     agents:
       queue: Oceananigans
       architecture: CPU
-
-  - label: "🧹 clean up environment"
-    env:
-      JULIA_DEPOT_PATH: "$HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    commands:
-      - "rm -rf $JULIA_DEPOT_PATH"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
