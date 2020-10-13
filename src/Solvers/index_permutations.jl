@@ -2,6 +2,10 @@
 @inline   permute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
 @inline unpermute_index(solver_type, ::CPU, i, j, k, Nx, Ny, Nz) = i, j, k
 
+# For why we use Base.unsafe_trunc instead of floor below see:
+# https://github.com/CliMA/Oceananigans.jl/issues/828
+# https://github.com/CliMA/Oceananigans.jl/pull/997
+
 """
     _permute_index(i, N)
 
