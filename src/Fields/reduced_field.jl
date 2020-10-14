@@ -6,26 +6,26 @@ abstract type AbstractReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A
 
 const ARF = AbstractReducedField
 
-@propagate_inbounds Base.getindex(r::ARF{Nothing, Y, Z},     i, j, k) where {Y, Z} = r.data[1, j, k]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Y, Z}, d, i, j, k) where {Y, Z} = r.data[1, j, k] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Z},    i, j, k) where {Y, Z} = @inbounds r.data[1, j, k]
+@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, i, j, k) where {Y, Z} = @inbounds r.data[1, j, k] = d
 
-@propagate_inbounds Base.getindex(r::ARF{X, Nothing, Z},     i, j, k) where {X, Z} = r.data[i, 1, k]
-@propagate_inbounds Base.setindex!(r::ARF{X, Nothing, Z}, d, i, j, k) where {X, Z} = r.data[i, 1, k] = d
+@inline Base.getindex( r::ARF{X, Nothing, Z},    i, j, k) where {X, Z} = @inbounds r.data[i, 1, k]
+@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i, j, k) where {X, Z} = @inbounds r.data[i, 1, k] = d
 
-@propagate_inbounds Base.getindex(r::ARF{X, Y, Nothing},     i, j, k) where {X, Y} = r.data[i, j, 1]
-@propagate_inbounds Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j, k) where {X, Y} = r.data[i, j, 1] = d
+@inline Base.getindex( r::ARF{X, Y, Nothing},    i, j, k) where {X, Y} = @inbounds r.data[i, j, 1]
+@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j, k) where {X, Y} = @inbounds r.data[i, j, 1] = d
 
-@propagate_inbounds Base.getindex(r::ARF{X, Nothing, Nothing},     i, j, k) where X = r.data[i, 1, 1]
-@propagate_inbounds Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i, j, k) where X = r.data[i, 1, 1] = d
+@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i, j, k) where X = @inbounds r.data[i, 1, 1]
+@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i, j, k) where X = @inbounds r.data[i, 1, 1] = d
 
-@propagate_inbounds Base.getindex(r::ARF{Nothing, Y, Nothing},     i, j, k) where Y = r.data[1, j, 1]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, i, j, k) where Y = r.data[1, j, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    i, j, k) where Y = @inbounds r.data[1, j, 1]
+@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, i, j, k) where Y = @inbounds r.data[1, j, 1] = d
 
-@propagate_inbounds Base.getindex(r::ARF{Nothing, Nothing, Z},     i, j, k) where Z = r.data[1, 1, k]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, i, j, k) where Z = r.data[1, 1, k] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    i, j, k) where Z = @inbounds r.data[1, 1, k]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, i, j, k) where Z = @inbounds r.data[1, 1, k] = d
 
-@propagate_inbounds Base.getindex(r::ARF{Nothing, Nothing, Nothing},     i, j, k) = r.data[1, 1, 1]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = r.data[1, 1, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
 
 const DimsType = NTuple{N, Int} where N
 
