@@ -94,10 +94,15 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
         end
     end
 
-    if group == :model || group == :all
-        @testset "Model tests" begin
+    if group == :time_stepping_1 || group == :all
+        @testset "Model and time stepping tests (part 1)" begin
             include("test_models.jl")
             include("test_time_stepping.jl")
+        end
+    end
+
+    if group == :time_stepping_2 || group == :all
+        @testset "Model and time stepping tests (part 2)" begin
             include("test_time_stepping_bcs.jl")
             include("test_forcings.jl")
             include("test_turbulence_closures.jl")
