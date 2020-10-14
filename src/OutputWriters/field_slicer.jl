@@ -3,11 +3,11 @@
 
 Slices fields along indices with or without halo regions as specified.
 """
-struct FieldSlicer{I, J, K, W}
+struct FieldSlicer{I, J, K}
     i :: I
     j :: J
     k :: K
-    with_halos :: W
+    with_halos :: Bool
 end
 
 """

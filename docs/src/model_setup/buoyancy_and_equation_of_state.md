@@ -21,7 +21,7 @@ end
 julia> grid = RegularCartesianGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid, buoyancy=nothing)
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
@@ -35,7 +35,7 @@ also pass`tracers = ()` to the model constructor.
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=nothing, tracers=())
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
@@ -50,7 +50,7 @@ constructor. Buoyancy `:b` must be included as a tracer, for example,
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
@@ -65,7 +65,7 @@ To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pa
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=SeawaterBuoyancy())
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
@@ -86,7 +86,7 @@ SeawaterBuoyancy{Float64}: g = 1.3
 └── equation of state: LinearEquationOfState{Float64}: α = 1.67e-04, β = 7.80e-04
 
 julia> model = IncompressibleModel(grid=grid, buoyancy=buoyancy)
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}

@@ -13,7 +13,7 @@ end
 julia> grid = RegularCartesianGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid)
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
@@ -43,7 +43,7 @@ quantities $C_1$, CO₂, and nitrogen as additional passive tracers you could se
 
 ```jldoctest tracers
 julia> model = IncompressibleModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
-IncompressibleModel{CPU, Float64}(time = 0.000 s, iteration = 0)
+IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S, :C₁, :CO₂, :nitrogen),NTuple{5,Float64}}}
