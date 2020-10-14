@@ -125,7 +125,7 @@ Adapt.adapt_structure(to, buoyancy_field::BuoyancyField) = Adapt.adapt(to, buoya
 ##### Show
 #####
 
-short_show(field::BuoyancyField) = string("BuoyancyField for ", typeof(model.buoyancy))
+short_show(field::BuoyancyField) = string("BuoyancyField for ", typeof(field.buoyancy))
 
 show(io::IO, field::BuoyancyField) =
     print(io, "$(short_show(field))\n",
