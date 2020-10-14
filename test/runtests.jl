@@ -3,11 +3,19 @@ using Logging
 using Statistics
 using Printf
 using JLD2
+using CUDA
 
 using Oceananigans
+using Oceananigans.Architectures
 using JULES
 
 Logging.global_logger(OceananigansLogger())
+
+         Archs = [CPU]
+@hascuda Archs = [GPU]
+
+
+CUDA.allowscalar(true)
 
 @testset "JULES" begin
     include("test_models.jl")
@@ -16,5 +24,3 @@ Logging.global_logger(OceananigansLogger())
     include("test_regression.jl")
 end
 
-include("../benchmarks/benchmark_static_atmosphere.jl")
-println()
