@@ -17,7 +17,7 @@ as [`TimeSeries`](@ref), [`FieldMaximum`](@ref), [`CFL`](@ref), and [`NaNChecker
 
 ## Horizontal averages
 
-You can create a horizontal `Average` diagnostic by passing a field to the constructor, e.g.
+You can create a horizontally-averaged `AverageField` diagnostic by passing a field to the constructor, e.g.
 
 ```@meta
 DocTestSetup = quote
@@ -27,6 +27,8 @@ end
 ```
 
 ```jldoctest
+julia> using Oceananigans.Fields
+
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
 
 julia> T_avg = AveragedField(model.tracers.T, dims=(1, 2));
@@ -58,6 +60,8 @@ an `Array` instead of a `CuArray` in case you want to save the horizontal averag
 construct it like
 
 ```jldoctest
+julia> using Oceananigans.Fields
+
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
 
 julia> T_avg = AveragedField(model.tracers.T, dims=(1, 2), return_type=Array);
@@ -87,6 +91,8 @@ You can also use pass an abstract operator to take the horizontal average of any
 compute the horizontal average of the vertical component of vorticity:
 
 ```julia
+julia> using Oceananigans.Fields
+
 model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=6, stop_iteration=10)
 

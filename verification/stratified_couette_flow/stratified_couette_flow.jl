@@ -1,6 +1,7 @@
 using Statistics, Printf
 
 using Oceananigans
+using Oceananigans.Fields
 using Oceananigans.TurbulenceClosures
 using Oceananigans.OutputWriters
 using Oceananigans.Diagnostics
