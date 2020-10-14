@@ -198,12 +198,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     κavg = AveragedField(model.diffusivities.κₑ.T, dims=(1, 2))
 
     profiles = Dict(
-         :u => model -> Uavg(model),
-         :v => model -> Vavg(model),
-         :w => model -> Wavg(model),
-         :T => model -> Tavg(model),
-        :nu => model -> νavg(model),
-    :kappaT => model -> κavg(model))
+         :u => Uavg,
+         :v => Vavg,
+         :w => Wavg,
+         :T => Tavg,
+        :nu => νavg,
+    :kappaT => κavg)
 
     profile_writer =
         JLD2OutputWriter(model, profiles, dir=base_dir, prefix=prefix * "_profiles",
