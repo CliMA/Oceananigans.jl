@@ -53,23 +53,49 @@ mutable struct NetCDFOutputWriter{D, O, I, T, S, A} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filepath, iteration_interval=nothing, time_interval=nothing,
-                       global_attributes=Dict(), output_attributes=Dict(), dimensions=Dict(),
-                       mode="c", compression=0, with_halos=false, verbose=false, slice_kwargs...)
+function NetCDFOutputWriter(model, outputs; filepath,
+                               iteration_interval = nothing,
+                                    time_interval = nothing,
+                            time_averaging_window = nothing,
+                            time_averaging_stride = 1,
+                                       array_type = Array{Float32},
+                                     field_slicer = FieldSlicer(),
+                                global_attributes = Dict(),
+                                output_attributes = Dict(),
+                                       dimensions = Dict(),
+                                             mode = "c",
+                                      compression = 0,
+                                          verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either a field from the model (e.g. `model.velocities.u`) or a function `f(model)` that returns
-something to be written to disk. Custom output requires the spatial `dimensions` to be manually
-specified.
+either a `Field` (e.g. `model.velocities.u` or an `AveragedField`) or a function `f(model)` that
+returns something to be written to disk. Custom output requires the spatial `dimensions` (a
+`Dict`) to be manually specified (see examples).
 
 Keyword arguments
 =================
+- `filepath` (required): Filepath to save output to.
+
 - `iteration_interval`: Save output every `n` model iterations.
 
 - `time_interval`: Save output every `t` units of model clock time.
 
-- `filepath`: Filepath to save output to.
+- `time_averaging_window`: Specifies a time window over which each member of `output` is averaged before    
+  being saved. For this each member of output is converted to `Oceananigans.Diagnostics.WindowedTimeAverage`.
+  Default `nothing` indicates no averaging.
+
+- `time_averaging_stride`: Specifies a iteration 'stride' between the calculation of each `output` during
+  time-averaging. Longer strides means that output is calculated less frequently, and that the resulting
+  time-average is faster to compute, but less accurate. Default: 1.
+
+- `array_type`: The array type to which output arrays are converted to prior to saving.
+  Default: Array{Float32}.
+
+- `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
+  Has no effect on output that is not a field. `field_slicer = nothing` means
+  no slicing occurs, so that all field data, including halo regions, is saved.
+  Default: FieldSlicer(), which slices halo regions.
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
