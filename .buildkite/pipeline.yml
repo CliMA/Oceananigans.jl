@@ -196,7 +196,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU'
+      architecture: GPU
     depends_on: "init_gpu"
 
   - label: "🦍 cpu scripts"
