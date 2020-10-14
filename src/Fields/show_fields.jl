@@ -25,4 +25,17 @@ show(io::IO, field::Field) =
           "├── grid: $(short_show(field.grid))\n",
           "└── boundary conditions: $(short_show(field.boundary_conditions))")
 
+show(io::IO, field::AveragedField) =
+    print(io, "$(short_show(field))\n",
+          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
+          "├── grid: $(short_show(field.grid))", '\n',
+          "├── dims: $(field.dims)", '\n',
+          "└── operand: $(short_show(field.operand))")
+
+show(io::IO, field::ComputedField) =
+    print(io, "$(short_show(field))\n",
+          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
+          "├── grid: $(short_show(field.grid))", '\n',
+          "└── operand: $(short_show(field.operand))")
+
 short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
