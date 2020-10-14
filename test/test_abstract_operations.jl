@@ -617,10 +617,8 @@ end
 
                     u, v, w, T, S = fields(model)
 
-                    set!(model, u = (x, y, z) -> z, v = 2)
-
-                    w.data.parent .= 3 # fill halos too
-
+                    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+                    
                     # Two ways to compute turbulent kinetic energy
                     U = AveragedField(u, dims=(1, 2))
                     V = AveragedField(v, dims=(1, 2))
@@ -632,15 +630,13 @@ end
                     e1 = ComputedField(e1_op)
                     compute!(e1)
 
-                    @test all(interior(e1) .== 9/2)
+                    @test all(interior(e1)[2:3, 2:3, 2:3] .== 9/2)
 
-                    #=
                     e2_op = @at (Cell, Cell, Cell) (u′^2  + v′^2 + w^2) / 2
                     e2 = ComputedField(e2_op)
                     compute!(e2)
 
-                    @test all(interior(e2) .== 9/2)
-                    =#
+                    @test all(interior(e2)[2:3, 2:3, 2:3] .== 9/2)
 
                     # This tests a vertical derivative of an AveragedField
                     shear_production_op = @at (Cell, Cell, Cell) u * w * ∂z(U)
@@ -648,12 +644,8 @@ end
                     compute!(shear)
 
                     set!(model, T = (x, y, z) -> 3 * z)
-                    @test all(interior(shear) .== interior(T)) 
 
-                    E = AveragedField(e_op, dims=(1, 2))
-                    compute!(E)
-
-                    @test all(interior(E) .== 9/2)
+                    @test all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3]) 
                 end
 
                 @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
