@@ -7,8 +7,11 @@ using Printf
 using Plots
 using VideoIO
 using FileIO
-using JULES
+
 using Oceananigans
+using Oceananigans.Grids
+using Oceananigans.Advection
+using JULES
 
 using Oceananigans.Architectures: @hascuda
 using Oceananigans.Fields: interiorparent
@@ -191,8 +194,9 @@ function print_progress_and_make_plots(simulation)
     end
 
     if simulation.parameters.make_plots
-        xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
-        xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
+        grid = model.grid
+        xC, yC, zC = xnodes(Cell, grid) ./ km, ynodes(Cell, grid) ./ km, znodes(Cell, grid) ./ km
+        xF, yF, zF = xnodes(Face, grid) ./ km, ynodes(Face, grid) ./ km, znodes(Face, grid) ./ km
 
         u_slice = rotr90(interiorxz(model.velocities.u))
         w_slice = rotr90(interiorxz(model.velocities.w))
@@ -209,11 +213,11 @@ function print_progress_and_make_plots(simulation)
         if tvar isa Energy
             e_slice = rotr90((interiorxz(model.lazy_tracers.e) .- eʰᵈ) ./ interiorxz(model.total_density))
             tvar_plot = heatmap(xC, zC, e_slice, title="e_prime", fill=true, levels=50,
-                                xlims=(-5, 5), color=:oxy_r, linecolor=nothing, clims = (0, 1200))
+                                xlims=(-5, 5), color=:thermal, linecolor=nothing, clims = (0, 1200))
         elseif tvar isa Entropy
             s_slice = rotr90(interiorxz(model.lazy_tracers.s))
             tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
-                                xlims=(-5, 5), color=:oxy_r, linecolor = nothing, clims=(99, 105))
+                                xlims=(-5, 5), color=:thermal, linecolor = nothing, clims=(99, 105))
         end
 
         p = plot(u_plot, w_plot, ρ_plot, tvar_plot, layout=(2, 2), dpi=200, show=true)
