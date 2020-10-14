@@ -1,5 +1,5 @@
 """
-    calculate_tendencies!(diffusivities, pressures, velocities, tracers, model)
+    calculate_tendencies!(model)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
