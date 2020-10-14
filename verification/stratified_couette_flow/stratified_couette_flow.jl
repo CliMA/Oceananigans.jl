@@ -12,7 +12,8 @@ function uτ(model, Uavg, U_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     ν = model.closure.ν
 
-    U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    compute!(Uavg)
+    U = Uavg.data[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dU/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -30,7 +31,8 @@ function q_wall(model, Tavg, Θ_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     κ = model.closure.κ.T
 
-    Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    compute!(Tavg)
+    Θ = Tavg.data[1+Hz:end-Hz]  # Exclude average of halo region.
 
     # Use a finite difference to calculate dθ/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -264,5 +266,5 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
     run!(simulation)
 
-    return nothing
+    return simulation
 end
