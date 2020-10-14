@@ -121,7 +121,6 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :scripts || group == :all
         @testset "Scripts" begin
-            include("test_examples.jl")
             include("test_verification.jl")
             include("test_benchmarks.jl")
         end

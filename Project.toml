@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.40.0"
+version = "0.41.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -29,7 +29,7 @@ Adapt = "^2"
 CUDA = "^1"
 Crayons = "^4"
 FFTW = "^1"
-JLD2 = "^0.1.2, ^1"
+JLD2 = "^0"
 KernelAbstractions = "^0.3, 0.4"
 NCDatasets = "0.10"
 OffsetArrays = "^0.11.1, ^1"

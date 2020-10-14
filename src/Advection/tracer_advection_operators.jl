@@ -12,7 +12,7 @@ a velocity field U = (u, v, w), ∇·(Uc),
 
 which will end up at the location `ccc`.
 """
-@inline function div_uc(i, j, k, grid, advection, U, c)
+@inline function div_Uc(i, j, k, grid, advection, U, c)
     1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U.u, c) +
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U.v, c) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
