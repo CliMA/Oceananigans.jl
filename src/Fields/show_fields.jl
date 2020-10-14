@@ -24,7 +24,6 @@ show(io::IO, field::Field) =
 
 show_status(::Nothing) = "nothing"
 show_status(status) = "time=$(status.time)"
-    
 
 show(io::IO, field::AveragedField) =
     print(io, "$(short_show(field))\n",
