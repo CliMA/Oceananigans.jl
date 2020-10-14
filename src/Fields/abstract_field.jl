@@ -70,7 +70,7 @@ Computes `field.data` if `time != field.status.time`.
 """
 function conditional_compute!(field, time)
 
-    if time != field.status.time
+    if time == zero(time) || time != field.status.time
         compute!(field)
         field.status.time = time
     end
