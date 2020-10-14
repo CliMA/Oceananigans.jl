@@ -56,14 +56,14 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-7-element Array{Any,1}:
- :sqrt
- :sin
- :cos
- :exp
- :tanh
- :-
- :square_it
+Set{Any} with 7 elements:
+  :sqrt
+  :square_it
+  :cos
+  :exp
+  :-
+  :tanh
+  :sin
 
 julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 

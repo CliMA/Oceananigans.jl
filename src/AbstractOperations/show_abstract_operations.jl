@@ -1,6 +1,7 @@
 using Oceananigans: short_show
 using Oceananigans.Grids: domain_string
-using Oceananigans.Fields: show_location, tree_show
+using Oceananigans.Fields: show_location
+import Oceananigans.Fields: tree_show
 
 for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
     op = eval(Symbol(op_string))
