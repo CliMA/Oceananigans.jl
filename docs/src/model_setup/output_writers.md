@@ -114,7 +114,7 @@ function init_save_some_metadata(file, model)
     file["parameters/density"] = 1027
 end
 
-T_avg =  Average(model.tracers.T, dims=(1, 2))
+T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
 
 outputs = Dict(
     :w => model -> model.velocities.u,

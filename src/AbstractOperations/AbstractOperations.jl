@@ -1,6 +1,6 @@
 module AbstractOperations
 
-export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
+export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 
 using Base: @propagate_inbounds
 
@@ -52,7 +52,6 @@ include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 
-include("computations.jl")
 include("show_abstract_operations.jl")
 include("averages_of_operations.jl")
 

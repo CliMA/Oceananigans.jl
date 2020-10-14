@@ -29,7 +29,7 @@ end
 ```jldoctest
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
 
-julia> T_avg = Average(model.tracers.T, dims=(1, 2));
+julia> T_avg = AveragedField(model.tracers.T, dims=(1, 2));
 
 julia> T_avg(model)  # Compute horizontal average of T on demand
 1×1×6 Array{Float64,3}:
@@ -60,7 +60,7 @@ construct it like
 ```jldoctest
 julia> model = IncompressibleModel(grid=RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1)));
 
-julia> T_avg = Average(model.tracers.T, dims=(1, 2), return_type=Array);
+julia> T_avg = AveragedField(model.tracers.T, dims=(1, 2), return_type=Array);
 
 julia> T_avg(model)  # Will always return an Array
 1×1×6 Array{Float64,3}:
@@ -92,7 +92,7 @@ simulation = Simulation(model, Δt=6, stop_iteration=10)
 
 u, v, w = model.velocities
 ζ = ∂x(v) - ∂y(u)
-ζ_avg = Average(ζ, dims=(1, 2))
+ζ_avg = AveragedField(ζ, dims=(1, 2))
 simulation.diagnostics[:vorticity_profile] = ζ_avg
 ```
 

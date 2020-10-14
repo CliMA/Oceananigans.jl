@@ -11,22 +11,22 @@ function run_horizontal_average_tests(arch, FT)
     linear(x, y, z) = z
     set!(model, T=linear, w=linear)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), with_halos=false)
+    T̅ = AveragedField(model.tracers.T, dims=(1, 2), with_halos=false)
     computed_T_profile = T̅(model)
     @test_skip size(computed_T_profile) == (1, 1, Nz)
     @test_skip computed_T_profile ≈ znodes(Cell, grid, reshape=true)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2), with_halos=true)
+    T̅ = AveragedField(model.tracers.T, dims=(1, 2), with_halos=true)
     computed_T_profile_with_halos = T̅(model)
     @test_skip size(computed_T_profile_with_halos) == (1, 1, Nz+2Hz)
     @test_skip computed_T_profile_with_halos[1+Hz:Nz+Hz] ≈ znodes(Cell, grid)
 
-    w̅ = Average(model.velocities.w, dims=(1, 2), with_halos=false)
+    w̅ = AveragedField(model.velocities.w, dims=(1, 2), with_halos=false)
     computed_w_profile = w̅(model)
     @test_skip size(computed_w_profile) == (1, 1, Nz+1)
     @test_skip computed_w_profile ≈ znodes(Face, grid, reshape=true)
 
-    w̅ = Average(model.velocities.w, dims=(1, 2), with_halos=true)
+    w̅ = AveragedField(model.velocities.w, dims=(1, 2), with_halos=true)
     computed_w_profile_with_halos = w̅(model)
     @test_skip size(computed_w_profile_with_halos) == (1, 1, Nz+1+2Hz)
     @test_skip computed_w_profile_with_halos[1+Hz:Nz+1+Hz] ≈ znodes(Face, grid)
@@ -43,7 +43,7 @@ function run_zonal_average_tests(arch, FT)
     linear(x, y, z) = z
     set!(model, T=linear, v=linear)
 
-    T̅ = Average(model.tracers.T, dims=1, with_halos=false)
+    T̅ = AveragedField(model.tracers.T, dims=1, with_halos=false)
     computed_T_slice = T̅(model)
     @test_skip size(computed_T_slice) == (1, Ny, Nz)
 
@@ -51,14 +51,14 @@ function run_zonal_average_tests(arch, FT)
     zC = znodes(Cell, grid)
     @test_skip all(computed_T_slice[j, :] ≈ zC for j in 1:Ny)
 
-    T̅ = Average(model.tracers.T, dims=1, with_halos=true)
+    T̅ = AveragedField(model.tracers.T, dims=1, with_halos=true)
     computed_T_slice_with_halos = T̅(model)
     @test_skip size(computed_T_slice_with_halos) == (1, Ny+2Hy, Nz+2Hz)
 
     computed_T_slice_with_halos = dropdims(computed_T_slice_with_halos, dims=1)
     @test_skip computed_T_slice_with_halos[1+Hy:Ny+Hy, 1+Hz:Nz+Hz] ≈ computed_T_slice
 
-    v̅ = Average(model.velocities.v, dims=1, with_halos=false)
+    v̅ = AveragedField(model.velocities.v, dims=1, with_halos=false)
     computed_v_slice = v̅(model)
     @test_skip size(computed_v_slice) == (1, Ny+1, Nz)
 
@@ -66,7 +66,7 @@ function run_zonal_average_tests(arch, FT)
     zC = znodes(Cell, grid)
     @test_skip all(computed_v_slice[j, :] ≈ zC for j in 1:Ny)
 
-    v̅ = Average(model.velocities.v, dims=1, with_halos=true)
+    v̅ = AveragedField(model.velocities.v, dims=1, with_halos=true)
     computed_v_slice_with_halos = v̅(model)
     @test_skip size(computed_v_slice_with_halos) == (1, Ny+1+2Hy, Nz+2Hz)
 
@@ -82,12 +82,12 @@ function run_volume_average_tests(arch, FT)
     T₀(x, y, z) = z
     set!(model, T=T₀)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=false)
+    T̅ = AveragedField(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=false)
     computed_scalar = T̅(model)
     @test_skip size(computed_scalar) == (1, 1, 1)
     @test_skip all(computed_scalar .≈ -50.0)
 
-    T̅ = Average(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=true)
+    T̅ = AveragedField(model.tracers.T, dims=(1, 2, 3), time_interval=0.5second, with_halos=true)
     computed_scalar_with_halos = T̅(model)
     @test_skip size(computed_scalar_with_halos) == (1, 1, 1)
     @test_skip all(computed_scalar_with_halos .≈ -50.0)
