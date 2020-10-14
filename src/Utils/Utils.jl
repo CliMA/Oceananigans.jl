@@ -13,7 +13,7 @@ export
     ordered_dict_show,
     with_tracers,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    instantiate
+    instantiate,
 
 import Oceananigans: short_show
 
@@ -43,5 +43,6 @@ include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
+include("triggers.jl")
 
 end

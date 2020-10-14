@@ -3,10 +3,12 @@ module Diagnostics
 export
     Average, TimeSeries, FieldMaximum,
     CFL, AdvectiveCFL, DiffusiveCFL, NaNChecker,
-    run_diagnostic!
+    run_diagnostic!,
+    TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans
 using Oceananigans.Operators
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractDiagnostic
 

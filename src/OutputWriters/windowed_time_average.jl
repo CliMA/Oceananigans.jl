@@ -1,9 +1,27 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 
-import Oceananigans.Utils: time_to_run
+import Oceananigans.Utils: AbstractTrigger
 import Oceananigans.Fields: AbstractField, compute!
 import Oceananigans.OutputWriters: fetch_output
 import Oceananigans.Diagnostics: run_diagnostic!
+
+"""
+    mutable struct WindowedTimeAverageInterval <: AbstractTrigger
+
+"""
+mutable struct WindowedTimeAverageInterval <: AbstractTrigger
+                  time_interval :: Float64
+                    time_window :: Float64
+                         stride :: Int
+    previous_interval_stop_time :: Float64
+                     collecting :: Bool
+end
+
+WindowedTimeAverageInterval(; interval, window, stride=1) =
+    WindowedTimeAverageInterval(Float64(interval), Float64(window), stride, 0.0, false)
+
+(trigger::WindowedTimeAverageInterval)(model) =
+    trigger.collecting || model.clock.time >= trigger.previous_interval_stop_time + trigger.time_interval - trigger.time_window
 
 """
     WindowedTimeAverage{R, OP, FS} <: AbstractDiagnostic
@@ -14,56 +32,32 @@ of a `operand` over a specified `time_window`, collected on `time_interval`.
 mutable struct WindowedTimeAverage{R, OP, FS} <: AbstractDiagnostic
                          result :: R
                         operand :: OP
-                    time_window :: Float64
-                  time_interval :: Float64
-                         stride :: Int
-                   field_slicer :: FS
               window_start_time :: Float64
          window_start_iteration :: Int
        previous_collection_time :: Float64
-    previous_interval_stop_time :: Float64
-                     collecting :: Bool
+                   field_slicer :: FS
+                        trigger :: WindowedTimeAverageInterval
 end
 
 """
-    WindowedTimeAverage(operand; time_window,
-                                 time_interval,
-                                        stride = 1,
-                                  field_slicer = FieldSlicer())
+    WindowedTimeAverage(operand, model=nothing; trigger, field_slicer = FieldSlicer())
                                                         
-Returns an object for computing running averages of `operand` over `time_window`,
-recurring on `time_interval`. During the collection period, averages are computed
-every `stride` iteration. 
+Returns an object for computing running averages of `operand` over `trigger.time_window`,
+recurring on `trigger.time_interval`. During the collection period, averages are computed
+every `trigger.stride` iteration. 
 
 `operand` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
 or `Oceananigans.Diagnostics.Average`.
 
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 """ 
-function WindowedTimeAverage(operand, model=nothing; time_window, time_interval, stride=1,
-                                                     field_slicer = FieldSlicer())
-
+function WindowedTimeAverage(operand, model=nothing; trigger, field_slicer = FieldSlicer())
+                                                     
     output = fetch_output(operand, model, field_slicer)
     result = similar(output) # convert views to arrays
     result .= output # initialize `result` with initial output
 
-    return WindowedTimeAverage(result,
-                               operand,
-                               Float64(time_window),
-                               Float64(time_interval),
-                               stride,
-                               field_slicer,
-                               0.0, 0, 0.0, 0.0, false)
-end
-
-function time_to_run(clock, wta::WindowedTimeAverage)
-    if (wta.collecting || 
-        clock.time >= wta.previous_interval_stop_time + wta.time_interval - wta.time_window)
-
-        return true
-    else
-        return false
-    end
+    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, field_slicer, stride, trigger)
 end
 
 function accumulate_result!(wta, model)
@@ -88,24 +82,23 @@ end
 function run_diagnostic!(wta::WindowedTimeAverage, model)
 
     if model.clock.iteration == 0 # initialize previous interval stop time
-        wta.previous_interval_stop_time = model.clock.time
+        wta.trigger.previous_interval_stop_time = model.clock.time
     end
 
     # Don't start collecting if we are *only* "initializing" run_diagnostic! at the beginning
     # of a Simulation.
     #
-    # Note: this can be false at the zeroth iteration if time_interval == time_window (which
     # implies we are always collecting)
     
     initializing = model.clock.iteration == 0 &&
-        model.clock.time < wta.previous_interval_stop_time + wta.time_interval - wta.time_window
+        model.clock.time < wta.trigger.previous_interval_stop_time + wta.trigger.time_interval - wta.trigger.time_window
 
-    if !(wta.collecting) && !(initializing)
+    if !(wta.trigger.collecting) && !(initializing)
         # run_diagnostic! has been called, but we are not currently collecting data.
         # Initialize data collection:
 
         # Start averaging period
-        wta.collecting = true
+        wta.trigger.collecting = true
 
         # Zero out result
         wta.result .= 0
@@ -113,20 +106,20 @@ function run_diagnostic!(wta::WindowedTimeAverage, model)
         # Save averaging start time and the initial data collection time
         wta.window_start_time = model.clock.time
         wta.window_start_iteration = model.clock.iteration
-        wta.previous_collection_time = model.clock.time
+        wta.trigger.previous_collection_time = model.clock.time
 
     elseif model.clock.time >= wta.previous_interval_stop_time + wta.time_interval
         # Output is imminent. Finalize averages and cease data collection.
         accumulate_result!(wta, model)
 
         # Averaging period is complete.
-        wta.collecting = false
+        wta.trigger.collecting = false
 
         # Reset the "previous" interval time,
         # subtracting a sliver that presents window overshoot from accumulating.
-        wta.previous_interval_stop_time = model.clock.time - rem(model.clock.time, wta.time_interval)
+        wta.trigger.previous_interval_stop_time = model.clock.time - rem(model.clock.time, wta.trigger.time_interval)
 
-    elseif mod(model.clock.iteration - wta.window_start_iteration, wta.stride) == 0
+    elseif mod(model.clock.iteration - wta.window_start_iteration, wta.trigger.stride) == 0
         # Collect data as usual
         accumulate_result!(wta, model)
     end

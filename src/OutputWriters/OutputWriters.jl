@@ -6,7 +6,8 @@ export
     JLD2OutputWriter,
     NetCDFOutputWriter, write_grid_and_attributes,
     Checkpointer, restore_from_checkpoint,
-    WindowedTimeAverage
+    WindowedTimeAverage,
+    TimeInterval, IterationInterval, WallTimeInterval, WindowedTimeAverageInterval
 
 using CUDA
 
@@ -14,6 +15,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.Models
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Fields: OffsetArray
