@@ -97,18 +97,16 @@ Keyword arguments
     - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 """
 function JLD2OutputWriter(model, outputs; prefix, trigger,
-                                            dir = ".",
-                          time_averaging_window = nothing,
-                          time_averaging_stride = 1,
-                                   field_slicer = FieldSlicer(),
-                                     array_type = Array{Float32},
-                                   max_filesize = Inf,
-                                          force = false,
-                                           init = noinit,
-                                      including = [:grid, :coriolis, :buoyancy, :closure],
-                                        verbose = false,
-                                           part = 1,
-                                        jld2_kw = Dict{Symbol, Any}())
+                                   dir = ".",
+                          field_slicer = FieldSlicer(),
+                            array_type = Array{Float32},
+                          max_filesize = Inf,
+                                 force = false,
+                                  init = noinit,
+                             including = [:grid, :coriolis, :buoyancy, :closure],
+                               verbose = false,
+                                  part = 1,
+                               jld2_kw = Dict{Symbol, Any}())
 
     # Convert each output to WindowedTimeAverage if time_averaging_window is specified
     trigger, outputs = time_average_outputs(trigger, outputs, model)
@@ -122,18 +120,9 @@ function JLD2OutputWriter(model, outputs; prefix, trigger,
         saveproperties!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath,
-                            outputs,
-                            trigger,
-                            field_slicer,
-                            array_type,
-                            init,
-                            including,
-                            part,
-                            max_filesize,
-                            force,
-                            verbose, 
-                            jld2_kw)
+    return JLD2OutputWriter(filepath, outputs, trigger, field_slicer,
+                            array_type, init, including, part, max_filesize,
+                            force, verbose, jld2_kw)
 end
 
 time_average_outputs(trigger, outputs, field_slicer, model) = trigger, outputs # fallback
