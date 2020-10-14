@@ -76,22 +76,46 @@ steps:
       architecture: CPU
 
 #####
-##### Model
+##### Model and time stepping (part 1)
 #####
 
-  - label: "🦈 GPU model tests"
+  - label: "🦈 GPU time stepping tests 1"
     env:
-      TEST_GROUP: "model"
+      TEST_GROUP: "time_stepping_1"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐬 CPU model tests"
+  - label: "🐬 CPU time stepping tests 1"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "model"
+      TEST_GROUP: "time_stepping_1"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+
+#####
+##### Model and time stepping (part 2)
+#####
+
+  - label: "🦈 GPU time stepping tests 2"
+    env:
+      TEST_GROUP: "time_stepping_2"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🐬 CPU time stepping tests 2"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "time_stepping_2"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
