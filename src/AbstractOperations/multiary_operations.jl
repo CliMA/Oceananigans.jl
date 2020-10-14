@@ -64,49 +64,46 @@ Example
 =======
 
 ```jldoctest
+julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
+
 julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
 harmonic_plus(generic function with 1 method)
 
-julia> @multiary harmonic_plus
-3-element Array{Any,1}:
- :+
- :*
- :harmonic_plus
+julia> c, d, e = Tuple(Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
 
-julia> c, d, e = Tuple(Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid((1, 1, 16), (1, 1, 1))) for i = 1:3);
-
-julia> harmonic_plus(c, d, e) # this calls the original function, which in turn returns a (correct) operation tree
+julia> harmonic_plus(c, d, e) # before magic @multiary transformation
 BinaryOperation at (Cell, Cell, Cell)
-├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
-│   ├── size: (1, 1, 16)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-
-* at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-├── 0.3333333333333333
-└── + at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-    ├── + at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-    │   ├── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-    │   │   ├── 1
-    │   │   └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-    │   └── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
+    * at (Cell, Cell, Cell) via identity
+    ├── 0.3333333333333333
+    └── + at (Cell, Cell, Cell)
+        ├── / at (Cell, Cell, Cell) via identity
         │   ├── 1
-        │   └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-    └── / at (Cell, Cell, Cell) via Oceananigans.AbstractOperations.identity
-        ├── 1
-        └── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+        │   └── Field located at (Cell, Cell, Cell)
+        ├── / at (Cell, Cell, Cell) via identity
+        │   ├── 1
+        │   └── Field located at (Cell, Cell, Cell)
+        └── / at (Cell, Cell, Cell) via identity
+            ├── 1
+            └── Field located at (Cell, Cell, Cell)
 
-julia> @at (Cell, Cell, Cell) harmonic_plus(c, d, e) # this returns a `MultiaryOperation` as expected
+julia> @multiary harmonic_plus
+Set{Any} with 3 elements:
+  :+
+  :harmonic_plus
+  :*
+
+julia> harmonic_plus(c, d, e)
 MultiaryOperation at (Cell, Cell, Cell)
-├── grid: RegularCartesianGrid{Float64,StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}}
-│   ├── size: (1, 1, 16)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [0.0, -1.0]
+├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-
-harmonic_plus at (Cell, Cell, Cell)
-├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-├── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
-└── OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}
+    harmonic_plus at (Cell, Cell, Cell)
+    ├── Field located at (Cell, Cell, Cell)
+    ├── Field located at (Cell, Cell, Cell)
+    └── Field located at (Cell, Cell, Cell)
 """
 macro multiary(ops...)
     expr = Expr(:block)
