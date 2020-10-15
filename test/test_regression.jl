@@ -95,7 +95,7 @@ for Arch in Archs
                 @info "  Testing three gas thermal bubble regression [$Tvar, $Arch]..."
 
                 simulation = simulate_three_gas_dry_rising_thermal_bubble(architecture = Arch(),
-                    end_time=4.999, thermodynamic_variable=Tvar(), make_plots=false)
+                    end_time=4.999, thermodynamic_variable=Tvar())
 
                 model = simulation.model
                 regression_filepath = "three_gas_thermal_bubble_regression_$Tvar.jld2"
