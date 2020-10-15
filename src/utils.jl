@@ -1,3 +1,17 @@
+function thermodynamic_field(model)
+    model.thermodynamic_variable isa Energy  && return model.tracers.ρe
+    model.thermodynamic_variable isa Entropy && return model.tracers.ρs
+end
+
+function intermediate_thermodynamic_field(model)
+    model.thermodynamic_variable isa Energy  && return model.time_stepper.intermediate_fields.tracers.ρe
+    model.thermodynamic_variable isa Entropy && return model.time_stepper.intermediate_fields.tracers.ρs
+end
+
+#####
+##### CFL
+#####
+
 @kernel function compute_velocities!(velocities, grid, momenta, total_density)
     i, j, k = @index(Global, NTuple)
 
@@ -7,6 +21,7 @@
 end
 
 function cfl(model, Δt)
+    # We will store the velocities in the time stepper's intermediate fields.
     velocities = (
         u = model.time_stepper.intermediate_fields.ρu,
         v = model.time_stepper.intermediate_fields.ρv,
@@ -33,22 +48,38 @@ function cfl(model, Δt)
     return CFL
 end
 
+#####
+##### Acoustic CFL
+#####
+
+@kernel function compute_p_over_ρ!(p_over_ρ, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds p_over_ρ[i, j, k] = diagnose_p_over_ρ(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+end
+
 function acoustic_cfl(model, Δt)
-    grid = model.grid
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
-    ρ, Θ = model.density.data, model.tracers.Θᵐ.data
-    gas = model.buoyancy
-    R = gas_constant
-    M = molar_mass_dry_air
+    # We will store p/ρ in the time stepper's intermediate field for the thermodynamic variable.
+    p_over_ρ = intermediate_thermodynamic_field(model)
 
-    c_max = 0
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        π = Π(i, j, k, grid, gas, Θ)
-        T = π * (Θ[i, j, k] / ρ[i, j, k])
-        c = √(gas.γ * R * T / M)
-        c_max = max(c_max, c)
-    end
+    p_over_ρ, total_density, momenta, tracers =
+        datatuples(p_over_ρ, model.total_density, model.momenta, model.tracers)
 
-    return Δt / min(Δx/c_max, Δy/c_max, Δz/c_max)
+    compute_p_over_ρ_event =
+        launch!(model.architecture, model.grid, :xyz, compute_p_over_ρ!,
+                p_over_ρ, model.grid, model.thermodynamic_variable, model.gases,
+                model.gravity, total_density, momenta, tracers,
+                dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), compute_p_over_ρ_event)
+
+    p_over_ρ_max = maximum(p_over_ρ)
+
+    γ = model.gases.ρ.cₚ / model.gases.ρ.cᵥ
+    c_max = √(γ * p_over_ρ_max)
+
+    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
+    acoustic_CFL = Δt / min(Δx/c_max, Δy/c_max, Δz/c_max)
+
+    return acoustic_CFL
 end

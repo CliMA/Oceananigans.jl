@@ -126,8 +126,9 @@ function print_progress(simulation)
     ρ̄ = mean(interior(model.total_density))
 
     progress = 100 * model.clock.time / simulation.stop_time
-    message = @sprintf("[%05.2f%%] iteration = %d, time = %s, CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
-                       progress, model.clock.iteration, prettytime(model.clock.time), cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄)
+    message = @sprintf("[%05.2f%%] iteration = %d, time = %s, CFL = %.4e, acoustic CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
+                       progress, model.clock.iteration, prettytime(model.clock.time), cfl(model, Δt),
+                       acoustic_cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ) / ρ̄)
 
     if tvar isa Energy
         ρ̄ēᵢ = mean(ρeᵢ.(0, 0, zC))
