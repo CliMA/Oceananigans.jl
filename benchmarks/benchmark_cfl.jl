@@ -1,11 +1,19 @@
 using BenchmarkTools
+using DataFrames
+using PrettyTables
 
 using Oceananigans
 using Oceananigans.Architectures
 using JULES
 
+using BenchmarkTools: prettytime, prettymemory
+
 Archs = [CPU]
-Ns = [32]
+@hascuda Archs = [CPU, GPU]
+
+Ns = [32, 64]
+@hascuda Ns = [32, 256]
+
 Tvars = [Energy, Entropy]
 Gases = [DryEarth, DryEarth3]
 
@@ -38,4 +46,37 @@ for Arch in Archs, N in Ns, Gases in Gases, Tvar in Tvars
     suite["acoustic_cfl"][key] = b_acfl
 end
 
+function benchmarks_to_dataframe(suite)
+    df = DataFrame(architecture=[], size=[], gases=[],
+                   thermodynamic_variable=[], min=[], median=[],
+                   mean=[], max=[], memory=[], allocs=[])
+    
+    for (key, b) in suite
+        Arch, N, Gases, Tvar = key
 
+        d = Dict(
+            "architecture" => Arch,
+            "size" => "$(N)³",
+            "gases" => Gases,
+            "thermodynamic_variable" => Tvar,
+            "min" => minimum(b.times) |> prettytime,
+            "median" => median(b.times) |> prettytime,
+            "mean" => mean(b.times) |> prettytime,
+            "max" => maximum(b.times) |> prettytime,
+            "memory" => prettymemory(b.memory),
+            "allocs" => b.allocs
+        )
+
+        push!(df, d)
+    end
+
+    return df
+end
+
+header = ["Arch" "Size" "Gases" "ThermoVar" "min" "median" "mean" "max" "memory" "allocs"]
+
+df = benchmarks_to_dataframe(suite["cfl"])
+pretty_table(df, header, title="CFL benchmarks", nosubheader=true)
+
+df = benchmarks_to_dataframe(suite["acoustic_cfl"])
+pretty_table(df, header, title="Acoustic CFL benchmarks", nosubheader=true)
