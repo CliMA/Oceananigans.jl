@@ -29,6 +29,8 @@ frames
 *.png
 *.gif
 *.mp4
+*.nc
+*.jld2
 
 # Local development packages
 dev

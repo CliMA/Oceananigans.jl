@@ -10,8 +10,9 @@ export
     Entropy, Energy,
     DryEarth, DryEarth3,
     CompressibleModel,
+    update_total_density!,
     time_step!,
-    cfl, update_total_density!
+    cfl, acoustic_cfl
 
 include("Operators/Operators.jl")
 
