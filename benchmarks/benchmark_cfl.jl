@@ -1,4 +1,7 @@
+using Printf
+
 using BenchmarkTools
+using CUDA
 using DataFrames
 using PrettyTables
 
@@ -11,9 +14,7 @@ using BenchmarkTools: prettytime, prettymemory
 Archs = [CPU]
 @hascuda Archs = [CPU, GPU]
 
-Ns = [32, 64]
-@hascuda Ns = [32, 256]
-
+Ns = [32, 128]
 Tvars = [Energy, Entropy]
 Gases = [DryEarth, DryEarth3]
 
@@ -24,12 +25,12 @@ suite = BenchmarkGroup(
     "acoustic_cfl" => BenchmarkGroup()
 )
 
-for Arch in Archs, N in Ns, Gases in Gases, Tvar in Tvars
+for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
     @info "Running CFL benchmark [$Arch, N=$N, $Tvar, $Gases]..."
 
     grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
     model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(),
-                              gases=Gases())
+                              gases=Gas())
 
     # warmup
     cfl(model, 1)
@@ -51,13 +52,13 @@ function benchmarks_to_dataframe(suite)
                    thermodynamic_variable=[], min=[], median=[],
                    mean=[], max=[], memory=[], allocs=[])
     
-    for (key, b) in suite
-        Arch, N, Gases, Tvar = key
+    for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
+        b = suite[Arch, N, Gas, Tvar]
 
         d = Dict(
             "architecture" => Arch,
             "size" => "$(N)³",
-            "gases" => Gases,
+            "gases" => Gas,
             "thermodynamic_variable" => Tvar,
             "min" => minimum(b.times) |> prettytime,
             "median" => median(b.times) |> prettytime,
@@ -80,3 +81,32 @@ pretty_table(df, header, title="CFL benchmarks", nosubheader=true)
 
 df = benchmarks_to_dataframe(suite["acoustic_cfl"])
 pretty_table(df, header, title="Acoustic CFL benchmarks", nosubheader=true)
+
+function gpu_speedups(suite)
+    df = DataFrame(size=[], gases=[], thermodynamic_variable=[], speedup=[])
+
+    for N in Ns, Gas in Gases, Tvar in Tvars
+        b_cpu = suite[CPU, N, Gas, Tvar] |> median
+        b_gpu = suite[GPU, N, Gas, Tvar] |> median
+        b_ratio = ratio(b_cpu, b_gpu)
+
+        d = Dict(
+            "size" => "$(N)³",
+            "gases" => Gas,
+            "thermodynamic_variable" => Tvar,
+            "speedup" => @sprintf("%.3fx", b_ratio.time)
+        )
+
+        push!(df, d)
+    end
+
+    return df
+end
+
+header = ["Size" "Gases" "ThermoVar" "speedup"]
+
+df = gpu_speedups(suite["cfl"])
+pretty_table(df, header, title="CFL speedups", nosubheader=true)
+
+df = gpu_speedups(suite["acoustic_cfl"])
+pretty_table(df, header, title="Acoustic CFL speedups", nosubheader=true)
