@@ -23,8 +23,8 @@ for n in 1:length(ds["time"])
     xC, xF = ds["xC"] / km, ds["xF"] / km
     zC, zF = ds["zC"] / km, ds["zF"] / km
 
-    ρ₀ = ds["ρ reference"][:, 1, :]'
-    ρe₀ = ds["ρe reference"][:, 1, :]'
+    ρ₀ = ds["ρ₀"][:, 1, :]'
+    ρe₀ = ds["ρe₀"][:, 1, :]'
 
     ρ  = ds["ρ"][:, 1, :, n]'
     ρw = ds["ρw"][:, 1, 2:end, n]'

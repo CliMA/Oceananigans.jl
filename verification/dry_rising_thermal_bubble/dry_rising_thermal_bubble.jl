@@ -103,6 +103,7 @@ function simulate_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_
                            time_interval=10seconds)
 
 
+    # Save base state to NetCDF.
     ds = simulation.output_writers[:fields].dataset
     ds_ρ = defVar(ds, "ρ₀", Float32, ("xC", "yC", "zC"))
     ds_ρe = defVar(ds, "ρe₀", Float32, ("xC", "yC", "zC"))

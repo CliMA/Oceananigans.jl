@@ -1,38 +1,42 @@
+using Logging
 using Printf
-using Plots
-using VideoIO
-using FileIO
+using Statistics
+using NCDatasets
+using CUDA
+
 using Oceananigans
+using Oceananigans.Grids
+using Oceananigans.Advection
+using Oceananigans.OutputWriters
+using Oceananigans.Utils
 using JULES
 
-using Oceananigans.Architectures: @hascuda
-using Oceananigans.Fields: interiorparent
+# using Oceananigans.Architectures: @hascuda
 
 # temporary fix
-@hascuda begin
-    using CUDA
-    CUDA.allowscalar(true)
-end
+# @hascuda begin
+#     CUDA.allowscalar(true)
+# end
 
-interiorxz(field) = dropdims(interiorparent(field), dims=2)
+Logging.global_logger(OceananigansLogger())
 
-const km = 1000.0
+const km = kilometers
 const hPa = 100.0
 
-function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_variable, end_time=1000.0, make_plots=true)
-
+function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_variable, end_time=1000.0)
     tvar = thermodynamic_variable
 
     Lx = 20km
     Lz = 10km
-    Δ  = 0.2km  # grid spacing [m]
+    Δ  = 200meters
 
     Nx = Int(Lx/Δ)
     Ny = 1
     Nz = Int(Lz/Δ)
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), halo=(2, 2, 2),
-                                x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
+    topo = (Periodic, Periodic, Bounded)
+    domain = (x=(-Lx/2, Lx/2), y=(-Lx/2, Lx/2), z=(0, Lz))
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), halo=(3, 3, 3); domain...)
 
     model = CompressibleModel(
                   architecture = architecture,
@@ -41,10 +45,6 @@ function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), ther
         thermodynamic_variable = tvar,
                        closure = IsotropicDiffusivity(ν=75.0, κ=75.0)
     )
-
-    #####
-    ##### Dry thermal bubble perturbation
-    #####
 
     gas = model.gases.ρ₁
     R, cₚ, cᵥ = gas.R, gas.cₚ, gas.cᵥ
@@ -81,15 +81,13 @@ function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), ther
     end
 
     # Define the initial density perturbation
+    θᶜ′ = 2.0
     xᶜ, zᶜ = 0km, 2km
     xʳ, zʳ = 2km, 2km
-    L(x, y, z) = sqrt(((x - xᶜ)/xʳ)^2 + ((z - zᶜ)/zʳ)^2)
 
-    function ρ′(x, y, z; θᶜ′ = 2.0)
-        l = L(x, y, z)
-        θ′ = (l <= 1) * θᶜ′ * cos(π/2 * L(x, y, z))^2
-        return -ρ₀(x, y, z) * θ′ / θ₀(x, y, z)
-    end
+    L(x, y, z) = sqrt(((x - xᶜ)/xʳ)^2 + ((z - zᶜ)/zʳ)^2)
+    θ′(x, y, z) = (L(x, y, z) <= 1) * θᶜ′ * cos(π/2 * L(x, y, z))^2
+    ρ′(x, y, z) = -ρ₀(x, y, z) * θ′(x, y, z) / θ₀(x, y, z)
 
     # Define initial state
     ρᵢ(x, y, z) = ρ₀(x, y, z) + ρ′(x, y, z)
@@ -112,22 +110,6 @@ function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), ther
         return ρs
     end
 
-    # Set hydrostatic background state
-    set!(model.tracers.ρ₁, ρ₁₀)
-    set!(model.tracers.ρ₂, ρ₂₀)
-    set!(model.tracers.ρ₃, ρ₃₀)
-    tvar isa Energy  && set!(model.tracers.ρe, ρe₀)
-    tvar isa Entropy && set!(model.tracers.ρs, ρs₀)
-    update_total_density!(model)
-
-    # Save hydrostatic base state
-    ρʰᵈ = interiorxz(model.total_density)
-    ρ₁ʰᵈ = interiorxz(model.tracers.ρ₁)
-    ρ₂ʰᵈ = interiorxz(model.tracers.ρ₂)
-    ρ₃ʰᵈ = interiorxz(model.tracers.ρ₃)
-    tvar isa Energy  && (eʰᵈ = interiorxz(model.lazy_tracers.e))
-    tvar isa Entropy && (sʰᵈ = interiorxz(model.lazy_tracers.s))
-
     # Set initial state (which includes the thermal perturbation)
     set!(model.tracers.ρ₁, ρ₁ᵢ)
     set!(model.tracers.ρ₂, ρ₂ᵢ)
@@ -136,134 +118,77 @@ function simulate_three_gas_dry_rising_thermal_bubble(; architecture=CPU(), ther
     tvar isa Entropy && set!(model.tracers.ρs, ρsᵢ)
     update_total_density!(model)
 
-    if make_plots
-        ρ_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km,
-                         rotr90(interiorxz(model.total_density) .- ρʰᵈ),
-                         fill=true, levels=10, xlims=(-5, 5),
-                         clims=(-0.008, 0.008), color=:balance, dpi=200)
-        savefig(ρ_plot, "rho_prime_initial_condition_with_$(typeof(tvar)).png")
-
-        if tvar isa Energy
-            e_slice = rotr90(interiorxz(model.lazy_tracers.e))
-            e_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, e_slice,
-                             fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
-            savefig(e_plot, "energy_initial_condition.png")
-        elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
-            s_plot = contour(model.grid.xC ./ km, model.grid.zC ./ km, s_slice,
-                             fill=true, levels=10, xlims=(-5, 5), color=:thermal, dpi=200)
-            savefig(s_plot, "entropy_initial_condition.png")
-        end
-    end
-
-    #####
-    ##### Watch the thermal bubble rise!
-    #####
-
-    # Initial mean ρ, ρe, ρs
-    ρ̄ᵢ  = sum(interior(model.total_density)) / (Nx*Ny*Nz)
-    tvar isa Energy  && (ρ̄ēᵢ = sum(interior(model.tracers.ρe)) / (Nx*Ny*Nz))
-    tvar isa Entropy && (ρ̄s̄ᵢ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz))
-
-    if tvar isa Energy
-        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, eʰᵈ=eʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄ēᵢ=ρ̄ēᵢ)
-    elseif tvar isa Entropy
-        sim_parameters = (make_plots=make_plots, ρʰᵈ=ρʰᵈ, ρ̄ᵢ=ρ̄ᵢ, ρ̄s̄ᵢ=ρ̄s̄ᵢ)
-    end
-
     simulation = Simulation(model, Δt=0.1, stop_time=end_time, iteration_interval=50,
-                            progress=print_progress_and_make_plots, parameters=sim_parameters)
+                            progress=print_progress, parameters=(ρᵢ, ρeᵢ, ρsᵢ))
+
+    fields = Dict(
+        "ρ"  => model.total_density,
+        "ρu" => model.momenta.ρu,
+        "ρw" => model.momenta.ρw,
+        "ρ₁" => model.tracers.ρ₁,
+        "ρ₂" => model.tracers.ρ₂,
+        "ρ₃" => model.tracers.ρ₃
+    )
+
+    tvar isa Energy  && push!(fields, "ρe" => model.tracers.ρe)
+    tvar isa Entropy && push!(fields, "ρs" => model.tracers.ρs)
+    
+    simulation.output_writers[:fields] =
+        NetCDFOutputWriter(model, fields, filepath="three_gas_dry_rising_thermal_bubble_$(typeof(tvar)).nc",
+                           time_interval=10seconds)
+
+    # Save base state to NetCDF.
+    ds = simulation.output_writers[:fields].dataset
+    ds_ρ = defVar(ds, "ρ₀", Float32, ("xC", "yC", "zC"))
+    ds_ρ₁ = defVar(ds, "ρ₁₀", Float32, ("xC", "yC", "zC"))
+    ds_ρ₂ = defVar(ds, "ρ₂₀", Float32, ("xC", "yC", "zC"))
+    ds_ρ₃ = defVar(ds, "ρ₃₀", Float32, ("xC", "yC", "zC"))
+    ds_ρe = defVar(ds, "ρe₀", Float32, ("xC", "yC", "zC"))
+
+    x, y, z = nodes((Cell, Cell, Cell), grid, reshape=true)
+    ds_ρ[:, :, :] = ρ₀.(x, y, z)
+    ds_ρ₁[:, :, :] = ρ₁₀.(x, y, z)
+    ds_ρ₂[:, :, :] = ρ₂₀.(x, y, z)
+    ds_ρ₃[:, :, :] = ρ₃₀.(x, y, z)
+    ds_ρe[:, :, :] = ρe₀.(x, y, z)
+
     run!(simulation)
-
-    if make_plots
-        @printf("Rendering MP4...\n")
-        imgs = filter(x -> occursin("$(typeof(tvar))", x) && occursin(".png", x), readdir("frames"))
-        imgorder = map(x -> split(split(x, ".")[1], "_")[end], imgs)
-        p = sortperm(parse.(Int, imgorder))
-
-        frames = []
-        for img in imgs[p]
-            push!(frames, convert.(RGB, load("frames/$img")))
-        end
-
-        encodevideo("three_gas_thermal_bubble_$(typeof(tvar)).mp4", frames, framerate = 30)
-    end
 
     return simulation
 end
 
-function print_progress_and_make_plots(simulation)
+function print_progress(simulation)
     model, Δt = simulation.model, simulation.Δt
     tvar = model.thermodynamic_variable
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
+    ρᵢ, ρeᵢ, ρsᵢ = simulation.parameters
+
+    zC = znodes(Cell, model.grid)
+    ρ̄ᵢ = mean(ρᵢ.(0, 0, zC))
+    ρ̄ = mean(interior(model.total_density))
+
+    progress = 100 * model.clock.time / simulation.stop_time
+    message = @sprintf("[%05.2f%%] iteration = %d, time = %s, CFL = %.4e, acoustic CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
+                       progress, model.clock.iteration, prettytime(model.clock.time), cfl(model, Δt),
+                       acoustic_cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ) / ρ̄)
 
     if tvar isa Energy
-        make_plots, ρʰᵈ, eʰᵈ, ρ̄ᵢ, ρ̄ēᵢ = simulation.parameters
+        ρ̄ēᵢ = mean(ρeᵢ.(0, 0, zC))
+        ρ̄ē = mean(interior(model.tracers.ρe))
+        message *= @sprintf(", ρ̄ē = %.4e (relΔ = %.4e)", ρ̄ē, (ρ̄ē - ρ̄ēᵢ) / ρ̄ē)
     elseif tvar isa Entropy
-        make_plots, ρʰᵈ, ρ̄ᵢ, ρ̄s̄ᵢ = simulation.parameters
+        ρ̄s̄ᵢ = mean(ρsᵢ.(0, 0, zC))
+        ρ̄s̄ = mean(interior(model.tracers.ρs))
+        message *= @sprintf(", ρ̄s̄ = %.4e (relΔ = %.4e)", ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ) / ρ̄s̄)
     end
 
-    ρ̄ = sum(interior(model.total_density)) / (Nx*Ny*Nz)
+    @info message
 
-    if tvar isa Energy
-        ρ̄ē = sum(interior(model.tracers.ρe)) / (Nx*Ny*Nz)
-        @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄ē = %.2e (rerr = %.2e)\n",
-                model.clock.time, cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄ē, (ρ̄ē - ρ̄ēᵢ)/ρ̄ē)
-    elseif tvar isa Entropy
-        ρ̄s̄ = sum(interior(model.tracers.ρs)) / (Nx*Ny*Nz)
-        @printf("t = %.2f s, CFL = %.2e, ρ̄ = %.2e (rerr = %.2e), ρ̄s̄ = %.2e (rerr = %.2e)\n",
-                model.clock.time, cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄, ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ)/ρ̄s̄)
-    end
+    ∂tρ₁ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₁.data)
+    ∂tρ₂ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₂.data)
+    ∂tρ₃ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₃.data)
 
-    ∂tρ₁ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₁))
-    ∂tρ₂ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₂))
-    ∂tρ₃ = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₃))
-    ∂tρ  = maximum(interior(model.time_stepper.slow_source_terms.tracers.ρ₁) .+
-                   interior(model.time_stepper.slow_source_terms.tracers.ρ₂) .+
-                   interior(model.time_stepper.slow_source_terms.tracers.ρ₃))
-    @printf("Maximum mass tendencies from diffusion: ")
-    @printf("ρ₁: %.2e, ρ₂: %.2e, ρ₃: %.2e, ρ: %.2e\n", ∂tρ₁, ∂tρ₂, ∂tρ₃, ∂tρ)
-
-    if simulation.parameters.make_plots
-        xC, yC, zC = model.grid.xC ./ km, model.grid.yC ./ km, model.grid.zC ./ km
-        xF, yF, zF = model.grid.xF ./ km, model.grid.yF ./ km, model.grid.zF ./ km
-
-        update_total_density!(model)
-        ρ₁_slice = rotr90(interiorxz(model.tracers.ρ₁))
-        ρ₂_slice = rotr90(interiorxz(model.tracers.ρ₂))
-        ρ₃_slice = rotr90(interiorxz(model.tracers.ρ₃))
-        ρ_slice  = rotr90(interiorxz(model.total_density))
-        ρ′_slice = rotr90(interiorxz(model.total_density) .- ρʰᵈ)
-
-        ρ₁_title = @sprintf("rho1, t = %d s", round(Int, model.clock.time))
-        ρ₁_plot = heatmap(xC, zC, ρ₁_slice, title=ρ₁_title, fill=true, levels=50,
-                          xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
-        ρ₂_plot = heatmap(xC, zC, ρ₂_slice, title="rho2", fill=true, levels=50,
-                          xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
-        ρ₃_plot = heatmap(xC, zC, ρ₃_slice, title="rho3", fill=true, levels=50,
-                          xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
-        ρ_plot  = heatmap(xC, zC, ρ_slice, title="rho", fill=true, levels=50,
-                          xlims=(-3, 3), color=:dense, linecolor=nothing, clims=(0, 1.1))
-        ρ′_plot = heatmap(xC, zC, ρ′_slice, title="rho'", fill=true, levels=50,
-                          xlims=(-3, 3), color=:balance, linecolor=nothing, clims=(-0.007, 0.007))
-
-        if tvar isa Energy
-            e′_slice = rotr90((interiorxz(model.lazy_tracers.e) .- eʰᵈ))
-            tvar_plot = heatmap(xC, zC, e′_slice, title="e_prime", fill=true, levels=50,
-                                xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(0, 1200))
-        elseif tvar isa Entropy
-            s_slice = rotr90(interiorxz(model.lazy_tracers.s))
-            tvar_plot = heatmap(xC, zC, s_slice, title="s", fill=true, levels=50,
-                                xlims=(-3, 3), color=:oxy_r, linecolor=nothing, clims=(100, 300))
-        end
-
-        p = plot(ρ₁_plot, ρ₂_plot, ρ₃_plot, ρ_plot, ρ′_plot, tvar_plot,
-                 layout=(2, 3), show=true, dpi=200)
-
-        n = Int(model.clock.iteration / simulation.iteration_interval)
-        n == 1 && !isdir("frames") && mkdir("frames")
-        savefig(p, @sprintf("frames/three_gas_thermal_bubble_%s_%03d.png", typeof(tvar), n))
-    end
+    @info @sprintf("[%05.2f%%] Maximum mass tendencies from diffusion: ∂tρ₁ = %.4e, ∂tρ₂ = %.4e, ∂tρ₃ = %.4e",
+                   progress, ∂tρ₁, ∂tρ₂, ∂tρ₃)
 
     return nothing
 end
