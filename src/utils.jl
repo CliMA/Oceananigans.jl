@@ -1,3 +1,7 @@
+#####
+##### Grabbing properties for thermodynamic variables
+#####
+
 function thermodynamic_field(model)
     model.thermodynamic_variable isa Energy  && return model.tracers.ρe
     model.thermodynamic_variable isa Entropy && return model.tracers.ρs
@@ -9,7 +13,7 @@ function intermediate_thermodynamic_field(model)
 end
 
 #####
-##### CFL
+##### Kernels for diagnosing thermodynamic variables
 #####
 
 @kernel function compute_velocities!(velocities, grid, momenta, total_density)
@@ -19,6 +23,16 @@ end
     @inbounds velocities.v[i, j, k] = momenta.ρv[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, total_density)
     @inbounds velocities.w[i, j, k] = momenta.ρw[i, j, k] / ℑzᵃᵃᶠ(i, j, k, grid, total_density)
 end
+
+@kernel function compute_p_over_ρ!(p_over_ρ, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds p_over_ρ[i, j, k] = diagnose_p_over_ρ(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+end
+
+#####
+##### CFL
+#####
 
 function cfl(model, Δt)
     # We will store the velocities in the time stepper's intermediate fields.
@@ -52,12 +66,6 @@ end
 ##### Acoustic CFL
 #####
 
-@kernel function compute_p_over_ρ!(p_over_ρ, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds p_over_ρ[i, j, k] = diagnose_p_over_ρ(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
-end
-
 function acoustic_cfl(model, Δt)
     # We will store p/ρ in the time stepper's intermediate field for the thermodynamic variable.
     p_over_ρ = intermediate_thermodynamic_field(model)
@@ -75,8 +83,8 @@ function acoustic_cfl(model, Δt)
 
     p_over_ρ_max = maximum(p_over_ρ)
 
-    γ = model.gases.ρ.cₚ / model.gases.ρ.cᵥ
-    c_max = √(γ * p_over_ρ_max)
+    γ_max = maximum(gas.cₚ / gas.cᵥ for gas in model.gases)
+    c_max = √(γ_max * p_over_ρ_max)
 
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
     acoustic_CFL = Δt / min(Δx/c_max, Δy/c_max, Δz/c_max)

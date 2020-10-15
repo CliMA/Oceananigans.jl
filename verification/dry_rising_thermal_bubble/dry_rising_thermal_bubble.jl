@@ -99,7 +99,7 @@ function simulate_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_
     tvar isa Entropy && push!(fields, "ρs" => model.tracers.ρs)
     
     simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model, fields, filepath="dry_rising_thermal_bubble_$(typeof(tvar))_bad.nc",
+        NetCDFOutputWriter(model, fields, filepath="dry_rising_thermal_bubble_$(typeof(tvar)).nc",
                            time_interval=10seconds)
 
 
