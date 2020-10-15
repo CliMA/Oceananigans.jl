@@ -29,7 +29,7 @@ for Arch in Archs
                 @info "  Testing dry rising thermal bubble regression [$Tvar, $Arch]..."
 
                 simulation = simulate_dry_rising_thermal_bubble(architecture = Arch(),
-                    end_time=4.999, thermodynamic_variable=Tvar(), make_plots=false)
+                    end_time=4.999, thermodynamic_variable=Tvar())
 
                 model = simulation.model
                 regression_filepath = "thermal_bubble_regression_$Tvar.jld2"
