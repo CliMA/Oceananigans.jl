@@ -52,9 +52,9 @@ function cfl(model, Δt)
     
     wait(device(model.architecture), velocity_event)
 
-    u_max = maximum(velocities.u)
-    v_max = maximum(velocities.v)
-    w_max = maximum(velocities.w)
+    u_max = maximum(velocities.u.parent)
+    v_max = maximum(velocities.v.parent)
+    w_max = maximum(velocities.w.parent)
 
     Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
     CFL = Δt / min(Δx/u_max, Δy/v_max, Δz/w_max)
@@ -81,7 +81,7 @@ function acoustic_cfl(model, Δt)
 
     wait(device(model.architecture), compute_p_over_ρ_event)
 
-    p_over_ρ_max = maximum(p_over_ρ)
+    p_over_ρ_max = maximum(p_over_ρ.parent)
 
     γ_max = maximum(gas.cₚ / gas.cᵥ for gas in model.gases)
     c_max = √(γ_max * p_over_ρ_max)
