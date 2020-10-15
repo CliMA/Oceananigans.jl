@@ -1,6 +1,7 @@
 using Logging
 using Printf
 using Statistics
+using NCDatasets
 using CUDA
 
 using Oceananigans
@@ -91,15 +92,24 @@ function simulate_dry_rising_thermal_bubble(; architecture=CPU(), thermodynamic_
     fields = Dict(
         "ρ"  => model.total_density,
         "ρu" => model.momenta.ρu,
-        "ρw" => model.momenta.ρu
+        "ρw" => model.momenta.ρw
     )
 
     tvar isa Energy  && push!(fields, "ρe" => model.tracers.ρe)
     tvar isa Entropy && push!(fields, "ρs" => model.tracers.ρs)
     
     simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model, fields, filepath="dry_rising_thermal_bubble_$(typeof(tvar)).nc",
+        NetCDFOutputWriter(model, fields, filepath="dry_rising_thermal_bubble_$(typeof(tvar))_bad.nc",
                            time_interval=10seconds)
+
+
+    ds = simulation.output_writers[:fields].dataset
+    ds_ρ = defVar(ds, "ρ₀", Float32, ("xC", "yC", "zC"))
+    ds_ρe = defVar(ds, "ρe₀", Float32, ("xC", "yC", "zC"))
+
+    x, y, z = nodes((Cell, Cell, Cell), grid, reshape=true)
+    ds_ρ[:, :, :] = ρ₀.(x, y, z)
+    ds_ρe[:, :, :] = ρe₀.(x, y, z)
 
     run!(simulation)
 
@@ -116,7 +126,7 @@ function print_progress(simulation)
     ρ̄ = mean(interior(model.total_density))
 
     progress = 100 * model.clock.time / simulation.stop_time
-    message = @sprintf("[%02.2f] iteration = %d, time = %s, CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
+    message = @sprintf("[%05.2f%%] iteration = %d, time = %s, CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
                        progress, model.clock.iteration, prettytime(model.clock.time), cfl(model, Δt), ρ̄, (ρ̄ - ρ̄ᵢ)/ρ̄)
 
     if tvar isa Energy
