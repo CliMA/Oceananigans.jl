@@ -134,16 +134,17 @@ end
 
 #####
 ##### Momentum advection
+##### Note the convention "momentum_flux_Ua" corresponds to the advection _of_ a _by_ U.
 #####
 
-@inline momentum_flux_ρuu(i, j, k, grid, scheme, ρ, ρu) = @inbounds momentum_flux_uu(i, j, k, grid, scheme, ρu) / ρ[i, j, k]
-@inline momentum_flux_ρvv(i, j, k, grid, scheme, ρ, ρv) = @inbounds momentum_flux_vv(i, j, k, grid, scheme, ρv) / ρ[i, j, k]
-@inline momentum_flux_ρww(i, j, k, grid, scheme, ρ, ρw) = @inbounds momentum_flux_ww(i, j, k, grid, scheme, ρw) / ρ[i, j, k]
+@inline momentum_flux_ρuu(i, j, k, grid, scheme, ρ, ρu) = @inbounds momentum_flux_uu(i, j, k, grid, scheme, ρu, ρu) / ρ[i, j, k]
+@inline momentum_flux_ρvv(i, j, k, grid, scheme, ρ, ρv) = @inbounds momentum_flux_vv(i, j, k, grid, scheme, ρv, ρv) / ρ[i, j, k]
+@inline momentum_flux_ρww(i, j, k, grid, scheme, ρ, ρw) = @inbounds momentum_flux_ww(i, j, k, grid, scheme, ρw, ρw) / ρ[i, j, k]
 
-@inline momentum_flux_ρuv(i, j, k, grid, scheme, ρ, ρu, ρv) = momentum_flux_uv(i, j, k, grid, scheme, ρu, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
-@inline momentum_flux_ρuw(i, j, k, grid, scheme, ρ, ρu, ρw) = momentum_flux_uw(i, j, k, grid, scheme, ρu, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρuv(i, j, k, grid, scheme, ρ, ρu, ρv) = momentum_flux_uv(i, j, k, grid, scheme, ρv, ρu) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
+@inline momentum_flux_ρuw(i, j, k, grid, scheme, ρ, ρu, ρw) = momentum_flux_uw(i, j, k, grid, scheme, ρw, ρu) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
 @inline momentum_flux_ρvu(i, j, k, grid, scheme, ρ, ρu, ρv) = momentum_flux_vu(i, j, k, grid, scheme, ρu, ρv) / ℑxyᶠᶠᵃ(i, j, k, grid, ρ)
-@inline momentum_flux_ρvw(i, j, k, grid, scheme, ρ, ρv, ρw) = momentum_flux_vw(i, j, k, grid, scheme, ρv, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
+@inline momentum_flux_ρvw(i, j, k, grid, scheme, ρ, ρv, ρw) = momentum_flux_vw(i, j, k, grid, scheme, ρw, ρv) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
 @inline momentum_flux_ρwu(i, j, k, grid, scheme, ρ, ρu, ρw) = momentum_flux_wu(i, j, k, grid, scheme, ρu, ρw) / ℑxzᶠᵃᶠ(i, j, k, grid, ρ)
 @inline momentum_flux_ρwv(i, j, k, grid, scheme, ρ, ρv, ρw) = momentum_flux_wv(i, j, k, grid, scheme, ρv, ρw) / ℑyzᵃᶠᶠ(i, j, k, grid, ρ)
 
