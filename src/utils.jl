@@ -1,21 +1,36 @@
+@kernel function compute_velocities!(velocities, grid, momenta, total_density)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds velocities.u[i, j, k] = momenta.ρu[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, total_density)
+    @inbounds velocities.v[i, j, k] = momenta.ρv[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, total_density)
+    @inbounds velocities.w[i, j, k] = momenta.ρw[i, j, k] / ℑzᵃᵃᶠ(i, j, k, grid, total_density)
+end
+
 function cfl(model, Δt)
-    grid = model.grid
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    Δx, Δy, Δz = grid.Δx, grid.Δy, grid.Δz
+    velocities = (
+        u = model.time_stepper.intermediate_fields.ρu,
+        v = model.time_stepper.intermediate_fields.ρv,
+        w = model.time_stepper.intermediate_fields.ρw
+    )
 
-    ρ = model.total_density
-    ρu, ρv, ρw = model.momenta
+    velocities, momenta, total_density =
+        datatuples(velocities, model.momenta, model.total_density)
 
-    ρ, ρu, ρv, ρw = ρ.data, ρu.data, ρv.data, ρw.data
+    velocity_event =
+        launch!(model.architecture, model.grid, :xyz, compute_velocities!,
+                velocities, model.grid, momenta, total_density,
+                dependencies=Event(device(model.architecture)))
+    
+    wait(device(model.architecture), velocity_event)
 
-    u_max = v_max = w_max = 0
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        u_max = max(u_max, abs(ρu[i, j, k] / ρ[i, j, k]))
-        v_max = max(v_max, abs(ρv[i, j, k] / ρ[i, j, k]))
-        w_max = max(w_max, abs(ρw[i, j, k] / ρ[i, j, k]))
-    end
+    u_max = maximum(velocities.u)
+    v_max = maximum(velocities.v)
+    w_max = maximum(velocities.w)
 
-    return Δt / min(Δx/u_max, Δy/v_max, Δz/w_max)
+    Δx, Δy, Δz = model.grid.Δx, model.grid.Δy, model.grid.Δz
+    CFL = Δt / min(Δx/u_max, Δy/v_max, Δz/w_max)
+
+    return CFL
 end
 
 function acoustic_cfl(model, Δt)
