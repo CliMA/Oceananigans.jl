@@ -26,7 +26,7 @@ suite = BenchmarkGroup(
 )
 
 for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
-    @info "Running CFL benchmark [$Arch, N=$N, $Tvar, $Gases]..."
+    @info "Running CFL benchmark [$Arch, N=$N, $Tvar, $Gas]..."
 
     grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
     model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(),
@@ -42,7 +42,7 @@ for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
     b_acfl = @benchmark acoustic_cfl($model, 1) samples=10
     display(b_acfl)
 
-    key = (Arch, N, Gases, Tvar)
+    key = (Arch, N, Gas, Tvar)
     suite["cfl"][key] = b_cfl
     suite["acoustic_cfl"][key] = b_acfl
 end
