@@ -1,6 +1,7 @@
 using Statistics, Printf
 
 using Oceananigans
+using Oceananigans.Fields
 using Oceananigans.TurbulenceClosures
 using Oceananigans.OutputWriters
 using Oceananigans.Diagnostics
@@ -11,7 +12,8 @@ function uτ(model, Uavg, U_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     ν = model.closure.ν
 
-    U = Uavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    compute!(Uavg)
+    U = Array(Uavg.data[1, 1, 1:model.grid.Nz])  # Exclude average of halo region.
 
     # Use a finite difference to calculate dU/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -29,7 +31,8 @@ function q_wall(model, Tavg, Θ_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
     κ = model.closure.κ.T
 
-    Θ = Tavg(model)[1+Hz:end-Hz]  # Exclude average of halo region.
+    compute!(Tavg)
+    Θ = Array(Tavg.data[1, 1, 1:model.grid.Nz]) # Exclude average of halo region.
 
     # Use a finite difference to calculate dθ/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -189,20 +192,20 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = Average(model.velocities.u,       dims=(1, 2), return_type=Array)
-    Vavg = Average(model.velocities.v,       dims=(1, 2), return_type=Array)
-    Wavg = Average(model.velocities.w,       dims=(1, 2), return_type=Array)
-    Tavg = Average(model.tracers.T,          dims=(1, 2), return_type=Array)
-    νavg = Average(model.diffusivities.νₑ,   dims=(1, 2), return_type=Array)
-    κavg = Average(model.diffusivities.κₑ.T, dims=(1, 2), return_type=Array)
+    Uavg = AveragedField(model.velocities.u,       dims=(1, 2))
+    Vavg = AveragedField(model.velocities.v,       dims=(1, 2))
+    Wavg = AveragedField(model.velocities.w,       dims=(1, 2))
+    Tavg = AveragedField(model.tracers.T,          dims=(1, 2))
+    νavg = AveragedField(model.diffusivities.νₑ,   dims=(1, 2))
+    κavg = AveragedField(model.diffusivities.κₑ.T, dims=(1, 2))
 
     profiles = Dict(
-         :u => model -> Uavg(model),
-         :v => model -> Vavg(model),
-         :w => model -> Wavg(model),
-         :T => model -> Tavg(model),
-        :nu => model -> νavg(model),
-    :kappaT => model -> κavg(model))
+         :u => Uavg,
+         :v => Vavg,
+         :w => Wavg,
+         :T => Tavg,
+        :nu => νavg,
+    :kappaT => κavg)
 
     profile_writer =
         JLD2OutputWriter(model, profiles, dir=base_dir, prefix=prefix * "_profiles",
@@ -263,5 +266,5 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
     run!(simulation)
 
-    return nothing
+    return simulation
 end

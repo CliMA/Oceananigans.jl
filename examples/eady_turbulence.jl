@@ -95,10 +95,11 @@
 # | $ κ_z $    | Laplacian vertical diffusivity | $ 10^{-2} $ | $ \mathrm{m^2 s^{-1}} $ |
 # | $ \varkappa_h $    | Biharmonic horizontal diffusivity | $ 10^{-2} \times \Delta x^4 / \mathrm{day} $ | $ \mathrm{m^4 s^{-1}} $ |
 #
-# We start off by importing `Oceananigans` and some convenient aliases for dimensions:
+# We start off by importing `Oceananigans`, some convenient aliases for dimensions, and a function
+# that generates a pretty string from a number that represents 'time' in seconds:
 
 using Oceananigans, Printf
-using Oceananigans.Utils: hour, day
+using Oceananigans.Utils: hour, day, prettytime
 
 # ## The grid
 #

@@ -27,15 +27,16 @@ noinit(args...) = nothing
 
 """
     JLD2OutputWriter(model, outputs; prefix, trigger,
-                                       dir = ".",
-                              max_filesize = Inf,
-                                     force = false,
-                                      init = noinit,
-                                 including = [:grid, :coriolis, :buoyancy, :closure],
-                                   verbose = false,
-                                      part = 1,
-                                array_type = Array{Float32},
-                                   jld2_kw = Dict{Symbol, Any}())
+                              dir = ".",
+                     field_slicer = FieldSlicer(),
+                       array_type = Array{Float32},
+                     max_filesize = Inf,
+                            force = false,
+                             init = noinit,
+                        including = [:grid, :coriolis, :buoyancy, :closure],
+                          verbose = false,
+                             part = 1,
+                          jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
