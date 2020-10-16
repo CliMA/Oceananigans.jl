@@ -268,12 +268,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === TwoDimensionalLeith
-                    # This test is extremely slow; skipping for now.
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
-                else
-                    @test time_stepping_works_with_closure(arch, FT, Closure)
-                end
+                @test time_stepping_works_with_closure(arch, FT, Closure)
             end
         end
     end
