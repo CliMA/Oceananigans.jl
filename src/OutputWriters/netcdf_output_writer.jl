@@ -311,7 +311,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
         end
 
         for (name, output) in outputs
-            attributes = try output_attrbitues[name]; catch; Dict(); end
+            attributes = try output_attributes[name]; catch; Dict(); end
             define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
         end
 
