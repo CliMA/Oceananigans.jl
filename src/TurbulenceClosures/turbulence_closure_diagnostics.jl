@@ -14,6 +14,8 @@ min_Δz(grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = FT(Inf)
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 
+cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
+
 function cell_diffusion_timescale(closure::IsotropicDiffusivity{N, <:NamedTuple{()}},
                                   diffusivities, grid) where N
     return min_Δxyz(grid)^2 / closure.ν

@@ -42,8 +42,6 @@ using KernelAbstractions: @kernel, @index, Event
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
-using Oceananigans.AbstractOperations: Computation, compute!
-
 Logging.global_logger(OceananigansLogger())
 
 #####
@@ -91,13 +89,19 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_buoyancy.jl")
             include("test_surface_waves.jl")
             include("test_weno_reconstruction.jl")
+            include("test_utils.jl")
         end
     end
 
-    if group == :model || group == :all
-        @testset "Model tests" begin
+    if group == :time_stepping_1 || group == :all
+        @testset "Model and time stepping tests (part 1)" begin
             include("test_models.jl")
             include("test_time_stepping.jl")
+        end
+    end
+
+    if group == :time_stepping_2 || group == :all
+        @testset "Model and time stepping tests (part 2)" begin
             include("test_time_stepping_bcs.jl")
             include("test_forcings.jl")
             include("test_turbulence_closures.jl")
@@ -120,7 +124,6 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :scripts || group == :all
         @testset "Scripts" begin
-            include("test_examples.jl")
             include("test_verification.jl")
             include("test_benchmarks.jl")
         end

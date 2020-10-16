@@ -3,11 +3,11 @@
 
 Slices fields along indices with or without halo regions as specified.
 """
-struct FieldSlicer{I, J, K, W}
+struct FieldSlicer{I, J, K}
     i :: I
     j :: J
     k :: K
-    with_halos :: W
+    with_halos :: Bool
 end
 
 """
@@ -31,7 +31,7 @@ FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
 #####
 
 # Integer slice
-parent_slice_indices(loc, topo, N, H, i::Int, with_halos) = UnitRange(i, i)
+parent_slice_indices(loc, topo, N, H, i::Int, with_halos) = UnitRange(i + H, i + H)
 
 # Colon slicing
 parent_slice_indices(loc, topo, N, H, 
@@ -84,7 +84,7 @@ function slice_parent(slicer, field)
     y_parent_range = parent_slice_indices(Ly, Ty, Ny, Hy, y_data_range, slicer.with_halos)
     z_parent_range = parent_slice_indices(Lz, Tz, Nz, Hz, z_data_range, slicer.with_halos)
 
-    return view(parent(field), x_parent_range, y_parent_range, z_parent_range)
+    return field.data.parent[x_parent_range, y_parent_range, z_parent_range]
 end
 
 slice_parent(::Nothing, field) = parent(field)

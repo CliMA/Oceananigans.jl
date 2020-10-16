@@ -35,8 +35,7 @@ Returns an object for computing running averages of `operand` over `time_window`
 recurring on `time_interval`. During the collection period, averages are computed
 every `stride` iteration. 
 
-`operand` may be an `Oceananigans.Field`, `Oceananigans.AbstractOperations.Computation,
-or `Oceananigans.Diagnostics.Average`.
+`operand` may be a `Oceananigans.Field` or a subtype of it.
 
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 """ 

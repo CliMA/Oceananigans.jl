@@ -3,7 +3,7 @@ module Fields
 export
     Face, Cell,
     AbstractField, Field, CellField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField, ComputedField,
+    ReducedField, AveragedField, ComputedField, BackgroundField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
@@ -25,6 +25,7 @@ assumed_field_location(name) = name === :u ? (Face, Cell, Cell) :
 include("new_data.jl")
 include("abstract_field.jl")
 include("field.jl")
+include("zero_field.jl")
 include("reduced_field.jl")
 include("averaged_field.jl")
 include("computed_field.jl")
@@ -34,6 +35,7 @@ include("set!.jl")
 include("tracer_names.jl")
 include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
+include("background_fields.jl")
 include("show_fields.jl")
 
 end

@@ -1,6 +1,6 @@
 module AbstractOperations
 
-export ∂x, ∂y, ∂z, @at, Computation, compute!, @unary, @binary, @multiary
+export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 
 using Base: @propagate_inbounds
 
@@ -20,7 +20,6 @@ using Oceananigans.Fields: gpufriendly
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Diagnostics: Average, normalize_sum!
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: data, compute!
@@ -52,7 +51,6 @@ include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 
-include("computations.jl")
 include("show_abstract_operations.jl")
 include("averages_of_operations.jl")
 

@@ -1,4 +1,5 @@
-using Oceananigans.Grids: topological_tuple_length
+using Oceananigans.Grids: topological_tuple_length, total_size
+using Oceananigans.Fields: BackgroundField
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -165,6 +166,33 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     return isapprox(Tavg, Tavg0, atol=Nx*Ny*Nz*eps(FT))
 end
 
+function time_stepping_with_background_fields(arch)
+
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+    background_u(x, y, z, t) = π
+    background_v(x, y, z, t) = sin(x) * cos(y) * exp(t)
+
+    background_w_func(x, y, z, t, p) = p.α * x + p.β * exp(z / p.λ)
+    background_w = BackgroundField(background_w_func, parameters=(α=1.2, β=0.2, λ=43))
+
+    background_T(x, y, z, t) = background_u(x, y, z, t)
+
+    background_S_func(x, y, z, t, α) = α * y
+    background_S = BackgroundField(background_S_func, parameters=1.2)
+
+    model = IncompressibleModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
+                                                              T=background_T, S=background_S))
+
+    time_step!(model, 1, euler=true)
+
+    return location(model.background_fields.velocities.u) === (Face, Cell, Cell) &&
+           location(model.background_fields.velocities.v) === (Cell, Face, Cell) &&
+           location(model.background_fields.velocities.w) === (Cell, Cell, Face) &&
+           location(model.background_fields.tracers.T) === (Cell, Cell, Cell) &&
+           location(model.background_fields.tracers.S) === (Cell, Cell, Cell)
+end
+
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
@@ -222,6 +250,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for arch in archs, advection_scheme in advection_schemes
             @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
             @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
+        end
+    end
+
+    @testset "BackgroundFields" begin
+        for arch in archs
+            @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
+            @test time_stepping_with_background_fields(arch)
         end
     end
 
