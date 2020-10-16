@@ -85,7 +85,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
     @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
     @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
-    @test haskey(ds3.attrib, "iteration_interval") && ds3.attrib["iteration_interval"] == 10
+    @test haskey(ds3.attrib, "schedule") && ds3.attrib["schedule"] == "IterationInterval"
+    @test haskey(ds3.attrib, "interval") && ds3.attrib["interval"] == 10
     @test haskey(ds3.attrib, "output iteration interval") && !isnothing(ds3.attrib["output iteration interval"])
 
     @test eltype(ds3["time"]) == eltype(model.clock.time)
@@ -143,7 +144,8 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test haskey(ds2.attrib, "date") && !isnothing(ds2.attrib["date"])
     @test haskey(ds2.attrib, "Julia") && !isnothing(ds2.attrib["Julia"])
     @test haskey(ds2.attrib, "Oceananigans") && !isnothing(ds2.attrib["Oceananigans"])
-    @test haskey(ds2.attrib, "iteration_interval") && ds2.attrib["iteration_interval"] == 10
+    @test haskey(ds2.attrib, "schedule") && ds2.attrib["schedule"] == "IterationInterval"
+    @test haskey(ds2.attrib, "interval") && ds2.attrib["interval"] == 10
     @test haskey(ds2.attrib, "output iteration interval") && !isnothing(ds2.attrib["output iteration interval"])
 
     @test eltype(ds2["time"]) == eltype(model.clock.time)
@@ -234,7 +236,8 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
-    @test haskey(ds.attrib, "iteration_interval") && ds.attrib["iteration_interval"] == 10
+    @test haskey(ds.attrib, "schedule") && ds.attrib["schedule"] == "IterationInterval"
+    @test haskey(ds.attrib, "interval") && ds.attrib["interval"] == 10
     @test haskey(ds.attrib, "output iteration interval") && !isnothing(ds.attrib["output iteration interval"])
 
     @test eltype(ds["time"]) == eltype(model.clock.time)
@@ -333,7 +336,8 @@ function run_netcdf_function_output_tests(arch)
     @test haskey(ds.attrib, "date") && !isnothing(ds.attrib["date"])
     @test haskey(ds.attrib, "Julia") && !isnothing(ds.attrib["Julia"])
     @test haskey(ds.attrib, "Oceananigans") && !isnothing(ds.attrib["Oceananigans"])
-    @test haskey(ds.attrib, "time_interval") && !isnothing(ds.attrib["time_interval"])
+    @test haskey(ds.attrib, "schedule") && !isnothing(ds.attrib["schedule"])
+    @test haskey(ds.attrib, "interval") && !isnothing(ds.attrib["interval"])
     @test haskey(ds.attrib, "output time interval") && !isnothing(ds.attrib["output time interval"])
 
     @test eltype(ds["time"]) == eltype(model.clock.time)
