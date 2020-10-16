@@ -11,7 +11,7 @@ An output writer for writing to JLD2 files.
 mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
               filepath :: String
                outputs :: O
-               trigger :: T
+               schedule :: T
           field_slicer :: FS
             array_type :: D
                   init :: IF
@@ -26,7 +26,7 @@ end
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; prefix, trigger,
+    JLD2OutputWriter(model, outputs; prefix, schedule,
                               dir = ".",
                      field_slicer = FieldSlicer(),
                        array_type = Array{Float32},
@@ -58,7 +58,7 @@ Keyword arguments
 
     ## Output frequency and time-averaging
     
-    - `trigger` (required): `AbstractTrigger` that determines when output is saved.
+    - `schedule` (required): `AbstractSchedule` that determines when output is saved.
     
     ## Slicing and type conversion prior to output
 
@@ -97,7 +97,7 @@ Keyword arguments
     
     - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 """
-function JLD2OutputWriter(model, outputs; prefix, trigger,
+function JLD2OutputWriter(model, outputs; prefix, schedule,
                                    dir = ".",
                           field_slicer = FieldSlicer(),
                             array_type = Array{Float32},
@@ -109,8 +109,8 @@ function JLD2OutputWriter(model, outputs; prefix, trigger,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    # Convert each output to WindowedTimeAverage if time_averaging_window is specified
-    trigger, outputs = time_average_outputs(trigger, outputs, model)
+    # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
+    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
     
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
@@ -121,27 +121,10 @@ function JLD2OutputWriter(model, outputs; prefix, trigger,
         saveproperties!(file, model, including)
     end
 
-    return JLD2OutputWriter(filepath, outputs, trigger, field_slicer,
+    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
                             array_type, init, including, part, max_filesize,
                             force, verbose, jld2_kw)
 end
-
-time_average_outputs(trigger, outputs, field_slicer, model) = trigger, outputs # fallback
-
-function time_average_outputs(trigger::TimeAveragedInterval, outputs, field_slice, model)
-
-    output_names = Tuple(keys(outputs))
-
-    averaged_output = Tuple(WindowedTimeAverage(outputs[name], model; trigger=trigger, field_slicer=field_slicer)
-                            for name in output_names)
-
-    outputs = NamedTuple{output_names}(averaged_output)
-
-    jld2_trigger = TimeInterval(trigger.time_interval)
-
-    return jld2_trigger, outputs
-end
-
 
 function write_output!(writer::JLD2OutputWriter, model)
 

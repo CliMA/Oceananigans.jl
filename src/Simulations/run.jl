@@ -1,3 +1,4 @@
+using Oceananigans.Utils: initialize_schedule!
 using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 
@@ -73,11 +74,11 @@ function run!(sim)
     # Initialization
     for writer in values(sim.output_writers)
         open(writer)
-        initialize!(writer.trigger)
+        initialize_schedule!(writer.schedule)
         add_dependencies!(sim.diagnostics, writer) 
     end
 
-    [initialize!(diag.trigger) for diag in values(sim.diagnostics)]
+    [initialize_schedule!(diag.schedule) for diag in values(sim.diagnostics)]
 
     while !stop(sim)
         time_before = time()
@@ -92,8 +93,8 @@ function run!(sim)
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, get_Δt(sim.Δt), euler=euler)
 
-            [   diag.trigger(model) && run_diagnostic!(diag, sim.model) for diag   in values(sim.diagnostics)    ]
-            [ writer.trigger(model) && write_output!(writer, sim.model) for writer in values(sim.output_writers) ]
+            [   diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag   in values(sim.diagnostics)    ]
+            [ writer.schedule(model) && write_output!(writer, sim.model) for writer in values(sim.output_writers) ]
         end
 
         sim.progress(sim)

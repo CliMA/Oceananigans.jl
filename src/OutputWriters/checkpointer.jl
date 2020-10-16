@@ -6,7 +6,7 @@ using Oceananigans.Fields: offset_data
 An output writer for checkpointing models to a JLD2 file from which models can be restored.
 """
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
-       trigger :: T
+      schedule :: T
            dir :: String
         prefix :: String
     properties :: P
@@ -15,7 +15,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 """
-    Checkpointer(model; trigger,
+    Checkpointer(model; schedule,
                         dir = ".",
                      prefix = "checkpoint",
                       force = false,
@@ -25,7 +25,7 @@ end
                  )
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file every so often as
-specified by `trigger`. The `model.clock.iteration` is included
+specified by `schedule`. The `model.clock.iteration` is included
 in the filename to distinguish between multiple checkpoint files.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
@@ -38,7 +38,7 @@ file (and you will have to manually restore them).
 
 Keyword arguments
 =================
-- `trigger` (required): Trigger that determines when to checkpoint.
+- `schedule` (required): Schedule that determines when to checkpoint.
 
 - `dir`: Directory to save output to. Default: "." (current working directory).
 
@@ -51,7 +51,7 @@ Keyword arguments
 
 - `properties`: List of model properties to checkpoint. Some are required.
 """
-function Checkpointer(model; trigger,
+function Checkpointer(model; schedule,
                              dir = ".",
                           prefix = "checkpoint",
                            force = false,
@@ -82,7 +82,7 @@ function Checkpointer(model; trigger,
 
     mkpath(dir)
 
-    return Checkpointer(trigger, dir, prefix, properties, force, verbose)
+    return Checkpointer(schedule, dir, prefix, properties, force, verbose)
 end
 
 function write_output!(c::Checkpointer, model)

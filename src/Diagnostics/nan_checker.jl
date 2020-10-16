@@ -4,17 +4,17 @@
 A diagnostic that checks for `NaN` values and aborts the simulation if any are found.
 """
 struct NaNChecker{T, F} <: AbstractDiagnostic
-    trigger :: T
-     fields :: F
+    schedule :: T
+      fields :: F
 end
 
 """
-    NaNChecker(; trigger, fields)
+    NaNChecker(; schedule, fields)
 
 Returns a `NaNChecker` that checks for `NaN` anywhere within `fields`
-when `trigger` actuates.
+when `schedule` actuates.
 """
-NaNChecker(; trigger, fields) = NaNChecker(trigger, fields)
+NaNChecker(model=nothing; schedule, fields) = NaNChecker(schedule, fields)
 
 function run_diagnostic!(nc::NaNChecker, model)
     for (name, field) in nc.fields
