@@ -13,7 +13,7 @@ end
 
 ```jldoctest
 julia> clock = Clock(time=0.0)
-Clock{Float64}: time = 0.000 s, iteration = 0, stage = 1
+Clock{Float64}: time = 0 seconds, iteration = 0, stage = 1
 ```
 
 but can be modified to start the model clock at some other time.
@@ -21,7 +21,7 @@ For example, passing
 
 ```jldoctest
 julia> clock = Clock(time=3600.0)
-Clock{Float64}: time = 1.000 hr, iteration = 0, stage = 1
+Clock{Float64}: time = 1 hour, iteration = 0, stage = 1
 ```
 
 to the constructor for `IncompressibleModel` causes the simulation

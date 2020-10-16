@@ -4,7 +4,7 @@ export
     write_output!,
     FieldSlicer,
     JLD2OutputWriter,
-    NetCDFOutputWriter, write_grid_and_attributes,
+    NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint,
     WindowedTimeAverage
 

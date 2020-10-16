@@ -170,6 +170,7 @@ nothing # hide
 # maximum absolute value of $u, v, w$ and the current wall clock time.
 
 using Oceananigans.Diagnostics, Printf
+using Oceananigans.Utils: prettytime
 
 umax = FieldMaximum(abs, model.velocities.u)
 vmax = FieldMaximum(abs, model.velocities.v)

@@ -53,7 +53,7 @@ model.background_fields.velocities.u
 FunctionField located at (Face, Cell, Cell)
 ├── func: U
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── clock: Clock(time=0.000 s, iteration=0)
+├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: nothing
 ```
 
@@ -96,6 +96,6 @@ model.background_fields.tracers.b
 FunctionField located at (Cell, Cell, Cell)
 ├── func: B
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── clock: Clock(time=0.000 s, iteration=0)
+├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```

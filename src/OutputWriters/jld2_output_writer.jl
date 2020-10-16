@@ -33,13 +33,14 @@ noinit(args...) = nothing
                                              time_interval = nothing,
                                      time_averaging_window = nothing,
                                      time_averaging_stride = 1,
+                                              field_slicer = FieldSlicer(),
+                                                array_type = Array{Float32},
                                               max_filesize = Inf,
                                                      force = false,
                                                       init = noinit,
                                                  including = [:grid, :coriolis, :buoyancy, :closure],
                                                    verbose = false,
                                                       part = 1,
-                                                array_type = Array{Float32},
                                                    jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
