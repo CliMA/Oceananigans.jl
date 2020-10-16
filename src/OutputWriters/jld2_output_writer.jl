@@ -1,7 +1,7 @@
 using Printf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval
+using Oceananigans.Utils: TimeInterval, pretty_filesize
 
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
@@ -11,7 +11,7 @@ An output writer for writing to JLD2 files.
 mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
               filepath :: String
                outputs :: O
-               schedule :: T
+              schedule :: T
           field_slicer :: FS
             array_type :: D
                   init :: IF
@@ -202,4 +202,17 @@ function start_next_file(model, writer::JLD2OutputWriter)
     end
 
     return nothing
+end
+
+function Base.show(io::IO, ow::JLD2OutputWriter)
+
+    averaging_schedule = output_averaging_schedule(ow)
+
+    print(io, "JLD2OutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+        "├── filepath: $(ow.filepath)", '\n',
+        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
+        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "├── array type: ", show_array_type(ow.array_type), '\n',
+        "├── including: ", ow.including, '\n',
+        "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end

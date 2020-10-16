@@ -2,7 +2,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule
 
-import Oceananigans.Utils: TimeInterval
+import Oceananigans.Utils: TimeInterval, show_schedule
 import Oceananigans.Diagnostics: run_diagnostic!
 
 """
@@ -164,3 +164,13 @@ function (wta::WindowedTimeAverage)(model)
 
     return wta.result
 end
+
+short_show(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
+                                                    "window=", schedule.window, ", ",
+                                                    "stride=", schedule.stride, ", ",
+                                                    "interval=", schedule.interval,  ")")
+
+show_averaging_schedule(schedule) = ""
+show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", short_show(schedule))
+
+output_averaging_schedule(output::WindowedTimeAverage) = output.schedule

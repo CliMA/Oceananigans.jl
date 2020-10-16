@@ -1,6 +1,7 @@
 using NCDatasets
 
 using Oceananigans.Fields
+using Oceananigans.Utils: show_schedule
 
 using Dates: now
 using Oceananigans.Grids: topology, halo_size
@@ -112,34 +113,28 @@ Keyword arguments
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-  Default: Array{Float32}.
+                Default: Array{Float32}.
 
 - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
-  Has no effect on output that is not a field. `field_slicer = nothing` means
-  no slicing occurs, so that all field data, including halo regions, is saved.
-  Default: FieldSlicer(), which slices halo regions.
+                  Has no effect on output that is not a field. `field_slicer = nothing` means
+                  no slicing occurs, so that all field data, including halo regions, is saved.
+                  Default: `FieldSlicer()`, which slices halo regions.
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
-  defaults are provided for velocities, buoyancy, temperature, and salinity).
+                       defaults are provided for velocities, buoyancy, temperature, and salinity;
+                       otherwise `output_attributes` *must* be user-provided).
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (useful for function outputs
-  as field dimensions can be inferred).
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
 - `with_halos`: Include the halo regions in the grid coordinates and output fields
-  (default: `false`).
+                (default: `false`).
 
 - `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
-  documentation for more information on the `mode` option.
+          documentation for more information on the `mode` option.
 
 - `compression`: Determines the compression level of data (0-9, default 0)
-
-- `slice_kwargs`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
-  All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
-  `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
-  is treated like `xC = 1:1`. Multiple dimensions can be sliced in one call. Not providing slices
-  writes output over the entire domain (including halo regions if `with_halos=true`).
 
 Examples
 ========
@@ -161,9 +156,12 @@ simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
 
 # output
-NetCDFOutputWriter (time_interval=60): fields.nc
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
@@ -172,12 +170,32 @@ simulation.output_writers[:surface_slice_writer] =
                        schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
-NetCDFOutputWriter (time_interval=60): surface_xy_slice.nc
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
+└── array type: Array{Float32}
 ```
 
-Writing a scalar, profile, and slice to NetCDF:
+```jldoctest netcdf1
+simulation.output_writers[:averaged_profile_writer] =
+    NetCDFOutputWriter(model, fields,
+                       filepath = "averaged_z_profile.nc",
+                       schedule = AveragedTimeInterval(60, window=20),
+                       field_slicer = FieldSlicer(i=1, j=1))
+
+# output
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: averaged_z_profile.nc
+├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20.0, stride=1, interval=60.0)
+├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
+└── array type: Array{Float32}
+```
+
+`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
@@ -213,9 +231,12 @@ simulation.output_writers[:things] =
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
-NetCDFOutputWriter (iteration_interval=1): things.nc
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 3 outputs: ["profile", "slice", "scalar"]
+├── 3 outputs: ["profile", "slice", "scalar"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
 """
 function NetCDFOutputWriter(model, outputs; filepath, schedule,
@@ -378,15 +399,16 @@ drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdim
 ##### Show
 #####
 
-show_schedule(schedule) = string(schedule)
-show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
-show_schedule(schedule::TimeInterval) = string("TimeInterval(", schedule.interval, ")")
-
 function Base.show(io::IO, ow::NetCDFOutputWriter)
     dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
                  for dim in keys(ow.dataset.dim)])[1:end-2]
 
-    print(io, "NetCDFOutputWriter $(show_schedule(ow.schedule)): $(ow.filepath)\n",
-        "├── dimensions: $dims\n",
-        "└── $(length(ow.outputs)) outputs: $(keys(ow.outputs))")
+    averaging_schedule = output_averaging_schedule(ow)
+
+    print(io, "NetCDFOutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+        "├── filepath: $(ow.filepath)", '\n',
+        "├── dimensions: $dims", '\n',
+        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
+        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "└── array type: ", show_array_type(ow.array_type))
 end

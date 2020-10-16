@@ -1,20 +1,50 @@
 # Output writers
 
-Saving model data to disk can be done in a flexible manner using output writers. The two main output writers currently
-implemented are a NetCDF output writer (relying on [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl))
-and a JLD2 output writer (relying on [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)).
+`AbstractOutputWriter`s save data to disk.
+`Oceananigans` provides three ways to write output:
 
-Output writers are stored as a list of output writers in `simulation.output_writers`. Output writers can be specified
-at model creation time or be specified at any later time and appended (or assigned with a key value pair) to
-`simulation.output_writers`.
+1. `NetCDFOutputWriter` for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
+2. `JLD2OutputWriter` for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
+3. `Checkpointer` that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
+
+The `Checkpointer` is discussed on a separate documentation page.
+
+## Basic usage
+
+`NetCDFOutputWriter` and `JLD2OutputWriter` require four inputs:
+
+1. The `model` from which output data is sourced (required to initialize the `OutputWriter`).
+2. A key-value pairing of output "names" and "output" objects. `JLD2OutputWriter` accepts `NamedTuple`s and `Dict`s;
+   `NetCDFOutputWriter` accepts `Dict`s with string-valued keys. Output objects are either `AbstractField`s or
+   functions that return data when called via `func(model)`.
+3. A `schedule` on which output is written. `TimeInterval`, `IterationInterval`, `WallTimeInterval` schedule
+   periodic output according to the simulation time, simulation interval, or "wall time" (the physical time
+   according to a clock on your wall). A fourth `schedule` called `AveragedTimeInterval` specifies
+   periodic output that is time-averaged over a `window` prior to being written.
+4. The filename and directory. Currently `NetCDFOutputWriter` accepts one `filepath` argument, while
+   `JLD2OutputWriter` accepts a filename `prefix` and `dir`ectory.
+
+Other important keyword arguments are
+
+* `field_slicer::FieldSlicer` for outputting subregions, two- and one-dimensional slices of fields.
+  By default a `FieldSlicer` is used to remove halo regions from fields so that only the physical
+  portion of model data is saved to disk.
+
+* `array_type` for specifying the type of the array that holds outputted field data. The default is
+  `Array{Float32}`, or arrays of single-precision floating point numbers.
+
+Once an `OutputWriter` is created, it can be used to write output by adding it the
+ordered dictionary `simulation.output_writers`. prior to calling `run!(simulation)`.
+
+More specific detail about the `NetCDFOutputWriter` and `JLD2OutputWriter` is given below.
 
 ## NetCDF output writer
 
 Model data can be saved to NetCDF files along with associated metadata. The NetCDF output writer is generally used by
 passing it a dictionary of (label, field) pairs and any indices for slicing if you don't want to save the full 3D field.
 
-The following example shows how to construct NetCDF output writers for two different kinds of outputs (3D fields and
-slices) along with output attributes
+The following example shows how to construct NetCDF output writers for three kinds of outputs
+(3D fields, 2D slices, and time-averaged 1D profiles) along with output attributes:
 
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
@@ -28,26 +58,49 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="output_fields.nc", time_interval=60)
+    NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
 
 # output
-NetCDFOutputWriter (time_interval=60): output_fields.nc
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="output_surface_xy_slice.nc",
-                       time_interval=60, field_slicer=FieldSlicer(k=grid.Nz))
+    NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
+                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
-NetCDFOutputWriter (time_interval=60): output_surface_xy_slice.nc
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
+└── array type: Array{Float32}
 ```
 
-Writing a scalar, profile, and slice to NetCDF:
+```jldoctest netcdf1
+simulation.output_writers[:averaged_profile_writer] =
+    NetCDFOutputWriter(model, fields,
+                       filepath = "averaged_z_profile.nc",
+                       schedule = AveragedTimeInterval(60, window=20),
+                       field_slicer = FieldSlicer(i=1, j=1))
+
+# output
+NetCDFOutputWriter scheduled on TimeInterval(60.0):
+├── filepath: averaged_z_profile.nc
+├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20.0, stride=1, interval=60.0)
+├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
+└── array type: Array{Float32}
+```
+
+`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
@@ -77,54 +130,76 @@ output_attributes = Dict(
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
 
-simulation.output_writers[:stuff] =
+simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       iteration_interval=1, filepath="stuff.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filepath="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
-NetCDFOutputWriter (iteration_interval=1): stuff.nc
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 3 outputs: ["profile", "slice", "scalar"]
+├── 3 outputs: ["profile", "slice", "scalar"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
-
-See [`NetCDFOutputWriter`](@ref) for more details and options.
 
 ## JLD2 output writer
 
-JLD2 is a an HDF5 compatible file format written in pure Julia and is generally pretty fast. JLD2 files can be opened in
-Python with the [h5py](https://www.h5py.org/) package.
+JLD2 is a fast HDF5 compatible file format written in pure Julia.
+JLD2 files can be opened in julia and in Python with the [h5py](https://www.h5py.org/)
+package.
 
-The JLD2 output writer is generally used by passing it a dictionary or named tuple of (label, function) pairs where the
-functions have a single input `model`. Whenever output needs to be written, the functions will be called and the output
+The `JLD2OutputWriter` receives either a `Dict`ionary or `NamedTuple` containing
+`name, output` pairs. The `name` can be a symbol or string. The `output` must either be
+an `AbstractField` or a function called with `func(model)` that returns arbitrary output.
+Whenever output needs to be written, the functions will be called and the output
 of the function will be saved to the JLD2 file. For example, to write out 3D fields for w and T and a horizontal average
 of T every 1 hour of simulation time to a file called `some_data.jld2`
 
-```julia
-using Oceananigans
-using Oceananigans.OutputWriters
+```jldoctest
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+model = IncompressibleModel(grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
-function init_save_some_metadata(file, model)
+function init_save_some_metadata!(file, model)
     file["author"] = "Chim Riggles"
     file["parameters/coriolis_parameter"] = 1e-4
     file["parameters/density"] = 1027
+    return nothing
 end
 
 T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
 
-outputs = Dict(
-    :w => model -> model.velocities.u,
-    :T => model -> model.tracers.T,
-    :T_avg => model -> T_avg(model)
-)
+# Note that model.velocities is NamedTuple
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                          prefix = "some_data",
+                                                          schedule = TimeInterval(20minute),
+                                                          init = init_save_some_metadata!)
 
-jld2_writer = JLD2OutputWriter(model, outputs, init=init_save_some_metadata, interval=20minute, prefix="some_data")
+# output
+JLD2OutputWriter scheduled on TimeInterval(1200.0):
+├── filepath: ./some_data.jld2
+├── 3 outputs: (:u, :v, :w)
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── array type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+└── max filesize: Inf YiB
 
-push!(simulation.output_writers, jld2_writer)
+simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
+                                                     prefix = "some_averaged_data",
+                                                     schedule = AveragedTimeInterval(20minute, window=5minute))
+
+# output
+JLD2OutputWriter scheduled on TimeInterval(1200.0):
+├── filepath: ./some_averaged_data.jld2
+├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=300.0, stride=1, interval=1200.0)
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── array type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+└── max filesize: Inf YiB
 ```
 
 See [`JLD2OutputWriter`](@ref) for more details and options.
