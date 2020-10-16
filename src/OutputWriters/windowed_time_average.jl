@@ -1,6 +1,6 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Utils: AbstractSchedule
+using Oceananigans.Utils: AbstractSchedule, prettytime
 
 import Oceananigans.Utils: TimeInterval, show_schedule
 import Oceananigans.Diagnostics: run_diagnostic!
@@ -37,6 +37,44 @@ The time-average of ``a`` is a left Riemann sum corresponding to
 where ``⟨a⟩`` is the time-average of ``a``, ``T`` is the time-window for averaging,
 and the ``tᵢ`` are discrete times separated by the time `interval`. The ``tᵢ`` specify
 both the end of the averaging window and the time at which output is written.
+
+Example
+=======
+
+```jldoctest averaged_time_interval
+using Oceananigans.OutputWriters: AveragedTimeInterval
+using Oceananigans.Utils: year, years
+
+schedule = AveragedTimeInterval(4years, window=1year)
+
+# output
+AveragedTimeInterval(window=1 year, stride=1, interval=4 years)
+```
+
+An `AveragedTimeInterval` schedule directs an output writer
+to time-average its outputs before writing them to disk:
+
+```jldoctest averaged_time_interval
+using Oceananigans
+using Oceananigans.OutputWriters: JLD2OutputWriter
+using Oceananigans.Utils: minutes
+
+model = IncompressibleModel(grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+
+simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                          prefix = "averaged_velocity_data",
+                                                          schedule = AveragedTimeInterval(4years, window=1year, stride=2))
+
+# output
+JLD2OutputWriter scheduled on TimeInterval(4 years):
+├── filepath: ./averaged_velocity_data.jld2
+├── 3 outputs: (:u, :v, :w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── array type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+└── max filesize: Inf YiB
 """
 AveragedTimeInterval(interval; window=interval, stride=1) =
     AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
@@ -165,10 +203,12 @@ function (wta::WindowedTimeAverage)(model)
     return wta.result
 end
 
+Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, short_show(schedule))
+
 short_show(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
-                                                    "window=", schedule.window, ", ",
+                                                    "window=", prettytime(schedule.window), ", ",
                                                     "stride=", schedule.stride, ", ",
-                                                    "interval=", schedule.interval,  ")")
+                                                    "interval=", prettytime(schedule.interval),  ")")
 
 show_averaging_schedule(schedule) = ""
 show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", short_show(schedule))

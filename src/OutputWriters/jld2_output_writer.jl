@@ -96,6 +96,61 @@ Keyword arguments
               Default: 1.
     
     - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+
+Example
+=======
+
+Write out 3D fields for w and T and a horizontal average:
+
+```jldoctest jld2_output_writer
+using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
+using Oceananigans.Utils: hour, minute
+
+model = IncompressibleModel(grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+simulation = Simulation(model, Δt=12, stop_time=1hour)
+
+function init_save_some_metadata!(file, model)
+    file["author"] = "Chim Riggles"
+    file["parameters/coriolis_parameter"] = 1e-4
+    file["parameters/density"] = 1027
+    return nothing
+end
+
+T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
+
+# Note that model.velocities is NamedTuple
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                          prefix = "some_data",
+                                                          schedule = TimeInterval(20minute),
+                                                          init = init_save_some_metadata!)
+
+# output
+JLD2OutputWriter scheduled on TimeInterval(1200.0):
+├── filepath: ./some_data.jld2
+├── 3 outputs: (:u, :v, :w)
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── array type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+└── max filesize: Inf YiB
+```
+
+and a time- and horizontal-average of temperature `T` every 1 hour of simulation time
+to a file called `some_averaged_data.jld2`
+
+```jldoctest jld2_output_writer
+simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
+                                                     prefix = "some_averaged_data",
+                                                     schedule = AveragedTimeInterval(20minute, window=5minute))
+
+# output
+JLD2OutputWriter scheduled on TimeInterval(1200.0):
+├── filepath: ./some_averaged_data.jld2
+├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=300.0, stride=1, interval=1200.0)
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── array type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+└── max filesize: Inf YiB
+```
 """
 function JLD2OutputWriter(model, outputs; prefix, schedule,
                                    dir = ".",

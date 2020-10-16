@@ -97,4 +97,4 @@ end
 
 show_schedule(schedule) = string(schedule)
 show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
-show_schedule(schedule::TimeInterval) = string("TimeInterval(", schedule.interval, ")")
+show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
