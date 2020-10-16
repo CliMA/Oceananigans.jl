@@ -43,7 +43,8 @@ const default_output_attributes = Dict(
 add_schedule_metadata!(attributes, schedule) = nothing
 
 function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
-    global_attributes["iteration_interval"] = schedule.interval
+    global_attributes["schedule"] = "IterationInterval"
+    global_attributes["interval"] = schedule.interval
     global_attributes["output iteration interval"] =
         "Output was saved every $(schedule.interval) iteration(s)."
 
@@ -51,7 +52,17 @@ function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
 end
 
 function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
-    global_attributes["time_interval"] = schedule.interval
+    global_attributes["schedule"] = "TimeInterval"
+    global_attributes["interval"] = schedule.interval
+    global_attributes["output time interval"] =
+        "Output was saved every $(prettytime(schedule.interval))."
+    
+    return nothing
+end
+
+function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
+    global_attributes["schedule"] = "WallTimeInterval"
+    global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
         "Output was saved every $(prettytime(schedule.interval))."
     
@@ -300,7 +311,8 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
         end
 
         for (name, output) in outputs
-            define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions)
+            attributes = try output_attrbitues[name]; catch; Dict(); end
+            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
         end
 
         sync(dataset)
@@ -318,7 +330,7 @@ function define_output_variable!(dataset, output, name, array_type, compression,
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
     defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           compression=compression, attrib=output_attributes[name])
+           compression=compression, attrib=output_attributes)
 
     return nothing
 end
@@ -327,7 +339,7 @@ end
 define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           compression=compression, attrib=output_attributes[name])
+           compression=compression, attrib=output_attributes)
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
