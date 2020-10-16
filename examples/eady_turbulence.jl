@@ -60,18 +60,18 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to $\bm{u}_h \sqrt{u^2 + v^2}$, where $\bm{u}_h = u \bm{\hat x} + v \bm{\hat{v}$ is the
-# horizontal velocity.
+# to $\boldsymbol{u}_h |\boldsymbol{u}_h|$, where 
+# $\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v boldsymbol{\hat{y}}$ is the horizontal velocity.
 #
 # The $x$-component of the quadratic bottom drag is thus
 #
-# $ τ_{xz}(z=L_z) = - cᴰ u \sqrt{u^2 + v^2} \, , $
+# $ \tau_{xz}(z=L_z) = - c^D u \sqrt{u^2 + v^2} \, , $
 #
 # while the $y$-component is
 #
-# $ τ_{yz}(z=L_z) = - cᴰ v \sqrt{u^2 + v^2} \, , $
+# $ \tau_{yz}(z=L_z) = - c^D v \sqrt{u^2 + v^2} \, , 
 #
-# where $c^D$ is a dimensionless drag coefficient and $τ_{xz}(z=L_z)$ and $τ_{yz}(z=L_z)$
+# where $c^D$ is a dimensionless drag coefficient and $\tau_{xz}(z=L_z)$ and $\tau_{yz}(z=L_z)$
 # denote the flux of $u$ and $v$ momentum at $z = L_z$, the bottom of the domain.
 #
 # ### Vertical and horizontal viscosity and diffusivity
