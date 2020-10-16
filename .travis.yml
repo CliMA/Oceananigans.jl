@@ -9,8 +9,6 @@ julia:
 env:
   jobs:
     - TEST_GROUP=unit
-    - TEST_GROUP=time_stepping_1
-    - TEST_GROUP=time_stepping_2
     - TEST_GROUP=simulation
     - TEST_GROUP=regression
     - TEST_GROUP=scripts
