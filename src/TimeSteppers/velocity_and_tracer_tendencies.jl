@@ -1,9 +1,5 @@
 using Oceananigans.Advection
 
-@inline regularize_diffusivities_tuple(diffusivities::Tuple) = (diffusivities=diffusivities,)
-@inline regularize_diffusivities_tuple(diffusivities::NamedTuple) = diffusivities 
-@inline regularize_diffusivities_tuple(::Nothing) = NamedTuple()
-
 """
     u_velocity_tendency(i, j, k, grid,
                         advection,
@@ -61,8 +57,7 @@ pressure anomaly.
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, surface_waves, clock.time)
-             + forcings.u(i, j, k, grid, clock,
-                          merge(velocities, tracers, regularize_diffusivities_tuple(diffusivities))))
+             + forcings.u(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
@@ -122,8 +117,7 @@ pressure anomaly.
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, surface_waves, clock.time)
-             + forcings.v(i, j, k, grid, clock,
-                          merge(velocities, tracers, regularize_diffusivities_tuple(diffusivities))))
+             + forcings.v(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
@@ -177,8 +171,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, surface_waves, clock.time)
-             + forcings.w(i, j, k, grid, clock,
-                          merge(velocities, tracers, regularize_diffusivities_tuple(diffusivities))))
+             + forcings.w(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
@@ -234,6 +227,5 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
-             + forcing(i, j, k, grid, clock,
-                       merge(velocities, tracers, regularize_diffusivities_tuple(diffusivities))))
+             + forcing(i, j, k, grid, clock, merge(velocities, tracers)))
 end

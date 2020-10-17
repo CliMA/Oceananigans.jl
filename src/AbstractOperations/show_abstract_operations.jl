@@ -1,4 +1,4 @@
-using Oceananigans: short_show
+import Oceananigans: short_show
 using Oceananigans.Grids: domain_string
 using Oceananigans.Fields: show_location
 
@@ -9,11 +9,12 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
+short_show(operation::AbstractOperation) = string(operation_name(operation), " at ", show_location(operation))
+
 Base.show(io::IO, operation::AbstractOperation) =
     print(io,
-          operation_name(operation), " at ", show_location(operation), '\n',
-          "├── grid: ", typeof(operation.grid), '\n',
-          "│   ├── size: ", size(operation.grid), '\n',
+          short_show(operation), '\n',
+          "├── grid: ", short_show(operation.grid), '\n',
           "│   └── domain: ", domain_string(operation.grid), '\n',
           "└── tree: ", "\n", "    ", tree_show(operation, 1, 0))
 

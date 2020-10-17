@@ -44,6 +44,6 @@ end
 ##### Horizontal biharmonic operators
 #####
 
-@inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
-@inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)
-@inline ∇⁴hᶜᶠᵃ(i, j, k, grid, c::AbstractArray) = ∇²hᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᵃ, c)
+@inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
+@inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)
+@inline ∇⁴hᶜᶠᵃ(i, j, k, grid, c) = ∇²hᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᵃ, c)

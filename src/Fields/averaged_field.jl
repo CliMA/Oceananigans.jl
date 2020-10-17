@@ -29,14 +29,8 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     end
 
     function AveragedField{X, Y, Z}(data, grid, dims, operand, status) where {X, Y, Z}
-
-        dims = validate_reduced_dims(dims)
-        validate_reduced_locations(X, Y, Z, dims)
-        validate_field_data(X, Y, Z, data, grid)
-
         return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
-                                                                operand, status)
+                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims, operand, status)
     end
 end
 
@@ -94,7 +88,4 @@ Statistics.mean(ϕ::AbstractField; kwargs...) = AveragedField(ϕ; kwargs...)
 
 Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z} = 
     AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data),
-                           Adapt.adapt(to, averaged_field.grid),
-                           Adapt.adapt(to, averaged_field.dims),
-                           Adapt.adapt(to, averaged_field.operand),
-                           Adapt.adapt(to, averaged_field.status))
+                           nothing, averaged_field.dims, nothing, nothing)
