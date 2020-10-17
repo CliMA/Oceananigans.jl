@@ -416,7 +416,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
            size = (1000, 800),
            link = :x,
          layout = Plots.grid(2, 2, heights=[0.5, 0.5, 0.2, 0.2]),
-          title = [@sprintf("ζ/f(t=%s)", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
+          title = [@sprintf("ζ(t=%s)/f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
 
     iter == iterations[end] && close(file)
 end
