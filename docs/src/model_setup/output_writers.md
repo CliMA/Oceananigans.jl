@@ -50,8 +50,8 @@ NetCDFOutputWriter
 ## JLD2 output writer
 
 JLD2 is a fast HDF5 compatible file format written in pure Julia.
-JLD2 files can be opened in julia and in Python with the [h5py](https://www.h5py.org/)
-package.
+JLD2 files can be opened in Julia with the [JLD2.jl](https://github.com/JuliaIO/JLD2.jl) package
+and in Python with the [h5py](https://www.h5py.org/) package.
 
 The `JLD2OutputWriter` receives either a `Dict`ionary or `NamedTuple` containing
 `name, output` pairs. The `name` can be a symbol or string. The `output` must either be
