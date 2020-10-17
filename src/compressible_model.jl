@@ -40,20 +40,20 @@ function CompressibleModel(;
                 float_type = Float64,
                      clock = Clock{float_type}(0, 0),
                  advection = CenteredSecondOrder(),
-                   momenta = MomentumFields(architecture, grid),
                      gases = DryEarth(float_type),
     thermodynamic_variable = Energy(),
                tracernames = collect_tracers(thermodynamic_variable, gases),
                   coriolis = nothing,
                    closure = IsotropicDiffusivity(float_type, ν=0.5, κ=0.5),
        boundary_conditions = NamedTuple(),
+                   momenta = MomentumFields(architecture, grid, boundary_conditions),
              diffusivities = DiffusivityFields(architecture, grid, tracernames, boundary_conditions, closure),
                    forcing = NamedTuple(),
                    gravity = g_Earth,
               time_stepper = WickerSkamarockTimeStepper(architecture, grid, tracernames))
 
     gravity = float_type(gravity)
-    tracers = TracerFields(architecture, grid, tracernames)
+    tracers = TracerFields(tracernames, architecture, grid, boundary_conditions)
     forcing = model_forcing(tracernames; forcing...)
     closure = with_tracers(tracernames, closure)
     total_density = CellField(architecture, grid)
@@ -104,14 +104,24 @@ function DryEarth3(FT = Float64)
     return (ρ₁ = EarthN₂O₂(FT), ρ₂ = EarthN₂O₂(FT), ρ₃ = EarthN₂O₂(FT))
 end
 
-function MomentumFields(arch, grid)
-    ρu = XFaceField(arch, grid)
-    ρv = YFaceField(arch, grid)
-    ρw = ZFaceField(arch, grid)
+function MomentumFields(arch, grid, bcs::NamedTuple)
+    ρu_bcs = :ρu ∈ keys(bcs) ? bcs[:ρu] : UVelocityBoundaryConditions(grid)
+    ρv_bcs = :ρv ∈ keys(bcs) ? bcs[:ρv] : VVelocityBoundaryConditions(grid)
+    ρw_bcs = :ρw ∈ keys(bcs) ? bcs[:ρw] : WVelocityBoundaryConditions(grid)
+
+    ρu = XFaceField(arch, grid, ρu_bcs)
+    ρv = YFaceField(arch, grid, ρv_bcs)
+    ρw = ZFaceField(arch, grid, ρw_bcs)
+
     return (ρu=ρu, ρv=ρv, ρw=ρw)
 end
 
-function TracerFields(arch, grid, tracernames)
-    tracerfields = Tuple(CellField(arch, grid) for c in tracernames)
-    return NamedTuple{tracernames}(tracerfields)
+function TracerFields(names, arch, grid, bcs)
+    tracer_names = tracernames(names) # filter `names` if it contains velocity fields
+    tracer_fields =
+        Tuple(c ∈ keys(bcs) ?
+              CellField(arch, grid, bcs[c]) :
+              CellField(arch, grid, TracerBoundaryConditions(grid))
+              for c in tracer_names)
+    return NamedTuple{tracer_names}(tracer_fields)
 end
