@@ -125,7 +125,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
                                                           init = init_save_some_metadata!)
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(1200.0):
+JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_data.jld2
 ├── 3 outputs: (:u, :v, :w)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
@@ -143,9 +143,9 @@ simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(1200.0):
+JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=300.0, stride=1, interval=1200.0)
+├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
