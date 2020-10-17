@@ -37,37 +37,42 @@ for n in 1:length(ds["time"])
     ρu = ds["ρu"][:, 1, :, n]'
     ρe = ds["ρe"][:, 1, :, n]'
 
-    fig.suptitle("Dry rising thermal bubble: time = $(prettytime(ds["time"][n]))")
+    fig.suptitle("Three gas dry rising thermal bubble: time = $(prettytime(ds["time"][n]))")
 
     ax_ρ₁ = axes[1, 1]
     im = ax_ρ₁.pcolormesh(xC, zC, ρ₁, cmap=cmocean.cm.dense, vmin=0, vmax=1)
     ax_ρ₁.set_title("ρ₁(x, z)")
-    fig.colorbar(im, ax=ax_ρ₁)
+    ax_ρ₁.set_ylabel("z (km)")
+    fig.colorbar(im, ax=ax_ρ₁, label="kg/m³")
 
     ax_ρ₂ = axes[1, 2]
     im = ax_ρ₂.pcolormesh(xC, zC, ρ₂, cmap=cmocean.cm.dense, vmin=0, vmax=1)
     ax_ρ₂.set_title("ρ₂(x, z)")
-    fig.colorbar(im, ax=ax_ρ₂)
+    fig.colorbar(im, ax=ax_ρ₂, label="kg/m³")
 
     ax_ρ₃ = axes[1, 3]
     im = ax_ρ₃.pcolormesh(xC, zC, ρ₃, cmap=cmocean.cm.dense, vmin=0, vmax=1)
     ax_ρ₃.set_title("ρ₃(x, z)")
-    fig.colorbar(im, ax=ax_ρ₃)
+    fig.colorbar(im, ax=ax_ρ₃, label="kg/m³")
 
     ax_u = axes[2, 1]
     im = ax_u.pcolormesh(xF, zC, ρu ./ ρ, cmap=cmocean.cm.balance, vmin=-10, vmax=10)
     ax_u.set_title("u(x, z)")
-    fig.colorbar(im, ax=ax_u)
+    ax_u.set_xlabel("x (km)")
+    ax_u.set_ylabel("z (km)")
+    fig.colorbar(im, ax=ax_u, label="m/s")
 
     ax_w = axes[2, 2]
     im = ax_w.pcolormesh(xC, zC, ρw ./ ρ, cmap=cmocean.cm.balance, vmin=-10, vmax=10)
     ax_w.set_title("w(x, z)")
-    fig.colorbar(im, ax=ax_w)
+    ax_w.set_xlabel("x (km)")
+    fig.colorbar(im, ax=ax_w, label="m/s")
 
     ax_e = axes[2, 3]
-    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal, vmin=0, vmax=1200)
+    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal, vmin=0, vmax=600)
     ax_e.set_title("e′(x, z)")
-    fig.colorbar(im, ax=ax_e)
+    ax_e.set_xlabel("x (km)")
+    fig.colorbar(im, ax=ax_e, extend="max", label="J/kg")
 
     plt.xlim(-10, 10)
     plt.ylim(0, 10)
