@@ -13,13 +13,6 @@ using JULES
 
 using Oceananigans.Fields: cpudata
 
-# using Oceananigans.Architectures: @hascuda
-
-# temporary fix
-# @hascuda begin
-#     CUDA.allowscalar(true)
-# end
-
 Logging.global_logger(OceananigansLogger())
 
 const km = kilometers
