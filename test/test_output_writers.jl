@@ -708,7 +708,7 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     model = IncompressibleModel(architecture=arch1, grid=grid)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
-    checkpointer = Checkpointer(model)
+    checkpointer = Checkpointer(model, schedule=IterationInterval(1))
     write_output!(checkpointer, model)
     model = nothing
 
@@ -875,8 +875,6 @@ function jld2_time_averaging_of_horizontal_averages(model)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=5)
 
-    @show u.data[3, 3, 3] v.data[3, 3, 3] w.data[3, 3, 3] T.data[3, 3, 3]
-
     u, v, w = model.velocities
     T, S = model.tracers
 
@@ -884,27 +882,17 @@ function jld2_time_averaging_of_horizontal_averages(model)
                       uv = AveragedField(u * v, dims=(1, 2)),
                       wT = AveragedField(w * T, dims=(1, 2)))
 
-    @show u.data[3, 3, 3] v.data[3, 3, 3] w.data[3, 3, 3] T.data[3, 3, 3]
-
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4, window=2),
                                                                dir = ".",
                                                             prefix = "test",
                                                              force = true)
 
-    @show u.data[3, 3, 3] v.data[3, 3, 3] w.data[3, 3, 3] T.data[3, 3, 3]
-
     run!(simulation)
-
-    @show u.data[3, 3, 3] v.data[3, 3, 3] w.data[3, 3, 3] T.data[3, 3, 3]
 
     file = jldopen("test.jld2")
 
     # Data is saved without halos by default
-    @show file["timeseries/wu/4"]
-    @show file["timeseries/uv/4"]
-    @show file["timeseries/wT/4"]
-
     wu = file["timeseries/wu/4"][1, 1, 3]
     uv = file["timeseries/uv/4"][1, 1, 3]
     wT = file["timeseries/wT/4"][1, 1, 3]
@@ -914,8 +902,6 @@ function jld2_time_averaging_of_horizontal_averages(model)
     rm("test.jld2")
 
     FT = eltype(model.grid)
-
-    @show wu uv wT
 
     return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
