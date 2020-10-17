@@ -25,6 +25,11 @@ suite = BenchmarkGroup(
     "acoustic_cfl" => BenchmarkGroup()
 )
 
+_cfl(model) = cfl(model, 1)
+_cfl(model::CompressibleModel{GPU}) = CUDA.@sync cfl(model, 1)
+_acoustic_cfl(model) = acoustic_cfl(model, 1)
+_acoustic_cfl(model::CompressibleModel{GPU}) = CUDA.@sync acoustic_cfl(model, 1)
+
 for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
     @info "Running CFL benchmark [$Arch, N=$N, $Tvar, $Gas]..."
 
@@ -33,13 +38,13 @@ for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
                               gases=Gas())
 
     # warmup
-    cfl(model, 1)
-    acoustic_cfl(model, 1)
+    _cfl(model)
+    _acoustic_cfl(model)
 
-    b_cfl = @benchmark cfl($model, 1) samples=10
+    b_cfl = @benchmark _cfl($model) samples=10
     display(b_cfl)
 
-    b_acfl = @benchmark acoustic_cfl($model, 1) samples=10
+    b_acfl = @benchmark _acoustic_cfl($model) samples=10
     display(b_acfl)
 
     key = (Arch, N, Gas, Tvar)
