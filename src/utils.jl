@@ -36,6 +36,23 @@ end
     @inbounds temperature[i, j, k] = diagnose_temperature(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
 end
 
+function compute_temperature!(model)
+    temperature = intermediate_thermodynamic_field(model)
+
+    temperature, total_density, momenta, tracers =
+        datatuples(temperature, model.total_density, model.momenta, model.tracers)
+
+    compute_temperature_event =
+        launch!(model.architecture, model.grid, :xyz, compute_temperature!,
+                temperature, model.grid, model.thermodynamic_variable, model.gases,
+                model.gravity, total_density, momenta, tracers,
+                dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), compute_p_over_ρ_event)
+
+    return temperature
+end
+
 #####
 ##### CFL
 #####
