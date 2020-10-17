@@ -270,6 +270,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
                 if Closure === TwoDimensionalLeith && arch isa CPU
                     # This test is extremely slow so we skip.
+                    # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
                     @test time_stepping_works_with_closure(arch, FT, Closure)
