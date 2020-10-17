@@ -20,16 +20,18 @@ Gases = [DryEarth, DryEarth3]
 
 suite = BenchmarkGroup()
 
+sync_step!(model) = time_step!(model, 1)
+sync_step!(model::CompressibleModel{GPU}) = CUDA.@sync time_step!(model, 1)
+
 for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
     @info "Running static atmosphere benchmark [$Arch, N=$N, $Tvar, $Gas]..."
 
     grid = RegularCartesianGrid(size=(N, N, N), halo=(2, 2, 2), extent=(1, 1, 1))
     model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(), gases=Gas())
 
-    # warmup
-    time_step!(model, 1)
+    sync_step!(model) # warmup
 
-    b = @benchmark time_step!($model, 1) samples=10
+    b = @benchmark sync_step!($model) samples=10
     display(b)
 
     key = (Arch, N, Gas, Tvar)
