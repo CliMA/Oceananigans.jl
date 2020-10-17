@@ -30,7 +30,7 @@ end
     @inbounds p_over_ρ[i, j, k] = diagnose_p_over_ρ(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
 end
 
-@kernel function compute_temperature!(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+@kernel function compute_temperature!(temperature, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
     i, j, k = @index(Global, NTuple)
 
     @inbounds temperature[i, j, k] = diagnose_temperature(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
@@ -48,7 +48,7 @@ function compute_temperature!(model)
                 model.gravity, total_density, momenta, tracers,
                 dependencies=Event(device(model.architecture)))
 
-    wait(device(model.architecture), compute_p_over_ρ_event)
+    wait(device(model.architecture), compute_temperature_event)
 
     return temperature
 end

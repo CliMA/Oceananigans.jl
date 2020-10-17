@@ -38,7 +38,7 @@ for Arch in Archs, N in Ns, Gases in Gases, Tvar in Tvars
 
     _compute_temperature!(model) # warmup
 
-    b = @benchmark _compute_temperature!(model) samples=10
+    b = @benchmark _compute_temperature!($model) samples=10
 
     key = (Arch, N, Gases, Tvar)
     suite["temperature"][key] = b
