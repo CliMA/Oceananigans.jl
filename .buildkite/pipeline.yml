@@ -16,15 +16,15 @@ steps:
       - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
 
       # Instantiate and precompile 
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
 
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -41,10 +41,10 @@ steps:
       - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
 
       # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.status()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -58,7 +58,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "unit"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -70,7 +70,7 @@ steps:
       TEST_GROUP: "unit"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -85,7 +85,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "time_stepping_1"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -97,7 +97,7 @@ steps:
       TEST_GROUP: "time_stepping_1"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -112,7 +112,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "time_stepping_2"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -124,7 +124,7 @@ steps:
       TEST_GROUP: "time_stepping_2"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -139,7 +139,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -151,7 +151,7 @@ steps:
       TEST_GROUP: "simulation"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -166,7 +166,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "regression"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -178,7 +178,7 @@ steps:
       TEST_GROUP: "regression"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -193,7 +193,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -205,7 +205,7 @@ steps:
       TEST_GROUP: "scripts"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -215,7 +215,7 @@ steps:
   #   env:
   #     TEST_GROUP: "convergence"
   #   commands:
-  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
   #   agents:
   #     queue: Oceananigans
   #     architecture: CPU
@@ -230,8 +230,8 @@ steps:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: Oceananigans
       architecture: CPU

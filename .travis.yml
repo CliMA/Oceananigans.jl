@@ -27,6 +27,6 @@ jobs:
       julia: 1.5
       os: linux
       script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
-        - travis_wait 45 julia --project=docs/ docs/make.jl
+        - julia -O0 --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
+        - travis_wait 45 julia -O0 --project=docs/ docs/make.jl
       after_success: skip
