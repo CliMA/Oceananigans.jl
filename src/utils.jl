@@ -30,6 +30,12 @@ end
     @inbounds p_over_ρ[i, j, k] = diagnose_p_over_ρ(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
 end
 
+@kernel function compute_temperature!(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds temperature[i, j, k] = diagnose_temperature(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+end
+
 #####
 ##### CFL
 #####
