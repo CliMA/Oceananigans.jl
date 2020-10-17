@@ -981,7 +981,7 @@ function run_netcdf_time_averaging_tests(arch)
 
     ds = NCDataset(time_average_nc_filepath)
 
-    attribute_names = ("time_interval", "output time interval",
+    attribute_names = ("schedule", "interval", "output time interval",
                        "time_averaging_window", "time averaging window",
                        "time_averaging_stride", "time averaging stride")
 
