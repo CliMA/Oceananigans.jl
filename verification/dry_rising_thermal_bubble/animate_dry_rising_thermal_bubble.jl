@@ -36,22 +36,26 @@ for n in 1:length(ds["time"])
     ax_u = axes[1, 1]
     im = ax_u.pcolormesh(xF, zC, ρu ./ ρ, cmap=cmocean.cm.balance, vmin=-10, vmax=10)
     ax_u.set_title("u(x, z)")
-    fig.colorbar(im, ax=ax_u)
+    ax_u.set_ylabel("z (km)")
+    fig.colorbar(im, ax=ax_u, label="m/s")
 
     ax_w = axes[1, 2]
     im = ax_w.pcolormesh(xC, zC, ρw ./ ρ, cmap=cmocean.cm.balance, vmin=-10, vmax=10)
     ax_w.set_title("w(x, z)")
-    fig.colorbar(im, ax=ax_w)
+    fig.colorbar(im, ax=ax_w, label="m/s")
 
     ax_ρ = axes[2, 1]
-    im = ax_ρ.pcolormesh(xC, zC, ρ - ρ₀, cmap=cmocean.cm.dense, vmin=-0.007, vmax=0.007)
+    im = ax_ρ.pcolormesh(xC, zC, ρ - ρ₀, cmap=cmocean.cm.dense, vmin=-0.007, vmax=0)
+    ax_ρ.set_xlabel("x (km)")
+    ax_ρ.set_ylabel("z (km)")
     ax_ρ.set_title("ρ′(x, z)")
-    fig.colorbar(im, ax=ax_ρ)
+    fig.colorbar(im, ax=ax_ρ, label="kg/m³")
 
     ax_e = axes[2, 2]
-    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal, vmin=0, vmax=1200)
+    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal, vmin=0, vmax=600)
+    ax_e.set_xlabel("x (km)")
     ax_e.set_title("e′(x, z)")
-    fig.colorbar(im, ax=ax_e)
+    fig.colorbar(im, ax=ax_e, extend="max", label="J/kg")
 
     plt.xlim(-10, 10)
     plt.ylim(0, 10)

@@ -11,6 +11,8 @@ using Oceananigans.OutputWriters
 using Oceananigans.Utils
 using JULES
 
+using Oceananigans.Fields: cpudata
+
 # using Oceananigans.Architectures: @hascuda
 
 # temporary fix
@@ -164,7 +166,7 @@ function print_progress(simulation)
 
     zC = znodes(Cell, model.grid)
     ρ̄ᵢ = mean(ρᵢ.(0, 0, zC))
-    ρ̄ = mean(interior(model.total_density))
+    ρ̄ = mean(cpudata(model.total_density))
 
     progress = 100 * model.clock.time / simulation.stop_time
     message = @sprintf("[%05.2f%%] iteration = %d, time = %s, CFL = %.4e, acoustic CFL = %.4e, ρ̄ = %.4e (relΔ = %.4e)",
@@ -173,19 +175,19 @@ function print_progress(simulation)
 
     if tvar isa Energy
         ρ̄ēᵢ = mean(ρeᵢ.(0, 0, zC))
-        ρ̄ē = mean(interior(model.tracers.ρe))
+        ρ̄ē = mean(cpudata(model.tracers.ρe))
         message *= @sprintf(", ρ̄ē = %.4e (relΔ = %.4e)", ρ̄ē, (ρ̄ē - ρ̄ēᵢ) / ρ̄ē)
     elseif tvar isa Entropy
         ρ̄s̄ᵢ = mean(ρsᵢ.(0, 0, zC))
-        ρ̄s̄ = mean(interior(model.tracers.ρs))
+        ρ̄s̄ = mean(cpudata(model.tracers.ρs))
         message *= @sprintf(", ρ̄s̄ = %.4e (relΔ = %.4e)", ρ̄s̄, (ρ̄s̄ - ρ̄s̄ᵢ) / ρ̄s̄)
     end
 
     @info message
 
-    ∂tρ₁ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₁.data)
-    ∂tρ₂ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₂.data)
-    ∂tρ₃ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₃.data)
+    ∂tρ₁ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₁.data.parent)
+    ∂tρ₂ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₂.data.parent)
+    ∂tρ₃ = maximum(model.time_stepper.slow_source_terms.tracers.ρ₃.data.parent)
 
     @info @sprintf("[%05.2f%%] Maximum mass tendencies from diffusion: ∂tρ₁ = %.4e, ∂tρ₂ = %.4e, ∂tρ₃ = %.4e",
                    progress, ∂tρ₁, ∂tρ₂, ∂tρ₃)

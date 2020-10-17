@@ -14,28 +14,42 @@ using BenchmarkTools: prettytime, prettymemory
 Archs = [CPU]
 @hascuda Archs = [CPU, GPU]
 
-Ns = [32, 192]
+Ns = [32, 128]
 Tvars = [Energy, Entropy]
 Gases = [DryEarth, DryEarth3]
 
-suite = BenchmarkGroup()
+tags = ["arch", "N", "gases", "tvar"]
 
-sync_step!(model) = time_step!(model, 1)
-sync_step!(model::CompressibleModel{GPU}) = CUDA.@sync time_step!(model, 1)
+suite = BenchmarkGroup(
+    "cfl" => BenchmarkGroup(),
+    "acoustic_cfl" => BenchmarkGroup()
+)
+
+_cfl(model) = cfl(model, 1)
+_cfl(model::CompressibleModel{GPU}) = CUDA.@sync cfl(model, 1)
+_acoustic_cfl(model) = acoustic_cfl(model, 1)
+_acoustic_cfl(model::CompressibleModel{GPU}) = CUDA.@sync acoustic_cfl(model, 1)
 
 for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
-    @info "Running static atmosphere benchmark [$Arch, N=$N, $Tvar, $Gas]..."
+    @info "Running CFL benchmark [$Arch, N=$N, $Tvar, $Gas]..."
 
-    grid = RegularCartesianGrid(size=(N, N, N), halo=(2, 2, 2), extent=(1, 1, 1))
-    model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(), gases=Gas())
+    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
+    model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(),
+                              gases=Gas())
 
-    sync_step!(model) # warmup
+    # warmup
+    _cfl(model)
+    _acoustic_cfl(model)
 
-    b = @benchmark sync_step!($model) samples=10
-    display(b)
+    b_cfl = @benchmark _cfl($model) samples=10
+    display(b_cfl)
+
+    b_acfl = @benchmark _acoustic_cfl($model) samples=10
+    display(b_acfl)
 
     key = (Arch, N, Gas, Tvar)
-    suite[key] = b
+    suite["cfl"][key] = b_cfl
+    suite["acoustic_cfl"][key] = b_acfl
 end
 
 function benchmarks_to_dataframe(suite)
@@ -67,8 +81,11 @@ end
 
 header = ["Arch" "Size" "Gases" "ThermoVar" "min" "median" "mean" "max" "memory" "allocs"]
 
-df = benchmarks_to_dataframe(suite)
-pretty_table(df, header, title="Static atmosphere benchmarks", nosubheader=true)
+df = benchmarks_to_dataframe(suite["cfl"])
+pretty_table(df, header, title="CFL benchmarks", nosubheader=true)
+
+df = benchmarks_to_dataframe(suite["acoustic_cfl"])
+pretty_table(df, header, title="Acoustic CFL benchmarks", nosubheader=true)
 
 function gpu_speedups(suite)
     df = DataFrame(size=[], gases=[], thermodynamic_variable=[], speedup=[])
@@ -93,5 +110,8 @@ end
 
 header = ["Size" "Gases" "ThermoVar" "speedup"]
 
-df = gpu_speedups(suite)
-pretty_table(df, header, title="Static atmosphere speedups", nosubheader=true)
+df = gpu_speedups(suite["cfl"])
+pretty_table(df, header, title="CFL speedups", nosubheader=true)
+
+df = gpu_speedups(suite["acoustic_cfl"])
+pretty_table(df, header, title="Acoustic CFL speedups", nosubheader=true)

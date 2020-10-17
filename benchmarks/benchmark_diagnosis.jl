@@ -1,41 +1,47 @@
-using Printf
-
 using BenchmarkTools
-using CUDA
 using DataFrames
 using PrettyTables
+using CUDA
 
 using Oceananigans
 using Oceananigans.Architectures
 using JULES
 
 using BenchmarkTools: prettytime, prettymemory
+using JULES: intermediate_thermodynamic_field, compute_temperature!
 
 Archs = [CPU]
 @hascuda Archs = [CPU, GPU]
 
-Ns = [32, 192]
+Ns = [32, 64]
+@hascuda Ns = [32, 192]
+
 Tvars = [Energy, Entropy]
 Gases = [DryEarth, DryEarth3]
 
-suite = BenchmarkGroup()
+tags = ["arch", "N", "gases", "tvar"]
 
-sync_step!(model) = time_step!(model, 1)
-sync_step!(model::CompressibleModel{GPU}) = CUDA.@sync time_step!(model, 1)
+suite = BenchmarkGroup(
+    "temperature" => BenchmarkGroup(),
+    "pressure" => BenchmarkGroup()
+)
 
-for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
-    @info "Running static atmosphere benchmark [$Arch, N=$N, $Tvar, $Gas]..."
+_compute_temperature!(model) = compute_temperature!(model)
+_compute_temperature!(model::CompressibleModel{GPU}) = CUDA.@sync compute_temperature!(model)
 
-    grid = RegularCartesianGrid(size=(N, N, N), halo=(2, 2, 2), extent=(1, 1, 1))
-    model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(), gases=Gas())
+for Arch in Archs, N in Ns, Gases in Gases, Tvar in Tvars
+    @info "Running temperature computation benchmark [$Arch, N=$N, $Tvar, $Gases]..."
 
-    sync_step!(model) # warmup
+    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
+    model = CompressibleModel(architecture=Arch(), grid=grid, thermodynamic_variable=Tvar(),
+                              gases=Gases())
 
-    b = @benchmark sync_step!($model) samples=10
-    display(b)
+    _compute_temperature!(model) # warmup
 
-    key = (Arch, N, Gas, Tvar)
-    suite[key] = b
+    b = @benchmark _compute_temperature!($model) samples=10
+
+    key = (Arch, N, Gases, Tvar)
+    suite["temperature"][key] = b
 end
 
 function benchmarks_to_dataframe(suite)
@@ -43,13 +49,13 @@ function benchmarks_to_dataframe(suite)
                    thermodynamic_variable=[], min=[], median=[],
                    mean=[], max=[], memory=[], allocs=[])
     
-    for Arch in Archs, N in Ns, Gas in Gases, Tvar in Tvars
-        b = suite[Arch, N, Gas, Tvar]
+    for (key, b) in suite
+        Arch, N, Gases, Tvar = key
 
         d = Dict(
             "architecture" => Arch,
             "size" => "$(N)³",
-            "gases" => Gas,
+            "gases" => Gases,
             "thermodynamic_variable" => Tvar,
             "min" => minimum(b.times) |> prettytime,
             "median" => median(b.times) |> prettytime,
@@ -67,8 +73,8 @@ end
 
 header = ["Arch" "Size" "Gases" "ThermoVar" "min" "median" "mean" "max" "memory" "allocs"]
 
-df = benchmarks_to_dataframe(suite)
-pretty_table(df, header, title="Static atmosphere benchmarks", nosubheader=true)
+df = benchmarks_to_dataframe(suite["temperature"])
+pretty_table(df, header, title="Temperature computation benchmarks", nosubheader=true)
 
 function gpu_speedups(suite)
     df = DataFrame(size=[], gases=[], thermodynamic_variable=[], speedup=[])
@@ -93,5 +99,5 @@ end
 
 header = ["Size" "Gases" "ThermoVar" "speedup"]
 
-df = gpu_speedups(suite)
-pretty_table(df, header, title="Static atmosphere speedups", nosubheader=true)
+df = gpu_speedups(suite["temperature"])
+pretty_table(df, header, title="Temperature computation speedups", nosubheader=true)
