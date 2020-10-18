@@ -40,7 +40,7 @@ N = Int(L/Δ)
 
 topo = (Periodic, Periodic, Bounded)
 domain = (x=(0, L), y=(0, L), z=(0, L))
-grid = RegularCartesianGrid(topology=topo, size=(N, 1, N), halo=(3, 3, 3); domain...)
+grid = RegularCartesianGrid(topology=topo, size=(N, N, N), halo=(3, 3, 3); domain...)
 
 gas = DryEarth()
 
@@ -72,15 +72,10 @@ radiative_params = (Q₀=100.0, ℓ=100.0)
 
 ρe_forcing = Forcing(radiative_forcing_ρe, discrete_form=true, parameters=radiative_params)
 
-Q = 100 # Surface heat flux (W/m²)
-F_ρe = Q / gas.ρ.cₚ
-
-ρe_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Flux, 1e9))
-
 model = CompressibleModel(
-              architecture = CPU(),
+              architecture = GPU(),
                       grid = grid,
-                 advection = CenteredSecondOrder(),
+                 advection = WENO5(),
                      gases = gas,
     thermodynamic_variable = Energy(),
                    closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2),
@@ -111,7 +106,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=0.05second, stop_time=20minutes, iteration_interval=20,
+simulation = Simulation(model, Δt=0.02second, stop_time=1hour, iteration_interval=20,
                         progress=print_progress)
 
 fields = Dict(
