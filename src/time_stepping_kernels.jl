@@ -39,7 +39,7 @@ function compute_slow_source_terms!(slow_source_terms, arch, grid, thermodynamic
     tracer_kernel! = compute_slow_tracer_source_terms!(device(arch), workgroup, worksize)
     thermodynamic_variable_kernel! = compute_slow_thermodynamic_variable_source_terms!(device(arch), workgroup, worksize)
 
-    momentum_event = momentum_kernel!(slow_source_terms, grid, coriolis, closure, total_density, momenta, diffusivities, forcing, clock, dependencies=barrier)
+    momentum_event = momentum_kernel!(slow_source_terms, grid, coriolis, closure, total_density, momenta, tracers, diffusivities, forcing, clock, dependencies=barrier)
 
     events = [momentum_event]
 
@@ -59,12 +59,12 @@ function compute_slow_source_terms!(slow_source_terms, arch, grid, thermodynamic
     return nothing
 end
 
-@kernel function compute_slow_momentum_source_terms!(slow_source_terms, grid, coriolis, closure, total_density, momenta, diffusivities, forcing, clock)
+@kernel function compute_slow_momentum_source_terms!(slow_source_terms, grid, coriolis, closure, total_density, momenta, tracers, diffusivities, forcing, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds slow_source_terms.ρu[i, j, k] = ρu_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.u(i, j, k, grid, clock, nothing)
-    @inbounds slow_source_terms.ρv[i, j, k] = ρv_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.v(i, j, k, grid, clock, nothing)
-    @inbounds slow_source_terms.ρw[i, j, k] = ρw_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.w(i, j, k, grid, clock, nothing)
+    @inbounds slow_source_terms.ρu[i, j, k] = ρu_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρu(i, j, k, grid, clock, merge(momenta, tracers))
+    @inbounds slow_source_terms.ρv[i, j, k] = ρv_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρv(i, j, k, grid, clock, merge(momenta, tracers))
+    @inbounds slow_source_terms.ρw[i, j, k] = ρw_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρw(i, j, k, grid, clock, merge(momenta, tracers))
 end
 
 @kernel function compute_slow_tracer_source_terms!(S_ρc, grid, closure, tracer_index, total_density, ρc, diffusivities, forcing, clock)

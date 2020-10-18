@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.Models: AbstractModel, Clock, tracernames
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: zeroforcing, ContinuousForcing
 
 #####
 ##### Definition of a compressible model
@@ -52,11 +52,12 @@ function CompressibleModel(;
                    gravity = g_Earth,
               time_stepper = WickerSkamarockTimeStepper(architecture, grid, tracernames))
 
+    total_density = CellField(architecture, grid)
+
     gravity = float_type(gravity)
     tracers = TracerFields(tracernames, architecture, grid, boundary_conditions)
-    forcing = model_forcing(tracernames; forcing...)
     closure = with_tracers(tracernames, closure)
-    total_density = CellField(architecture, grid)
+    forcing = model_forcing(tracernames; forcing...)
 
     velocities = LazyVelocityFields(architecture, grid, total_density, momenta)
     lazy_tracers = LazyTracerFields(architecture, grid, total_density, tracers)
@@ -124,4 +125,43 @@ function TracerFields(names, arch, grid, bcs)
               CellField(arch, grid, TracerBoundaryConditions(grid))
               for c in tracer_names)
     return NamedTuple{tracer_names}(tracer_fields)
+end
+
+#####
+##### Utilities for constructing model forcing
+##### Should merge with incompressible version
+#####
+
+assumed_field_location(name) = name === :ρu ? (Face, Cell, Cell) :
+                               name === :ρv ? (Cell, Face, Cell) :
+                               name === :ρw ? (Cell, Cell, Face) :
+                                              (Cell, Cell, Cell)
+
+regularize_forcing(forcing, field_name, model_field_names) = forcing # fallback
+
+function regularize_forcing(forcing::Function, field_name, model_field_names)
+    X, Y, Z = assumed_field_location(field_name)
+    return ContinuousForcing{X, Y, Z}(forcing)
+end
+
+regularize_forcing(::Nothing, field_name, model_field_names) = zeroforcing
+
+function model_forcing(tracer_names; ρu=nothing, ρv=nothing, ρw=nothing, tracer_forcings...)
+
+    model_field_names = tuple(:ρu, :ρv, :ρw, tracer_names...)
+
+    ρu = regularize_forcing(ρu, :ρu, model_field_names)
+    ρv = regularize_forcing(ρv, :ρv, model_field_names)
+    ρw = regularize_forcing(ρw, :ρw, model_field_names)
+
+    # Build tuple of user-specified tracer forcings
+    specified_tracer_forcings_tuple = Tuple(regularize_forcing(f.second, f.first, model_field_names) for f in tracer_forcings)
+    specified_tracer_names = Tuple(f.first for f in tracer_forcings)
+
+    specified_forcings = NamedTuple{specified_tracer_names}(specified_tracer_forcings_tuple)
+
+    # Re-build with defaults for unspecified tracer forcing
+    tracer_forcings = with_tracers(tracer_names, specified_forcings, (name, initial_tuple) -> zeroforcing)
+
+    return merge((ρu=ρu, ρv=ρv, ρw=ρw), tracer_forcings)
 end
