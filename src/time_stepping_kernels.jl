@@ -2,6 +2,7 @@ using KernelAbstractions
 using Oceananigans.Utils
 using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type
 using Oceananigans.Fields: datatuple
+using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 
 @kernel function update_total_density!(total_density, grid, gases, tracers)
     i, j, k = @index(Global, NTuple)
@@ -133,6 +134,43 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds F_ρt[i, j, k] += ρt_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+end
+
+#####
+##### Calculating boundary tendency contributions
+#####
+
+function calculate_boundary_tendency_contributions!(source_terms, arch, momenta, tracers, clock, model_fields)
+
+    barrier = Event(device(arch))
+
+    events = []
+
+    # Momentum fields
+    momentum_source_terms = (source_terms.ρu, source_terms.ρv, source_terms.ρw)
+
+    for (ρϕ_source_term, ρϕ) in zip(momentum_source_terms, momenta)
+        x_bcs_event = apply_x_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    # Tracer fields
+    for (ρϕ_source_term, ρϕ) in zip(source_terms.tracers, tracers)
+        x_bcs_event = apply_x_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    events = filter(e -> typeof(e) <: Event, events)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
+
+    return nothing
 end
 
 #####
