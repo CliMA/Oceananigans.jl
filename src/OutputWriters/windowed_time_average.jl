@@ -75,6 +75,7 @@ JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
+```
 """
 AveragedTimeInterval(interval; window=interval, stride=1) =
     AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
