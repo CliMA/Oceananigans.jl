@@ -44,7 +44,7 @@ Model data can be saved to NetCDF files along with associated metadata. The NetC
 passing it a dictionary of (label, field) pairs and any indices for slicing if you don't want to save the full 3D field.
 
 ```@docs
-NetCDFOutputWriter
+NetCDFOutputWriter(::Any, ::Any)
 ```
 
 ## JLD2 output writer
@@ -60,7 +60,7 @@ Whenever output needs to be written, the functions will be called and the output
 of the function will be saved to the JLD2 file.
 
 ```@docs
-JLD2OutputWriter
+JLD2OutputWriter(::Any, ::Any)
 ```
 
 ## Time-averaged output
