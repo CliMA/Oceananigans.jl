@@ -287,12 +287,12 @@ nothing # hide
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add it to 
 # `simulation`.
 
-using Oceananigans.OutputWriters: JLD2OutputWriter
+using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
-                                                      time_interval = 2hour,
-                                                             prefix = "eady_turbulence",
-                                                              force = true)
+                                                      schedule = TimeInterval(2hour),
+                                                        prefix = "eady_turbulence",
+                                                         force = true)
 nothing # hide
 
 # All that's left is to press the big red button:

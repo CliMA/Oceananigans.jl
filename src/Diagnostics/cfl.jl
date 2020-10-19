@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 An object for computing the Courant-Freidrichs-Lewy (CFL) number.
 """
 struct CFL{D, S}
-            Δt :: D
+           Δt :: D
     timescale :: S
 end
 

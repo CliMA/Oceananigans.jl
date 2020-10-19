@@ -15,7 +15,6 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.Fields: gpufriendly
 
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device

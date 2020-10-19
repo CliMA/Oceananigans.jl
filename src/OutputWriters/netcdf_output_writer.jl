@@ -1,20 +1,26 @@
 using NCDatasets
 
 using Oceananigans.Fields
+using Oceananigans.Utils: show_schedule
 
 using Dates: now
 using Oceananigans.Grids: topology, halo_size
-using Oceananigans.Utils: validate_intervals, versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 
-xdim(::Type{Face}) = "xF"
-ydim(::Type{Face}) = "yF"
-zdim(::Type{Face}) = "zF"
+xdim(::Type{Face}) = ("xF",) 
+ydim(::Type{Face}) = ("yF",)
+zdim(::Type{Face}) = ("zF",)
 
-xdim(::Type{Cell}) = "xC"
-ydim(::Type{Cell}) = "yC"
-zdim(::Type{Cell}) = "zC"
+xdim(::Type{Cell}) = ("xC",)
+ydim(::Type{Cell}) = ("yC",)
+zdim(::Type{Cell}) = ("zC",)
 
-netcdf_spatial_dimensions(::Field{LX, LY, LZ}) where {LX, LY, LZ} = xdim(LX), ydim(LY), zdim(LZ)
+xdim(::Type{Nothing}) = ()
+ydim(::Type{Nothing}) = ()
+zdim(::Type{Nothing}) = ()
+
+netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
 
 const default_dimension_attributes = Dict(
     "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
@@ -34,38 +40,76 @@ const default_output_attributes = Dict(
     "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
 )
 
+add_schedule_metadata!(attributes, schedule) = nothing
+
+function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
+    global_attributes["schedule"] = "IterationInterval"
+    global_attributes["interval"] = schedule.interval
+    global_attributes["output iteration interval"] =
+        "Output was saved every $(schedule.interval) iteration(s)."
+
+    return nothing
+end
+
+function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
+    global_attributes["schedule"] = "TimeInterval"
+    global_attributes["interval"] = schedule.interval
+    global_attributes["output time interval"] =
+        "Output was saved every $(prettytime(schedule.interval))."
+    
+    return nothing
+end
+
+function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
+    global_attributes["schedule"] = "WallTimeInterval"
+    global_attributes["interval"] = schedule.interval
+    global_attributes["output time interval"] =
+        "Output was saved every $(prettytime(schedule.interval))."
+    
+    return nothing
+end
+
+function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
+    add_schedule_metadata!(global_attributes, TimeInterval(schedule))
+
+    global_attributes["time_averaging_window"] = schedule.window
+    global_attributes["time averaging window"] =
+        "Output was time averaged with a window size of $(prettytime(schedule.window))"
+
+    global_attributes["time_averaging_stride"] = schedule.stride
+    global_attributes["time averaging stride"] =
+        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."	
+
+    return nothing
+end
+
 """
     NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, I, T, S, A} <: AbstractOutputWriter
-              filepath :: String
-               dataset :: D
-               outputs :: O
-    iteration_interval :: I
-         time_interval :: T
-                  mode :: String
-          field_slicer :: S
-            array_type :: A
-              previous :: Float64
-               verbose :: Bool
+mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
+        filepath :: String
+         dataset :: D
+         outputs :: O
+        schedule :: T
+            mode :: String
+    field_slicer :: S
+      array_type :: A
+        previous :: Float64
+         verbose :: Bool
 end
 
 """
-function NetCDFOutputWriter(model, outputs; filepath,
-                               iteration_interval = nothing,
-                                    time_interval = nothing,
-                            time_averaging_window = nothing,
-                            time_averaging_stride = 1,
-                                       array_type = Array{Float32},
-                                     field_slicer = FieldSlicer(),
-                                global_attributes = Dict(),
-                                output_attributes = Dict(),
-                                       dimensions = Dict(),
-                                             mode = "c",
-                                      compression = 0,
-                                          verbose = false)
+function NetCDFOutputWriter(model, outputs; filepath, schedule
+                                   array_type = Array{Float32},
+                                 field_slicer = FieldSlicer(),
+                            global_attributes = Dict(),
+                            output_attributes = Dict(),
+                                   dimensions = Dict(),
+                                         mode = "c",
+                                  compression = 0,
+                                      verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
@@ -77,47 +121,31 @@ Keyword arguments
 =================
 - `filepath` (required): Filepath to save output to.
 
-- `iteration_interval`: Save output every `n` model iterations.
-
-- `time_interval`: Save output every `t` units of model clock time.
-
-- `time_averaging_window`: Specifies a time window over which each member of `output` is averaged before    
-  being saved. For this each member of output is converted to `Oceananigans.Diagnostics.WindowedTimeAverage`.
-  Default `nothing` indicates no averaging.
-
-- `time_averaging_stride`: Specifies a iteration 'stride' between the calculation of each `output` during
-  time-averaging. Longer strides means that output is calculated less frequently, and that the resulting
-  time-average is faster to compute, but less accurate. Default: 1.
+- `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-  Default: Array{Float32}.
+                Default: Array{Float32}.
 
 - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
-  Has no effect on output that is not a field. `field_slicer = nothing` means
-  no slicing occurs, so that all field data, including halo regions, is saved.
-  Default: FieldSlicer(), which slices halo regions.
+                  Has no effect on output that is not a field. `field_slicer = nothing` means
+                  no slicing occurs, so that all field data, including halo regions, is saved.
+                  Default: `FieldSlicer()`, which slices halo regions.
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
-  defaults are provided for velocities, buoyancy, temperature, and salinity).
+                       defaults are provided for velocities, buoyancy, temperature, and salinity;
+                       otherwise `output_attributes` *must* be user-provided).
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (useful for function outputs
-  as field dimensions can be inferred).
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
 - `with_halos`: Include the halo regions in the grid coordinates and output fields
-  (default: `false`).
+                (default: `false`).
 
 - `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
-  documentation for more information on the `mode` option.
+          documentation for more information on the `mode` option.
 
 - `compression`: Determines the compression level of data (0-9, default 0)
-
-- `slice_kwargs`: `dimname = Union{OrdinalRange, Integer}` will slice the dimension `dimname`.
-  All other keywords are ignored. E.g. `xC = 3:10` will only produce output along the dimension
-  `xC` between indices 3 and 10 for all fields with `xC` as one of their dimensions. `xC = 1`
-  is treated like `xC = 1:1`. Multiple dimensions can be sliced in one call. Not providing slices
-  writes output over the entire domain (including halo regions if `with_halos=true`).
 
 Examples
 ========
@@ -136,26 +164,49 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="fields.nc", time_interval=60)
+    NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
 
 # output
-NetCDFOutputWriter (time_interval=60): fields.nc
+NetCDFOutputWriter scheduled on TimeInterval(1 minute):
+├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
-                       time_interval=60, field_slicer=FieldSlicer(k=grid.Nz))
+                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
-NetCDFOutputWriter (time_interval=60): surface_xy_slice.nc
+NetCDFOutputWriter scheduled on TimeInterval(1 minute):
+├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 2 outputs: ["T", "u"]
+├── 2 outputs: ["T", "u"]
+├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
+└── array type: Array{Float32}
 ```
 
-Writing a scalar, profile, and slice to NetCDF:
+```jldoctest netcdf1
+simulation.output_writers[:averaged_profile_writer] =
+    NetCDFOutputWriter(model, fields,
+                       filepath = "averaged_z_profile.nc",
+                       schedule = AveragedTimeInterval(60, window=20),
+                       field_slicer = FieldSlicer(i=1, j=1))
+
+# output
+NetCDFOutputWriter scheduled on TimeInterval(1 minute):
+├── filepath: averaged_z_profile.nc
+├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
+└── array type: Array{Float32}
+```
+
+`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
@@ -187,41 +238,27 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       iteration_interval=1, filepath="things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filepath="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
-NetCDFOutputWriter (iteration_interval=1): things.nc
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-└── 3 outputs: ["profile", "slice", "scalar"]
+├── 3 outputs: ["profile", "slice", "scalar"]
+├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+└── array type: Array{Float32}
 ```
 """
-function NetCDFOutputWriter(model, outputs; filepath,
-                               iteration_interval = nothing,
-                                    time_interval = nothing,
-                            time_averaging_window = nothing,
-                            time_averaging_stride = 1,
-                                       array_type = Array{Float32},
-                                     field_slicer = FieldSlicer(),
-                                global_attributes = Dict(),
-                                output_attributes = Dict(),
-                                       dimensions = Dict(),
-                                             mode = "c",
-                                      compression = 0,
-                                          verbose = false)
-
-    validate_intervals(iteration_interval, time_interval)
-
-    # Convert each output to WindowedTimeAverage if time_averaging_window is specified
-    if !isnothing(time_averaging_window)
-
-        !isnothing(iteration_interval) && error("Cannot specify iteration_interval with time_averaging_window.")
-
-        outputs = Dict(name => WindowedTimeAverage(outputs[name], model, time_interval = time_interval,
-                                               time_window = time_averaging_window, stride = time_averaging_stride,
-                                               field_slicer = field_slicer)
-                   for name in keys(outputs))
-    end
+function NetCDFOutputWriter(model, outputs; filepath, schedule,
+                                   array_type = Array{Float32},
+                                 field_slicer = FieldSlicer(),
+                            global_attributes = Dict(),
+                            output_attributes = Dict(),
+                                   dimensions = Dict(),
+                                         mode = "c",
+                                  compression = 0,
+                                      verbose = false)
 
     # Ensure we can add any kind of metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
@@ -231,35 +268,12 @@ function NetCDFOutputWriter(model, outputs; filepath,
     global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
     global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
 
-    # Add useful metadata about intervals and time averaging
-    if isnothing(time_averaging_window)
-        if !isnothing(iteration_interval)
-            global_attributes["iteration_interval"] = iteration_interval
-            global_attributes["output iteration interval"] =
-                "Output was saved every $iteration_interval iteration(s)."
-        end
+    add_schedule_metadata!(global_attributes, schedule)
 
-        if !isnothing(time_interval)
-            global_attributes["time_interval"] = time_interval
-            global_attributes["output time interval"] =
-                "Output was saved every $(prettytime(time_interval))."
-        end
-    else
-        global_attributes["time_interval"] = time_interval
-        global_attributes["output time interval"] =
-            "Output was time averaged and saved every $(prettytime(time_interval))."
-
-        global_attributes["time_averaging_window"] = time_averaging_window
-        global_attributes["time averaging window"] =
-            "Output was time averaged with a window size of $(prettytime(time_averaging_window))"
-
-        if time_averaging_stride != 1
-            global_attributes["time_averaging_stride"] = time_averaging_stride
-            global_attributes["time averaging stride"] =
-                "Output was time averaged with a stride of $time_averaging_stride iteration(s) within the time averaging window."	
-        end
-    end
-
+    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if 
+    # schedule::AveragedTimeInterval
+    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
+    
     grid = model.grid
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -296,28 +310,44 @@ function NetCDFOutputWriter(model, outputs; filepath,
             end
         end
 
-        # Initiates empty variables for fields from the user-supplied `outputs`.
         for (name, output) in outputs
-            if output isa Field
-                defVar(dataset, name, eltype(array_type), (netcdf_spatial_dimensions(output)..., "time"),
-                       compression=compression, attrib=output_attributes[name])
-            elseif output isa WindowedTimeAverage && output.operand isa Field
-                defVar(dataset, name, eltype(array_type), (netcdf_spatial_dimensions(output.operand)..., "time"),
-                       compression=compression, attrib=output_attributes[name])
-            else
-                name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
-
-                defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-                       compression=compression, attrib=output_attributes[name])
-            end
+            attributes = try output_attributes[name]; catch; Dict(); end
+            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
         end
 
         sync(dataset)
     end
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, iteration_interval, time_interval,
-                              mode, field_slicer, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
 end
+
+#####
+##### Variable definition
+#####
+
+""" Defines empty variables for 'custom' user-supplied `output`. """
+function define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions)
+    name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
+
+    defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
+           compression=compression, attrib=output_attributes)
+
+    return nothing
+end
+
+""" Defines empty field variable. """
+define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
+    defVar(dataset, name, eltype(array_type),
+           (netcdf_spatial_dimensions(output)..., "time"),
+           compression=compression, attrib=output_attributes)
+
+""" Defines empty field variable for `WindowedTimeAverage`s over fields. """
+define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
+    define_output_variable!(dataset, output.operand, args...)
+
+#####
+##### Write output
+#####
 
 Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filepath, "a")
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
@@ -347,12 +377,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
         verbose && (t0′ = time_ns())
 
         data = fetch_and_convert_output(output, model, ow)
-
-        if output isa AveragedField
-            data = dropdims(data, dims=output.dims)
-        elseif output isa WindowedTimeAverage && output.operand isa AveragedField
-            data = dropdims(data, dims=output.operand.dims)
-        end
+        data = drop_averaged_dims(output, data)
 
         colons = Tuple(Colon() for _ in 1:ndims(data))
         ds[name][colons..., time_index] = data
@@ -360,7 +385,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
         if verbose
             # Time after computing this output.
             t1′ = time_ns()
-            @info "Computing $name done: time=$(prettytime((t1′-t0′)/1e9))"
+            @info "Computing $name done: time=$(prettytime((t1′-t0′) / 1e9))"
         end
     end
 
@@ -378,16 +403,24 @@ function write_output!(ow::NetCDFOutputWriter, model)
     return nothing
 end
 
-function Base.show(io::IO, ow::NetCDFOutputWriter)
-    freq_int = isnothing(ow.iteration_interval) && isnothing(ow.time_interval) ? "" :
-               isnothing(ow.iteration_interval) ? "(time_interval=$(ow.time_interval))" :
-               isnothing(ow.time_interval)      ? "(iteration_interval=$(ow.iteration_interval))" :
-               "(iteration_interval=$(ow.iteration_interval), time_interval=$(ow.time_interval))"
+drop_averaged_dims(output, data) = data # fallback
+drop_averaged_dims(output::AveragedField, data) = dropdims(data, dims=output.dims)
+drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdims(data, dims=output.operand.dims)
 
+#####
+##### Show
+#####
+
+function Base.show(io::IO, ow::NetCDFOutputWriter)
     dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
                  for dim in keys(ow.dataset.dim)])[1:end-2]
 
-    print(io, "NetCDFOutputWriter $freq_int: $(ow.filepath)\n",
-        "├── dimensions: $dims\n",
-        "└── $(length(ow.outputs)) outputs: $(keys(ow.outputs))")
+    averaging_schedule = output_averaging_schedule(ow)
+
+    print(io, "NetCDFOutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+        "├── filepath: $(ow.filepath)", '\n',
+        "├── dimensions: $dims", '\n',
+        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
+        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "└── array type: ", show_array_type(ow.array_type))
 end
