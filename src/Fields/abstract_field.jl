@@ -9,7 +9,6 @@ using Oceananigans.Grids: interior_indices, interior_parent_indices
 import Oceananigans: location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
-import Oceananigans.Grids: interior_parent_x_indices, interior_parent_y_indices, interior_parent_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
 
@@ -151,10 +150,6 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::AbstractField) = parent(data(f))
-
-@inline interior_parent_x_indices(f::AbstractField{X, Y, Z}) where {X, Y, Z} = interior_parent_x_indices(X, f.grid) 
-@inline interior_parent_y_indices(f::AbstractField{X, Y, Z}) where {X, Y, Z} = interior_parent_y_indices(Y, f.grid) 
-@inline interior_parent_z_indices(f::AbstractField{X, Y, Z}) where {X, Y, Z} = interior_parent_z_indices(Z, f.grid) 
 
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::AbstractField{X, Y, Z}) where {X, Y, Z} =

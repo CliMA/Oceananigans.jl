@@ -1,7 +1,7 @@
 using Adapt
 using Statistics
 using Oceananigans.Grids
-using Oceananigans.Grids: interior_parent_x_indices, interior_parent_y_indices, interior_parent_z_indices
+using Oceananigans.Grids: interior_parent_indices
 
 """
     struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
@@ -15,7 +15,8 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     operand :: O
      status :: S
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand; recompute_safely=true) where {X, Y, Z}
+    function AveragedField{X, Y, Z}(data, grid, dims, operand;
+                                    recompute_safely=true) where {X, Y, Z}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
@@ -34,6 +35,9 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     end
 end
 
+operand_averaging_indices(avg_loc, op_loc, topo, N, H) = Colon() # fallback when dimension is non-reduced
+operand_averaging_indices(::Type{Nothing}, op_loc, topo, N, H) = interior_parent_indices(op_loc, topo, N, H)
+
 """
     AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
 
@@ -50,7 +54,8 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
         recompute_safely = false
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand, recompute_safely=recompute_safely)
+    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand,
+                                                 recompute_safely=recompute_safely)
 end
 
 """
@@ -64,13 +69,16 @@ function compute!(avg::AveragedField)
     # Omit halo regions from operand on averaged dimension
     operand_parent = parent(avg.operand)
 
-    i = 1 ∈ avg.dims ? interior_parent_x_indices(avg) : Colon()
-    j = 2 ∈ avg.dims ? interior_parent_y_indices(avg) : Colon()
-    k = 3 ∈ avg.dims ? interior_parent_z_indices(avg) : Colon()
+    Xa, Ya, Za = location(avg)
+    Xo, Yo, Zo = location(avg.operand)
 
-    sliced_operand_parent = @views operand_parent[i, j, k]
+    i = operand_averaging_indices(Xa, Xo, topology(avg.grid, 1), avg.grid.Nx, avg.grid.Hx)
+    j = operand_averaging_indices(Ya, Yo, topology(avg.grid, 2), avg.grid.Ny, avg.grid.Hy)
+    k = operand_averaging_indices(Za, Zo, topology(avg.grid, 3), avg.grid.Nz, avg.grid.Hz)
 
-    mean!(avg.data.parent, sliced_operand_parent)
+    operand_sans_halos = view(operand_parent, i, j, k)
+
+    mean!(avg.data.parent, operand_sans_halos)
 
     return nothing
 end
