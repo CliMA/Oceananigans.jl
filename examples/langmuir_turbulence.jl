@@ -215,7 +215,7 @@ using Oceananigans.Utils: minute
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output, time_interval = 2minute,
+    JLD2OutputWriter(model, fields_to_output, schedule=TimeInterval(2minute),
                      prefix = "langmuir_turbulence", force = true)
 nothing # hide
 

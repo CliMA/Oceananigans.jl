@@ -59,7 +59,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                                           dir = dir, force = true,
                                                           field_slicer = nothing,
                                                           prefix = @sprintf("forced_free_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
-                                                          time_interval = stop_iteration * Δt / 2)
+                                                          schedule = TimeInterval(stop_iteration * Δt / 2))
 
     return simulation
 end
@@ -99,7 +99,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                                           dir = dir, force = true,
                                                           field_slicer = nothing,
                                                           prefix = @sprintf("forced_free_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
-                                                          time_interval=stop_iteration * Δt / 2)
+                                                          schedule = TimeInterval(stop_iteration * Δt / 2))
 
     return simulation
 end
