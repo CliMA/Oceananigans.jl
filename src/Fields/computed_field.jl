@@ -2,7 +2,6 @@ using Adapt
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
-using Oceananigans.BoundaryConditions: zero_halo_regions!
 
 """
     struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}

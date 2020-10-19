@@ -17,7 +17,7 @@ export
 
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
 
-    fill_halo_regions!, zero_halo_regions!
+    fill_halo_regions!
 
 using CUDA
 using KernelAbstractions
@@ -33,8 +33,6 @@ include("boundary_condition.jl")
 include("coordinate_boundary_conditions.jl")
 include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")
-
-include("zero_halo_regions.jl")
 
 include("fill_halo_regions.jl")
 include("fill_halo_regions_value_gradient.jl")

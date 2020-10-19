@@ -116,6 +116,10 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(::Type{Nothing}, topo, N, H) = 1:1
 
+@inline interior_parent_x_indices(loc, grid) = interior_parent_indices(loc, topology(grid, 1), grid.Nx)
+@inline interior_parent_y_indices(loc, grid) = interior_parent_indices(loc, topology(grid, 2), grid.Ny)
+@inline interior_parent_z_indices(loc, grid) = interior_parent_indices(loc, topology(grid, 3), grid.Nz)
+
 # All indices including halos.
 @inline all_indices(loc, topo, N, H) = 1-H:N+H
 @inline all_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1-H:N+1+H
