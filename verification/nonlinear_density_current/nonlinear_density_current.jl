@@ -31,7 +31,7 @@ const hPa = 100.0
 Lx = 51.2km
 Lz = 6.4km
 
-Δ = 100.0  # grid spacing [m]
+Δ = 20.0  # grid spacing [m]
 
 Nx = Int(Lx/Δ)
 Ny = 1
@@ -46,6 +46,7 @@ tvar = Energy()
 model = CompressibleModel(
                       grid = grid,
                      gases = DryEarth(),
+ 	         advection = WENO5(),
     thermodynamic_variable = tvar,
                    closure = IsotropicDiffusivity(ν=75.0, κ=75.0)
 )
@@ -118,7 +119,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=0.1, stop_time=2000, iteration_interval=50,
+simulation = Simulation(model, Δt=0.02, stop_time=1000, iteration_interval=50,
                         progress=print_progress, parameters=(ρᵢ, ρeᵢ, ρsᵢ))
 
 fields = Dict(

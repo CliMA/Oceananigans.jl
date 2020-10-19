@@ -46,17 +46,17 @@ for n in 1:length(ds["time"])
     fig.colorbar(im, ax=ax_w, label="m/s")
 
     ax_ρ = axes[3, 1]
-    im = ax_ρ.pcolormesh(xC, zC, ρ - ρ₀, cmap=cmocean.cm.dense)
+    im = ax_ρ.pcolormesh(xC, zC, ρ - ρ₀, cmap=cmocean.cm.dense, vmin=0, vmax=0.04)
     ax_ρ.set_xlabel("x (km)")
     ax_ρ.set_title("ρ′(x, z)")
     fig.colorbar(im, ax=ax_ρ, label="kg/m³")
 
     ax_e = axes[4, 1]
-    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal)
+    im = ax_e.pcolormesh(xC, zC, (ρe .- ρe₀) ./ ρ, cmap=cmocean.cm.thermal, vmin=-5000, vmax=0)
     ax_e.set_xlabel("x (km)")
     ax_e.set_ylabel("z (km)")
     ax_e.set_title("e′(x, z)")
-    fig.colorbar(im, ax=ax_e, extend="max", label="J/kg")
+    fig.colorbar(im, ax=ax_e, label="J/kg")
 
     plt.xlim(-25.6, 25.6)
     plt.ylim(0, 6.4)
