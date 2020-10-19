@@ -2,6 +2,7 @@ using KernelAbstractions
 using Oceananigans.Utils
 using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type
 using Oceananigans.Fields: datatuple
+using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 
 @kernel function update_total_density!(total_density, grid, gases, tracers)
     i, j, k = @index(Global, NTuple)
@@ -38,15 +39,16 @@ function compute_slow_source_terms!(slow_source_terms, arch, grid, thermodynamic
     tracer_kernel! = compute_slow_tracer_source_terms!(device(arch), workgroup, worksize)
     thermodynamic_variable_kernel! = compute_slow_thermodynamic_variable_source_terms!(device(arch), workgroup, worksize)
 
-    momentum_event = momentum_kernel!(slow_source_terms, grid, coriolis, closure, total_density, momenta, diffusivities, forcing, clock, dependencies=barrier)
+    momentum_event = momentum_kernel!(slow_source_terms, grid, coriolis, closure, total_density, momenta, tracers, diffusivities, forcing, clock, dependencies=barrier)
 
     events = [momentum_event]
 
     for (tracer_index, ρc_name) in enumerate(propertynames(tracers))
         ρc   = getproperty(tracers, ρc_name)
         S_ρc = getproperty(slow_source_terms.tracers, ρc_name)
+        forcing_ρc = getproperty(forcing, ρc_name)
 
-        tracer_event = tracer_kernel!(S_ρc, grid, closure, tracer_index, total_density, ρc, diffusivities, forcing, clock, dependencies=barrier)
+        tracer_event = tracer_kernel!(S_ρc, grid, closure, tracer_index, total_density, ρc, momenta, tracers, diffusivities, forcing_ρc, clock, dependencies=barrier)
         push!(events, tracer_event)
     end
 
@@ -58,18 +60,18 @@ function compute_slow_source_terms!(slow_source_terms, arch, grid, thermodynamic
     return nothing
 end
 
-@kernel function compute_slow_momentum_source_terms!(slow_source_terms, grid, coriolis, closure, total_density, momenta, diffusivities, forcing, clock)
+@kernel function compute_slow_momentum_source_terms!(slow_source_terms, grid, coriolis, closure, total_density, momenta, tracers, diffusivities, forcing, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds slow_source_terms.ρu[i, j, k] = ρu_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.u(i, j, k, grid, clock, nothing)
-    @inbounds slow_source_terms.ρv[i, j, k] = ρv_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.v(i, j, k, grid, clock, nothing)
-    @inbounds slow_source_terms.ρw[i, j, k] = ρw_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.w(i, j, k, grid, clock, nothing)
+    @inbounds slow_source_terms.ρu[i, j, k] = ρu_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρu(i, j, k, grid, clock, merge(momenta, tracers))
+    @inbounds slow_source_terms.ρv[i, j, k] = ρv_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρv(i, j, k, grid, clock, merge(momenta, tracers))
+    @inbounds slow_source_terms.ρw[i, j, k] = ρw_slow_source_term(i, j, k, grid, coriolis, closure, total_density, momenta, diffusivities) + forcing.ρw(i, j, k, grid, clock, merge(momenta, tracers))
 end
 
-@kernel function compute_slow_tracer_source_terms!(S_ρc, grid, closure, tracer_index, total_density, ρc, diffusivities, forcing, clock)
+@kernel function compute_slow_tracer_source_terms!(S_ρc, grid, closure, tracer_index, total_density, ρc, momenta, tracers, diffusivities, forcing, clock)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds S_ρc[i, j, k] = ρc_slow_source_term(i, j, k, grid, closure, tracer_index, total_density, ρc, diffusivities) # + forcing_ρc(i, j, k, grid, clock, nothing)
+    @inbounds S_ρc[i, j, k] = ρc_slow_source_term(i, j, k, grid, closure, tracer_index, total_density, ρc, diffusivities) + forcing(i, j, k, grid, clock, merge(momenta, tracers))
 end
 
 @kernel function compute_slow_thermodynamic_variable_source_terms!(S_ρt, grid, thermodynamic_variable, gases, gravity, closure, total_density, momenta, tracers, diffusivities)
@@ -133,6 +135,43 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds F_ρt[i, j, k] += ρt_fast_source_term(i, j, k, grid, thermodynamic_variable, gases, gravity, total_density, momenta, tracers)
+end
+
+#####
+##### Calculating boundary tendency contributions
+#####
+
+function calculate_boundary_tendency_contributions!(source_terms, arch, momenta, tracers, clock, model_fields)
+
+    barrier = Event(device(arch))
+
+    events = []
+
+    # Momentum fields
+    momentum_source_terms = (source_terms.ρu, source_terms.ρv, source_terms.ρw)
+
+    for (ρϕ_source_term, ρϕ) in zip(momentum_source_terms, momenta)
+        x_bcs_event = apply_x_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    # Tracer fields
+    for (ρϕ_source_term, ρϕ) in zip(source_terms.tracers, tracers)
+        x_bcs_event = apply_x_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(ρϕ_source_term, ρϕ, arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    events = filter(e -> typeof(e) <: Event, events)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
+
+    return nothing
 end
 
 #####

@@ -19,7 +19,7 @@ function SlowSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)
-    tracers = TracerFields(arch, grid, tracernames)
+    tracers = TracerFields(tracernames, arch, grid, ())
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
 
@@ -27,6 +27,6 @@ function FastSourceTermFields(arch, grid, tracernames)
     ρu = XFaceField(arch, grid)
     ρv = YFaceField(arch, grid)
     ρw = ZFaceField(arch, grid)
-    tracers = TracerFields(arch, grid, tracernames)
+    tracers = TracerFields(tracernames, arch, grid, ())
     return (ρu = ρu, ρv = ρv, ρw = ρw, tracers = tracers)
 end
