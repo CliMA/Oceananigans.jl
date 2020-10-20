@@ -1,6 +1,8 @@
 using Oceananigans.Utils: initialize_schedule!
-using Oceananigans.OutputWriters: WindowedTimeAverage, pickup_filepath
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+
+import Oceananigans.OutputWriters: checkpoint_path
 
 # Simulations are for running
 
@@ -113,18 +115,19 @@ function run!(sim; pickup=false)
     while !stop(sim)
         time_before = time()
 
-        # Evaluate all diagnostics and write output at first iteration
+        # Evaluate all diagnostics, and then write all output at first iteration
         if clock.iteration == 0
             [run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [write_output!(out, sim.model)    for out  in values(sim.output_writers)]
+            [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
         end
 
         for n in 1:sim.iteration_interval
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, get_Δt(sim.Δt), euler=euler)
 
-            [   diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag   in values(sim.diagnostics)    ]
-            [ writer.schedule(model) && write_output!(writer, sim.model) for writer in values(sim.output_writers) ]
+            # Run diagnostics, then write output
+            [  diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+            [writer.schedule(model) && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
         end
 
         sim.progress(sim)
@@ -136,4 +139,37 @@ function run!(sim; pickup=false)
     end
 
     return nothing
+end
+
+#####
+##### Util for "picking up" a simulation from a checkpoint
+#####
+
+""" Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
+checkpoint_path(filepath::AbstractString, checkpointers) = filepath
+
+function checkpoint_path(pickup, checkpointers)
+    length(checkpointers) > 1 && error("Cannot use pickup=true or pickup::Int with multiple checkpointers!")
+    return checkpoint_path(pickup, first(checkpointers))
+end
+
+"""
+    checkpoint_path(pickup::Bool, checkpointer)
+
+For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
+`checkpointer.prefix` and return the path to the file whose name contains
+the largest iteration.
+"""
+function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+    filepaths = glob(checkpoint_superprefix(checkpointer) * "*.jld2", checkpointer.dir)
+    filenames = basename.(filepaths)
+
+    # Parse filenames to find latest checkpointed iteration
+    leading = length(checkpoint_superprefix(checkpointer))
+    trailing = 5 # length(".jld2")
+    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
+
+    latest_iteration, idx = findmax(iterations)
+
+    return filepaths[idx]
 end

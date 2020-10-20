@@ -88,14 +88,19 @@ function Checkpointer(model; schedule,
     return Checkpointer(schedule, dir, prefix, properties, force, verbose)
 end
 
-superprefix(prefix) = prefix * "_iteration"
+""" Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
+checkpoint_superprefix(prefix) = prefix * "_iteration"
 
-""" Returns the path to the `checkpointer` file associated with model `iteration`. """
-path_to_checkpoint(iteration::Int, checkpointer) =
-    joinpath(checkpointer.dir, superprefix(checkpointer.prefix) * string(iteration) ".jld2")
+""" 
+    checkpoint_path(iteration::Int, c::Checkpointer)
+
+Returns the path to the `c`heckpointer file associated with model `iteration`.
+"""
+checkpoint_path(iteration::Int, c::Checkpointer) =
+    joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
 
 function write_output!(c::Checkpointer, model)
-    filepath = path_to_checkpoint(model.clock.iteration, c)
+    filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
 
     t1 = time_ns()
@@ -223,14 +228,14 @@ end
 #####
 
 """
-    set!(model, path_to_checkpoint::AbstractString)
+    set!(model, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
-`model.timestepper.G⁻` to the checkpointer at `path_to_checkpoint`.
+`model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
 function set!(model, filepath::AbstractString)
 
-    jldopen(path_to_checkpoint, "r") do file
+    jldopen(filepath, "r") do file
 
         # Validate the grid
         checkpointed_grid = file["grid"]
@@ -275,39 +280,4 @@ function set!(model, filepath::AbstractString)
     end
 
     return nothing
-end
-
-#####
-##### Util for "picking up" a simulation from a checkpoint
-#####
-
-
-pickup_filepath(filepath::AbstractString, checkpointers) = filepath
-
-function pickup_filepath(pickup, checkpointers)
-    length(checkpointers) > 1 && error("Cannot use pickup=true or pickup::Int with multiple checkpointers!")
-    return pickup_filepath(pickup, first(checkpointers))
-end
-
-pickup_filepath(iteration::Int, checkpointer::Checkpointer) = path_to_checkpoint(iteration, checkpointer)
-
-"""
-    pickup_filepath(pickup, checkpointer)
-
-Parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
-"""
-function pickup_filepath(pickup, checkpointer::Checkpointer)
-    filepaths = glob(superprefix(checkpointer) * "*.jld2", checkpointer.dir)
-    filenames = basename.(filepaths)
-
-    # Parse filenames to find latest checkpointed iteration
-    leading = length(superprefix(checkpointer))
-    trailing = 5 # length(".jld2")
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
-
-    latest_iteration, idx = findmax(iterations)
-
-    return filepaths[idx]
 end
