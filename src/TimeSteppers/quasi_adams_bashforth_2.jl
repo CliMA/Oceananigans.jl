@@ -37,21 +37,21 @@ Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
 function time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
-    precomputations!(model)
+    model.clock.iteration == 0 && update_state!(model) #
     
     calculate_tendencies!(model)
 
-    # Full step for tracers, fractional step for velocities.
-    ab2_step!(model, Δt, χ)
+    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
 
     calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
 
-    store_tendencies!(model)
-
     tick!(model.clock, Δt)
+    update_state!(model)
+    store_tendencies!(model)
 
     return nothing
 end

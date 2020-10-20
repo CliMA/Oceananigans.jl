@@ -1,9 +1,9 @@
 """
-    precomputations!(model)
+    update_state!(model)
 
-Perform precomputations necessary for an explicit timestep or substep.
+Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic pressure) to the current model state.
 """
-function precomputations!(model)
+function update_state!(model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 

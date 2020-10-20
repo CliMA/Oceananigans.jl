@@ -50,6 +50,8 @@ stage.
 """
 function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
+    model.clock.iteration == 0 && update_state!(model)
+
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
     γ³ = model.timestepper.γ³
@@ -65,7 +67,6 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     # First stage
     #
     
-    precomputations!(model)
     calculate_tendencies!(model)
 
     rk3_substep!(model, Δt, γ¹, nothing)
@@ -74,13 +75,13 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     pressure_correct_velocities!(model, first_stage_Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
+    store_tendencies!(model)
+    update_state!(model)
 
     #
     # Second stage
     #
 
-    store_tendencies!(model)
-    precomputations!(model)
     calculate_tendencies!(model)
 
     rk3_substep!(model, Δt, γ², ζ²)
@@ -89,13 +90,13 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     pressure_correct_velocities!(model, second_stage_Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
+    store_tendencies!(model)
+    update_state!(model)
 
     #
     # Third stage
     #
 
-    store_tendencies!(model)
-    precomputations!(model)
     calculate_tendencies!(model)
     
     rk3_substep!(model, Δt, γ³, ζ³)
@@ -104,6 +105,7 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
+    update_state!(model)
 
     return nothing
 end
