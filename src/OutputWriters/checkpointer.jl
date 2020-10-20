@@ -1,3 +1,4 @@
+using Glob
 import Oceananigans.Fields: set!
 
 using Oceananigans.Fields: offset_data
@@ -87,8 +88,14 @@ function Checkpointer(model; schedule,
     return Checkpointer(schedule, dir, prefix, properties, force, verbose)
 end
 
+superprefix(prefix) = prefix * "_iteration"
+
+""" Returns the path to the `checkpointer` file associated with model `iteration`. """
+path_to_checkpoint(iteration::Int, checkpointer) =
+    joinpath(checkpointer.dir, superprefix(checkpointer.prefix) * string(iteration) ".jld2")
+
 function write_output!(c::Checkpointer, model)
-    filepath = joinpath(c.dir, c.prefix * "_iteration" * string(model.clock.iteration) * ".jld2")
+    filepath = path_to_checkpoint(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
 
     t1 = time_ns()
@@ -139,8 +146,6 @@ const u_location = (Face, Cell, Cell)
 const v_location = (Cell, Face, Cell)
 const w_location = (Cell, Cell, Face)
 const c_location = (Cell, Cell, Cell)
-
-
 
 """
     restore_from_checkpoint(filepath; kwargs=Dict())
@@ -218,18 +223,19 @@ end
 #####
 
 """
-    set!(model, checkpointer_filepath::AbstractString)
+    set!(model, path_to_checkpoint::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
-`model.timestepper.G⁻` to the checkpointer at `checkpointer_filepath`.
+`model.timestepper.G⁻` to the checkpointer at `path_to_checkpoint`.
 """
 function set!(model, filepath::AbstractString)
 
-    jldopen(checkpointer_filepath, "r") do file
+    jldopen(path_to_checkpoint, "r") do file
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-        model.grid == checkpointed_grid || error("The grid associated with $filepath and model.grid are not the same!")
+        model.grid == checkpointed_grid ||
+            error("The grid associated with $filepath and model.grid are not the same!")
 
         # Set model fields and tendency fields
         model_fields = merge(model.velocities, model.tracers)
@@ -271,3 +277,37 @@ function set!(model, filepath::AbstractString)
     return nothing
 end
 
+#####
+##### Util for "picking up" a simulation from a checkpoint
+#####
+
+
+pickup_filepath(filepath::AbstractString, checkpointers) = filepath
+
+function pickup_filepath(pickup, checkpointers)
+    length(checkpointers) > 1 && error("Cannot use pickup=true or pickup::Int with multiple checkpointers!")
+    return pickup_filepath(pickup, first(checkpointers))
+end
+
+pickup_filepath(iteration::Int, checkpointer::Checkpointer) = path_to_checkpoint(iteration, checkpointer)
+
+"""
+    pickup_filepath(pickup, checkpointer)
+
+Parse the filenames in `checkpointer.dir` associated with
+`checkpointer.prefix` and return the path to the file whose name contains
+the largest iteration.
+"""
+function pickup_filepath(pickup, checkpointer::Checkpointer)
+    filepaths = glob(superprefix(checkpointer) * "*.jld2", checkpointer.dir)
+    filenames = basename.(filepaths)
+
+    # Parse filenames to find latest checkpointed iteration
+    leading = length(superprefix(checkpointer))
+    trailing = 5 # length(".jld2")
+    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
+
+    latest_iteration, idx = findmax(iterations)
+
+    return filepaths[idx]
+end

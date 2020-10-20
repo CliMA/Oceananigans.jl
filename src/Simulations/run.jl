@@ -1,5 +1,5 @@
 using Oceananigans.Utils: initialize_schedule!
-using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.OutputWriters: WindowedTimeAverage, pickup_filepath
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 
 # Simulations are for running
@@ -62,14 +62,41 @@ ab2_or_rk3_time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepp
 ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
 
 """
-    run!(simulation)
+    run!(simulation; pickup=false)
 
 Run a `simulation` until one of the stop criteria evaluates to true. The simulation
 will then stop.
+
+## Picking simulations up from a checkpoint
+
+Simulations will be "picked up" from a checkpoint if `pickup` is either `true`, a string,
+or an integer greater than 0.
+
+Picking up a simulation sets field and tendency data to the specified checkpoint.
+while leaving all other model properties unchanged.
+
+Possible values for `pickup` are:
+
+    * `pickup=true` will pick a simulation up from the latest checkpoint associated with
+      the `Checkpointer` in simulation.output_writers`. 
+
+    * `pickup=iteration::Int` will pick a simulation up from the checkpointed file associated
+       with `iteration` and the `Checkpointer` in simulation.output_writers`. 
+
+    * `pickup=filepath::String` will pick a simulation up from checkpointer data in `filepath`.
+
+Note that `pickup=true` and `pickup=iteration` will fail if `simulation.output_writers` contains
+more than one checkpointer.
 """
-function run!(sim)
+function run!(sim; pickup=false)
+
     model = sim.model
     clock = model.clock
+
+    if pickup > 0
+        checkpointers = filter(writer -> writer isa Checkpointer, sim.output_writers)
+        set!(model, pickup_filepath(pickup, checkpointers))
+    end
 
     # Initialization
     for writer in values(sim.output_writers)
