@@ -12,6 +12,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 using Oceananigans.Forcings: model_forcing
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                                    V, S, K, BG} <: AbstractModel
@@ -107,6 +108,12 @@ function IncompressibleModel(;
     # by adjusting each (x, y, z) halo individually.
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
+
+    # "Regularize" field-dependent boundary conditions by supplying list of tracer names
+    boundary_conditions_names = propertynames(boundary_conditions) 
+    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, name, tracernames(tracers))
+                                      for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
+    boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)

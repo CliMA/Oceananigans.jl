@@ -1,11 +1,6 @@
-using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, BoundaryFunction, ParameterizedDiscreteBoundaryFunction
+using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 
 using Oceananigans.Fields: Face, Cell
-
-function instantiate_boundary_function(B, X1, X2, func)
-    boundary_function = BoundaryFunction{B, X1, X2}(func)
-    return true
-end
 
 bc_location(bc::BoundaryFunction{B, X, Y}) where {B, X, Y} = (B, X, Y)
 
@@ -21,24 +16,19 @@ complicated_parameterized_bc(i, j, grid, clock, model_fields, p) = p.a * rand()
     @testset "Boundary functions" begin
         @info "  Testing boundary functions..."
 
-        for B in (:x, :y, :z)
-            for X1 in (:Face, :Cell)
-                @test instantiate_boundary_function(B, X1, Cell, simple_bc)
-            end
-        end
-
         bc = BoundaryCondition(Value, simple_bc)
-        @test typeof(bc.condition) <: BoundaryFunction
+        @test typeof(bc.condition) <: ContinuousBoundaryFunction
         @test bc.condition.func === simple_bc
 
         bc = BoundaryCondition(Value, complicated_bc; discrete_form=true)
-        @test bc.condition === complicated_bc
+        @test bc.condition === DiscreteBoundaryFunction
+        @test bc.condition.func === complicated_bc
 
         bc = BoundaryCondition(Value, simple_parameterized_bc; parameters=(a=π,))
         @test bc.condition.parameters.a == π
 
         bc = BoundaryCondition(Value, complicated_parameterized_bc; parameters=(a=π,), discrete_form=true)
-        @test typeof(bc.condition) <: ParameterizedDiscreteBoundaryFunction
+        @test typeof(bc.condition) <: DiscreteBoundaryFunction
         @test bc.condition.func === complicated_parameterized_bc
     end
 

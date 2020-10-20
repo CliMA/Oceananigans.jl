@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: BoundaryFunction
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 
 function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
     Nz = 16
@@ -132,8 +132,7 @@ end
 @testset "Time stepping with boundary conditions" begin
     @info "Testing stepping with boundary conditions..."
 
-    funbc(args...) = π
-    boundaryfunbc = BoundaryFunction{:z, Face, Cell}((ξ, η, t) -> exp(ξ) * cos(η) * sin(t))
+    funbc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
     @testset "Boundary condition instatiation and time-stepping" begin
         Nx = Ny = 16
@@ -145,7 +144,7 @@ end
                 for fld in (:u, :v, :T, :S)
                     for bctype in (Gradient, Flux, Value)
                         arraybc = rand(FT, Nx, Ny) |> ArrayType
-                        for bc in (FT(0.6), arraybc, funbc, boundaryfunbc)
+                        for bc in (FT(0.6), arraybc, funbc)
                             @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
                         end
                     end

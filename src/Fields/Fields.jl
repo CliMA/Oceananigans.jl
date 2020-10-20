@@ -17,11 +17,6 @@ Base.zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
 Base.zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
 Base.zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
 
-assumed_field_location(name) = name === :u ? (Face, Cell, Cell) :
-                               name === :v ? (Cell, Face, Cell) :
-                               name === :w ? (Cell, Cell, Face) :
-                                             (Cell, Cell, Cell)
-
 include("new_data.jl")
 include("abstract_field.jl")
 include("field.jl")
