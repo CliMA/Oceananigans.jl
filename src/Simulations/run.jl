@@ -61,19 +61,22 @@ get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 ab2_or_rk3_time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
 ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
 
+we_want_to_pickup(pickup::Bool) = pickup
+we_want_to_pickup(pickup) = true
+
 """
     run!(simulation; pickup=false)
 
-Run a `simulation` until one of the stop criteria evaluates to true. The simulation
-will then stop.
+Run a `simulation` until one of `simulation.stop_criteria` evaluates `true`.
+The simulation will then stop.
 
-## Picking simulations up from a checkpoint
+# Picking simulations up from a checkpoint
 
-Simulations will be "picked up" from a checkpoint if `pickup` is either `true`, a string,
-or an integer greater than 0.
+Simulations will be "picked up" from a checkpoint if `pickup` is either `true`, a `String`,
+or an `Integer` greater than 0.
 
-Picking up a simulation sets field and tendency data to the specified checkpoint.
-while leaving all other model properties unchanged.
+Picking up a simulation sets field and tendency data to the specified checkpoint,
+leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
@@ -93,7 +96,7 @@ function run!(sim; pickup=false)
     model = sim.model
     clock = model.clock
 
-    if pickup > 0
+    if we_want_to_pickup(pickup)
         checkpointers = filter(writer -> writer isa Checkpointer, sim.output_writers)
         set!(model, pickup_filepath(pickup, checkpointers))
     end
