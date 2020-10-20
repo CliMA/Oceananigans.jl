@@ -10,10 +10,10 @@
 
 # ## Model setup
 
-using Oceananigans, Oceananigans.Advection
-
 # We instantiate the model with a simple isotropic diffusivity. We also use a 4-th order 
 # advection scheme and Runge-Kutta 3rd order time-stepping scheme.
+
+using Oceananigans, Oceananigans.Advection
 
 model = IncompressibleModel(
         grid = RegularCartesianGrid(size=(128, 128, 1), halo=(2, 2, 2), extent=(2π, 2π, 2π)),
@@ -85,6 +85,7 @@ nothing # hide
 using Oceananigans.Grids
 
 x, y = xnodes(ω)[:], ynodes(ω)[:]
+nothing # hide
 
 # and animate the vorticity.
 

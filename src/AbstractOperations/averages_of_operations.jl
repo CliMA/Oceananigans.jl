@@ -29,6 +29,6 @@ end
     mean(op::AbstractOperation; kwargs...)
 
 Returns an Oceananigans.AveragedField representing the an average over `op`eration.
-See `Oceananigans.AbstractField`.
+See `Oceananigans.Fields.AveragedField`.
 """
 Statistics.mean(op::AbstractOperation; kwargs...) = AveragedField(op; kwargs...)

@@ -25,21 +25,18 @@
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
   </a>
-  <a href="https://clima.github.io/OceananigansDocumentation/latest">
-    <img alt="Latest documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
+  <a href="https://clima.github.io/OceananigansDocumentation/dev">
+    <img alt="Development documentation" src="https://img.shields.io/badge/docs-dev-blue.svg?style=flat-square">
   </a>
 </p>
 
 <!-- CI/CD badges -->
 <p align="center">
+  <a href="https://buildkite.com/clima/oceananigans">
+    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?label=Buildkite%20CPU%2BGPU&style=flat-square">
+  </a>
   <a href="https://travis-ci.com/clima/Oceananigans.jl">
-    <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=CPU&logo=travis&logoColor=white&style=flat-square">
-  </a>
-  <a href="https://gitlab.com/JuliaGPU/Oceananigans-jl/commits/master">
-    <img alt="GPU build status" src="https://img.shields.io/gitlab/pipeline/JuliaGPU/Oceananigans-jl/master?label=GPU&logo=gitlab&logoColor=white&style=flat-square">
-  </a>
-  <a href="https://ci.appveyor.com/project/ali-ramadhan/oceananigans-jl">
-    <img alt="Windows build status" src="https://img.shields.io/appveyor/ci/ali-ramadhan/oceananigans-jl/master?label=Window&logo=appveyor&logoColor=white&style=flat-square">
+    <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=Travis&logo=travis&logoColor=white&style=flat-square">
   </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">

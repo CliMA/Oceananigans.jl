@@ -150,8 +150,8 @@ end
 function horizontal_average_of_plus(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = sin(π*z)
-    T₀(x, y, z) = 42*z
+    S₀(x, y, z) = sin(π * z)
+    T₀(x, y, z) = 42 * z
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
@@ -160,7 +160,9 @@ function horizontal_average_of_plus(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 
-    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
+    result = Array(interior(ST))[:]
+
+    return all(result .≈ correct_profile)
 end
 
 function zonal_average_of_plus(model)
@@ -177,7 +179,9 @@ function zonal_average_of_plus(model)
     zC = znodes(Cell, model.grid, reshape=true)
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
 
-    return all(ST[1, 1:Ny, 1:Nz] .≈ correct_slice[1, :, :])
+    result = Array(interior(ST))
+
+    return all(result[1, :, :] .≈ correct_slice[1, :, :])
 end
 
 function volume_average_of_times(model)
@@ -189,7 +193,10 @@ function volume_average_of_times(model)
     T, S = model.tracers
 
     @compute ST = AveragedField(S * T, dims=(1, 2, 3))
-    return all(ST[1, 1, 1] .≈ 0.5)
+
+    result = Array(interior(ST))
+
+    return all(result[1, 1, 1] .≈ 0.5)
 end
 
 function horizontal_average_of_minus(model)
@@ -205,7 +212,9 @@ function horizontal_average_of_minus(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) - 42 * zC
 
-    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
+    result = Array(interior(ST))
+
+    return all(result[1, 1, 1:Nz] .≈ correct_profile)
 end
 
 function horizontal_average_of_times(model)
@@ -221,7 +230,9 @@ function horizontal_average_of_times(model)
     zC = znodes(Cell, model.grid)
     correct_profile = @. sin(π * zC) * 42 * zC
 
-    return all(ST[1, 1, 1:Nz] .≈ correct_profile)
+    result = Array(interior(ST))
+
+    return all(result[1, 1, 1:Nz] .≈ correct_profile)
 end
 
 function multiplication_and_derivative_ccf(model)
@@ -239,8 +250,10 @@ function multiplication_and_derivative_ccf(model)
     zF = znodes(Face, model.grid)
     correct_profile = @. 42 * sin(π * zF)
 
+    result = Array(interior(wT))
+
     # Omit both halos and boundary points
-    return all(wT[1, 1, 2:Nz] .≈ correct_profile[2:Nz])
+    return all(result[1, 1, 2:Nz] .≈ correct_profile[2:Nz])
 end
 
 const C = Cell
@@ -264,12 +277,14 @@ function multiplication_and_derivative_ccc(model)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
     correct_profile = interped_sin .* 42
 
+    result = Array(interior(wT_ccc_avg))
+
     # Omit boundary-adjacent points from comparison
-    return all(wT_ccc_avg[1, 1, 2:Nz-1] .≈ correct_profile[2:Nz-1])
+    return all(result[1, 1, 2:Nz-1] .≈ correct_profile[2:Nz-1])
 end
 
 function computation_including_boundaries(FT, arch)
-    topo = (Bounded, Bounded, Bounded)
+    topo = (Periodic, Bounded, Bounded)
     grid = RegularCartesianGrid(FT, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
 
@@ -278,7 +293,7 @@ function computation_including_boundaries(FT, arch)
     @. v.data = 2 + rand()
     @. w.data = 3 + rand()
 
-    op = @at (Face, Face, Face) u * v * w
+    op = @at (Cell, Face, Face) u * v * w
     @compute uvw = ComputedField(op)
 
     return all(interior(uvw) .!= 0)
@@ -315,9 +330,14 @@ function computations_with_buoyancy_field(FT, arch, buoyancy)
     u, v, w = model.velocities
 
     compute!(b)
-    @compute ub = ComputedField(u * b)
-    @compute vb = ComputedField(v * b)
-    @compute wb = ComputedField(w * b)
+
+    ub = ComputedField(b * u)
+    vb = ComputedField(b * v)
+    wb = ComputedField(b * w)
+
+    compute!(ub)
+    compute!(vb)
+    compute!(wb)
 
     return true # test that it doesn't error
 end
@@ -449,7 +469,7 @@ end
 
             @info "  Testing combined binary operations and derivatives..."
 
-            for FT in float_types
+            for FT in (Float64,) #float_types
 
                 grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
                                             topology=(Periodic, Periodic, Bounded))
@@ -571,7 +591,7 @@ end
                     @test operations_with_averaged_field(model)
                 end
 
-                @testset "Faces along Bounded dimensions" begin
+                @testset "Compute! on faces along bounded dimensions" begin
                     @info "      Testing compute! on faces along bounded dimensions..."
                     @test computation_including_boundaries(FT, arch)
                 end
@@ -583,7 +603,7 @@ end
                               (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
 
                 for buoyancy in buoyancies
-                    @testset "BuoyancyField computations [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
+                    @testset "Computations with BuoyancyFields [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
                         @info "      Testing computations with BuoyancyField..."
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end

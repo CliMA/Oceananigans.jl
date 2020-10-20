@@ -29,7 +29,7 @@ of `OffsetArray`s depending on the turbulence closure) of field data.
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explicitly specified, as
-in `model_fields.u[i, j, grid.Nz]`*.
+in `model_fields.u[i, j, grid.Nz]`.
 
 When `parameters` _is_ specified, `func` must be callable with the signature.
 
@@ -40,10 +40,12 @@ constraints on `typeof(parameters)`.
 """
 DiscreteForcing(func; parameters=nothing) = DiscreteForcing(func, parameters)
 
-@inline (forcing::DiscreteForcing)(i, j, k, grid, clock, model_fields) = 
-    forcing.func(i, j, k, grid, clock, model_fields, forcing.parameters)
+@inline function (forcing::DiscreteForcing{P, F})(i, j, k, grid, clock, model_fields) where {P, F<:Function}
+    parameters = forcing.parameters
+    return forcing.func(i, j, k, grid, clock, model_fields, parameters)
+end
 
-@inline (forcing::DiscreteForcing{<:Nothing})(i, j, k, grid, clock, model_fields) =
+@inline (forcing::DiscreteForcing{<:Nothing, F})(i, j, k, grid, clock, model_fields) where F<:Function =
     forcing.func(i, j, k, grid, clock, model_fields)
 
 """Show the innards of a `DiscreteForcing` in the REPL."""

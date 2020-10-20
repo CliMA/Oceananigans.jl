@@ -11,18 +11,30 @@ function time_step_with_forcing_functions(arch)
     return true
 end
 
-""" Take one time step with ParameterizedForcing forcing functions. """
-function time_step_with_parameterized_discrete_forcing(arch)
-    @inline Fu_func(i, j, k, grid, clock, model_fields, params) = @inbounds ifelse(k == grid.Nz, -model_fields.u[i, j, k] / params.τ, 0)
-    @inline Fv_func(i, j, k, grid, clock, model_fields, params) = @inbounds ifelse(k == grid.Nz, -model_fields.v[i, j, k] / params.τ, 0)
-    @inline Fw_func(i, j, k, grid, clock, model_fields, params) = @inbounds ifelse(k == grid.Nz, -model_fields.w[i, j, k] / params.τ, 0)
+@inline Fu_discrete_func(i, j, k, grid, clock, model_fields) = @inbounds -model_fields.u[i, j, k]
+@inline Fv_discrete_func(i, j, k, grid, clock, model_fields, params) = @inbounds - model_fields.v[i, j, k] / params.τ
+@inline Fw_discrete_func(i, j, k, grid, clock, model_fields, params) = @inbounds - model_fields.w[i, j, k]^2 / params.τ
 
-    Fu = Forcing(Fu_func, parameters=(τ=60,), discrete_form=true)
-    Fv = Forcing(Fv_func, parameters=(τ=60,), discrete_form=true)
-    Fw = Forcing(Fw_func, parameters=(τ=60,), discrete_form=true)
+""" Take one time step with a DiscreteForcing function. """
+function time_step_with_discrete_forcing(arch)
+
+    Fu = Forcing(Fu_discrete_func, discrete_form=true)
 
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=Fu, v=Fv, w=Fw))
+    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=Fu,))
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
+""" Take one time step with ParameterizedForcing forcing functions. """
+function time_step_with_parameterized_discrete_forcing(arch)
+
+    Fv = Forcing(Fv_discrete_func, parameters=(τ=60,), discrete_form=true)
+    Fw = Forcing(Fw_discrete_func, parameters=(τ=60,), discrete_form=true)
+
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
@@ -36,6 +48,7 @@ function time_step_with_parameterized_continuous_forcing(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
+
     return true
 end
 
@@ -90,6 +103,7 @@ function relaxed_time_stepping(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=x_relax, v=y_relax, w=z_relax))
     time_step!(model, 1, euler=true)
+
     return true
 end
 
@@ -99,17 +113,34 @@ end
     for arch in archs
         @testset "Forcing function time stepping [$(typeof(arch))]" begin
             @info "  Testing forcing function time stepping [$(typeof(arch))]..."
-            @test time_step_with_forcing_functions(arch)
-            @test time_step_with_parameterized_discrete_forcing(arch)
-            @test time_step_with_parameterized_continuous_forcing(arch)
 
-            for fld in (:u, :v, :w, :T)
-                @test time_step_with_single_field_dependent_forcing(arch, fld)
+            @testset "Non-parameterized forcing functions [$(typeof(arch))]" begin
+                @info "      Testing non-parameterized forcing functions [$(typeof(arch))]..."
+                @test time_step_with_forcing_functions(arch)
+                @test time_step_with_discrete_forcing(arch)
             end
 
-            @test time_step_with_multiple_field_dependent_forcing(arch)
-            @test time_step_with_parameterized_field_dependent_forcing(arch)
-            @test relaxed_time_stepping(arch)
+            @testset "Parameterized forcing functions [$(typeof(arch))]" begin
+                @info "      Testing parameterized forcing functions [$(typeof(arch))]..."
+                @test time_step_with_parameterized_continuous_forcing(arch)
+                @test time_step_with_parameterized_discrete_forcing(arch)
+            end
+
+            @testset "Field-dependent forcing functions [$(typeof(arch))]" begin
+                @info "      Testing field-dependent forcing functions [$(typeof(arch))]..."
+
+                for fld in (:u, :v, :w, :T)
+                    @test time_step_with_single_field_dependent_forcing(arch, fld)
+                end
+
+                @test time_step_with_multiple_field_dependent_forcing(arch)
+                @test time_step_with_parameterized_field_dependent_forcing(arch)
+            end 
+
+            @testset "Relaxation forcing functions [$(typeof(arch))]" begin
+                @info "      Testing relaxation forcing functions [$(typeof(arch))]..."
+                @test relaxed_time_stepping(arch)
+            end
         end
     end
 end

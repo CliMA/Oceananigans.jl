@@ -16,7 +16,7 @@ export
     RegularCartesianGrid, VerticallyStretchedCartesianGrid,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
 
     # Boundary conditions
     BoundaryCondition,
@@ -29,7 +29,7 @@ export
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,
-    interior, set!,
+    BackgroundField, interior, set!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -44,24 +44,23 @@ export
     # Surface waves via Craik-Leibovich equations
     SurfaceWaves,
 
-    # Time stepping
-    time_step!,
-    TimeStepWizard, update_Δt!,
+    # Turbulence closures
+    IsotropicDiffusivity, AnisotropicDiffusivity,
+    AnisotropicBiharmonicDiffusivity,
+    ConstantSmagorinsky, AnisotropicMinimumDissipation,
 
     # Models
     IncompressibleModel, NonDimensionalModel, Clock,
+
+    # Time stepping
+    time_step!, TimeStepWizard,
 
     # Simulations
     Simulation, run!,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
-    # Utilities
-    prettytime, pretty_filesize,
-
-    # Turbulence closures
-    IsotropicDiffusivity, AnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
-    ConstantSmagorinsky, AnisotropicMinimumDissipation
+    # Output writers
+    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer, restore_from_checkpoint
 
 # Standard library modules
 using Printf

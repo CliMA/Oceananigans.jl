@@ -49,7 +49,7 @@ Leith, C. E. (1968). "Diffusion Approximation for Two‐Dimensional Turbulence",
 
 Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques improve mesoscale rich
     ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., vol. 177, pp. 319–337.
-    doi:10.1029/177GM19
+    doi: 10.1029/177GM19
 
 Pearson, B. et al. (2017) , "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
     rich model", Ocean Modelling 115, 42-58. doi: 10.1016/j.ocemod.2017.05.007
@@ -62,7 +62,7 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM)
 end
 
-function abs²_∇h_ζ(i, j, k, grid, U)
+@inline function abs²_∇h_ζ(i, j, k, grid, U)
     vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, U.v)
     uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, U.u)
     uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᵃᵃ, ∂yᵃᶠᵃ, U.u)
@@ -74,7 +74,7 @@ end
 @inline ψ²(i, j, k, grid, ψ::Function, args...) = ψ(i, j, k, grid, args...)^2
 @inline ψ²(i, j, k, grid, ψ::AbstractArray, args...) = ψ(i, j, k, grid, args...)^2
 
-function abs²_∇h_wz(i, j, k, grid, w)
+@inline function abs²_∇h_wz(i, j, k, grid, w)
     wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᵃᵃ, ∂zᵃᵃᶜ, w)
     wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, w)
     return wxz² + wyz²
