@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: update_state!
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
@@ -6,8 +7,17 @@ function relative_error(u_num, u, time)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
-ab2_or_rk3_time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt, n) = time_step!(model, Δt, euler= n==1)
-ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt, n) = time_step!(model, Δt)
+function ab2_or_rk3_time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt, n)
+    n == 1 && update_state!(model)
+    time_step!(model, Δt, euler=n==1)
+    return nothing
+end
+
+function ab2_or_rk3_time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt, n)
+    n == 1 && update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
 
 function test_diffusion_simple(fieldname, timestepper)
 

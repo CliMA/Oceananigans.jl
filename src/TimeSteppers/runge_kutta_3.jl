@@ -50,8 +50,6 @@ stage.
 """
 function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
-    model.clock.iteration == 0 && update_state!(model)
-
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
     γ³ = model.timestepper.γ³

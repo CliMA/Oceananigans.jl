@@ -1,5 +1,5 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 # Simulations are for running
 
@@ -69,6 +69,9 @@ will then stop.
 function run!(sim)
     model = sim.model
     clock = model.clock
+
+    # Conservatively update the model state when run! initiates
+    update_state!(model)
 
     [open(writer) for writer in values(sim.output_writers)]
 
