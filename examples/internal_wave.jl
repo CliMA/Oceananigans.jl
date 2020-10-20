@@ -118,12 +118,12 @@ simulation = Simulation(model, Δt = 0.02 * 2π/ω, stop_iteration = 100)
                         
 # and add an output writer that saves the vertical velocity field every two iterations:
 
-using Oceananigans.OutputWriters: JLD2OutputWriter
+using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          iteration_interval = 2,
-                                                                      prefix = "internal_wave",
-                                                                       force = true)
+                                                          schedule = IterationInterval(2),
+                                                            prefix = "internal_wave",
+                                                             force = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 

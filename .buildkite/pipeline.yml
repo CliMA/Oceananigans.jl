@@ -17,6 +17,7 @@ steps:
 
       # Instantiate and precompile 
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 

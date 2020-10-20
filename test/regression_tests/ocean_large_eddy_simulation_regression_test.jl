@@ -53,7 +53,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    checkpointer = Checkpointer(model, iteration_interval = test_steps, prefix = name,
+    checkpointer = Checkpointer(model, schedule = IterationInterval(test_steps), prefix = name,
                                 dir = joinpath(dirname(@__FILE__), "data"))
 
     simulation.output_writers[:checkpointer] = checkpointer
