@@ -1,3 +1,5 @@
+import Oceananigans.Fields: set!
+
 using Oceananigans.Fields: offset_data
 
 """
@@ -138,6 +140,8 @@ const v_location = (Cell, Face, Cell)
 const w_location = (Cell, Cell, Face)
 const c_location = (Cell, Cell, Cell)
 
+
+
 """
     restore_from_checkpoint(filepath; kwargs=Dict())
 
@@ -208,3 +212,62 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     return model
 end
+
+#####
+##### set! for checkpointer filepaths
+#####
+
+"""
+    set!(model, checkpointer_filepath::AbstractString)
+
+Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
+`model.timestepper.G⁻` to the checkpointer at `checkpointer_filepath`.
+"""
+function set!(model, filepath::AbstractString)
+
+    jldopen(checkpointer_filepath, "r") do file
+
+        # Validate the grid
+        checkpointed_grid = file["grid"]
+        model.grid == checkpointed_grid || error("The grid associated with $filepath and model.grid are not the same!")
+
+        # Set model fields and tendency fields
+        model_fields = merge(model.velocities, model.tracers)
+
+        for name in propertynames(model_fields)
+            # Load data for each model field
+            address = name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
+            parent_data = file[address * "/data"]
+
+            model_field = model_fields[name]
+            copyto!(model_field.data.parent, parent_data)
+
+            # Load tendency data
+            #
+            # Note: this step is unecessary for models that use RungeKutta3TimeStepper and
+            # tendency restoration could be depcrecated in the future.
+            
+            # Tendency "n"
+            parent_data = file["timestepper/Gⁿ/$name/data"] 
+
+            tendencyⁿ_field = model.timestepper.Gⁿ[name]
+            copyto!(tendencyⁿ_field.data.parent, parent_data)
+
+            # Tendency "n-1"
+            parent_data = file["timestepper/G⁻/$name/data"] 
+
+            tendency⁻_field = model.timestepper.G⁻[name]
+            copyto!(tendency⁻_field.data.parent, parent_data)
+        end
+        
+        checkpointed_clock = file["clock"]
+
+        # Update model clock
+        model.clock.iteration = checkpointed_clock.iteration
+        model.clock.time = checkpointed_clock.time
+
+    end
+
+    return nothing
+end
+
