@@ -155,10 +155,7 @@ func(i, j, k, grid, clock, model_fields, parameters)
 Discrete form forcing functions can access the entirety of model field
 data through the argument `model_fields`. The object `model_fields` is a `NamedTuple`
 whose properties include the velocity fields `model_fields.u`, `model_fields.v`,
-`model_fields.w`, all fields in `model.tracers`, and the fields in `model.diffusivities`.
-Note that in the special case that a _tuple_ of turbulence closures is provided,
-the `diffusivities` associated with `closure[i]` is accessible via
-`model_fields.diffusivities[i]`.
+`model_fields.w` and all fields in `model.tracers`.
 
 Using discrete forcing functions may require understanding the
 staggered arrangement of velocity fields and tracers in `Oceananigans`.

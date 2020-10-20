@@ -94,12 +94,12 @@ dissipation principle with model parameters stored as properties of type `FT`.
 abstract type AbstractAnisotropicMinimumDissipation{FT} <: AbstractIsotropicDiffusivity end
 
 """
-    AbstractLeith{FT} <: AbstractTurbulenceClosure
+    AbstractLeith{FT} <: AbstractIsotropicDiffusivity
 
 Abstract supertype for large eddy simulation models based on the Leith viscosity
 principle with model parameters stored as properties of type `FT`.
 """
-abstract type AbstractLeith{FT} <: AbstractTurbulenceClosure end
+abstract type AbstractLeith{FT} <: AbstractIsotropicDiffusivity end
 
 #####
 ##### 'Tupled closure' implementation

@@ -1,6 +1,48 @@
-#####
-##### Navier-Stokes momentum conservation and tracer conservation equations
-#####
+"""
+    calculate_tendencies!(model)
+
+Calculate the interior and boundary contributions to tendency terms without the
+contribution from non-hydrostatic pressure.
+"""
+function calculate_tendencies!(model)
+
+    # Note:
+    #
+    # "tendencies" is a NamedTuple of OffsetArrays corresponding to the tendency data for use
+    # in GPU computations.
+    #
+    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
+    # tendency data.
+    
+    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
+    # interior of the domain
+    calculate_interior_tendency_contributions!(model.timestepper.Gⁿ,
+                                               model.architecture,
+                                               model.grid,
+                                               model.advection,
+                                               model.coriolis,
+                                               model.buoyancy,
+                                               model.surface_waves,
+                                               model.closure,
+                                               model.background_fields,
+                                               model.velocities,
+                                               model.tracers,
+                                               model.pressures.pHY′,
+                                               model.diffusivities,
+                                               model.forcing,
+                                               model.clock)
+                                               
+    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
+    # boundaries of the domain
+    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                               model.architecture,
+                                               model.velocities,
+                                               model.tracers,
+                                               model.clock,
+                                               fields(model))
+
+    return nothing
+end
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_interior_tendency_contributions!(tendencies,
@@ -188,68 +230,3 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, trac
     return nothing
 end
 
-#####
-##### Vertical integrals
-#####
-
-"""
-Update the hydrostatic pressure perturbation pHY′. This is done by integrating
-the `buoyancy_perturbation` downwards:
-
-    `pHY′ = ∫ buoyancy_perturbation dz` from `z=0` down to `z=-Lz`
-"""
-@kernel function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
-    i, j = @index(Global, NTuple)
-
-    @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz+1, grid)
-
-    @unroll for k in grid.Nz-1 : -1 : 1
-        @inbounds pHY′[i, j, k] =
-            pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k+1, grid)
-    end
-end
-
-#####
-##### Source term storage
-#####
-
-""" Store source terms for `u`, `v`, and `w`. """
-@kernel function store_velocity_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
-    i, j, k = @index(Global, NTuple)
-    @inbounds G⁻.u[i, j, k] = G⁰.u[i, j, k]
-    @inbounds G⁻.v[i, j, k] = G⁰.v[i, j, k]
-    @inbounds G⁻.w[i, j, k] = G⁰.w[i, j, k]
-end
-
-""" Store previous source terms for a tracer before updating them. """
-@kernel function store_tracer_tendency!(Gc⁻, grid::AbstractGrid{FT}, Gc⁰) where FT
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc⁻[i, j, k] = Gc⁰[i, j, k]
-end
-
-""" Store previous source terms before updating them. """
-function store_tendencies!(G⁻, arch, grid, G⁰)
-
-    barrier = Event(device(arch))
-
-    workgroup, worksize = work_layout(grid, :xyz)
-
-    store_velocity_tendencies_kernel! = store_velocity_tendencies!(device(arch), workgroup, worksize)
-    store_tracer_tendency_kernel! = store_tracer_tendency!(device(arch), workgroup, worksize)
-
-    velocities_event = store_velocity_tendencies_kernel!(G⁻, grid, G⁰, dependencies=barrier)
-
-    events = [velocities_event]
-
-    # Tracer fields
-    for i in 4:length(G⁻)
-        @inbounds Gc⁻ = G⁻[i]
-        @inbounds Gc⁰ = G⁰[i]
-        tracer_event = store_tracer_tendency_kernel!(Gc⁻, grid, Gc⁰, dependencies=barrier)
-        push!(events, tracer_event)
-    end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
-
-    return nothing
-end

@@ -2,7 +2,6 @@ using Adapt
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
-using Oceananigans.BoundaryConditions: zero_halo_regions!
 
 """
     struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
@@ -91,8 +90,4 @@ end
 ##### Adapt
 #####
 
-Adapt.adapt_structure(to, computed_field::ComputedField{X, Y, Z}) where {X, Y, Z} = 
-    ComputedField{X, Y, Z}(Adapt.adapt(to, computed_field.data),
-                           Adapt.adapt(to, computed_field.grid),
-                           Adapt.adapt(to, computed_field.operand),
-                           Adapt.adapt(to, computed_field.status))
+Adapt.adapt_structure(to, computed_field::ComputedField) = Adapt.adapt(to, computed_field.data)

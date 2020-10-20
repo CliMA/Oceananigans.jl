@@ -309,7 +309,8 @@ end
 function operations_with_averaged_field(model)
     u, v, w = model.velocities
     UV = AveragedField(u * v, dims=(1, 2))
-    @compute wUV = ComputedField(w * UV)
+    wUV = ComputedField(w * UV)
+    compute!(wUV)
     return true
 end
 
@@ -340,6 +341,61 @@ function computations_with_buoyancy_field(FT, arch, buoyancy)
     compute!(wb)
 
     return true # test that it doesn't error
+end
+
+function computations_with_averaged_fields(model)
+    u, v, w, T, S = fields(model)
+
+    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    
+    # Two ways to compute turbulent kinetic energy
+    U = AveragedField(u, dims=(1, 2))
+    V = AveragedField(v, dims=(1, 2))
+
+    tke_op = @at (Cell, Cell, Cell) ((u - U)^2  + (v - V)^2 + w^2) / 2
+    tke = ComputedField(tke_op)
+    compute!(tke)
+
+    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+end
+
+function computations_with_averaged_field_derivative(model)
+
+    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    
+    u, v, w, T, S = fields(model)
+
+    # Two ways to compute turbulent kinetic energy
+    U = AveragedField(u, dims=(1, 2))
+    V = AveragedField(v, dims=(1, 2))
+    
+    # This tests a vertical derivative of an AveragedField
+    shear_production_op = @at (Cell, Cell, Cell) u * w * ∂z(U)
+    shear = ComputedField(shear_production_op)
+    compute!(shear)
+
+    set!(model, T = (x, y, z) -> 3 * z)
+
+    return all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3]) 
+end
+
+function computations_with_computed_fields(model)
+    u, v, w, T, S = fields(model)
+    
+    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+
+    # Two ways to compute turbulent kinetic energy
+    U = AveragedField(u, dims=(1, 2))
+    V = AveragedField(v, dims=(1, 2))
+    
+    u′ = ComputedField(u - U)
+    v′ = ComputedField(v - V)
+    
+    tke_op = @at (Cell, Cell, Cell) (u′^2  + v′^2 + w^2) / 2
+    tke = ComputedField(tke_op)
+    compute!(tke)
+    
+    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
 end
 
 @testset "Abstract operations" begin
@@ -604,13 +660,41 @@ end
 
                 for buoyancy in buoyancies
                     @testset "Computations with BuoyancyFields [$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
-                        @info "      Testing computations with BuoyancyField..."
+                        @info "      Testing computations with BuoyancyField " *
+                              "[$FT, $(typeof(arch)), $(typeof(buoyancy).name.wrapper)]..."
+
                         @test computations_with_buoyancy_field(FT, arch, buoyancy)
                     end
                 end
 
+                @testset "Computations with AveragedFields [$FT, $(typeof(arch))]" begin
+                    @info "      Testing computations with AveragedField [$FT, $(typeof(arch))]..."
+
+                    # These don't work on the GPU right now
+                    if arch isa CPU
+                        @test computations_with_averaged_fields(model)
+                        @test computations_with_averaged_field_derivative(model)
+                    else
+                        @test_skip computations_with_averaged_fields(model)
+                        @test_skip computations_with_averaged_field_derivative(model)
+                    end
+                end 
+                    
+                @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
+                    @info "      Testing computations with ComputedField [$FT, $(typeof(arch))]..."
+
+                    # These don't work on the GPU right now
+                    if arch isa CPU
+                        @test computations_with_computed_fields(model)
+                    else
+                        @test_skip computations_with_computed_fields(model)
+                    end
+                end
+
+
                 @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
-                    @info "      Testing conditional computation of ComputedField and BuoyancyField..."
+                    @info "      Testing conditional computation of ComputedField and BuoyancyField " *
+                          "[$FT, $(typeof(arch))]..."
 
                     set!(model, u=2, v=0, w=0, T=3, S=0)
                     u, v, w, T, S = fields(model)
