@@ -8,6 +8,7 @@ using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Oceananigans: location
 import Oceananigans.Architectures: architecture
+import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
 
