@@ -23,9 +23,7 @@ When `parameters` are not specified, `func` must be callable with the signature
 
 where `grid` is `model.grid`, `clock.time` is the current simulation time and
 `clock.iteration` is the current model iteration, and
-`model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivities`, each of which is an `OffsetArray`s (or `NamedTuple`s
-of `OffsetArray`s depending on the turbulence closure) of field data.
+`model_fields` is a `NamedTuple` with `u, v, w` and the fields in `model.tracers`.
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explicitly specified, as

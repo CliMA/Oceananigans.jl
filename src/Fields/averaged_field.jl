@@ -1,7 +1,7 @@
 using Adapt
 using Statistics
 using Oceananigans.Grids
-using Oceananigans.BoundaryConditions: zero_halo_regions!
+using Oceananigans.Grids: interior_parent_indices
 
 """
     struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
@@ -15,7 +15,8 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     operand :: O
      status :: S
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand; recompute_safely=true) where {X, Y, Z}
+    function AveragedField{X, Y, Z}(data, grid, dims, operand;
+                                    recompute_safely=true) where {X, Y, Z}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
@@ -29,16 +30,13 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     end
 
     function AveragedField{X, Y, Z}(data, grid, dims, operand, status) where {X, Y, Z}
-
-        dims = validate_reduced_dims(dims)
-        validate_reduced_locations(X, Y, Z, dims)
-        validate_field_data(X, Y, Z, data, grid)
-
         return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
-                                                                operand, status)
+                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims, operand, status)
     end
 end
+
+operand_averaging_indices(avg_loc, op_loc, topo, N, H) = Colon() # fallback when dimension is non-reduced
+operand_averaging_indices(::Type{Nothing}, op_loc, topo, N, H) = interior_parent_indices(op_loc, topo, N, H)
 
 """
     AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
@@ -56,7 +54,8 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
         recompute_safely = false
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand, recompute_safely=recompute_safely)
+    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand,
+                                                 recompute_safely=recompute_safely)
 end
 
 """
@@ -67,14 +66,19 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 function compute!(avg::AveragedField)
     compute!(avg.operand)
 
-    zero_halo_regions!(avg.operand, dims=avg.dims)
-
+    # Omit halo regions from operand on averaged dimension
     operand_parent = parent(avg.operand)
 
-    sum!(avg.data.parent, operand_parent)
+    Xa, Ya, Za = location(avg)
+    Xo, Yo, Zo = location(avg.operand)
 
-    sz = size(avg.grid)
-    avg.data.parent ./= prod(sz[d] for d in avg.dims)
+    i = operand_averaging_indices(Xa, Xo, topology(avg.grid, 1), avg.grid.Nx, avg.grid.Hx)
+    j = operand_averaging_indices(Ya, Yo, topology(avg.grid, 2), avg.grid.Ny, avg.grid.Hy)
+    k = operand_averaging_indices(Za, Zo, topology(avg.grid, 3), avg.grid.Nz, avg.grid.Hz)
+
+    operand_sans_halos = view(operand_parent, i, j, k)
+
+    mean!(avg.data.parent, operand_sans_halos)
 
     return nothing
 end
@@ -94,7 +98,4 @@ Statistics.mean(ϕ::AbstractField; kwargs...) = AveragedField(ϕ; kwargs...)
 
 Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z} = 
     AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data),
-                           Adapt.adapt(to, averaged_field.grid),
-                           Adapt.adapt(to, averaged_field.dims),
-                           Adapt.adapt(to, averaged_field.operand),
-                           Adapt.adapt(to, averaged_field.status))
+                           nothing, averaged_field.dims, nothing, nothing)

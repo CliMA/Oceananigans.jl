@@ -7,9 +7,10 @@ using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Oceananigans: location
-import Oceananigans.Utils: datatuple
 import Oceananigans.Architectures: architecture
+import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
+import Oceananigans.Utils: datatuple
 
 """
     AbstractField{X, Y, Z, A, G}
@@ -30,6 +31,9 @@ function validate_field_data(X, Y, Z, data, grid)
 
     return nothing
 end
+
+# Endpoint for recursive `datatuple` function:
+@inline datatuple(obj::AbstractField) = data(obj)
 
 #####
 ##### Computing AbstractField
@@ -143,12 +147,6 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @hascuda @inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
     offset_data(Array(parent(f)), f.grid, location(f))
-
-# Endpoint for recursive `datatuple` function:
-@inline datatuple(obj::AbstractField) = data(obj)
-
-""" Converts a field into a GPU-friendly alternative if necessary. """
-@inline gpufriendly(a) = a # fallback
 
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::AbstractField) = parent(data(f))

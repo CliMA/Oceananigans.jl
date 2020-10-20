@@ -1,11 +1,13 @@
 using Adapt
 using KernelAbstractions
 using Oceananigans.Fields: AbstractField, FieldStatus, validate_field_data, new_data, conditional_compute!
-using Oceananigans.Fields: datatuple, architecture
+using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
 import Oceananigans.Fields: compute!
+
+import Oceananigans: short_show
 
 """
     struct BuoyancyField{B, A, G, T} <: AbstractField{X, Y, Z, A, G}
@@ -29,8 +31,6 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
 
         validate_field_data(Cell, Cell, Cell, data, grid)
 
-        tracers = datatuple(tracers)
-
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
         return new{typeof(buoyancy), typeof(status), typeof(data),
@@ -39,7 +39,6 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
 
     function BuoyancyField(data, grid, buoyancy, tracers, status)
         validate_field_data(Cell, Cell, Cell, data, grid)
-        tracers = datatuple(tracers)
         return new{typeof(buoyancy), typeof(status), typeof(data),
                    typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
     end
@@ -120,9 +119,18 @@ end
 ##### Adapt
 #####
 
-Adapt.adapt_structure(to, buoyancy_field::BuoyancyField) =
-    BuoyancyField(Adapt.adapt(to, buoyancy_field.data),
-                  Adapt.adapt(to, buoyancy_field.grid),
-                  Adapt.adapt(to, buoyancy_field.buoyancy),
-                  Adapt.adapt(to, buoyancy_field.tracers),
-                  Adapt.adapt(to, buoyancy_field.status))
+Adapt.adapt_structure(to, buoyancy_field::BuoyancyField) = Adapt.adapt(to, buoyancy_field.data)
+
+#####
+##### Show
+#####
+
+short_show(field::BuoyancyField) = string("BuoyancyField for ", typeof(field.buoyancy))
+
+show(io::IO, field::BuoyancyField) =
+    print(io, "$(short_show(field))\n",
+          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
+          "├── grid: $(short_show(field.grid))", '\n',
+          "├── buoyancy: $(typeof(field.buoyancy))", '\n',
+          "├── tracers: $(tracernames(field.tracers))", '\n',
+          "└── status: ", show_status(field.status), '\n')

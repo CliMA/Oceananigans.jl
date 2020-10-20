@@ -106,3 +106,13 @@ function has_reference(has_type, obj)
         return typeof(obj) <: has_type
     end
 end
+
+""" Returns the schedule for output averaging determined by the first output value. """
+function output_averaging_schedule(ow::AbstractOutputWriter)
+    first_output = first(values(ow.outputs))
+    return output_averaging_schedule(first_output)
+end
+
+output_averaging_schedule(output) = nothing # fallback
+
+show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
