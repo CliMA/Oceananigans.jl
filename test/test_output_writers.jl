@@ -603,7 +603,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2")
 
     for n in 1:4
-        update_state!(model)
+        update_state!(restored_model)
         time_step!(restored_model, Δt, euler=false)
     end
 
