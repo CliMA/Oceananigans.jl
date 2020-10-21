@@ -36,6 +36,61 @@ function correct_reduced_field_value_was_set(arch, grid, loc, dims, val::Number)
     CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
 end
 
+function run_field_interpolation_tests(arch, FT)
+
+    grid = RegularCartesianGrid(size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
+
+    velocities = VelocityFields(arch, grid)
+    tracers = TracerFields((:c,), arch, grid)
+
+    (u, v, w), c = velocities, tracers.c
+
+    # Choose a trilinear function so trilinear interpolation can return values that
+    # are exactly correct.
+    f(x, y, z) = exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z
+
+    # Maximum expected rounding error is the unit in last place of the maximum value
+    # of f over the domain of the grid.
+    ε_max = f.(nodes((Face, Face, Face), grid, reshape=true)...) |> maximum |> eps
+
+    set!(u, f)
+    set!(v, f)
+    set!(w, f)
+    set!(c, f)
+
+    # Check that interpolating to the field's own grid points returns
+    # the same value as the field itself.
+
+    ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
+    ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
+    ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
+    ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+
+    @test all(isapprox.(ℑu, interior(u), atol=ε_max))
+    @test all(isapprox.(ℑv, interior(v), atol=ε_max))
+    @test all(isapprox.(ℑw, interior(w), atol=ε_max))
+    @test all(isapprox.(ℑc, interior(c), atol=ε_max))
+
+    # Check that interpolating between grid points works as expected.
+
+    xs = reshape([0.3, 0.55, 0.73], (3, 1, 1))
+    ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
+    zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
+
+    F = f.(xs, ys, zs)
+
+    ℑu = interpolate.(Ref(u), xs, ys, zs)
+    ℑv = interpolate.(Ref(v), xs, ys, zs)
+    ℑw = interpolate.(Ref(w), xs, ys, zs)
+    ℑc = interpolate.(Ref(c), xs, ys, zs)
+
+    @test all(isapprox.(ℑu, F, atol=ε_max))
+    @test all(isapprox.(ℑv, F, atol=ε_max))
+    @test all(isapprox.(ℑw, F, atol=ε_max))
+    @test all(isapprox.(ℑc, F, atol=ε_max))
+    
+    return nothing
+end
 
 @testset "Fields" begin
     @info "Testing fields..."
@@ -143,5 +198,13 @@ end
 			ϕ = CellField(GPU(), grid)
 			@test cpudata(ϕ).parent isa Array
 		end
+    end
+
+    @testset "Field interpolation" begin
+        @info "  Testing field interpolation..."
+
+        for arch in archs, FT in float_types
+            run_field_interpolation_tests(arch, FT)
+        end
     end
 end

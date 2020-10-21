@@ -29,7 +29,7 @@ end
 @inline _interpolate(ξ, η, ζ, i, j, k, field) =
     @inbounds (  ϕ₁(ξ, η, ζ) * field[i,   j,   k  ]
                + ϕ₂(ξ, η, ζ) * field[i,   j,   k+1]
-               + ϕ₃(ξ, η, ζ) * field[i,   j+1, k+1]
+               + ϕ₃(ξ, η, ζ) * field[i,   j+1, k  ]
                + ϕ₄(ξ, η, ζ) * field[i,   j+1, k+1]
                + ϕ₅(ξ, η, ζ) * field[i+1, j,   k  ]
                + ϕ₆(ξ, η, ζ) * field[i+1, j,   k+1]
@@ -45,10 +45,11 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     i, j, k = coordinates_to_indices(x, y, z, location(field), field.grid)
 
     # Convert fractional indices to unit cell coordinates 0 <= (ξ, η, ζ) <=1
-    # and integer indices.
+    # and integer indices (with 0-based indexing).
     ξ, i = modf(i)
     η, j = modf(j)
     ζ, k = modf(k)
 
-    return _interpolate(ξ, η, ζ, Int(i), Int(j), Int(k), field.data)
+    # Convert indices to proper integers and shift to 1-based indexing.
+    return _interpolate(ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1), field.data)
 end
