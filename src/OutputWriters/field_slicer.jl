@@ -26,7 +26,12 @@ The keyword `with_halos` denotes whether halo data is saved or not. Halo regions
 sliced off output for `UnitRange` and `Colon` index specifications.
 """
 FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
-    FieldSlicer(i, j, k, with_halos)
+    FieldSlicer(num2int(i), num2int(j), num2int(k), with_halos)
+
+# To support FieldSlicer construction with all number types (but we always want to
+# index with an integer).
+num2int(i) = i
+num2int(i::Number) = Int(i)
 
 #####
 ##### Slice of life, err... data
