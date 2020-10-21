@@ -13,6 +13,7 @@
 
     time_step!(model, 1e-2)
 
-    # Placeholder test!
-    @test model isa IncompressibleModel
+    # Easy placeholder test!
+    @test all(model.particles.x .≈ 0.01)
+    @test all(model.particles.y .≈ 0.01)
 end
