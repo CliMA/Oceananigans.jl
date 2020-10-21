@@ -1,4 +1,5 @@
 using Oceananigans.Operators: index_and_interp_dependencies, assumed_field_location
+using Oceananigans.Utils: user_function_arguments
 
 """
     ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
@@ -20,7 +21,7 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
     """ Returns a location-less wrapper for `func`, `parameters`, and `field_dependencies`."""
     function ContinuousBoundaryFunction(func, parameters, field_dependencies)
         return new{Nothing, Nothing, Nothing, Nothing,
-                   typeof(func), typeof(parameters), Nothing, Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
+                   typeof(func), typeof(parameters), typeof(field_dependencies), Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
     end
 
     """ Returns a wrapper with location `X, Y, Z` for `func`, `parameters`, and `field_dependencies`."""
@@ -47,6 +48,8 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
     end
 end
 
+location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+
 regularize_boundary_condition(bc, I, field_name, model_field_names) = bc # fallback
 
 """
@@ -60,7 +63,7 @@ so that `bc` can be used during time-stepping `IncompressibleModel`.
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}, I, field_name, model_field_names) where C
     boundary_func = bc.condition
 
-    X, Y, Z = assumed_field_location(field_name)
+    X, Y, Z = location(boundary_func)
 
     indices, interps = index_and_interp_dependencies(X, Y, Z,
                                                      boundary_func.field_dependencies,

@@ -209,7 +209,7 @@ setbc!(bcs::FieldBoundaryConditions, ::Val{:top},    bc) = setfield!(bcs.z, :rig
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:bottom}) = getfield(bcs.z, :left)
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:top})    = getfield(bcs.z, :right)
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, tracer_names)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, tracer_names, field_name)
     model_field_names = tuple(:u, :v, :w, tracer_names...)
 
     east   = regularize_boundary_condition(bcs.east,   grid.Nx, field_name, model_field_names)
@@ -224,4 +224,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     z = CoordinateBoundaryConditions(bottom, top)
 
     return FieldBoundaryConditions(x, y, z)
+end
+
+function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, tracer_names, field_name=nothing)
+    boundary_conditions_names = propertynames(boundary_conditions) 
+    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, tracer_names, name)
+                                      for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
+    boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
+    return boundary_conditions
 end
