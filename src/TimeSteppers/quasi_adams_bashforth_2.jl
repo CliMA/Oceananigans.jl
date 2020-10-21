@@ -51,6 +51,8 @@ function time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper
 
     store_tendencies!(model)
 
+    advect_particles!(model, Δt)
+
     tick!(model.clock, Δt)
 
     return nothing

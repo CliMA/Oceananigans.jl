@@ -22,6 +22,7 @@ using Oceananigans.Buoyancy
 using Oceananigans.SurfaceWaves
 using Oceananigans.BoundaryConditions
 using Oceananigans.Solvers
+using Oceananigans.LagrangianParticleTracking
 using Oceananigans.Models
 using Oceananigans.Utils
 

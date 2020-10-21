@@ -49,6 +49,9 @@ export
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
 
+    # Lagrangian particle tracking
+    LagrangianParticles,
+
     # Models
     IncompressibleModel, NonDimensionalModel, Clock,
 
@@ -132,6 +135,7 @@ include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
 include("SurfaceWaves.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
+include("LagrangianParticleTracking.jl")
 include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
 include("Models/Models.jl")
@@ -155,6 +159,7 @@ using .Coriolis
 using .Buoyancy
 using .SurfaceWaves
 using .TurbulenceClosures
+using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .Models
