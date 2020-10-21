@@ -40,6 +40,9 @@ function time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper
 
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && update_state!(model)
+
     calculate_tendencies!(model)
 
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
