@@ -57,7 +57,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     prefix = "rayleigh_benard"
 
-    checkpointer = Checkpointer(model, iteration_interval=test_steps, prefix=prefix,
+    checkpointer = Checkpointer(model, schedule=IterationInterval(test_steps), prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
 
     #####

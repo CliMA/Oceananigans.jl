@@ -167,6 +167,7 @@ Pages   = [
     "OutputWriters/output_writer_utils.jl",
     "OutputWriters/jld2_output_writer.jl",
     "OutputWriters/netcdf_output_writer.jl",
+    "OutputWriters/windowed_time_average.jl",
     "OutputWriters/checkpointer.jl"
 ]
 ```

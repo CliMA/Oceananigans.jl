@@ -129,7 +129,7 @@ nothing # hide
 
 ## Instantiate a JLD2OutputWriter to write fields. We will add it to the simulation before
 ## running it.
-field_writer = JLD2OutputWriter(model, fields_to_output; time_interval=hour/4,
+field_writer = JLD2OutputWriter(model, fields_to_output; schedule=TimeInterval(hour/4),
                                 prefix="ocean_wind_mixing_and_convection", force=true)
 
 # ## Running the simulation
