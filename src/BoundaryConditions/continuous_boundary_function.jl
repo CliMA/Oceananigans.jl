@@ -1,4 +1,4 @@
-using Oceananigans.Operators: index_and_interp_dependencies, assumed_field_location
+using Oceananigans.Operators: index_and_interp_dependencies
 using Oceananigans.Utils: user_function_arguments
 
 """
@@ -24,15 +24,6 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
                    typeof(func), typeof(parameters), typeof(field_dependencies), Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
     end
 
-    """ Returns a wrapper with location `X, Y, Z` for `func`, `parameters`, and `field_dependencies`."""
-    function ContinuousBoundaryFunction{X, Y, Z}(func, parameters, field_dependencies) where {X, Y, Z}
-        return new{X, Y, Z, Nothing,
-                   typeof(func),
-                   typeof(parameters),
-                   typeof(field_dependencies),
-                   Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
-    end
-
     function ContinuousBoundaryFunction{X, Y, Z, I}(func, parameters, field_dependencies,
                                                     field_dependencies_indices, field_dependencies_interp) where {X, Y, Z, I}
         return new{X, Y, Z, I,
@@ -48,22 +39,37 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
     end
 end
 
-location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+#####
+##### "Regularization" for IncompressibleModel setup
+#####
 
-regularize_boundary_condition(bc, I, field_name, model_field_names) = bc # fallback
+regularize_boundary_condition(bc, X, Y, Z, I, model_field_names) = bc # fallback
 
 """
     regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  I, field_name, model_field_names) where C
+                                  X, Y, Z, I, model_field_names) where C
 
-Regularizes `bc.condition` for boundary index `I` by determining the indices of
-`bc.condition.field_dependencies` in `model_field_names` and associated interpolation functions
-so that `bc` can be used during time-stepping `IncompressibleModel`.
+Regularizes `bc.condition` for location `X, Y, Z`, boundary index `I`, and `model_field_names`,
+returning `BoundaryCondition(C, regularized_condition)`.
+
+The regularization of `bc.condition::ContinuousBoundaryFunction` requries
+
+1. Setting the boundary location to `X, Y, Z`.
+   The boundary-normal direction is tagged with `Nothing` location.
+
+2. Setting the boundary-normal index `I` for indexing into `field_dependencies`.
+   `I` is either `1` (for left boundaries) or
+   `size(grid, n)` for a boundary in the `n`th direction where `n ∈ (1, 2, 3)` corresponds
+   to `x, y, z`.
+
+3. Determining the `indices` that map `model_fields` to `field_dependencies`.
+
+4. Determining the `interps` functions that interpolate field_dependencies to the location
+   of the boundary.
 """
-function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}, I, field_name, model_field_names) where C
+function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
+                                       X, Y, Z, I, model_field_names) where C
     boundary_func = bc.condition
-
-    X, Y, Z = location(boundary_func)
 
     indices, interps = index_and_interp_dependencies(X, Y, Z,
                                                      boundary_func.field_dependencies,
@@ -77,12 +83,9 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
     return BoundaryCondition(C, regularized_boundary_func)
 end
 
-function assign_location(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}, X, Y, Z) where C
-    condition = ContinuousBoundaryFunction{X, Y, Z}(bc.condition.func,
-                                                    bc.condition.parameters,
-                                                    bc.condition.field_dependencies)
-    return BoundaryCondition(C, condition)
-end
+#####
+##### Kernel functions
+#####
 
 @inline function (bc::ContinuousBoundaryFunction{Nothing, Y, Z, i})(j, k, grid, clock, model_fields) where {Y, Z, i}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)

@@ -20,24 +20,20 @@ the signature
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explictly specified, as
-in `model_fields.u[i, j, grid.Nz]`*.
-
-Example
-=======
-
-@inline linear_bottom_drag(i, j, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * model_fields.u[i, j, 1]
-
-u_boundary_condition = BoundaryCondition(Flux, linear_bottom_drag,
-                                         discrete_form=true, parameters=(μ=π,))
+in `model_fields.u[i, j, grid.Nz]`.
 """
 struct DiscreteBoundaryFunction{P, F} <: Function
     func :: F
     parameters :: P
 end
 
-@inline (bc::DiscreteBoundaryFunction{Nothing})(args...) = bc.func(args...)
-@inline (bc::DiscreteBoundaryFunction)(args...) = bc.func(args..., bc.parameters)
+# Un-parameterized
+@inline (bc::DiscreteBoundaryFunction{<:Nothing})(i, j, grid, clock, model_fields) =
+    bc.func(i, j, grid, clock, model_fields)
+
+# Parameterized
+@inline (bc::DiscreteBoundaryFunction)(i, j, grid, clock, model_fields) =
+    bc.func(i, j, grid, clock, model_fields, bc.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(TBC, condition::DiscreteBoundaryFunction) =

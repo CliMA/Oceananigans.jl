@@ -1,3 +1,5 @@
+using Oceananigans.Operators: assumed_field_location
+
 """
     FieldBoundaryConditions
 
@@ -43,15 +45,15 @@ Returns [`ImpenetrableBoundaryCondition`](@ref).
 DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face}) = ImpenetrableBoundaryCondition()
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
+
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)
         e = "Cannot specify $left_name or $right_name boundary conditions with " *
             "$topology topology in $dir-direction."
         throw(ArgumentError(e))
     end
+
     return true
 end
-
-assign_location(bc, args...) = bc # fallback
 
 """
     FieldBoundaryConditions(grid, loc;   east = DefaultBoundaryCondition(topology(grid, 1), loc[1]),
@@ -79,13 +81,6 @@ function FieldBoundaryConditions(grid, loc;   east = DefaultBoundaryCondition(to
                                              north = DefaultBoundaryCondition(topology(grid, 2), loc[2]),
                                             bottom = DefaultBoundaryCondition(topology(grid, 3), loc[3]),
                                                top = DefaultBoundaryCondition(topology(grid, 3), loc[3]))
-
-    east   = assign_location(east,   Nothing, loc[2], loc[3])
-    west   = assign_location(west,   Nothing, loc[2], loc[3])
-    south  = assign_location(south,  loc[1], Nothing, loc[3])
-    north  = assign_location(north,  loc[1], Nothing, loc[3])
-    bottom = assign_location(bottom, loc[1], loc[2], Nothing)
-    top    = assign_location(top,    loc[1], loc[2], Nothing)
 
     TX, TY, TZ = topology(grid)
     x_default_bc = DefaultBoundaryCondition(topology(grid, 1), loc[1])
@@ -210,14 +205,17 @@ setbc!(bcs::FieldBoundaryConditions, ::Val{:top},    bc) = setfield!(bcs.z, :rig
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:top})    = getfield(bcs.z, :right)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, tracer_names, field_name)
+
     model_field_names = tuple(:u, :v, :w, tracer_names...)
 
-    east   = regularize_boundary_condition(bcs.east,   grid.Nx, field_name, model_field_names)
-    west   = regularize_boundary_condition(bcs.west,   1,       field_name, model_field_names)
-    north  = regularize_boundary_condition(bcs.north,  grid.Ny, field_name, model_field_names)
-    south  = regularize_boundary_condition(bcs.south,  1,       field_name, model_field_names)
-    top    = regularize_boundary_condition(bcs.top,    grid.Nz, field_name, model_field_names)
-    bottom = regularize_boundary_condition(bcs.bottom, 1,       field_name, model_field_names)
+    X, Y, Z = assumed_field_location(field_name)
+
+    east   = regularize_boundary_condition(bcs.east,   Nothing, Y, Z, grid.Nx, model_field_names)
+    west   = regularize_boundary_condition(bcs.west,   Nothing, Y, Z, 1,       model_field_names)
+    north  = regularize_boundary_condition(bcs.north,  X, Nothing, Z, grid.Ny, model_field_names)
+    south  = regularize_boundary_condition(bcs.south,  X, Nothing, Z, 1,       model_field_names)
+    top    = regularize_boundary_condition(bcs.top,    X, Y, Nothing, grid.Nz, model_field_names)
+    bottom = regularize_boundary_condition(bcs.bottom, X, Y, Nothing, 1,       model_field_names)
 
     x = CoordinateBoundaryConditions(west, east)
     y = CoordinateBoundaryConditions(south, north)

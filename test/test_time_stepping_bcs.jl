@@ -1,44 +1,26 @@
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 
-function test_z_boundary_condition_simple(arch, FT, fldname, bctype, bc, Nx, Ny)
-    Nz = 16
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))
+function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
+    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
-    bc = BoundaryCondition(bctype, bc)
-    field_bcs = TracerBoundaryConditions(grid, top=bc)
-    model_bcs = NamedTuple{(fldname,)}((field_bcs,))
+    boundary_condition_kwarg = Dict(side => boundary_condition)
+
+    field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
+
+    bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
-                                boundary_conditions=model_bcs)
+                                boundary_conditions=bcs)
 
-    time_step!(model, 1e-16, euler=true)
-
-    return model isa IncompressibleModel
-end
-
-function test_z_boundary_condition_array(arch, FT, fldname)
-    Nx = Ny = Nz = 16
-
-    bcarray = rand(FT, Nx, Ny)
-
-    if arch == GPU()
-        bcarray = CuArray(bcarray)
+    success = try
+        time_step!(model, 1e-16, euler=true)
+        true
+    catch err
+        @warn "test_boundary_condition errored with " * sprint(showerror, err)
+        false
     end
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(0.1, 0.2, 0.3))
-
-    value_bc = BoundaryCondition(Value, bcarray)
-    field_bcs = TracerBoundaryConditions(grid, top=value_bc)
-    model_bcs = NamedTuple{(fldname,)}((field_bcs,))
-
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
-                                boundary_conditions=model_bcs)
-
-    time_step!(model, 1e-16, euler=true)
-
-    field = get_model_field(fldname, model)
-    bcs = field.boundary_conditions
-    return bcs.top[1, 2] == bcarray[1, 2]
+    return success
 end
 
 function test_flux_budget(arch, FT, fldname)
@@ -129,28 +111,59 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     return isapprox(mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
+discrete_func(i, j, grid, clock, model_fields) = - model_fields.u[i, j, grid.Nz]
+parameterized_discrete_func(i, j, grid, clock, model_fields, p) = - p.μ * model_fields.u[i, j, grid.Nz]
+
+parameterized_fun(ξ, η, t, p) = p.μ * cos(p.ω * t)
+field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2) 
+exploding_fun(ξ, η, t, T, S, p) = - p.μ * cosh(S - p.S0) * exp((T - p.T0) / p.λ)
+
+# Many, many bc
+test_boundary_conditions(C, FT=Float64, ArrayType=Array) = [
+    BoundaryCondition(C, 1),
+    BoundaryCondition(C, FT(π)),
+    BoundaryCondition(C, π),
+    BoundaryCondition(C, ArrayType(rand(FT, 1, 1))),
+    BoundaryCondition(C, (ξ, η, t) -> exp(ξ) * cos(η) * sin(t)),
+    BoundaryCondition(C, parameterized_fun, field_dependencies=(:u, :v, :w)),
+    BoundaryCondition(C, field_dependent, parameters=(μ=0.1, ω=2π)),
+    BoundaryCondition(C, exploding_fun, field_dependencies=(:T, :S), parameters=(S0=35, T0=100, μ=2π, λ=FT(2))),
+    BoundaryCondition(C, discrete_func, discrete_form=true),
+    BoundaryCondition(C, parameterized_discrete_func, discrete_form=true, parameters=(μ=0.1,))
+   ]
+
 @testset "Time stepping with boundary conditions" begin
     @info "Testing stepping with boundary conditions..."
 
-    funbc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
-
     @testset "Boundary condition instatiation and time-stepping" begin
-        Nx = Ny = 16
         for arch in archs
-	    ArrayType = array_type(arch)
+    	    ArrayType = array_type(arch)
+
             for FT in (Float64,) #float_types
+
                 @info "  Testing boundary condition instantiation and time-stepping [$(typeof(arch)), $FT]..."
 
-                for fld in (:u, :v, :T, :S)
-                    for bctype in (Gradient, Flux, Value)
-                        arraybc = rand(FT, Nx, Ny) |> ArrayType
-                        for bc in (FT(0.6), arraybc, funbc)
-                            @test test_z_boundary_condition_simple(arch, FT, fld, bctype, bc, Nx, Ny)
-                        end
-                    end
+                if arch isa GPU
+                    topo = (Periodic, Bounded, Bounded)
+                    sides = (:south, :north, :top, :bottom)
+                else
+                    topo = (Bounded, Bounded, Bounded)
+                    sides = (:east, :west, :south, :north, :top, :bottom)
+                end
 
-                    @test test_z_boundary_condition_array(arch, FT, fld)
-                    @test test_flux_budget(arch, FT, fld)
+                for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, ArrayType)
+                    for side in sides
+                        @test test_boundary_condition(arch, FT, topo, side, :T, boundary_condition)
+                    end
+                end
+
+                for boundary_condition in test_boundary_conditions(NormalFlow, FT, ArrayType)
+                    @test test_boundary_condition(arch, FT, (Periodic, Periodic, Bounded), :top,    :w, boundary_condition)
+                    @test test_boundary_condition(arch, FT, (Periodic, Periodic, Bounded), :bottom, :w, boundary_condition)
+                end
+
+                for field_name in (:u, :v, :T, :S)
+                    @test test_flux_budget(arch, FT, field_name)
                 end
             end
         end
