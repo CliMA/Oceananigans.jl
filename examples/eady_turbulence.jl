@@ -73,7 +73,7 @@
 #
 # ```math
 # \tau_{yz}(z=L_z) = - c^D v \sqrt{u^2 + v^2} \, , 
-# ``
+# ```
 #
 # where $c^D$ is a dimensionless drag coefficient and $\tau_{xz}(z=L_z)$ and $\tau_{yz}(z=L_z)$
 # denote the flux of $u$ and $v$ momentum at $z = L_z$, the bottom of the domain.
