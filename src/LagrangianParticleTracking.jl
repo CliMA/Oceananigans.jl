@@ -64,17 +64,21 @@ end
     @inbounds particles.z[p] = clamp(particles.z[p], grid.zF[1], grid.zF[grid.Nz])
 end
 
-function advect_particles!(model, Δt)
-    workgroup = min(length(model.particles), MAX_THREADS_PER_BLOCK)
-    worksize = length(model.particles)
+advect_particles!(::Nothing, model, Δt) = nothing
+
+function advect_particles!(particles, model, Δt)
+    workgroup = min(length(particles), MAX_THREADS_PER_BLOCK)
+    worksize = length(particles)
     advect_particles_kernel! = _advect_particles!(device(model.architecture), workgroup, worksize)
 
-    advect_particles_event = advect_particles_kernel!(model.particles, model.grid, Δt, model.velocities,
+    advect_particles_event = advect_particles_kernel!(particles, model.grid, Δt, model.velocities,
                                                       dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), advect_particles_event)
 
     return nothing
 end
+
+advect_particles!(model, Δt) = advect_particles!(model.particles, model, Δt)
 
 end # module
