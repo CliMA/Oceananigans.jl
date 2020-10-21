@@ -1,8 +1,11 @@
 using Statistics
 using NCDatasets
-using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
+
 using Oceananigans.Diagnostics
 using Oceananigans.Fields
+
+using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
+using Oceananigans.TimeSteppers: update_state!
 
 function instantiate_windowed_time_average(model)
 
@@ -600,6 +603,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2")
 
     for n in 1:4
+        update_state!(model)
         time_step!(restored_model, Δt, euler=false)
     end
 
