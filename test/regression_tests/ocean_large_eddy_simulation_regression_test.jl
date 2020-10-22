@@ -1,4 +1,5 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
+using Oceananigans.TimeSteppers: update_state!
 
 function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
@@ -93,6 +94,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
+
+    update_state!(model)
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)

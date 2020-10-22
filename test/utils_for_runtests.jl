@@ -1,3 +1,5 @@
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+
 #####
 ##### Useful kernels
 #####
@@ -15,6 +17,22 @@ end
 #####
 ##### Useful utilities
 #####
+
+const AB2Model = IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}
+const RK3Model = IncompressibleModel{<:RungeKutta3TimeStepper}
+
+# For time-stepping without a Simulation
+function ab2_or_rk3_time_step!(model::AB2Model, Δt, n)
+    n == 1 && update_state!(model)
+    time_step!(model, Δt, euler=n==1)
+    return nothing
+end
+
+function ab2_or_rk3_time_step!(model::RK3Model, Δt, n)
+    n == 1 && update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
 
 interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                             grid.Hy+1:grid.Ny+grid.Hy,
