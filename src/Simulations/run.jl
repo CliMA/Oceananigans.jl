@@ -1,6 +1,7 @@
 using Oceananigans.Utils: initialize_schedule!
+
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.OutputWriters: checkpoint_path
 
@@ -102,6 +103,9 @@ function run!(sim; pickup=false)
         checkpointers = filter(writer -> writer isa Checkpointer, sim.output_writers)
         set!(model, pickup_filepath(pickup, checkpointers))
     end
+
+    # Conservatively initialize the model state
+    update_state!(model)
 
     # Initialization
     for writer in values(sim.output_writers)
