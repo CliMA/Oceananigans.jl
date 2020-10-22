@@ -1,5 +1,5 @@
 using Oceananigans.Operators: index_and_interp_dependencies
-using Oceananigans.Utils: user_function_arguments
+using Oceananigans.Utils: tupleit, user_function_arguments
 
 """
     ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
@@ -20,8 +20,12 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
 
     """ Returns a location-less wrapper for `func`, `parameters`, and `field_dependencies`."""
     function ContinuousBoundaryFunction(func, parameters, field_dependencies)
+
+        field_dependencies = tupleit(field_dependencies)
+
         return new{Nothing, Nothing, Nothing, Nothing,
-                   typeof(func), typeof(parameters), typeof(field_dependencies), Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
+                   typeof(func), typeof(parameters),
+                   typeof(field_dependencies), Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
     end
 
     function ContinuousBoundaryFunction{X, Y, Z, I}(func, parameters, field_dependencies,
