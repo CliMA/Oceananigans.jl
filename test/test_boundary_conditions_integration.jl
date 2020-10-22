@@ -192,25 +192,23 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
     end
 
     @testset "Boudnary condition time-stepping works" begin
-        for arch in archs, FT in float_types
+        for arch in archs, FT in (Float64,) #float_types
             @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
-            if arch isa GPU
-                topo = (Periodic, Bounded, Bounded)
-                sides = (:south, :top)
-            else
-                topo = (Bounded, Bounded, Bounded)
-                sides = (:east, :south, :top)
-            end
+            topo = arch isa CPU ? (Bounded, Bounded, Bounded) : (Periodic, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                for side in sides
-                    @test test_boundary_condition(arch, FT, topo, side, :T, boundary_condition)
-                end
+                arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
+
+                @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
             for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, (Periodic, Periodic, Bounded), :top,    :w, boundary_condition)
+                 arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
+
+                @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
+                @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
             end
         end
     end
