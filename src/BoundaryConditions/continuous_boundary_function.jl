@@ -1,6 +1,8 @@
 using Oceananigans.Operators: index_and_interp_dependencies
 using Oceananigans.Utils: tupleit, user_function_arguments
 
+import Oceananigans: location
+
 """
     ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
 
@@ -42,6 +44,8 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
                                                       field_dependencies_interp)
     end
 end
+
+location(bc::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 #####
 ##### "Regularization" for IncompressibleModel setup
