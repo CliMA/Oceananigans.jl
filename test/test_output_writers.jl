@@ -566,10 +566,32 @@ end
 ##### Checkpointer tests
 #####
 
+function test_model_equality(test_model, true_model)
+    CUDA.@allowscalar begin
+        @test all(test_model.velocities.u.data     .≈ true_model.velocities.u.data)
+        @test all(test_model.velocities.v.data     .≈ true_model.velocities.v.data)
+        @test all(test_model.velocities.w.data     .≈ true_model.velocities.w.data)
+        @test all(test_model.tracers.T.data        .≈ true_model.tracers.T.data)
+        @test all(test_model.tracers.S.data        .≈ true_model.tracers.S.data)
+        @test all(test_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
+        @test all(test_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
+        @test all(test_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
+        @test all(test_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
+        @test all(test_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+    end
+    return nothing
+end
+
 """
-Run two coarse rising thermal bubble simulations and make sure that when
-restarting from a checkpoint, the restarted simulation matches the non-restarted
-simulation to machine precision.
+Run two coarse rising thermal bubble simulations and make sure
+
+1. When restarting from a checkpoint, the restarted moded matches the non-restarted
+   model to machine precision.
+
+2. When using set!(new_model) to a checkpoint, the new model matches the non-restarted
+   simulation to machine precision.
+
+3. run!(new_model, pickup) works as expected
 """
 function run_thermal_bubble_checkpointer_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -590,42 +612,62 @@ function run_thermal_bubble_checkpointer_tests(arch)
     checkpointed_model = deepcopy(true_model)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=9)
-    run!(true_simulation)
+    run!(true_simulation) # for 9 iterations
 
     checkpointed_simulation = Simulation(checkpointed_model, Δt=Δt, stop_iteration=5)
     checkpointer = Checkpointer(checkpointed_model, schedule=IterationInterval(5), force=true)
     push!(checkpointed_simulation.output_writers, checkpointer)
 
     # Checkpoint should be saved as "checkpoint5.jld" after the 5th iteration.
-    run!(checkpointed_simulation)
-
-    # Remove all knowledge of the checkpointed model.
-    checkpointed_model = nothing
+    run!(checkpointed_simulation) # for 5 iterations
 
     # model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
     restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2")
 
+    #restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=9)
+    #run!(restored_simulation)
+
     for n in 1:4
         update_state!(restored_model)
-        time_step!(restored_model, Δt, euler=false)
+        time_step!(restored_model, Δt, euler=false) # time-step for 4 iterations
     end
+
+    test_model_equality(restored_model, true_model)
+
+    #####
+    ##### Test `set!(model, checkpoint_file)`
+    #####
+
+    new_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+
+    set!(new_model, "checkpoint_iteration5.jld2")
+
+    @test new_model.clock.iteration = checkpointed_model.clock.iteration
+    @test new_model.clock.time = checkpointed_model.clock.time
+    test_model_equality(new_model, checkpointed_model)
+
+    #####
+    ##### Test `run!(sim, pickup=true)
+    #####
+    
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=9)
+    run!(new_simulation, pickup=true)
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup="checkpoint_iteration0.jld2")
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup="checkpoint_iteration5.jld2")
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup=0)
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup=5)
+    test_model_equality(new_model, true_model)
 
     rm("checkpoint_iteration0.jld2", force=true)
     rm("checkpoint_iteration5.jld2", force=true)
-
-    # Now the true_model and restored_model should be identical.
-    CUDA.@allowscalar begin
-        @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
-        @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
-        @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
-        @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
-        @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
-        @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
-        @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
-        @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
-        @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
-        @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
-    end
 
     return nothing
 end
