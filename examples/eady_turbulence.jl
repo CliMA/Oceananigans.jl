@@ -144,14 +144,11 @@ B_field = BackgroundField(B, parameters=background_parameters)
 
 drag_coefficient = 1e-4
 
-@inline drag_u(u, v, cᴰ) = - cᴰ * sqrt(u^2 + v^2) * u
-@inline drag_v(u, v, cᴰ) = - cᴰ * sqrt(u^2 + v^2) * v
+@inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * u * sqrt(u^2 + v^2)
+@inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * v * sqrt(u^2 + v^2)
 
-@inline bottom_drag_u(i, j, grid, clock, f, cᴰ) = @inbounds drag_u(f.u[i, j, 1], f.v[i, j, 1], cᴰ)
-@inline bottom_drag_v(i, j, grid, clock, f, cᴰ) = @inbounds drag_v(f.u[i, j, 1], f.v[i, j, 1], cᴰ)
-    
-drag_bc_u = BoundaryCondition(Flux, bottom_drag_u, discrete_form=true, parameters=drag_coefficient)
-drag_bc_v = BoundaryCondition(Flux, bottom_drag_v, discrete_form=true, parameters=drag_coefficient)
+drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=drag_coefficient)
+drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=drag_coefficient)
 
 u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u) 
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
