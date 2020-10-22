@@ -5,7 +5,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
 
-using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC
+using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
 function instantiate_windowed_time_average(model)
