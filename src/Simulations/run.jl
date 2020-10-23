@@ -1,5 +1,7 @@
-using Oceananigans.Utils: initialize_schedule!
+using Glob
 
+using Oceananigans.Utils: initialize_schedule!
+using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
@@ -100,14 +102,14 @@ function run!(sim; pickup=false)
     clock = model.clock
 
     if we_want_to_pickup(pickup)
-        checkpointers = filter(writer -> writer isa Checkpointer, sim.output_writers)
+        checkpointers = filter(writer -> writer isa Checkpointer, collect(values(sim.output_writers)))
         set!(model, checkpoint_path(pickup, checkpointers))
     end
 
     # Conservatively initialize the model state
     update_state!(model)
 
-    # Initialization
+    # Output and diagnostics initialization
     for writer in values(sim.output_writers)
         open(writer)
         initialize_schedule!(writer.schedule)
@@ -153,7 +155,8 @@ end
 checkpoint_path(filepath::AbstractString, checkpointers) = filepath
 
 function checkpoint_path(pickup, checkpointers)
-    length(checkpointers) > 1 && error("Cannot use pickup=true or pickup::Int with multiple checkpointers!")
+    length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
+    length(checkpointers) > 1 && error("Multiple checkpointers found: cannot pickup simulation!")
     return checkpoint_path(pickup, first(checkpointers))
 end
 
@@ -165,11 +168,11 @@ For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 the largest iteration.
 """
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
-    filepaths = glob(checkpoint_superprefix(checkpointer) * "*.jld2", checkpointer.dir)
+    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
     filenames = basename.(filepaths)
 
     # Parse filenames to find latest checkpointed iteration
-    leading = length(checkpoint_superprefix(checkpointer))
+    leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = 5 # length(".jld2")
     iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
 

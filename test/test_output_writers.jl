@@ -651,15 +651,21 @@ function run_thermal_bubble_checkpointer_tests(arch)
     #####
     
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=9)
-    run!(new_simulation, pickup=true)
-    test_model_equality(new_model, true_model)
 
+    # Pickup from explicit checkpoint path
     run!(new_simulation, pickup="checkpoint_iteration0.jld2")
     test_model_equality(new_model, true_model)
 
     run!(new_simulation, pickup="checkpoint_iteration5.jld2")
     test_model_equality(new_model, true_model)
 
+    # Pickup using existing checkpointer
+    new_simulation.output_writers[:checkpointer] =
+        Checkpointer(new_model, schedule=IterationInterval(5), force=true)
+
+    run!(new_simulation, pickup=true)
+    test_model_equality(new_model, true_model)
+    
     run!(new_simulation, pickup=0)
     test_model_equality(new_model, true_model)
 
