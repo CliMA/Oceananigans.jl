@@ -1,0 +1,5 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
