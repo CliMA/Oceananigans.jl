@@ -9,16 +9,16 @@ direction is \textit{no-penetration}.
 ## Flux boundary conditions
 
 A flux boundary condition prescribes flux of a quantity normal to the boundary.
-For a tracer $c$ this corresponds to prescribing
+  For a tracer ``c`` this corresponds to prescribing
 ```math
 q_c \, |_b \equiv \bm{q}_c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b} \, ,
 ```
-where $\partial \Omega_b$ is an external boundary.
+where ``\partial \Omega_b`` is an external boundary.
 
 ## Gradient (Neumann) boundary condition
 
 A gradient boundary condition prescribes the gradient of a field normal to the boundary.
-For a tracer $c$ this prescribes
+For a tracer ``c`` this prescribes
 ```math
 \gamma \equiv \bm{\nabla} c \bm{\cdot} \hat{\bm{n}} \, |_{\partial \Omega_b} \, .
 ```

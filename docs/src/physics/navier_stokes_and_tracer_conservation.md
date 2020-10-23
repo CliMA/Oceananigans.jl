@@ -1,14 +1,14 @@
 # Coordinate system and notation
 
 Oceananigans.jl is formulated in a Cartesian coordinate system
-$\bm{x} = (x, y, z)$ with unit vectors $\bm{\hat x}$, $\bm{\hat y}$, and $\bm{\hat z}$,
-where $\bm{\hat x}$ points east, $\bm{\hat y}$ points north, and $\bm{\hat z}$ points 'upward',
+``\bm{x} = (x, y, z)`` with unit vectors ``\bm{\hat x}``, ``\bm{\hat y}``, and ``\bm{\hat z}``,
+where ``\bm{\hat x}`` points east, ``\bm{\hat y}`` points north, and ``\bm{\hat z}`` points 'upward',
 opposite the direction of gravitational acceleration.
-We denote time with $t$, partial derivatives with respect to time $t$ or a coordinate $x$
-with $\partial_t$ or $\partial_x$, and denote the gradient operator
-$\bm{\nabla} \equiv \partial_x \bm{\hat x} + \partial_y \bm{\hat y} + \partial_z \bm{\hat z}$.
-We use $u$, $v$, and $w$ to denote the east, north, and vertical velocity components,
-such that $\bm{u} = u \bm{\hat x} + v \bm{\hat y} + w \bm{\hat z}$.
+We denote time with ``t``, partial derivatives with respect to time ``t`` or a coordinate ``x``
+with ``\partial_t`` or ``\partial_x``, and denote the gradient operator
+``\bm{\nabla} \equiv \partial_x \bm{\hat x} + \partial_y \bm{\hat y} + \partial_z \bm{\hat z}``.
+We use ``u``, ``v``, and ``w`` to denote the east, north, and vertical velocity components,
+such that ``\bm{u} = u \bm{\hat x} + v \bm{\hat y} + w \bm{\hat z}``.
 
 # The Boussinesq Navier-Stokes equations and tracer conservation equations
 
@@ -29,23 +29,23 @@ user.
       for an asymptotic derivation. See Kundu (2015, Section 4.9) for an engineering
       introduction.
 
-The fluid density $\rho$ in Oceananigans.jl is, in general, decomposed into three
+The fluid density ``\rho`` in Oceananigans.jl is, in general, decomposed into three
 components:
 ```math
     \rho(\bm{x}, t) = \rho_0 + \rho_*(z) + \rho'(\bm{x}, t) \, ,
 ```
-where $\rho_0$ is a constant 'reference' density, $\rho_*(z)$ is a background density
+where ``\rho_0`` is a constant 'reference' density, ``\rho_*(z)`` is a background density
 profile which, when non-zero, is typically associated with the hydrostatic compression
-of seawater in the deep ocean, and $\rho'(\bm{x}, t)$ is the dynamic component of density
+of seawater in the deep ocean, and ``\rho'(\bm{x}, t)`` is the dynamic component of density
 corresponding to inhomogeneous distributions of a buoyant tracer such as temperature or salinity.
 The fluid *buoyancy*, associated with the buoyant acceleration of fluid, is
-defined in terms of $\rho'$ as
+defined in terms of ``\rho'`` as
 ```math
     b = - \frac{g \rho'}{\rho_0} \, ,
 ```
-where $g$ is gravitational acceleration.
+where ``g`` is gravitational acceleration.
 
-The Boussinesq approximation is valid when $\rho_* + \rho' \ll \rho_0$, which implies the
+The Boussinesq approximation is valid when ``\rho_* + \rho' \ll \rho_0``, which implies the
 fluid is _approximately_ incompressible, and thus does not support acoustic waves.
 In this case, the mass conservation equation reduces to the continuity equation
 ```math
@@ -70,11 +70,11 @@ at the top of the domain via the Craik-Leibovich approximation are
                         + \bm{F_u} \, ,
     \tag{eq:momentum}
 ```
-where $b$ is buoyancy, $\bm{\tau}$ is the kinematic stress tensor, $\bm{F_u}$
-denotes an internal forcing of the velocity field $\bm{u}$, $\phi$ is the potential
+where ``b`` is buoyancy, ``\bm{\tau}`` is the kinematic stress tensor, ``\bm{F_u}``
+denotes an internal forcing of the velocity field ``\bm{u}``, ``\phi`` is the potential
 associated with kinematic and constant hydrostatic contributions to pressure,
-$\bm{u}^S$ is the 'Stokes drift' velocity field associated with surface gravity waves,
-and $\bm{f}$ is *Coriolis parameter*, or the background vorticity associated with the
+``\bm{u}^S`` is the 'Stokes drift' velocity field associated with surface gravity waves,
+and ``\bm{f}`` is *Coriolis parameter*, or the background vorticity associated with the
 specified rate of rotation of the frame of reference.
 
 From left to right, the terms that appear on the right-hand side of the momentum conservation equation are:
@@ -101,7 +101,7 @@ The conservation law for tracers in Oceananigans.jl is
                    + F_c \, ,
     \tag{eq:tracer}
 ```
-where $\bm{q}_c$ is the diffusive flux of $c$ and $F_c$ is an arbitrary source term.
+where ``\bm{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
 Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer
 equations to be solved simultaneously with the momentum equations.
 
