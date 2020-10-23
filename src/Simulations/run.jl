@@ -101,7 +101,7 @@ function run!(sim; pickup=false)
 
     if we_want_to_pickup(pickup)
         checkpointers = filter(writer -> writer isa Checkpointer, sim.output_writers)
-        set!(model, pickup_filepath(pickup, checkpointers))
+        set!(model, checkpoint_path(pickup, checkpointers))
     end
 
     # Conservatively initialize the model state

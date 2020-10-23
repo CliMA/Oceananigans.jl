@@ -642,8 +642,8 @@ function run_thermal_bubble_checkpointer_tests(arch)
 
     set!(new_model, "checkpoint_iteration5.jld2")
 
-    @test new_model.clock.iteration = checkpointed_model.clock.iteration
-    @test new_model.clock.time = checkpointed_model.clock.time
+    @test new_model.clock.iteration == checkpointed_model.clock.iteration
+    @test new_model.clock.time == checkpointed_model.clock.time
     test_model_equality(new_model, checkpointed_model)
 
     #####
