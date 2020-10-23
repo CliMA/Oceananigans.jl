@@ -1,6 +1,6 @@
 # Pressure decomposition
 
-In the numerical implementation of the momentum equations, the kinematic potential $\phi$ 
+In the numerical implementation of the momentum equations, the kinematic potential ``\phi`` 
 is split into "hydrostatic anomaly" and "non-hydrostatic" parts via
 ```math
     \tag{eq:pressure}
@@ -30,4 +30,4 @@ Under this pressure decomposition the momentum equation becomes
    \partial_t \bm{u} + \left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{u} + \bm{f} \times \bm{u} = 
     - \bm{\nabla} \phi_{\rm{non}} - \bm{\nabla}_h \phi_{\rm{hyd}} - \bm{\nabla} \bm{\cdot} \bm{\tau} + \bm{F_u} \, .
 ```
-Mathematically, the non-hydrostatic potential $\phi_{\rm{non}}$ enforces the incompressibility constraint.
+Mathematically, the non-hydrostatic potential ``\phi_{\rm{non}}`` enforces the incompressibility constraint.

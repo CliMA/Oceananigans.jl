@@ -7,7 +7,7 @@ material in this section is derived from [Marshall97FV](@cite).
 ## Differences
 
 Difference operators act as the discrete form of the derivative operator. Care must be taken when calculating
-differences on a staggered grid. For example, the the difference of a cell-centered variable such as temperature $T$
+differences on a staggered grid. For example, the the difference of a cell-centered variable such as temperature ``T``
 lies on the faces  in the direction of the difference, and vice versa. In principle, there are three difference
 operators, one for each  direction
 ```math
@@ -15,10 +15,10 @@ operators, one for each  direction
   \delta_y f = f_N - f_S , \quad
   \delta_z f = f_T - f_B ,
 ```
-where the $E$ and $W$ subscripts indicate that the value is evaluated the eastern or western wall of the cell, $N$ and
-$S$ indicate the northern and southern walls, and $T$ and $B$ indicate the top and bottom walls.
+where the ``E`` and ``W`` subscripts indicate that the value is evaluated the eastern or western wall of the cell, ``N`` and
+``S`` indicate the northern and southern walls, and ``T`` and ``B`` indicate the top and bottom walls.
 
-Additionally, two $\delta$ operators must be defined for each direction to account for the staggered nature of the grid.
+Additionally, two ``\delta`` operators must be defined for each direction to account for the staggered nature of the grid.
 One for taking the difference of a cell-centered variable and projecting it onto the cell faces
 ```math
 \begin{aligned}
@@ -73,11 +73,11 @@ The divergence of the flux of a cell-centered quantity over the cell can be calc
                    + \delta_y^{afa} (A_y f_y)
                    + \delta_z^{aaf} (A_z f_z) \right]
 ```
-where $\bm{f} = (f_x, f_y, f_z)$ is the flux with components defined normal to the faces, and $V$ is the volume of
+where ``\bm{f} = (f_x, f_y, f_z)`` is the flux with components defined normal to the faces, and ``V`` is the volume of
 the cell. The presence of a solid boundary is indicated by setting the appropriate flux normal to the boundary to zero.
 
-A similar divergence operator can be defined for a face-centered quantity. The divergence of the flux of $T$ over a
-cell,  $\nabla \cdot (\bm{u} T)$, required in the evaluation of $G_T$, for example, is then
+A similar divergence operator can be defined for a face-centered quantity. The divergence of the flux of ``T`` over a
+cell,  ``\nabla \cdot (\bm{u} T)``, required in the evaluation of ``G_T``, for example, is then
 ```math
 \renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
 \div{\bm{u} T}
@@ -85,13 +85,13 @@ cell,  $\nabla \cdot (\bm{u} T)$, required in the evaluation of $G_T$, for examp
                    + \delta_y^{aca} (A_y v \overline{T}^{afa})
                    + \delta_z^{aac} (A_z w \overline{T}^{aaf}) \right]
 ```
-where $T$ is interpolated onto the cell faces where it can be multiplied by the velocities, which are then differenced
-and  projected onto the cell centers where they added together and then added to $G_T$ which also lives at the cell
+where ``T`` is interpolated onto the cell faces where it can be multiplied by the velocities, which are then differenced
+and  projected onto the cell centers where they added together and then added to ``G_T`` which also lives at the cell
 centers.
 
 ## Momentum advection
 
-The advection terms that make up the $\mathbf{G}$ terms in equations \eqref{eq:horizontalMomentum} and
+The advection terms that make up the ``\mathbf{G}`` terms in equations \eqref{eq:horizontalMomentum} and
 \eqref{eq:verticalMomentum} can be mathematically written as, e.g,
 ```math
 \renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
@@ -102,7 +102,7 @@ The advection terms that make up the $\mathbf{G}$ terms in equations \eqref{eq:h
 which can then be discretized similarly to the flux divergence operator, however, they must be discretized differently
 for each direction.
 
-For example, the $x$-momentum advection operator is discretized as
+For example, the ``x``-momentum advection operator is discretized as
 ```math
 \bm{u} \cdot \nabla u
 = \frac{1}{\overline{V}^x} \left[
@@ -111,10 +111,10 @@ For example, the $x$-momentum advection operator is discretized as
   + \delta_z^{aaf} \left( \overline{A_z w}^{aac} \overline{u}^{aac} \right)
 \right]
 ```
-where $\overline{V}^x$ is the average of the volumes of the cells on either side of the face in question. Calculating
-$\partial(uu)/\partial x$ can be performed by interpolating $A_x u$ and $u$ onto the cell centers then multiplying them
-and differencing them back onto the faces. However, in the case of the the two other terms, $\partial(vu)/\partial y$
-and $\partial(wu)/\partial z$, the two variables must be interpolated onto the cell edges to be multiplied then
+where ``\overline{V}^x`` is the average of the volumes of the cells on either side of the face in question. Calculating
+``\partial(uu)/\partial x`` can be performed by interpolating ``A_x u`` and ``u`` onto the cell centers then multiplying them
+and differencing them back onto the faces. However, in the case of the the two other terms, ``\partial(vu)/\partial y``
+and ``\partial(wu)/\partial z``, the two variables must be interpolated onto the cell edges to be multiplied then
 differenced back onto the cell faces.
 
 ## Discretization of isotropic diffusion operators
@@ -128,9 +128,9 @@ An isotropic viscosity operator acting on vertical momentum is discretized via
         + \delta_z^{aaf} \left( \nu_e \overline{A_z}^{aac} \delta_z^{aac} w \right)
     \right ]
 ```
-where $\nu$ is the kinematic viscosity.
+where ``\nu`` is the kinematic viscosity.
 
-An isotropic diffusion operator acting on a tracer $c$, on the other hand, is discretized via
+An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is discretized via
 ```math
    \bm{\nabla} \bm{\cdot} \left ( \kappa_e \bm{\nabla} c \right ) =
     = \frac{1}{V} \left[
@@ -145,7 +145,7 @@ Vertical integrals are converted into sums along each column. For example, the h
 ```math
     p_{HY}^\prime = \int_{-L_z}^0 b^\prime \; dz
 ```
-where $b^\prime$ is the buoyancy perturbation. Converting it into a sum that we compute from the top downwards we get
+where ``b^\prime`` is the buoyancy perturbation. Converting it into a sum that we compute from the top downwards we get
 ```math
     p_{HY}^\prime(k) =
         \begin{cases}
@@ -153,14 +153,14 @@ where $b^\prime$ is the buoyancy perturbation. Converting it into a sum that we 
             p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_k, & \quad 1 \le k \le N_z - 1
         \end{cases}
 ```
-where we converted the sum into a recursive definition for $p_{HY}^\prime(k)$ in terms of $p_{HY}^\prime(k+1)$ so that
-the integral may be computed with $\mathcal{O}(N_z)$ operations by a single thread.
+where we converted the sum into a recursive definition for ``p_{HY}^\prime(k)`` in terms of ``p_{HY}^\prime(k+1)`` so that
+the integral may be computed with ``\mathcal{O}(N_z)`` operations by a single thread.
 
-The vertical velocity $w$ may be computed from $u$ and $v$ via the continuity equation
+The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
     w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, dz
 ```
-to satisfy the incompressibility condition $\nabla\cdot\bm{u} = 0$ to numerical precision. This also involves computing
+to satisfy the incompressibility condition ``\nabla\cdot\bm{u} = 0`` to numerical precision. This also involves computing
 a vertical integral, in this case evaluated from the bottom up
 ```math
     w_k =

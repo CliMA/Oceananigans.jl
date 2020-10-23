@@ -1,17 +1,17 @@
 # [Turbulence closures](@id numerical_closures)
 
 To truly simulate and resolve turbulence at high Reynolds number (so basically all interesting flows) would require
-you resolve all motions down to the [Kolmogorov41](@cite) length scale $\eta = (\nu^3 / \varepsilon)^{1/4}$ where
-$\nu$ is the kinematic viscosity and $\varepsilon$ the average rate of dissipation of turbulence kinetic energy per
+you resolve all motions down to the [Kolmogorov41](@cite) length scale ``\eta = (\nu^3 / \varepsilon)^{1/4}`` where
+``\nu`` is the kinematic viscosity and ``\varepsilon`` the average rate of dissipation of turbulence kinetic energy per
 unit mass.
 
 As pointed out way back by [Corrsin61](@cite), to run a simulation on a horizontal domain about 10 times the size of an
-"average eddy" with 100 vertical levels and where the grid spacing is given by $\eta$ would require the computer to
-store on the order of $10^{14}$ variables.[^1] This is still impractical today, although may be within
+"average eddy" with 100 vertical levels and where the grid spacing is given by ``\eta`` would require the computer to
+store on the order of ``10^{14}`` variables.[^1] This is still impractical today, although may be within
 reach in less than a decade. He ends by suggesting the use of an analog rather digital computer---a tank of water.
 
-[^1]: And even then, $\eta$ gives the *maximum* allowable grid spacing. There is significant flow structure
-    smaller than $\eta$.
+[^1]: And even then, ``\eta`` gives the *maximum* allowable grid spacing. There is significant flow structure
+    smaller than ``\eta``.
 
 To have any hope of simulating high Reynolds number flows we need some way of resolving the sub-grid scale motions.[^2]
 
@@ -22,8 +22,8 @@ To have any hope of simulating high Reynolds number flows we need some way of re
 
 ## Reynolds-averaged Navier–Stokes equations
 
-Following [Reynolds1895](@cite) we can decompose flow variables such as velocity $\bm{u}$ into the mean component
-$\overline{\bm{u}}$ and the fluctuating component $\bm{u}^\prime$ so that $\bm{u} = \overline{\bm{u}} + \bm{u}^\prime$
+Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\bm{u}`` into the mean component
+``\overline{\bm{u}}`` and the fluctuating component ``\bm{u}^\prime`` so that ``\bm{u} = \overline{\bm{u}} + \bm{u}^\prime``
 [see §4 of [Pope00](@cite) for a modern discussion].
 
 Expressing the Navier-Stokes equations in tensor notation
@@ -33,8 +33,8 @@ Expressing the Navier-Stokes equations in tensor notation
     \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i
 \end{aligned}
 ```
-where $\alpha = \rho^{-1}$ is the specific volume and $f_i$ represents external forces. We can plug in the Reynolds
-decomposition for $\bm{u}$ and after some manipulation arrive at the following form for the *Reynolds-averaged
+where ``\alpha = \rho^{-1}`` is the specific volume and ``f_i`` represents external forces. We can plug in the Reynolds
+decomposition for ``\bm{u}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
 Navier-Stokes equations*
 ```math
 \begin{aligned}
@@ -55,7 +55,7 @@ terms which form the components of the *Reynolds stress tensor*
 \tau_{ij} = \rho \overline{u_i^\prime u_j^\prime}
 ```
 Attempting to close the equations leads to the *closure problem*: the time evolution of the Reynolds stresses
-depends on  triple covariances $\overline{u_i^\prime u_j^\prime u_k^\prime}$ and covariances with pressure, which depend
+depends on  triple covariances ``\overline{u_i^\prime u_j^\prime u_k^\prime}`` and covariances with pressure, which depend
 on quadruple covariances and so on [Chou45](@cite).
 
 This is kind of hopeless so we will have to find some way to model the Reynolds stresses.
@@ -63,8 +63,8 @@ This is kind of hopeless so we will have to find some way to model the Reynolds 
 ## Gradient-diffusion hypothesis and eddy viscosity models
 
 The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@cite), assumes that the transport of scalar fluxes
-such as $\overline{\bm{u}^\prime c^\prime}$ and $\overline{u_i^\prime u_j^\prime}$ occurs down the mean scalar gradient
-$\grad c$ as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
+such as ``\overline{\bm{u}^\prime c^\prime}`` and ``\overline{u_i^\prime u_j^\prime}`` occurs down the mean scalar gradient
+``\grad c`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
 molecular motion in a gas can be described by a molecular viscosity.
 
 Taking this assumption we can express the Reynolds stresses and turbulent tracer fluxes in terms of the mean variables
@@ -74,7 +74,7 @@ and close the equations
 \quad \text{and} \quad
 \overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij}
 ```
-where $\nu_e = \nu_e(\bm{x}, t)$ is the turbulent or *eddy viscosity* and $\kappa_e = \kappa_e(\bm{x}, t)$
+where ``\nu_e = \nu_e(\bm{x}, t)`` is the turbulent or *eddy viscosity* and ``\kappa_e = \kappa_e(\bm{x}, t)``
 is the *eddy diffusivity*.
 
 The effective diffusivity ends up being the sum of the molecular and eddy diffusivities. So just by using an elevated
