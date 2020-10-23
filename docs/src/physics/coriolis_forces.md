@@ -57,6 +57,6 @@ The *non-traditional* ``\beta``-plane approximation accounts for the latitudinal
 the locally vertical and the locally horizontal components of the rotation vector
 ```math
     \bm{f} = \left[ 2\Omega\cos\varphi_0 \left( 1 -  \frac{z}{R} \right) + \gamma y \right] \bm{\hat y}
-           + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \bm{\hat z}
+           + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \bm{\hat z} \, ,
 ```
 where ``\beta = 2\Omega\cos\varphi_0 / R`` and ``\gamma = -4\Omega\varphi_0 / R``.

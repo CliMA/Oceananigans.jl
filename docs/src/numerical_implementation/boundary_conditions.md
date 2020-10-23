@@ -81,9 +81,7 @@ flux of ``c`` across the external boundary is
     cells does not include fluxes across the external boundary, and;
 2. Add the prescribed flux to the boundary-adjacent volumes prior to calculating ``G_c``
 
-    ```math
-    G_c \, |_b = G_c \, |_b - \frac{A_b}{V_b} q_c \, |_b \, \text{sign}(\hat{\bm{n}}) \, ,
-    ```
+    `` G_c \, |_b = G_c \, |_b - \frac{A_b}{V_b} q_c \, |_b \, \text{sign}(\hat{\bm{n}}) \, , ``
 
     where ``G_c \, |_b`` denotes values of ``G_c`` in boundary-adjacent volumes, ``q_c \, |_b`` is the flux prescribed along the boundary,
     ``V_b`` is the volume of the boundary-adjacent cell, and ``A_b`` is the area of the external boundary of the boundary-adjacent cell.

@@ -165,7 +165,7 @@ a vertical integral, in this case evaluated from the bottom up
 ```math
     w_k =
         \begin{cases}
-            0, & \quad k = 1 \\
-            w_{k-1} - \left( \partial_x^{caa} u + \partial_y^{aca} v \right) \Delta z^C_k, & \quad 2 \le k \le N_z
+            0, & \quad k = 1 \, , \\
+            w_{k-1} - \left( \partial_x^{caa} u + \partial_y^{aca} v \right) \Delta z^C_k, & \quad 2 \le k \le N_z \, .
         \end{cases}
 ```
