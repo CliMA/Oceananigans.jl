@@ -48,7 +48,7 @@ constant velocity ``U``, a Gaussian evolves according to
     c = \frac{\mathrm{e}^{- (x - U t)^2 / 4 \kappa t}}{\sqrt{4 \pi \kappa t}}
 ```
 
-For this test we take the initial time as $t=t_0$.
+For this test we take the initial time as ``t=t_0``.
 We simulate this problem with advection and diffusion, as well as with ``U=0`` and thus diffusion only, as well as with
 ``\kappa \approx 0`` and thus "advection only".
 The solutions are
