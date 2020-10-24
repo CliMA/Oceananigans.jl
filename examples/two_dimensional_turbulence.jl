@@ -46,7 +46,8 @@ using Oceananigans.Fields, Oceananigans.AbstractOperations
 
 u, v, w = model.velocities
 
-ω = ComputedField(∂x(v) - ∂y(u))
+vorticity = ComputedField(∂x(v) - ∂y(u))
+
 speed = ComputedField(sqrt(u^2 + v^2))
 
 # Now we construct a simulation that prints out the iteration and model time as it runs.
@@ -61,7 +62,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=100, iteration_interval=100, p
 
 using Oceananigans.OutputWriters
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=ω, s=speed),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=vorticity, s=speed),
                                                       schedule = TimeInterval(2),
                                                       prefix = "two_dimensional_turbulence",
                                                       force = true)
@@ -130,4 +131,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide
+gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide
