@@ -3,89 +3,90 @@
 # This script provides our simplest example of Oceananigans.jl functionality:
 # the diffusion of a one-dimensional Gaussian. This example demonstrates
 #
-#   * how to load `Oceananigans.jl`;
-#   * how to instantiate an `Oceananigans.jl` model;
-#   * how to create simple `Oceananigans.jl` output;
-#   * how to set an initial condition with a function;
-#   * how to time-step a model forward, and finally
-#   * how to look at results.
+#   * How to load `Oceananigans.jl`.
+#   * How to instantiate an `Oceananigans.jl` model.
+#   * How to create simple `Oceananigans.jl` output.
+#   * How to set an initial condition with a function.
+#   * How to time-step a model forward.
+#   * How to look at results.
 #
 # ## Using `Oceananigans.jl`
 #
-# To use `Oceananigans.jl` after it has been installed, we bring
-# `Oceananigans.jl` functions and names into our 'namespace' by writing
+# We write
 
 using Oceananigans
 
-# In addition, we import the submodule `Grids`.
-
-using Oceananigans.Grids
-
+# to load Oceananigans functions and objects into our script.
+#
 # ## Instantiating and configuring a model
 #
-# To begin using Oceananigans, we instantiate an incompressible model by calling
-# the `IncompressibleModel` constructor:
+# A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
+# by passing it a `grid`, plus information about the equations we would like to solve:
 
 model = IncompressibleModel(
        grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
     closure = IsotropicDiffusivity(κ = 1.0)
 )
-nothing # hide
 
-# The keyword arguments `grid` and `closure` indicate that
-# our model grid is Cartesian with uniform grid spacing, that our diffusive
-# stress and tracer fluxes are determined by diffusion with a constant
-# diffusivity `κ` (note that we do not use viscosity in this example).
-
-# Note that by default, a `Model` has no-flux boundary condition on all
-# variables. Next, we set an initial condition on our "passive tracer",
-# temperature. Our objective is to observe the diffusion of a Gaussian.
-
-## Build a Gaussian initial condition function with width `δ`:
-δ = 0.1
-Tᵢ(x, y, z) = exp(-z^2 / (2δ^2))
-
-## Set `model.tracers.T` to the function `Tᵢ`:
-set!(model, T=Tᵢ)
-
-# ## Running your first `Model`
+# The `grid` and turbulence `closure` specify a Cartesian grid with regular
+# (uniform) grid spacing, and isotropic tracer diffusion with
+# constant diffusivity `κ`.
 #
-# Finally, we time-step the model forward using the function
-# `time_step!`, with a time-step size that ensures numerical stability.
+# Our simple `grid` and `model` use a number of defaults:
+#
+#   * The default `grid` topology periodic in `x, y` and bounded in `z`.
+#   * The default `Model` has no-flux (insulating and stress-free) boundary conditions on
+#     non-periodic boundaries for velocities `u, v, w` and tracers.
+#   * The default `Model` has two tracers: temperature `T`, and salinity `S`.
+#   * The default `Model` uses a `SeawaterBuoyancy` model with a `LinearEquationOfState`.
+#     However, buoyancy will not be active in the simulation we run below.
+#
+# Next, we `set!` an initial condition on the temperature field,
+# `model.tracers.T`. Our objective is to observe the diffusion of a Gaussian.
+
+width = 0.1
+
+initial_temperature(x, y, z) = exp(-z^2 / (2width^2))
+
+set!(model, T=initial_temperature)
+
+# ## Running a `Simulation`
+#
+# Next we set-up a `Simulation` that time-steps the model forward and manages output.
 
 ## Time-scale for diffusion across a grid cell
-cell_diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
+diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 
-## We create a `Simulation` which will handle time stepping the model. It will
-## execute `Nt` time steps with step size `Δt` using a second-order Adams-Bashforth method.
-simulation = Simulation(model, Δt = 0.1 * cell_diffusion_time_scale, stop_iteration = 1000)
+simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
+
+# We've specified that `simulation` runs for 1000 iterations with a stable time-step.
+# All that's left to do is
 
 run!(simulation)
 
 # ## Visualizing the results
 #
-# We use `Plots.jl` to look at the results. Fields are
-# stored as 3D arrays in Oceananigans so we plot `interior(T)[1, 1, :]`
-# which will return a 1D array.
+# We use `Plots.jl` to look at the results.
 
 using Plots, Printf
 
+using Oceananigans.Grids: znodes ## for obtaining z-coordinates of Oceananigans fields
+
+# We plot the initial condition and the current solution. Note that
+# fields are always 3D in Oceananigans. We use `interior(model.tracers.T)[1, 1, :]`
+# to plot temperature, which returns a 1D array of `z`-values.
+
 ## A convenient function for generating a label with the current model time
-tracer_label(time) = @sprintf("t = %.3f", time)
+time_label(time) = @sprintf("t = %.3f", time)
 
-## Plot initial condition
-T = model.tracers.T
+z = znodes(model.tracers.T)
 
-z = znodes(T)[:]
+p = plot(initial_temperature.(0, 0, z), z, linewidth=2, label="t = 0", xlabel="Temperature", ylabel="z")
 
-p = plot(Tᵢ.(0, 0, z), z, linewidth=2, label="t = 0",
-         xlabel="Temperature", ylabel="z")
+plot!(p, interior(model.tracers.T)[1, 1, :], z, linewidth=2, label=time_label(model.clock.time))
 
-## Plot current solution
-plot!(p, interior(T)[1, 1, :], z, linewidth=2, label=tracer_label(model.clock.time))
-
-# Interesting! Next, we add an output writer that saves the temperature field
-# in JLD2 files, and run the simulation for longer so that we can animate the results.
+# Very interesting! Next, we run the simulation a bit longer and make an animation.
+# For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
@@ -93,11 +94,11 @@ simulation.output_writers[:temperature] =
     JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
                      schedule=IterationInterval(100), force = true)
 
-## Run simulation for 10,000 more iterations
+# We run the simulation for 10,000 more iterations,
+
 simulation.stop_iteration += 10000
 
 run!(simulation)
-nothing
 
 # Finally, we animate the results by opening the JLD2 file, extract the
 # iterations we ended up saving at, and plot the evolution of the
@@ -114,7 +115,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     T = file["timeseries/T/$iter"][1, 1, :]
     t = file["timeseries/t/$iter"]
 
-    plot(T, z, linewidth=2, title=tracer_label(t),
+    plot(T, z, linewidth=2, title=time_label(t),
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
