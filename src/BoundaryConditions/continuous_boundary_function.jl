@@ -114,6 +114,9 @@ end
 BoundaryCondition(TBC, condition::ContinuousBoundaryFunction) =
     BoundaryCondition{TBC, typeof(condition)}(condition)
 
+Adapt.adapt_structure(to, bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}) where C =
+    BoundaryCondition(C, Adapt.adapt(to, bc.condition))
+
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{X, Y, Z, I}) where {X, Y, Z, I} =
     ContinuousBoundaryFunction{X, Y, Z, I}(Adapt.adapt(to, bf.func),
                                            Adapt.adapt(to, bf.parameters),
