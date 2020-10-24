@@ -9,7 +9,7 @@ Return a NamedTuple with fields `u`, `v`, `w` initialized on the architecture `a
 and `grid`. Boundary conditions `bcs` may be specified via a named tuple of
 `FieldBoundaryCondition`s.
 """
-function VelocityFields(arch, grid, bcs::NamedTuple)
+function VelocityFields(arch, grid, bcs=NamedTuple())
     u_bcs = :u ∈ keys(bcs) ? bcs.u : UVelocityBoundaryConditions(grid)
     v_bcs = :v ∈ keys(bcs) ? bcs.v : VVelocityBoundaryConditions(grid)
     w_bcs = :w ∈ keys(bcs) ? bcs.w : WVelocityBoundaryConditions(grid)
@@ -27,13 +27,13 @@ end
 #####
 
 """
-    TracerFields(names, arch, grid, bcs)
+    TracerFields(tracer_names, arch, grid, bcs)
 
-Returns a `NamedTuple` with tracer fields specified by `names` initialized as
+Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CellField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, arch, grid, bcs)
+function TracerFields(tracer_names, arch, grid, bcs=NamedTuple())
 
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
@@ -79,7 +79,7 @@ Return a NamedTuple with pressure fields `pHY′` and `pNHS` initialized as
 `CellField`s on the architecture `arch` and `grid`.  Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function PressureFields(arch, grid, bcs::NamedTuple)
+function PressureFields(arch, grid, bcs=NamedTuple())
     pHY′_bcs = :pHY′ ∈ keys(bcs) ? bcs[:pHY′] : PressureBoundaryConditions(grid)
     pNHS_bcs = :pNHS ∈ keys(bcs) ? bcs[:pNHS] : PressureBoundaryConditions(grid)
 
