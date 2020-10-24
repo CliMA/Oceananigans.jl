@@ -9,7 +9,7 @@ is defined at the cell edges.[^1]
 [^1]: In 2D it would more correct to say the cell corners. In 3D, variables like vorticity lie at the same vertical
     levels as the cell-centered variables and so they really lie at the cell edges.
 
-![Schematic of control volumes](../numerical_implementation/assets/staggered_grid_control_volumes.png)
+![Schematic of control volumes](assets/staggered_grid_control_volumes.png)
 *Figure 1: A schematic of the control volumes in a two-dimensional staggered grid. Note that pressure ``p``
 (and tracers) is defined at the center of the control volume. The ``u`` control volumes are centered on the
 left and right edges of the pressure control volume while the ``v`` control volumes are centered on the top
