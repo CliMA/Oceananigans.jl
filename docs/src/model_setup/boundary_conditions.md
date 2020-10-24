@@ -147,6 +147,7 @@ is implemented with
 
 ```jldoctest
 julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
+linear_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
@@ -158,6 +159,7 @@ When boundary conditions depends on fields _and_ parameters, their functions tak
 
 ```jldoctest
 julia> @inline quadratic_drag(x, y, z, t, u, v, drag_coeff) = - drag_coeff * u * sqrt(u^2 + v^2)
+quadratic_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(quadratic_drag, field_dependencies=(:u, :v), parameters=1e-3)
 BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_coeff) in Main at none:1
@@ -172,8 +174,9 @@ Discrete field data may also be accessed directly from boundary condition functi
 using the `discrete_form`. For example:
 
 ```jldoctest
-julia> @inline filtered_drag(i, j, grid, clock, model_fields) =
-    @inbounds 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+julia> @inline filtered_drag(i, j, grid, clock, model_fields) = (
+    @inbounds 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1]))
+filtered_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
