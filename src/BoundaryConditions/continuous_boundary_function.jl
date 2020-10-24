@@ -113,3 +113,10 @@ end
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(TBC, condition::ContinuousBoundaryFunction) =
     BoundaryCondition{TBC, typeof(condition)}(condition)
+
+Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{X, Y, Z, I}) where {X, Y, Z, I} =
+    ContinuousBoundaryFunction{X, Y, Z, I}(Adapt.adapt(to, bf.func),
+                                           Adapt.adapt(to, bf.parameters),
+                                           nothing,
+                                           Adapt.adapt(to, bf.field_dependencies_indices),
+                                           Adapt.adapt(to, bf.field_dependencies_interp))
