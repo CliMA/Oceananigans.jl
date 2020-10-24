@@ -180,7 +180,7 @@ using the `discrete_form`. For example:
 u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 
 # output
-BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
+BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields)
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
