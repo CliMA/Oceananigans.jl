@@ -146,14 +146,41 @@ Boundary conditions may also depend on model fields. For example, a linear drag 
 is implemented with
 
 ```jldoctest
-julia> @inline linear_drag(i, j, grid, clock, model_fields) = @inbounds - 0.2 * model_fields.u[i, j, 1];
+julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
 
-julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, discrete_form=true)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fields) in Main at none:1
+julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
+BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
+```
+
+##### 6. 'Field-dependent' boundary conditions with parameters
+
+When boundary conditions depends on fields _and_ parameters, their functions take the form
+
+```jldoctest
+julia> @inline quadratic_drag(x, y, z, t, u, v, drag_coeff) = - drag_coeff * u * sqrt(u^2 + v^2)
+
+julia> u_bottom_bc = FluxBoundaryCondition(quadratic_drag, field_dependencies=(:u, :v), parameters=1e-3)
+BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_coeff) in Main at none:1
+```
+
+Put differently, field dependencies follow `ξ, η, t` come first in the function signature,
+which are in turn followed by `parameters`.
+
+##### 7. Discrete-form boundary condition with parameters
+
+Discrete field data may also be accessed directly from boundary condition functions
+using the `discrete_form`. For example:
+
+```jldoctest
+julia> @inline filtered_drag(i, j, grid, clock, model_fields) =
+    @inbounds 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+
+julia> u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
+BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
-    The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `linear_drag`
+    The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `filtered_drag`
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
     are called with the signature 
     ```julia
@@ -165,7 +192,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     The signature is similar for $x$ and $y$ boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-##### 6. Discrete-form boundary condition with parameters
+##### 8. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2;  # drag coefficient
@@ -183,7 +210,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-##### 7. A random, spatially-varying, constant-in-time temperature flux specified by an array
+##### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
