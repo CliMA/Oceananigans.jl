@@ -66,8 +66,8 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\boldsymbol{u}_h |\boldsymbol{u}_h|``, where 
-# ``\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v \boldsymbol{\hat{y}}`` is the horizontal velocity.
+# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is 
+# the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
 # 
@@ -103,7 +103,7 @@
 # | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``c^D``        | Bottom quadratic drag coefficient | ``10^{-4}`` | none |
 # | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |
-# | ``\varkappa_h``    | Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
+# | ``ϰ_h``        | Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
 #
 # We start off by importing `Oceananigans`, some convenient aliases for dimensions, and a function
 # that generates a pretty string from a number that represents 'time' in seconds:

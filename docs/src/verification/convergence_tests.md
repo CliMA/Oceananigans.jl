@@ -45,7 +45,7 @@ In one dimension with constant diffusivity ``\kappa`` and in the presence of a
 constant velocity ``U``, a Gaussian evolves according to
 
 ```math
-    c = \frac{\mathrm{e}^{- (x - U t)^2 / 4 \kappa t}}{\sqrt{4 \pi \kappa t}}
+    c = \frac{\mathrm{e}^{- (x - U t)^2 / 4 \kappa t}}{\sqrt{4 \pi \kappa t}} \, .
 ```
 
 For this test we take the initial time as ``t=t_0``.
@@ -67,7 +67,7 @@ In one dimension with constant diffusivity ``\kappa`` and in the presence of a
 constant velocity ``U``, a cosine evolves according to
 
 ```math
-    c = \mathrm{e}^{-\kappa t} \cos (x - U t)
+    c = \mathrm{e}^{-\kappa t} \cos (x - U t) \, .
 ```
 
 The solutions are
@@ -85,13 +85,13 @@ These results validate the correctness of time-stepping, constant diffusivity op
 With zero velocity field and constant diffusivity ``\kappa``, the tracer field
 
 ```math
-c(x, y, t=0) = \cos(x) \cos(y)
+c(x, y, t=0) = \cos(x) \cos(y) \, ,
 ```
 
 decays according to
 
 ```math
-c(x, y, t) = \mathrm{e}^{-2 \kappa t} \cos(x) \cos(y)
+c(x, y, t) = \mathrm{e}^{-2 \kappa t} \cos(x) \cos(y) \, ,
 ```
 
 with either periodic boundary conditions, or insulating boundary conditions in either ``x`` or ``y``.
@@ -108,8 +108,8 @@ The velocity field
 
 ```math
 \begin{aligned}
-u(x, y, t) &= U + \mathrm{e}^{-t} \cos(x - U t) \sin(y) \\
-v(x, y, t) &= - \mathrm{e}^{-t} \sin(x - U t) \cos(y)
+u(x, y, t) &= U + \mathrm{e}^{-t} \cos(x - U t) \sin(y) \, , \\
+v(x, y, t) &= - \mathrm{e}^{-t} \sin(x - U t) \cos(y) \, ,
 \end{aligned}
 ```
 
@@ -147,7 +147,7 @@ With an isotropic Laplacian viscosity ``\nu = 1``, the momentum and continuity e
 ```
 while the equation for vorticity, ``\omega = v_x - u_y = \nabla^2 \psi``, is
 ```math
-\omega_t + \mathrm{J} \left ( \psi, \omega \right ) = \nabla^2 \omega + F_\omega
+\omega_t + \mathrm{J} \left ( \psi, \omega \right ) = \nabla^2 \omega + F_\omega \, .
 ```
 Finally, taking the divergence of the momentum equation, we find a Poisson equation for pressure,
 ```math

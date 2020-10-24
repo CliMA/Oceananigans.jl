@@ -126,7 +126,7 @@ An isotropic viscosity operator acting on vertical momentum is discretized via
           \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \delta_x^{caa} w \right)
         + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \delta_y^{aca} w \right)
         + \delta_z^{aaf} \left( \nu_e \overline{A_z}^{aac} \delta_z^{aac} w \right)
-    \right ]
+    \right ] \, ,
 ```
 where ``\nu`` is the kinematic viscosity.
 
@@ -137,20 +137,20 @@ An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is 
         \delta_x^{caa} \left( \kappa_e A_x \delta_x^{faa} c \right)
       + \delta_y^{aca} \left( \kappa_e A_y \delta_y^{afa} c \right)
       + \delta_z^{aac} \left( \kappa_e A_z \delta_z^{aaf} c \right)
-    \right]
+    \right] \, .
 ```
 
 ## Vertical integrals
 Vertical integrals are converted into sums along each column. For example, the hydrostatic pressure anomaly is
 ```math
-    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \; dz
+    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \; dz \, ,
 ```
 where ``b^\prime`` is the buoyancy perturbation. Converting it into a sum that we compute from the top downwards we get
 ```math
     p_{HY}^\prime(k) =
         \begin{cases}
-            - \overline{b_{N_z}^\prime}^{aaf} \Delta z^F_{N_z},               & \quad k = N_z \\
-            p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_k, & \quad 1 \le k \le N_z - 1
+            - \overline{b_{N_z}^\prime}^{aaf} \Delta z^F_{N_z},               & \quad k = N_z \, , \\
+            p_{HY}^\prime(k+1) - \overline{b_{k+1}^\prime}^{aaf} \Delta z^F_k, & \quad 1 \le k \le N_z - 1 \, ,
         \end{cases}
 ```
 where we converted the sum into a recursive definition for ``p_{HY}^\prime(k)`` in terms of ``p_{HY}^\prime(k+1)`` so that
@@ -158,7 +158,7 @@ the integral may be computed with ``\mathcal{O}(N_z)`` operations by a single th
 
 The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
-    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, dz
+    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, dz \, ,
 ```
 to satisfy the incompressibility condition ``\nabla\cdot\bm{u} = 0`` to numerical precision. This also involves computing
 a vertical integral, in this case evaluated from the bottom up

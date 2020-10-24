@@ -4,12 +4,12 @@ In the numerical implementation of the momentum equations, the kinematic potenti
 is split into "hydrostatic anomaly" and "non-hydrostatic" parts via
 ```math
     \tag{eq:pressure}
-    \phi(\bm{x}, t) = \phi_{\rm{hyd}}(\bm{x}, t) + \phi_{\rm{non}}(\bm{x}, t)
+    \phi(\bm{x}, t) = \phi_{\rm{hyd}}(\bm{x}, t) + \phi_{\rm{non}}(\bm{x}, t) \, .
 ```
 The anomalous hydrostatic component of the kinematic potential is defined by 
 ```math
     \tag{eq:hydrostaticpressure}
-    \partial_z \phi_{\rm{hyd}} \equiv -b
+    \partial_z \phi_{\rm{hyd}} \equiv -b \, ,
 ```
 such that the sum of the kinematic potential and buoyancy perturbation becomes
 ```math

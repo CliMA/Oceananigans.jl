@@ -6,7 +6,7 @@ The pressure field is obtained by taking the divergence of the horizontal compon
 \eqref{eq:momentumStar} and invoking the vertical component to yield an elliptic Poisson equation for the
 non-hydrostatic kinematic pressure
 ```math
-\nabla^2\phi_{NH} = \frac{\nabla \cdot \bm{u}^n}{\Delta t} + \nabla \cdot \bm{G}_{\bm{u}} \equiv \mathscr{F}
+\nabla^2\phi_{NH} = \frac{\nabla \cdot \bm{u}^n}{\Delta t} + \nabla \cdot \bm{G}_{\bm{u}} \equiv \mathscr{F} \, ,
 ```
 along with homogenous Neumann boundary conditions ``\bm{u} \cdot \bm{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
 directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
@@ -25,7 +25,7 @@ The method can be explained easily by taking the Fourier transform of both sides
 ```math
 -(k_x^2 + k_y^2 + k_z^2) \widehat{\phi}_{NH} = \widehat{\mathscr{F}}
 \quad \implies \quad
-\widehat{\phi}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2}
+\widehat{\phi}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2} \, ,
 ```
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
 solving the equation on a staggered grid we require a solution for ``\phi_{NH}`` that is second-order accurate such that
@@ -35,7 +35,7 @@ eigenvalues ``\lambda_x``, ``\lambda_y``, and ``\lambda_z`` satisfying the discr
 appropriate boundary conditions. Thus, Poisson's equation's is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
 ```math
-\widehat{\phi}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k}
+\widehat{\phi}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k} \, .
 ```
 
 The eigenvalues are given by [Schumann88](@cite) and can also be tediously derived by plugging in the definition of the
@@ -45,7 +45,7 @@ discrete Fourier transform into \eqref{eq:poisson-spectral}
     \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \\
     \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \\
     \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1
-\end{aligned}
+\end{aligned} \, ,
 ```
 where ``\lambda_x`` and ``\lambda_y`` correspond to periodic boundary conditions in the horizontal and ``\lambda_z`` to
 Neumann boundary conditions in the vertical.
@@ -77,7 +77,7 @@ along the vertical dimension.
 
 Expanding ``\phi_{NH}`` and ``\mathscr{F}`` into Fourier modes along the ``x`` and ``y`` directions
 ```math
-\phi_{ijk} = \sum_{m=1}^{N_x} \sum_{n=1}^{N_y} \tilde{\phi}_{mnk} \; e^{-i2\pi im / N_x} \;  e^{-i2\pi jn / N_y}
+\phi_{ijk} = \sum_{m=1}^{N_x} \sum_{n=1}^{N_y} \tilde{\phi}_{mnk} \; e^{-i2\pi im / N_x} \;  e^{-i2\pi jn / N_y} \, ,
 ```
 and recalling that Fourier transforms do ``\partial_x \rightarrow ik_x`` and ``\partial_y \rightarrow ik_y`` we can write
 \eqref{eq:poisson-pressure} as
@@ -85,7 +85,7 @@ and recalling that Fourier transforms do ``\partial_x \rightarrow ik_x`` and ``\
 \sum_{m=1}^{N_x} \sum_{n=1}^{N_y}
 \left\lbrace
     \partial_z^2 \tilde{\phi}_{mnk} - (k_x^2 + k_y^2) \tilde{\phi}_{mnk} - \tilde{\mathscr{F}}_{mnk}
-\right\rbrace e^{-i2\pi im / N_x}  e^{-i2\pi jn / N_y} = 0
+\right\rbrace e^{-i2\pi im / N_x}  e^{-i2\pi jn / N_y} = 0 \, .
 ```
 Discretizing the ``\partial_z^2`` derivative and equating the term inside the brackets to zero we arrive at
 ``N_x\times N_y`` symmetric tridiagonal systems of ``N_z`` linear equations for the Fourier modes:
@@ -94,7 +94,7 @@ Discretizing the ``\partial_z^2`` derivative and equating the term inside the br
 - \left\lbrace \frac{1}{\Delta z^F_{k-1}} + \frac{1}{\Delta z^F_k} + \Delta z^C_k (k_x^2 + k_y^2) \right\rbrace
   \tilde{\phi}_{mnk}
 + \frac{\tilde{\phi}_{mn,k+1}}{\Delta z^F_k}
-= \Delta z^C_k \tilde{\mathscr{F}}_{mnk}
+= \Delta z^C_k \tilde{\mathscr{F}}_{mnk} \, .
 ```
 
 ## Cosine transforms on the GPU
@@ -106,11 +106,11 @@ regular Fourier transform to a permuted version of the array.
 In this section we will be using the DCT-II as the definition of the forward cosine transform for a real signal of
 length ``N``
 ```math
-  \text{DCT}(X): \quad Y_k = 2 \sum_{j=0}^{N-1} \cos \left[ \frac{\pi(j + \frac{1}{2})k}{N} \right] X_j
+  \text{DCT}(X): \quad Y_k = 2 \sum_{j=0}^{N-1} \cos \left[ \frac{\pi(j + \frac{1}{2})k}{N} \right] X_j \, ,
 ```
 and the DCT-III as the definition of the inverse cosine transform
 ```math
-  \text{IDCT}(X): \quad Y_k = X_0 + 2 \sum_{j=1}^{N-1} \cos \left[ \frac{\pi j (k + \frac{1}{2})}{N} \right] X_j
+  \text{IDCT}(X): \quad Y_k = X_0 + 2 \sum_{j=1}^{N-1} \cos \left[ \frac{\pi j (k + \frac{1}{2})}{N} \right] X_j \, ,
 ```
 and will use ``\omega_M = e^{-2\pi i/M}`` to denote the ``M^\text{th}`` root of unity, sometimes called the twiddle factors
 in the context of FFT algorithms.
@@ -121,17 +121,17 @@ dimension by ordering the odd elements first followed by the even elements to pr
 ```math
     X^\prime_n =
     \begin{cases}
-        \displaystyle X_{2N}, \quad 0 \le n \le \left[ \frac{N-1}{2} \right] \\
-        \displaystyle X_{2N - 2n - 1}, \quad \left[ \frac{N+1}{2} \right] \le n \le N-1
+        \displaystyle X_{2N}, \quad 0 \le n \le \left[ \frac{N-1}{2} \right] \, , \\
+        \displaystyle X_{2N - 2n - 1}, \quad \left[ \frac{N+1}{2} \right] \le n \le N-1 \, ,
     \end{cases}
 ```
 where ``[a]`` indicates the integer part of ``a``. This should produce, for example,
 ```math
-    (a, b, c, d, e, f, g, h) \quad \rightarrow \quad (a, c, e, g, h, f, d, b)
+    (a, b, c, d, e, f, g, h) \quad \rightarrow \quad (a, c, e, g, h, f, d, b) \, ,
 ```
 after which \eqref{eq:FCT} is computed using
 ```math
-  Y = \text{DCT}(X) = 2 \text{Re} \left\lbrace \omega_{4N}^k \text{FFT} \lbrace X^\prime \rbrace \right\rbrace
+  Y = \text{DCT}(X) = 2 \text{Re} \left\lbrace \omega_{4N}^k \text{FFT} \lbrace X^\prime \rbrace \right\rbrace \, .
 ```
 
 ### 1D fast inverse cosine transform

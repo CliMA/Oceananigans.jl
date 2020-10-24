@@ -14,7 +14,7 @@ on the top and bottom edges of the pressure control volumes. The indexing conven
 
 Dropping explicit indexing, the areas of cell faces are given by
 ```math
-    A_x = \Delta y \Delta z, \quad A_y = \Delta x \Delta z, \quad A_z = \Delta x \Delta y
+    A_x = \Delta y \Delta z, \quad A_y = \Delta x \Delta z, \quad A_z = \Delta x \Delta y \, ,
 ```
 so that each cell encloses a volume ``V = \Delta x \Delta y \Delta z``.
 

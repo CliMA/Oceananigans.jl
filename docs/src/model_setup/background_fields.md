@@ -6,7 +6,7 @@ associated with the interaction between background and resolved fields are inclu
 For example, tracer advection is described by
 
 ```math
-\nabla \cdot \left ( \bm{u} c \right )
+\nabla \cdot \left ( \bm{u} c \right ) \, ,
 ```
 
 where ``\bm{u}`` is the resolved velocity field and ``c`` is the resolved

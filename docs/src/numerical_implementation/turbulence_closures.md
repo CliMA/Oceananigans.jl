@@ -29,8 +29,8 @@ Following [Reynolds1895](@cite) we can decompose flow variables such as velocity
 Expressing the Navier-Stokes equations in tensor notation
 ```math
 \begin{aligned}
-    \partial_i u_i &= 0 \\
-    \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i
+    \partial_i u_i &= 0  \, ,\\
+    \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i \, ,
 \end{aligned}
 ```
 where ``\alpha = \rho^{-1}`` is the specific volume and ``f_i`` represents external forces. We can plug in the Reynolds
@@ -38,21 +38,21 @@ decomposition for ``\bm{u}`` and after some manipulation arrive at the following
 Navier-Stokes equations*
 ```math
 \begin{aligned}
-    \partial_i \overline{u}_i &= 0 \\
+    \partial_i \overline{u}_i &= 0  \, ,\\
     \partial_t \overline{u}_i + \overline{u}_j \partial_j \overline{u}_i &= \overline{f}_i -
-    \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{u_i^\prime u_j^\prime}\right)
+    \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{u_i^\prime u_j^\prime}\right) \, ,
 \end{aligned}
 ```
 where
 ```math
-\overline{S}_{ij} = \frac{1}{2} ( \partial_j \overline{u}_i + \partial_i \overline{u}_j )
+\overline{S}_{ij} = \frac{1}{2} ( \partial_j \overline{u}_i + \partial_i \overline{u}_j ) \, ,
 ```
 is the mean rate of strain tensor.
 
 Thanks to the non-linearity of the Navier-Stokes equations, even when averaged we are left with pesky fluctuation
 terms which form the components of the *Reynolds stress tensor*
 ```math
-\tau_{ij} = \rho \overline{u_i^\prime u_j^\prime}
+\tau_{ij} = \rho \overline{u_i^\prime u_j^\prime} \, .
 ```
 Attempting to close the equations leads to the *closure problem*: the time evolution of the Reynolds stresses
 depends on  triple covariances ``\overline{u_i^\prime u_j^\prime u_k^\prime}`` and covariances with pressure, which depend
@@ -72,7 +72,7 @@ and close the equations
 ```math
 \overline{\bm{u}^\prime c^\prime} = -\kappa_e \nabla \overline{c}
 \quad \text{and} \quad
-\overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij}
+\overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij} \, ,
 ```
 where ``\nu_e = \nu_e(\bm{x}, t)`` is the turbulent or *eddy viscosity* and ``\kappa_e = \kappa_e(\bm{x}, t)``
 is the *eddy diffusivity*.

@@ -12,7 +12,7 @@ mean field ``\overline{\bm{u}}`` is obtained via convolution with a filter convo
 ```math
 \overline{\bm{u}(\bm{x}, t)} = G \star \bm{u} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
-  \bm{u}(\bm{x}^\prime, t) G(\bm{x} - \bm{x}^\prime, t - \tau) \, d\bm{x}^\prime \, d\tau
+  \bm{u}(\bm{x}^\prime, t) G(\bm{x} - \bm{x}^\prime, t - \tau) \, d\bm{x}^\prime \, d\tau \, ,
 ```
 as described by [Leonard75](@cite) who introduced the general filtering formalism.
 
@@ -26,7 +26,7 @@ of a Reynolds operator (§2.1)[sagaut06](@cite) and that in general, the filtere
 §13.2 of [Pope00](@cite) lists a number of popular choices for the filter function ``G``. For practical reasons we
 simply employ the box kernel
 ```math
-  G_\Delta = G(\bm{x}, t) = \frac{1}{\Delta} H \left( \frac{1}{2}\Delta - |\bm{x}| \right) \delta(t - t_n)
+  G_\Delta = G(\bm{x}, t) = \frac{1}{\Delta} H \left( \frac{1}{2}\Delta - |\bm{x}| \right) \delta(t - t_n) \, ,
 ```
 where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n`` is the current time step. With
 \eqref{eq:box-kernel} we get back the averaging operator originally used by [Deardorff70](@cite)
@@ -36,7 +36,7 @@ where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n
   \int_{x - \frac{1}{2}\Delta x}^{x + \frac{1}{2}\Delta x}
   \int_{y - \frac{1}{2}\Delta y}^{y + \frac{1}{2}\Delta y}
   \int_{z - \frac{1}{2}\Delta z}^{z + \frac{1}{2}\Delta z}
-  \bm{u}(\xi, \eta, \zeta, t) \, d\xi \, d\eta \, d\zeta
+  \bm{u}(\xi, \eta, \zeta, t) \, d\xi \, d\eta \, d\zeta \, ,
 ```
 which if evaluated at the cell centers just returns the cell averages we already compute in the finite volume method.
 
@@ -47,7 +47,7 @@ which if evaluated at the cell centers just returns the cell averages we already
 scale given by ``\Delta |\overline{S}|`` where ``|\overline{S}| = \sqrt{2\overline{S}_{ij}\overline{S}_{ij}}``. Thus the
 SGS stress tensor is given by
 ```math
-\tau_{ij} = -2\nu_e \overline{S}_{ij} = -2 (C_s \Delta)^2 |\overline{S}| \overline{S}_{ij}
+\tau_{ij} = -2\nu_e \overline{S}_{ij} = -2 (C_s \Delta)^2 |\overline{S}| \overline{S}_{ij} \, ,
 ```
 where ``C_s`` is a dimensionless constant. The grid spacing is usually used for the characteristic length scale ``\Delta``.
 The eddy diffusivities are calculated via ``\kappa_e = \nu_e / \text{Pr}_t`` where the turbulent Prandtl number
@@ -56,7 +56,7 @@ The eddy diffusivities are calculated via ``\kappa_e = \nu_e / \text{Pr}_t`` whe
 Assuming that the SGS energy cascade is equal to the overall dissipation rate ``\varepsilon`` from the
 [Kolmogorov41](@cite) theory, [Lilly66](@cite) was able to derive a value of
 ```math
-C_s = \left( \frac{3}{2}C_K\pi^\frac{4}{3} \right)^{-\frac{3}{4}} \approx 0.16
+C_s = \left( \frac{3}{2}C_K\pi^\frac{4}{3} \right)^{-\frac{3}{4}} \approx 0.16 \, ,
 ```
 using an empirical value of ``C_K \approx 1.6`` for the Kolmogorov constant. This seems reasonable for isotropic
 turbulence if the grid spacing ``\Delta`` falls in the inertial range. In practice, ``C_s`` is a tunable parameter.
@@ -87,7 +87,7 @@ The eddy viscosity and diffusivity are defined in terms of eddy viscosity and di
 ```math
 \nu_e = \text{max} \lbrace 0, \nu_e^\dagger \rbrace
 \quad \text{and} \quad
-\kappa_e = \text{max} \lbrace 0, \kappa_e^\dagger \rbrace
+\kappa_e = \text{max} \lbrace 0, \kappa_e^\dagger \rbrace \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``. Leaving out the overlines and understanding that all variables
 represent the resolved/filtered variables, the eddy viscosity predictor is given by
@@ -96,35 +96,35 @@ represent the resolved/filtered variables, the eddy viscosity predictor is given
   \frac
     {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{S}_{ij}
     + C_b\hat{\delta}_{i3} \alpha g \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k \theta}
-    {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)}
+    {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)} \, ,
 ```
 and the eddy diffusivity predictor by
 ```math
 \kappa_e^\dagger = -(C\Delta)^2
 \frac
     {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{\theta} \right) \hat{\partial}_i \theta}
-    {\left( \hat{\partial}_l \hat{\theta} \right) \left( \hat{\partial}_l \hat{\theta} \right)}
+    {\left( \hat{\partial}_l \hat{\theta} \right) \left( \hat{\partial}_l \hat{\theta} \right)} \, ,
 ```
 where
 ```math
   \hat{x}_i = \frac{x_i}{\Delta_i}, \quad
   \hat{u}_i(\hat{x}, t) = \frac{u_i(x, t)}{\Delta_i}, \quad
   \hat{\partial}_i \hat{u}_j(\hat{x}, t) = \frac{\Delta_i}{\Delta_j} \partial_i u_j(x, t), \quad
-  \hat{\delta}_{i3} = \frac{\delta_{i3}}{\Delta 3}
+  \hat{\delta}_{i3} = \frac{\delta_{i3}}{\Delta 3} \, ,
 ```
 so that the normalized rate of strain tensor is
 ```math
 \hat{S}_{ij} =
-  \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(\hat{x}, t) + \hat{\partial}_j \hat{u}_i(\hat{x}, t) \right]
+  \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(\hat{x}, t) + \hat{\partial}_j \hat{u}_i(\hat{x}, t) \right] \, .
 ```
 
-In equations \eqref{eq:nu-dagger}--\eqref{eq:S-hat} ``C`` is a modified Poincaré "constant" that is independent from
+In equations \eqref{eq:nu-dagger}--\eqref{eq:S-hat}, ``C`` is a modified Poincaré "constant" that is independent from
 the filter width ``\Delta`` but does depend on the accuracy of the discretization method used. [Abkar16](@cite) cite
 ``C^2 = \frac{1}{12}`` for a spectral method and ``C^2 = \frac{1}{3}`` for a second-order accurate scheme. ``\Delta_i`` is
 the filter width in the ``x_i``-direction, and ``\Delta`` is given by the square root of the harmonic mean of the squares
 of the filter widths in each direction
 ```math
-    \frac{1}{\Delta^2} = \frac{1}{3} \left( \frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2} \right)
+    \frac{1}{\Delta^2} = \frac{1}{3} \left( \frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2} \right) \, .
 ```
 The term multiplying ``C_b`` is the buoyancy modification introduced by [Abkar17](@cite) and is small for weakly
 stratified flows. We have introduced the ``C_b`` constant so that the buoyancy modification term may be turned on and off.

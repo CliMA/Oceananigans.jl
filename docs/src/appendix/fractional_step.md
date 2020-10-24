@@ -26,7 +26,7 @@ The projection is then performed
 to obtain a divergence-free velocity field ``\bm{u}^{n+1}``. Here the projection is performed by solving an elliptic
 problem for the pressure ``\phi^{n+1}`` with the boundary condition
 ```math
-\newcommand{\uvec}[1]{\boldsymbol{\hat{\textbf{#1}}}}
+\newcommand{\uvec}[1]{\bm{\hat{\textbf{#1}}}}
   \bm{\hat{n}} \cdotp \nabla\phi^{n+1} |_{\partial\Omega} = 0
 ```
 

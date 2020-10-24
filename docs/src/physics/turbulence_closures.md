@@ -115,7 +115,7 @@ of eddy viscosity and diffusivity *predictors*
 ```math
     \nu_e = \max \left ( 0, \nu_e^\dagger \right ) + \nu
     \quad \text{and} \quad
-    \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa
+    \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
 constant isotropic background viscosity and diffusivities for each tracer.
