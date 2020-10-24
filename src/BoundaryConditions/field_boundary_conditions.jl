@@ -231,3 +231,5 @@ function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, g
     boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
     return boundary_conditions
 end
+
+regularize_field_boundary_conditions(::Missing, grid, tracer_names, field_name=nothing) = missing
