@@ -33,7 +33,7 @@ Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialize
 `CellField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, arch, grid, bcs=NamedTuple())
+function TracerFields(tracer_names, arch, grid, bcs)
 
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
