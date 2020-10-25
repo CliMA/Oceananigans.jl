@@ -17,7 +17,7 @@ using Oceananigans
 # To build the model, we specify the grid, Stokes drift, boundary conditions, and
 # Coriolis parameter.
 #
-# ### Domain specification and Grid construction
+# ### Domain and numerical grid specification
 #
 # We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
@@ -57,8 +57,8 @@ nothing # hide
 # which we need for the initial condition.
 #
 # Note that `Oceananigans.jl` implements the Lagrangian-mean form of the Craik-Leibovich
-# equations. This means that our model takes the *vertical derivative* as an input,
-# rather than the Stokes drift profile itself.
+# equations. This means `Oceananigans.jl` takes the *vertical derivative of the Stokes drift*
+# as input, rather than the Stokes drift profile itself.
 #
 # The vertical derivative of the Stokes drift is
 
@@ -71,7 +71,7 @@ nothing # hide
 
 # ### Boundary conditions
 #
-# At the surface at $z=0$, McWilliams et al. (1997) impose wind stress,
+# At the surface at ``z=0``, McWilliams et al. (1997) impose wind stress,
 
 Qᵘ = -3.72e-5 # m² s⁻²
 nothing # hide
@@ -91,14 +91,14 @@ nothing # hide
 N² = 1.936e-5 # s⁻²
 nothing # hide
 
-# To summarize, we impose a surface flux on $u$,
+# To summarize, we impose a surface flux on ``u``,
 
 using Oceananigans.BoundaryConditions
 
 u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 nothing # hide
 
-# and a surface flux and bottom linear gradient on buoyancy, $b$,
+# and a surface flux and bottom linear gradient on buoyancy, ``b``,
 
 b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
                                                        bottom = BoundaryCondition(Gradient, N²))
@@ -115,23 +115,26 @@ nothing # hide
 
 # ## Model instantiation
 #
-# Finally, we are ready to build the model. We use the AnisotropicMinimumDissipation
-# model for large eddy simulation. Because our Stokes drift does not vary in $x, y$,
-# we use `UniformStokesDrift`, which expects Stokes drift functions of $z, t$ only.
+# Finally, we are ready to build the model. We use the `AnisotropicMinimumDissipation`
+# model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
+# we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
+using Oceananigans.Advection
 using Oceananigans.Buoyancy: BuoyancyTracer
 using Oceananigans.SurfaceWaves: UniformStokesDrift
 
-model = IncompressibleModel(        architecture = CPU(),
-                                            grid = grid,
-                                         tracers = :b,
-                                        buoyancy = BuoyancyTracer(),
-                                        coriolis = FPlane(f=f),
-                                         closure = AnisotropicMinimumDissipation(),
-                                   surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-                             boundary_conditions = (u=u_boundary_conditions,
-                                                    b=b_boundary_conditions),
-                            )
+model = IncompressibleModel(
+           architecture = CPU(),
+              advection = UpwindBiasedFifthOrder(),
+            timestepper = :RungeKutta3,
+                   grid = grid,
+                tracers = :b,
+               buoyancy = BuoyancyTracer(),
+               coriolis = FPlane(f=f),
+                closure = AnisotropicMinimumDissipation(),
+          surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+    boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions),
+)
 
 # ## Initial conditions
 #
@@ -146,9 +149,9 @@ nothing # hide
 bᵢ(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
 nothing # hide
 
-# The velocity initial condition is zero *Eulerian* velocity. This means that we
-# must add the Stokes drift profile to the $u$ velocity field. We also add noise scaled
-# by the friction velocity to $u$ and $w$.
+# The velocity initial condition in McWilliams et al. (1997) is zero *Eulerian-mean* velocity.
+# This means that we must add the Stokes drift profile to the ``u`` velocity field.
+# We also add noise scaled by the friction velocity to ``u`` and ``w``.
 
 uᵢ(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
@@ -159,15 +162,16 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 # ## Setting up the simulation
 #
 # We use the `TimeStepWizard` for adaptive time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 0.2,
+# with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=0.2, Δt=5.0, max_change=1.1, max_Δt=10.0)
-nothing # hide
+using Oceananigans.Utils: minute
+
+wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
 # We define a function that prints a helpful message with
-# maximum absolute value of $u, v, w$ and the current wall clock time.
+# maximum absolute value of ``u, v, w`` and the current wall clock time.
 
 using Oceananigans.Diagnostics, Printf
 using Oceananigans.Utils: prettytime
@@ -201,23 +205,49 @@ using Oceananigans.Utils: hour # correpsonds to "1 hour", in units of seconds
 
 simulation = Simulation(model, iteration_interval = 100,
                                                Δt = wizard,
-                                        stop_time = 4hour,
+                                        stop_time = 6hour,
                                          progress = print_progress)
 
 # ## Output
 #
+# ### A field writer
+#
 # We set up an output writer for the simulation that saves all velocity fields,
-# tracer fields, and the subgrid turbulent diffusivity every 2 minutes.
+# tracer fields, and the subgrid turbulent diffusivity.
 
 using Oceananigans.OutputWriters
-using Oceananigans.Utils: minute
+
+output_interval = 10minute
 
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output, schedule=TimeInterval(2minute),
-                     prefix = "langmuir_turbulence", force = true)
-nothing # hide
+    JLD2OutputWriter(model, fields_to_output,
+                     schedule = TimeInterval(output_interval),
+                     prefix = "langmuir_turbulence_fields",
+                     force = true)
+
+# ### An "averages" writer
+#
+# We also set up output of time- and horizontally-averaged velocity field and
+# momentum fluxes
+
+using Oceananigans.Fields
+
+u, v, w = model.velocities
+
+U = AveragedField(u, dims=(1, 2))
+V = AveragedField(v, dims=(1, 2))
+B = AveragedField(model.tracers.b, dims=(1, 2))
+
+wu = AveragedField(w * u, dims=(1, 2))
+wv = AveragedField(w * v, dims=(1, 2))
+
+simulation.output_writers[:averages] =
+    JLD2OutputWriter(model, (u=U, v=V, b=B, wu=wu, wv=wv),
+                     schedule = AveragedTimeInterval(output_interval, window=5minute),
+                     prefix = "langmuir_turbulence_averages",
+                     force = true)
 
 # ## Running the simulation
 #
@@ -227,8 +257,8 @@ run!(simulation)
 
 # # Making a neat movie
 #
-# We look at the results by plotting vertical slices of $u$ and $w$, and a horizontal
-# slice of $w$ to look for Langmuir cells.
+# We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
+# slice of ``w`` to look for Langmuir cells.
 
 k = searchsortedfirst(grid.zF[:], -8)
 nothing # hide
@@ -237,29 +267,26 @@ nothing # hide
 
 xw, yw, zw = nodes(model.velocities.w)
 xu, yu, zu = nodes(model.velocities.u)
-
-xw, yw, zw = xw[:], yw[:], zw[:]
-xu, yu, zu = xu[:], yu[:], zu[:]
 nothing # hide
 
 # Next, we open the JLD2 file, and extract the iterations we ended up saving at,
 
 using JLD2, Plots
 
-file = jldopen(simulation.output_writers[:fields].filepath)
+fields_file = jldopen(simulation.output_writers[:fields].filepath)
+averages_file = jldopen(simulation.output_writers[:averages].filepath)
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
-nothing # hide
+iterations = parse.(Int, keys(fields_file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
-function nice_divergent_levels(c, clim)
-    levels = range(-clim, stop=clim, length=10)
+function nice_divergent_levels(c, clim; nlevels=31)
+    levels = range(-clim, stop=clim, length=nlevels)
 
     cmax = maximum(abs, c)
 
     if clim < cmax # add levels on either end
-        levels = vcat([-cmax], range(-clim, stop=clim, length=10), [cmax])
+        levels = vcat([-cmax], levels, [cmax])
     end
 
     return levels
@@ -272,11 +299,25 @@ nothing # hide
 
 anim = @animate for (i, iter) in enumerate(iterations)
 
+    local w
+    local u
+    local B
+    local U
+    local V
+    local wu
+    local wv
+
     @info "Drawing frame $i from iteration $iter \n"
 
-    ## Load 3D fields from file
-    w = file["timeseries/w/$iter"]
-    u = file["timeseries/u/$iter"]
+    ## Load 3D fields from fields_file
+    w = fields_file["timeseries/w/$iter"]
+    u = fields_file["timeseries/u/$iter"]
+
+    B = averages_file["timeseries/b/$iter"][1, 1, :]
+    U = averages_file["timeseries/u/$iter"][1, 1, :]
+    V = averages_file["timeseries/v/$iter"][1, 1, :]
+    wu = averages_file["timeseries/wu/$iter"][1, 1, :]
+    wv = averages_file["timeseries/wu/$iter"][1, 1, :]
 
     ## Extract slices
     wxy = w[:, :, k]
@@ -288,8 +329,30 @@ anim = @animate for (i, iter) in enumerate(iterations)
     wlevels = nice_divergent_levels(w, wlim)
     ulevels = nice_divergent_levels(w, ulim)
 
+    B_plot = plot(B, zu,
+                  label = nothing,
+                  legend = :bottom,
+                  xlabel = "Buoyancy",
+                  ylabel = "z (m)")
+
+    U_plot = plot([U V], zu,
+                  label = ["\$ \\bar u \$" "\$ \\bar v \$"],
+                  legend = :bottom,
+                  xlabel = "Velocities",
+                  ylabel = "z (m)")
+
+    wu_label = "\$ \\overline{wu} \$"
+    wv_label = "\$ \\overline{wv} \$"
+
+    fluxes_plot = plot([wu, wv], zw,
+                       label = [wu_label wv_label],
+                       legend = :bottom,
+                       xlabel = "Momentum fluxes",
+                       ylabel = "z (m)")
+
     wxy_plot = contourf(xw, yw, wxy';
                               color = :balance,
+                          linewidth = 0,
                         aspectratio = :equal,
                               clims = (-wlim, wlim),
                              levels = wlevels,
@@ -300,6 +363,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     wxz_plot = contourf(xw, zw, wxz';
                               color = :balance,
+                          linewidth = 0,
                         aspectratio = :equal,
                               clims = (-wlim, wlim),
                              levels = wlevels,
@@ -310,6 +374,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     uxz_plot = contourf(xu, zu, uxz';
                               color = :balance,
+                          linewidth = 0,
                         aspectratio = :equal,
                               clims = (-ulim, ulim),
                              levels = ulevels,
@@ -318,10 +383,21 @@ anim = @animate for (i, iter) in enumerate(iterations)
                              xlabel = "x (m)",
                              ylabel = "z (m)")
 
-    plot(wxy_plot, wxz_plot, uxz_plot, layout=(1, 3), size=(1000, 400),
-         title = ["w(x, y, z=-8, t) (m/s)" "w(x, y=0, z, t) (m/s)" "u(x, y = 0, z, t) (m/s)"])
+       wxy_title = "w(x, y, z=-8, t) (m s⁻¹)"
+       wxz_title = "w(x, y=0, z, t) (m s⁻¹)"
+       uxz_title = "u(x, y=0, z, t) (m s⁻¹)"
+         B_title = "Averaged buoyancy (m² s⁻³)"
+         U_title = "Averaged velocities (m s⁻¹)"
+    fluxes_title = "Averaged fluxes(m² s⁻²)"
+         
+    plot(wxy_plot, B_plot, wxz_plot, U_plot, uxz_plot, fluxes_plot,
+         layout=(3, 2), size=(1000, 1000),
+         title = [wxy_title B_title wxz_title U_title uxz_title fluxes_title])
 
-    iter == iterations[end] && close(file)
+    if iter == iterations[end]
+        close(fields_file)
+        close(averages_file)
+    end
 end
 
-mp4(anim, "langmuir_turbulence.mp4", fps = 15) # hide
+gif(anim, "langmuir_turbulence.gif", fps = 8) # hide
