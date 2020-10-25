@@ -174,11 +174,12 @@ Discrete field data may also be accessed directly from boundary condition functi
 using the `discrete_form`. For example:
 
 ```jldoctest
-julia> @inline filtered_drag(i, j, grid, clock, model_fields) = (
-    @inbounds 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1]))
-filtered_drag (generic function with 1 method)
+@inline filtered_drag(i, j, grid, clock, model_fields) =
+   @inbounds 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
 
-julia> u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
+u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
+
+# output
 BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
 ```
 
