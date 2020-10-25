@@ -36,7 +36,7 @@ examples = [
     "one_dimensional_diffusion.jl",
     "two_dimensional_turbulence.jl",
     "ocean_wind_mixing_and_convection.jl",
-    "ocean_convection_with_plankton.jl",
+    "convecting_plankton.jl",
     "internal_wave.jl",
     "langmuir_turbulence.jl",
     "eady_turbulence.jl"
@@ -55,7 +55,7 @@ example_pages = [
     "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
     "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Ocean convection with plankton"   => "generated/ocean_convection_with_plankton.md",
+    "Convecting plankton"              => "generated/convecting_plankton.md",
     "Internal wave"                    => "generated/internal_wave.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
     "Eady turbulence"                  => "generated/eady_turbulence.md"
