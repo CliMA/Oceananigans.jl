@@ -39,7 +39,7 @@ Field located at (Cell, Cell, Cell)
 ```
 
 Any number of arbitrary tracers can be appended to this list and passed to a model constructor. For example, to evolve
-quantities $C_1$, CO₂, and nitrogen as additional passive tracers you could set them up as
+quantities ``C_1``, CO₂, and nitrogen as additional passive tracers you could set them up as
 
 ```jldoctest tracers
 julia> model = IncompressibleModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))

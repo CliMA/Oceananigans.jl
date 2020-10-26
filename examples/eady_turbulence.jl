@@ -27,7 +27,7 @@
 # ### The geostrophic basic state
 #
 # The geostrophic basic state in the Eady problem is represented by the streamfunction,
-#
+# 
 # ```math
 # ψ(y, z) = - α y (z + L_z) \, ,
 # ```
@@ -66,8 +66,8 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\boldsymbol{u}_h |\boldsymbol{u}_h|``, where 
-# ``\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v \boldsymbol{\hat{y}}`` is the horizontal velocity.
+# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is 
+# the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
 # 
@@ -97,13 +97,13 @@
 # To summarize, the Eady problem parameters along with the values we use in this example are
 #
 # | Parameter name | Description | Value | Units |
-# | -------------- | ----------- | ----- | ----- | 
+# |:--------------:|:-----------:|:-----:|:-----:| 
 # | ``f``          | Coriolis parameter | ``10^{-4}`` | ``\mathrm{s^{-1}}`` |
 # | ``N``          | Buoyancy frequency (square root of ``\partial_z B``) | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``c^D``        | Bottom quadratic drag coefficient | ``10^{-4}`` | none |
 # | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |
-# | ``\varkappa_h``| Horizontal hyperdiffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
+# | ``ϰ_h``        | Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
 #
 # We start off by importing `Oceananigans`, `Printf`, and some convenient utils
 # for specifying dimensional constants:
@@ -262,6 +262,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(1e-9 * (time_ns() - start_time)),
                         prettytime(sim.Δt.Δt),
                         CFL(sim.model))
+nothing # hide
 
 # ### Build the simulation
 #
@@ -290,7 +291,7 @@ u, v, w = model.velocities # unpack velocity `Field`s
 δ = ComputedField(-∂z(w))
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
-# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add it to 
+# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to 
 # `simulation`.
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
@@ -335,6 +336,7 @@ function nice_divergent_levels(c, clim, nlevels=31)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
+nothing # hide
 
 # Now we're ready to animate.
 
@@ -381,7 +383,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
            size = (1000, 800),
            link = :x,
          layout = Plots.grid(2, 2, heights=[0.5, 0.5, 0.2, 0.2]),
-          title = [@sprintf("ζ(t=%s)/f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
+          title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
 
     iter == iterations[end] && close(file)
 end

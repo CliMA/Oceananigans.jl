@@ -47,7 +47,7 @@ buoyancy_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qb),
 #   * death due to viruses and grazing by zooplankton at a rate of
 #     ``μ = 1`` phytoplankton unit per day.
 
-using Oceananigans.Utils: day
+using Oceananigans.Utils
 
 growing_and_grazing(x, y, z, t, p) = p.γ * exp(z / p.λ) - p.μ
     
@@ -88,14 +88,11 @@ set!(model, b=initial_buoyancy)
 # time-step to 1 minute, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number remains below `1.0`,
 
-using Oceananigans.Utils: minute
-
 wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
 
 # We also write a function that prints the progress of the simulation
 
 using Printf
-using Oceananigans.Utils: hour, prettytime
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         sim.model.clock.iteration,
