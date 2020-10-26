@@ -27,29 +27,35 @@
 # ### The geostrophic basic state
 #
 # The geostrophic basic state in the Eady problem is represented by the streamfunction,
+# 
+# ```math
+# ψ(y, z) = - α y (z + L_z) \, ,
+# ```
 #
-# $ ψ(y, z) = - α y (z + L_z) \, ,$
-#
-# where $α$ is the geostrophic shear and $L_z$ is the depth of the domain.
+# where ``α`` is the geostrophic shear and ``L_z`` is the depth of the domain.
 # The background buoyancy includes both the geostrophic flow component,
-# $f ∂_z ψ$, where $f$ is the Coriolis parameter, and a background stable stratification
-# component, $N^2 z$, where $N$ is the buoyancy frequency:
+# ``f ∂_z ψ``, where ``f`` is the Coriolis parameter, and a background stable stratification
+# component, ``N^2 z``, where ``N`` is the buoyancy frequency:
 #
-# $ B(y, z) = f ∂_z ψ + N^2 z = - α f y + N^2 z \, .$
+# ```math
+# B(y, z) = f ∂_z ψ + N^2 z = - α f y + N^2 z \, .
+# ```
 #
 # The background velocity field is related to the geostrophic streamfunction via
-# $ U = - ∂_y ψ$ such that
+# ``U = - ∂_y ψ`` such that
 #
-# $ U(z) = α (z + L_z) \, .$
+# ```math
+# U(z) = α (z + L_z) \, .
+# ```
 #
 # ### Boundary conditions
 #
 # All fields are periodic in the horizontal directions.
 # We use "insulating", or zero-flux boundary conditions on the buoyancy perturbation
 # at the top and bottom. We thus implicitly assume that the background vertical density
-# gradient, $N^2 z$, is maintained by a process external to our simulation.
-# We use free-slip, or zero-flux boundary conditions on $u$ and $v$ at the surface
-# where $z=0$. At the bottom, we impose a momentum flux that extracts momentum and
+# gradient, ``N^2 z``, is maintained by a process external to our simulation.
+# We use free-slip, or zero-flux boundary conditions on ``u`` and ``v`` at the surface
+# where ``z=0``. At the bottom, we impose a momentum flux that extracts momentum and
 # energy from the flow.
 #
 # #### Bottom boundary condition: quadratic bottom drag
@@ -60,44 +66,44 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to $\boldsymbol{u}_h |\boldsymbol{u}_h|$, where 
-# $\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v \boldsymbol{\hat{y}}$ is the horizontal velocity.
+# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is 
+# the horizontal velocity.
 #
-# The $x$-component of the quadratic bottom drag is thus
+# The ``x``-component of the quadratic bottom drag is thus
 # 
 # ```math
 # \tau_{xz}(z=L_z) = - c^D u \sqrt{u^2 + v^2} \, ,
 # ```
 #
-# while the $y$-component is
+# while the ``y``-component is
 #
 # ```math
 # \tau_{yz}(z=L_z) = - c^D v \sqrt{u^2 + v^2} \, , 
 # ```
 #
-# where $c^D$ is a dimensionless drag coefficient and $\tau_{xz}(z=L_z)$ and $\tau_{yz}(z=L_z)$
-# denote the flux of $u$ and $v$ momentum at $z = L_z$, the bottom of the domain.
+# where ``c^D`` is a dimensionless drag coefficient and ``\tau_{xz}(z=L_z)`` and ``\tau_{yz}(z=L_z)``
+# denote the flux of ``u`` and ``v`` momentum at ``z = L_z``, the bottom of the domain.
 #
 # ### Vertical and horizontal viscosity and diffusivity
 #
 # Vertical and horizontal viscosties and diffusivities are required
 # to stabilize the Eady problem and can be idealized as modeling the effect of
 # turbulent mixing below the grid scale. For both tracers and velocities we use
-# a Laplacian vertical diffusivity $κ_z ∂_z^2 c$ and a biharmonic horizontal
-# diffusivity $ϰ_h (∂_x^4 + ∂_y^4) c$. 
+# a Laplacian vertical diffusivity ``κ_z ∂_z^2 c`` and a biharmonic horizontal
+# diffusivity ``ϰ_h (∂_x^4 + ∂_y^4) c``. 
 #
 # ### Eady problem summary and parameters
 #
 # To summarize, the Eady problem parameters along with the values we use in this example are
 #
 # | Parameter name | Description | Value | Units |
-# | -------------- | ----------- | ----- | ----- | 
-# | $ f $          | Coriolis parameter | $ 10^{-4} $ | $ \mathrm{s^{-1}} $ |
-# | $ N $          | Buoyancy frequency (square root of $\partial_z B$) | $ 10^{-3} $ | $ \mathrm{s^{-1}} $ |
-# | $ \alpha $     | Background vertical shear $\partial_z U$ | $ 10^{-3} $ | $ \mathrm{s^{-1}} $ |
-# | $ c^D $        | Bottom quadratic drag coefficient | $ 10^{-4} $ | none |
-# | $ κ_z $    | Laplacian vertical diffusivity | $ 10^{-2} $ | $ \mathrm{m^2 s^{-1}} $ |
-# | $ \varkappa_h $    | Biharmonic horizontal diffusivity | $ 10^{-2} \times \Delta x^4 / \mathrm{day} $ | $ \mathrm{m^4 s^{-1}} $ |
+# |:--------------:|:-----------:|:-----:|:-----:| 
+# | ``f``          | Coriolis parameter | ``10^{-4}`` | ``\mathrm{s^{-1}}`` |
+# | ``N``          | Buoyancy frequency (square root of ``\partial_z B``) | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
+# | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
+# | ``c^D``        | Bottom quadratic drag coefficient | ``10^{-4}`` | none |
+# | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |
+# | ``ϰ_h``        | Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
 #
 # We start off by importing `Oceananigans`, some convenient aliases for dimensions, and a function
 # that generates a pretty string from a number that represents 'time' in seconds:
@@ -115,7 +121,7 @@ grid = RegularCartesianGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 
 
 # ## Rotation
 #
-# The classical Eady problem is posed on an $f$-plane. We use a Coriolis parameter
+# The classical Eady problem is posed on an ``f``-plane. We use a Coriolis parameter
 # typical to mid-latitudes on Earth,
 
 coriolis = FPlane(f=1e-4) # [s⁻¹]
@@ -129,7 +135,7 @@ background_parameters = ( α = 10 * coriolis.f, # s⁻¹, geostrophic shear
                           N = 1e-3,            # s⁻¹, buoyancy frequency
                          Lz = grid.Lz)         # m, ocean depth
 
-# and then construct the background fields $U$ and $B$
+# and then construct the background fields ``U`` and ``B``
 
 using Oceananigans.Fields: BackgroundField
 
@@ -259,6 +265,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(1e-9 * (time_ns() - start_time)),
                         prettytime(sim.Δt.Δt),
                         CFL(sim.model))
+nothing # hide
 
 # ### Build the simulation
 #
@@ -288,7 +295,7 @@ u, v, w = model.velocities # unpack velocity `Field`s
 nothing # hide
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
-# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add it to 
+# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to 
 # `simulation`.
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
@@ -337,6 +344,7 @@ function nice_divergent_levels(c, clim, nlevels=30)
 
     return levels
 end
+nothing # hide
 
 # Now we're ready to animate.
 
@@ -416,7 +424,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
            size = (1000, 800),
            link = :x,
          layout = Plots.grid(2, 2, heights=[0.5, 0.5, 0.2, 0.2]),
-          title = [@sprintf("ζ(t=%s)/f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
+          title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
 
     iter == iterations[end] && close(file)
 end

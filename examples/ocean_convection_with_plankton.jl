@@ -18,11 +18,15 @@ using Oceananigans, Oceananigans.Utils, Oceananigans.Grids
 # implying a resolution of 0.5 m. Our fluid is initially stratified with
 # a squared buoyancy frequency
 #
-# $ N² = 10⁻⁵ \rm{s⁻²} $
+# ```math
+# N² = 10^{-5} \rm{s^{-2}} \, ,
+# ```
 #
 # and a surface buoyancy flux
 #
-# $ Q_b = 10⁻⁸ \rm{m³ s⁻²} $
+# ```math
+# Q_b = 10^{-8} \mathrm{m}^3 \, \mathrm{s}s^{-2} \, .
+# ```
 #
 # Because we use the physics-based convection whereby buoyancy flux by a
 # positive vertical velocity implies positive flux, a positive buoyancy flux

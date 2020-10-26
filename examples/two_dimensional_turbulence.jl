@@ -11,7 +11,7 @@
 # ## Model setup
 
 # We instantiate the model with a simple isotropic diffusivity. We also use a 4-th order 
-# advection scheme and Runge-Kutta 3rd order time-stepping scheme.
+# advection scheme and Runge-Kutta 3-rd order time-stepping scheme.
 
 using Oceananigans, Oceananigans.Advection
 
@@ -80,7 +80,7 @@ file = jldopen(simulation.output_writers[:fields].filepath)
 iterations = parse.(Int, keys(file["timeseries/t"]))
 nothing # hide
 
-# Construct the $x$, $y$ grid for plotting purposes,
+# Construct the ``x``, ``y`` grid for plotting purposes,
 
 using Oceananigans.Grids
 

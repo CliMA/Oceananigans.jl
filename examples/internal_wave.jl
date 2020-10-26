@@ -7,7 +7,7 @@
 # ## Numerical, domain, and internal wave parameters
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
-# that's periodic in $(x, y, z)$:
+# that's periodic in ``(x, y, z)``:
 
 using Oceananigans
 
@@ -64,12 +64,14 @@ model = IncompressibleModel(
 # Next, we set up an initial condition that excites an internal wave that propates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
-# $ p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t) $.
+# ```math
+# p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t).
+# ```
 #
-# where $m$ is the vertical wavenumber, $k$ is the horizontal wavenumber,
-# $ω$ is the wave frequncy, and $a(x, z)$ is a Gaussian envelope.
-# The internal wave dispersion relation links the wave numbers $k$ and $m$,
-# the Coriolis parameter $f$, and the buoyancy frequency N:
+# where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
+# ``ω`` is the wave frequncy, and ``a(x, z)`` is a Gaussian envelope.
+# The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
+# the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
 
 ## Non-dimensional internal wave parameters
 m = 16      # vertical wavenumber
@@ -89,16 +91,16 @@ nothing # hide
 A = 1e-9
 δ = grid.Lx / 15
 
-## A Gaussian envelope centered at $(x, z) = (0, 0)$.
+## A Gaussian envelope centered at ``(x, z) = (0, 0)``.
 a(x, z) = A * exp( -( x^2 + z^2 ) / 2δ^2 )
 nothing # hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
 # In order that our initial condition excites an inertia-gravity wave, we
 # initialize the velocity and buoyancy perturbation fields to be consistent
-# with the pressure field $p = a \, \cos(kx + mx - ωt)$ at $t=0$.
+# with the pressure field ``p = a \, \cos(kx + mx - ωt)`` at ``t=0``.
 # These relations are sometimes called the "polarization
-# relations". At $t=0$, the polarization relations yield
+# relations". At ``t=0``, the polarization relations yield
 
 u₀(x, y, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k*x + m*z)
 v₀(x, y, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k*x + m*z)
@@ -108,7 +110,7 @@ b₀(x, y, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k*x + m*z)
 set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
 # Recall that the buoyancy `b` is a perturbation, so that the total buoyancy field
-# is $N^2 z + b$.
+# is ``N^2 z + b``.
 
 # ## A wave packet on the loose
 #

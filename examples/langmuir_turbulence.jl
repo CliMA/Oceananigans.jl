@@ -71,7 +71,7 @@ nothing # hide
 
 # ### Boundary conditions
 #
-# At the surface at $z=0$, McWilliams et al. (1997) impose wind stress,
+# At the surface at ``z=0``, McWilliams et al. (1997) impose wind stress,
 
 Qᵘ = -3.72e-5 # m² s⁻²
 nothing # hide
@@ -91,14 +91,14 @@ nothing # hide
 N² = 1.936e-5 # s⁻²
 nothing # hide
 
-# To summarize, we impose a surface flux on $u$,
+# To summarize, we impose a surface flux on ``u``,
 
 using Oceananigans.BoundaryConditions
 
 u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 nothing # hide
 
-# and a surface flux and bottom linear gradient on buoyancy, $b$,
+# and a surface flux and bottom linear gradient on buoyancy, ``b``,
 
 b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
                                                        bottom = BoundaryCondition(Gradient, N²))
@@ -116,8 +116,8 @@ nothing # hide
 # ## Model instantiation
 #
 # Finally, we are ready to build the model. We use the AnisotropicMinimumDissipation
-# model for large eddy simulation. Because our Stokes drift does not vary in $x, y$,
-# we use `UniformStokesDrift`, which expects Stokes drift functions of $z, t$ only.
+# model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
+# we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 using Oceananigans.Buoyancy: BuoyancyTracer
 using Oceananigans.SurfaceWaves: UniformStokesDrift
@@ -147,8 +147,8 @@ bᵢ(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
 nothing # hide
 
 # The velocity initial condition is zero *Eulerian* velocity. This means that we
-# must add the Stokes drift profile to the $u$ velocity field. We also add noise scaled
-# by the friction velocity to $u$ and $w$.
+# must add the Stokes drift profile to the ``u`` velocity field. We also add noise scaled
+# by the friction velocity to ``u`` and ``w``.
 
 uᵢ(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
@@ -167,7 +167,7 @@ nothing # hide
 # ### Nice progress messaging
 #
 # We define a function that prints a helpful message with
-# maximum absolute value of $u, v, w$ and the current wall clock time.
+# maximum absolute value of ``u, v, w`` and the current wall clock time.
 
 using Oceananigans.Diagnostics, Printf
 using Oceananigans.Utils: prettytime
@@ -227,8 +227,8 @@ run!(simulation)
 
 # # Making a neat movie
 #
-# We look at the results by plotting vertical slices of $u$ and $w$, and a horizontal
-# slice of $w$ to look for Langmuir cells.
+# We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
+# slice of ``w`` to look for Langmuir cells.
 
 k = searchsortedfirst(grid.zF[:], -8)
 nothing # hide
