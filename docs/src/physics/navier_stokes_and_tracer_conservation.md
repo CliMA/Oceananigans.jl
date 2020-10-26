@@ -79,16 +79,16 @@ specified rate of rotation of the frame of reference.
 
 From left to right, the terms that appear on the right-hand side of the momentum conservation equation are:
 
-    * momentum advection, ``\left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{u}``,
-    * advection of resolved momentum by the background velocity field ``\bm{U}``, ``\left ( \bm{U} \bm{\cdot} \bm{\nabla} \right ) \bm{u}``,
-    * advection of background momentum by resolved velocity, ``\left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{U}``,
-    * coriolis, ``\bm{f} \times \bm{u}``
-    * the effective background rotation rate due to surface waves, ``\bm{\nabla} \times \bm{u}^S \right ) \times \bm{u}``
-    * pressure, ``\bm{\nabla} \phi``,
-    * buoyant acceleration, ``b \bm{\hat z}``
-    * molecular or turbulence viscous stress, ``\bm{\nabla} \bm{\cdot} \bm{\tau}``
-    * a source of momentum due to forcing or damping of surface waves, ``\partial_t \bm{u}^S``
-    * an arbitrary internal source of momentum, ``\bm{F_u}``
+* momentum advection, ``\left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{u}``,
+* advection of resolved momentum by the background velocity field ``\bm{U}``, ``\left ( \bm{U} \bm{\cdot} \bm{\nabla} \right ) \bm{u}``,
+* advection of background momentum by resolved velocity, ``\left ( \bm{u} \bm{\cdot} \bm{\nabla} \right ) \bm{U}``,
+* coriolis, ``\bm{f} \times \bm{u}``
+* the effective background rotation rate due to surface waves, ``\bm{\nabla} \times \bm{u}^S \right ) \times \bm{u}``
+* pressure, ``\bm{\nabla} \phi``,
+* buoyant acceleration, ``b \bm{\hat z}``
+* molecular or turbulence viscous stress, ``\bm{\nabla} \bm{\cdot} \bm{\tau}``
+* a source of momentum due to forcing or damping of surface waves, ``\partial_t \bm{u}^S``
+* an arbitrary internal source of momentum, ``\bm{F_u}``
 
 ## The tracer conservation equation
 
@@ -107,11 +107,11 @@ equations to be solved simultaneously with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
 
-    * tracer advection, ``\bm{u} \bm{\cdot} \bm{\nabla} c``
-    * tracer advection by the background velocity field, ``U``, ``\bm{U} \bm{\cdot} \bm{\nabla} c``
-    * advection of the background tracer field, ``C``, by the resolved velocity field, ``\bm{u} \bm{\cdot} \bm{\nabla} C``
-    * molecular or turbulent diffusion, ``\bm{\nabla} \bm{\cdot} \bm{q}_c``
-    * an arbitrary internal source of tracer, ``F_c``
+* tracer advection, ``\bm{u} \bm{\cdot} \bm{\nabla} c``
+* tracer advection by the background velocity field, ``U``, ``\bm{U} \bm{\cdot} \bm{\nabla} c``
+* advection of the background tracer field, ``C``, by the resolved velocity field, ``\bm{u} \bm{\cdot} \bm{\nabla} C``
+* molecular or turbulent diffusion, ``\bm{\nabla} \bm{\cdot} \bm{q}_c``
+* an arbitrary internal source of tracer, ``F_c``
 
 The following subsections provide more details on the
 possible forms that each individual term in the momentum and tracer
