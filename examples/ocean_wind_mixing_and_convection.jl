@@ -1,4 +1,4 @@
-# # [Wind and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
+# # [Wind- and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
 #
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
@@ -6,6 +6,9 @@
 #   * How to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
+#
+# We start by importing all of the packages and functions that we'll need for this
+# example.
 
 using Random
 using Printf
@@ -13,12 +16,12 @@ using Plots
 using JLD2
 
 using Oceananigans
+using Oceananigans.Utils
 
 using Oceananigans.Grids: nodes
 using Oceananigans.Advection: UpwindBiasedFifthOrder
 using Oceananigans.Diagnostics: FieldMaximum
 using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
-using Oceananigans.Utils: minute, hour, prettytime
 
 # ## The model grid
 #
@@ -41,16 +44,19 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=
 # With surface temperature flux `Qʰ`, density `ρ`, and heat capacity `cᴾ`,
 
 Qʰ = 200 # W m⁻²
-ρ = 1026 # kg m⁻³
-cᴾ = 3993 # J K⁻¹ s⁻¹
+ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
+cᴾ = 3991 # J K⁻¹ s⁻¹
+nothing # hide
 
 # the surface temperature flux `Qᵀ` is
 
-Qᵀ = Qʰ / (ρ * cᴾ) # K m⁻¹ s⁻¹
+Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹
+nothing # hide
 
 # Finally, we use an initial and bottom temperature gradient
 
 dTdz = 0.01 # K m⁻¹
+nothing # hide
 
 # These culminate in the boundary conditions on temperature,
 
@@ -62,18 +68,26 @@ T_bcs = TracerBoundaryConditions(grid,
 # implies cooling. This is because a positive temperature flux implies
 # that temperature is fluxed upwards, out of the ocean.
 #
-# For the velocity field, we imagine a wind blowing ovver the surface whose
-# velocity at 10 meters is
+# For the velocity field, we imagine a wind blowing over the ocean surface
+# with an average velocity at 10 meters
 
-u₁₀ = 1 # m s⁻¹
+u₁₀ = 10 # m s⁻¹
+nothing # hide
 
 # Using the drag coefficient
 
 cᴰ = 2.5e-3 # dimensionless
+nothing # hide
 
-# we estimate the density-specific stress into the ocean as
+# and an estimate of atmospheric density
 
-Qᵘ = - cᴰ * u₁₀ * abs(u₁₀)
+ρₐ = 1.225 # kg m⁻³, average density of air at sea-level
+nothing # hide
+
+# we calculate that the "kinematic" stress (that is, stress divided by density)
+# exerted by the wind on the ocean is
+
+Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
 
@@ -82,6 +96,7 @@ u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 # For salinity, `S`, we impose an evaporative flux of the form
 
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
+nothing # hide
 
 # where `S` is salinity. We use an evporation rate of 
 # of 1 millimeter per hour,
@@ -119,7 +134,7 @@ model = IncompressibleModel(architecture = CPU(),
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
 #   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
-# * To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
+# * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
 #   `architecture = GPU()``
 
 # ## Initial conditions
@@ -162,12 +177,12 @@ progress_message(sim) =
 
 # We then set up the simulation:
 
-simulation = Simulation(model, Δt=wizard, stop_time=15minute, iteration_interval=10,
+simulation = Simulation(model, Δt=wizard, stop_time=15minutes, iteration_interval=10,
                         progress=progress_message)
 
 # ## Output
 #
-# We use the `JLD2OutputWriter` to save `x, z` slices of the velocity fields,
+# We use the `JLD2OutputWriter` to save ``x, z`` slices of the velocity fields,
 # tracer fields, and eddy diffusivities. The `prefix` keyword argument
 # to `JLD2OutputWriter` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
@@ -181,7 +196,7 @@ simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_diffusivities),
                            prefix = "ocean_wind_mixing_and_convection",
                      field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
-                         schedule = TimeInterval(minute/4),
+                         schedule = TimeInterval(minutes/4),
                             force = true)
 
 # We're ready:
@@ -205,7 +220,7 @@ file = jldopen(simulation.output_writers[:slices].filepath)
 ## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-""" Returns colorbar levels equispaced from `(-clim, clim)` and encompassing the extrema of `c`. """
+""" Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
 function divergent_levels(c, clim, nlevels=21)
     levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
@@ -221,10 +236,10 @@ function sequential_levels(c, clims, nlevels=20)
     return clims, levels
 end
 
-# We start the animation at `t = 5minute` since things are pretty boring till then:
+# We start the animation at `t = 5minutes` since things are pretty boring till then:
 
 times = [file["timeseries/t/$iter"] for iter in iterations]
-intro = searchsortedfirst(times, 5minute)
+intro = searchsortedfirst(times, 5minutes)
 
 anim = @animate for (i, iter) in enumerate(iterations[intro:end])
 
@@ -247,10 +262,12 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     w_plot = contourf(xw, zw, w'; color=:balance, clims=wlims, levels=wlevels, kwargs...)
     T_plot = contourf(xT, zT, T'; color=:thermal, clims=Tlims, levels=Tlevels, kwargs...)
     S_plot = contourf(xT, zT, S'; color=:haline,  clims=Slims, levels=Slevels, kwargs...)
+
+    ## We use a heatmap for the eddy viscosity to observe how it varies on the grid scale.
     ν_plot = heatmap(xT, zT, νₑ'; color=:thermal, clims=νlims, levels=νlevels, kwargs...)
 
     w_title = @sprintf("vertical velocity (m s⁻¹), t = %s", prettytime(t))
-    T_title = "temperature (C)"
+    T_title = "temperature (ᵒC)"
     S_title = "salinity (g kg⁻¹)"
     ν_title = "eddy viscosity (m² s⁻¹)"
                        

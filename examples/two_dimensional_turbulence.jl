@@ -25,8 +25,8 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                 closure = IsotropicDiffusivity(ν=1e-5)
                            )
 
-# ## Setting initial conditions
-
+# ## Random initial conditions
+#
 # Our initial condition randomizes `model.velocities.u` and `model.velocities.v`.
 # We ensure that both have zero mean for aesthetic reasons.
 
@@ -37,20 +37,37 @@ u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
 
-# ## Calculating vorticity
+# ## Computing vorticity and speed
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-# Next we create two objects called `ComputedField`s that calculate
-# _(i)_ vorticity, and _(ii)_ speed. We'll use them to output vorticity
-# and speed while the simulation runs.
-
+## To make our equations prettier, we unpack `u`, `v`, and `w` from 
+## the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
-vorticity = ComputedField(∂x(v) - ∂y(u))
+# Next we create two objects called `ComputedField`s that calculate
+# _(i)_ vorticity, defined as
+#
+# ```math
+# ω = ∂_x v - ∂_y u \, ,
+# ```
 
-speed = ComputedField(sqrt(u^2 + v^2))
+ω = ∂x(v) - ∂y(u)
 
+ω_field = ComputedField(ω)
+
+# "Vorticity" measures the rate at which the fluid rotates. 
+# We also calculate _(ii)_ the _speed_ of the flow,
+#
+# ```math
+# s = \sqrt{u^2 + v^2} \, .
+# ```
+
+s = sqrt(u^2 + v^2)
+
+s_field = ComputedField(s)
+
+# We'll pass these `ComputedField`s to an output writer below to calculate them during the simulation.
 # Now we construct a simulation that prints out the iteration and model time as it runs.
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
@@ -63,7 +80,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, pr
 
 using Oceananigans.OutputWriters
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=vorticity, s=speed),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=ω_field, s=s_field),
                                                       schedule = TimeInterval(2),
                                                       prefix = "two_dimensional_turbulence",
                                                       force = true)
@@ -102,13 +119,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω = file["timeseries/ω/$iteration"][:, :, 1]
-    s = file["timeseries/s/$iteration"][:, :, 1]
+    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
+    s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
 
-    ω_max = maximum(abs, ω) + 1e-9
+    ω_max = maximum(abs, ω_snapshot) + 1e-9
     ω_lim = 2.0
 
-    s_max = maximum(abs, s) + 1e-9
+    s_max = maximum(abs, s_snapshot) + 1e-9
     s_lim = 0.2
 
     ω_levels = vcat([-ω_max], range(-ω_lim, stop=ω_lim, length=20), [ω_max])
@@ -117,13 +134,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
 
-    ω_plot = contourf(xω, yω, ω';
+    ω_plot = contourf(xω, yω, ω_snapshot';
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, s';
+    s_plot = contourf(xs, ys, s_snapshot';
                        color = :thermal,
                       levels = s_levels,
                        clims = (0, s_lim),

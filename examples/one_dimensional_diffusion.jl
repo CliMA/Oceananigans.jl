@@ -24,7 +24,7 @@ using Oceananigans
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
 # Below, we build a Cartesian grid with 128 grid points in the `z`-direction, where `z`
-# spans from `z = -0.5` to z = 0.5`,
+# spans from `z = -0.5` to `z = 0.5`,
 
 grid = RegularCartesianGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
 
@@ -39,7 +39,7 @@ model = IncompressibleModel(grid=grid, closure=closure)
 
 # Our simple `grid` and `model` use a number of defaults:
 #
-#   * The default `grid` topology periodic in `x, y` and bounded in `z`.
+#   * The default `grid` topology is periodic in `x, y` and bounded in `z`.
 #   * The default `Model` has no-flux (insulating and stress-free) boundary conditions on
 #     non-periodic boundaries for velocities `u, v, w` and tracers.
 #   * The default `Model` has two tracers: temperature `T`, and salinity `S`.
@@ -55,6 +55,28 @@ initial_temperature(x, y, z) = exp(-z^2 / (2width^2))
 
 set!(model, T=initial_temperature)
 
+# ## Visualizing model data
+#
+# Calling `set!` above changes the data contained in `model.tracers.T`,
+# which was initialized as `0`'s when the model was created.
+# To see the new data in `model.tracers.T`, we plot it:
+
+using Plots
+using Oceananigans.Grids: znodes # for obtaining the z-coordinates of model.tracers.T
+
+z = znodes(model.tracers.T)
+
+T_plot = plot(interior(model.tracers.T)[1, 1, :], z,
+              linewidth = 2,
+              label = "t = 0",
+              xlabel = "Temperature (ᵒC)",
+              ylabel = "z")
+
+# The function `interior` above extracts a `view` of the physical interior points
+# of `model.tracers.T`. This is useful because `model.tracers.T` also contains "halo" points
+# that lie outside the physical domain (halo points are used to set boundary conditions
+# during time-stepping).
+
 # ## Running a `Simulation`
 #
 # Next we set-up a `Simulation` that time-steps the model forward and manages output.
@@ -64,29 +86,16 @@ diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
 
 simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
 
-# We've specified that `simulation` runs for 1000 iterations with a stable time-step.
-# All that's left to do is
+# `simulation` will run for 1000 iterations with a time-step that resolves the time-scale
+# at which our temperature field diffuses. All that's left is to
 
 run!(simulation)
 
 # ## Visualizing the results
 #
-# We use `Plots.jl` to look at the results.
+# Let's look at how `model.tracers.T` changed during the simulation.
 
-using Plots, Printf
-
-using Oceananigans.Grids: znodes # for obtaining z-coordinates of Oceananigans fields
-
-# We plot the initial condition and the current solution. Note that
-# fields are always 3D in Oceananigans. We use `interior(model.tracers.T)[1, 1, :]`
-# to plot temperature, which returns a 1D array of `z`-values.
-
-z = znodes(model.tracers.T)
-
-p = plot(initial_temperature.(0, 0, z), z, linewidth=2,
-         label="t = 0", xlabel="Temperature", ylabel="z")
-
-plot!(p, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
+plot!(T_plot, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
       label=@sprintf("t = %.3f", model.clock.time))
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.

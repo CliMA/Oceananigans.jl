@@ -21,6 +21,7 @@ grid = RegularCartesianGrid(size=(128, 1, 128), extent=(64, 1, 64))
 # We impose buoyancy loss at the surface with the buoyancy flux
 
 Qb = 1e-8 # m³ s⁻²
+nothing # hide
 
 # Note that a _positive_ flux at the _top_ boundary means that buoyancy is
 # carried _upwards_, out of the fluid. This reduces the fluid's buoyancy 
@@ -29,6 +30,7 @@ Qb = 1e-8 # m³ s⁻²
 # The initial condition consists of the constant buoyancy gradient
 
 N² = 1e-6 # s⁻²
+nothing # hide
 
 # which we also impose as a boundary condition at the bottom.
 
