@@ -203,9 +203,9 @@ end
 
 using Oceananigans.Utils: hour # correpsonds to "1 hour", in units of seconds
 
-simulation = Simulation(model, iteration_interval = 100,
+simulation = Simulation(model, iteration_interval = 10,
                                                Δt = wizard,
-                                        stop_time = 6hour,
+                                        stop_time = 4hour,
                                          progress = print_progress)
 
 # ## Output
@@ -280,7 +280,7 @@ iterations = parse.(Int, keys(fields_file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
-function nice_divergent_levels(c, clim; nlevels=31)
+function nice_divergent_levels(c, clim; nlevels=21)
     levels = range(-clim, stop=clim, length=nlevels)
 
     cmax = maximum(abs, c)
