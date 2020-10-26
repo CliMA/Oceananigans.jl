@@ -64,7 +64,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, pr
 using Oceananigans.OutputWriters
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=vorticity, s=speed),
-                                                      schedule = TimeInterval(4),
+                                                      schedule = TimeInterval(2),
                                                       prefix = "two_dimensional_turbulence",
                                                       force = true)
 
