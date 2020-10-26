@@ -23,14 +23,14 @@ using Oceananigans.Advection: UpwindBiasedFifthOrder
 using Oceananigans.Diagnostics: FieldMaximum
 using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
 
-# ## The model grid
+# ## The grid
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
 # 1 m spacing in the vertical,
 
 grid = RegularCartesianGrid(size=(32, 32, 32), extent=(64, 64, 32))
 
-# ## Buoyancy
+# ## Buoyancy that depends on temperature and salinity
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 
@@ -41,24 +41,19 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=
 #
 # ## Boundary conditions
 #
-# With surface temperature flux `Qʰ`, density `ρ`, and heat capacity `cᴾ`,
+# We calculate the surface temperature flux associated with surface heating of
+# 200 W m⁻², reference density `ρ`, and heat capacity `cᴾ`,
 
-Qʰ = 200 # W m⁻²
+Qʰ = 200  # W m⁻², surface _heat_ flux
 ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
-cᴾ = 3991 # J K⁻¹ s⁻¹
-nothing # hide
+cᴾ = 3991 # J K⁻¹ s⁻¹, typical heat capacity for seawater
 
-# the surface temperature flux `Qᵀ` is
+Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹, surface _temperature_ flux
 
-Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹
-nothing # hide
-
-# Finally, we use an initial and bottom temperature gradient
+# Finally, we impose a temperature gradient `dTdz` both initially and at the
+# bottom of the domain, culminating in the boundary conditions on temperature,
 
 dTdz = 0.01 # K m⁻¹
-nothing # hide
-
-# These culminate in the boundary conditions on temperature,
 
 T_bcs = TracerBoundaryConditions(grid, 
                                  top = BoundaryCondition(Flux, Qᵀ),
@@ -69,23 +64,13 @@ T_bcs = TracerBoundaryConditions(grid,
 # that temperature is fluxed upwards, out of the ocean.
 #
 # For the velocity field, we imagine a wind blowing over the ocean surface
-# with an average velocity at 10 meters
+# with an average velocity at 10 meters `u₁₀`, and use a drag coefficient `cᴰ`
+# to estimate the kinematic stress (that is, stress divided by density) exerted
+# by the wind on the ocean:
 
-u₁₀ = 10 # m s⁻¹
-nothing # hide
-
-# Using the drag coefficient
-
-cᴰ = 2.5e-3 # dimensionless
-nothing # hide
-
-# and an estimate of atmospheric density
-
-ρₐ = 1.225 # kg m⁻³, average density of air at sea-level
-nothing # hide
-
-# we calculate that the "kinematic" stress (that is, stress divided by density)
-# exerted by the wind on the ocean is
+u₁₀ = 10     # m s⁻¹, average wind velocity 10 meters above the ocean
+cᴰ = 2.5e-3  # dimensionless drag coefficient
+ρₐ = 1.225   # kg m⁻³, average density of air at sea-level
 
 Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
@@ -98,10 +83,9 @@ u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
 nothing # hide
 
-# where `S` is salinity. We use an evporation rate of 
-# of 1 millimeter per hour,
+# where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
-evaporation_rate = 1e-3 / hour
+evaporation_rate = 1e-3 / hour 
 
 # We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
 # indicating that `Qˢ` depends on salinity `S` and passing
@@ -118,7 +102,8 @@ S_bcs = TracerBoundaryConditions(grid, top=evaporation_bc)
 # We fill in the final details of the model here: upwind-biased 5th-order
 # advection for momentum and tracers, 3rd-order Runge-Kutta time-stepping,
 # Coriolis forces, and the `AnisotropicMinimumDissipation` closure
-# to model the effect of subfilter, unresolved turbulence.
+# for large eddy simulation to model the effect of turbulent motions at
+# scales smaller than the grid scale that we cannot explicitly resolve.
 
 model = IncompressibleModel(architecture = CPU(),
                             advection = UpwindBiasedFifthOrder(),
@@ -160,7 +145,7 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 # We first build a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, Δt=2.0, max_change=1.1, max_Δt=30.0)
+wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
 
 # Nice progress messaging is helpful:
 
@@ -177,7 +162,7 @@ progress_message(sim) =
 
 # We then set up the simulation:
 
-simulation = Simulation(model, Δt=wizard, stop_time=15minutes, iteration_interval=10,
+simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interval=10,
                         progress=progress_message)
 
 # ## Output
@@ -187,16 +172,14 @@ simulation = Simulation(model, Δt=wizard, stop_time=15minutes, iteration_interv
 # to `JLD2OutputWriter` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
 
-## Create a NamedTuple with eddy diffusivities
-eddy_diffusivities = (νₑ = model.diffusivities.νₑ,
-                      κₑT = model.diffusivities.κₑ.T,
-                      κₑS = model.diffusivities.κₑ.S)
+## Create a NamedTuple with eddy viscosity
+eddy_viscosity = (νₑ = model.diffusivities.νₑ,)
 
 simulation.output_writers[:slices] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_diffusivities),
+    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
                            prefix = "ocean_wind_mixing_and_convection",
                      field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
-                         schedule = TimeInterval(minutes/4),
+                         schedule = TimeInterval(1minute),
                             force = true)
 
 # We're ready:
@@ -236,10 +219,10 @@ function sequential_levels(c, clims, nlevels=20)
     return clims, levels
 end
 
-# We start the animation at `t = 5minutes` since things are pretty boring till then:
+# We start the animation at `t = 10minutes` since things are pretty boring till then:
 
 times = [file["timeseries/t/$iter"] for iter in iterations]
-intro = searchsortedfirst(times, 5minutes)
+intro = searchsortedfirst(times, 10minutes)
 
 anim = @animate for (i, iter) in enumerate(iterations[intro:end])
 
@@ -251,10 +234,10 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     S = file["timeseries/S/$iter"][:, 1, :]
     νₑ = file["timeseries/νₑ/$iter"][:, 1, :]
 
-    wlims, wlevels = divergent_levels(w, 1e-1)
-    Tlims, Tlevels = sequential_levels(T, (19.7, 20.0))
-    Slims, Slevels = sequential_levels(S, (34.9999, 35.002))
-    νlims, νlevels = sequential_levels(νₑ, (1e-9, 1e-2))
+    wlims, wlevels = divergent_levels(w, 2e-2)
+    Tlims, Tlevels = sequential_levels(T, (19.7, 19.99))
+    Slims, Slevels = sequential_levels(S, (35, 35.005))
+    νlims, νlevels = sequential_levels(νₑ, (1e-6, 5e-3))
 
     kwargs = (linewidth=0, xlabel="x (m)", ylabel="z (m)", aspectratio=1,
               xlims=(0, grid.Lx), ylims=(-grid.Lz, 0))
