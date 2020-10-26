@@ -23,8 +23,8 @@ grid = RegularCartesianGrid(size=(128, 1, 128), extent=(64, 1, 64))
 Qb = 1e-8 # m³ s⁻²
 
 # Note that a _positive_ flux at the _top_ boundary means that buoyancy is
-# carried _upwards_, out of the fluid. This acts to reduce buoyancy at the
-# surface, and causes convection.
+# carried _upwards_, out of the fluid. This reduces the fluid's buoyancy 
+# near the surface, causing convection.
 #
 # The initial condition consists of the constant buoyancy gradient
 
@@ -88,9 +88,9 @@ set!(model, b=initial_buoyancy)
 
 using Oceananigans.Utils: minute
 
-wizard = TimeStepWizard(cfl=1.0, Δt=1minute, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1.0, Δt=2minute, max_change=1.1, max_Δt=2minute)
 
-# Seconds, we write a function that prints the progress of the simulation
+# We also write a function that prints the progress of the simulation
 
 using Printf
 using Oceananigans.Utils: prettytime
@@ -100,13 +100,13 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.model.clock.time),
                         prettytime(sim.Δt.Δt))
                                
-simulation = Simulation(model, Δt=wizard, stop_time=6hour,
+simulation = Simulation(model, Δt=wizard, stop_time=4hour,
                         iteration_interval=10, progress=progress)
 
-# We add a basic `JLD2OutputWriter` that writes velocities and tracers:
+# We add a basic `JLD2OutputWriter` that writes velocities, tracers,
+# and the horizontally-averaged plankton:
 
-using Oceananigans.OutputWriters
-using Oceananigans.Fields
+using Oceananigans.OutputWriters, Oceananigans.Fields
 
 averaged_plankton = AveragedField(model.tracers.plankton, dims=(1, 2))
 
@@ -120,7 +120,12 @@ simulation.output_writers[:fields] =
                      prefix = "convecting_plankton",
                      force = true)
 
-# Let there be plankton:
+# Note that it often makes sense to define different output writers
+# for two- or three-dimensional fields and `AveragedField`s (since 
+# averages take up so much less disk space, it's usually possible to output
+# them a lot more frequently than full fields without blowing up your hard drive).
+#
+# The simulation is setup. Let there be plankton:
 
 run!(simulation)
 
@@ -161,10 +166,10 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     p_min = minimum(p) - 1e-9
     p_max = maximum(p) + 1e-9
-    p_lim = 2
+    p_lim = 1
 
-    w_levels = vcat([-w_max], range(-w_lim, stop=w_lim, length=41), [w_max])
-    p_levels = collect(range(p_min, stop=p_lim, length=40))
+    w_levels = vcat([-w_max], range(-w_lim, stop=w_lim, length=21), [w_max])
+    p_levels = collect(range(p_min, stop=p_lim, length=20))
     p_max > p_lim && push!(p_levels, p_max)
 
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
@@ -185,7 +190,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     P_plot = plot(P, zp[:],
                   linewidth = 2,
                   label = nothing,
-                  xlims = (-0.5, 3),
+                  xlims = (-0.2, 1),
                   ylabel = "Averaged plankton",
                   xlabel = "Plankton concentration")
 
