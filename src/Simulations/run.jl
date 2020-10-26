@@ -156,7 +156,7 @@ checkpoint_path(filepath::AbstractString, checkpointers) = filepath
 
 function checkpoint_path(pickup, checkpointers)
     length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
-    length(checkpointers) > 1 && error("Multiple checkpointers found: cannot pickup simulation!")
+    length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
     return checkpoint_path(pickup, first(checkpointers))
 end
 
