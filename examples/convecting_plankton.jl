@@ -93,7 +93,7 @@ wizard = TimeStepWizard(cfl=1.0, Δt=2minute, max_change=1.1, max_Δt=2minute)
 # We also write a function that prints the progress of the simulation
 
 using Printf
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: hour, prettytime
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         sim.model.clock.iteration,
