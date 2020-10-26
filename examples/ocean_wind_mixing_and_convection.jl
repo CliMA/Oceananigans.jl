@@ -1,4 +1,4 @@
-# # [Wind and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
+# # [Wind- and convection-driven mixing in an ocean surface boundary layer](@id gpu_example)
 #
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
@@ -6,6 +6,9 @@
 #   * How to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
+#
+# We start by importing all of the packages and functions that we'll need for this
+# example.
 
 using Random
 using Printf
@@ -13,21 +16,21 @@ using Plots
 using JLD2
 
 using Oceananigans
+using Oceananigans.Utils
 
 using Oceananigans.Grids: nodes
 using Oceananigans.Advection: UpwindBiasedFifthOrder
 using Oceananigans.Diagnostics: FieldMaximum
 using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
-using Oceananigans.Utils: minute, hour, prettytime
 
-# ## The model grid
+# ## The grid
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
 # 1 m spacing in the vertical,
 
 grid = RegularCartesianGrid(size=(32, 32, 32), extent=(64, 64, 32))
 
-# ## Buoyancy
+# ## Buoyancy that depends on temperature and salinity
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 
@@ -38,21 +41,19 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=
 #
 # ## Boundary conditions
 #
-# With surface temperature flux `Qʰ`, density `ρ`, and heat capacity `cᴾ`,
+# We calculate the surface temperature flux associated with surface heating of
+# 200 W m⁻², reference density `ρ`, and heat capacity `cᴾ`,
 
-Qʰ = 200 # W m⁻²
-ρ = 1026 # kg m⁻³
-cᴾ = 3993 # J K⁻¹ s⁻¹
+Qʰ = 200  # W m⁻², surface _heat_ flux
+ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
+cᴾ = 3991 # J K⁻¹ s⁻¹, typical heat capacity for seawater
 
-# the surface temperature flux `Qᵀ` is
+Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹, surface _temperature_ flux
 
-Qᵀ = Qʰ / (ρ * cᴾ) # K m⁻¹ s⁻¹
-
-# Finally, we use an initial and bottom temperature gradient
+# Finally, we impose a temperature gradient `dTdz` both initially and at the
+# bottom of the domain, culminating in the boundary conditions on temperature,
 
 dTdz = 0.01 # K m⁻¹
-
-# These culminate in the boundary conditions on temperature,
 
 T_bcs = TracerBoundaryConditions(grid, 
                                  top = BoundaryCondition(Flux, Qᵀ),
@@ -62,18 +63,16 @@ T_bcs = TracerBoundaryConditions(grid,
 # implies cooling. This is because a positive temperature flux implies
 # that temperature is fluxed upwards, out of the ocean.
 #
-# For the velocity field, we imagine a wind blowing ovver the surface whose
-# velocity at 10 meters is
+# For the velocity field, we imagine a wind blowing over the ocean surface
+# with an average velocity at 10 meters `u₁₀`, and use a drag coefficient `cᴰ`
+# to estimate the kinematic stress (that is, stress divided by density) exerted
+# by the wind on the ocean:
 
-u₁₀ = 1 # m s⁻¹
+u₁₀ = 10     # m s⁻¹, average wind velocity 10 meters above the ocean
+cᴰ = 2.5e-3  # dimensionless drag coefficient
+ρₐ = 1.225   # kg m⁻³, average density of air at sea-level
 
-# Using the drag coefficient
-
-cᴰ = 2.5e-3 # dimensionless
-
-# we estimate the density-specific stress into the ocean as
-
-Qᵘ = - cᴰ * u₁₀ * abs(u₁₀)
+Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
 
@@ -82,11 +81,11 @@ u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 # For salinity, `S`, we impose an evaporative flux of the form
 
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
+nothing # hide
 
-# where `S` is salinity. We use an evporation rate of 
-# of 1 millimeter per hour,
+# where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
-evaporation_rate = 1e-3 / hour
+evaporation_rate = 1e-3 / hour 
 
 # We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
 # indicating that `Qˢ` depends on salinity `S` and passing
@@ -103,7 +102,8 @@ S_bcs = TracerBoundaryConditions(grid, top=evaporation_bc)
 # We fill in the final details of the model here: upwind-biased 5th-order
 # advection for momentum and tracers, 3rd-order Runge-Kutta time-stepping,
 # Coriolis forces, and the `AnisotropicMinimumDissipation` closure
-# to model the effect of subfilter, unresolved turbulence.
+# for large eddy simulation to model the effect of turbulent motions at
+# scales smaller than the grid scale that we cannot explicitly resolve.
 
 model = IncompressibleModel(architecture = CPU(),
                             advection = UpwindBiasedFifthOrder(),
@@ -119,7 +119,7 @@ model = IncompressibleModel(architecture = CPU(),
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
 #   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
-# * To change the `architecture` to `GPU`, replace the `architecture` keyword argument with
+# * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
 #   `architecture = GPU()``
 
 # ## Initial conditions
@@ -145,7 +145,7 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 # We first build a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, Δt=1.0, max_change=1.1, max_Δt=30.0)
+wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
 
 # Nice progress messaging is helpful:
 
@@ -162,26 +162,24 @@ progress_message(sim) =
 
 # We then set up the simulation:
 
-simulation = Simulation(model, Δt=wizard, stop_time=15minute, iteration_interval=10,
+simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interval=10,
                         progress=progress_message)
 
 # ## Output
 #
-# We use the `JLD2OutputWriter` to save `x, z` slices of the velocity fields,
+# We use the `JLD2OutputWriter` to save ``x, z`` slices of the velocity fields,
 # tracer fields, and eddy diffusivities. The `prefix` keyword argument
 # to `JLD2OutputWriter` indicates that output will be saved in
 # `ocean_wind_mixing_and_convection.jld2`.
 
-## Create a NamedTuple with eddy diffusivities
-eddy_diffusivities = (νₑ = model.diffusivities.νₑ,
-                      κₑT = model.diffusivities.κₑ.T,
-                      κₑS = model.diffusivities.κₑ.S)
+## Create a NamedTuple with eddy viscosity
+eddy_viscosity = (νₑ = model.diffusivities.νₑ,)
 
 simulation.output_writers[:slices] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_diffusivities),
+    JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
                            prefix = "ocean_wind_mixing_and_convection",
                      field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
-                         schedule = TimeInterval(15),
+                         schedule = TimeInterval(1minute),
                             force = true)
 
 # We're ready:
@@ -205,15 +203,15 @@ file = jldopen(simulation.output_writers[:slices].filepath)
 ## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-""" Returns colorbar levels equispaced from `(-clim, clim)` and encompassing the extrema of `c`. """
-function divergent_levels(c, clim, nlevels=30)
+""" Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
+function divergent_levels(c, clim, nlevels=21)
     levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
     return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
 end
 
 """ Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
-function sequential_levels(c, clims, nlevels=30)
+function sequential_levels(c, clims, nlevels=20)
     levels = range(clims[1], stop=clims[2], length=nlevels)
     cmin, cmax = minimum(c), maximum(c)
     cmin < clims[1] && (levels = vcat([cmin], levels))
@@ -221,9 +219,12 @@ function sequential_levels(c, clims, nlevels=30)
     return clims, levels
 end
 
-# Now we animate
+# We start the animation at `t = 10minutes` since things are pretty boring till then:
 
-anim = @animate for (i, iter) in enumerate(iterations)
+times = [file["timeseries/t/$iter"] for iter in iterations]
+intro = searchsortedfirst(times, 10minutes)
+
+anim = @animate for (i, iter) in enumerate(iterations[intro:end])
 
     @info "Drawing frame $i from iteration $iter..."
 
@@ -233,10 +234,10 @@ anim = @animate for (i, iter) in enumerate(iterations)
     S = file["timeseries/S/$iter"][:, 1, :]
     νₑ = file["timeseries/νₑ/$iter"][:, 1, :]
 
-    wlims, wlevels = divergent_levels(w, 1e-1)
-    Tlims, Tlevels = sequential_levels(T, (19.7, 20.0))
-    Slims, Slevels = sequential_levels(S, (34.9999, 35.002))
-    νlims, νlevels = sequential_levels(νₑ, (1e-9, 1e-2))
+    wlims, wlevels = divergent_levels(w, 2e-2)
+    Tlims, Tlevels = sequential_levels(T, (19.7, 19.99))
+    Slims, Slevels = sequential_levels(S, (35, 35.005))
+    νlims, νlevels = sequential_levels(νₑ, (1e-6, 5e-3))
 
     kwargs = (linewidth=0, xlabel="x (m)", ylabel="z (m)", aspectratio=1,
               xlims=(0, grid.Lx), ylims=(-grid.Lz, 0))
@@ -244,10 +245,12 @@ anim = @animate for (i, iter) in enumerate(iterations)
     w_plot = contourf(xw, zw, w'; color=:balance, clims=wlims, levels=wlevels, kwargs...)
     T_plot = contourf(xT, zT, T'; color=:thermal, clims=Tlims, levels=Tlevels, kwargs...)
     S_plot = contourf(xT, zT, S'; color=:haline,  clims=Slims, levels=Slevels, kwargs...)
+
+    ## We use a heatmap for the eddy viscosity to observe how it varies on the grid scale.
     ν_plot = heatmap(xT, zT, νₑ'; color=:thermal, clims=νlims, levels=νlevels, kwargs...)
 
     w_title = @sprintf("vertical velocity (m s⁻¹), t = %s", prettytime(t))
-    T_title = "temperature (C)"
+    T_title = "temperature (ᵒC)"
     S_title = "salinity (g kg⁻¹)"
     ν_title = "eddy viscosity (m² s⁻¹)"
                        

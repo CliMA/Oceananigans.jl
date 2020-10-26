@@ -3,8 +3,8 @@
 # In this example, we initialize an internal wave packet in two-dimensions
 # and watch it propagate. This example illustrates how to set up a two-dimensional
 # model, set initial conditions, and how to use `BackgroundField`s.
-
-# ## Numerical, domain, and internal wave parameters
+#
+# ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
 # that's periodic in ``(x, y, z)``:
@@ -14,9 +14,11 @@ using Oceananigans
 grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
                             topology=(Periodic, Periodic, Periodic))
 
+# ## Internal wave parameters
+#
 # Inertia-gravity waves propagate in fluids that are both _(i)_ rotating, and
-# _(ii)_ density-stratified. We use Oceananigans' coriolis abstraction
-# to implement the background rotation rate:
+# _(ii)_ density-stratified. We use Oceananigans' Coriolis abstraction
+# to implement a background rotation rate:
 
 coriolis = FPlane(f=0.2)
 
@@ -25,15 +27,9 @@ coriolis = FPlane(f=0.2)
 # Our units are arbitrary.
 
 # We use Oceananigans' `background_fields` abstraction to define a background
-# buoyancy field `background_b(z) = N^2 * z`, where `z` is the vertical coordinate
-# and `N` is the "buoyancy frequency". This means that the modeled buoyany field
-# in Oceananigans will be a perturbation away from the basic state `background_b`.
-# We choose
-
-N = 1 ## buoyancy frequency
-nothing # hide
-
-# and then construct the background buoyancy,
+# buoyancy field `B(z) = N^2 * z`, where `z` is the vertical coordinate
+# and `N` is the "buoyancy frequency". This means that the modeled buoyancy field
+# perturbs the basic state `B(z)`.
 
 using Oceananigans.Fields: BackgroundField
 
@@ -41,16 +37,21 @@ using Oceananigans.Fields: BackgroundField
 ## Here we have one parameter, the buoyancy frequency
 B_func(x, y, z, t, N) = N^2 * z
 
+N = 1 ## buoyancy frequency
+
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
-# and `background_b` to the `IncompressibleModel` constructor. In addition,
-# we add a small amount of `IsotropicDiffusivity` to keep the model stable,
-# during time-stepping, and specify our model to use a single tracer called
+# and `B` to the `IncompressibleModel` constructor.
+# We add a small amount of `IsotropicDiffusivity` to keep the model stable
+# during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
   
+using Oceananigans.Advection
+
 model = IncompressibleModel(
                  grid = grid, 
+            advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,
               closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
              coriolis = coriolis,
@@ -65,7 +66,7 @@ model = IncompressibleModel(
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
-# p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t).
+# p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t) \, .
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
@@ -116,14 +117,14 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.02 * 2π/ω, stop_iteration = 100)
+simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
                         
 # and add an output writer that saves the vertical velocity field every two iterations:
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          schedule = IterationInterval(2),
+                                                          schedule = IterationInterval(1),
                                                             prefix = "internal_wave",
                                                              force = true)
 
@@ -136,7 +137,7 @@ run!(simulation)
 # To visualize the solution, we load snapshots of the data and use it to make contour
 # plots of vertical velocity.
 
-using JLD2, Plots, Printf, Oceananigans.Grids
+using JLD2, Printf, Plots, Oceananigans.Grids
 
 # We use coordinate arrays appropriate for the vertical velocity field,
 
@@ -154,6 +155,8 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 anim = @animate for (i, iter) in enumerate(iterations)
 
+    @info "Drawing frame $i from iteration $iter..."
+
     w = file["timeseries/w/$iter"][:, 1, :]
     t = file["timeseries/t/$iter"]
 
@@ -170,4 +173,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-mp4(anim, "internal_wave.mp4", fps = 8) # hide
+gif(anim, "internal_wave.gif", fps = 8) # hide
