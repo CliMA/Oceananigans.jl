@@ -1,6 +1,6 @@
 # # Simple diffusion example
 #
-# This script provides our simplest example of Oceananigans.jl functionality:
+# This is Oceananigans.jl's simplest example:
 # the diffusion of a one-dimensional Gaussian. This example demonstrates
 #
 #   * How to load `Oceananigans.jl`.
@@ -12,7 +12,7 @@
 #
 # ## Using `Oceananigans.jl`
 #
-# We write
+# Write
 
 using Oceananigans
 
@@ -21,17 +21,22 @@ using Oceananigans
 # ## Instantiating and configuring a model
 #
 # A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
-# by passing it a `grid`, plus information about the equations we would like to solve:
-
-model = IncompressibleModel(
-       grid = RegularCartesianGrid(size = (1, 1, 128), x = (0, 1), y = (0, 1), z = (-0.5, 0.5)),
-    closure = IsotropicDiffusivity(κ = 1.0)
-)
-
-# The `grid` and turbulence `closure` specify a Cartesian grid with regular
-# (uniform) grid spacing, and isotropic tracer diffusion with
-# constant diffusivity `κ`.
+# by passing it a `grid`, plus information about the equations we would like to solve.
 #
+# Below, we build a Cartesian grid with 128 grid points in the `z`-direction, where `z`
+# spans from `z = -0.5` to z = 0.5`,
+
+grid = RegularCartesianGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
+
+# We next specify a model with an `IsotropicDiffusivity`, which models either
+# molecular or turbulent diffusion,
+
+closure = IsotropicDiffusivity(κ=1.0)
+
+# We finally pass these two ingredients to `IncompressibleModel`,
+
+model = IncompressibleModel(grid=grid, closure=closure)
+
 # Our simple `grid` and `model` use a number of defaults:
 #
 #   * The default `grid` topology periodic in `x, y` and bounded in `z`.
@@ -39,7 +44,7 @@ model = IncompressibleModel(
 #     non-periodic boundaries for velocities `u, v, w` and tracers.
 #   * The default `Model` has two tracers: temperature `T`, and salinity `S`.
 #   * The default `Model` uses a `SeawaterBuoyancy` model with a `LinearEquationOfState`.
-#     However, buoyancy will not be active in the simulation we run below.
+#     However, buoyancy is not active in the simulation we run below.
 #
 # Next, we `set!` an initial condition on the temperature field,
 # `model.tracers.T`. Our objective is to observe the diffusion of a Gaussian.
@@ -70,20 +75,19 @@ run!(simulation)
 
 using Plots, Printf
 
-using Oceananigans.Grids: znodes ## for obtaining z-coordinates of Oceananigans fields
+using Oceananigans.Grids: znodes # for obtaining z-coordinates of Oceananigans fields
 
 # We plot the initial condition and the current solution. Note that
 # fields are always 3D in Oceananigans. We use `interior(model.tracers.T)[1, 1, :]`
 # to plot temperature, which returns a 1D array of `z`-values.
 
-## A convenient function for generating a label with the current model time
-time_label(time) = @sprintf("t = %.3f", time)
-
 z = znodes(model.tracers.T)
 
-p = plot(initial_temperature.(0, 0, z), z, linewidth=2, label="t = 0", xlabel="Temperature", ylabel="z")
+p = plot(initial_temperature.(0, 0, z), z, linewidth=2,
+         label="t = 0", xlabel="Temperature", ylabel="z")
 
-plot!(p, interior(model.tracers.T)[1, 1, :], z, linewidth=2, label=time_label(model.clock.time))
+plot!(p, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
+      label=@sprintf("t = %.3f", model.clock.time))
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
@@ -115,7 +119,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     T = file["timeseries/T/$iter"][1, 1, :]
     t = file["timeseries/t/$iter"]
 
-    plot(T, z, linewidth=2, title=time_label(t),
+    plot(T, z, linewidth=2, title=@sprintf("t = %.3f", t),
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
