@@ -145,7 +145,7 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 # We first build a `TimeStepWizard` to ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, Δt=1.0, max_change=1.1, max_Δt=30.0)
+wizard = TimeStepWizard(cfl=1.0, Δt=2.0, max_change=1.1, max_Δt=30.0)
 
 # Nice progress messaging is helpful:
 
@@ -181,7 +181,7 @@ simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_diffusivities),
                            prefix = "ocean_wind_mixing_and_convection",
                      field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
-                         schedule = TimeInterval(15),
+                         schedule = TimeInterval(minute/4),
                             force = true)
 
 # We're ready:
@@ -206,14 +206,14 @@ file = jldopen(simulation.output_writers[:slices].filepath)
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
 """ Returns colorbar levels equispaced from `(-clim, clim)` and encompassing the extrema of `c`. """
-function divergent_levels(c, clim, nlevels=30)
+function divergent_levels(c, clim, nlevels=21)
     levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
     return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
 end
 
 """ Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
-function sequential_levels(c, clims, nlevels=30)
+function sequential_levels(c, clims, nlevels=20)
     levels = range(clims[1], stop=clims[2], length=nlevels)
     cmin, cmax = minimum(c), maximum(c)
     cmin < clims[1] && (levels = vcat([cmin], levels))
@@ -221,9 +221,12 @@ function sequential_levels(c, clims, nlevels=30)
     return clims, levels
 end
 
-# Now we animate
+# We start the animation at `t = 5minute` since things are pretty boring till then:
 
-anim = @animate for (i, iter) in enumerate(iterations)
+times = [file["timeseries/t/$iter"] for iter in iterations]
+intro = searchsortedfirst(times, 5minute)
+
+anim = @animate for (i, iter) in enumerate(iterations[intro:end])
 
     @info "Drawing frame $i from iteration $iter..."
 
