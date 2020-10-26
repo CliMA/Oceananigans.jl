@@ -242,9 +242,9 @@ nothing # hide
 ## background velocity.
 Ū = background_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
 
-wizard = TimeStepWizard(cfl=1.0, Δt=0.1*max_Δt, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=1.0, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 
 # ### A progress messenger
 #
@@ -269,7 +269,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
 # every 20 iterations,
 
 simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
-                                                     stop_time = 10day,
+                                                     stop_time = 8day,
                                                       progress = progress)
 
 # ### Output
@@ -297,7 +297,7 @@ nothing # hide
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
-                                                      schedule = TimeInterval(2hour),
+                                                      schedule = TimeInterval(4hour),
                                                         prefix = "eady_turbulence",
                                                          force = true)
 nothing # hide
