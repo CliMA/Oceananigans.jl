@@ -103,13 +103,12 @@
 # | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``c^D``        | Bottom quadratic drag coefficient | ``10^{-4}`` | none |
 # | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |
-# | ``\varkappa_h``| Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
+# | ``\varkappa_h``| Horizontal hyperdiffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
 #
-# We start off by importing `Oceananigans`, some convenient aliases for dimensions, and a function
-# that generates a pretty string from a number that represents 'time' in seconds:
+# We start off by importing `Oceananigans`, `Printf`, and some convenient utils
+# for specifying dimensional constants:
 
-using Oceananigans, Printf
-using Oceananigans.Utils: hour, day, prettytime
+using Oceananigans, Oceananigans.Utils, Printf
 
 # ## The grid
 #
@@ -148,9 +147,8 @@ B_field = BackgroundField(B, parameters=background_parameters)
 
 # ## Boundary conditions
 #
-# These boundary conditions prescribe a quadratic drag at the bottom as a flux
-# condition. We also fix the surface and bottom buoyancy to enforce a buoyancy
-# gradient `N^2`.
+# The boundary conditions prescribe a quadratic drag at the bottom as a flux
+# condition.
 
 drag_coefficient = 1e-4
 
@@ -198,8 +196,7 @@ model = IncompressibleModel(
 
 # ## Initial conditions
 #
-# We use non-trivial initial conditions consisting of an array of vortices superposed
-# with large-amplitude noise to (hopefully) stimulate the rapid growth of
+# We seed our initial conditions with random noise stimulate the growth of
 # baroclinic instability.
 
 ## A noise function, damped at the top and bottom
@@ -221,11 +218,11 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 # in `IncompressibleModel` constructor to run this problem on the GPU if one
 # is available).
 
-Ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
-V̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
+ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
+v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
-model.velocities.u.data.parent .-= Ū
-model.velocities.v.data.parent .-= V̄
+model.velocities.u.data.parent .-= ū
+model.velocities.v.data.parent .-= v̄
 nothing # hide
 
 # ## Simulation set-up
@@ -235,8 +232,11 @@ nothing # hide
 #
 # ### The `TimeStepWizard`
 #
-# The TimeStepWizard manages the time-step adaptively, keeping the CFL close to a
-# desired value.
+# The TimeStepWizard manages the time-step adaptively, keeping the
+# Courant-Freidrichs-Lewy (CFL) number close to `1.0` while ensuring
+# the time-step does not increase beyond the maximum allowable value
+# for numerical stability given the specified background flow, Coriolis
+# time scales, and diffusion time scales.
 
 ## Calculate absolute limit on time-step using diffusivities and 
 ## background velocity.
@@ -269,7 +269,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
 # every 20 iterations,
 
 simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
-                                                     stop_time = 8day,
+                                                     stop_time = 8days,
                                                       progress = progress)
 
 # ### Output
@@ -288,7 +288,6 @@ u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
 δ = ComputedField(-∂z(w))
-nothing # hide
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add it to 
@@ -297,7 +296,7 @@ nothing # hide
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
-                                                      schedule = TimeInterval(4hour),
+                                                      schedule = TimeInterval(4hours),
                                                         prefix = "eady_turbulence",
                                                          force = true)
 nothing # hide
@@ -316,7 +315,7 @@ run!(simulation)
 
 using JLD2, Plots
 
-using Oceananigans.Grids: nodes, x_domain, y_domain, z_domain # for nice domain limits
+using Oceananigans.Grids: nodes
 
 ## Coordinate arrays
 xζ, yζ, zζ = nodes(ζ)
@@ -330,14 +329,10 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
-function nice_divergent_levels(c, clim, nlevels=30)
+function nice_divergent_levels(c, clim, nlevels=31)
     levels = range(-clim, stop=clim, length=nlevels)
-
     cmax = maximum(abs, c)
-    if clim < cmax # add levels on either end
-        levels = vcat([-cmax], range(-clim, stop=clim, length=nlevels), [cmax])
-    end
-
+    clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
 
@@ -349,71 +344,38 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     ## Load 3D fields from file
     t = file["timeseries/t/$iter"]
-    R = file["timeseries/ζ/$iter"] ./ coriolis.f
-    δ = file["timeseries/δ/$iter"]
+    R_snapshot = file["timeseries/ζ/$iter"] ./ coriolis.f
+    δ_snapshot = file["timeseries/δ/$iter"]
 
-    surface_R = R[:, :, grid.Nz]
-    surface_δ = δ[:, :, grid.Nz]
+    surface_R = R_snapshot[:, :, grid.Nz]
+    surface_δ = δ_snapshot[:, :, grid.Nz]
 
-    slice_R = R[:, 1, :]
-    slice_δ = δ[:, 1, :]
+    slice_R = R_snapshot[:, 1, :]
+    slice_δ = δ_snapshot[:, 1, :]
 
-    Rlim = 0.5 * maximum(abs, R) + 1e-9
-    δlim = 0.5 * maximum(abs, δ) + 1e-9
+    Rlim = 0.5 * maximum(abs, R_snapshot) + 1e-9
+    δlim = 0.5 * maximum(abs, δ_snapshot) + 1e-9
 
-    Rlevels = nice_divergent_levels(R, Rlim)
-    δlevels = nice_divergent_levels(δ, δlim)
+    Rlevels = nice_divergent_levels(R_snapshot, Rlim)
+    δlevels = nice_divergent_levels(δ_snapshot, δlim)
 
     @info @sprintf("Drawing frame %d from iteration %d: max(ζ̃ / f) = %.3f \n",
                    i, iter, maximum(abs, surface_R))
 
-    R_xy = contourf(xζ, yζ, surface_R';
-                    aspectratio = 1,
-                      linewidth = 0,
-                          color = :balance,
-                         legend = false,
-                          clims = (-Rlim, Rlim),
-                         levels = Rlevels,
-                          xlims = (0, grid.Lx),
-                          ylims = (0, grid.Lx),
-                         xlabel = "x (m)",
-                         ylabel = "y (m)")
-    
-    δ_xy = contourf(xδ, yδ, surface_δ';
-                    aspectratio = 1,
-                      linewidth = 0,
-                          color = :balance,
-                         legend = false,
-                          clims = (-δlim, δlim),
-                         levels = δlevels,
-                          xlims = (0, grid.Lx),
-                          ylims = (0, grid.Lx),
-                         xlabel = "x (m)",
-                         ylabel = "y (m)")
-
-    R_xz = contourf(xζ, zζ, slice_R';
-                    aspectratio = grid.Lx / grid.Lz * 0.5,
-                      linewidth = 0,
-                          color = :balance,
-                         legend = false,
-                          clims = (-Rlim, Rlim),
-                         levels = Rlevels,
-                          xlims = (0, grid.Lx),
-                          ylims = (-grid.Lz, 0),
-                         xlabel = "x (m)",
-                         ylabel = "z (m)")
-
-    δ_xz = contourf(xδ, zδ, slice_δ';
-                    aspectratio = grid.Lx / grid.Lz * 0.5,
-                      linewidth = 0,
-                          color = :balance,
-                         legend = false,
-                          clims = (-δlim, δlim),
-                         levels = δlevels,
-                          xlims = (0, grid.Lx),
-                          ylims = (-grid.Lz, 0),
-                         xlabel = "x (m)",
-                         ylabel = "z (m)")
+    xy_kwargs = (xlims = (0, grid.Lx), ylims = (0, grid.Lx),
+                 xlabel = "x (m)", ylabel = "y (m)",
+                 aspectratio = 1,
+                 linewidth = 0, color = :balance, legend = false)
+                 
+    xz_kwargs = (xlims = (0, grid.Lx), ylims = (-grid.Lz, 0),
+                 xlabel = "x (m)", ylabel = "z (m)",
+                 aspectratio = grid.Lx / grid.Lz * 0.5,
+                 linewidth = 0, color = :balance, legend = false)
+                 
+    R_xy = contourf(xζ, yζ, surface_R'; clims=(-Rlim, Rlim), levels=Rlevels, xy_kwargs...)
+    δ_xy = contourf(xδ, yδ, surface_δ'; clims=(-δlim, δlim), levels=δlevels, xy_kwargs...)
+    R_xz = contourf(xζ, zζ, slice_R'; clims=(-Rlim, Rlim), levels=Rlevels, xz_kwargs...) 
+    δ_xz = contourf(xδ, zδ, slice_δ'; clims=(-δlim, δlim), levels=δlevels, xz_kwargs...)
 
     plot(R_xy, δ_xy, R_xz, δ_xz,
            size = (1000, 800),

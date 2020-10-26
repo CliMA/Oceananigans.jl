@@ -86,7 +86,7 @@ set!(model, b=initial_buoyancy)
 #
 # We use a `TimeStepWizard` that limits the
 # time-step to 1 minute, and adapts the time-step such that CFL
-# (Courant-Freidrichs-Lewy) number remains below 1.0,
+# (Courant-Freidrichs-Lewy) number remains below `1.0`,
 
 using Oceananigans.Utils: minute
 
@@ -147,6 +147,7 @@ using Oceananigans.Grids
 
 xw, yw, zw = nodes(model.velocities.w)
 xp, yp, zp = nodes(model.tracers.plankton)
+nothing # hide
 
 # Finally, we animate the convective plumes and plankton swirls,
 
@@ -199,7 +200,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(w_plot, p_plot, P_plot,
          title=["Vertical velocity" "Plankton" "Averaged plankton"],
          link = :y,
-         layout=(1, 3), size=(2000, 400))
+         layout=(1, 3), size=(1700, 400))
 end
 
 mp4(anim, "convecting_plankton.mp4", fps = 8) # hide
