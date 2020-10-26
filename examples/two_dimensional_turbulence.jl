@@ -9,20 +9,21 @@
 
 # ## Model setup
 
-# We instantiate the model with an isotropic diffusivity. We use a fifth-order advection
-# scheme and third-order Runge-Kutta time-stepping.
+# We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
+# a fifth-order advection scheme, third-order Runge-Kutta time-stepping,
+# and a small isotropic viscosity.
 
-using Oceananigans
-using Oceananigans.Advection
+using Oceananigans, Oceananigans.Advection
 
-model = IncompressibleModel(
-        grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π)),
- timestepper = :RungeKutta3, 
-   advection = UpwindBiasedFifthOrder(),
-    buoyancy = nothing,
-     tracers = nothing,
-     closure = IsotropicDiffusivity(ν=1e-5)
-)
+grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
+
+model = IncompressibleModel(timestepper = :RungeKutta3, 
+                              advection = UpwindBiasedFifthOrder(),
+                                   grid = grid,
+                               buoyancy = nothing,
+                                tracers = nothing,
+                                closure = IsotropicDiffusivity(ν=1e-5)
+                           )
 
 # ## Setting initial conditions
 
@@ -54,7 +55,7 @@ speed = ComputedField(sqrt(u^2 + v^2))
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
 
-simulation = Simulation(model, Δt=0.2, stop_time=100, iteration_interval=100, progress=progress)
+simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
 
 # ## Output
 #
@@ -63,17 +64,17 @@ simulation = Simulation(model, Δt=0.2, stop_time=100, iteration_interval=100, p
 using Oceananigans.OutputWriters
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=vorticity, s=speed),
-                                                      schedule = TimeInterval(2),
+                                                      schedule = TimeInterval(4),
                                                       prefix = "two_dimensional_turbulence",
                                                       force = true)
 
 # ## Running the simulation
 #
-# Finally, we run the simulation.
+# Pretty much just
 
 run!(simulation)
 
-# # Visualizing the results
+# ## Visualizing the results
 #
 # We load the output and make a movie.
 
@@ -87,7 +88,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 using Oceananigans.Grids
 
-xω, yω, zω = nodes(ω)
+xω, yω, zω = nodes(vorticity)
 xs, ys, zs = nodes(speed)
 
 # and animate the vorticity.
@@ -101,13 +102,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
-    s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
+    ω = file["timeseries/ω/$iteration"][:, :, 1]
+    s = file["timeseries/s/$iteration"][:, :, 1]
 
-    ω_max = maximum(abs, ω_snapshot)
+    ω_max = maximum(abs, ω) + 1e-9
     ω_lim = 2.0
 
-    s_max = maximum(abs, s_snapshot)
+    s_max = maximum(abs, s) + 1e-9
     s_lim = 0.2
 
     ω_levels = vcat([-ω_max], range(-ω_lim, stop=ω_lim, length=20), [ω_max])
@@ -116,13 +117,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
 
-    ω_plot = contourf(xω, yω, ω_snapshot';
+    ω_plot = contourf(xω, yω, ω';
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, s_snapshot';
+    s_plot = contourf(xs, ys, s';
                        color = :thermal,
                       levels = s_levels,
                        clims = (0, s_lim),
