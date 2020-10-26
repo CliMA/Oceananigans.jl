@@ -261,4 +261,4 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     iter == iterations[end] && close(file)
 end
 
-mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide
+gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) # hide
