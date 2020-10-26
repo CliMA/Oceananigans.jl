@@ -1,15 +1,19 @@
 module Benchmarks
 
-export @sync_gpu
+export @sync_gpu,
+       run_benchmark_suite,
+       benchmark_suite_to_dataframe,
+       summarize_benchmark_suite
 
 using BenchmarkTools
 using DataFrames
 using PrettyTables
+using CUDA
 
 using BenchmarkTools: prettytime, prettymemory
 
 macro sync_gpu(expr)
-    return has_cuda() :($(esc(CUDA.@sync expr))) : :(esc(expr))
+    return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
 end
 
 function run_benchmark_suite(benchmark_fun; kwargs...)
