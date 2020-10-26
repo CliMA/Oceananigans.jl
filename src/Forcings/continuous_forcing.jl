@@ -1,8 +1,9 @@
 import Adapt
 
 using Oceananigans: short_show
-using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Fields: assumed_field_location, show_location
+using Oceananigans.Utils: user_function_arguments
+using Oceananigans.Operators: assumed_field_location, index_and_interp_dependencies
+using Oceananigans.Fields: show_location
 using Oceananigans.Utils: tupleit
 
 """
@@ -85,75 +86,29 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
 """ 
     regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
 
-Regularize `forcing::ContinuousForcing` for use during time-stepping in an `IncompressibleModel`.
-
-To do this, we
-
-    * Obtain the location `X, Y, Z` at which `ContinuousForcing` is applied
-    * Use `field_dependencies` tuple of `Symbols` to infer the tuple `field_dependencies_indices`
-      that maps `field_dependencies` to `model_fields` (for use on the GPU)
-    * Diagnose the interpolation operators `field_dependencies_interp` needed to interpolate
-      `field_dependencies` to `X, Y, Z`
+Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
+in `model_field_names`, and associated interpolation functions so `forcing` can be used during
+time-stepping `IncompressibleModel`.
 """
 function regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
 
     X, Y, Z = assumed_field_location(field_name)
 
-    field_dependencies_interp = Tuple(interpolation_operator(assumed_field_location(name), (X, Y, Z))
-                                      for name in forcing.field_dependencies)
-
-    field_dependencies_indices = ntuple(length(forcing.field_dependencies)) do i
-        name = forcing.field_dependencies[i]
-        findfirst(isequal(name), model_field_names)
-    end
-
+    indices, interps = index_and_interp_dependencies(X, Y, Z,
+                                                     forcing.field_dependencies,
+                                                     model_field_names)
+    
     return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, forcing.field_dependencies,
-                                      field_dependencies_indices, field_dependencies_interp)
+                                      indices, interps)
 end
 
 #####
 ##### Functions for calling ContinuousForcing in a time-stepping kernel
 #####
 
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{1}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),)
-
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{2}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),
-               ℑ[2](i, j, k, grid, model_fields[idx[2]]))
-
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{3}) =
-    @inbounds (ℑ[1](i, j, k, grid, model_fields[idx[1]]),
-               ℑ[2](i, j, k, grid, model_fields[idx[2]]),
-               ℑ[3](i, j, k, grid, model_fields[idx[3]]))
-
-@inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N =
-    @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[idx[n]]), Val(N))
-
-""" Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object without parameters. """
-@inline function forcing_func_arguments(i, j, k, grid, model_fields, ::Nothing, forcing)
-
-    ℑ = forcing.field_dependencies_interp
-    idx = forcing.field_dependencies_indices
-
-    return field_arguments(i, j, k, grid, model_fields, ℑ, idx)
-end
-
-""" Returns the arguments that follow `x, y, z, t` in a `ContinuousForcing` object with parameters. """
-@inline function forcing_func_arguments(i, j, k, grid, model_fields, parameters, forcing)
-
-    ℑ = forcing.field_dependencies_interp
-    idx = forcing.field_dependencies_indices
-    parameters = forcing.parameters
-
-    field_args = field_arguments(i, j, k, grid, model_fields, ℑ, idx)
-
-    return tuple(field_args..., parameters)
-end
-
 @inline function (forcing::ContinuousForcing{X, Y, Z, F})(i, j, k, grid, clock, model_fields) where {X, Y, Z, F}
 
-    args = forcing_func_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
+    args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
     return @inbounds forcing.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), clock.time, args...)
 end

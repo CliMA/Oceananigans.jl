@@ -15,5 +15,5 @@ function validate_field_tuple_grid(tuple_name, field_tuple, grid)
         throw(ArgumentError("Model grid and $tuple_name grid are not identical! " *
                             "Check that the grid used to construct $tuple_name has the correct halo size."))
 
-    return field_tuple
+    return nothing
 end

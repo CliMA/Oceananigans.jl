@@ -175,10 +175,9 @@ function restore_from_checkpoint(filepath; kwargs...)
     grid = file["grid"]
 
     # Restore velocity fields
-    kwargs[:velocities] = VelocityFields(arch, grid, 
-                                         u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
-                                         v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
-                                         w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
+    kwargs[:velocities] = (u = restore_field(file, "velocities/u", arch, grid, u_location, kwargs),
+                           v = restore_field(file, "velocities/v", arch, grid, v_location, kwargs),
+                           w = restore_field(file, "velocities/w", arch, grid, w_location, kwargs))
 
     filter!(p -> p ≠ :velocities, cps) # pop :velocities from checkpointed properties
 

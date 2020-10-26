@@ -25,7 +25,6 @@ export
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
-    BoundaryFunction, ParameterizedBoundaryCondition,
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,

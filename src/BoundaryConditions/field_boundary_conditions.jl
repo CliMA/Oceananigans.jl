@@ -1,3 +1,5 @@
+using Oceananigans.Operators: assumed_field_location
+
 """
     FieldBoundaryConditions
 
@@ -43,18 +45,15 @@ Returns [`ImpenetrableBoundaryCondition`](@ref).
 DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face}) = ImpenetrableBoundaryCondition()
 
 function validate_bcs(topology, left_bc, right_bc, default_bc, left_name, right_name, dir)
+
     if topology isa Periodic && (left_bc != default_bc || right_bc != default_bc)
         e = "Cannot specify $left_name or $right_name boundary conditions with " *
             "$topology topology in $dir-direction."
         throw(ArgumentError(e))
     end
+
     return true
 end
-
-relocate_function_boundary_condition(bc, args...) = bc # fallback
-
-relocate_function_boundary_condition(bc::BoundaryCondition{C, <:BoundaryFunction}, boundary, loc1, loc2) where C =
-    BoundaryCondition(C, BoundaryFunction{boundary, loc1, loc2}(bc.condition.func; parameters=bc.condition.parameters))
 
 """
     FieldBoundaryConditions(grid, loc;   east = DefaultBoundaryCondition(topology(grid, 1), loc[1]),
@@ -82,13 +81,6 @@ function FieldBoundaryConditions(grid, loc;   east = DefaultBoundaryCondition(to
                                              north = DefaultBoundaryCondition(topology(grid, 2), loc[2]),
                                             bottom = DefaultBoundaryCondition(topology(grid, 3), loc[3]),
                                                top = DefaultBoundaryCondition(topology(grid, 3), loc[3]))
-
-    east = relocate_function_boundary_condition(east, :x, loc[2], loc[3])
-    west = relocate_function_boundary_condition(west, :x, loc[2], loc[3])
-    south = relocate_function_boundary_condition(south, :y, loc[1], loc[3])
-    north = relocate_function_boundary_condition(north, :y, loc[1], loc[3])
-    bottom = relocate_function_boundary_condition(bottom, :z, loc[1], loc[2])
-    top = relocate_function_boundary_condition(top, :z, loc[1], loc[2])
 
     TX, TY, TZ = topology(grid)
     x_default_bc = DefaultBoundaryCondition(topology(grid, 1), loc[1])
@@ -212,3 +204,32 @@ setbc!(bcs::FieldBoundaryConditions, ::Val{:top},    bc) = setfield!(bcs.z, :rig
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:bottom}) = getfield(bcs.z, :left)
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:top})    = getfield(bcs.z, :right)
 
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, tracer_names, field_name)
+
+    model_field_names = tuple(:u, :v, :w, tracer_names...)
+
+    X, Y, Z = assumed_field_location(field_name)
+
+    east   = regularize_boundary_condition(bcs.east,   Nothing, Y, Z, grid.Nx, model_field_names)
+    west   = regularize_boundary_condition(bcs.west,   Nothing, Y, Z, 1,       model_field_names)
+    north  = regularize_boundary_condition(bcs.north,  X, Nothing, Z, grid.Ny, model_field_names)
+    south  = regularize_boundary_condition(bcs.south,  X, Nothing, Z, 1,       model_field_names)
+    top    = regularize_boundary_condition(bcs.top,    X, Y, Nothing, grid.Nz, model_field_names)
+    bottom = regularize_boundary_condition(bcs.bottom, X, Y, Nothing, 1,       model_field_names)
+
+    x = CoordinateBoundaryConditions(west, east)
+    y = CoordinateBoundaryConditions(south, north)
+    z = CoordinateBoundaryConditions(bottom, top)
+
+    return FieldBoundaryConditions(x, y, z)
+end
+
+function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, tracer_names, field_name=nothing)
+    boundary_conditions_names = propertynames(boundary_conditions) 
+    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, tracer_names, name)
+                                      for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
+    boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
+    return boundary_conditions
+end
+
+regularize_field_boundary_conditions(::Missing, grid, tracer_names, field_name=nothing) = missing
