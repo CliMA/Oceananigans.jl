@@ -95,6 +95,8 @@ run!(simulation)
 #
 # Let's look at how `model.tracers.T` changed during the simulation.
 
+using Printf
+
 plot!(T_plot, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
       label=@sprintf("t = %.3f", model.clock.time))
 

@@ -105,8 +105,8 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 using Oceananigans.Grids
 
-xω, yω, zω = nodes(vorticity)
-xs, ys, zs = nodes(speed)
+xω, yω, zω = nodes(ω_field)
+xs, ys, zs = nodes(s_field)
 
 # and animate the vorticity.
 
