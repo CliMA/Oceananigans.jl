@@ -88,7 +88,7 @@ set!(model, b=initial_buoyancy)
 
 using Oceananigans.Utils: minute
 
-wizard = TimeStepWizard(cfl=1.0, Δt=2minute, max_change=1.1, max_Δt=2minute)
+wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
 
 # We also write a function that prints the progress of the simulation
 
