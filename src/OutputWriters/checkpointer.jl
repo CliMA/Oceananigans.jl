@@ -1,3 +1,6 @@
+using Glob
+import Oceananigans.Fields: set!
+
 using Oceananigans.Fields: offset_data
 
 """
@@ -85,8 +88,19 @@ function Checkpointer(model; schedule,
     return Checkpointer(schedule, dir, prefix, properties, force, verbose)
 end
 
+""" Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
+checkpoint_superprefix(prefix) = prefix * "_iteration"
+
+""" 
+    checkpoint_path(iteration::Int, c::Checkpointer)
+
+Returns the path to the `c`heckpointer file associated with model `iteration`.
+"""
+checkpoint_path(iteration::Int, c::Checkpointer) =
+    joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
+
 function write_output!(c::Checkpointer, model)
-    filepath = joinpath(c.dir, c.prefix * "_iteration" * string(model.clock.iteration) * ".jld2")
+    filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
 
     t1 = time_ns()
@@ -207,4 +221,63 @@ function restore_from_checkpoint(filepath; kwargs...)
     model = IncompressibleModel(; kwargs...)
 
     return model
+end
+
+#####
+##### set! for checkpointer filepaths
+#####
+
+"""
+    set!(model, filepath::AbstractString)
+
+Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
+`model.timestepper.G⁻` to checkpointed data stored at `filepath`.
+"""
+function set!(model, filepath::AbstractString)
+
+    jldopen(filepath, "r") do file
+
+        # Validate the grid
+        checkpointed_grid = file["grid"]
+        model.grid == checkpointed_grid ||
+            error("The grid associated with $filepath and model.grid are not the same!")
+
+        # Set model fields and tendency fields
+        model_fields = merge(model.velocities, model.tracers)
+
+        for name in propertynames(model_fields)
+            # Load data for each model field
+            address = name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
+            parent_data = file[address * "/data"]
+
+            model_field = model_fields[name]
+            copyto!(model_field.data.parent, parent_data)
+
+            # Load tendency data
+            #
+            # Note: this step is unecessary for models that use RungeKutta3TimeStepper and
+            # tendency restoration could be depcrecated in the future.
+            
+            # Tendency "n"
+            parent_data = file["timestepper/Gⁿ/$name/data"] 
+
+            tendencyⁿ_field = model.timestepper.Gⁿ[name]
+            copyto!(tendencyⁿ_field.data.parent, parent_data)
+
+            # Tendency "n-1"
+            parent_data = file["timestepper/G⁻/$name/data"] 
+
+            tendency⁻_field = model.timestepper.G⁻[name]
+            copyto!(tendency⁻_field.data.parent, parent_data)
+        end
+        
+        checkpointed_clock = file["clock"]
+
+        # Update model clock
+        model.clock.iteration = checkpointed_clock.iteration
+        model.clock.time = checkpointed_clock.time
+
+    end
+
+    return nothing
 end
