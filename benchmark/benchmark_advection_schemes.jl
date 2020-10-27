@@ -1,51 +1,43 @@
-using Printf
-using TimerOutputs
+using BenchmarkTools
+using CUDA
+
 using Oceananigans
 using Oceananigans.Advection
-using Oceananigans.Utils
 
-include("benchmark_utils.jl")
+include("Benchmarks.jl")
+using .Benchmarks
 
-#####
-##### Benchmark setup and parameters
-#####
+# Benchmark function
 
-const timer = TimerOutput()
+function benchmark_advection_scheme(Arch, Scheme)
+    grid = RegularCartesianGrid(size=(192, 192, 192), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=Arch(), grid=grid, advection=Scheme())
 
-Nt = 10  # Number of iterations to use for benchmarking time stepping.
+    time_step!(model, 1) # warmup
 
-   float_types = [Float64]       # Float types to benchmark.
-         archs = [CPU()]         # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
-
-Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, WENO5)
-
-#####
-##### Run benchmarks
-#####
-
-for arch in archs, FT in float_types, Scheme in Schemes
-    N = arch isa CPU ? 64 : 256
+    trial = @benchmark begin
+        @sync_gpu time_step!($model, 1)
+    end samples=10
     
-    topo = (Periodic, Periodic, Periodic)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), halo=(3, 3, 3), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, advection=Scheme())
-
-    time_step!(model, 1)  # precompile
-
-    bn =  benchmark_name((N, N, N), string(Scheme), arch, FT)
-    @printf("Running benchmark: %s...\n", bn)
-    for i in 1:Nt
-        @timeit timer bn time_step!(model, 1)
-    end
+    return trial
 end
 
-#####
-##### Print benchmark results
-#####
+# Benchmark parameters
 
-println()
-println(oceananigans_versioninfo())
-println(versioninfo_with_gpu())
-print_timer(timer, title="Advection scheme benchmarks", sortby=:name)
-println()
+Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5)
+
+# Run and summarize benchmarks
+
+suite = run_benchmarks(benchmark_advection_scheme; Architectures, Schemes)
+
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :Schemes], by=string)
+benchmarks_pretty_table(df, title="Advection scheme benchmarks")
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, CenteredSecondOrder))
+    df = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df, :Schemes, by=string)
+    benchmarks_pretty_table(df, title="Advection schemes relative performance ($Arch)")
+end

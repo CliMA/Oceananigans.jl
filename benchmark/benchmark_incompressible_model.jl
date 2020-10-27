@@ -5,6 +5,8 @@ using Oceananigans
 include("Benchmarks.jl")
 using .Benchmarks
 
+# Benchmark function
+
 function benchmark_incompressible_model(Arch, FT, N)
     grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=Arch(), float_type=FT, grid=grid)
@@ -18,18 +20,22 @@ function benchmark_incompressible_model(Arch, FT, N)
     return trial
 end
 
-Architecture = has_cuda() ? [CPU, GPU] : [CPU]
-Float_type = [Float32, Float64]
-N = [32, 64, 128, 256]
+# Benchmark parameters
 
-suite = run_benchmarks(benchmark_incompressible_model; Architecture, Float_type, N)
+Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Float_types = [Float32, Float64]
+Ns = [32, 64, 128, 256]
+
+# Run and summarize benchmarks
+
+suite = run_benchmarks(benchmark_incompressible_model; Architectures, Float_types, Ns)
 
 df = benchmarks_dataframe(suite)
-sort!(df, [:Architecture, :Float_type, :N], by=(string, string, identity))
+sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
 benchmarks_pretty_table(df, title="Incompressible model benchmarks")
 
-if length(Archs) > 1
+if GPU in Architectures
     df = gpu_speedups_suite(suite) |> speedups_dataframe
-    sort!(df, [:Float_type, :N], by=(string, identity))
+    sort!(df, [:Float_types, :Ns], by=(string, identity))
     benchmarks_pretty_table(df, title="Incompressible model CPU -> GPU speedup")
 end

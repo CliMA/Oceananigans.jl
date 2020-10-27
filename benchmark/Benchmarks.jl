@@ -1,12 +1,12 @@
 module Benchmarks
 
 export @sync_gpu,
-       run_benchmark_suite,
-       benchmark_suite_to_dataframe,
-       summarize_benchmark_suite,
-       gpu_speedup_suite,
-       speedup_suite,
-       speedup_suite_to_dataframe
+       run_benchmarks,
+       benchmarks_dataframe,
+       benchmarks_pretty_table,
+       gpu_speedups_suite,
+       speedups_suite,
+       speedups_dataframe
 
 using BenchmarkTools
 using DataFrames
@@ -29,8 +29,8 @@ function run_benchmarks(benchmark_fun; kwargs...)
 
     tags = string.(keys)
     suite = BenchmarkGroup(tags)
-    for case in cases
-        @info "Benchmarking $case..."
+    for (n, case) in enumerate(cases)
+        @info "Benchmarking $n/$n_cases: $case..."
         suite[case] = benchmark_fun(case...)
     end
     return suite
@@ -44,7 +44,7 @@ function benchmarks_dataframe(suite)
     
     for case in keys(suite)
         trial = suite[case]
-        entry = NamedTuple{names}(case) |> pairs |> Dict
+        entry = NamedTuple{names}(case) |> pairs |> Dict{Any,Any}
        
         entry[:min] = minimum(trial.times) |> prettytime
         entry[:median] = median(trial.times) |> prettytime
@@ -86,7 +86,7 @@ function gpu_speedups_suite(suite)
     return suite_speedup
 end
 
-function speedups_suite(suite, base_case)
+function speedups_suite(suite; base_case)
     suite_speedup = BenchmarkGroup(suite.tags)
 
     for case in keys(suite)
@@ -96,7 +96,7 @@ function speedups_suite(suite, base_case)
     return suite_speedup
 end
 
-function speedups_dataframe(suite)
+function speedups_dataframe(suite; slowdown=true)
     names = Tuple(Symbol(tag) for tag in suite.tags)
     df_names = (names..., :speedup, :memory, :allocs)
     empty_cols = Tuple([] for k in df_names)
@@ -104,9 +104,9 @@ function speedups_dataframe(suite)
     
     for case in keys(suite)
         trial_ratio = suite[case]
-        entry = NamedTuple{names}(case) |> pairs |> Dict
+        entry = NamedTuple{names}(case) |> pairs |> Dict{Any,Any}
 
-        entry[:speedup] = 1/trial_ratio.time
+        entry[:speedup] = slowdown ? trial_ratio.time :  1/trial_ratio.time
         entry[:memory] = trial_ratio.memory
         entry[:allocs] = trial_ratio.allocs
 
