@@ -122,25 +122,22 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
     s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
 
-    ω_max = maximum(abs, ω_snapshot) + 1e-9
     ω_lim = 2.0
+    ω_levels = range(-ω_lim, stop=ω_lim, length=20)
 
-    s_max = maximum(abs, s_snapshot) + 1e-9
     s_lim = 0.2
-
-    ω_levels = vcat([-ω_max], range(-ω_lim, stop=ω_lim, length=20), [ω_max])
-    s_levels = vcat(range(0, stop=s_lim, length=20), [s_max]) 
+    s_levels = range(0, stop=s_lim, length=20)
 
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
-
-    ω_plot = contourf(xω, yω, ω_snapshot';
+              
+    ω_plot = contourf(xω, yω, clamp.(ω_snapshot, -ω_lim, ω_lim)';
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, s_snapshot';
+    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim)';
                        color = :thermal,
                       levels = s_levels,
                        clims = (0, s_lim),
