@@ -25,6 +25,11 @@ Ns = [32, 64, 128, 256]
 suite = run_benchmark_suite(benchmark_incompressible_model; Archs, FT, Ns)
 
 df = benchmark_suite_to_dataframe(suite)
-summarize_benchmark_suite(df)
+sort!(df, [:Archs, :FT, :Ns], by=(string, string, identity))
+summarize_benchmark_suite(df, title="Incompressible model benchmarks")
 
-# length(Archs) > 1 && summarize_gpu_speedup(suite)
+if length(Archs) > 1
+    df = gpu_speedup_suite(suite) |> speedup_suite_to_dataframe
+    sort!(df, [:FT, :Ns], by=(string, identity))
+    summarize_benchmark_suite(df, title="Incompressible model CPU -> GPU speedup")
+end

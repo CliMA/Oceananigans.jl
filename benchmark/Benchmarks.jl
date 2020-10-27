@@ -3,7 +3,10 @@ module Benchmarks
 export @sync_gpu,
        run_benchmark_suite,
        benchmark_suite_to_dataframe,
-       summarize_benchmark_suite
+       summarize_benchmark_suite,
+       gpu_speedup_suite,
+       speedup_suite,
+       speedup_suite_to_dataframe
 
 using BenchmarkTools
 using DataFrames
@@ -11,7 +14,7 @@ using PrettyTables
 using CUDA
 
 using BenchmarkTools: prettytime, prettymemory
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Architectures: CPU, GPU
 
 macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
@@ -56,9 +59,9 @@ function benchmark_suite_to_dataframe(suite)
     return df
 end
 
-function summarize_benchmark_suite(df)
+function summarize_benchmark_suite(df; title="")
     header = propertynames(df) .|> String
-    pretty_table(df, header, title="Incompressible model benchmarks", nosubheader=true)
+    pretty_table(df, header, title=title, nosubheader=true)
     return nothing
 end
 
@@ -78,6 +81,16 @@ function gpu_speedup_suite(suite)
         if case_speedup ∉ keys(suite_speedup)
             suite_speedup[case_speedup] = ratio(median(suite[case_gpu]), median(suite[case_cpu]))
         end
+    end
+
+    return suite_speedup
+end
+
+function speedup_suite(suite, base_case)
+    suite_speedup = BenchmarkGroup(suite.tags)
+
+    for case in keys(suite)
+        suite_speedup[case] = ratio(median(suite[case]), median(suite[base_case]))
     end
 
     return suite_speedup
