@@ -1,4 +1,5 @@
 using BenchmarkTools
+using CUDA
 using Oceananigans
 
 include("Benchmarks.jl")
@@ -17,10 +18,13 @@ function benchmark_incompressible_model(Arch, FT, N)
     return trial
 end
 
-Archs = [CPU]
+Archs = has_cuda() ? [CPU, GPU] : [CPU]
 FT = [Float32, Float64]
-Ns = [32, 64]
+Ns = [32, 64, 128, 256]
 
 suite = run_benchmark_suite(benchmark_incompressible_model; Archs, FT, Ns)
+
 df = benchmark_suite_to_dataframe(suite)
 summarize_benchmark_suite(df)
+
+# length(Archs) > 1 && summarize_gpu_speedup(suite)
