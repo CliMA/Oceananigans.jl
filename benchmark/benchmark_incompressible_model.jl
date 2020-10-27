@@ -18,18 +18,18 @@ function benchmark_incompressible_model(Arch, FT, N)
     return trial
 end
 
-Archs = has_cuda() ? [CPU, GPU] : [CPU]
-FT = [Float32, Float64]
-Ns = [32, 64, 128, 256]
+Architecture = has_cuda() ? [CPU, GPU] : [CPU]
+Float_type = [Float32, Float64]
+N = [32, 64, 128, 256]
 
-suite = run_benchmark_suite(benchmark_incompressible_model; Archs, FT, Ns)
+suite = run_benchmarks(benchmark_incompressible_model; Architecture, Float_type, N)
 
-df = benchmark_suite_to_dataframe(suite)
-sort!(df, [:Archs, :FT, :Ns], by=(string, string, identity))
-summarize_benchmark_suite(df, title="Incompressible model benchmarks")
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architecture, :Float_type, :N], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Incompressible model benchmarks")
 
 if length(Archs) > 1
-    df = gpu_speedup_suite(suite) |> speedup_suite_to_dataframe
-    sort!(df, [:FT, :Ns], by=(string, identity))
-    summarize_benchmark_suite(df, title="Incompressible model CPU -> GPU speedup")
+    df = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df, [:Float_type, :N], by=(string, identity))
+    benchmarks_pretty_table(df, title="Incompressible model CPU -> GPU speedup")
 end

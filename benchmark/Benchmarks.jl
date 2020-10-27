@@ -20,7 +20,7 @@ macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
 end
 
-function run_benchmark_suite(benchmark_fun; kwargs...)
+function run_benchmarks(benchmark_fun; kwargs...)
     keys = [p.first for p in kwargs]
     vals = [p.second for p in kwargs]
 
@@ -36,7 +36,7 @@ function run_benchmark_suite(benchmark_fun; kwargs...)
     return suite
 end
 
-function benchmark_suite_to_dataframe(suite)
+function benchmarks_dataframe(suite)
     names = Tuple(Symbol(tag) for tag in suite.tags)
     df_names = (names..., :min, :median, :mean, :max, :memory, :allocs)
     empty_cols = Tuple([] for k in df_names)
@@ -59,7 +59,7 @@ function benchmark_suite_to_dataframe(suite)
     return df
 end
 
-function summarize_benchmark_suite(df; title="")
+function benchmarks_pretty_table(df; title="")
     header = propertynames(df) .|> String
     pretty_table(df, header, title=title, nosubheader=true)
     return nothing
@@ -69,7 +69,7 @@ is_arch_type(e) = e == CPU || e == GPU
 cpu_case(case) = Tuple(is_arch_type(e) ? CPU : e for e in case)
 gpu_case(case) = Tuple(is_arch_type(e) ? GPU : e for e in case)
 
-function gpu_speedup_suite(suite)
+function gpu_speedups_suite(suite)
     tags = filter(e -> e != "Archs", suite.tags)
     suite_speedup = BenchmarkGroup(tags)
 
@@ -86,7 +86,7 @@ function gpu_speedup_suite(suite)
     return suite_speedup
 end
 
-function speedup_suite(suite, base_case)
+function speedups_suite(suite, base_case)
     suite_speedup = BenchmarkGroup(suite.tags)
 
     for case in keys(suite)
@@ -96,7 +96,7 @@ function speedup_suite(suite, base_case)
     return suite_speedup
 end
 
-function speedup_suite_to_dataframe(suite)
+function speedups_dataframe(suite)
     names = Tuple(Symbol(tag) for tag in suite.tags)
     df_names = (names..., :speedup, :memory, :allocs)
     empty_cols = Tuple([] for k in df_names)
