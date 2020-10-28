@@ -10,18 +10,18 @@ Surface waves are modeled in Oceananigans.jl by the Craik-Leibovich approximatio
 which governs interior motions under a surface gravity wave field that have been time- or
 phase-averaged over the rapid oscillations of the surface waves.
 The oscillatory vertical and horizontal motions associated with surface waves themselves,
-therefore, are not present in the resolved velocity field $\bm{u}$, and only the steady,
+therefore, are not present in the resolved velocity field ``\bm{u}``, and only the steady,
 averaged effect of surface waves that manifests over several or more wave oscillations are modeled.
 
-In Oceananigans.jl with surface waves, the resolved velocity field $\bm{u}$ is the Lagrangian-mean
+In Oceananigans.jl with surface waves, the resolved velocity field ``\bm{u}`` is the Lagrangian-mean
 velocity field.
-The Lagrangian-mean velocity field at a particular location $(x, y, z)$ is average velocity of a
-fluid particle whose average position is $(x, y, z)$ at time $t$.
-The average position of a fluid particle $\bm{\xi}(t) = (\xi, \eta, \zeta)$ is thus governed by
+The Lagrangian-mean velocity field at a particular location ``(x, y, z)`` is average velocity of a
+fluid particle whose average position is ``(x, y, z)`` at time ``t``.
+The average position of a fluid particle ``\bm{\xi}(t) = (\xi, \eta, \zeta)`` is thus governed by
 ```math
     \partial_t \bm{\xi} + \bm{u}(\bm{\xi}, t) \bm{\cdot} \bm{\nabla} \bm{\xi} = \bm{u}(\bm{\xi}, t) \, ,
 ```
-which is the same relationship that holds when surface waves are not present and $\bm{u}$ ceases
+which is the same relationship that holds when surface waves are not present and ``\bm{u}`` ceases
 to be an averaged velocity field.
 The simplicity of the governing equations for Lagrangian-mean momentum is the main reason we
 use a Lagrangian-mean formulation in Oceananigans.jl, rather than an Eulerian-mean formulation:
@@ -33,8 +33,8 @@ effects of surface waves in turbulence closures that model the effects of subgri
 More specifically, the effect of steady surface waves does not effect the conservation of
 Lagrangian-mean turbulent kinetic energy.
 
-The Lagrangian-mean velocity field $\bm{u}$ contrasts with the Eulerian-mean velocity field $\bm{u}^E$,
-which is the fluid velocity averaged at the fixed Eulerian position $(x, y, z)$.
+The Lagrangian-mean velocity field ``\bm{u}`` contrasts with the Eulerian-mean velocity field ``\bm{u}^E``,
+which is the fluid velocity averaged at the fixed Eulerian position ``(x, y, z)``.
 The surface wave Stokes drift field supplied by the user is, in fact, defined
 by the difference between the Eulerian- and Lagrangian-mean velocity:
 ```math

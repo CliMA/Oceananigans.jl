@@ -33,14 +33,14 @@ Oceananigans uses a hierarchical structure to express boundary conditions.
 1. A [`BoundaryCondition`](@ref) is associated with every field, dimension, and endpoint.
 2. Boundary conditions specifying the condition at the left and right endpoints are
    grouped into [`CoordinateBoundaryConditions`](@ref).
-3. A set of three `CoordinateBoundaryConditions` specifying the boundary conditions along the $x$-, $y$-,
-   and $z$-dimensions.
+3. A set of three `CoordinateBoundaryConditions` specifying the boundary conditions along the ``x``-, ``y``-,
+   and ``z``-dimensions.
    for a single field are grouped into a [`FieldBoundaryConditions`](@ref) `NamedTuple`.
 4. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
    to the model constructor.
 
 Boundary conditions are defined at model construction time by passing a `NamedTuple` of `FieldBoundaryConditions`
-specifying non-default boundary conditions for fields such as velocities ($u$, $v$, $w$) and tracers.
+specifying non-default boundary conditions for fields such as velocities (``u``, ``v``, ``w``) and tracers.
 Fields for which boundary conditions are not specified are assigned a default boundary conditions.
 Note that default boundary conditions depend on the grid topology.
 
@@ -91,7 +91,7 @@ can can be used, for example, to specify cooling, heating, evaporation, or wind 
 
 !!! info "The flux convention in Oceananigans"
     `Oceananigans` uses the convention that positive fluxes produce transport in the
-    _positive_ direction (east, north, and up for $x$, $y$, $z$).
+    _positive_ direction (east, north, and up for ``x``, ``y``, ``z``).
     This means, for example, that a _negative_ flux of momentum or velocity at a _top_
     boundary, such as in the above example, produces currents in the _positive_ direction,
     because it prescribes a downwards flux of momentum into the domain from the top.
@@ -146,14 +146,45 @@ Boundary conditions may also depend on model fields. For example, a linear drag 
 is implemented with
 
 ```jldoctest
-julia> @inline linear_drag(i, j, grid, clock, model_fields) = @inbounds - 0.2 * model_fields.u[i, j, 1];
+julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
+linear_drag (generic function with 1 method)
 
-julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, discrete_form=true)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fields) in Main at none:1
+julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
+BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
+```
+
+##### 6. 'Field-dependent' boundary conditions with parameters
+
+When boundary conditions depends on fields _and_ parameters, their functions take the form
+
+```jldoctest
+julia> @inline quadratic_drag(x, y, z, t, u, v, drag_coeff) = - drag_coeff * u * sqrt(u^2 + v^2)
+quadratic_drag (generic function with 1 method)
+
+julia> u_bottom_bc = FluxBoundaryCondition(quadratic_drag, field_dependencies=(:u, :v), parameters=1e-3)
+BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_coeff) in Main at none:1
+```
+
+Put differently, field dependencies follow `ξ, η, t` come first in the function signature,
+which are in turn followed by `parameters`.
+
+##### 7. Discrete-form boundary condition with parameters
+
+Discrete field data may also be accessed directly from boundary condition functions
+using the `discrete_form`. For example:
+
+```jldoctest
+@inline filtered_drag(i, j, grid, clock, model_fields) =
+   @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+
+u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
+
+# output
+BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
-    The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `linear_drag`
+    The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `filtered_drag`
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
     are called with the signature 
     ```julia
@@ -162,10 +193,10 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     where `i, j` are grid indices that vary along the boundary, `grid` is `model.grid`,
     `clock` is the `model.clock`, and `model_fields` is a `NamedTuple`
     containing `u, v, w` and the fields in `model.tracers`.
-    The signature is similar for $x$ and $y$ boundary conditions expect that `i, j` is replaced
+    The signature is similar for ``x`` and ``y`` boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-##### 6. Discrete-form boundary condition with parameters
+##### 8. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2;  # drag coefficient
@@ -183,7 +214,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-##### 7. A random, spatially-varying, constant-in-time temperature flux specified by an array
+##### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
@@ -215,9 +246,9 @@ Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary c
 
 `T_bcs` is a [`FieldBoundaryConditions`](@ref) object for temperature `T` appropriate
 for horizontally periodic grid topologies.
-The default `Periodic` boundary conditions in $x$ and $y$ are inferred from the `topology` of `grid`.
+The default `Periodic` boundary conditions in ``x`` and ``y`` are inferred from the `topology` of `grid`.
 
-For $u$, $v$, and $w$, use the 
+For ``u``, ``v``, and ``w``, use the 
 `UVelocityBoundaryConditions`
 `VVelocityBoundaryConditions`, and 
 `WVelocityBoundaryConditions` constructors, respectively.
@@ -227,7 +258,7 @@ For $u$, $v$, and $w$, use the
 To specify non-default boundary conditions, a named tuple of [`FieldBoundaryConditions`](@ref) objects is
 passed to the keyword argument `boundary_conditions` in the [`IncompressibleModel`](@ref) constructor.
 The keys of `boundary_conditions` indicate the field to which the boundary condition is applied.
-Below, non-default boundary conditions are imposed on the $u$-velocity and temperature.
+Below, non-default boundary conditions are imposed on the ``u``-velocity and temperature.
 
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);

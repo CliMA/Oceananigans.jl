@@ -44,26 +44,22 @@ where `i`, and `j` are indices that vary along the boundary. If `discrete_form=t
 
     `condition(i, j, grid, clock, model_fields, parameters)`.
 """
-function BoundaryCondition(TBC, condition::Function; parameters=nothing, discrete_form=false)
+function BoundaryCondition(TBC, condition::Function;
+                           parameters = nothing,
+                           discrete_form = false,
+                           field_dependencies=())
 
-    if !discrete_form # convert condition to a BoundaryFunction
-
+    if discrete_form
+        field_dependencies != () && error("Cannot set `field_dependencies` when `discrete_form=true`!")
+        condition = DiscreteBoundaryFunction(condition, parameters)
+    else
         # Note that the boundary :x and location Cell, Cell are in general incorrect.
         # These are corrected in the FieldBoundaryConditions constructor.
-        condition = BoundaryFunction{:x, Cell, Cell}(condition, parameters=parameters)
-
-    elseif parameters != nothing
-
-        condition = ParameterizedDiscreteBoundaryFunction(condition, parameters)
-
+        condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
     return BoundaryCondition{TBC, typeof(condition)}(condition)
 end
-
-# Don't re-convert BoundaryFunctions or ParameterizedDiscreteBoundaryFunctions
-BoundaryCondition(TBC, condition::Union{BoundaryFunction, ParameterizedDiscreteBoundaryFunction}) =
-    BoundaryCondition{TBC, typeof(condition)}(condition)
 
 bctype(bc::BoundaryCondition{C}) where C = C
 
