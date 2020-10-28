@@ -1,6 +1,6 @@
 # Convergence Tests
 
-Convergence tests are implemented in `/verification/convergence_tests` and range
+Convergence tests are implemented in `/validation/convergence_tests` and range
 from zero-dimensional time-stepper tests to two-dimensional integration tests that
 involve non-trivial pressure fields, advection, and diffusion.
 

@@ -44,7 +44,7 @@ specifying non-default boundary conditions for fields such as velocities (``u``,
 Fields for which boundary conditions are not specified are assigned a default boundary conditions.
 Note that default boundary conditions depend on the grid topology.
 
-A few illustrations are provided below. See the verification experiments and examples for
+A few illustrations are provided below. See the validation experiments and examples for
 further illustrations of boundary condition specification.
 
 ## Creating individual boundary conditions with `BoundaryCondition`
