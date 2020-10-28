@@ -71,8 +71,7 @@ set!(model, b=bᵢ)
 
 # ## Simulation setup
 
-#max_Δt = min(1/3model.coriolis.f₀, min(grid.Δz^2 / closure.κz, grid.Δx^2 / closure.νx))
-max_Δt = 1/model.coriolis.f₀
+max_Δt = 1/3model.coriolis.f₀
 
 wizard = TimeStepWizard(cfl=1.0, Δt=10minutes, max_change=1.1, max_Δt=max_Δt)
 
