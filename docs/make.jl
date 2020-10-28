@@ -99,10 +99,10 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-verification_pages = [
-    "Convergence tests" => "verification/convergence_tests.md",
-    "Lid-driven cavity" => "verification/lid_driven_cavity.md",
-    "Stratified Couette flow" => "verification/stratified_couette_flow.md"
+validation_pages = [
+    "Convergence tests" => "validation/convergence_tests.md",
+    "Lid-driven cavity" => "validation/lid_driven_cavity.md",
+    "Stratified Couette flow" => "validation/stratified_couette_flow.md"
 ]
 
 appendix_pages = [
@@ -118,7 +118,7 @@ pages = [
     "Model setup" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
-    "Verification experiments" => verification_pages,
+    "Validation experiments" => validation_pages,
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
