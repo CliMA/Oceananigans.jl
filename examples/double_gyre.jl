@@ -19,17 +19,25 @@ grid = RegularCartesianGrid(size=(32, 32, 4), x=(-2e5, 2e5), y=(-3e5, 3e5), z=(-
                             topology=(Bounded, Bounded, Bounded))
 
 # ## Boundary conditions
+#
+# ### Wind stress
 
 @inline wind_stress(x, y, t, p) = - p.τ * cos(2π * y / p.Ly)
+
+surface_stress_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(τ=1e-3, Ly=grid.Ly))
+
+# ### Bottom drag
+
 @inline bottom_drag_u(x, y, t, u, p) = - p.μ * p.Lz * u
 @inline bottom_drag_v(x, y, t, v, p) = - p.μ * p.Lz * v
 
-surface_stress_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(τ=1e-3, Ly=grid.Ly))
 bottom_drag_u_bc = BoundaryCondition(Flux, bottom_drag_u, field_dependencies=:u, parameters=(μ=1/day, Lz=grid.Lz))
 bottom_drag_v_bc = BoundaryCondition(Flux, bottom_drag_v, field_dependencies=:v, parameters=(μ=1/day, Lz=grid.Lz))
 
 u_bcs = UVelocityBoundaryConditions(grid, top = surface_stress_u_bc, bottom = bottom_drag_u_bc)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = bottom_drag_v_bc)
+
+# ### Buoyancy relaxation
 
 @inline buoyancy_flux(x, y, t, b, p) = - p.μ * (b - p.Δb / p.Ly * y)
 
@@ -40,7 +48,10 @@ buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux,
 b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc,
                                        bottom = BoundaryCondition(Value, 0))
 
+# ## Turbulence closure
 closure = AnisotropicDiffusivity(νh=500, νz=1e-2, κh=100, κz=1e-2)
+
+# ## Model building
 
 model = IncompressibleModel(architecture = CPU(),
                             timestepper = :RungeKutta3, 
@@ -52,16 +63,18 @@ model = IncompressibleModel(architecture = CPU(),
                             closure = closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs))
 
+# ## Initial conditions
+
 bᵢ(x, y, z) = b_bcs.top.condition.parameters.Δb * (1 + z / grid.Lz)
 
 set!(model, b=bᵢ)
 
-# ## Running the simulation
+# ## Simulation setup
 
 #max_Δt = min(1/3model.coriolis.f₀, min(grid.Δz^2 / closure.κz, grid.Δx^2 / closure.νx))
 max_Δt = 1/model.coriolis.f₀
 
-wizard = TimeStepWizard(cfl=1.0, Δt=max_Δt/2, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=1.0, Δt=10minutes, max_change=1.1, max_Δt=max_Δt)
 
 # Finally, we set up and run the the simulation.
 
@@ -88,22 +101,20 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=30day, iteration_interval=10, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, stop_time=30days, iteration_interval=10, progress=print_progress)
 
-# ## Set up output
-#
-# We set up an output writer that saves all velocity fields, tracer fields, and the subgrid
-# turbulent diffusivity associated with `model.closure`. The `prefix` keyword argument
-# to `JLD2OutputWriter` indicates that output will be saved in `double_gyre.jld2`.
+# ## Output
 
 u, v, w = model.velocities
+b = model.tracers.b
 
 speed = ComputedField(u^2 + v^2)
+buoyancy_variance = ComputedField(b^2)
 
-outputs = merge(model.velocities, model.tracers, (speed=speed,))
+outputs = merge(model.velocities, model.tracers, (speed=speed, b²=buoyancy_variance))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(5day),
+                                                      schedule = TimeInterval(5days),
                                                       prefix = "double_gyre",
                                                       field_slicer = FieldSlicer(k=model.grid.Nz),
                                                       force = true)
@@ -113,7 +124,7 @@ barotropic_v = AveragedField(model.velocities.v, dims=3)
 
 simulation.output_writers[:barotropic_velocities] =
     JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v),
-                     schedule = AveragedTimeInterval(30day, window=10day),
+                     schedule = AveragedTimeInterval(30days, window=10days),
                      prefix = "double_gyre_circulation",
                      force = true)
 
