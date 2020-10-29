@@ -1,4 +1,5 @@
 using Oceananigans.Grids: xnode, znode
+using Oceananigans.TimeSteppers: update_state!
 
 function run_rayleigh_benard_regression_test(arch)
 
@@ -56,7 +57,7 @@ function run_rayleigh_benard_regression_test(arch)
 
     prefix = "rayleigh_benard"
 
-    checkpointer = Checkpointer(model, iteration_interval=test_steps, prefix=prefix,
+    checkpointer = Checkpointer(model, schedule=IterationInterval(test_steps), prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
 
     #####
@@ -110,6 +111,8 @@ function run_rayleigh_benard_regression_test(arch)
     length(simulation.output_writers) > 0 && pop!(simulation.output_writers)
 
     # Step the model forward and perform the regression test
+    update_state!(model)
+
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end

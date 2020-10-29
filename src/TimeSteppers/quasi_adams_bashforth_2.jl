@@ -37,26 +37,22 @@ Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
 function time_step!(model::IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
-    # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
-    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ =
-        datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
-                   model.timestepper.Gⁿ, model.timestepper.G⁻)
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && update_state!(model)
 
-    precomputations!(diffusivities, pressures, velocities, tracers, model)
-    
-    calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
+    calculate_tendencies!(model)
 
-    # Full step for tracers, fractional step for velocities.
-    ab2_step!(velocities, tracers, model.architecture, model.grid, Δt, χ, Gⁿ, G⁻)
+    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
 
-    calculate_pressure_correction!(pressures.pNHS, Δt, velocities, model)
-    pressure_correct_velocities!(velocities, model.architecture, model.grid, Δt, pressures.pNHS)
-
-    store_tendencies!(G⁻, model.architecture, model.grid, Gⁿ)
+    calculate_pressure_correction!(model, Δt)
+    pressure_correct_velocities!(model, Δt)
 
     tick!(model.clock, Δt)
+    update_state!(model)
+    store_tendencies!(model)
 
     return nothing
 end
@@ -65,28 +61,31 @@ end
 ##### Tracer time stepping and predictor velocity updating
 #####
 
-function ab2_step!(U, C, arch, grid, Δt, χ, Gⁿ, G⁻)
+function ab2_step!(model, Δt, χ)
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(arch))
+    barrier = Event(device(model.architecture))
 
-    step_velocities_kernel! = ab2_step_velocities!(device(arch), workgroup, worksize)
-    step_tracer_kernel! = ab2_step_tracer!(device(arch), workgroup, worksize)
+    step_velocities_kernel! = ab2_step_velocities!(device(model.architecture), workgroup, worksize)
+    step_tracer_kernel! = ab2_step_tracer!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = step_velocities_kernel!(U, Δt, χ, Gⁿ, G⁻, dependencies=Event(device(arch)))
+    velocities_event = step_velocities_kernel!(model.velocities, Δt, χ,
+                                               model.timestepper.Gⁿ,
+                                               model.timestepper.G⁻,
+                                               dependencies=Event(device(model.architecture)))
 
     events = [velocities_event]
 
-    for i in 1:length(C)
-        @inbounds c = C[i]
-        @inbounds Gcⁿ = Gⁿ[i+3]
-        @inbounds Gc⁻ = G⁻[i+3]
+    for i in 1:length(model.tracers)
+        @inbounds c = model.tracers[i]
+        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
+        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
         event = step_tracer_kernel!(c, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
         push!(events, event)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end

@@ -43,7 +43,7 @@ using Oceananigans.Grids: halo_size
                 @test Array(parent(T̅)[1, 1, :]) ≈ [2.5, 2.5, 3.5, 3.5]
                 @test Array(parent(T̂)[1, :, :]) ≈ [[3, 2, 3, 2] [3, 2, 3, 2] [4, 3, 4, 3] [4, 3, 4, 3]]
 
-                @test w̃[1, 1, 1] ≈ 4.5
+                @test w̃[1, 1, 1] ≈ 3
                 @test Array(w̅[1, 1, 1:Nz+1]) ≈ [2, 3, 4]
                 @test Array(ŵ[1, 1:Ny, 1:Nz+1]) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
             end

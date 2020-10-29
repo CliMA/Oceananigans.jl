@@ -1,9 +1,11 @@
+using Oceananigans.Diagnostics
+
 function nan_checker_aborts_simulation(arch, FT)
     grid = RegularCartesianGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
     # It checks for NaNs in w by default.
-    nc = NaNChecker(model; iteration_interval=1, fields=Dict(:w => model.velocities.w.data.parent))
+    nc = NaNChecker(model; schedule=IterationInterval(1), fields=Dict(:w => model.velocities.w.data.parent))
     push!(model.diagnostics, nc)
 
     model.velocities.w[3, 2, 1] = NaN
@@ -63,48 +65,26 @@ end
 get_iteration(model) = model.clock.iteration
 get_time(model) = model.clock.time
 
-function timeseries_diagnostic_works(arch, FT)
-    model = TestModel(arch, FT)
-    Δt = FT(1e-16)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=1)
-    iter_diag = TimeSeries(get_iteration, model, iteration_interval=1)
-    push!(simulation.diagnostics, iter_diag)
-    run!(simulation)
-    return iter_diag.time[end] == Δt && iter_diag.data[end] == 1
-end
-
-function timeseries_diagnostic_tuples(arch, FT)
-    model = TestModel(arch, FT)
-    Δt = FT(1e-16)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=2)
-    timeseries = TimeSeries((iters=get_iteration, itertimes=get_time), model, iteration_interval=2)
-    simulation.diagnostics[:timeseries] = timeseries
-    run!(simulation)
-    return timeseries.iters[end] == 2 && timeseries.itertimes[end] == 2Δt
-end
-
 function diagnostics_getindex(arch, FT)
     model = TestModel(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
-    iter_timeseries = TimeSeries(get_iteration, model)
-    time_timeseries = TimeSeries(get_time, model)
-    simulation.diagnostics[:iters] = iter_timeseries
-    simulation.diagnostics[:times] = time_timeseries
-    return simulation.diagnostics[2] == time_timeseries
+    nc = NaNChecker(model; schedule=IterationInterval(1), fields=Dict(:w => model.velocities.w.data.parent))
+    simulation.diagnostics[:nc] = nc
+    return simulation.diagnostics[1] == nc
 end
 
 function diagnostics_setindex(arch, FT)
     model = TestModel(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
 
-    iter_timeseries = TimeSeries(get_iteration, model)
-    time_timeseries = TimeSeries(get_time, model)
-    max_abs_u_timeseries = TimeSeries(FieldMaximum(abs, model.velocities.u), model, iteration_interval=1)
+    nc1 = NaNChecker(model; schedule=IterationInterval(1), fields=Dict(:w => model.velocities.w.data.parent))
+    nc2 = NaNChecker(model; schedule=IterationInterval(2), fields=Dict(:u => model.velocities.u.data.parent))
+    nc3 = NaNChecker(model; schedule=IterationInterval(3), fields=Dict(:v => model.velocities.v.data.parent))
 
-    push!(simulation.diagnostics, iter_timeseries, time_timeseries)
-    simulation.diagnostics[2] = max_abs_u_timeseries
+    push!(simulation.diagnostics, nc1, nc2)
+    simulation.diagnostics[2] = nc3
 
-    return simulation.diagnostics[:diag2] == max_abs_u_timeseries
+    return simulation.diagnostics[:diag2] == nc3
 end
 
 @testset "Diagnostics" begin
@@ -126,8 +106,6 @@ end
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)
                 @test max_abs_field_diagnostic_is_correct(arch, FT)
-                @test timeseries_diagnostic_works(arch, FT)
-                @test timeseries_diagnostic_tuples(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)
             end

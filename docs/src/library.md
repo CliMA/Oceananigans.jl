@@ -38,7 +38,6 @@ Pages   = [
     "BoundaryConditions/boundary_function.jl",
     "BoundaryConditions/parameterized_boundary_condition.jl",
     "BoundaryConditions/show_boundary_conditions.jl",
-    "BoundaryConditions/zero_halo_regions.jl",
     "BoundaryConditions/fill_halo_regions.jl",
     "BoundaryConditions/apply_flux_bcs.jl",
     "BoundaryConditions/apply_value_gradient_bcs.jl",
@@ -168,6 +167,7 @@ Pages   = [
     "OutputWriters/output_writer_utils.jl",
     "OutputWriters/jld2_output_writer.jl",
     "OutputWriters/netcdf_output_writer.jl",
+    "OutputWriters/windowed_time_average.jl",
     "OutputWriters/checkpointer.jl"
 ]
 ```

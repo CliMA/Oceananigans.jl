@@ -43,5 +43,7 @@ include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
+include("schedules.jl")
+include("user_function_arguments.jl")
 
 end

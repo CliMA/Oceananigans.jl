@@ -9,7 +9,7 @@ Multiply the array `ν` located at `ᶜᶜᶜ` by a function
 
 at index `i, j, k` and location `ᶜᶜᶜ`.
 """
-@inline ν_σᶜᶜᶜ(i, j, k, grid, ν::TN, σᶜᶜᶜ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+@inline ν_σᶜᶜᶜ(i, j, k, grid, ν, σᶜᶜᶜ, u, v, w) =
     @inbounds ν[i, j, k] * σᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 """
@@ -21,14 +21,14 @@ Multiply the array `ν` located at `ᶜᶜᶜ` by a function
 
 at index `i, j, k` and location `ᶠᶠᶜ`.
 """
-@inline ν_σᶠᶠᶜ(i, j, k, grid, ν::TN, σᶠᶠᶜ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+@inline ν_σᶠᶠᶜ(i, j, k, grid, ν, σᶠᶠᶜ, u, v, w) =
     @inbounds ℑxyᶠᶠᵃ(i, j, k, grid, ν) * σᶠᶠᶜ(i, j, k, grid, u, v, w)
 
 # These functions are analogous to the two above, but for different locations:
-@inline ν_σᶠᶜᶠ(i, j, k, grid, ν::TN, σᶠᶜᶠ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+@inline ν_σᶠᶜᶠ(i, j, k, grid, ν, σᶠᶜᶠ, u, v, w) =
     @inbounds ℑxzᶠᵃᶠ(i, j, k, grid, ν) * σᶠᶜᶠ(i, j, k, grid, u, v, w)
 
-@inline ν_σᶜᶠᶠ(i, j, k, grid, ν::TN, σᶜᶠᶠ::TS, u, v, w) where {TN<:AbstractArray, TS} =
+@inline ν_σᶜᶠᶠ(i, j, k, grid, ν, σᶜᶠᶠ, u, v, w) =
     @inbounds ℑyzᵃᶠᶠ(i, j, k, grid, ν) * σᶜᶠᶠ(i, j, k, grid, u, v, w)
 
 #####

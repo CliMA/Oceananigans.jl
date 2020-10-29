@@ -70,7 +70,7 @@ closures = (
 
 CUDA.allowscalar(true)
 
-include("runtests_utils.jl")
+include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
@@ -102,7 +102,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
-            include("test_time_stepping_bcs.jl")
+            include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
             include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
@@ -124,7 +124,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :scripts || group == :all
         @testset "Scripts" begin
-            include("test_verification.jl")
+            include("test_validation.jl")
             include("test_benchmarks.jl")
         end
     end

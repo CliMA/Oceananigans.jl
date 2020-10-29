@@ -7,8 +7,8 @@ A `RegularCartesianGrid` is constructed by specifying the `size` of the grid (a 
 grid points in each direction) and either the `extent` (a `Tuple` specifying the physical extent of the grid in
 each direction), or 2-`Tuple`s `x`, `y`, and `z` (for a 3D grid) that defines the the _end points_ in each direction.
 
-A regular Cartesian grid with $N_x \times N_y \times N_z = 32 \times 64 \times 256$ grid points and an `extent` of
-$L_x = 128$ meters, $L_y = 256$ meters, and $L_z = 512$ meters is constructed using
+A regular Cartesian grid with ``N_x \times N_y \times N_z = 32 \times 64 \times 256`` grid points and an `extent` of
+``L_x = 128`` meters, ``L_y = 256`` meters, and ``L_z = 512`` meters is constructed using
 
 ```@meta
 DocTestSetup = quote
@@ -27,7 +27,7 @@ grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
 ```
 
 !!! info "Default domain"
-    When using the `extent` keyword, the domain is $x \in [0, L_x]$, $y \in [0, L_y]$, and $z \in [-L_z, 0]$
+    When using the `extent` keyword, the domain is ``x \in [0, L_x]``, ``y \in [0, L_y]``, and ``z \in [-L_z, 0]``
     --- a sensible choice for oceanographic applications.
 
 ## Specifying the grid's topology
@@ -64,7 +64,7 @@ grid spacing (Δx, Δy, Δz): (156.25, 156.25, 0.0)
 ```
 
 Grid spacing in `Flat` directions is `0`. Notice that two-dimensional domains accept 2-`Tuple`s
-for `size` and `extent`. To specify a one-dimensional "column" model that varies only in $z$, write
+for `size` and `extent`. To specify a one-dimensional "column" model that varies only in ``z``, write
 
 ```jldoctest
 julia> grid = RegularCartesianGrid(topology=(Flat, Flat, Bounded), size=128, extent=256)
@@ -81,7 +81,7 @@ For one-dimensional domains, `size` and `extent` may either be scalars or 1-`Tup
 ## Specifying domain end points
 
 To specify a domain with a different origin than the default, the `x`, `y`, and `z` keyword arguments must be used.
-For example, a grid with $x \in [-100, 100]$ meters, $y \in [0, 12.5]$ meters, and $z \in [0, \pi]$ meters
+For example, a grid with ``x \in [-100, 100]`` meters, ``y \in [0, 12.5]`` meters, and ``z \in [0, \pi]`` meters
 is constructed via
 
 ```jldoctest

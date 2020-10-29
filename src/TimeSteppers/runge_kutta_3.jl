@@ -50,6 +50,9 @@ stage.
 """
 function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
 
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && update_state!(model)
+
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
     γ³ = model.timestepper.γ³
@@ -61,60 +64,49 @@ function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
     second_stage_Δt = (γ² + ζ²) * Δt
     third_stage_Δt  = (γ³ + ζ³) * Δt
 
-    arch = model.architecture
-    grid = model.grid
-
-    # Convert NamedTuples of Fields to NamedTuples of OffsetArrays
-    velocities, tracers, pressures, diffusivities, Gⁿ, G⁻ =
-        datatuples(model.velocities, model.tracers, model.pressures, model.diffusivities,
-                   model.timestepper.Gⁿ, model.timestepper.G⁻)
-
     #
     # First stage
     #
     
-    precomputations!(diffusivities, pressures, velocities, tracers, model)
+    calculate_tendencies!(model)
 
-    calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
+    rk3_substep!(model, Δt, γ¹, nothing)
 
-    rk3_substep!(velocities, tracers, arch, grid, Δt, γ¹, nothing, Gⁿ, nothing)
-
-    calculate_pressure_correction!(pressures.pNHS, first_stage_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, first_stage_Δt, pressures.pNHS)
+    calculate_pressure_correction!(model, first_stage_Δt)
+    pressure_correct_velocities!(model, first_stage_Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
+    store_tendencies!(model)
+    update_state!(model)
 
     #
     # Second stage
     #
-    
-    precomputations!(diffusivities, pressures, velocities, tracers, model)
 
-    store_tendencies!(G⁻, arch, grid, Gⁿ)
-    calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
+    calculate_tendencies!(model)
 
-    rk3_substep!(velocities, tracers, arch, grid, Δt, γ², ζ², Gⁿ, G⁻)
+    rk3_substep!(model, Δt, γ², ζ²)
 
-    calculate_pressure_correction!(pressures.pNHS, second_stage_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, second_stage_Δt, pressures.pNHS)
+    calculate_pressure_correction!(model, second_stage_Δt)
+    pressure_correct_velocities!(model, second_stage_Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
+    store_tendencies!(model)
+    update_state!(model)
 
     #
     # Third stage
     #
+
+    calculate_tendencies!(model)
     
-    precomputations!(diffusivities, pressures, velocities, tracers, model)
+    rk3_substep!(model, Δt, γ³, ζ³)
 
-    store_tendencies!(G⁻, arch, grid, Gⁿ)
-    calculate_tendencies!(Gⁿ, velocities, tracers, pressures, diffusivities, model)
-
-    rk3_substep!(velocities, tracers, arch, grid, Δt, γ³, ζ³, Gⁿ, G⁻)
-
-    calculate_pressure_correction!(pressures.pNHS, third_stage_Δt, velocities, model)
-    pressure_correct_velocities!(velocities, arch, grid, third_stage_Δt, pressures.pNHS)
+    calculate_pressure_correction!(model, third_stage_Δt)
+    pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
+    update_state!(model)
 
     return nothing
 end
@@ -123,28 +115,34 @@ end
 ##### Tracer time stepping and predictor velocity updating
 #####
 
-function rk3_substep!(U, C, arch, grid, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(arch))
+    barrier = Event(device(model.architecture))
 
-    substep_velocities_kernel! = rk3_substep_velocities!(device(arch), workgroup, worksize)
-    substep_tracer_kernel! = rk3_substep_tracer!(device(arch), workgroup, worksize)
+    substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
+    substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = substep_velocities_kernel!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻; dependencies=barrier)
+    velocities_event = substep_velocities_kernel!(model.velocities,
+                                                  Δt, γⁿ, ζⁿ,
+                                                  model.timestepper.Gⁿ,
+                                                  model.timestepper.G⁻;
+                                                  dependencies=barrier)
 
     events = [velocities_event]
 
-    for i in 1:length(C)
-        @inbounds c = C[i]
-        @inbounds Gcⁿ = Gⁿ[i+3]
-        @inbounds Gc⁻ = isnothing(G⁻) ? nothing : G⁻[i+3] # so that Gc⁻===nothing for first substep.
+    for i in 1:length(model.tracers)
+        @inbounds c = model.tracers[i]
+        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
+        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
+
         tracer_event = substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻, dependencies=barrier)
+
         push!(events, tracer_event)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -168,7 +166,7 @@ the 3rd-order Runge-Kutta method
 
     `c^{2} = c^1 + Δt γ¹ Gc^{1}`.
 """
-@kernel function rk3_substep_tracer!(c, Δt, γ¹, ::Nothing, Gc¹, ::Nothing)
+@kernel function rk3_substep_tracer!(c, Δt, γ¹, ::Nothing, Gc¹, Gc⁰)
     i, j, k = @index(Global, NTuple)
 
     @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
@@ -190,7 +188,7 @@ end
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.
 """
-@kernel function rk3_substep_velocities!(U, Δt, γ¹, ::Nothing, G¹, ::Nothing)
+@kernel function rk3_substep_velocities!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin

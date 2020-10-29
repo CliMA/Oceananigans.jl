@@ -53,9 +53,12 @@ end
 # Fallbacks
 TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
-include("generic_time_stepping.jl")
+include("update_state.jl")
+include("pressure_correction.jl")
 include("velocity_and_tracer_tendencies.jl")
-include("time_stepping_kernels.jl")
+include("calculate_tendencies.jl")
+include("store_tendencies.jl")
+include("update_hydrostatic_pressure.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 

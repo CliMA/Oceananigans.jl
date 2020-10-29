@@ -1,6 +1,6 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, tick!, all_model_fields, fields
+export IncompressibleModel, NonDimensionalModel, Clock, tick!, fields
 
 using Adapt
 
@@ -20,21 +20,11 @@ Abstract supertype for models.
 """
 abstract type AbstractModel end
 
-regularize_diffusivity_fields(diffusivities::Tuple) = (diffusivities=datatuple(diffusivities),)
-regularize_diffusivity_fields(diffusivities::NamedTuple) = datatuple(diffusivities)
-regularize_diffusivity_fields(::Nothing) = NamedTuple()
-
 """
-    all_model_fields(model)
+    fields(model)
 
-Returns a flattened `NamedTuple` with data from the `NamedTuples`
-`model.velocities`, `model.tracers`, and `model.diffusivities`,
-corresponding `OffsetArray`s that reference each of the field's data.
+Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-@inline all_model_fields(model) = merge(datatuple(model.velocities),
-                                        datatuple(model.tracers),
-                                        regularize_diffusivity_fields(model.diffusivities))
-
 fields(model) = merge(model.velocities, model.tracers)
 
 include("clock.jl")
