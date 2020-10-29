@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField
+using Oceananigans.Operators: Δx, Δy
 
 #####
 ##### The turbulence closure proposed by Leith
@@ -220,4 +221,4 @@ function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyanc
 end
 
 "Return the filter width for a Leith Diffusivity on a Regular Cartesian grid."
-@inline Δᶠ(i, j, k, grid::RegularCartesianGrid, ::AbstractLeith) = sqrt(grid.Δx * grid.Δy)
+@inline Δᶠ(i, j, k, grid::RegularCartesianGrid, ::AbstractLeith) = sqrt(Δx(i, j, k, grid) * Δy(i, j, k, grid))

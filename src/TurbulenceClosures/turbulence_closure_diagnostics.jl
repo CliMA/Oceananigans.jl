@@ -4,13 +4,13 @@ using Oceananigans.Grids: AbstractGrid
 min_Δxyz(grid) = min(min_Δx(grid), min_Δy(grid), min_Δz(grid))
 min_Δxy(grid) = min(min_Δx(grid), min_Δy(grid))
 
-min_Δx(grid) = grid.Δx
-min_Δy(grid) = grid.Δy
-min_Δz(grid) = grid.Δz
+min_Δx(grid::RegularCartesianGrid) = grid.Δx
+min_Δy(grid::RegularCartesianGrid) = grid.Δy
+min_Δz(grid::RegularCartesianGrid) = grid.Δz
 
-min_Δx(grid::AbstractGrid{FT, Flat, TY, TZ}) where {FT, TY, TZ} = FT(Inf)
-min_Δy(grid::AbstractGrid{FT, TX, Flat, TZ}) where {FT, TX, TZ} = FT(Inf)
-min_Δz(grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = FT(Inf)
+min_Δx(grid::AbstractGrid{FT, <:Flat, TY, TZ}) where {FT, TY, TZ} = FT(Inf)
+min_Δy(grid::AbstractGrid{FT, TX, <:Flat, TZ}) where {FT, TX, TZ} = FT(Inf)
+min_Δz(grid::AbstractGrid{FT, TX, TY, <:Flat}) where {FT, TX, TY} = FT(Inf)
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf

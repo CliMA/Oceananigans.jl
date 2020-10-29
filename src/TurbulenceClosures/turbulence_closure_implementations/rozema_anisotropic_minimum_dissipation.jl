@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Δx, Δy, Δz
+
 struct RozemaAnisotropicMinimumDissipation{FT, K} <: AbstractAnisotropicMinimumDissipation{FT}
      C :: FT
     Cb :: FT
@@ -32,9 +34,9 @@ end
 const RAMD = RozemaAnisotropicMinimumDissipation
 
 "Return the filter width for Anisotropic Minimum Dissipation on a Regular Cartesian grid."
-@inline Δx(i, j, k, grid::RegularCartesianGrid, ::RAMD) = grid.Δx
-@inline Δy(i, j, k, grid::RegularCartesianGrid, ::RAMD) = grid.Δy
-@inline Δz(i, j, k, grid::RegularCartesianGrid, ::RAMD) = grid.Δz
+@inline Δx(i, j, k, grid::RegularCartesianGrid, ::RAMD) = Δx(i, j, k, grid)
+@inline Δy(i, j, k, grid::RegularCartesianGrid, ::RAMD) = Δy(i, j, k, grid)
+@inline Δz(i, j, k, grid::RegularCartesianGrid, ::RAMD) = Δz(i, j, k, grid)
 
 # We only have regular grids for now. When we have non-regular grids this will need to be changed.
 const Δxᶜᶜᶜ = Δx
