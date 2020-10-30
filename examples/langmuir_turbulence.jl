@@ -142,8 +142,8 @@ bᵢ(x, y, z) = N² * z + 1e-1 * Ξ(z) * N² * model.grid.Lz
 nothing # hide
 
 # The velocity initial condition in McWilliams et al. (1997) is zero *Eulerian-mean* velocity.
-# This means that we must add the Stokes drift profile to the ``u`` velocity field.
-# We also add noise scaled by the friction velocity to ``u`` and ``w``.
+# This means that we must add the Stokes drift profile to the Lagrangian-mean ``u`` velocity field
+# modeled by Oceananigans.jl. We also add noise scaled by the friction velocity to ``u`` and ``w``.
 
 uᵢ(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 
@@ -219,7 +219,7 @@ simulation.output_writers[:fields] =
 # ### An "averages" writer
 #
 # We also set up output of time- and horizontally-averaged velocity field and
-# momentum fluxes
+# momentum fluxes,
 
 using Oceananigans.Fields
 
@@ -300,7 +300,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     U_snapshot = averages_file["timeseries/u/$iter"][1, 1, :]
     V_snapshot = averages_file["timeseries/v/$iter"][1, 1, :]
     wu_snapshot = averages_file["timeseries/wu/$iter"][1, 1, :]
-    wv_snapshot = averages_file["timeseries/wu/$iter"][1, 1, :]
+    wv_snapshot = averages_file["timeseries/wv/$iter"][1, 1, :]
 
     ## Extract slices
     wxy = w_snapshot[:, :, k]
