@@ -59,7 +59,7 @@ example_pages = [
     "Convecting plankton"              => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md"
+    "Eady turbulence"                  => "generated/eady_turbulence.md",
     "Barotropic instability"           => "generated/barotropic_instability.md"
 ]
 
