@@ -1,55 +1,13 @@
 # # Barotropic instability in a channel on a β-plane
 #
-# This example simulates the instability of a boundary-hugging
-# barotropic jet (that is, vertically-uniform) on a beta plane.
-# 
-# The domain 
-
-using Oceananigans
-
-grid = RegularCartesianGrid(size=(64, 64, 1), x=(-2π, 2π), y=(0, 6), z=(0, 1),
-                                  topology=(Periodic, Bounded, Bounded))
-
-# For the jet in question, we use "half-Bickley" form
-
-using Oceananigans.Fields
-
-half_bickley(x, y, z, t) = sech(y)^2
-
-U = BackgroundField(half_bickley)
-
-# which looks like
-
-using Oceananigans.Grids
-using Plots
-
-y = ynodes(Cell, grid)
-
-background_flow = plot(half_bickley.(0, y, 0, 0), y, label=nothing, xlabel="U(y)", ylabel="y", title="A half-Bickley")
-display(background_flow)
-
-# The half-Bickley is well studied, ie...
+# This example calculates the growth rate of the "barotropic" (that is
+# vertically-uniform) instability of a boundary-hugging jet on a ``β``-plane.
 #
-# To lend our problem an Oceananographic flavor, we investigate the instability on the β-plane,
-# where the background rotatin rate varies in ``y``:
-
-coriolis = BetaPlane(f₀=1, β=0.1)
-
-# The model
-
-model = IncompressibleModel(timestepper = :RungeKutta3, 
-                                   grid = grid,
-                               coriolis = coriolis,
-                      background_fields = (u=U,),
-                                closure = IsotropicDiffusivity(ν=1e-6),
-                               buoyancy = nothing,
-                                tracers = nothing)
-
-# The "Power method" for diagnosing instability growth-rates and eigenmodes
+# # The "power method" for calculating growth rates and eigenmodes
 #
 # An "instability" is a small-amplitude solution that develops due to the presence
 # of an unstable "basic state" or background flow. Because these solutions are
-# small amplitude, we can write them in the form
+# small amplitude, we express any of the prognostic variables as
 #
 # ```math
 # u = û exp(σ t)
@@ -66,81 +24,265 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # For this we design a criterion for stopping a simulation based on the amplitude
 # of the perturbation ``u``-velocity field:
 
-using Random
+# 
+# # The domain 
+
+using Oceananigans
+
+grid = RegularCartesianGrid(size=(64, 64, 1), x=(-2π, 2π), y=(-2, 5), z=(0, 1),
+                                  topology=(Periodic, Bounded, Bounded))
+
+# # The background flow
+#
+# Our background flow is a boundary-hugging "Bickley jet":
+
+using Oceananigans.Fields
+
+bickley_jet(x, y, z, t) = sech(y)^2
+
+U = BackgroundField(bickley_jet)
+
+# which looks like
+
+using Oceananigans.Grids
+using Plots
+
+y = ynodes(Cell, grid)
+
+background_flow = plot(bickley_jet.(0, y, 0, 0), y, label=nothing,
+                       linewidth=2, xlabel="U(y)", ylabel="y",
+                       title="Boundary-hugging Bickley jet")
+
+display(background_flow)
+
+# The Bickley jet is well studied, ie...
+# But we usually don't put it right on a boundary.
+#
+# # The ``β``-plane
+#
+# To season our problem with Oceananographic flavor, we investigate the instability
+# on the ``β``-plane, where the background rotation rate varies in ``y``:
+
+coriolis = BetaPlane(f₀=1, β=0.01)
+
+# Note that instability is suppressed if ``β > 1`` [cite].
+
+# # The model
+
+using Oceananigans.Advection
+
+model = IncompressibleModel(timestepper = :RungeKutta3, 
+                              advection = UpwindBiasedFifthOrder(),
+                                   grid = grid,
+                               coriolis = coriolis,
+                      background_fields = (u=U,),
+                                closure = IsotropicDiffusivity(ν=1e-6),
+                               buoyancy = nothing,
+                                tracers = nothing)
+
+# # A _Power_ful algorithm
+#
+# We set up an algorithm that rescales the velocity field whenever
+# the ``u``-component of the velocity field exeeds some threshold.
+
+velocity_exceeds_threshold(sim; threshold=1e-2) = maximum(abs, interior(sim.model.velocities.u)) > threshold
+
+simulation = Simulation(model, Δt=0.1, iteration_interval=100,
+                        progress=sim -> @info("Model iteration: $(sim.model.clock.iteration)"))
+
+push!(simulation.stop_criteria, velocity_exceeds_threshold)
+
+# Next, we define a function that simulates instability growth and returns an
+# estimated growth rate.
+
+"""
+    grow_instability!(simulation, e)
+
+Grow an instability by running `simulation`.
+
+Estimates the growth rate ``σ`` of the instability
+using the fractional change in volume-mean kinetic energy,
+over the course of the `simulation`
+
+``
+e(t₁) / e(t₀) ≈ exp(2 σ (t₁ - t₀))
+``
+
+where ``t₀`` and ``t₁`` are the starting and ending times of the
+simulation. We thus find that
+
+``
+σ ≈ log(e(t₁) / e(t₀)) / (2 * (t₁ - t₀)) .
+``
+"""
+function grow_instability!(simulation, e)
+    # Initialize
+    simulation.model.clock.iteration = 0
+    t₀ = simulation.model.clock.time = 0
+    e₀ = e[1, 1, 1]
+
+    # Grow
+    run!(simulation)
+
+    # Analyze
+    compute!(e)
+    e₁ = e[1, 1, 1]
+    Δt = simulation.model.clock.time - t₀
+
+    # (u² + v²) / 2 ~ exp(2 σ Δt)
+    σ = growth_rate = log(e₁ / e₀) / 2Δt
+
+    return growth_rate    
+end
+
+# Finally, we write a function that rescales the velocity field
+# at thewrite 
+
+"""
+    rescale!(velocities; factor=1e-1)
+
+"""
+function rescale!(velocities; factor=1e-1)
+    velocities.u.data.parent .*= factor
+    velocities.v.data.parent .*= factor
+    velocities.w.data.parent .*= factor
+    return nothing
+end
+
+using Printf
+
+relative_change(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) / σⁿ) : Inf
+
+"""
+    estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-2)
+
+Computes 
+"""
+function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-1)
+    σ = [0.0, grow_instability!(simulation, e)]
+
+    while relative_change(σ[end], σ[end-1]) > convergence_criterion
+
+        push!(σ, grow_instability!(simulation, e))
+
+        @info @sprintf("*** Power iteration %d, σⁿ: %.2e, relative Δσ: %.2e",
+                       length(σ), σ[end], relative_change(σ[end], σ[end-1]))
+
+        compute!(ω)
+        display(eigenplot!(interior(ω)[:, :, 1], σ, nothing))
+
+        rescale!(simulation.model.velocities)
+    end
+
+    return σ
+end
+
+# # Eigenplotting
+#
+# A good algorithm wouldn't be complete without a good visualization tool,
+
+using Oceananigans.AbstractOperations
+
+u, v, w = model.velocities
+
+vorticity = ComputedField(∂x(v) - ∂y(u))
+
+x, y, z = nodes(vorticity)
+
+eigentitle(σ, t) = "Iteration $(length(σ)): most unstable eigenmode"
+eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
+
+function eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16)
+    
+    background_flow = plot(bickley_jet.(0, y, 0, 0), y, label=nothing,
+                           ylims=(grid.yF[1], grid.yF[grid.Ny]), xlabel="U(y)", ylabel="y")
+
+    ω_contours = contourf(x, y, clamp.(ω, -ω_lim, ω_lim)';
+                          color = :balance, aspectratio = 1,
+                          levels = range(-ω_lim, stop=ω_lim, length=21),
+                          xlims = (grid.xF[1], grid.xF[grid.Nx]),
+                          ylims = (grid.yF[1], grid.yF[grid.Ny]),
+                          clims = (-ω_lim, ω_lim), linewidth = 0)
+                          
+    eigenplot = plot(background_flow, ω_contours,
+                     layout = Plots.grid(1, 2, widths=[0.2, 0.8]),
+                     link = :y, size = (600, 200),
+                     title = ["Background flow" eigentitle(σ, t)])
+
+    return eigenplot
+end
+
+# # Rev your engines...
+#
+# We initialize the power iteration with random noise.
+# The amplitude of the initial condition is arbitrary since our algorithm
+# will rescale the velocity field iteratively until the simulation's stop_criteria
+# is no longer met.
+
+using Random, Statistics, Oceananigans.AbstractOperations
+
+mean_perturbation_energy = mean(1/2 * (u^2 + v^2), dims=(1, 2, 3))
 
 noise(x, y, z) = randn()
 
 set!(model, u=noise, v=noise)
 
-progress(sim) = @info "i: $(sim.model.clock.iteration), t: $(sim.model.clock.time), max(u): $(maximum(abs, interior(sim.model.velocities.u)))"
-simulation = Simulation(model, Δt=0.1, progress=progress, iteration_interval=100)
+growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, vorticity)
 
-velocity_exceeds_threshold(sim; threshold=1e-1) = maximum(abs, interior(sim.model.velocities.u)) > threshold
+@info "\n Power iterations converged! Estimated growth rate: $(growth_rates[end]) \n"
 
-push!(simulation.stop_criteria, velocity_exceeds_threshold)
+# # Plot the result
 
-function grow_instability!(simulation, e)
-    e₀ = e[1, 1, 1]
-    t₀ = model.clock.time
+scatter(filter(σ -> isfinite(σ) && σ > 0, growth_rates),
+        xlabel = "Power iteration",
+        ylabel = "Growth rate (1/s)",
+        yscale = :log10,
+         label = nothing)
 
-    run!(simulation)
+# # The fun part
+#
+# Now for the fun part: simulating the transition to turbulence.
 
-    compute!(e)
-    Δe = e[1, 1, 1] / e₀
-    Δt = simulation.model.clock.time - t₀
+estimated_growth_rate = growth_rates[end]
 
-    growth_rate = log(Δe) / 2Δt
+using Oceananigans.OutputWriters
 
-    return growth_rate    
+simulation.output_writers[:vorticity] = JLD2OutputWriter(model, (ω=vorticity,),
+                                                         schedule = IterationInterval(20),
+                                                         prefix = "barotropic_instability",
+                                                         force = true)
+
+pop!(simulation.stop_criteria) # Remove the vorticity_exceeds_threshold stop_criteria
+
+model.clock.iteration = 0
+model.clock.time = 0
+simulation.stop_iteration = 2000 #stop_time = 10 / growth_rates[end]
+
+@info "*** Running a simulation of barotropic instability..."
+
+rescale!(model.velocities, factor=10)
+run!(simulation)
+
+# ## Visualizing the results
+#
+# We load the output and make a movie.
+
+using JLD2
+
+file = jldopen(simulation.output_writers[:vorticity].filepath)
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
+
+@info "Making a neat movie of barotropic instability..."
+
+anim = @animate for (i, iteration) in enumerate(iterations)
+
+    @info "Plotting frame $i from iteration $iteration..."
+    
+    t = file["timeseries/t/$iteration"]
+    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
+
+    eigenplot = eigenplot!(ω_snapshot, nothing, t, ω_lim=1)
 end
 
-function rescale!(velocities; scale=1e-1)
-    velocities.u.data.parent .*= scale
-    velocities.v.data.parent .*= scale
-    velocities.w.data.parent .*= scale
-    return nothing
-end
-
-
-function eigenmode!(ω, iteration)
-    x, y, z = nodes(ω)
-    ω_max = maximum(abs, interior(ω)) + 1e-9
-    ω_levels = range(-ω_max, stop=ω_max, length=21)
-    ω_plot = contourf(x, y, interior(ω)[:, :, 1]'; color = :balance, levels = ω_levels, clims = (-ω_max, ω_max),
-                      title = "Iteration $iteration: most unstable eigenmode") # of the boundary-hugging half-Bickley jet")
-    display(ω_plot)
-end
-
-using Printf
-
-function compute_growth_rate!(simulation, e, ω)
-    σⁿ⁻¹ = 0.0
-    σⁿ = grow_instability!(simulation, e)
-    iteration = 0
-
-    while true #abs((σⁿ⁻¹ - σⁿ) / σⁿ⁻¹) > 0.1
-        σⁿ⁻¹ = σⁿ
-        σⁿ = grow_instability!(simulation, e)
-
-        iteration += 1
-        @info @sprintf("Power iteration %d, estimated σ: %.2e", iteration, σⁿ)
-
-        eigenmode!(ω, iteration)
-        rescale!(simulation.model.velocities)
-        simulation.model.clock.time = 0
-    end
-
-    return σⁿ
-end
-
-using Statistics, Oceananigans.AbstractOperations
-
-u, v, w = model.velocities
-
-# Vorticity...
-vorticity = ComputedField(∂x(v) - ∂y(u))
-  
-# Mean perturbation energy.
-mean_perturbation_energy = mean(1/2 * (u^2 + v^2), dims=(1, 2, 3))
-
-compute_growth_rate!(simulation, mean_perturbation_energy, vorticity)
+gif(anim, "barotropic_instability.gif", fps = 8) # hide
