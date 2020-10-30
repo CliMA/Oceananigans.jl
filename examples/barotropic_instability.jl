@@ -229,10 +229,9 @@ growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, vorti
 
 # # Plot the result
 
-scatter(filter(σ -> isfinite(σ) && σ > 0, growth_rates),
+scatter(filter(σ -> isfinite(σ), growth_rates),
         xlabel = "Power iteration",
         ylabel = "Growth rate",
-        yscale = :log10,
          label = nothing)
 
 # # The fun part
