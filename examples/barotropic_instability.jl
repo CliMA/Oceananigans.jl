@@ -116,20 +116,16 @@ simulation. We thus find that
 ``
 """
 function grow_instability!(simulation, e)
-    # Initialize
     simulation.model.clock.iteration = 0
     t₀ = simulation.model.clock.time = 0
     e₀ = e[1, 1, 1]
 
-    # Grow
     run!(simulation)
 
-    # Analyze
     compute!(e)
     e₁ = e[1, 1, 1]
     Δt = simulation.model.clock.time - t₀
 
-    # (u² + v²) / 2 ~ exp(2 σ Δt)
     σ = growth_rate = log(e₁ / e₀) / 2Δt
 
     return growth_rate    
