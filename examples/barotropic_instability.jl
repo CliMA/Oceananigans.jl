@@ -210,8 +210,8 @@ end
 
 # # Rev your engines...
 #
-# We initialize the power iteration with random noise.
-# The amplitude of the initial condition is arbitrary since our algorithm
+# We initialize the power iteration with small-amplitude noise. Small amplitude guarantees we
+# are in the linear regime. The amplitude of the initial condition is arbitrary since our algorithm
 # will rescale the velocity field iteratively until the simulation's stop_criteria
 # is no longer met.
 
@@ -219,7 +219,7 @@ using Random, Statistics, Oceananigans.AbstractOperations
 
 mean_perturbation_energy = mean(1/2 * (u^2 + v^2), dims=(1, 2, 3))
 
-noise(x, y, z) = randn()
+noise(x, y, z) = 1e-2*randn()
 
 set!(model, u=noise, v=noise)
 
