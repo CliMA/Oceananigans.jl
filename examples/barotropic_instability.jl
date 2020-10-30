@@ -65,7 +65,7 @@ display(background_flow)
 
 coriolis = BetaPlane(f₀=1, β=0.01)
 
-# Note that instability is suppressed if ``β > 1`` [cite].
+# Note that instability is suppressed if ``β > U''(y) \approx 1.2`` [cite Rayleigh-Kuo].
 
 # # The model
 
