@@ -1,6 +1,6 @@
 # # Stratified Kelvin-Helmholtz instability
 #
-# # The domain 
+# # The domain is taken here as ...
 
 using Oceananigans
 
@@ -11,7 +11,7 @@ grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-3, 3),
 
 # # The background flow
 #
-# Our background flow constists of linear stratification and constant shear
+# Our background flow constists of shear base flow ``U(z)`` and a some stratification ``\partial_z B``.
 
 using Oceananigans.Fields, Oceananigans.Grids
 
@@ -75,32 +75,32 @@ using the fractional change in volume-mean kinetic energy,
 over the course of the `simulation`
 
 ``
-e(t₁) / e(t₀) ≈ exp(2 σ (t₁ - t₀))
+energy(t₁) / energy(t₀) ≈ exp(2 σ (t₁ - t₀))
 ``
 
 where ``t₀`` and ``t₁`` are the starting and ending times of the
-simulation. We thus find that
+simulation. We thus find that the growth rate is measured by
 
 ``
-σ ≈ log(e(t₁) / e(t₀)) / (2 * (t₁ - t₀)) .
+σ = log(energy(t₁) / energy(t₀)) / (2 * (t₁ - t₀)) .
 ``
 """
-function grow_instability!(simulation, e)
+function grow_instability!(simulation, energy)
     ## Initialize
     simulation.model.clock.iteration = 0
     t₀ = simulation.model.clock.time = 0
-    e₀ = e[1, 1, 1]
+    energy₀ = energy[1, 1, 1]
 
     ## Grow
     run!(simulation)
 
     ## Analyze
-    compute!(e)
-    e₁ = e[1, 1, 1]
+    compute!(energy)
+    energy₁ = energy[1, 1, 1]
     Δt = simulation.model.clock.time - t₀
 
     ## (u² + v²) / 2 ~ exp(2 σ Δt)
-    σ = growth_rate = log(e₁ / e₀) / 2Δt
+    σ = growth_rate = log(energy₁ / energy₀) / 2Δt
 
     return growth_rate    
 end
@@ -119,14 +119,14 @@ The rescaling factor is calculated via
 r = \\sqrt{e_\\mathrm{target} / e}
 ``
 """
-function rescale!(model, e; target_kinetic_energy=1e-6)
-    compute!(e)
-    r = sqrt(target_kinetic_energy / e[1, 1, 1])
+function rescale!(model, energy; target_kinetic_energy=1e-6)
+    compute!(energy)
+    rescale_factor = sqrt(target_kinetic_energy / energy[1, 1, 1])
 
-    model.velocities.u.data.parent .*= r
-    model.velocities.v.data.parent .*= r
-    model.velocities.w.data.parent .*= r
-    model.tracers.b.data.parent .*= r
+    model.velocities.u.data.parent .*= rescale_factor
+    model.velocities.v.data.parent .*= rescale_factor
+    model.velocities.w.data.parent .*= rescale_factor
+    model.tracers.b.data.parent .*= rescale_factor
     return nothing
 end
 
@@ -135,29 +135,29 @@ using Printf
 relative_change(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) / σⁿ) : Inf
 
 """
-    estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-2)
+    estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-2)
 
 Estimates the growth rate.
 """
-function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-3)
-    σ = [0.0, grow_instability!(simulation, e)]
+function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-3)
+    σ = [0.0, grow_instability!(simulation, energy)]
 
     while relative_change(σ[end], σ[end-1]) > convergence_criterion
 
-        push!(σ, grow_instability!(simulation, e))
+        push!(σ, grow_instability!(simulation, energy))
 
-        compute!(e)
+        compute!(energy)
 
         @info @sprintf("*** Power iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
-                       length(σ), e[1, 1, 1], σ[end], relative_change(σ[end], σ[end-1]))
+                       length(σ), energy[1, 1, 1], σ[end], relative_change(σ[end], σ[end-1]))
 
         compute!(ω)
         display(eigenplot!(interior(ω)[:, 1, :], σ, nothing))
 
-        rescale!(simulation.model, e)
-        compute!(e)
+        rescale!(simulation.model, energy)
+        compute!(energy)
 
-        @info @sprintf("*** Kinetic energy after rescaling: %.2e", e[1, 1, 1])
+        @info @sprintf("*** Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
                        
     end
 
@@ -177,7 +177,7 @@ perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
 
 x, y, z = nodes(perturbation_vorticity)
 
-eigentitle(σ, t) = "Iteration $(length(σ)): most unstable eigenmode"
+eigentitle(σ, t) = @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end])
 eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 
 eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16) =
