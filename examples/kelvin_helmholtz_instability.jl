@@ -1,52 +1,51 @@
 # # Stratified Kelvin-Helmholtz instability
 #
-# # The domain is taken here as ...
+# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``,
 
 using Oceananigans
-
-using Plots
 
 grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-3, 3),
                                   topology=(Periodic, Periodic, Bounded))
 
-# # The background flow
+# # The basic state
 #
-# Our background flow constists of shear base flow ``U(z)`` and a some stratification ``\partial_z B``.
+# We're simulating the instability of a sheared and stably-stratified basic state
+# ``U(z)`` and ``B(z)``. Two parameters define our basic state: the Richardson number
+# defined as,
+#
+# ```math
+# Ri = \frac{∂_z B}{∂_z U^2}
+# ```
+#
+# and the width of the stratification layer, ``h``.
 
-using Oceananigans.Fields, Oceananigans.Grids
+using Oceananigans.Fields
 
 shear_flow(x, y, z, t) = tanh(z)
 
-# Ri = ∂z B / (∂z U)²
 stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
-Ri = 0.10
-h = 1/10
-
 U = BackgroundField(shear_flow)
-B = BackgroundField(stratification, parameters=(Ri=Ri, h=h))
+B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/10))
+
+# Our basic state thus has a thin layer of stratification in the center of
+# the channel, embedded within a thicker shear layer surrounded by unstratified fluid.
+
+using Plots, Oceananigans.Grids
 
 z = znodes(Cell, grid)
 
-background_b = @. h * Ri * tanh(z / h)
+Ri, h = B.parameters
 
-∂z_U = @. sech(z)^2
-∂z_B = @. Ri * sech(z / h)^2
+kwargs = (ylabel="z", linewidth=2, label=nothing)
 
-Ri_background = @. ∂z_B / ∂z_U^2
+ U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
+ B_plot = plot(h * Ri * tanh.(z / h), z; xlabel="B(z)", kwargs...)
+Ri_plot = plot(Ri * sech.(z / h).^2 ./ sech.(z).^2, z; xlabel="Ri(z)", kwargs...)
 
-#=
-kwargs = (ylabel = z, linewidth = 2)
-U_plot = plot(shear_flow.(0, 0, z, 0), z, xlabel="U(z)", kwargs...)
-B_plot = plot(background_buoyancy.(0, 0, z, 0), z, xlabel="B(z)", kwargs...)
-Ri_plot = plot(background_Ri.(0, 0, z, 0), z, xlabel="B(z)", kwargs...)
-base_state = plot([shear_flow.(0, 0, z, 0) background_b Ri_background], z,
-                  linewidth=2, xlabel="Ri", ylabel="y",
-                  size = (600, 400),
-                  label = ["U(z)" "B(z)" "Ri(z)"])
+base_state = plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(600, 400))
 
-display(base_state)
-=#
+display(base_state) # hide
 
 # # The model
 
@@ -62,6 +61,8 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                 tracers = :b)
 
 # # A _Power_ful algorithm
+#
+# _Describe the algorithm here_.
 
 simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=200)
                         
@@ -112,44 +113,44 @@ end
     rescale!(model, e; target_kinetic_energy=1e-3)
 
 Rescales all model fields so that `e = target_kinetic_energy`.
-
-The rescaling factor is calculated via
-
-``
-r = \\sqrt{e_\\mathrm{target} / e}
-``
 """
 function rescale!(model, energy; target_kinetic_energy=1e-6)
     compute!(energy)
-    rescale_factor = sqrt(target_kinetic_energy / energy[1, 1, 1])
+
+    rescale_factor = √(target_kinetic_energy / energy[1, 1, 1])
 
     model.velocities.u.data.parent .*= rescale_factor
     model.velocities.v.data.parent .*= rescale_factor
     model.velocities.w.data.parent .*= rescale_factor
     model.tracers.b.data.parent .*= rescale_factor
+
     return nothing
 end
 
 using Printf
 
-relative_change(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) / σⁿ) : Inf
+""" Compute the relative difference between ``σⁿ`` and ``σⁿ⁻¹``, avoiding `NaN`s. """
+relative_difference(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) / σⁿ) : Inf
 
 """
     estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-2)
 
-Estimates the growth rate.
+Estimates the growth rate iteratively until the relative change
+in the estimated growth rate ``σ`` falls below `convergence_criterion`.
+
+Returns ``σ``.
 """
 function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-3)
     σ = [0.0, grow_instability!(simulation, energy)]
 
-    while relative_change(σ[end], σ[end-1]) > convergence_criterion
+    while relative_difference(σ[end], σ[end-1]) > convergence_criterion
 
         push!(σ, grow_instability!(simulation, energy))
 
         compute!(energy)
 
-        @info @sprintf("*** Power iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
-                       length(σ), energy[1, 1, 1], σ[end], relative_change(σ[end], σ[end-1]))
+        @info @sprintf("Power iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
+                       length(σ), energy[1, 1, 1], σ[end], relative_difference(σ[end], σ[end-1]))
 
         compute!(ω)
         display(eigenplot!(interior(ω)[:, 1, :], σ, nothing))
@@ -157,7 +158,7 @@ function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-
         rescale!(simulation.model, energy)
         compute!(energy)
 
-        @info @sprintf("*** Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
+        @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
                        
     end
 
@@ -166,7 +167,7 @@ end
 
 # # Eigenplotting
 #
-# A good algorithm wouldn't be complete without a good visualization tool,
+# A good algorithm wouldn't be complete without a good visualization,
 
 using Oceananigans.AbstractOperations
 
@@ -187,7 +188,7 @@ eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16) =
              xlims = (grid.xF[1], grid.xF[grid.Nx]),
              ylims = (grid.zF[1], grid.zF[grid.Nz]),
              clims = (-ω_lim, ω_lim), linewidth = 0,
-              size = (600, 200),
+              size = (600, 300),
              title = eigentitle(σ, t))
 
 # # Rev your engines...
@@ -207,41 +208,52 @@ set!(model, u=noise, w=noise, b=noise)
 
 growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, perturbation_vorticity)
 
-@info "\n Power iterations converged! Estimated growth rate: $(growth_rates[end]) \n"
+@info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
 
-# # Plot the result
+# # Powerful convergence
+#
+# A scatter plot illustrates how the growth rate converges
+# as the power method iterates,
 
 scatter(filter(σ -> isfinite(σ), growth_rates),
         xlabel = "Power iteration",
         ylabel = "Growth rate",
          label = nothing)
 
-# # The fun part
+# # Now for the fun part
 #
-# Now for the fun part: simulating the Kelvin-Helmholtz instability growth and nonlinear equilibration.
+# Now we simulate the nonlinear evolution of the perfect eigenmode
+# we've isolated for a few e-folding times ``1/\sigma``,
+
+## Reset the clock
+model.clock.iteration = 0
+model.clock.time = 0
 
 estimated_growth_rate = growth_rates[end]
 
-using Oceananigans.OutputWriters
-
-simulation.output_writers[:vorticity] =
-    JLD2OutputWriter(model, (ω=perturbation_vorticity,),
-                     schedule = TimeInterval(0.10 / estimated_growth_rate),
-                     prefix = "kelvin_helmholtz",
-                     force = true)
-
-## Prep a fresh run
-#
-# Initialize a simulation with the eigenmode and run for a few e-folding time ``1/\sigma``.
-
-model.clock.iteration = 0
-model.clock.time = 0
-simulation.stop_time = 7 / estimated_growth_rate
+simulation.stop_time = 3 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
+## Rescale the eigenmode
 rescale!(simulation.model, mean_perturbation_energy, target_kinetic_energy=1e-4)
 
+# Let's save and plot the perturbation vorticity and the
+# total vorticity (perturbation + basic state):
+
+using Oceananigans.OutputWriters
+
+total_u = ComputedField(u + model.background_fields.velocities.u)
+total_vorticity = ComputedField(∂z(total_u) - ∂x(w))
+
+simulation.output_writers[:vorticity] =
+    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity),
+                     schedule = TimeInterval(0.10 / estimated_growth_rate),
+                     prefix = "kelvin_helmholtz_instability",
+                     force = true)
+
 @info "*** Running a simulation of Kelvin-Helmholtz instability..."
+
+# And now we
 
 run!(simulation)
 
@@ -267,4 +279,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     eigenplot = eigenplot!(ω_snapshot, nothing, t, ω_lim=1)
 end
 
-gif(anim, "kelvin_helmholtz.gif", fps = 8) # hide
+gif(anim, "kelvin_helmholtz_instability.gif", fps = 8) # hide

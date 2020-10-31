@@ -60,7 +60,7 @@ example_pages = [
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
     "Eady turbulence"                  => "generated/eady_turbulence.md",
-    "Kelvin-Helmhotlz instability"     => "generated/kelvin_helmholtz_instability.md"
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
 ]
 
 model_setup_pages = [
