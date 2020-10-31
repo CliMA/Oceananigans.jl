@@ -130,6 +130,7 @@ function grow_instability!(simulation, e)
 
     return growth_rate    
 end
+nothing # hide
 
 # Finally, we write a function that rescales the velocity field
 # at thewrite 
@@ -144,6 +145,7 @@ function rescale!(velocities; factor=1e-1)
     velocities.w.data.parent .*= factor
     return nothing
 end
+nothing # hide
 
 using Printf
 
@@ -154,7 +156,7 @@ relative_change(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) 
 
 Computes 
 """
-function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-1)
+function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-2)
     σ = [0.0, grow_instability!(simulation, e)]
 
     while relative_change(σ[end], σ[end-1]) > convergence_criterion
@@ -172,6 +174,7 @@ function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-1)
 
     return σ
 end
+nothing # hide
 
 # # Eigenplotting
 #
@@ -207,6 +210,7 @@ function eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16)
 
     return eigenplot
 end
+nothing # hide
 
 # # Rev your engines...
 #
