@@ -213,10 +213,9 @@ growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, pertu
 
 # # Plot the result
 
-scatter(filter(σ -> isfinite(σ) && σ > 0, growth_rates),
+scatter(filter(σ -> isfinite(σ), growth_rates),
         xlabel = "Power iteration",
-        ylabel = "Growth rate (1/s)",
-        yscale = :log10,
+        ylabel = "Growth rate",
          label = nothing)
 
 # # The fun part
