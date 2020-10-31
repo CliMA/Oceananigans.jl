@@ -4,7 +4,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-3, 3),
+grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -26,7 +26,7 @@ shear_flow(x, y, z, t) = tanh(z)
 stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
 U = BackgroundField(shear_flow)
-B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/10))
+B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 # Our basic state thus has a thin layer of stratification in the center of
 # the channel, embedded within a thicker shear layer surrounded by unstratified fluid.
@@ -40,12 +40,10 @@ Ri, h = B.parameters
 kwargs = (ylabel="z", linewidth=2, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
- B_plot = plot(h * Ri * tanh.(z / h), z; xlabel="B(z)", kwargs...)
-Ri_plot = plot(Ri * sech.(z / h).^2 ./ sech.(z).^2, z; xlabel="Ri(z)", kwargs...)
+ B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
+Ri_plot = plot(Ri * sech.(z / h).^2 ./ sech.(z).^2, z; xlabel="Ri(z)", color=:black, kwargs...)
 
-base_state = plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(600, 400))
-
-display(base_state) # hide
+plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(850, 400))
 
 # # The model
 
@@ -62,7 +60,33 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 # # A _Power_ful algorithm
 #
-# _Describe the algorithm here_.
+# We will find the most unstable mode of the Kelvin-Helmholtz instability using the "power method". 
+# In brief, if a linear operator ``\mathcal{L}`` has eigenmodes ``u_j`` and corresponding 
+# eigenvalues ``\lambda_j``,
+# ```math
+# \mathcal{L} \, u_j = \lambda \, u_j \, ,
+# ```
+# where we assumed that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \dotsb``. Successive application of ``\mathcal{L}`` to a random initial state ``\phi``
+# will render it parallel with eigenmode ``u_1``:
+# ```math
+# \lim_{n \to \infty} \mathcal{L}^n \phi \propto u_1 \, .
+# ```
+# Of course, if ``u_1`` is unstable, i.e., has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
+# of ``\mathcal{L}`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
+# lead to exponential decay down to machine precision.)
+#
+# The power method, thus, relies on rescaling the state after ``\mathcal{L}`` is applied back to
+# a pre-selected amplitude. We select this predetermined amplitude in such manner to ensure that
+# we are in the "linear" regime, i.e., that terms quadratic in perturbations as much smaller.
+# 
+# So, we initialize a model with random initial conditions with amplitude much less than those of
+# the base state have amplitude (``O(1)``). For each iteration of the power method includes:
+# - compute the perturbation energy, ``E_0``
+# - evolve the system for ``\Delta t``
+# - compute the perturbation energy, ``E_1``
+# - determine the exponential growth of the most unstable mode during interval ``\Delta t`` as
+#  ``\sigma = \log(E_1 / E_0) / (2 \Delta t)``.
+# - repeat the above until ``\sigma`` converges.
 
 simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=200)
                         
@@ -112,7 +136,7 @@ end
 """
     rescale!(model, e; target_kinetic_energy=1e-3)
 
-Rescales all model fields so that `e = target_kinetic_energy`.
+Rescales all model fields so that `energy = target_kinetic_energy`.
 """
 function rescale!(model, energy; target_kinetic_energy=1e-6)
     compute!(energy)
@@ -149,7 +173,7 @@ function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-
 
         compute!(energy)
 
-        @info @sprintf("Power iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
+        @info @sprintf("Power method iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
                        length(σ), energy[1, 1, 1], σ[end], relative_difference(σ[end], σ[end-1]))
 
         compute!(ω)
@@ -231,7 +255,7 @@ model.clock.time = 0
 
 estimated_growth_rate = growth_rates[end]
 
-simulation.stop_time = 3 / estimated_growth_rate
+simulation.stop_time = 5 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
