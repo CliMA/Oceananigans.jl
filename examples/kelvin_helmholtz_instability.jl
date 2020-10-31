@@ -6,9 +6,7 @@ using Oceananigans
 
 using Plots
 
-#pyplot()
-
-grid = RegularCartesianGrid(size=(64, 1, 128), x=(-2π, 2π), y=(0, 1), z=(-3, 3),
+grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-3, 3),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The background flow
@@ -22,7 +20,7 @@ shear_flow(x, y, z, t) = tanh(z)
 # Ri = ∂z B / (∂z U)²
 stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
-Ri = 0.1
+Ri = 0.10
 h = 1/10
 
 U = BackgroundField(shear_flow)
@@ -55,17 +53,17 @@ display(base_state)
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                            advection = UpwindBiasedFifthOrder(),
-                            grid = grid,
-                            coriolis = nothing,
-                            background_fields = (u=U, b=B),
-                            closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
-                            buoyancy = BuoyancyTracer(),
-                            tracers = :b)
+                              advection = UpwindBiasedFifthOrder(),
+                                   grid = grid,
+                               coriolis = nothing,
+                      background_fields = (u=U, b=B),
+                                closure = IsotropicDiffusivity(ν=5e-5, κ=5e-5),
+                               buoyancy = BuoyancyTracer(),
+                                tracers = :b)
 
 # # A _Power_ful algorithm
 
-simulation = Simulation(model, Δt=0.1, iteration_interval=10, stop_iteration=200)
+simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=200)
                         
 """
     grow_instability!(simulation, e)
@@ -121,7 +119,7 @@ The rescaling factor is calculated via
 r = \\sqrt{e_\\mathrm{target} / e}
 ``
 """
-function rescale!(model, e; target_kinetic_energy=1e-4)
+function rescale!(model, e; target_kinetic_energy=1e-6)
     compute!(e)
     r = sqrt(target_kinetic_energy / e[1, 1, 1])
 
@@ -150,7 +148,7 @@ function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-3)
 
         compute!(e)
 
-        @info @sprintf("*** Power iteration %d, e: %.5f, σⁿ: %.2e, relative Δσ: %.2e",
+        @info @sprintf("*** Power iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
                        length(σ), e[1, 1, 1], σ[end], relative_change(σ[end], σ[end-1]))
 
         compute!(ω)
@@ -159,7 +157,7 @@ function estimate_growth_rate!(simulation, e, ω; convergence_criterion=1e-3)
         rescale!(simulation.model, e)
         compute!(e)
 
-        @info @sprintf("*** Kinetic energy after rescaling: %.5f", e[1, 1, 1])
+        @info @sprintf("*** Kinetic energy after rescaling: %.2e", e[1, 1, 1])
                        
     end
 
@@ -185,11 +183,11 @@ eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16) =
     contourf(x, z, clamp.(ω, -ω_lim, ω_lim)';
              color = :balance, aspectratio = 1,
-             levels = range(-ω_lim, stop=ω_lim, length=11),
+             levels = range(-ω_lim, stop=ω_lim, length=20),
              xlims = (grid.xF[1], grid.xF[grid.Nx]),
              ylims = (grid.zF[1], grid.zF[grid.Nz]),
              clims = (-ω_lim, ω_lim), linewidth = 0,
-             size = (600, 200),
+              size = (600, 200),
              title = eigentitle(σ, t))
 
 # # Rev your engines...
@@ -203,7 +201,7 @@ using Random, Statistics, Oceananigans.AbstractOperations
 
 mean_perturbation_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
 
-noise(x, y, z) = 1e-2 * randn()
+noise(x, y, z) = 1e-4 * randn()
 
 set!(model, u=noise, w=noise, b=noise)
 
@@ -220,7 +218,7 @@ scatter(filter(σ -> isfinite(σ), growth_rates),
 
 # # The fun part
 #
-# Now for the fun part: simulating the transition to turbulence.
+# Now for the fun part: simulating the Kelvin-Helmholtz instability growth and nonlinear equilibration.
 
 estimated_growth_rate = growth_rates[end]
 
@@ -228,15 +226,20 @@ using Oceananigans.OutputWriters
 
 simulation.output_writers[:vorticity] =
     JLD2OutputWriter(model, (ω=perturbation_vorticity,),
-                     schedule = TimeInterval(0.1 / estimated_growth_rate),
+                     schedule = TimeInterval(0.10 / estimated_growth_rate),
                      prefix = "kelvin_helmholtz",
                      force = true)
 
 ## Prep a fresh run
+#
+# Initialize a simulation with the eigenmode and run for a few e-folding time ``1/\sigma``.
+
 model.clock.iteration = 0
 model.clock.time = 0
-simulation.stop_time = 10 / estimated_growth_rate
+simulation.stop_time = 7 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
+
+rescale!(simulation.model, mean_perturbation_energy, target_kinetic_energy=1e-4)
 
 @info "*** Running a simulation of Kelvin-Helmholtz instability..."
 
@@ -260,7 +263,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
-
+    
     eigenplot = eigenplot!(ω_snapshot, nothing, t, ω_lim=1)
 end
 
