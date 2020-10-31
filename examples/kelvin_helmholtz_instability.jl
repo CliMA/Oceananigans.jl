@@ -129,6 +129,7 @@ function grow_instability!(simulation, energy)
 
     return growth_rate    
 end
+nothing # hide
 
 # Finally, we write a function that rescales the velocity field
 # at the write
@@ -188,6 +189,7 @@ function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-
 
     return σ
 end
+nothing # hide
 
 # # Eigenplotting
 #
@@ -214,6 +216,7 @@ eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16) =
              clims = (-ω_lim, ω_lim), linewidth = 0,
               size = (600, 300),
              title = eigentitle(σ, t))
+nothing # hide
 
 # # Rev your engines...
 #
@@ -275,10 +278,9 @@ simulation.output_writers[:vorticity] =
                      prefix = "kelvin_helmholtz_instability",
                      force = true)
 
-@info "*** Running a simulation of Kelvin-Helmholtz instability..."
-
 # And now we
 
+@info "*** Running a simulation of Kelvin-Helmholtz instability..."
 run!(simulation)
 
 # ## Pretty things
