@@ -192,7 +192,6 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
     
     iteration = 1
     while convergence(σ) > convergence_criterion
-
         push!(σ, grow_instability!(simulation, energy))
 
         compute!(energy)
@@ -203,10 +202,9 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
         compute!(ω)
         plotseries[iteration+1] = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
         iteration += 1
-
+        
         rescale!(simulation.model, energy)
         compute!(energy)
-        
         
         @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
     end
