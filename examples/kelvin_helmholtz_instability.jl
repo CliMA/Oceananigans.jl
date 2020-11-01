@@ -61,23 +61,33 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # # A _Power_ful algorithm
 #
 # We will find the most unstable mode of the Kelvin-Helmholtz instability using the "power method". 
-# In brief, if a linear operator ``\mathcal{L}`` has eigenmodes ``u_j`` and corresponding 
+# Linear instabilities, such as the Kelvin-Helmholtz instability, are described by linearized equations about a base state that take the form
+# ```math
+# \partial_t \Phi = L \Phi \, .
+# ```
+# In this example, ``\Phi = (u, v, w, b)`` is a vector of the velocities ``u, v, w``, and 
+# buoyancy ``b`` and ``L`` is a linear operator that depends on the base state (the `background_fields`) and other problem parameters.
+#
+# The linear operator ``L`` has eigenmodes ``u_j`` and corresponding and corresponding 
 # eigenvalues ``\lambda_j``,
 # ```math
-# \mathcal{L} \, u_j = \lambda \, u_j \, ,
+# \mathcal{L} \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# where we assumed that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \dotsb``. Successive application of ``\mathcal{L}`` to a random initial state ``\phi``
-# will render it parallel with eigenmode ``u_1``:
+# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \dotsb``.
+# 
+# Successive application of ``\mathcal{L}`` to a random initial state will render it parallel 
+# with eigenmode ``\phi_1``:
 # ```math
-# \lim_{n \to \infty} \mathcal{L}^n \phi \propto u_1 \, .
+# \lim_{n \to \infty} \mathcal{L}^n \Phi \propto \phi_1 \, .
 # ```
-# Of course, if ``u_1`` is unstable, i.e., has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
-# of ``\mathcal{L}`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
-# lead to exponential decay down to machine precision.)
-#
-# The power method, thus, relies on rescaling the state after ``\mathcal{L}`` is applied back to
-# a pre-selected amplitude. We select this predetermined amplitude in such manner to ensure that
-# we are in the "linear" regime, i.e., that terms quadratic in perturbations as much smaller.
+# Of course, if ``\phi_1`` is an unstable mode, i.e., has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
+# of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
+# lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after applying
+# the linear operator ``L`` to our state ``\Phi``, we should rescale ``\Phi`` back to
+# a pre-selected amplitude. Oceananigans.jl, does not include a "linear" version of the equations,
+# but we can ensure we remain in the "linear" regime if we pick the pre-selected amplitude to 
+# be small enough, i.e., ensuring that terms quadratic in perturbations are much smaller than 
+# all other terms.
 # 
 # So, we initialize a model with random initial conditions with amplitude much less than those of
 # the base state have amplitude (``O(1)``). For each iteration of the power method includes:
