@@ -338,7 +338,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 @info "Making a neat movie of stratified shear flow..."
 
-anim = @animate for (i, iteration) in enumerate(iterations)
+anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
     
@@ -349,11 +349,11 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.1)
 end
 
-gif(anim, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
+gif(anim_perturbations, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
 
 # And then the total vorticity & buoyancy of the fluid.
 
-anim2 = @animate for (i, iteration) in enumerate(iterations)
+anim_total = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
     
@@ -364,4 +364,4 @@ anim2 = @animate for (i, iteration) in enumerate(iterations)
     eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
 end
 
-gif(anim2, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
+gif(anim_total, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
