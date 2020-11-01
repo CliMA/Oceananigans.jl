@@ -43,7 +43,7 @@ kwargs = (ylabel="z", linewidth=2, label=nothing)
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
 Ri_plot = plot(Ri * sech.(z / h).^2 ./ sech.(z).^2, z; xlabel="Ri(z)", color=:black, kwargs...)
 
-plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(850, 400))
+plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 # # The model
 
@@ -175,7 +175,7 @@ in the estimated growth rate ``σ`` falls below `convergence_criterion`.
 
 Returns ``σ``.
 """
-function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-3)
+function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
     σ = [0.0, grow_instability!(simulation, energy)]
 
     while relative_difference(σ[end], σ[end-1]) > convergence_criterion
@@ -188,7 +188,7 @@ function estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-
                        length(σ), energy[1, 1, 1], σ[end], relative_difference(σ[end], σ[end-1]))
 
         compute!(ω)
-        display(eigenplot!(interior(ω)[:, 1, :], σ, nothing))
+        display(eigenplot!(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing))
 
         rescale!(simulation.model, energy)
         compute!(energy)
@@ -213,19 +213,27 @@ b = model.tracers.b
 perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
 
 x, y, z = nodes(perturbation_vorticity)
+xb, yb, zb = nodes(b)
 
 eigentitle(σ, t) = @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end])
 eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 
-eigenplot!(ω, σ, t; ω_lim=maximum(abs, ω)+1e-16) =
-    contourf(x, z, clamp.(ω, -ω_lim, ω_lim)';
-             color = :balance, aspectratio = 1,
-             levels = range(-ω_lim, stop=ω_lim, length=20),
-             xlims = (grid.xF[1], grid.xF[grid.Nx]),
-             ylims = (grid.zF[1], grid.zF[grid.Nz]),
-             clims = (-ω_lim, ω_lim), linewidth = 0,
-              size = (600, 300),
-             title = eigentitle(σ, t))
+function eigenplot!(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
+    kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color = :balance, aspectratio = 1,)
+    plot_ω = contourf(x, z, clamp.(ω, -ω_lim, ω_lim)';
+                      levels = range(-ω_lim, stop=ω_lim, length=20),
+                      xlims = (grid.xF[1], grid.xF[grid.Nx]),
+                      ylims = (grid.zF[1], grid.zF[grid.Nz]),
+                      clims = (-ω_lim, ω_lim),
+                      title = "vorticity", kwargs...)
+    plot_b = contourf(xb, zb, clamp.(b, -b_lim, b_lim)';
+                    levels = range(-b_lim, stop=b_lim, length=20),
+                    xlims = (grid.xC[1], grid.xC[grid.Nx]),
+                    ylims = (grid.zC[1], grid.zC[grid.Nz]),
+                    clims = (-b_lim, b_lim),
+                    title = "buoyancy", kwargs...)
+    plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
+end
 nothing # hide
 
 # # Rev your engines...
@@ -243,7 +251,7 @@ noise(x, y, z) = 1e-4 * randn()
 
 set!(model, u=noise, w=noise, b=noise)
 
-growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, perturbation_vorticity)
+growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, perturbation_vorticity, b)
 
 @info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
 
@@ -312,7 +320,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
     
-    eigenplot = eigenplot!(ω_snapshot, nothing, t, ω_lim=1)
+    eigenplot = eigenplot!(ω_snapshot, b, nothing, t, ω_lim=1)
 end
 
 gif(anim, "kelvin_helmholtz_instability.gif", fps = 8) # hide
