@@ -51,11 +51,11 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                              advection = UpwindBiasedFifthOrder(),
+                              advection = WENO5(),
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=5e-5, κ=5e-5),
+                                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
@@ -72,14 +72,14 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # The linear operator ``L`` has eigenmodes ``u_j`` and corresponding and corresponding 
 # eigenvalues ``\lambda_j``,
 # ```math
-# \mathcal{L} \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
+# L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
 # ```
 # We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \dotsb``.
 # 
-# Successive application of ``\mathcal{L}`` to a random initial state will render it parallel 
+# Successive application of ``L`` to a random initial state will render it parallel 
 # with eigenmode ``\phi_1``:
 # ```math
-# \lim_{n \to \infty} \mathcal{L}^n \Phi \propto \phi_1 \, .
+# \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
 # ```
 # Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
 # of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
