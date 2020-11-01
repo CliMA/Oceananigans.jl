@@ -186,6 +186,10 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
     σ = []
     
     plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
+    
+    compute!(ω)
+    plotseries[1] = plot_powermethoditerationplot_powermethoditeration = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+    
     iteration = 1
     while convergence(σ) > convergence_criterion
 
@@ -202,7 +206,7 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
         rescale!(simulation.model, energy)
         compute!(energy)
         
-        plotseries[iteration] = plot_powermethoditeration
+        plotseries[iteration+1] = plot_powermethoditeration
         iteration += 1
         
         @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
@@ -226,7 +230,7 @@ perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
 x, y, z = nodes(perturbation_vorticity)
 xb, yb, zb = nodes(b)
 
-eigentitle(σ, t) = @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end])
+eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
 eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 
 function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
