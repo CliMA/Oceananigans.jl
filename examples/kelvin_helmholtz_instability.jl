@@ -81,23 +81,27 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # ```math
 # \lim_{n \to \infty} \mathcal{L}^n \Phi \propto \phi_1 \, .
 # ```
-# Of course, if ``\phi_1`` is an unstable mode, i.e., has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
+# Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
 # of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
 # lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after applying
 # the linear operator ``L`` to our state ``\Phi``, we should rescale ``\Phi`` back to
-# a pre-selected amplitude. Oceananigans.jl, does not include a "linear" version of the equations,
-# but we can ensure we remain in the "linear" regime if we pick the pre-selected amplitude to 
-# be small enough, i.e., ensuring that terms quadratic in perturbations are much smaller than 
-# all other terms.
+# a pre-selected amplitude.
 # 
-# So, we initialize a model with random initial conditions with amplitude much less than those of
-# the base state have amplitude (``O(1)``). For each iteration of the power method includes:
-# - compute the perturbation energy, ``E_0``
-# - evolve the system for ``\Delta t``
-# - compute the perturbation energy, ``E_1``
-# - determine the exponential growth of the most unstable mode during interval ``\Delta t`` as
-#  ``\sigma = \log(E_1 / E_0) / (2 \Delta t)``.
-# - repeat the above until ``\sigma`` converges.
+# Oceananigans.jl, does not include a "linear" version of the equations, but we can ensure we 
+# remain in the "linear" regime if we pick the pre-selected amplitude to be small enough, i.e.,
+# ensuring that terms quadratic in perturbations are much smaller than all other terms.
+# 
+# So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
+# the base state (which are ``O(1)``). Each iteration of the power method includes:
+# - compute the perturbation energy, ``E_0``,
+# - evolve the system for ``\Delta t``,
+# - compute the perturbation energy, ``E_1``,
+# - determine the exponential growth of the most unstable mode during interval ``\Delta t`` as  ``\log(E_1 / E_0) / (2 \Delta t)``,
+# - repeat the above until growth rate converges.
+# 
+# By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
+# 
+# For this example, we take ``\Delta t = 20``.
 
 simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=100)
                         
