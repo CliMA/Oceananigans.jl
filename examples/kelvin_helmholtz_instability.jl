@@ -83,9 +83,8 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # ```
 # Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
 # of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
-# lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after applying
-# the linear operator ``L`` to our state ``\Phi``, we should rescale ``\Phi`` back to
-# a pre-selected amplitude.
+# lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each 
+# application of the linear operator ``L`` to our state ``\Phi``, we should rescale the output ``L \Phi `` back to a pre-selected amplitude before applying ``L`` again.
 # 
 # Oceananigans.jl, does not include a "linear" version of the equations, but we can ensure we 
 # remain in the "linear" regime if we pick the pre-selected amplitude to be small enough, i.e.,
