@@ -328,7 +328,7 @@ run!(simulation)
 
 # ## Pretty things
 #
-# Load it; plot it.
+# Load it; plot it. First the nonlinear equilibration of the perturbation fields.
 
 using JLD2
 
@@ -346,7 +346,22 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
     b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
     
+    eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.1)
+end
+
+gif(anim, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
+
+# And then the total vorticity & buoyancy of the fluid.
+
+anim2 = @animate for (i, iteration) in enumerate(iterations)
+
+    @info "Plotting frame $i from iteration $iteration..."
+    
+    t = file["timeseries/t/$iteration"]
+    ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
+    
     eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
 end
 
-gif(anim, "kelvin_helmholtz_instability.gif", fps = 8) # hide
+gif(anim2, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
