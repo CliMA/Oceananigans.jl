@@ -188,7 +188,7 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
     plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
     
     compute!(ω)
-    plotseries[1] = plot_powermethoditerationplot_powermethoditeration = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+    plotseries[1] = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
     
     iteration = 1
     while convergence(σ) > convergence_criterion
@@ -201,13 +201,12 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
                        length(σ), energy[1, 1, 1], σ[end], relative_difference(σ))
 
         compute!(ω)
-        plot_powermethoditeration = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+        plotseries[iteration+1] = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+        iteration += 1
 
         rescale!(simulation.model, energy)
         compute!(energy)
         
-        plotseries[iteration+1] = plot_powermethoditeration
-        iteration += 1
         
         @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
     end
@@ -273,9 +272,11 @@ using Random, Statistics, Oceananigans.AbstractOperations
 
 mean_perturbation_kinetic_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
 
-noise(x, y, z) = 1e-6 * randn()
+noise(x, y, z) = randn()
 
 set!(model, u=noise, w=noise, b=noise)
+
+rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 
 growth_rates, powermethod_plotseries = estimate_growth_rate!(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
 
