@@ -93,14 +93,14 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
 # the base state (which are ``O(1)``). Each iteration of the power method includes:
 # - compute the perturbation energy, ``E_0``,
-# - evolve the system for ``\Delta t``,
+# - evolve the system for a time-interval ``\Delta \tau``,
 # - compute the perturbation energy, ``E_1``,
-# - determine the exponential growth of the most unstable mode during interval ``\Delta t`` as  ``\log(E_1 / E_0) / (2 \Delta t)``,
+# - determine the exponential growth of the most unstable mode during the interval ``\Delta \tau`` as  ``\log(E_1 / E_0) / (2 \Delta \tau)``,
 # - repeat the above until growth rate converges.
 # 
 # By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
 # 
-# For this example, we take ``\Delta t = 20``.
+# For this example, we take ``\Delta \tau = 20``.
 
 simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=100)
                         
@@ -137,10 +137,10 @@ function grow_instability!(simulation, energy)
     ## Analyze
     compute!(energy)
     energy₁ = energy[1, 1, 1]
-    Δt = simulation.model.clock.time - t₀
+    Δτ = simulation.model.clock.time - t₀
 
-    ## (u² + v²) / 2 ~ exp(2 σ Δt)
-    σ = growth_rate = log(energy₁ / energy₀) / 2Δt
+    ## (u² + v²) / 2 ~ exp(2 σ Δτ)
+    σ = growth_rate = log(energy₁ / energy₀) / 2Δτ
     return growth_rate    
 end
 nothing # hide
