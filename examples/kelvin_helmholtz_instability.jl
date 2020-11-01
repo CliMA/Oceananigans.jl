@@ -51,7 +51,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                              advection = WENO5(),
+                              advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
@@ -100,9 +100,9 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # 
 # By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
 # 
-# For this example, we take ``\Delta \tau = 20``.
+# For this example, we take ``\Delta \tau = 15``.
 
-simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=100)
+simulation = Simulation(model, Δt=0.1, iteration_interval=30, stop_iteration=150)
                         
 """
     grow_instability!(simulation, e)
@@ -182,7 +182,7 @@ in the estimated growth rate ``σ`` falls below `convergence_criterion`.
 
 Returns ``σ``.
 """
-function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
+function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=5e-3)
     σ = []
     
     plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
@@ -313,8 +313,7 @@ rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_ener
 
 using Oceananigans.OutputWriters
 
-total_u = ComputedField(u + model.background_fields.velocities.u)
-total_vorticity = ComputedField(∂z(total_u) - ∂x(w))
+total_vorticity = ComputedField(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
 total_b = ComputedField(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
