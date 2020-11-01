@@ -74,7 +74,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # ```math
 # L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \dotsb``.
+# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
 # 
 # Successive application of ``L`` to a random initial state will render it parallel 
 # with eigenmode ``\phi_1``:
