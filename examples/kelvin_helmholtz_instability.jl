@@ -135,7 +135,7 @@ nothing # hide
 # at the write
 
 """
-    rescale!(model, e; target_kinetic_energy=1e-3)
+    rescale!(model, energy; target_kinetic_energy=1e-3)
 
 Rescales all model fields so that `energy = target_kinetic_energy`.
 """
