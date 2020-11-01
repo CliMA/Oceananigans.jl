@@ -1,3 +1,4 @@
+
 # # Stratified Kelvin-Helmholtz instability
 #
 # We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``,
@@ -98,7 +99,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 #  ``\sigma = \log(E_1 / E_0) / (2 \Delta t)``.
 # - repeat the above until ``\sigma`` converges.
 
-simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=200)
+simulation = Simulation(model, Δt=0.1, iteration_interval=20, stop_iteration=100)
                         
 """
     grow_instability!(simulation, e)
@@ -124,6 +125,7 @@ function grow_instability!(simulation, energy)
     ## Initialize
     simulation.model.clock.iteration = 0
     t₀ = simulation.model.clock.time = 0
+    compute!(energy)
     energy₀ = energy[1, 1, 1]
 
     ## Grow
@@ -136,7 +138,6 @@ function grow_instability!(simulation, energy)
 
     ## (u² + v²) / 2 ~ exp(2 σ Δt)
     σ = growth_rate = log(energy₁ / energy₀) / 2Δt
-
     return growth_rate    
 end
 nothing # hide
@@ -165,7 +166,10 @@ end
 using Printf
 
 """ Compute the relative difference between ``σⁿ`` and ``σⁿ⁻¹``, avoiding `NaN`s. """
-relative_difference(σⁿ, σⁿ⁻¹) = isfinite(σⁿ) ? abs((σⁿ - σⁿ⁻¹) / σⁿ) : Inf
+relative_difference(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end-1]) : Inf
+
+""" Check if the growth rate has converged. If the array `σ` has at least 2 elements then return the relative difference between ``σ[end]`` and ``σ[end-1]``. """
+convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
 
 """
     estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-2)
@@ -176,28 +180,32 @@ in the estimated growth rate ``σ`` falls below `convergence_criterion`.
 Returns ``σ``.
 """
 function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
-    σ = [0.0, grow_instability!(simulation, energy)]
-
-    while relative_difference(σ[end], σ[end-1]) > convergence_criterion
+    σ = []
+    
+    plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
+    iteration = 1
+    while convergence(σ) > convergence_criterion
 
         push!(σ, grow_instability!(simulation, energy))
 
         compute!(energy)
 
-        @info @sprintf("Power method iteration %d, e: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
-                       length(σ), energy[1, 1, 1], σ[end], relative_difference(σ[end], σ[end-1]))
+        @info @sprintf("Power method iteration %d, kinetic energy: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
+                       length(σ), energy[1, 1, 1], σ[end], relative_difference(σ))
 
         compute!(ω)
-        display(eigenplot!(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing))
+        plot_powermethoditeration = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
 
         rescale!(simulation.model, energy)
         compute!(energy)
-
+        
+        plotseries[iteration] = plot_powermethoditeration
+        iteration += 1
+        
         @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
-                       
     end
 
-    return σ
+    return σ, plotseries
 end
 nothing # hide
 
@@ -218,7 +226,7 @@ xb, yb, zb = nodes(b)
 eigentitle(σ, t) = @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end])
 eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 
-function eigenplot!(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
+function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
     kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color = :balance, aspectratio = 1,)
     plot_ω = contourf(x, z, clamp.(ω, -ω_lim, ω_lim)';
                       levels = range(-ω_lim, stop=ω_lim, length=20),
@@ -232,7 +240,18 @@ function eigenplot!(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(a
                     ylims = (grid.zC[1], grid.zC[grid.Nz]),
                     clims = (-b_lim, b_lim),
                     title = "buoyancy", kwargs...)
-    plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
+    return plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
+end
+
+function powermethodplot(ω, b, σ, t)
+    plot_growthrates = scatter(σ,
+                                xlabel = "Power iteration",
+                                ylabel = "Growth rate",
+                                 title = title = eigentitle(σ, t),
+                                 label = nothing)
+    plot_eigenmode = eigenplot(ω, b, σ, t)
+    
+    return plot(plot_growthrates, plot_eigenmode, layout=@layout([A{0.25h}; B]), size=(800, 600))
 end
 nothing # hide
 
@@ -245,25 +264,26 @@ nothing # hide
 
 using Random, Statistics, Oceananigans.AbstractOperations
 
-mean_perturbation_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
+mean_perturbation_kinetic_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
 
-noise(x, y, z) = 1e-4 * randn()
+noise(x, y, z) = 1e-6 * randn()
 
 set!(model, u=noise, w=noise, b=noise)
 
-growth_rates = estimate_growth_rate!(simulation, mean_perturbation_energy, perturbation_vorticity, b)
+growth_rates, powermethod_plotseries = estimate_growth_rate!(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
 
 @info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
 
 # # Powerful convergence
 #
-# A scatter plot illustrates how the growth rate converges
+# We can animate the power method steps. A scatter plot illustrates how the growth rate converges
 # as the power method iterates,
 
-scatter(filter(σ -> isfinite(σ), growth_rates),
-        xlabel = "Power iteration",
-        ylabel = "Growth rate",
-         label = nothing)
+anim_powermethod = @animate for iteration in 1:length(growth_rates)
+    plot(powermethod_plotseries[iteration])
+end
+
+gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
 
 # # Now for the fun part
 #
@@ -280,7 +300,7 @@ simulation.stop_time = 5 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
-rescale!(simulation.model, mean_perturbation_energy, target_kinetic_energy=1e-4)
+rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-4)
 
 # Let's save and plot the perturbation vorticity and the
 # total vorticity (perturbation + basic state):
@@ -289,9 +309,10 @@ using Oceananigans.OutputWriters
 
 total_u = ComputedField(u + model.background_fields.velocities.u)
 total_vorticity = ComputedField(∂z(total_u) - ∂x(w))
+total_b = ComputedField(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
-    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity),
+    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b),
                      schedule = TimeInterval(0.10 / estimated_growth_rate),
                      prefix = "kelvin_helmholtz_instability",
                      force = true)
@@ -319,8 +340,9 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
     
-    eigenplot = eigenplot!(ω_snapshot, b, nothing, t, ω_lim=1)
+    eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
 end
 
 gif(anim, "kelvin_helmholtz_instability.gif", fps = 8) # hide
