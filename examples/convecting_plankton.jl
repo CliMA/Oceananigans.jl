@@ -12,7 +12,7 @@
 # The phytoplankton in our model advect, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = P (μ₀ \, \exp(z / λ) - m)
+# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) P
 # ```
 #
 # where ``μ₀`` is the phytoplankton growth rate at the surface,
@@ -51,10 +51,12 @@ buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
 
 buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
 
-# !!! info 
-#     Note that a _positive_ flux at the _top_ boundary means that buoyancy is
-#     carried _upwards_, out of the fluid. This reduces the fluid's buoyancy 
-#     near the surface, causing convection.
+# !!! info "The convention for fluxes across boundaries in Oceananigans.jl"
+#     Fluxes are defined by the direction a quantity is carried: _positive_ velocities
+#     produce _positive_ fluxes, while _negative_ velocities produce _negative_ fluxes.
+#     A positive flux at the _top_ boundary means that buoyancy is
+#     carried _upwards, out of the domain_. This means that a positive flux of buoyancy
+#     at the top boundary reduces the buoyancy of near-surface fluid, causing convection.
 #
 # The initial condition and bottom boundary condition impose
 # the constant buoyancy gradient
@@ -73,7 +75,7 @@ buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = b
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, p) = P * (p.μ₀ * exp(z / p.λ) - p.m)
+growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
 nothing # hide
 
 # with parameters
@@ -81,7 +83,7 @@ nothing # hide
 plankton_dynamics_parameters = (μ₀ = 1/day,   # surface growth rate
                                  λ = 5,       # sunlight attenuation length scale (m)
                                  m = 0.1/day) # mortality rate due to virus and zooplankton grazing
-    
+
 # We tell `Forcing` that our plankton model depends
 # on the plankton concentration `P` and the chosen parameters,
 
@@ -91,7 +93,7 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # ## The model
 # 
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a third-order 
+# constructor for `IncompressibleModel`. We additionally specify a fifth-order 
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
@@ -111,7 +113,7 @@ model = IncompressibleModel(
 
 # ## Initial condition
 #
-# We set the initial phytoplankton at ``P = 1 \\rm{μM}``.
+# We set the initial phytoplankton at ``P = 1 \rm{μM}``.
 # For buoyancy, we use a stratification that's mixed near the surface and
 # linearly stratified below, superposed with surface-concentrated random noise.
 
@@ -156,16 +158,18 @@ outputs = (w = model.velocities.w,
            plankton = model.tracers.P,
            averaged_plankton = averaged_plankton)
 
-simulation.output_writers[:fields] =
+simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(20minutes),
                      prefix = "convecting_plankton",
                      force = true)
 
-# Note that it often makes sense to define different output writers
-# for two- or three-dimensional fields and `AveragedField`s (since 
-# averages take up so much less disk space, it's usually possible to output
-# them a lot more frequently than full fields without blowing up your hard drive).
+# !!! info "Using multiple output writers"
+#     It's often sensible to use _different_ output writers for different types of output.
+#     For example, reduced fields like `AveragedField` usually consume less disk space than
+#     two- or three-dimensional fields, and can thus be output more frequently without
+#     blowing up your hard drive. An arbitrary number of output writers may be added to
+#     `simulation.output_writers`.
 #
 # The simulation is set up. Let there be plankton:
 
@@ -182,7 +186,7 @@ run!(simulation)
 using JLD2
 using Oceananigans.Grids: nodes
 
-file = jldopen(simulation.output_writers[:fields].filepath)
+file = jldopen(simulation.output_writers[:simple_output].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
