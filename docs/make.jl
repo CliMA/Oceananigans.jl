@@ -135,7 +135,7 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/latest/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
 makedocs(
