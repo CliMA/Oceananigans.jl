@@ -1,25 +1,25 @@
 # # Plankton mixing and blooming
 #
 # In this example, we simulate the mixing of phytoplankton by convection
-# that decreases time and eventually shuts off, thereby precipitating a
+# that decreases in time and eventually shuts off, thereby precipitating a
 # phytoplankton bloom. A similar scenario was simulated by
 # [Taylor and Ferrari (2011)](https://aslopubs.onlinelibrary.wiley.com/doi/abs/10.4319/lo.2011.56.6.2293),
 # providing evidence that the
 # ["critical turbulence hypothesis"](https://en.wikipedia.org/wiki/Critical_depth#Critical_Turbulence_Hypothesis)
 # explains the explosive bloom of oceanic phytoplankton
-# observed throughout the world ocean in spring.
+# observed in spring.
 #
-# The phytoplankton dynamics in Taylor and Ferrari (2011)'s model are described by
+# The phytoplankton in our model advect, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ exp(z / λ) - m) * P 
+# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = P (μ₀ \, \exp(z / λ) - m)
 # ```
 #
 # where ``μ₀`` is the phytoplankton growth rate at the surface,
-# ``λ`` is scale over which sunlight attenuates away from the surface,
+# ``λ`` is the scale over which sunlight attenuates away from the surface,
 # and ``m`` is the mortality rate of phytoplankton due to viruses and
 # grazing by zooplankton. We use Oceananigans' `Forcing` abstraction
-# to define the terms on the right in `IncompressibleModel`.
+# to define the phytoplankton dynamics on the right in `IncompressibleModel`.
 #
 # This example demonstrates
 #
@@ -42,20 +42,19 @@ grid = RegularCartesianGrid(size=(64, 1, 64), extent=(64, 1, 64))
 #
 # We impose a time-dependent, decaying buoyancy loss at the surface,
 
-buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
-
-# with parameters
-
 using Oceananigans.Utils
+
+buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
 
 buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
 
-# Note that a _positive_ flux at the _top_ boundary means that buoyancy is
-# carried _upwards_, out of the fluid. This reduces the fluid's buoyancy 
-# near the surface, causing convection.
+# !!! info 
+#     Note that a _positive_ flux at the _top_ boundary means that buoyancy is
+#     carried _upwards_, out of the fluid. This reduces the fluid's buoyancy 
+#     near the surface, causing convection.
 #
 # The initial condition and bottom boundary condition impose
 # the constant buoyancy gradient
@@ -69,12 +68,13 @@ buoyancy_gradient_bc = BoundaryCondition(Gradient, N²)
 
 buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
-# ## Phytoplankton dynamics: sunlight-dependent growth and zooplankton grazing
+# ## Phytoplankton dynamics: light-dependent growth and mortality
 #
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
 growing_and_grazing(x, y, z, t, P, p) = P * (p.μ₀ * exp(z / p.λ) - p.m)
+nothing # hide
 
 # with parameters
 
@@ -82,16 +82,18 @@ plankton_dynamics_parameters = (μ₀ = 1/day,   # surface growth rate
                                  λ = 5,       # sunlight attenuation length scale (m)
                                  m = 0.1/day) # mortality rate due to virus and zooplankton grazing
     
-# Our parameterized plankton model depends on the plankton concentration `P`,
-# which we must specify to `Forcing`,
+# We tell `Forcing` that our plankton model depends
+# on the plankton concentration `P` and the chosen parameters,
 
 plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
                             parameters = plankton_dynamics_parameters)
 
-# The name `P` corresponds to the name we give to phytoplankton in the
+# ## The model
+# 
+# The name "`P`" for phytoplankton is specified in the
 # constructor for `IncompressibleModel`. We additionally specify a third-order 
-# advection scheme, third-order Runge-Kutta time-stepping, and Coriolis
-# forces appropriate for planktonic convection at mid-latitudes on Earth.
+# advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
+# and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
 using Oceananigans.Advection
 
@@ -109,7 +111,7 @@ model = IncompressibleModel(
 
 # ## Initial condition
 #
-# We set the initial phytoplankton at ``P = 1 \\mathrm{μM}``.
+# We set the initial phytoplankton at ``P = 1 \\rm{μM}``.
 # For buoyancy, we use a stratification that's mixed near the surface and
 # linearly stratified below, superposed with surface-concentrated random noise.
 
@@ -123,7 +125,7 @@ initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
-# ## Simulation setup
+# ## Adaptive time-stepping, logging, output and simulation setup
 #
 # We use a `TimeStepWizard` that limits the
 # time-step to 1 minute, and adapts the time-step such that CFL
@@ -143,8 +145,8 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 simulation = Simulation(model, Δt=wizard, stop_time=24hour,
                         iteration_interval=20, progress=progress)
 
-# We add a basic `JLD2OutputWriter` that writes velocities, tracers,
-# and the horizontally-averaged plankton:
+# We add a basic `JLD2OutputWriter` that writes velocities and both
+# the two-dimensional and horizontally-averaged plankton concentration,
 
 using Oceananigans.OutputWriters, Oceananigans.Fields
 
@@ -165,9 +167,12 @@ simulation.output_writers[:fields] =
 # averages take up so much less disk space, it's usually possible to output
 # them a lot more frequently than full fields without blowing up your hard drive).
 #
-# The simulation is setup. Let there be plankton:
+# The simulation is set up. Let there be plankton:
 
 run!(simulation)
+
+# Notice how the time-step is reduced at early times, when turbulence is strong,
+# and increases again towards the end of the simulation when turbulence fades.
 
 # ## Visualizing the solution
 #
@@ -184,11 +189,13 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 times = [file["timeseries/t/$iter"] for iter in iterations]
 
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
 xw, yw, zw = nodes(model.velocities.w)
 xp, yp, zp = nodes(model.tracers.P)
+nothing # hide
 
 # Finally, we animate the convective plumes and plankton swirls,
 
