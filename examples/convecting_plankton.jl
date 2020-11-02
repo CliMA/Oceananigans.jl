@@ -12,14 +12,15 @@
 # The phytoplankton in our model advect, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) P
+# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P
 # ```
 #
-# where ``μ₀`` is the phytoplankton growth rate at the surface,
-# ``λ`` is the scale over which sunlight attenuates away from the surface,
-# and ``m`` is the mortality rate of phytoplankton due to viruses and
-# grazing by zooplankton. We use Oceananigans' `Forcing` abstraction
-# to define the phytoplankton dynamics on the right in `IncompressibleModel`.
+# where ``\bm{u}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
+#  ``μ₀`` is the phytoplankton growth rate at the surface, ``λ`` is the scale over
+# which sunlight attenuates away from the surface, and ``m`` is the mortality rate
+# of phytoplankton due to viruses and grazing by zooplankton. We use Oceananigans'
+#  `Forcing` abstraction to implement the phytoplankton dynamics described by the right
+# side of the phytoplankton equation above.
 #
 # This example demonstrates
 #
@@ -51,12 +52,13 @@ buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
 
 buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
 
-# !!! info "The convention for fluxes across boundaries in Oceananigans.jl"
+# !!! info "The flux convention in Oceananigans.jl"
 #     Fluxes are defined by the direction a quantity is carried: _positive_ velocities
 #     produce _positive_ fluxes, while _negative_ velocities produce _negative_ fluxes.
-#     A positive flux at the _top_ boundary means that buoyancy is
-#     carried _upwards, out of the domain_. This means that a positive flux of buoyancy
-#     at the top boundary reduces the buoyancy of near-surface fluid, causing convection.
+#     Diffusive fluxes are defined with the same convention. A positive flux at the _top_
+#     boundary transports buoyancy _upwards, out of the domain_. This means that a positive
+#     flux of buoyancy at the top boundary reduces the buoyancy of near-surface fluid,
+#     causing convection.
 #
 # The initial condition and bottom boundary condition impose
 # the constant buoyancy gradient
@@ -70,7 +72,7 @@ buoyancy_gradient_bc = BoundaryCondition(Gradient, N²)
 
 buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
-# ## Phytoplankton dynamics: light-dependent growth and mortality
+# ## Phytoplankton dynamics: light-dependent growth and uniform mortality
 #
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
@@ -113,7 +115,7 @@ model = IncompressibleModel(
 
 # ## Initial condition
 #
-# We set the initial phytoplankton at ``P = 1 \rm{μM}``.
+# We set the initial phytoplankton at ``P = 1 \, \rm{μM}``.
 # For buoyancy, we use a stratification that's mixed near the surface and
 # linearly stratified below, superposed with surface-concentrated random noise.
 
@@ -165,7 +167,8 @@ simulation.output_writers[:simple_output] =
                      force = true)
 
 # !!! info "Using multiple output writers"
-#     It's often sensible to use _different_ output writers for different types of output.
+#     Because each output writer is associated with a single output `schedule`, 
+#     it often makes sense to use _different_ output writers for different types of output.
 #     For example, reduced fields like `AveragedField` usually consume less disk space than
 #     two- or three-dimensional fields, and can thus be output more frequently without
 #     blowing up your hard drive. An arbitrary number of output writers may be added to
@@ -184,7 +187,6 @@ run!(simulation)
 # and build a time-series of the buoyancy flux,
 
 using JLD2
-using Oceananigans.Grids: nodes
 
 file = jldopen(simulation.output_writers[:simple_output].filepath)
 
@@ -197,11 +199,13 @@ nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
+using Oceananigans.Grids: nodes
+
 xw, yw, zw = nodes(model.velocities.w)
 xp, yp, zp = nodes(model.tracers.P)
 nothing # hide
 
-# Finally, we animate the convective plumes and plankton swirls,
+# Finally, we animate plankton mixing and blooming,
 
 using Plots
 
@@ -248,7 +252,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     P_profile = plot(averaged_P, zp,
                      linewidth = 2,
                      label = nothing,
-                     xlims = (0.9, 1.2),
+                     xlims = (0.9, 1.3),
                      ylabel = "z (m)",
                      xlabel = "Plankton concentration (μM)")
 
