@@ -260,6 +260,11 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                   compression = 0,
                                       verbose = false)
 
+    # We need to convert to a Dict with String keys if user provides a named tuple.
+    if outputs isa NamedTuple
+        outputs = Dict(string(k) => v for (k, v) in zip(keys(outputs), values(outputs)))
+    end
+
     # Ensure we can add any kind of metadata to the global attributes later by converting to pairs of type {Any, Any}.
     global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
 

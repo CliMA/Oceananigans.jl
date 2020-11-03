@@ -219,16 +219,10 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    outputs = Dict(
-        "v" => model.velocities.v,
-        "u" => model.velocities.u,
-        "w" => model.velocities.w,
-        "T" => model.tracers.T,
-        "S" => model.tracers.S
-    )
-
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10),
+    nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                                   filepath=nc_filepath,
+                                   schedule=IterationInterval(10),
                                    field_slicer=FieldSlicer(with_halos=true))
     push!(simulation.output_writers, nc_writer)
 
