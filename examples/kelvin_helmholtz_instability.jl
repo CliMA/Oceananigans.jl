@@ -171,6 +171,7 @@ function grow_instability!(simulation, energy)
 
     ## ½(u² + v²) ~ exp(2 σ Δτ)
     σ = growth_rate = log(energy₁ / energy₀) / 2Δτ
+    
     return growth_rate    
 end
 nothing # hide
@@ -211,26 +212,25 @@ convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18
 nothing # hide
 
 # and the main function that performs the power method iteration.
-# (Note that `estimate_growth_rate!()` also return the plot of the perturbation field after each iteration.
+# (Note that `estimate_growth_rate()` also return the plot of the perturbation field after each iteration.
 # This is not a requirement and can be disabled for speeding up the algorigithm but we'll keep it
 # here for illustration purposes.)
 """
-    estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-3)
+    estimate_growth_rate(simulation, energy, ω; convergence_criterion=1e-3)
 
 Estimates the growth rate iteratively until the relative change
 in the estimated growth rate ``σ`` falls below `convergence_criterion`.
 
 Returns ``σ``.
 """
-function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
+function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1e-3)
     σ = []
-    movie_frames = []
+
+    power_method_data = []
     
     compute!(ω)
     
-    frame = power_method_plot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
-    
-    push!(movie_frames, frame)
+    push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
     
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -246,14 +246,12 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
 
         compute!(ω)
         
-        frame = power_method_plot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
-        
-        push!(movie_frames, frame)
-        
         rescale!(simulation.model, energy)
+
+        push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
     end
 
-    return σ, movie_frames
+    return σ, power_method_data
 end
 nothing # hide
 
@@ -329,7 +327,7 @@ set!(model, u=noise, w=noise, b=noise)
 
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 
-growth_rates, power_method_frames = estimate_growth_rate!(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
+growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
 
 @info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
 
@@ -338,8 +336,8 @@ growth_rates, power_method_frames = estimate_growth_rate!(simulation, mean_pertu
 # We can animate the power method steps. A scatter plot illustrates how the growth rate converges
 # as the power method iterates,
 
-anim_powermethod = @animate for iteration in 1:length(growth_rates)
-    plot(power_method_frames[iteration])
+anim_powermethod = @animate for i in 1:length(power_method_data)
+    power_method_plot(power_method_data[i].ω, power_method_data[i].b, power_method_data[i].σ, nothing)
 end
 
 gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
