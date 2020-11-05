@@ -233,6 +233,10 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
     push!(movie_frames, frame)
     
     while convergence(σ) > convergence_criterion
+        compute!(energy)
+
+        @info @sprintf("About to start power method iteration %d; kinetic energy: %.2e", length(σ)+1, energy[1, 1, 1])
+
         push!(σ, grow_instability!(simulation, energy))
 
         compute!(energy)
@@ -247,10 +251,6 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
         push!(movie_frames, frame)
         
         rescale!(simulation.model, energy)
-
-        compute!(energy)
-        
-        @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
     end
 
     return σ, movie_frames
@@ -274,25 +274,27 @@ xC, yC, zC = nodes(b)
 
 eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
 
-eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
-
 function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
     
     kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color = :balance, aspectratio = 1,)
+    
+    ω_title(t) = t == nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
     
     plot_ω = contourf(xF, zF, clamp.(ω, -ω_lim, ω_lim)';
                       levels = range(-ω_lim, stop=ω_lim, length=20),
                       xlims = (xF[1], xF[grid.Nx]),
                       ylims = (zF[1], zF[grid.Nz]),
                       clims = (-ω_lim, ω_lim),
-                      title = "vorticity", kwargs...)
+                      title = ω_title(t), kwargs...)
                       
+    b_title(t) = t == nothing ? @sprintf("buoyancy") : @sprintf("buoyancy at t = %.2f", t)
+    
     plot_b = contourf(xC, zC, clamp.(b, -b_lim, b_lim)';
                     levels = range(-b_lim, stop=b_lim, length=20),
                     xlims = (xC[1], xC[grid.Nx]),
                     ylims = (zC[1], zC[grid.Nz]),
                     clims = (-b_lim, b_lim),
-                    title = "buoyancy", kwargs...)
+                    title = b_title(t), kwargs...)
                     
     return plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
 end
