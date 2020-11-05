@@ -31,7 +31,6 @@ short_show(f::Function) = string(Symbol(f))
 ##### Include utils
 #####
 
-include("adapt_structure.jl")
 include("units.jl")
 include("automatic_halo_sizing.jl")
 include("kernel_launching.jl")
