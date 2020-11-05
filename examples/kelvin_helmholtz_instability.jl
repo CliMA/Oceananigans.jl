@@ -15,7 +15,7 @@ grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
 # defined as,
 #
 # ```math
-# Ri = \frac{∂_z B}{∂_z U^2}
+# Ri = \frac{∂_z B}{(∂_z U)^2}
 # ```
 #
 # and the width of the stratification layer, ``h``.
@@ -42,7 +42,7 @@ kwargs = (ylabel="z", linewidth=2, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
-Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z); derivatives computed by hand
+Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
@@ -130,7 +130,13 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # For this example, we take ``\Delta \tau = 15``.
 
 simulation = Simulation(model, Δt=0.1, stop_iteration=150)
-                        
+              
+              
+# Now some helper functions that will be used during for the power method algorithm.
+# 
+# First a function that evolves the state for ``\Delta \tau`` and measure the energy growth
+# over that period.
+
 """
     grow_instability!(simulation, e)
 
@@ -166,14 +172,17 @@ function grow_instability!(simulation, energy)
     energy₁ = energy[1, 1, 1]
     Δτ = simulation.model.clock.time - t₀
 
-    ## (u² + v²) / 2 ~ exp(2 σ Δτ)
+    ## ½(u² + v²) ~ exp(2 σ Δτ)
     σ = growth_rate = log(energy₁ / energy₀) / 2Δτ
     return growth_rate    
 end
 nothing # hide
 
-# Finally, we write a function that rescales the velocity field
-# at the write
+# Finally, we write a function that rescales the state. The rescaling is done via measureing the
+# kinetic energy and then rescaling back to a prescribed energy value.
+# 
+# (Meauring the growth via kinetic energy will work fine _unless_ an unstable mode has _only_
+# buoynancy perturbation. In that case, the total perturbation energy will be adequate.)
 
 """
     rescale!(model, energy; target_kinetic_energy=1e-3)
@@ -195,12 +204,18 @@ end
 
 using Printf
 
+# Some more helper function for the power method,
+
 """ Compute the relative difference between ``σⁿ`` and ``σⁿ⁻¹``, avoiding `NaN`s. """
 relative_difference(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end-1]) : Inf
 
 """ Check if the growth rate has converged. If the array `σ` has at least 2 elements then return the relative difference between ``σ[end]`` and ``σ[end-1]``. """
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
 
+# and the main function that performs the power method iteration.
+# (Note that `estimate_growth_rate!()` also return the plot of the perturbation field after each iteration.
+# This is not a requirement and can be disabled for speeding up the algorigithm but we'll keep it
+# here for illustration purposes.)
 """
     estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-2)
 
