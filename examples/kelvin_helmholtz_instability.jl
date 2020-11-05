@@ -5,7 +5,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
+grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -37,6 +37,8 @@ using Plots, Oceananigans.Grids
 
 z = znodes(Cell, grid)
 
+zRi = znodes(Face, grid)
+
 Ri, h = B.parameters
 
 kwargs = (ylabel="z", linewidth=2, label=nothing)
@@ -45,7 +47,7 @@ kwargs = (ylabel="z", linewidth=2, label=nothing)
 
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
 
-Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
+Ri_plot = plot(@. Ri * sech(zRi / h)^2 / sech(zRi)^2, zRi; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
