@@ -50,16 +50,15 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # # Linear Instabilities
 #
 # The base state ``U(z)``, ``B(z)`` is a solution of the inviscid equations of motion. Whether the base state is 
-# stable or not is determined by whether small perturbations about this base state will grow or not. To formalize this 
-# we write down the linearized dynamics that the perturbations about the base state satisfy. These dynamics take the 
-# form
+# stable or not is determined by whether small perturbations about this base state grow or decay. To formalize this, 
+# we study the linearized dynamics satisfied by perturbations about the base state:
 # ```math
 # \partial_t \Phi = L \Phi \, .
 # ```
-# where ``\Phi = (u, v, w, b)`` is a vector of the perturbation velocities ``u, v, w``, and perturbation buoyancy ``b`` 
-# and the linear operator that depends on the base state, ``L = L(U(z), B(z))`` (the `background_fields`). 
+# where ``\Phi = (u, v, w, b)`` is a vector of the perturbation velocities ``u, v, w`` and perturbation buoyancy ``b`` 
+# and ``L`` a linear operator that depends on the base state, ``L = L(U(z), B(z))`` (the `background_fields`).
 # Eigenanalysis of the linear operator ``L`` determines the stability of the base state, such as the Kelvin-Helmholtz 
-# instability. That is, with the ansantz
+# instability. That is, by using the ansantz
 # ```math
 # \Phi(x, y, z, t) = \phi(x, y, z) \, \exp(\lambda t) \, ,
 # ```
@@ -67,7 +66,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
+# Here we use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
 #
 # Two remarks:
 # 
@@ -83,17 +82,17 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
 # ```
-# Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
+# Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \real(\lambda_1) > 0``), then successive application 
 # of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
 # lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each 
 # application of the linear operator ``L`` to our state ``\Phi``, we should rescale the output
 # ``L \Phi `` back to a pre-selected amplitude before applying ``L`` again.
 # 
 # So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
-# the base state (which are ``O(1)``). Instead of "applying" ``L`` on our initial state, we evolve it
-# for interval ``\Delta \tau``. We measure how much the energy has grown during that interval, rescale to 
-# original energy amplitude and repeat. After some iterations the state will converge to the most unstable
-# eigenmode.
+# the base state (which are ``O(1)``). Instead of "applying" ``L`` on our initial state, we evolve the
+# (approximately) linear dynamics for interval ``\Delta \tau``. We measure how much the energy has grown 
+# during that interval, rescale the perturbations back to original energy amplitude and repeat.
+# After some iterations the state will converge to the most unstable eigenmode.
 # 
 # In summary, each iteration of the power method includes:
 # - compute the perturbation energy, ``E_0``,
@@ -142,14 +141,15 @@ using the fractional change in volume-mean kinetic energy,
 over the course of the `simulation`
 
 ``
-energy(t₁) / energy(t₀) ≈ exp(2 σ (t₁ - t₀))
+energy(t₀ + Δτ) / energy(t₀) ≈ exp(2 σ Δτ)
 ``
 
-where ``t₀`` and ``t₁`` are the starting and ending times of the
-simulation. We thus find that the growth rate is measured by
+where ``t₀`` is the starting time of the simulation and ``t₀ + Δτ`` 
+the ending time of the simulation. We thus find that the growth rate 
+is measured by
 
 ``
-σ = log(energy(t₁) / energy(t₀)) / (2 * (t₁ - t₀)) .
+σ = log(energy(t₀ + Δτ) / energy(t₀)) / (2 * Δτ) .
 ``
 """
 function grow_instability!(simulation, energy)
