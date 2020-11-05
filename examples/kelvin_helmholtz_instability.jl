@@ -27,6 +27,7 @@ shear_flow(x, y, z, t) = tanh(z)
 stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
 U = BackgroundField(shear_flow)
+
 B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 # Our basic state thus has a thin layer of stratification in the center of
@@ -41,11 +42,12 @@ Ri, h = B.parameters
 kwargs = (ylabel="z", linewidth=2, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
+
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
+
 Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
-
 
 # # Linear Instabilities
 #
@@ -213,7 +215,7 @@ nothing # hide
 # This is not a requirement and can be disabled for speeding up the algorigithm but we'll keep it
 # here for illustration purposes.)
 """
-    estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-2)
+    estimate_growth_rate!(simulation, energy, ω; convergence_criterion=1e-3)
 
 Estimates the growth rate iteratively until the relative change
 in the estimated growth rate ``σ`` falls below `convergence_criterion`.
@@ -222,13 +224,14 @@ Returns ``σ``.
 """
 function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
     σ = []
-    
-    plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
+    movie_frames = []
     
     compute!(ω)
-    plotseries[1] = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
     
-    iteration = 1
+    frame = power_method_plot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+    
+    push!(movie_frames, frame)
+    
     while convergence(σ) > convergence_criterion
         push!(σ, grow_instability!(simulation, energy))
 
@@ -238,16 +241,19 @@ function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=
                        length(σ), energy[1, 1, 1], σ[end], relative_difference(σ))
 
         compute!(ω)
-        plotseries[iteration+1] = powermethodplot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
-        iteration += 1
+        
+        frame = power_method_plot(interior(ω)[:, 1, :], interior(b)[:, 1, :], σ, nothing)
+        
+        push!(movie_frames, frame)
         
         rescale!(simulation.model, energy)
+
         compute!(energy)
         
         @info @sprintf("Kinetic energy after rescaling: %.2e", energy[1, 1, 1])
     end
 
-    return σ, plotseries
+    return σ, movie_frames
 end
 nothing # hide
 
@@ -262,36 +268,43 @@ b = model.tracers.b
 
 perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
 
-x, y, z = nodes(perturbation_vorticity)
-xb, yb, zb = nodes(b)
+xF, yF, zF = nodes(perturbation_vorticity)
+
+xC, yC, zC = nodes(b)
 
 eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
+
 eigentitle(::Nothing, t) = @sprintf("Vorticity at t = %.2f", t)
 
 function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
+    
     kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color = :balance, aspectratio = 1,)
-    plot_ω = contourf(x, z, clamp.(ω, -ω_lim, ω_lim)';
+    
+    plot_ω = contourf(xF, zF, clamp.(ω, -ω_lim, ω_lim)';
                       levels = range(-ω_lim, stop=ω_lim, length=20),
-                      xlims = (grid.xF[1], grid.xF[grid.Nx]),
-                      ylims = (grid.zF[1], grid.zF[grid.Nz]),
+                      xlims = (xF[1], xF[grid.Nx]),
+                      ylims = (zF[1], zF[grid.Nz]),
                       clims = (-ω_lim, ω_lim),
                       title = "vorticity", kwargs...)
-    plot_b = contourf(xb, zb, clamp.(b, -b_lim, b_lim)';
+                      
+    plot_b = contourf(xC, zC, clamp.(b, -b_lim, b_lim)';
                     levels = range(-b_lim, stop=b_lim, length=20),
-                    xlims = (grid.xC[1], grid.xC[grid.Nx]),
-                    ylims = (grid.zC[1], grid.zC[grid.Nz]),
+                    xlims = (xC[1], xC[grid.Nx]),
+                    ylims = (zC[1], zC[grid.Nz]),
                     clims = (-b_lim, b_lim),
                     title = "buoyancy", kwargs...)
+                    
     return plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
 end
 
-function powermethodplot(ω, b, σ, t)
+function power_method_plot(ω, b, σ, t)
     plot_growthrates = scatter(σ,
                                 xlabel = "Power iteration",
                                 ylabel = "Growth rate",
-                                 title = title = eigentitle(σ, t),
+                                 title = eigentitle(σ, nothing),
                                  label = nothing)
-    plot_eigenmode = eigenplot(ω, b, σ, t)
+                                 
+    plot_eigenmode = eigenplot(ω, b, σ, nothing)
     
     return plot(plot_growthrates, plot_eigenmode, layout=@layout([A{0.25h}; B]), size=(800, 600))
 end
@@ -314,7 +327,7 @@ set!(model, u=noise, w=noise, b=noise)
 
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 
-growth_rates, powermethod_plotseries = estimate_growth_rate!(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
+growth_rates, power_method_frames = estimate_growth_rate!(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
 
 @info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
 
@@ -324,7 +337,7 @@ growth_rates, powermethod_plotseries = estimate_growth_rate!(simulation, mean_pe
 # as the power method iterates,
 
 anim_powermethod = @animate for iteration in 1:length(growth_rates)
-    plot(powermethod_plotseries[iteration])
+    plot(power_method_frames[iteration])
 end
 
 gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
