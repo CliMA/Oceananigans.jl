@@ -42,9 +42,74 @@ kwargs = (ylabel="z", linewidth=2, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
-Ri_plot = plot(Ri * sech.(z / h).^2 ./ sech.(z).^2, z; xlabel="Ri(z)", color=:black, kwargs...)
+Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z); derivatives computed by hand
 
-plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
+plot(U_plot, B_plot, Ri_plot, layout=(1, 3))
+
+
+# # Linear Instabilities
+#
+# The base state ``U(z)``, ``B(z)`` is a solution of the inviscid equations of motion. Whether the base state is 
+# stable or not is determined by whether small perturbations about this base state will grow or not. To formalize this 
+# we write down the linearized dynamics that the perturbations about the base state satisfy. These dynamics take the 
+# form
+# ```math
+# \partial_t \Phi = L \Phi \, .
+# ```
+# where ``\Phi = (u, v, w, b, p)`` is a vector of the perturbation velocities ``u, v, w``, perturbation buoyancy ``b``,
+# and perturbation pressure ``p`` and the linear operator that depends on the base state, ``L = L(U(z), B(z))`` (the 
+# `background_fields`). Eigenanalysis of the linear operator ``L`` determines the stability of the base state, such 
+# as the Kelvin-Helmholtz instability. That is, with the ansantz
+# ```math
+# \Phi(x, y, z, t) = \phi(x, y, z) \, \exp(\lambda t) \, ,
+# ```
+# then ``\lambda`` and ``\phi`` are the eigenvalue and eigenmode of ``L``,
+# ```math
+# L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
+# ```
+# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
+#
+# Two remarks:
+# 
+# - Oceananigans.jl, does not include a linearized version of the equations, but we can ensure we 
+# remain in the linear regime if keep our perturbation fields small thus ensuring that terms 
+# quadratic in perturbations are much smaller than all other terms. This way we get approximately: ``\partial_t 
+# \Phi \approx L \Phi``.
+# - Even with the small-amplitude trick, although Oceananigans.jl will be able to solve the 
+# approximately linear equations of motion, it won't allow us to get the linear operator ``L``
+# and perform eigendecomposition. 
+# 
+# This last "caveat" can be alleviated using the following algorithm.
+#
+# # A _Power_ful algorithm
+#
+# Successive application of ``L`` to a random initial state will render it parallel 
+# with eigenmode ``\phi_1``:
+# ```math
+# \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
+# ```
+# Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
+# of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
+# lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each 
+# application of the linear operator ``L`` to our state ``\Phi``, we should rescale the output
+# ``L \Phi `` back to a pre-selected amplitude before applying ``L`` again.
+# 
+# So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
+# the base state (which are ``O(1)``). Instead of "applying" ``L`` on our initial state, we evolve it
+# for interval ``\Delta \tau``. We measure how much the energy has grown during that interval, rescale to 
+# original energy amplitude and repeat. After some iterations the state will converge to the most unstable
+# eigenmode.
+# 
+# In summary, each iteration of the power method includes:
+# - compute the perturbation energy, ``E_0``,
+# - evolve the system for a time-interval ``\Delta \tau``,
+# - compute the perturbation energy, ``E_1``,
+# - determine the exponential growth of the most unstable mode during the interval ``\Delta \tau`` as  ``\log(E_1 / E_0) / (2 \Delta \tau)``,
+# - repeat the above until growth rate converges.
+# 
+# By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
+# 
+# Let's apply all these to our example.
 
 # # The model
 
@@ -59,50 +124,12 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
-# # A _Power_ful algorithm
-#
-# We will find the most unstable mode of the Kelvin-Helmholtz instability using the "power method". 
-# Linear instabilities, such as the Kelvin-Helmholtz instability, are described by linearized equations about a base state that take the form
-# ```math
-# \partial_t \Phi = L \Phi \, .
-# ```
-# In this example, ``\Phi = (u, v, w, b)`` is a vector of the velocities ``u, v, w``, and 
-# buoyancy ``b`` and ``L`` is a linear operator that depends on the base state (the `background_fields`) and other problem parameters.
-#
-# The linear operator ``L`` has eigenmodes ``u_j`` and corresponding and corresponding 
-# eigenvalues ``\lambda_j``,
-# ```math
-# L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
-# ```
-# We use the convention that eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
-# 
-# Successive application of ``L`` to a random initial state will render it parallel 
-# with eigenmode ``\phi_1``:
-# ```math
-# \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
-# ```
-# Of course, if ``\phi_1`` is an unstable mode, i.e., its eigenvalue has ``\sigma_1 = \real(\lambda_1) > 0``, then successive application 
-# of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
-# lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each 
-# application of the linear operator ``L`` to our state ``\Phi``, we should rescale the output ``L \Phi `` back to a pre-selected amplitude before applying ``L`` again.
-# 
-# Oceananigans.jl, does not include a "linear" version of the equations, but we can ensure we 
-# remain in the "linear" regime if we pick the pre-selected amplitude to be small enough, i.e.,
-# ensuring that terms quadratic in perturbations are much smaller than all other terms.
-# 
-# So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
-# the base state (which are ``O(1)``). Each iteration of the power method includes:
-# - compute the perturbation energy, ``E_0``,
-# - evolve the system for a time-interval ``\Delta \tau``,
-# - compute the perturbation energy, ``E_1``,
-# - determine the exponential growth of the most unstable mode during the interval ``\Delta \tau`` as  ``\log(E_1 / E_0) / (2 \Delta \tau)``,
-# - repeat the above until growth rate converges.
-# 
-# By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
-# 
+# We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown: 
+# viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point it becomes nonlinear.
+
 # For this example, we take ``\Delta \tau = 15``.
 
-simulation = Simulation(model, Δt=0.1, iteration_interval=30, stop_iteration=150)
+simulation = Simulation(model, Δt=0.1, stop_iteration=150)
                         
 """
     grow_instability!(simulation, e)
@@ -182,7 +209,7 @@ in the estimated growth rate ``σ`` falls below `convergence_criterion`.
 
 Returns ``σ``.
 """
-function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=5e-3)
+function estimate_growth_rate!(simulation, energy, ω, b; convergence_criterion=1e-3)
     σ = []
     
     plotseries = Array{Any, 1}(undef, 20)  # expect no more than 20 iterations
