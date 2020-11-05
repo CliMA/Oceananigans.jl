@@ -39,7 +39,8 @@ examples = [
     "convecting_plankton.jl",
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
-    "eady_turbulence.jl"
+    "eady_turbulence.jl",
+    "kelvin_helmholtz_instability.jl"
 ]
 
 for example in examples
@@ -58,7 +59,8 @@ example_pages = [
     "Convecting plankton"              => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md"
+    "Eady turbulence"                  => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
 ]
 
 model_setup_pages = [
