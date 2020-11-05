@@ -64,18 +64,18 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # \Phi(x, y, z, t) = \phi(x, y, z) \, \exp(\lambda t) \, ,
 # ```
-# then ``\lambda`` and ``\phi`` are respectivealy eigenvalues and eigenmodes of ``L``,
+# then ``\lambda`` and ``\phi`` are respectively eigenvalues and eigenmodes of ``L``, i.e., they obey
 # ```math
-# L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
+# L \, \phi_j = \lambda_j \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# Here we use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
+# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
 #
 # Two remarks:
 # 
 # - Oceananigans.jl, does not include a linearized version of the equations, but we can ensure we remain in the linear regime if keep our perturbation fields small thus ensuring that terms quadratic in perturbations are much smaller than all other terms. This way we get approximately: ``\partial_t \Phi \approx L \Phi``.
-# - Even with the small-amplitude trick, although Oceananigans.jl will be able to solve the approximately linear equations of motion, it won't allow us to get the linear operator ``L`` and perform eigendecomposition. 
+# - While using the small-amplitude trick Oceananigans.jl is able to solve the approximately linear equations of motion, we still don't have access to the linear operator ``L`` to perform eigendecomposition. 
 # 
-# This last "caveat" can be alleviated using the following algorithm.
+# This last caveat is bypassed with the following algorithm.
 #
 # # A _Power_ful algorithm
 #
@@ -85,10 +85,9 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
 # ```
 # Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \real(\lambda_1) > 0``), then successive application 
-# of ``L`` will lead to exponential amplification. (Or, if ``\sigma_1 < 0``, it will
+# of ``L`` will lead to exponential amplification. (Similarly, if ``\sigma_1 < 0``, successive application of ``L`` will
 # lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each 
-# application of the linear operator ``L`` to our state ``\Phi``, we should rescale the output
-# ``L \Phi `` back to a pre-selected amplitude before applying ``L`` again.
+# application of the linear operator ``L``, we rescale the output ``L \Phi`` back to a pre-selected amplitude.
 # 
 # So, we initialize a `simulation` with random initial conditions with amplitude much less than those of
 # the base state (which are ``O(1)``). Instead of "applying" ``L`` on our initial state, we evolve the
@@ -126,8 +125,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 # For this example, we take ``\Delta \tau = 15``.
 
 simulation = Simulation(model, Δt=0.1, stop_iteration=150)
-              
-              
+
 # Now some helper functions that will be used during for the power method algorithm.
 # 
 # First a function that evolves the state for ``\Delta \tau`` and measure the energy growth
@@ -280,30 +278,30 @@ function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(ab
     
     plot_ω = contourf(xF, zF, clamp.(ω, -ω_lim, ω_lim)';
                       levels = range(-ω_lim, stop=ω_lim, length=20),
-                      xlims = (xF[1], xF[grid.Nx]),
-                      ylims = (zF[1], zF[grid.Nz]),
-                      clims = (-ω_lim, ω_lim),
-                      title = ω_title(t), kwargs...)
+                       xlims = (xF[1], xF[grid.Nx]),
+                       ylims = (zF[1], zF[grid.Nz]),
+                       clims = (-ω_lim, ω_lim),
+                       title = ω_title(t), kwargs...)
                       
     b_title(t) = t == nothing ? @sprintf("buoyancy") : @sprintf("buoyancy at t = %.2f", t)
     
     plot_b = contourf(xC, zC, clamp.(b, -b_lim, b_lim)';
                     levels = range(-b_lim, stop=b_lim, length=20),
-                    xlims = (xC[1], xC[grid.Nx]),
-                    ylims = (zC[1], zC[grid.Nz]),
-                    clims = (-b_lim, b_lim),
-                    title = b_title(t), kwargs...)
+                     xlims = (xC[1], xC[grid.Nx]),
+                     ylims = (zC[1], zC[grid.Nz]),
+                     clims = (-b_lim, b_lim),
+                     title = b_title(t), kwargs...)
                     
     return plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
 end
 
 function power_method_plot(ω, b, σ, t)
     plot_growthrates = scatter(σ,
-                                xlabel = "Power iteration",
-                                ylabel = "Growth rate",
-                                 title = eigentitle(σ, nothing),
-                                 label = nothing)
-                                 
+                             xlabel = "Power iteration",
+                             ylabel = "Growth rate",
+                              title = eigentitle(σ, nothing),
+                              label = nothing)
+                             
     plot_eigenmode = eigenplot(ω, b, σ, nothing)
     
     return plot(plot_growthrates, plot_eigenmode, layout=@layout([A{0.25h}; B]), size=(800, 600))
@@ -401,8 +399,7 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
     
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
-    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
-    
+    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]  
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
