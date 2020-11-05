@@ -308,16 +308,16 @@ function run_netcdf_function_output_tests(arch)
     h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
                                     .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
 
-    outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h)
-       dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+    outputs = (scalar=f, profile=g, slice=h)
+    dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
 
-    output_attributes = Dict(
-        "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
-        "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-        "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+    output_attributes = (
+        scalar = (longname="Some scalar", units="bananas"),
+        profile = (longname="Some vertical profile", units="watermelons"),
+        slice = (longname="Some slice", units="mushrooms")
     )
 
-    global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
+    global_attributes = (location="Bay of Fundy", onions=7)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 

@@ -7,6 +7,9 @@ using Dates: now
 using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 
+dictify(outputs) = outputs
+dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
+
 xdim(::Type{Face}) = ("xF",) 
 ydim(::Type{Face}) = ("yF",)
 zdim(::Type{Face}) = ("zF",)
@@ -261,12 +264,13 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                       verbose = false)
 
     # We need to convert to a Dict with String keys if user provides a named tuple.
-    if outputs isa NamedTuple
-        outputs = Dict(string(k) => v for (k, v) in zip(keys(outputs), values(outputs)))
-    end
+    outputs = dictify(outputs)
+    output_attributes = dictify(output_attributes)
+    global_attributes = dictify(global_attributes)
+    dimensions = dictify(dimensions)
 
-    # Ensure we can add any kind of metadata to the global attributes later by converting to pairs of type {Any, Any}.
-    global_attributes = Dict{Any, Any}(k => v for (k, v) in global_attributes)
+    # Ensure we can add any kind of metadata to the global attributes later by converting to Dict{Any, Any}.
+    global_attributes = Dict{Any, Any}(global_attributes)
 
     # Add useful metadata
     global_attributes["date"] = "This file was generated on $(now())."
