@@ -44,7 +44,7 @@ kwargs = (ylabel="z", linewidth=2, label=nothing)
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
 Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z); derivatives computed by hand
 
-plot(U_plot, B_plot, Ri_plot, layout=(1, 3))
+plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 
 # # Linear Instabilities
