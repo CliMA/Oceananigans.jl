@@ -56,14 +56,14 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # \partial_t \Phi = L \Phi \, .
 # ```
-# where ``\Phi = (u, v, w, b, p)`` is a vector of the perturbation velocities ``u, v, w``, perturbation buoyancy ``b``,
-# and perturbation pressure ``p`` and the linear operator that depends on the base state, ``L = L(U(z), B(z))`` (the 
-# `background_fields`). Eigenanalysis of the linear operator ``L`` determines the stability of the base state, such 
-# as the Kelvin-Helmholtz instability. That is, with the ansantz
+# where ``\Phi = (u, v, w, b)`` is a vector of the perturbation velocities ``u, v, w``, and perturbation buoyancy ``b`` 
+# and the linear operator that depends on the base state, ``L = L(U(z), B(z))`` (the `background_fields`). 
+# Eigenanalysis of the linear operator ``L`` determines the stability of the base state, such as the Kelvin-Helmholtz 
+# instability. That is, with the ansantz
 # ```math
 # \Phi(x, y, z, t) = \phi(x, y, z) \, \exp(\lambda t) \, ,
 # ```
-# then ``\lambda`` and ``\phi`` are the eigenvalue and eigenmode of ``L``,
+# then ``\lambda`` and ``\phi`` are respectivealy eigenvalues and eigenmodes of ``L``,
 # ```math
 # L \, \phi_j = \lambda \, \phi_j \quad j=1,2,\dots \, .
 # ```
@@ -71,13 +71,8 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 #
 # Two remarks:
 # 
-# - Oceananigans.jl, does not include a linearized version of the equations, but we can ensure we 
-# remain in the linear regime if keep our perturbation fields small thus ensuring that terms 
-# quadratic in perturbations are much smaller than all other terms. This way we get approximately: ``\partial_t 
-# \Phi \approx L \Phi``.
-# - Even with the small-amplitude trick, although Oceananigans.jl will be able to solve the 
-# approximately linear equations of motion, it won't allow us to get the linear operator ``L``
-# and perform eigendecomposition. 
+# - Oceananigans.jl, does not include a linearized version of the equations, but we can ensure we remain in the linear regime if keep our perturbation fields small thus ensuring that terms quadratic in perturbations are much smaller than all other terms. This way we get approximately: ``\partial_t \Phi \approx L \Phi``.
+# - Even with the small-amplitude trick, although Oceananigans.jl will be able to solve the approximately linear equations of motion, it won't allow us to get the linear operator ``L`` and perform eigendecomposition. 
 # 
 # This last "caveat" can be alleviated using the following algorithm.
 #
@@ -181,8 +176,8 @@ nothing # hide
 # Finally, we write a function that rescales the state. The rescaling is done via measureing the
 # kinetic energy and then rescaling back to a prescribed energy value.
 # 
-# (Meauring the growth via kinetic energy will work fine _unless_ an unstable mode has _only_
-# buoynancy perturbation. In that case, the total perturbation energy will be adequate.)
+# (Measuring the growth via the kinetic energy works fine _unless_ an unstable mode has _only_
+# buoynancy structure. In that case, the total perturbation energy will be adequate.)
 
 """
     rescale!(model, energy; target_kinetic_energy=1e-3)
@@ -211,6 +206,7 @@ relative_difference(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end-1]
 
 """ Check if the growth rate has converged. If the array `σ` has at least 2 elements then return the relative difference between ``σ[end]`` and ``σ[end-1]``. """
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
+nothing # hide
 
 # and the main function that performs the power method iteration.
 # (Note that `estimate_growth_rate!()` also return the plot of the perturbation field after each iteration.
