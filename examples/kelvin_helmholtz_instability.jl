@@ -118,7 +118,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
+                                closure = IsotropicDiffusivity(ν=2e-4, κ=2e-4),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
@@ -359,7 +359,8 @@ simulation.stop_time = 5 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
-rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-4)
+initial_eigenmode_energy = 5e-5
+rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=initial_eigenmode_energy)
 
 # Let's save and plot the perturbation vorticity and the
 # total vorticity (perturbation + basic state):
@@ -370,7 +371,7 @@ total_vorticity = ComputedField(∂z(u) + ∂z(model.background_fields.velocitie
 total_b = ComputedField(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
-    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b),
+    JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
                      schedule = TimeInterval(0.10 / estimated_growth_rate),
                      prefix = "kelvin_helmholtz_instability",
                      force = true)
@@ -382,7 +383,8 @@ run!(simulation)
 
 # ## Pretty things
 #
-# Load it; plot it. First the nonlinear equilibration of the perturbation fields.
+# Load it; plot it. First the nonlinear equilibration of the perturbation fields together with the evolution of the
+# kinetic energy.
 
 using JLD2
 
@@ -392,6 +394,9 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 @info "Making a neat movie of stratified shear flow..."
 
+time = []
+KE = []
+
 anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
@@ -400,12 +405,40 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
     ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
     b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
     
-    eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.1)
+    ke = file["timeseries/KE/$iteration"][]
+    
+    push!(time, t)
+    push!(KE, ke)
+    
+    energy_plot = plot([0, simulation.stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, simulation.stop_time]),
+             label = "~ exp(2 σ t)",
+            legend = :topleft,
+                lw = 2,
+             color = :black,
+             yaxis = :log,
+             xlims = (0, simulation.stop_time),
+             ylims = (initial_eigenmode_energy, 1e-1),
+            xlabel = "time",
+            ylabel = "kinetic energy",
+            )
+            
+    energy_plot = plot!(time, KE,
+              label = "perturbation kinetic energy",
+              lw = 6,
+              alpha = 0.5)
+            
+    eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
+  
+    plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
+
 end
 
 gif(anim_perturbations, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
 
-# And then the total vorticity & buoyancy of the fluid.
+# And then the same for total vorticity & buoyancy of the fluid.
+
+time = []
+KE = []
 
 anim_total = @animate for (i, iteration) in enumerate(iterations)
 
@@ -414,8 +447,31 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
     b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
+    ke = file["timeseries/KE/$iteration"][]
     
-    eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
+    push!(time, t)
+    push!(KE, ke)
+    
+    energy_plot = plot([0, simulation.stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, simulation.stop_time]),
+             label = "~ exp(2 σ t)",
+            legend = :topleft,
+                lw = 2,
+             color = :black,
+             yaxis = :log,
+             xlims = (0, simulation.stop_time),
+             ylims = (initial_eigenmode_energy, 1e-1),
+            xlabel = "time",
+            ylabel = "kinetic energy",
+            )
+            
+    energy_plot = plot!(time, KE,
+              label = "perturbation kinetic energy",
+              lw = 6,
+              alpha = 0.5)
+            
+    eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
+  
+    plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
 end
 
 gif(anim_total, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
