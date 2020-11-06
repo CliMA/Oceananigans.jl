@@ -59,9 +59,16 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # which we'll need for the initial condition.
 #
-# Note that `Oceananigans.jl` implements the Lagrangian-mean form of the Craik-Leibovich
-# equations. This means `Oceananigans.jl` takes the *vertical derivative of the Stokes drift*
-# as input, rather than the Stokes drift profile itself.
+# !!! The Craik-Leibovich equations in Oceananigans
+#     Oceananigans implements the Craik-Leibovich approximation for surface wave effects
+#     using the _Lagrangian-mean_ velocity field as its prognostic momentum variable.
+#     In other words, `model.velocities.u` is the Lagrangian-mean ``x``-velocity beneath surface
+#     waves. This differs from models that use the _Eulerian-mean_ velocity field
+#     as a prognostic variable, but has the advantage that ``u`` accounts for the total advection
+#     of tracers and momentum, and that ``u = v = w = 0`` is a steady solution even when Coriolis
+#     forces are present. See the
+#     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
+#     for more information.
 #
 # The vertical derivative of the Stokes drift is
 
@@ -92,7 +99,8 @@ N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
                                                        bottom = BoundaryCondition(Gradient, N²))
 
-# !!! Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
+# !!! The flux convention in Oceananigans
+#     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
 #     a negative flux at the surface drives positive velocities, and a positive flux of
 #     buoyancy drives cooling.
 
@@ -274,7 +282,7 @@ iterations = parse.(Int, keys(fields_file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
-function nice_divergent_levels(c, clim; nlevels=21)
+function nice_divergent_levels(c, clim; nlevels=20)
     levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
