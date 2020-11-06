@@ -9,7 +9,7 @@
 # explains the explosive bloom of oceanic phytoplankton
 # observed in spring.
 #
-# The phytoplankton in our model advect, diffuse, grow, and die according to
+# The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
 # ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
