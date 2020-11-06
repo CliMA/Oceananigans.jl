@@ -5,7 +5,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(256, 1, 257), x=(-5, 5), y=(0, 1), z=(-5, 5),
+grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -111,11 +111,11 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                              advection = WENO5(),
+                              advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=5e-6, κ=5e-6),
+                                closure = IsotropicDiffusivity(ν=2e-4, κ=2e-4),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
@@ -124,7 +124,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 # For this example, we take ``\Delta \tau = 15``.
 
-simulation = Simulation(model, Δt=0.05, stop_iteration=150)
+simulation = Simulation(model, Δt=0.1, stop_iteration=150)
 
 # Now some helper functions that will be used during for the power method algorithm.
 # 
@@ -348,7 +348,7 @@ model.clock.time = 0
 
 estimated_growth_rate = growth_rates[end]
 
-simulation.stop_time = 10 / estimated_growth_rate
+simulation.stop_time = 5 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
@@ -418,8 +418,8 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = circshift(file["timeseries/ω/$iteration"][:, 1, :], 140)
-    b_snapshot = circshift(file["timeseries/b/$iteration"][:, 1, :], 140)
+    ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
@@ -445,8 +445,8 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = circshift(file["timeseries/Ω/$iteration"][:, 1, :], 140)
-    b_snapshot = circshift(file["timeseries/B/$iteration"][:, 1, :], 140)
+    ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
