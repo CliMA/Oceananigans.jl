@@ -5,7 +5,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
+grid = RegularCartesianGrid(size=(256, 1, 257), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -39,7 +39,7 @@ z = znodes(Cell, grid)
 
 Ri, h = B.parameters
 
-kwargs = (ylabel="z", linewidth=2, label=nothing)
+kwargs = (ylabel="z", linewidth=3, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
 
@@ -111,11 +111,11 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                              advection = UpwindBiasedFifthOrder(),
+                              advection = WENO5(),
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=2e-4, κ=2e-4),
+                                closure = IsotropicDiffusivity(ν=5e-6, κ=5e-6),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
@@ -124,7 +124,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 # For this example, we take ``\Delta \tau = 15``.
 
-simulation = Simulation(model, Δt=0.1, stop_iteration=150)
+simulation = Simulation(model, Δt=0.05, stop_iteration=150)
 
 # Now some helper functions that will be used during for the power method algorithm.
 # 
@@ -174,11 +174,11 @@ function grow_instability!(simulation, energy)
 end
 nothing # hide
 
-# Finally, we write a function that rescales the state. The rescaling is done via measureing the
-# kinetic energy and then rescaling back to a prescribed energy value.
+# Finally, we write a function that rescales the state. The rescaling is done via computing the
+# kinetic energy and then rescaling all flow fields so that the kinetic energy assumes a targetted value.
 # 
-# (Measuring the growth via the kinetic energy works fine _unless_ an unstable mode has _only_
-# buoynancy structure. In that case, the total perturbation energy will be adequate.)
+# (Measuring the perturbation growth via the kinetic energy works fine _unless_ an unstable mode _only_ has 
+# buoyancy structure. In that case, the total perturbation energy is more adequate.)
 
 """
     rescale!(model, energy; target_kinetic_energy=1e-3)
@@ -202,17 +202,17 @@ using Printf
 
 # Some more helper function for the power method,
 
-""" Compute the relative difference between ``σⁿ`` and ``σⁿ⁻¹``, avoiding `NaN`s. """
-relative_difference(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end-1]) : Inf
-
-""" Check if the growth rate has converged. If the array `σ` has at least 2 elements then return the relative difference between ``σ[end]`` and ``σ[end-1]``. """
+""" 
+    convergence(σ)
+    
+Check if the growth rate has converged. If the array `σ` has at least 2 elements then returns the
+relative difference between ``σ[end]`` and ``σ[end-1]``.
+"""
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
 nothing # hide
 
 # and the main function that performs the power method iteration.
-# (Note that `estimate_growth_rate()` also return the plot of the perturbation field after each iteration.
-# This is not a requirement and can be disabled for speeding up the algorigithm but we'll keep it
-# here for illustration purposes.)
+
 """
     estimate_growth_rate(simulation, energy, ω; convergence_criterion=1e-3)
 
@@ -240,7 +240,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
         compute!(energy)
 
         @info @sprintf("Power method iteration %d, kinetic energy: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
-                       length(σ), energy[1, 1, 1], σ[end], relative_difference(σ))
+                       length(σ), energy[1, 1, 1], σ[end], convergence(σ))
 
         compute!(ω)
         
@@ -310,10 +310,7 @@ nothing # hide
 
 # # Rev your engines...
 #
-# We initialize the power iteration with random noise.
-# The amplitude of the initial condition is arbitrary since our algorithm
-# will rescale the velocity field iteratively until the simulation's stop_criteria
-# is no longer met.
+# We initialize the power iteration with random noise and rescale to have a `target_kinetic_energy`
 
 using Random, Statistics, Oceananigans.AbstractOperations
 
@@ -331,7 +328,7 @@ growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturba
 
 # # Powerful convergence
 #
-# We can animate the power method steps. A scatter plot illustrates how the growth rate converges
+# We animate the power method steps. A scatter plot illustrates how the growth rate converges
 # as the power method iterates,
 
 anim_powermethod = @animate for i in 1:length(power_method_data)
@@ -342,7 +339,7 @@ gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
 
 # # Now for the fun part
 #
-# Now we simulate the nonlinear evolution of the perfect eigenmode
+# Now we simulate the nonlinear evolution of the eigenmode
 # we've isolated for a few e-folding times ``1/\sigma``,
 
 ## Reset the clock
@@ -351,19 +348,21 @@ model.clock.time = 0
 
 estimated_growth_rate = growth_rates[end]
 
-simulation.stop_time = 5 / estimated_growth_rate
+simulation.stop_time = 10 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
 initial_eigenmode_energy = 5e-5
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=initial_eigenmode_energy)
 
-# Let's save and plot the perturbation vorticity and the
-# total vorticity (perturbation + basic state):
+# Let's save and plot the perturbation vorticity and buoyancy and also the total vorticity and 
+# buoyancy (perturbation + basic state). It'll be also neat to plot the kinetic energy time-series
+# and confirm it grows with the estimated growth rate.
 
 using Oceananigans.OutputWriters
 
 total_vorticity = ComputedField(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
+
 total_b = ComputedField(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
@@ -372,7 +371,7 @@ simulation.output_writers[:vorticity] =
                      prefix = "kelvin_helmholtz_instability",
                      force = true)
 
-# And now we
+# And now we...
 
 @info "*** Running a simulation of Kelvin-Helmholtz instability..."
 run!(simulation)
@@ -390,22 +389,8 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 @info "Making a neat movie of stratified shear flow..."
 
-time = []
-KE = []
-
-anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
-
-    @info "Plotting frame $i from iteration $iteration..."
-    
-    t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
-    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]  
-    ke = file["timeseries/KE/$iteration"][]
-    
-    push!(time, t)
-    push!(KE, ke)
-    
-    energy_plot = plot([0, simulation.stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, simulation.stop_time]),
+function plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, stop_time)
+    energy_plot = plot([0, stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, stop_time]),
              label = "~ exp(2 σ t)",
             legend = :topleft,
                 lw = 2,
@@ -421,7 +406,27 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
               label = "perturbation kinetic energy",
               lw = 6,
               alpha = 0.5)
-            
+              
+    return energy_plot
+end
+
+time = []
+KE = []
+
+anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
+
+    @info "Plotting frame $i from iteration $iteration..."
+    
+    t = file["timeseries/t/$iteration"]
+    ω_snapshot = circshift(file["timeseries/ω/$iteration"][:, 1, :], 140)
+    b_snapshot = circshift(file["timeseries/b/$iteration"][:, 1, :], 140)
+    ke = file["timeseries/KE/$iteration"][]
+    
+    push!(time, t)
+    push!(KE, ke)
+    
+    energy_plot = plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
+    
     eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
   
     plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
@@ -440,29 +445,14 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
-    b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
+    ω_snapshot = circshift(file["timeseries/Ω/$iteration"][:, 1, :], 140)
+    b_snapshot = circshift(file["timeseries/B/$iteration"][:, 1, :], 140)
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
     push!(KE, ke)
     
-    energy_plot = plot([0, simulation.stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, simulation.stop_time]),
-             label = "~ exp(2 σ t)",
-            legend = :topleft,
-                lw = 2,
-             color = :black,
-             yaxis = :log,
-             xlims = (0, simulation.stop_time),
-             ylims = (initial_eigenmode_energy, 1e-1),
-            xlabel = "time",
-            ylabel = "kinetic energy",
-            )
-            
-    energy_plot = plot!(time, KE,
-              label = "perturbation kinetic energy",
-              lw = 6,
-              alpha = 0.5)
+    energy_plot = plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
             
     eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
   
