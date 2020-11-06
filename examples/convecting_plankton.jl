@@ -41,7 +41,7 @@ grid = RegularCartesianGrid(size=(64, 1, 64), extent=(64, 1, 64))
 
 # ## Boundary conditions
 #
-# We impose a time-dependent, decaying buoyancy loss at the surface,
+# We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
 using Oceananigans.Utils
 
@@ -52,6 +52,20 @@ buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
 
 buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
 
+# The fourth power in the argument of `exp` above helps keep the buoyancy flux relatively
+# constant during the first phase of the simulation. We produce a plot of this time-dependent
+# buoyancy flux for the visually-oriented,
+
+using Plots, Measures
+
+time = range(0, 12hours, length=100)
+
+flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in time],
+                 linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
+                 size = (800, 300), margin = 5mm, label = nothing)
+
+# The buoyancy flux effectively shuts off after approximately 6 hours of simulation time.
+#
 # !!! info "The flux convention in Oceananigans.jl"
 #     Fluxes are defined by the direction a quantity is carried: _positive_ velocities
 #     produce _positive_ fluxes, while _negative_ velocities produce _negative_ fluxes.
@@ -60,8 +74,7 @@ buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_
 #     flux of buoyancy at the top boundary reduces the buoyancy of near-surface fluid,
 #     causing convection.
 #
-# The initial condition and bottom boundary condition impose
-# the constant buoyancy gradient
+# The initial condition and bottom boundary condition impose the constant buoyancy gradient
 
 N² = 1e-4 # s⁻²
 
@@ -272,7 +285,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
           label = nothing)
 
     scatter!(flux_plot, times[i:i] / hour, buoyancy_flux_time_series[i:i],
-             markershape = :rtriangle,
+             markershape = :circle,
              color = :steelblue,
              markerstrokewidth = 0,
              markersize = 15, 
