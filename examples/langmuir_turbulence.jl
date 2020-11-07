@@ -59,7 +59,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # which we'll need for the initial condition.
 #
-# !!! The Craik-Leibovich equations in Oceananigans
+# !!! info "The Craik-Leibovich equations in Oceananigans"
 #     Oceananigans implements the Craik-Leibovich approximation for surface wave effects
 #     using the _Lagrangian-mean_ velocity field as its prognostic momentum variable.
 #     In other words, `model.velocities.u` is the Lagrangian-mean ``x``-velocity beneath surface
