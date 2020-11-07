@@ -5,7 +5,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(256, 1, 257), x=(-5, 5), y=(0, 1), z=(-5, 5),
+grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -35,17 +35,18 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 using Plots, Oceananigans.Grids
 
-z = znodes(Cell, grid)
+zF = znodes(Face, grid)
+zC = znodes(Cell, grid)
 
 Ri, h = B.parameters
 
 kwargs = (ylabel="z", linewidth=3, label=nothing)
 
- U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
+ U_plot = plot(shear_flow.(0, 0, zC, 0), zC; xlabel="U(z)", kwargs...)
 
- B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
+ B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; xlabel="B(z)", color=:red, kwargs...)
 
-Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
+Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
@@ -111,11 +112,11 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 using Oceananigans.Advection
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
-                              advection = WENO5(),
+                              advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=5e-6, κ=5e-6),
+                                closure = IsotropicDiffusivity(ν=2e-4, κ=2e-4),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 
@@ -124,7 +125,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 # For this example, we take ``\Delta \tau = 15``.
 
-simulation = Simulation(model, Δt=0.05, stop_iteration=150)
+simulation = Simulation(model, Δt=0.1, stop_iteration=150)
 
 # Now some helper functions that will be used during for the power method algorithm.
 # 
@@ -348,7 +349,7 @@ model.clock.time = 0
 
 estimated_growth_rate = growth_rates[end]
 
-simulation.stop_time = 10 / estimated_growth_rate
+simulation.stop_time = 5 / estimated_growth_rate
 simulation.stop_iteration = 9.1e18 # pretty big (not Inf tho)
 
 ## Rescale the eigenmode
@@ -418,8 +419,8 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = circshift(file["timeseries/ω/$iteration"][:, 1, :], 140)
-    b_snapshot = circshift(file["timeseries/b/$iteration"][:, 1, :], 140)
+    ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
@@ -445,8 +446,8 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     @info "Plotting frame $i from iteration $iteration..."
     
     t = file["timeseries/t/$iteration"]
-    ω_snapshot = circshift(file["timeseries/Ω/$iteration"][:, 1, :], 140)
-    b_snapshot = circshift(file["timeseries/B/$iteration"][:, 1, :], 140)
+    ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
+    b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
     ke = file["timeseries/KE/$iteration"][]
     
     push!(time, t)
