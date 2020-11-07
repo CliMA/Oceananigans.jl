@@ -234,14 +234,12 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
 
     w_max = maximum(abs, w) + 1e-9
-    w_lim = 0.01
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
     P_lims = (0.95, 1.1)
 
-    w_levels = range(-w_lim, stop=w_lim, length=21)
-    w_lim < w_max && (w_levels = vcat([-w_max], w_levels, [w_max]))
+    w_levels = range(-w_max, stop=w_max, length=20)
 
     P_levels = collect(range(P_lims[1], stop=P_lims[2], length=20))
     P_lims[1] > P_min && pushfirst!(P_levels, P_min)
@@ -250,10 +248,10 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x (m)", ylabel="y (m)", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(-model.grid.Lz, 0))
 
-    w_contours = contourf(xw, zw, clamp.(w, -w_lim, w_lim)';
+    w_contours = contourf(xw, zw, w';
                           color = :balance,
                           levels = w_levels,
-                          clims = (-w_lim, w_lim),
+                          clims = (-w_max, w_max),
                           kwargs...)
 
     P_contours = contourf(xp, zp, clamp.(P, P_lims[1], P_lims[2])';
