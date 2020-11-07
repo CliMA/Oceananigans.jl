@@ -250,13 +250,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x (m)", ylabel="y (m)", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(-model.grid.Lz, 0))
 
-    w_contours = contourf(xw, zw, w';
+    w_contours = contourf(xw, zw, clamp.(w, -w_lim, w_lim)';
                           color = :balance,
                           levels = w_levels,
                           clims = (-w_lim, w_lim),
                           kwargs...)
 
-    P_contours = contourf(xp, zp, P';
+    P_contours = contourf(xp, zp, clamp.(P, P_lims[1], P_lims[2])';
                           color = :matter,
                           levels = P_levels,
                           clims = P_lims,
