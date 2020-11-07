@@ -99,7 +99,7 @@ N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
                                                        bottom = BoundaryCondition(Gradient, N²))
 
-# !!! The flux convention in Oceananigans
+# !!! info "The flux convention in Oceananigans"
 #     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
 #     a negative flux at the surface drives positive velocities, and a positive flux of
 #     buoyancy drives cooling.
