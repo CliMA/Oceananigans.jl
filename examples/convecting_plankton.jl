@@ -239,9 +239,6 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     P = file["timeseries/plankton/$iteration"][:, 1, :]
     averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
 
-    # w_max = maximum(abs, w) + 1e-9
-    # w_lim = 0.01
-
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
     P_lims = (0.95, 1.1)
