@@ -59,7 +59,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # which we'll need for the initial condition.
 #
-# !!! The Craik-Leibovich equations in Oceananigans
+# !!! info "The Craik-Leibovich equations in Oceananigans"
 #     Oceananigans implements the Craik-Leibovich approximation for surface wave effects
 #     using the _Lagrangian-mean_ velocity field as its prognostic momentum variable.
 #     In other words, `model.velocities.u` is the Lagrangian-mean ``x``-velocity beneath surface
@@ -99,7 +99,7 @@ N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
                                                        bottom = BoundaryCondition(Gradient, N²))
 
-# !!! The flux convention in Oceananigans
+# !!! info "The flux convention in Oceananigans"
 #     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
 #     a negative flux at the surface drives positive velocities, and a positive flux of
 #     buoyancy drives cooling.
