@@ -5,7 +5,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(64, 1, 65), x=(-5, 5), y=(0, 1), z=(-5, 5),
+grid = RegularCartesianGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-5, 5),
                                   topology=(Periodic, Periodic, Bounded))
 
 # # The basic state
@@ -35,17 +35,18 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 using Plots, Oceananigans.Grids
 
-z = znodes(Cell, grid)
+zF = znodes(Face, grid)
+zC = znodes(Cell, grid)
 
 Ri, h = B.parameters
 
 kwargs = (ylabel="z", linewidth=3, label=nothing)
 
- U_plot = plot(shear_flow.(0, 0, z, 0), z; xlabel="U(z)", kwargs...)
+ U_plot = plot(shear_flow.(0, 0, zC, 0), zC; xlabel="U(z)", kwargs...)
 
- B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in z], z; xlabel="B(z)", color=:red, kwargs...)
+ B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; xlabel="B(z)", color=:red, kwargs...)
 
-Ri_plot = plot(@. Ri * sech(z / h)^2 / sech(z)^2, z; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
+Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
