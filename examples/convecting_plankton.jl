@@ -136,7 +136,7 @@ mixed_layer_depth = 32 # m
 
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 
-noise(z) = 1e-3 * N² * grid.Lz * randn() * exp(z / 4)
+noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
 
 initial_buoyancy(x, y, z) = stratification(z) + noise(z) 
 
@@ -224,6 +224,12 @@ using Plots
 
 @info "Making a movie about plankton..."
 
+w_lim = 0
+for (i, iteration) in enumerate(iterations)
+    w = file["timeseries/w/$iteration"][:, 1, :]
+    w_lim = maximum([w_lim, maximum(w)])
+end
+
 anim = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
@@ -233,13 +239,14 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     P = file["timeseries/plankton/$iteration"][:, 1, :]
     averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
 
-    w_max = maximum(abs, w) + 1e-9
+    # w_max = maximum(abs, w) + 1e-9
+    # w_lim = 0.01
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
     P_lims = (0.95, 1.1)
 
-    w_levels = range(-w_max, stop=w_max, length=20)
+    w_levels = range(-w_lim, stop=w_lim, length=20)
 
     P_levels = collect(range(P_lims[1], stop=P_lims[2], length=20))
     P_lims[1] > P_min && pushfirst!(P_levels, P_min)
@@ -251,7 +258,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     w_contours = contourf(xw, zw, w';
                           color = :balance,
                           levels = w_levels,
-                          clims = (-w_max, w_max),
+                          clims = (-w_lim, w_lim),
                           kwargs...)
 
     P_contours = contourf(xp, zp, clamp.(P, P_lims[1], P_lims[2])';
