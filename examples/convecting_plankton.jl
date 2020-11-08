@@ -64,7 +64,7 @@ flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters)
                  linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
                  size = (800, 300), margin = 5mm, label = nothing)
 
-# The buoyancy flux effectively shuts off after approximately 6 hours of simulation time.
+# The buoyancy flux effectively shuts off after 6 hours of simulation time.
 #
 # !!! info "The flux convention in Oceananigans.jl"
 #     Fluxes are defined by the direction a quantity is carried: _positive_ velocities
@@ -145,8 +145,8 @@ set!(model, b=initial_buoyancy, P=1)
 # ## Adaptive time-stepping, logging, output and simulation setup
 #
 # We use a `TimeStepWizard` that limits the
-# time-step to 1 minute, and adapts the time-step such that CFL
-# (Courant-Freidrichs-Lewy) number remains below `1.0`,
+# time-step to 2 minutes, and adapts the time-step such that CFL
+# (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
 wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
 
