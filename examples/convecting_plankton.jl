@@ -228,8 +228,8 @@ w_lim = 0   # the maximum(abs(w)) across the whole timeseries
 
 for (i, iteration) in enumerate(iterations)
     w = file["timeseries/w/$iteration"][:, 1, :]
-    
-    w_lim = maximum([w_lim, maximum(abs.(w))])
+
+    global w_lim = maximum([w_lim, maximum(abs.(w))])
 end
 
 anim = @animate for (i, iteration) in enumerate(iterations)
