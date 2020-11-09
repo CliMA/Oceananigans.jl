@@ -1,6 +1,6 @@
 # Lid-driven cavity
 
-The lid-driven cavity test problem has been used for a long time as a simple verification test for computational fluid
+The lid-driven cavity test problem has been used for a long time as a simple validation test for computational fluid
 dynamics codes. First described by [Burggraf66](@cite), the fluid is contained in a square cavity with Dirchlet boundary
 conditions on all four sides. The top wall moves with velocity ``U = 1`` while the other three walls are stationary.
 The solution reaches a laminar steady-state whose properties can be compared with a huge amount of existing data. The

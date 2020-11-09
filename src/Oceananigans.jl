@@ -1,7 +1,7 @@
 module Oceananigans
 
-if VERSION < v"1.4"
-    error("This version of Oceananigans.jl requires Julia v1.4 or newer.")
+if VERSION < v"1.5"
+    error("This version of Oceananigans.jl requires Julia v1.5 or newer.")
 end
 
 export
@@ -25,7 +25,6 @@ export
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
-    BoundaryFunction, ParameterizedBoundaryCondition,
 
     # Fields and field manipulation
     Field, CellField, XFaceField, YFaceField, ZFaceField,

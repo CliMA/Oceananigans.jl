@@ -3,32 +3,32 @@
 # In this example, we initialize a random velocity field and observe its turbulent decay 
 # in a two-dimensional domain. This example demonstrates:
 #
-#   * How to run a model with no buoyancy equation or tracers;
-#   * How to create user-defined fields
-#   * How to use differentiation functions
-#   * How to save a computed field
+#   * How to run a model with no tracers and no buoyancy model.
+#   * How to use `AbstractOperations`.
+#   * How to use `ComputedField`s to generate output.
 
 # ## Model setup
 
-# We instantiate the model with a simple isotropic diffusivity. We also use a 4-th order 
-# advection scheme and Runge-Kutta 3rd order time-stepping scheme.
+# We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
+# a fifth-order advection scheme, third-order Runge-Kutta time-stepping,
+# and a small isotropic viscosity.
 
 using Oceananigans, Oceananigans.Advection
 
-model = IncompressibleModel(
-        grid = RegularCartesianGrid(size=(128, 128, 1), halo=(2, 2, 2), extent=(2π, 2π, 2π)),
- timestepper = :RungeKutta3, 
-   advection = CenteredFourthOrder(),
-    buoyancy = nothing,
-     tracers = nothing,
-     closure = IsotropicDiffusivity(ν=1e-4)
-)
-nothing # hide
+grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
 
-# ## Setting initial conditions
+model = IncompressibleModel(timestepper = :RungeKutta3, 
+                              advection = UpwindBiasedFifthOrder(),
+                                   grid = grid,
+                               buoyancy = nothing,
+                                tracers = nothing,
+                                closure = IsotropicDiffusivity(ν=1e-5)
+                           )
 
-# Our initial condition randomizes `u` and `v`. We also ensure that both have
-# zero mean for purely aesthetic reasons.
+# ## Random initial conditions
+#
+# Our initial condition randomizes `model.velocities.u` and `model.velocities.v`.
+# We ensure that both have zero mean for aesthetic reasons.
 
 using Statistics
 
@@ -37,21 +37,42 @@ u₀ .-= mean(u₀)
 
 set!(model, u=u₀, v=u₀)
 
-# ## Calculating vorticity
+# ## Computing vorticity and speed
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-# Next we create an object called an `ComputedField` that calculates vorticity. We'll use
-# this object to calculate vorticity on-line and output it as the simulation progresses.
-
+## To make our equations prettier, we unpack `u`, `v`, and `w` from 
+## the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
-ω = ComputedField(∂x(v) - ∂y(u))
-nothing # hide
+# Next we create two objects called `ComputedField`s that calculate
+# _(i)_ vorticity, defined as
+#
+# ```math
+# ω = ∂_x v - ∂_y u \, ,
+# ```
 
-# Now we construct a simulation.
+ω = ∂x(v) - ∂y(u)
 
-simulation = Simulation(model, Δt=0.1, stop_iteration=2000)
+ω_field = ComputedField(ω)
+
+# "Vorticity" measures the rate at which the fluid rotates. 
+# We also calculate _(ii)_ the _speed_ of the flow,
+#
+# ```math
+# s = \sqrt{u^2 + v^2} \, .
+# ```
+
+s = sqrt(u^2 + v^2)
+
+s_field = ComputedField(s)
+
+# We'll pass these `ComputedField`s to an output writer below to calculate them during the simulation.
+# Now we construct a simulation that prints out the iteration and model time as it runs.
+
+progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
+
+simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
 
 # ## Output
 #
@@ -59,17 +80,18 @@ simulation = Simulation(model, Δt=0.1, stop_iteration=2000)
 
 using Oceananigans.OutputWriters
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, (ω = ω,), schedule=IterationInterval(20),
-                     prefix = "2d_turbulence_vorticity", force = true)
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=ω_field, s=s_field),
+                                                      schedule = TimeInterval(2),
+                                                      prefix = "two_dimensional_turbulence",
+                                                      force = true)
 
 # ## Running the simulation
 #
-# Finally, we run the simulation.
+# Pretty much just
 
 run!(simulation)
 
-# # Visualizing the results
+# ## Visualizing the results
 #
 # We load the output and make a movie.
 
@@ -78,30 +100,50 @@ using JLD2
 file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
-nothing # hide
 
-# Construct the $x$, $y$ grid for plotting purposes,
+# Construct the ``x, y`` grid for plotting purposes,
 
 using Oceananigans.Grids
 
-x, y = xnodes(ω)[:], ynodes(ω)[:]
-nothing # hide
+xω, yω, zω = nodes(ω_field)
+xs, ys, zs = nodes(s_field)
 
 # and animate the vorticity.
 
 using Plots
 
-anim = @animate for iteration in iterations
-    
-    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
+@info "Making a neat movie of vorticity and speed..."
 
-    heatmap(x, y, ω_snapshot',
-            xlabel="x", ylabel="y",
-            aspectratio=1,
-            color=:balance,
-            clims=(-0.2, 0.2),
-            xlims=(0, model.grid.Lx),
-            ylims=(0, model.grid.Ly))
+anim = @animate for (i, iteration) in enumerate(iterations)
+
+    @info "Plotting frame $i from iteration $iteration..."
+    
+    t = file["timeseries/t/$iteration"]
+    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
+    s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
+
+    ω_lim = 2.0
+    ω_levels = range(-ω_lim, stop=ω_lim, length=20)
+
+    s_lim = 0.2
+    s_levels = range(0, stop=s_lim, length=20)
+
+    kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
+              xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
+              
+    ω_plot = contourf(xω, yω, clamp.(ω_snapshot, -ω_lim, ω_lim)';
+                       color = :balance,
+                      levels = ω_levels,
+                       clims = (-ω_lim, ω_lim),
+                      kwargs...)
+
+    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim)';
+                       color = :thermal,
+                      levels = s_levels,
+                       clims = (0, s_lim),
+                      kwargs...)
+
+    plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-mp4(anim, "2d_turbulence_vorticity.mp4", fps = 15) # hide
+gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide

@@ -222,9 +222,9 @@ With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Rieman
 ```math
 \langle a \rangle = \frac{1}{T} \int_{t_i-T}^{t_i} a \, \mathrm{d} t \, ,
 ```
-where $\langle a \rangle$ is the time-average of $a$, $T$ is the time-`window` for averaging specified by
-the `window` keyword argument to `AveragedTimeInterval`, and the $t_i$ are discrete times separated by the
-time `interval`. The $t_i$ specify both the end of the averaging window and the time at which output is written.
+where ``\langle a \rangle`` is the time-average of ``a``, ``T`` is the time-`window` for averaging specified by
+the `window` keyword argument to `AveragedTimeInterval`, and the ``t_i`` are discrete times separated by the
+time `interval`. The ``t_i`` specify both the end of the averaging window and the time at which output is written.
 
 ### Example
 

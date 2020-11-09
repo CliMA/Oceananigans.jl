@@ -1,5 +1,5 @@
 using Oceananigans.Utils: with_tracers
-using Oceananigans.Fields: assumed_field_location
+using Oceananigans.Operators: assumed_field_location
 
 @inline zeroforcing(args...) = 0
 

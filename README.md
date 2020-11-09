@@ -22,18 +22,25 @@
   <a href="https://doi.org/10.21105/joss.02018">
     <img alt="JOSS" src="https://joss.theoj.org/papers/10.21105/joss.02018/status.svg">
   </a>
+  <a href="https://github.com/CliMA/Oceananigans.jl/releases">
+    <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/CliMA/Oceananigans.jl?include_prereleases&label=latest%20version&logo=github&sort=semver&style=flat-square">
+  </a>
+</p>
+
+<!-- Documentation badges -->
+<p align="center">
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
-    <img alt="Stable documentation" src="https://img.shields.io/badge/docs-stable-blue.svg?style=flat-square">
+    <img alt="Stable documentation" src="https://img.shields.io/badge/documentation-stable%20release-blue?style=flat-square">
   </a>
   <a href="https://clima.github.io/OceananigansDocumentation/dev">
-    <img alt="Development documentation" src="https://img.shields.io/badge/docs-dev-blue.svg?style=flat-square">
+    <img alt="Development documentation" src="https://img.shields.io/badge/documentation-in%20development-orange?style=flat-square">
   </a>
 </p>
 
 <!-- CI/CD badges -->
 <p align="center">
   <a href="https://buildkite.com/clima/oceananigans">
-    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?label=Buildkite%20CPU%2BGPU&style=flat-square">
+    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
   </a>
   <a href="https://travis-ci.com/clima/Oceananigans.jl">
     <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=Travis&logo=travis&logoColor=white&style=flat-square">
@@ -70,19 +77,19 @@ You can install the latest version of Oceananigans using the built-in package ma
 
 ```julia
 julia>]
-(v1.4) pkg> add Oceananigans
-(v1.4) pkg> instantiate
+(v1.5) pkg> add Oceananigans
+(v1.5) pkg> instantiate
 ```
 
 We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
 
 ```julia
-(v1.4) pkg> update Oceananigans
+(v1.5) pkg> update Oceananigans
 ```
 
 At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
 
-**Note**: Oceananigans requires at least Julia v1.4 to run. Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).
+**Note**: Oceananigans requires at least Julia v1.5 to run. Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).
 
 ## Running your first model
 

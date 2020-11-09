@@ -27,9 +27,9 @@ using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Grids
 
 include("boundary_condition_types.jl")
-include("boundary_function.jl")
-include("parameterized_boundary_condition.jl")
 include("boundary_condition.jl")
+include("discrete_boundary_function.jl")
+include("continuous_boundary_function.jl")
 include("coordinate_boundary_conditions.jl")
 include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")

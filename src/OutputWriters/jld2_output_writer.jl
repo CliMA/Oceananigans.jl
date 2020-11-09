@@ -171,9 +171,13 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
     filepath = joinpath(dir, prefix * ".jld2")
     force && isfile(filepath) && rm(filepath, force=true)
 
-    jldopen(filepath, "a+"; jld2_kw...) do file
-        init(file, model)
-        saveproperties!(file, model, including)
+    try
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            init(file, model)
+            saveproperties!(file, model, including)
+        end
+    catch
+        @warn "Could not initialize $filepath: data may already be initialized."
     end
 
     return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
