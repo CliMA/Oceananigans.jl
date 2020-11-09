@@ -77,7 +77,7 @@ Keyword arguments
 """
 function IncompressibleModel(;
                    grid,
-           architecture = CPU(),
+           architecture::AbstractArchitecture = CPU(),
              float_type = Float64,
                   clock = Clock{float_type}(0, 0, 1),
               advection = CenteredSecondOrder(),
