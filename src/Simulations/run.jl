@@ -107,7 +107,7 @@ function run!(sim; pickup=false)
 
         # https://github.com/CliMA/Oceananigans.jl/issues/1159
         if pickup isa Bool && isnothing(checkpoint_filepath)
-            @warn "pickup=true but no checkpoints ware found. Simulation will run without picking up."
+            @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
         else
             set!(model, checkpoint_filepath)
         end
@@ -177,15 +177,18 @@ the largest iteration.
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
-    length(filepaths) == 0 && return nothing
+    if length(filepaths) == 0 # no checkpoint files found
+        return nothing
+    else
+        return latest_checkpoint(checkpointer, filepaths)
+    end
+end
 
-    # Parse filenames to find latest checkpointed iteration
+function latest_checkpoint(filepaths, checkpointer)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = 5 # length(".jld2")
     iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
-
     latest_iteration, idx = findmax(iterations)
-
     return filepaths[idx]
 end
