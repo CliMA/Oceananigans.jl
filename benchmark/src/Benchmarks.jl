@@ -1,6 +1,7 @@
 module Benchmarks
 
 export @sync_gpu,
+       print_machine_info,
        run_benchmarks,
        benchmarks_dataframe,
        benchmarks_pretty_table,
@@ -17,6 +18,7 @@ using CUDA
 using BenchmarkTools: prettytime, prettymemory
 using Oceananigans: OceananigansLogger
 using Oceananigans.Architectures: CPU, GPU
+using Oceananigans.Utils: oceananigans_versioninfo, versioninfo_with_gpu
 
 function __init__()
     Logging.global_logger(OceananigansLogger())
@@ -24,6 +26,14 @@ end
 
 macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
+end
+
+function print_machine_info()
+    println()
+    println(oceananigans_versioninfo())
+    println(versioninfo_with_gpu())
+    println()
+    return nothing
 end
 
 function run_benchmarks(benchmark_fun; kwargs...)

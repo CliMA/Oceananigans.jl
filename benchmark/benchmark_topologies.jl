@@ -22,11 +22,14 @@ Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 Ns = [192]
 Topologies = [(Periodic, Periodic, Periodic),
               (Periodic, Periodic,  Bounded),
-              (Periodic, Bounded,   Bounded)]
+              (Periodic, Bounded,   Bounded),
+              (Bounded,  Bounded,   Bounded)]
 
 # Run and summarize benchmarks
 
-suite = run_benchmarks(benchmark_topology; Architectures, Ns, Topologies)
+suite_cpu = run_benchmarks(benchmark_topology; Architectures=[CPU], Ns, Topologies)
+suite_gpu = run_benchmarks(benchmark_topology; Architectures=[GPU], Ns, Topologies[1:3])
+suite = merge(suite_cpu, suite_gpu)
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Topologies, :Ns], by=(string, string, identity))
