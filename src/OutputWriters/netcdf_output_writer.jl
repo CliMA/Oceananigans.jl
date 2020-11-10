@@ -263,6 +263,13 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                   compression = 0,
                                       verbose = false)
 
+    if isfile(filepath) && mode == "c"
+        @warn "$filepath already exists but no NetCDFOutputWriter mode was explicitly specified. " *
+              "Will default to mode = \"a\" to append to existing file. You might experience errors " *
+              "when writing output if the existing file belonged to a different simulation!"
+        mode = "a"
+    end
+
     # We need to convert to a Dict with String keys if user provides a named tuple.
     outputs = dictify(outputs)
     output_attributes = dictify(output_attributes)
