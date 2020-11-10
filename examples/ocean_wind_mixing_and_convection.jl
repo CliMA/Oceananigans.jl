@@ -205,9 +205,9 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 """ Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
 function divergent_levels(c, clim, nlevels=21)
-    levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
-    return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
+    levels = clim > cmax ? range(-clim, stop=clim, length=nlevels) : range(-cmax, stop=cmax, length=nlevels)
+    return (levels[1], levels[end]), levels
 end
 
 """ Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""

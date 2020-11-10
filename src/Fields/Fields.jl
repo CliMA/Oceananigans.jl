@@ -2,12 +2,14 @@ module Fields
 
 export
     Face, Cell,
-    AbstractField, Field, CellField, XFaceField, YFaceField, ZFaceField,
+    AbstractField, Field,
+    CellField, XFaceField, YFaceField, ZFaceField,
     ReducedField, AveragedField, ComputedField, BackgroundField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
-    VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
+    VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
+    interpolate
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -32,5 +34,6 @@ include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
 include("show_fields.jl")
+include("interpolate.jl")
 
 end

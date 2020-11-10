@@ -39,7 +39,8 @@ examples = [
     "convecting_plankton.jl",
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
-    "eady_turbulence.jl"
+    "eady_turbulence.jl",
+    "kelvin_helmholtz_instability.jl"
 ]
 
 for example in examples
@@ -58,7 +59,8 @@ example_pages = [
     "Convecting plankton"              => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md"
+    "Eady turbulence"                  => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
 ]
 
 model_setup_pages = [
@@ -99,10 +101,10 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-verification_pages = [
-    "Convergence tests" => "verification/convergence_tests.md",
-    "Lid-driven cavity" => "verification/lid_driven_cavity.md",
-    "Stratified Couette flow" => "verification/stratified_couette_flow.md"
+validation_pages = [
+    "Convergence tests" => "validation/convergence_tests.md",
+    "Lid-driven cavity" => "validation/lid_driven_cavity.md",
+    "Stratified Couette flow" => "validation/stratified_couette_flow.md"
 ]
 
 appendix_pages = [
@@ -118,7 +120,7 @@ pages = [
     "Model setup" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
-    "Verification experiments" => verification_pages,
+    "Validation experiments" => validation_pages,
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
@@ -135,7 +137,7 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/latest/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
 makedocs(

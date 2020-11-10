@@ -49,6 +49,12 @@ end
 @testset "Models" begin
     @info "Testing models..."
 
+    @testset "Model constructor errors" begin
+        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        @test_throws TypeError IncompressibleModel(architecture=CPU, grid=grid)
+        @test_throws TypeError IncompressibleModel(architecture=GPU, grid=grid)
+    end
+
     topos = ((Periodic, Periodic, Periodic),
              (Periodic, Periodic,  Bounded),
              (Periodic,  Bounded,  Bounded),
