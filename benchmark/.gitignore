@@ -3,3 +3,6 @@
 
 # Multithreading benchmark output
 *.bson
+
+# PkgBenchmark tuning cache
+*.json
