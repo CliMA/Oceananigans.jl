@@ -3,9 +3,7 @@ using CUDA
 
 using Oceananigans
 using Oceananigans.Advection
-
-include("Benchmarks.jl")
-using .Benchmarks
+using Benchmarks
 
 # Benchmark function
 
