@@ -67,7 +67,18 @@ end
 
 function benchmarks_pretty_table(df; title="")
     header = propertynames(df) .|> String
-    pretty_table(df, header, title=title, nosubheader=true)
+    pretty_table(df, header, nosubheader=true, title=title, title_alignment=:c,
+                 title_autowrap = true, title_same_width_as_table = true)
+
+    html_filename = replace(title, ' ' => '_') * ".html"
+    @info "Writing $html_filename..."
+    open(html_filename, "w") do io
+        html_table = pretty_table(String, df, header, nosubheader=true,
+                                  title=title, title_alignment=:c,
+                                  backend=:html, tf=tf_html_minimalist)
+        write(io, html_table)
+    end
+
     return nothing
 end
 
@@ -113,7 +124,7 @@ function speedups_dataframe(suite; slowdown=true)
         trial_ratio = suite[case]
         entry = NamedTuple{names}(case) |> pairs |> Dict{Any,Any}
 
-        entry[:speedup] = slowdown ? trial_ratio.time :  1/trial_ratio.time
+        entry[speed_type] = slowdown ? trial_ratio.time :  1/trial_ratio.time
         entry[:memory] = trial_ratio.memory
         entry[:allocs] = trial_ratio.allocs
 
