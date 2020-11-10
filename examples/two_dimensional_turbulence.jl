@@ -41,8 +41,8 @@ set!(model, u=u₀, v=u₀)
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-## To make our equations prettier, we unpack `u`, `v`, and `w` from 
-## the `NamedTuple` model.velocities:
+# To make our equations prettier, we unpack `u`, `v`, and `w` from 
+# the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
 # Next we create two objects called `ComputedField`s that calculate
