@@ -25,7 +25,7 @@ Clock{Float64}: time = 1 hour, iteration = 0, stage = 1
 ```
 
 to the constructor for `IncompressibleModel` causes the simulation
-time to start at $t = 3600$ seconds.
+time to start at ``t = 3600`` seconds.
 
 The type of the keyword argument `time` should be a float or date type.
 To use the date type `TimeDate` from the `TimesDates.jl` package,

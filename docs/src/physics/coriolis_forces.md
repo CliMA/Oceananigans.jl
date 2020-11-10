@@ -1,62 +1,62 @@
 # Coriolis forces
 
-The Coriolis model controls the manifestation of the term $\bm{f} \times \bm{u}$ in the momentum equation.
+The Coriolis model controls the manifestation of the term ``\bm{f} \times \bm{u}`` in the momentum equation.
 
-## The $f$-plane approximation
+## The ``f``-plane approximation
 
-Under an $f$-plane approximation[^3] the reference frame in which
+Under an ``f``-plane approximation[^3] the reference frame in which
 the momentum and tracer equations are solved rotates at a constant rate.
 
-### The traditional $f$-plane approximation
+### The traditional ``f``-plane approximation
 
-In the *traditional* $f$-plane approximation, the coordinate system rotates around
+In the *traditional* ``f``-plane approximation, the coordinate system rotates around
 a vertical axis such that
 ```math
     \bm{f} = f \bm{\hat z}
 ```
-where $f$ is constant and determined by the user.
+where ``f`` is constant and determined by the user.
 
-### The non-traditional $f$-plane approximation
+### The non-traditional ``f``-plane approximation
 
-In the *non-traditional* $f$-plane approximation, the coordinate system rotates around
-an axis in the $y,z$-plane, such that
+In the *non-traditional* ``f``-plane approximation, the coordinate system rotates around
+an axis in the ``y,z``-plane, such that
 ```math
     \bm{f} = f_y \bm{\hat y} + f_z \bm{\hat z}
 ```
-where $f_y$ and $f_z$ are constant and determined by the user.
+where ``f_y`` and ``f_z`` are constant and determined by the user.
 
 
-[^3]: The $f$-plane approximation is used to model the effects of Earth's rotation on
+[^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on
       anisotropic fluid motion in a plane tangent to the Earth's surface. In this case, the projection of Earth's
-      rotation vector at latitude $\varphi$ and onto a coordinate system in which $x, y, z$ correspond to the
+      rotation vector at latitude ``\varphi`` and onto a coordinate system in which ``x, y, z`` correspond to the
       directions east, north, and up is
       ```math
-          \bm{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \bm{\hat y} + \sin \varphi \bm{\hat z} \right ) \, , $
+          \bm{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \bm{\hat y} + \sin \varphi \bm{\hat z} \right ) \, , ``
       ```
-      where the Earth's rotation rate is approximately $2 \pi / \text{day}$.
-      The *traditional* $f$-plane approximation neglects the $y$-component of this projection, which is appropriate for
+      where the Earth's rotation rate is approximately ``2 \pi / \text{day}``.
+      The *traditional* ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate for
       fluid motions with large horizontal-to-vertical aspect ratios.
 
-## The $\beta$-plane approximation
+## The ``\beta``-plane approximation
 
-### The traditional $\beta$-plane approximation
+### The traditional ``\beta``-plane approximation
 
-Under the *traditional* $\beta$-plane approximation, the rotation axis is vertical as for the
-$f$-plane approximation, but $f$ is expanded in a Taylor series around a central latitude such that
+Under the *traditional* ``\beta``-plane approximation, the rotation axis is vertical as for the
+``f``-plane approximation, but ``f`` is expanded in a Taylor series around a central latitude such that
 ```math
     \bm{f} = \left ( f_0 + \beta y \right ) \bm{\hat z} \, ,
 ```
-where $f_0$ is the planetary vorticity at some central latitude, and $\beta$ is the
+where ``f_0`` is the planetary vorticity at some central latitude, and ``\beta`` is the
 planetary vorticity gradient.
-The $\beta$-plane model is not periodic in $y$ and thus can be used only in domains that
-are bounded in the $y$-direction.
+The ``\beta``-plane model is not periodic in ``y`` and thus can be used only in domains that
+are bounded in the ``y``-direction.
 
-### The non-traditional $f$-plane approximation
+### The non-traditional ``f``-plane approximation
 
-The *non-traditional* $\beta$-plane approximation accounts for the latitudinal variation of both
+The *non-traditional* ``\beta``-plane approximation accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector
 ```math
     \bm{f} = \left[ 2\Omega\cos\varphi_0 \left( 1 -  \frac{z}{R} \right) + \gamma y \right] \bm{\hat y}
-           + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \bm{\hat z}
+           + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \bm{\hat z} \, ,
 ```
-where $\beta = 2\Omega\cos\varphi_0 / R$ and $\gamma = -4\Omega\varphi_0 / R$.
+where ``\beta = 2\Omega\cos\varphi_0 / R`` and ``\gamma = -4\Omega\varphi_0 / R``.

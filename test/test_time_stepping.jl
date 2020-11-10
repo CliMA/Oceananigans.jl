@@ -103,11 +103,7 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
 
     for n in 1:Nt
-        if timestepper === :QuasiAdamsBashforth2
-            time_step!(model, 0.05, euler = n==1)
-        elseif timestepper === :RungeKutta3
-            time_step!(model, 0.05)
-        end
+        ab2_or_rk3_time_step!(model, 0.05, n)
     end
 
     event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
@@ -156,7 +152,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     Tavg0 = mean(interior(model.tracers.T))
 
     for n in 1:Nt
-        time_step!(model, 600, euler= n==1)
+        ab2_or_rk3_time_step!(model, 600, n)
     end
 
     Tavg = mean(interior(model.tracers.T))

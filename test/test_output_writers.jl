@@ -1,9 +1,12 @@
 using Statistics
 using NCDatasets
-using Oceananigans.BoundaryConditions: BoundaryFunction, PBC, FBC, ZFBC
+
 using Oceananigans.Diagnostics
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
+
+using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
+using Oceananigans.TimeSteppers: update_state!
 
 function instantiate_windowed_time_average(model)
 
@@ -216,16 +219,10 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    outputs = Dict(
-        "v" => model.velocities.v,
-        "u" => model.velocities.u,
-        "w" => model.velocities.w,
-        "T" => model.tracers.T,
-        "S" => model.tracers.S
-    )
-
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10),
+    nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                                   filepath=nc_filepath,
+                                   schedule=IterationInterval(10),
                                    field_slicer=FieldSlicer(with_halos=true))
     push!(simulation.output_writers, nc_writer)
 
@@ -311,16 +308,16 @@ function run_netcdf_function_output_tests(arch)
     h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
                                     .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
 
-    outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h)
-       dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+    outputs = (scalar=f, profile=g, slice=h)
+    dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
 
-    output_attributes = Dict(
-        "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
-        "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-        "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+    output_attributes = (
+        scalar = (longname="Some scalar", units="bananas"),
+        profile = (longname="Some vertical profile", units="watermelons"),
+        slice = (longname="Some slice", units="mushrooms")
     )
 
-    global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
+    global_attributes = (location="Bay of Fundy", onions=7)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
@@ -563,10 +560,37 @@ end
 ##### Checkpointer tests
 #####
 
+function test_model_equality(test_model, true_model)
+    CUDA.@allowscalar begin
+        @test all(test_model.velocities.u.data     .≈ true_model.velocities.u.data)
+        @test all(test_model.velocities.v.data     .≈ true_model.velocities.v.data)
+        @test all(test_model.velocities.w.data     .≈ true_model.velocities.w.data)
+        @test all(test_model.tracers.T.data        .≈ true_model.tracers.T.data)
+        @test all(test_model.tracers.S.data        .≈ true_model.tracers.S.data)
+        @test all(test_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
+        @test all(test_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
+        @test all(test_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
+        @test all(test_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
+        @test all(test_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
+        @test all(test_model.timestepper.G⁻.u.data .≈ true_model.timestepper.G⁻.u.data)
+        @test all(test_model.timestepper.G⁻.v.data .≈ true_model.timestepper.G⁻.v.data)
+        @test all(test_model.timestepper.G⁻.w.data .≈ true_model.timestepper.G⁻.w.data)
+        @test all(test_model.timestepper.G⁻.T.data .≈ true_model.timestepper.G⁻.T.data)
+        @test all(test_model.timestepper.G⁻.S.data .≈ true_model.timestepper.G⁻.S.data)
+    end
+    return nothing
+end
+
 """
-Run two coarse rising thermal bubble simulations and make sure that when
-restarting from a checkpoint, the restarted simulation matches the non-restarted
-simulation to machine precision.
+Run two coarse rising thermal bubble simulations and make sure
+
+1. When restarting from a checkpoint, the restarted moded matches the non-restarted
+   model to machine precision.
+
+2. When using set!(new_model) to a checkpoint, the new model matches the non-restarted
+   simulation to machine precision.
+
+3. run!(new_model, pickup) works as expected
 """
 function run_thermal_bubble_checkpointer_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -587,41 +611,68 @@ function run_thermal_bubble_checkpointer_tests(arch)
     checkpointed_model = deepcopy(true_model)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=9)
-    run!(true_simulation)
+    run!(true_simulation) # for 9 iterations
 
     checkpointed_simulation = Simulation(checkpointed_model, Δt=Δt, stop_iteration=5)
     checkpointer = Checkpointer(checkpointed_model, schedule=IterationInterval(5), force=true)
     push!(checkpointed_simulation.output_writers, checkpointer)
 
     # Checkpoint should be saved as "checkpoint5.jld" after the 5th iteration.
-    run!(checkpointed_simulation)
-
-    # Remove all knowledge of the checkpointed model.
-    checkpointed_model = nothing
+    run!(checkpointed_simulation) # for 5 iterations
 
     # model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
     restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2")
 
+    #restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=9)
+    #run!(restored_simulation)
+
     for n in 1:4
-        time_step!(restored_model, Δt, euler=false)
+        update_state!(restored_model)
+        time_step!(restored_model, Δt, euler=false) # time-step for 4 iterations
     end
+
+    test_model_equality(restored_model, true_model)
+
+    #####
+    ##### Test `set!(model, checkpoint_file)`
+    #####
+
+    new_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+
+    set!(new_model, "checkpoint_iteration5.jld2")
+
+    @test new_model.clock.iteration == checkpointed_model.clock.iteration
+    @test new_model.clock.time == checkpointed_model.clock.time
+    test_model_equality(new_model, checkpointed_model)
+
+    #####
+    ##### Test `run!(sim, pickup=true)
+    #####
+    
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=9)
+
+    # Pickup from explicit checkpoint path
+    run!(new_simulation, pickup="checkpoint_iteration0.jld2")
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup="checkpoint_iteration5.jld2")
+    test_model_equality(new_model, true_model)
+
+    # Pickup using existing checkpointer
+    new_simulation.output_writers[:checkpointer] =
+        Checkpointer(new_model, schedule=IterationInterval(5), force=true)
+
+    run!(new_simulation, pickup=true)
+    test_model_equality(new_model, true_model)
+    
+    run!(new_simulation, pickup=0)
+    test_model_equality(new_model, true_model)
+
+    run!(new_simulation, pickup=5)
+    test_model_equality(new_model, true_model)
 
     rm("checkpoint_iteration0.jld2", force=true)
     rm("checkpoint_iteration5.jld2", force=true)
-
-    # Now the true_model and restored_model should be identical.
-    CUDA.@allowscalar begin
-        @test all(restored_model.velocities.u.data     .≈ true_model.velocities.u.data)
-        @test all(restored_model.velocities.v.data     .≈ true_model.velocities.v.data)
-        @test all(restored_model.velocities.w.data     .≈ true_model.velocities.w.data)
-        @test all(restored_model.tracers.T.data        .≈ true_model.tracers.T.data)
-        @test all(restored_model.tracers.S.data        .≈ true_model.tracers.S.data)
-        @test all(restored_model.timestepper.Gⁿ.u.data .≈ true_model.timestepper.Gⁿ.u.data)
-        @test all(restored_model.timestepper.Gⁿ.v.data .≈ true_model.timestepper.Gⁿ.v.data)
-        @test all(restored_model.timestepper.Gⁿ.w.data .≈ true_model.timestepper.Gⁿ.w.data)
-        @test all(restored_model.timestepper.Gⁿ.T.data .≈ true_model.timestepper.Gⁿ.T.data)
-        @test all(restored_model.timestepper.Gⁿ.S.data .≈ true_model.timestepper.Gⁿ.S.data)
-    end
 
     return nothing
 end
@@ -630,8 +681,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
     @inline some_flux(x, y, t) = 2x + exp(y)
-    some_flux_bf = BoundaryFunction{:z, Cell, Cell}(some_flux)
-    top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux_bf)
+    top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux)
     u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
     T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
 
@@ -684,7 +734,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test u.boundary_conditions.y.right isa PBC
     @test u.boundary_conditions.z.left  isa ZFBC
     @test u.boundary_conditions.z.right isa FBC
-    @test u.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test u.boundary_conditions.z.right.condition isa ContinuousBoundaryFunction
     @test u.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
     @test T.boundary_conditions.x.left  isa PBC
@@ -693,7 +743,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
     @test T.boundary_conditions.y.right isa PBC
     @test T.boundary_conditions.z.left  isa ZFBC
     @test T.boundary_conditions.z.right isa FBC
-    @test T.boundary_conditions.z.right.condition isa BoundaryFunction
+    @test T.boundary_conditions.z.right.condition isa ContinuousBoundaryFunction
     @test T.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
     # Test that the restored model can be time stepped

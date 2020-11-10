@@ -4,8 +4,8 @@ The buoyancy option selects how buoyancy is treated. There are currently three o
 
 1. No buoyancy (and no gravity).
 2. Evolve buoyancy as a tracer.
-3. _Seawater buoyancy_: evolve temperature $T$ and salinity $S$ as tracers with a value for the gravitational
-   acceleration $g$ and an equation of state of your choosing. This is the default setting.
+3. _Seawater buoyancy_: evolve temperature ``T`` and salinity ``S`` as tracers with a value for the gravitational
+   acceleration ``g`` and an equation of state of your choosing. This is the default setting.
 
 ## No buoyancy
 
@@ -60,7 +60,7 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 
 ## Seawater buoyancy
 
-To evolve temperature $T$ and salinity $S$ and diagnose the buoyancy, you can pass
+To evolve temperature ``T`` and salinity ``S`` and diagnose the buoyancy, you can pass
 `buoyancy = SeawaterBuoyancy()` which is the default.
 
 ```jldoctest buoyancy
@@ -73,11 +73,11 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-Without any options specified, a value of $g = 9.80665 \; \text{m/s}^2$ is used for the gravitational
+Without any options specified, a value of ``g = 9.80665 \, \text{m}\,\text{s}^{-2}`` is used for the gravitational
 acceleration (corresponding to [standard gravity](https://en.wikipedia.org/wiki/Standard_gravity)) along
 with a linear equation of state with thermal expansion and haline contraction coefficients suitable for seawater.
 
-If, for example, you wanted to simulate fluids on another planet such as Europa where $g = 1.3 \; \text{m/s}^2$,
+If, for example, you wanted to simulate fluids on another planet such as Europa where ``g = 1.3 \, \text{m}\,\text{s}^{-2}``,
 then use
 
 ```jldoctest buoyancy
@@ -100,7 +100,7 @@ can be accomplished by passing `tracers = (:T, :S)` to a model constructor.
 ### Linear equation of state
 
 To use non-default thermal expansion and haline contraction coefficients, say
-$\alpha = 2 \times 10^{-3} \; \text{K}^{-1}$ and $\beta = 5 \times 10^{-4} \text{ppt}^{-1}$ corresponding to some other
+``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{ppt}^{-1}`` corresponding to some other
 fluid, then use
 
 ```jldoctest

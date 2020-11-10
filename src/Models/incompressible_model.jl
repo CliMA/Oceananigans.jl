@@ -12,6 +12,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Buoyancy: validate_buoyancy
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
 using Oceananigans.Forcings: model_forcing
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                                    V, S, K, BG, P} <: AbstractModel
@@ -78,7 +79,7 @@ Keyword arguments
 """
 function IncompressibleModel(;
                    grid,
-           architecture = CPU(),
+           architecture::AbstractArchitecture = CPU(),
              float_type = Float64,
                   clock = Clock{float_type}(0, 0, 1),
               advection = CenteredSecondOrder(),
@@ -111,6 +112,18 @@ function IncompressibleModel(;
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
 
+    # Recursively "regularize" field-dependent boundary conditions by supplying list of tracer names.
+    # We also regularize boundary conditions included in velocities, tracers, pressures, and diffusivities.
+    # Note that we do not regularize boundary conditions contained in *tupled* diffusivity fields right now.
+    embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
+                                         extract_boundary_conditions(tracers),
+                                         extract_boundary_conditions(pressures),
+                                         extract_boundary_conditions(diffusivities))
+
+    boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
+
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+
     # Either check grid-correctness, or construct tuples of fields
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
@@ -133,3 +146,21 @@ function IncompressibleModel(;
                                forcing, closure, background_fields, particles, velocities, tracers,
                                pressures, diffusivities, timestepper, pressure_solver)
 end
+
+#####
+##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
+##### 
+##### Note: ignores tuples, including tuples of Symbols (tracer names) and
+##### tuples of DiffusivityFields (which occur for tupled closures)
+#####
+
+extract_boundary_conditions(::Nothing) = NamedTuple()
+extract_boundary_conditions(::Tuple) = NamedTuple()
+
+function extract_boundary_conditions(field_tuple::NamedTuple)
+    names = propertynames(field_tuple)
+    bcs = Tuple(extract_boundary_conditions(field) for field in field_tuple)
+    return NamedTuple{names}(bcs)
+end
+
+extract_boundary_conditions(field::Field) = field.boundary_conditions
