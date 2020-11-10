@@ -103,7 +103,13 @@ function run!(sim; pickup=false)
 
     if we_want_to_pickup(pickup)
         checkpointers = filter(writer -> writer isa Checkpointer, collect(values(sim.output_writers)))
-        set!(model, checkpoint_path(pickup, checkpointers))
+
+        # https://github.com/CliMA/Oceananigans.jl/issues/1159
+        if pickup isa Bool && pickup && length(checkpoints) == 0
+            @warn "pickup=true but no checkpoints ware found. Simulation will run without picking up."
+        else
+            set!(model, checkpoint_path(pickup, checkpointers))
+        end
     end
 
     # Conservatively initialize the model state
