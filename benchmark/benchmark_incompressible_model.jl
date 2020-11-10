@@ -1,9 +1,5 @@
-using BenchmarkTools
-using CUDA
 using Oceananigans
-
-include("Benchmarks.jl")
-using .Benchmarks
+using Benchmarks
 
 # Benchmark function
 

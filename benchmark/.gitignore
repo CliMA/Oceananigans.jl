@@ -1,3 +1,5 @@
 # HTML table output
 *.html
 
+# Multithreading benchmark output
+*.bson

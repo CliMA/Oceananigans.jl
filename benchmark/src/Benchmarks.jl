@@ -75,7 +75,7 @@ function benchmarks_pretty_table(df; title="")
     open(html_filename, "w") do io
         html_table = pretty_table(String, df, header, nosubheader=true,
                                   title=title, title_alignment=:c,
-                                  backend=:html, tf=tf_html_minimalist)
+                                  backend=:html, tf=tf_html_simple)
         write(io, html_table)
     end
 
@@ -113,7 +113,7 @@ function speedups_suite(suite; base_case)
     return suite_speedup
 end
 
-function speedups_dataframe(suite; slowdown=true)
+function speedups_dataframe(suite; slowdown=false)
     names = Tuple(Symbol(tag) for tag in suite.tags)
     speed_type = slowdown ? :slowdown : :speedup
     df_names = (names..., speed_type, :memory, :allocs)

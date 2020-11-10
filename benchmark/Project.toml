@@ -4,6 +4,7 @@ version = "0.1.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"

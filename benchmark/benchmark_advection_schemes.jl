@@ -1,6 +1,3 @@
-using BenchmarkTools
-using CUDA
-
 using Oceananigans
 using Oceananigans.Advection
 using Benchmarks
@@ -35,7 +32,7 @@ benchmarks_pretty_table(df, title="Advection scheme benchmarks")
 
 for Arch in Architectures
     suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, CenteredSecondOrder))
-    df = speedups_dataframe(suite_arch, slowdown=true)
-    sort!(df, :Schemes, by=string)
-    benchmarks_pretty_table(df, title="Advection schemes relative performance ($Arch)")
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, :Schemes, by=string)
+    benchmarks_pretty_table(df_arch, title="Advection schemes relative performance ($Arch)")
 end
