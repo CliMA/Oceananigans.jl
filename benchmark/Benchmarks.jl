@@ -8,13 +8,19 @@ export @sync_gpu,
        speedups_suite,
        speedups_dataframe
 
+using Logging
 using BenchmarkTools
 using DataFrames
 using PrettyTables
 using CUDA
 
 using BenchmarkTools: prettytime, prettymemory
+using Oceananigans: OceananigansLogger
 using Oceananigans.Architectures: CPU, GPU
+
+function __init__()
+    Logging.global_logger(OceananigansLogger())
+end
 
 macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
@@ -98,7 +104,8 @@ end
 
 function speedups_dataframe(suite; slowdown=true)
     names = Tuple(Symbol(tag) for tag in suite.tags)
-    df_names = (names..., :speedup, :memory, :allocs)
+    speed_type = slowdown ? :slowdown : :speedup
+    df_names = (names..., speed_type, :memory, :allocs)
     empty_cols = Tuple([] for k in df_names)
     df = DataFrame(; NamedTuple{df_names}(empty_cols)...)
     
