@@ -184,7 +184,7 @@ function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
     end
 end
 
-function latest_checkpoint(filepaths, checkpointer)
+function latest_checkpoint(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = 5 # length(".jld2")
