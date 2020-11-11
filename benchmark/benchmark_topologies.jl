@@ -1,3 +1,5 @@
+using BenchmarkTools
+using CUDA
 using Oceananigans
 using Benchmarks
 
@@ -22,14 +24,11 @@ Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 Ns = [192]
 Topologies = [(Periodic, Periodic, Periodic),
               (Periodic, Periodic,  Bounded),
-              (Periodic, Bounded,   Bounded),
-              (Bounded,  Bounded,   Bounded)]
+              (Periodic, Bounded,   Bounded)]
 
 # Run and summarize benchmarks
 
-suite_cpu = run_benchmarks(benchmark_topology; Architectures=[CPU], Ns, Topologies)
-suite_gpu = run_benchmarks(benchmark_topology; Architectures=[GPU], Ns, Topologies[1:3])
-suite = merge(suite_cpu, suite_gpu)
+suite = run_benchmarks(benchmark_topology; Architectures, Ns, Topologies)
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Topologies, :Ns], by=(string, string, identity))
@@ -40,3 +39,11 @@ if GPU in Architectures
     sort!(df, [:Topologies, :Ns], by=(string, identity))
     benchmarks_pretty_table(df, title="Topologies CPU -> GPU speedup")
 end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], Topologies[1]))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, [:Topologies, :Ns], by=string)
+    benchmarks_pretty_table(df_arch, title="Topologies relative performance ($Arch)")
+end
+

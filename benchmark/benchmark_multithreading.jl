@@ -9,9 +9,12 @@ n_threads = min.(2 .^ (0:10), Sys.CPU_THREADS) |> unique
 
 # Run and collect benchmarks
 
+print_system_info()
+
 for t in n_threads
     @info "Benchmarking multithreading (N=$N, threads=$t)..."
-    run(`julia -t $t --project benchmark_multithreading_single.jl $N`)
+    julia = Base.julia_cmd()
+    run(`$julia -t $t --project benchmark_multithreading_single.jl $N`)
 end
 
 suite = BenchmarkGroup(["size", "threads"])

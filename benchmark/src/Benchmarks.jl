@@ -1,7 +1,7 @@
 module Benchmarks
 
 export @sync_gpu,
-       print_machine_info,
+       print_system_info,
        run_benchmarks,
        benchmarks_dataframe,
        benchmarks_pretty_table,
@@ -28,7 +28,7 @@ macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
 end
 
-function print_machine_info()
+function print_system_info()
     println()
     println(oceananigans_versioninfo())
     println(versioninfo_with_gpu())
@@ -97,7 +97,7 @@ cpu_case(case) = Tuple(is_arch_type(e) ? CPU : e for e in case)
 gpu_case(case) = Tuple(is_arch_type(e) ? GPU : e for e in case)
 
 function gpu_speedups_suite(suite)
-    tags = filter(e -> e != "Archs", suite.tags)
+    tags = filter(e -> !occursin("arch", lowercase(e)), suite.tags)
     suite_speedup = BenchmarkGroup(tags)
 
     for case in keys(suite)

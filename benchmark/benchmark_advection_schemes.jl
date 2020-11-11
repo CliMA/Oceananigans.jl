@@ -1,3 +1,5 @@
+using BenchmarkTools
+using CUDA
 using Oceananigans
 using Oceananigans.Advection
 using Benchmarks
@@ -24,11 +26,18 @@ Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, Upw
 
 # Run and summarize benchmarks
 
+print_system_info()
 suite = run_benchmarks(benchmark_advection_scheme; Architectures, Schemes)
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Schemes], by=string)
 benchmarks_pretty_table(df, title="Advection scheme benchmarks")
+
+if GPU in Architectures
+    df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df_Δ, :Schemes, by=string)
+    benchmarks_pretty_table(df_Δ, title="Advection schemes CPU -> GPU speedup")
+end
 
 for Arch in Architectures
     suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, CenteredSecondOrder))

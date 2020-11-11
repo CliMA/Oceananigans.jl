@@ -1,11 +1,14 @@
+using BenchmarkTools
+using CUDA
 using Oceananigans
+using Oceananigans.TurbulenceClosures
 using Benchmarks
 
 # Benchmark function
 
 function benchmark_closure(Arch, Closure)
-    grid = RegularCartesianGrid(size=(192, 192, 192), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid, advection=Closure())
+    grid = RegularCartesianGrid(size=(128, 128, 128), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=Arch(), grid=grid, closure=Closure())
 
     time_step!(model, 1) # warmup
 
@@ -30,7 +33,7 @@ Closures = [Nothing,
 
 # Run and summarize benchmarks
 
-print_machine_info()
+print_system_info()
 suite = run_benchmarks(benchmark_closure; Architectures, Closures)
 
 df = benchmarks_dataframe(suite)
@@ -40,5 +43,13 @@ benchmarks_pretty_table(df, title="Turbulence closure benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, :Closures, by=string)
-    benchmarks_pretty_table(df, title="Turbulence closure CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Turbulence closure CPU -> GPU speedup")
 end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Nothing))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, :Closures, by=string)
+    benchmarks_pretty_table(df_arch, title="Turbulence closures relative performance ($Arch)")
+end
+

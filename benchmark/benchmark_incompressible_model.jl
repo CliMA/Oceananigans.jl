@@ -1,3 +1,5 @@
+using BenchmarkTools
+using CUDA
 using Oceananigans
 using Benchmarks
 
@@ -24,6 +26,7 @@ Ns = [32, 64, 128, 256]
 
 # Run and summarize benchmarks
 
+print_system_info()
 suite = run_benchmarks(benchmark_incompressible_model; Architectures, Float_types, Ns)
 
 df = benchmarks_dataframe(suite)
@@ -31,7 +34,7 @@ sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
 benchmarks_pretty_table(df, title="Incompressible model benchmarks")
 
 if GPU in Architectures
-    df = gpu_speedups_suite(suite) |> speedups_dataframe
-    sort!(df, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df, title="Incompressible model CPU -> GPU speedup")
+    df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
+    benchmarks_pretty_table(df_Δ, title="Incompressible model CPU -> GPU speedup")
 end

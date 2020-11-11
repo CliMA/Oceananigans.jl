@@ -1,3 +1,5 @@
+using BenchmarkTools
+using CUDA
 using Oceananigans
 using Benchmarks
 
@@ -24,8 +26,9 @@ end
 
 # Benchmark function
 
-function benchmark_tracers(Arch, N, n_active, n_passive)
-    grid = RegularCartesianGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
+function benchmark_tracers(Arch, N, n_tracers)
+    n_active, n_passive = n_tracers
+    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=Arch(), grid=grid, buoyancy=buoyancy(n_active),
                                 tracers=tracer_list(n_active, n_passive))
 
@@ -41,25 +44,30 @@ end
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Ns = [192]
+Ns = [128]
 
 # Each test case specifies (number of active tracers, number of passive tracers)
-test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
-
-N_active  = [test_case[1] for test_case in test_cases]
-N_passive = [test_case[2] for test_case in test_cases]
+tracers = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
 
 # Run benchmarks
 
-print_machine_info()
-suite = run_benchmarks(benchmark_time_stepper; Architectures, Ns, TimeSteppers)
+print_system_info()
+suite = run_benchmarks(benchmark_tracers; Architectures, Ns, tracers)
 
 df = benchmarks_dataframe(suite)
-sort!(df, [:Architectures, :N_active, :N_passive, :Ns], by=(string, identity, identity, identity))
-benchmarks_pretty_table(df, title="Tracers benchmarks")
+sort!(df, [:Architectures, :tracers, :Ns], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Arbitrary tracers benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
-    sort!(df_Δ, [:N_active, :N_passive, :Ns])
-    benchmarks_pretty_table(df, title="Tracers CPU -> GPU speedup")
+    sort!(df_Δ, [:tracers, :Ns])
+    benchmarks_pretty_table(df_Δ, title="Arbitrary tracers CPU -> GPU speedup")
 end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], (0, 0)))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, [:tracers, :Ns], by=(string, identity))
+    benchmarks_pretty_table(df_arch, title="Arbitrary tracers relative performance ($Arch)")
+end
+
