@@ -3,21 +3,8 @@
 The performance benchmarking scripts in the
 [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/master/benchmark)
 directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
-
-Following benchmarks have all been run on the following system
-
-```
-Oceananigans v0.44.1
-Julia Version 1.5.2
-Commit 539f3ce943 (2020-09-23 23:17 UTC)
-Platform Info:
-  OS: Linux (x86_64-pc-linux-gnu)
-  CPU: Intel(R) Xeon(R) Silver 4214 CPU @ 2.20GHz
-  WORD_SIZE: 64
-  LIBM: libopenlibm
-  LLVM: libLLVM-9.0.1 (ORCJIT, cascadelake)
-  GPU: TITAN V
-```
+They use [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) to nicely
+format the benchmark results.
 
 ## Static ocean
 
@@ -26,352 +13,72 @@ solver still takes the same amount of time whether the ocean is static or active
 quite indicative of actual performance. It tests the performance of a bare-bones
 horizontally-periodic model with `topology = (Periodic, Periodic, Bounded)`.
 
-```@raw html
-<html>
-<meta charset="UTF-8">
-<style>
-  table, td, th {
-      border-collapse: collapse;
-      font-family: sans-serif;
-  }
-
-  td, th {
-      border-bottom: 0;
-      padding: 4px
-  }
-
-  tr:nth-child(odd) {
-      background: #eee;
-  }
-
-  tr:nth-child(even) {
-      background: #fff;
-  }
-
-  tr.header {
-      background: #fff !important;
-      font-weight: bold;
-  }
-
-  tr.subheader {
-      background: #fff !important;
-      color: dimgray;
-  }
-
-  tr.headerLastRow {
-      border-bottom: 2px solid black;
-  }
-
-  th.rowNumber, td.rowNumber {
-      text-align: right;
-  }
-
-</style>
-<body>
-<table>
-  <caption style = "text-align: center; ">Incompressible model benchmarks</caption>
-  <tr class = "header headerLastRow">
-    <th style = "text-align: right; ">Architectures</th>
-    <th style = "text-align: right; ">Float_types</th>
-    <th style = "text-align: right; ">Ns</th>
-    <th style = "text-align: right; ">min</th>
-    <th style = "text-align: right; ">median</th>
-    <th style = "text-align: right; ">mean</th>
-    <th style = "text-align: right; ">max</th>
-    <th style = "text-align: right; ">memory</th>
-    <th style = "text-align: right; ">allocs</th>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">5.018 ms</td>
-    <td style = "text-align: right; ">5.228 ms</td>
-    <td style = "text-align: right; ">5.260 ms</td>
-    <td style = "text-align: right; ">5.832 ms</td>
-    <td style = "text-align: right; ">242.42 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">34.647 ms</td>
-    <td style = "text-align: right; ">34.774 ms</td>
-    <td style = "text-align: right; ">34.933 ms</td>
-    <td style = "text-align: right; ">36.215 ms</td>
-    <td style = "text-align: right; ">242.42 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">297.074 ms</td>
-    <td style = "text-align: right; ">298.883 ms</td>
-    <td style = "text-align: right; ">298.868 ms</td>
-    <td style = "text-align: right; ">302.882 ms</td>
-    <td style = "text-align: right; ">242.42 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">2.658 s</td>
-    <td style = "text-align: right; ">2.672 s</td>
-    <td style = "text-align: right; ">2.672 s</td>
-    <td style = "text-align: right; ">2.686 s</td>
-    <td style = "text-align: right; ">242.42 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">5.503 ms</td>
-    <td style = "text-align: right; ">5.822 ms</td>
-    <td style = "text-align: right; ">5.889 ms</td>
-    <td style = "text-align: right; ">6.536 ms</td>
-    <td style = "text-align: right; ">293.44 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">40.370 ms</td>
-    <td style = "text-align: right; ">40.632 ms</td>
-    <td style = "text-align: right; ">40.781 ms</td>
-    <td style = "text-align: right; ">42.309 ms</td>
-    <td style = "text-align: right; ">293.44 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">344.808 ms</td>
-    <td style = "text-align: right; ">345.173 ms</td>
-    <td style = "text-align: right; ">345.609 ms</td>
-    <td style = "text-align: right; ">347.391 ms</td>
-    <td style = "text-align: right; ">293.44 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">CPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">3.452 s</td>
-    <td style = "text-align: right; ">3.473 s</td>
-    <td style = "text-align: right; ">3.473 s</td>
-    <td style = "text-align: right; ">3.494 s</td>
-    <td style = "text-align: right; ">293.44 KiB</td>
-    <td style = "text-align: right; ">1876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">2.161 ms</td>
-    <td style = "text-align: right; ">2.252 ms</td>
-    <td style = "text-align: right; ">2.299 ms</td>
-    <td style = "text-align: right; ">2.952 ms</td>
-    <td style = "text-align: right; ">641.89 KiB</td>
-    <td style = "text-align: right; ">6699</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">2.432 ms</td>
-    <td style = "text-align: right; ">2.526 ms</td>
-    <td style = "text-align: right; ">2.564 ms</td>
-    <td style = "text-align: right; ">3.036 ms</td>
-    <td style = "text-align: right; ">681.70 KiB</td>
-    <td style = "text-align: right; ">6695</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">3.365 ms</td>
-    <td style = "text-align: right; ">3.491 ms</td>
-    <td style = "text-align: right; ">3.660 ms</td>
-    <td style = "text-align: right; ">5.243 ms</td>
-    <td style = "text-align: right; ">766.98 KiB</td>
-    <td style = "text-align: right; ">6713</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">15.592 ms</td>
-    <td style = "text-align: right; ">23.457 ms</td>
-    <td style = "text-align: right; ">22.676 ms</td>
-    <td style = "text-align: right; ">23.511 ms</td>
-    <td style = "text-align: right; ">934.17 KiB</td>
-    <td style = "text-align: right; ">6693</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">2.285 ms</td>
-    <td style = "text-align: right; ">2.395 ms</td>
-    <td style = "text-align: right; ">2.442 ms</td>
-    <td style = "text-align: right; ">2.852 ms</td>
-    <td style = "text-align: right; ">723.73 KiB</td>
-    <td style = "text-align: right; ">6693</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">2.607 ms</td>
-    <td style = "text-align: right; ">2.710 ms</td>
-    <td style = "text-align: right; ">2.825 ms</td>
-    <td style = "text-align: right; ">3.947 ms</td>
-    <td style = "text-align: right; ">763.55 KiB</td>
-    <td style = "text-align: right; ">6689</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">4.099 ms</td>
-    <td style = "text-align: right; ">4.333 ms</td>
-    <td style = "text-align: right; ">4.428 ms</td>
-    <td style = "text-align: right; ">5.487 ms</td>
-    <td style = "text-align: right; ">848.64 KiB</td>
-    <td style = "text-align: right; ">6695</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">GPU</td>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">21.437 ms</td>
-    <td style = "text-align: right; ">32.041 ms</td>
-    <td style = "text-align: right; ">30.990 ms</td>
-    <td style = "text-align: right; ">32.152 ms</td>
-    <td style = "text-align: right; ">1016.02 KiB</td>
-    <td style = "text-align: right; ">6687</td>
-  </tr>
-</table>
-</body>
-</html>
 ```
+Oceananigans v0.34.0 (DEVELOPMENT BRANCH)
+Julia Version 1.4.2
+Commit 44fa15b150* (2020-05-23 18:35 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) Silver 4214 CPU @ 2.20GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-8.0.1 (ORCJIT, skylake)
+  GPU: TITAN V
 
-```@raw html
-<html>
-<meta charset="UTF-8">
-<style>
-  table, td, th {
-      border-collapse: collapse;
-      font-family: sans-serif;
-  }
+ ──────────────────────────────────────────────────────────────────────────────────────
+        Static ocean benchmarks                Time                   Allocations      
+                                       ──────────────────────   ───────────────────────
+           Tot / % measured:                 291s / 29.6%           27.7GiB / 0.50%    
 
-  td, th {
-      border-bottom: 0;
-      padding: 4px
-  }
+ Section                       ncalls     time   %tot     avg     alloc   %tot      avg
+ ──────────────────────────────────────────────────────────────────────────────────────
+  16× 16× 16  [CPU, Float32]       10   15.6ms  0.02%  1.56ms   2.61MiB  1.84%   267KiB
+  16× 16× 16  [CPU, Float64]       10   16.9ms  0.02%  1.69ms   2.61MiB  1.84%   267KiB
+  16× 16× 16  [GPU, Float32]       10   53.4ms  0.06%  5.34ms   11.5MiB  8.14%  1.15MiB
+  16× 16× 16  [GPU, Float64]       10   69.7ms  0.08%  6.97ms   11.5MiB  8.14%  1.15MiB
+  32× 32× 32  [CPU, Float32]       10   54.6ms  0.06%  5.46ms   2.61MiB  1.84%   267KiB
+  32× 32× 32  [CPU, Float64]       10   57.1ms  0.07%  5.71ms   2.61MiB  1.84%   267KiB
+  32× 32× 32  [GPU, Float32]       10   57.5ms  0.07%  5.75ms   11.6MiB  8.15%  1.16MiB
+  32× 32× 32  [GPU, Float64]       10   75.0ms  0.09%  7.50ms   11.6MiB  8.16%  1.16MiB
+  64× 64× 64  [CPU, Float32]       10    424ms  0.49%  42.4ms   2.61MiB  1.84%   267KiB
+  64× 64× 64  [CPU, Float64]       10    425ms  0.49%  42.5ms   2.61MiB  1.84%   267KiB
+  64× 64× 64  [GPU, Float32]       10   61.7ms  0.07%  6.17ms   11.6MiB  8.16%  1.16MiB
+  64× 64× 64  [GPU, Float64]       10   82.4ms  0.10%  8.24ms   11.6MiB  8.17%  1.16MiB
+ 128×128×128  [CPU, Float32]       10    3.67s  4.26%   367ms   2.61MiB  1.84%   267KiB
+ 128×128×128  [CPU, Float64]       10    3.64s  4.23%   364ms   2.61MiB  1.84%   267KiB
+ 128×128×128  [GPU, Float32]       10   74.8ms  0.09%  7.48ms   11.6MiB  8.16%  1.16MiB
+ 128×128×128  [GPU, Float64]       10   94.0ms  0.11%  9.40ms   11.6MiB  8.17%  1.16MiB
+ 256×256×256  [CPU, Float32]       10    38.5s  44.8%   3.85s   2.61MiB  1.84%   267KiB
+ 256×256×256  [CPU, Float64]       10    37.9s  44.1%   3.79s   2.61MiB  1.84%   267KiB
+ 256×256×256  [GPU, Float32]       10    350ms  0.41%  35.0ms   11.6MiB  8.18%  1.16MiB
+ 256×256×256  [GPU, Float64]       10    352ms  0.41%  35.2ms   11.6MiB  8.17%  1.16MiB
+ ──────────────────────────────────────────────────────────────────────────────────────
 
-  tr:nth-child(odd) {
-      background: #eee;
-  }
+CPU Float64 -> Float32 speedup:
+ 16× 16× 16 : 1.084
+ 32× 32× 32 : 1.046
+ 64× 64× 64 : 1.000
+128×128×128 : 0.993
+256×256×256 : 0.986
 
-  tr:nth-child(even) {
-      background: #fff;
-  }
+GPU Float64 -> Float32 speedup:
+ 16× 16× 16 : 1.304
+ 32× 32× 32 : 1.303
+ 64× 64× 64 : 1.335
+128×128×128 : 1.257
+256×256×256 : 1.004
 
-  tr.header {
-      background: #fff !important;
-      font-weight: bold;
-  }
-
-  tr.subheader {
-      background: #fff !important;
-      color: dimgray;
-  }
-
-  tr.headerLastRow {
-      border-bottom: 2px solid black;
-  }
-
-  th.rowNumber, td.rowNumber {
-      text-align: right;
-  }
-
-</style>
-<body>
-<table>
-  <caption style = "text-align: center; ">Incompressible model CPU -> GPU speedup</caption>
-  <tr class = "header headerLastRow">
-    <th style = "text-align: right; ">Float_types</th>
-    <th style = "text-align: right; ">Ns</th>
-    <th style = "text-align: right; ">speedup</th>
-    <th style = "text-align: right; ">memory</th>
-    <th style = "text-align: right; ">allocs</th>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">2.32184</td>
-    <td style = "text-align: right; ">2.64782</td>
-    <td style = "text-align: right; ">3.5709</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">13.7668</td>
-    <td style = "text-align: right; ">2.81205</td>
-    <td style = "text-align: right; ">3.56876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">85.6191</td>
-    <td style = "text-align: right; ">3.16384</td>
-    <td style = "text-align: right; ">3.57836</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float32</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">113.908</td>
-    <td style = "text-align: right; ">3.8535</td>
-    <td style = "text-align: right; ">3.5677</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">32</td>
-    <td style = "text-align: right; ">2.43102</td>
-    <td style = "text-align: right; ">2.4664</td>
-    <td style = "text-align: right; ">3.5677</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">64</td>
-    <td style = "text-align: right; ">14.9961</td>
-    <td style = "text-align: right; ">2.60208</td>
-    <td style = "text-align: right; ">3.56557</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">128</td>
-    <td style = "text-align: right; ">79.6534</td>
-    <td style = "text-align: right; ">2.89207</td>
-    <td style = "text-align: right; ">3.56876</td>
-  </tr>
-  <tr>
-    <td style = "text-align: right; ">Float64</td>
-    <td style = "text-align: right; ">256</td>
-    <td style = "text-align: right; ">108.399</td>
-    <td style = "text-align: right; ">3.46246</td>
-    <td style = "text-align: right; ">3.5645</td>
-  </tr>
-</table>
-</body>
-</html>
+CPU -> GPU speedup:
+ 16× 16× 16  [Float32]: 0.291
+ 16× 16× 16  [Float64]: 0.242
+ 32× 32× 32  [Float32]: 0.949
+ 32× 32× 32  [Float64]: 0.762
+ 64× 64× 64  [Float32]: 6.876
+ 64× 64× 64  [Float64]: 5.152
+128×128×128  [Float32]: 49.036
+128×128×128  [Float64]: 38.730
+256×256×256  [Float32]: 109.868
+256×256×256  [Float64]: 107.863
 ```
 
 ## Channel
