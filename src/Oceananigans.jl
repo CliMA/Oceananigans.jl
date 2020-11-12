@@ -90,6 +90,13 @@ import Base:
 #####
 
 """
+    AbstractModel
+
+Abstract supertype for models.
+"""
+abstract type AbstractModel{TS} end
+
+"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current
@@ -108,6 +115,7 @@ abstract type AbstractOutputWriter end
 ##### Place-holder functions
 #####
 
+function tick! end
 function TimeStepper end
 function run_diagnostic! end
 function write_output! end
@@ -133,8 +141,8 @@ include("SurfaceWaves.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
-include("Models/Models.jl")
 include("TimeSteppers/TimeSteppers.jl")
+include("Models/Models.jl")
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")

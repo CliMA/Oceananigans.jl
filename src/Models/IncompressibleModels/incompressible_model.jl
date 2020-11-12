@@ -1,21 +1,26 @@
-using CUDA
+using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Advection
 
 using Oceananigans: AbstractOutputWriter, AbstractDiagnostic, TimeStepper
 
-using Oceananigans.Fields: BackgroundFields
+using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields
+using Oceananigans.Fields: PressureFields
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Utils: inflate_halo_size, tupleit
 using Oceananigans.Grids: with_halo
 using Oceananigans.Buoyancy: validate_buoyancy
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers
+using Oceananigans.Solvers: PressureSolver
+using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
+using Oceananigans: AbstractModel
+using ..Models: Clock
+
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   V, S, K, BG} <: AbstractModel
+                                   V, S, K, BG} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`

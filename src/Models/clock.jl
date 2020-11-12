@@ -1,6 +1,6 @@
 import Base: show
 
-import Oceananigans: short_show
+import Oceananigans: short_show, tick!
 
 using Dates: AbstractTime, Nanosecond
 

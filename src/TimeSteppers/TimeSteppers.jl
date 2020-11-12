@@ -8,25 +8,12 @@ export
 
 using CUDA
 using KernelAbstractions
-using KernelAbstractions.Extras.LoopInfo: @unroll
+using Oceananigans: AbstractModel, tick!
+using Oceananigans.Architectures: @hascuda, device
+using Oceananigans.Fields: TendencyFields
+using Oceananigans.Utils: work_layout
 
 import Oceananigans: TimeStepper
-
-using Oceananigans.Architectures: @hascuda, device
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Fields
-using Oceananigans.Operators
-using Oceananigans.Coriolis
-using Oceananigans.Buoyancy
-using Oceananigans.SurfaceWaves
-using Oceananigans.BoundaryConditions
-using Oceananigans.Solvers
-using Oceananigans.Models
-using Oceananigans.Utils
-
-using Oceananigans.TurbulenceClosures:
-    calculate_diffusivities!, ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 """
     AbstractTimeStepper
@@ -53,12 +40,15 @@ end
 # Fallbacks
 TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
-include("update_state.jl")
-include("pressure_correction.jl")
-include("velocity_and_tracer_tendencies.jl")
-include("calculate_tendencies.jl")
+function update_state! end
+function calculate_tendencies! end
+function calculate_pressure_correction! end
+function pressure_correct_velocities! end
+
+#calculate_pressure_correction!(model, Δt) = nothing
+#pressure_correct_velocities!(model, Δt) = nothing
+
 include("store_tendencies.jl")
-include("update_hydrostatic_pressure.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 
