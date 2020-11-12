@@ -2,14 +2,7 @@ module Models
 
 export IncompressibleModel, NonDimensionalModel, Clock, tick!, fields
 
-using Adapt
-
-"""
-    fields(model)
-
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
-"""
-fields(model) = merge(model.velocities, model.tracers)
+function fields end
 
 include("clock.jl")
 

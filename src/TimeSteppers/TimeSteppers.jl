@@ -42,11 +42,9 @@ TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
 
 function update_state! end
 function calculate_tendencies! end
-function calculate_pressure_correction! end
-function pressure_correct_velocities! end
 
-#calculate_pressure_correction!(model, Δt) = nothing
-#pressure_correct_velocities!(model, Δt) = nothing
+calculate_pressure_correction!(model, Δt) = nothing
+pressure_correct_velocities!(model, Δt) = nothing
 
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
