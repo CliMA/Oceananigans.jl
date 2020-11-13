@@ -2,8 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 
-using ..Models: fields
-
 import Oceananigans.TimeSteppers: update_state!
 
 """
