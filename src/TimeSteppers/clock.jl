@@ -2,7 +2,7 @@ using Adapt
 using Dates: AbstractTime, Nanosecond
 
 import Base: show
-import Oceananigans: short_show, tick!
+import Oceananigans: short_show
 
 """
     Clock{T<:Number}

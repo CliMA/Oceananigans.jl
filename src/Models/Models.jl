@@ -1,10 +1,8 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, tick!, fields
+export IncompressibleModel, NonDimensionalModel, fields
 
 function fields end
-
-include("clock.jl")
 
 include("IncompressibleModels/IncompressibleModels.jl")
 

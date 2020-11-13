@@ -115,8 +115,6 @@ abstract type AbstractOutputWriter end
 ##### Place-holder functions
 #####
 
-function tick! end
-function TimeStepper end
 function run_diagnostic! end
 function write_output! end
 function location end

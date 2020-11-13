@@ -1,7 +1,7 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic, TimeStepper
+using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: CenteredSecondOrder
@@ -11,10 +11,10 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
 using Oceananigans.Solvers: PressureSolver
+using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
-using ..Models: Clock
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
                                    V, S, K, BG} <: AbstractModel{TS}
