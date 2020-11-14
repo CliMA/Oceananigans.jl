@@ -1,5 +1,6 @@
 using Adapt
 using Dates: AbstractTime, Nanosecond
+using Oceananigans: prettytime
 
 import Base: show
 import Oceananigans: short_show
