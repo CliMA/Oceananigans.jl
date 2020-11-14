@@ -4,6 +4,7 @@ export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     time_step!,
+    Clock,
     tendencies
 
 using CUDA
