@@ -28,7 +28,8 @@ run!(Simulation(model, Δt=0.01, stop_iteration=800))
 b = model.tracers.b
 
 plt = contourf(ynodes(b), znodes(b), interior(b)[1, :, :]',
+               xlabel = "y", ylabel = "z", title = "Buoyancy",
                xlim = (grid.yF[1], grid.yF[end]), ylim = (grid.zF[1], grid.zF[end]),
-               aspectratio = :equal, linewidth = 0, title = "Buoyancy")
+               aspectratio = :equal, linewidth = 0)
 
 display(plt) # hide
