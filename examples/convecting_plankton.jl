@@ -31,11 +31,16 @@
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
 #   * How to use `AveragedField` to diagnose spatial averages of model fields.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, Plots, JLD2, Measures"
+
 # ## The grid
 #
 # We use a two-dimensional grid with 64² points and 1 m grid spacing:
-using Pkg
-pkg"add Oceananigans, Plots, JLD2, Measures"
 
 using Oceananigans
 
