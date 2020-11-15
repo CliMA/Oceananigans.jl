@@ -7,6 +7,13 @@
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 # We start by importing all of the packages and functions that we'll need for this
 # example.
 

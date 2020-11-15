@@ -34,6 +34,8 @@
 # ## The grid
 #
 # We use a two-dimensional grid with 64² points and 1 m grid spacing:
+using Pkg
+pkg"add Oceananigans, Plots, JLD2, Measures"
 
 using Oceananigans
 

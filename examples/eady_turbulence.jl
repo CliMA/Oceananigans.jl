@@ -8,6 +8,13 @@
 #   * How to implement background velocity and tracer distributions
 #   * How to use `ComputedField`s for output
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 # ## The Eady problem 
 #
 # The "Eady problem" simulates the baroclinic instability problem proposed by Eric Eady in
