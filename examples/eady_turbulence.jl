@@ -150,7 +150,7 @@ B_field = BackgroundField(B, parameters=basic_state_parameters)
 # The boundary conditions prescribe a quadratic drag at the bottom as a flux
 # condition.
 
-cᴰ = 1e-4 # drag coefficient
+cᴰ = 1e-4 # quadratic drag coefficient
 
 @inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * u * sqrt(u^2 + v^2)
 @inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * v * sqrt(u^2 + v^2)
