@@ -1,10 +1,15 @@
+import Oceananigans.TimeSteppers: calculate_tendencies!
+
+using Oceananigans.Utils: work_layout
+using ..Models: fields
+
 """
-    calculate_tendencies!(model)
+    calculate_tendencies!(model::IncompressibleModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model)
+function calculate_tendencies!(model::IncompressibleModel)
 
     # Note:
     #
@@ -229,4 +234,3 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, trac
 
     return nothing
 end
-

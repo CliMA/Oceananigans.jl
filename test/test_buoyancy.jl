@@ -1,4 +1,4 @@
-using Oceananigans.Models: TracerFields
+using Oceananigans.Fields: TracerFields
 
 using Oceananigans.Buoyancy:
     required_tracers, ρ′, ∂x_b, ∂y_b,
