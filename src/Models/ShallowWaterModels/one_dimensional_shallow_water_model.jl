@@ -14,19 +14,22 @@ model = ShallowWaterModel(        grid = grid,
                           architecture = CPU(),
                              advection = nothing, 
                               coriolis = nothing, 
-                            velocities = nothing,
-                               tracers = (:D),
+                            transports = nothing,
+                               heights = nothing,
+                               tracers = nothing,
                            timestepper = :RungeKutta3 
                            )
 
 width = 0.1
 
-D(x, y, z) = exp(-x^2 / (2width^2)) 
-u(x, y, z) = 0.0
-v(x, y, z) = 0.0
+h(x, y)  = exp(-x^2 / (2width^2)) 
+uh(x, y) = 0.0
+vh(x, y) = 0.0
 
-set!(model, u = u, v = v, D = D)
+include("../../Fields/set_new!.jl")
+set_new!(model, uh = uh, vh = vh, h = h)
 
+#=
 using Plots
 using Oceananigans.Grids: xnodes 
 
@@ -43,3 +46,4 @@ D_plot = plot(interior(model.tracers.D)[:, 1, 1], x,
 #simulation = Simulation(model, Δt=0.1, stop_time=10, iteration_interval=10, progress=progress)
 
 #run!(simulation)
+ =#
