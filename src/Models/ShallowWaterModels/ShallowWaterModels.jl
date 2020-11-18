@@ -9,7 +9,7 @@ using Oceananigans.Utils: launch!
 ##### ShallowWaterModel definition
 #####
 
-include("shallowwater_model.jl")
+include("shallow_water_model.jl")
 
 #####
 ##### Time-stepping ShallowWaterModels

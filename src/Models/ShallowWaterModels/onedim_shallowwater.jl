@@ -25,8 +25,8 @@ layer_depth(x, y, z) = exp(-x^2 / (2width^2))
           u(x, y, z) = 0.0
           v(x, y, z) = 0.0
 
-set!(model, u = u, v = v)
-#set!(model, u = u, v = v, layer_deth = layer_depth)
+#set!(model, u = u, v = v)
+set!(model, u = u, v = v, layer_deth = layer_depth)
 #fails with "ERROR: LoadError: ArgumentError: name layer_depth not found in model.velocities or model.tracers."
 
 
