@@ -31,7 +31,7 @@ function ShallowWaterModel(;
                                clock = Clock{float_type}(0, 0, 1),
                            advection = CenteredSecondOrder(),
                             coriolis = nothing,
-                           velocities = nothing,
+                          velocities = nothing,
                              tracers = (:D),
                  boundary_conditions = NamedTuple(),
                          timestepper = :RungeKutta3
