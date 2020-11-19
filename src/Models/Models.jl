@@ -8,4 +8,8 @@ include("IncompressibleModels/IncompressibleModels.jl")
 
 using .IncompressibleModels: IncompressibleModel, NonDimensionalModel
 
+include("ShallowWaterModels/ShallowWaterModels.jl")
+
+using .IncompressibleModels: ShallowWaterModel
+
 end
