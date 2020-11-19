@@ -11,7 +11,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 function update_state!(model::ShallowWaterModel)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
+    fill_halo_regions!(merge(model.solution, model.tracers), model.architecture, 
                        model.clock, fields(model))
 
     return nothing

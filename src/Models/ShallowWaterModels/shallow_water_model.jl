@@ -17,8 +17,8 @@ using Oceananigans.Utils: inflate_halo_size, tupleit
 
 function ShallowWaterSolutionFields(arch, grid, bcs)
     uh_bcs = :uh ∈ keys(bcs) ? bcs.uh : UVelocityBoundaryConditions(grid)
-    vh_bcs = :vh ∈ keys(bcs) ? bcs.v : VVelocityBoundaryConditions(grid)
-    h_bcs  = :h  ∈ keys(bcs) ? bcs.w : TracerBoundaryConditions(grid)
+    vh_bcs = :vh ∈ keys(bcs) ? bcs.vh : VVelocityBoundaryConditions(grid)
+    h_bcs  = :h  ∈ keys(bcs) ? bcs.h  : TracerBoundaryConditions(grid)
 
     uh = XFaceField(arch, grid, uh_bcs)
     vh = YFaceField(arch, grid, vh_bcs)
