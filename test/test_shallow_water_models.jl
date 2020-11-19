@@ -1,4 +1,5 @@
 using Oceananigans.Models: ShallowWaterModel
+using Oceananigans.Grids: Periodic, Bounded
 
 @testset "Shallow Water Models" begin
     @info "Testing shallow water models..."
@@ -21,7 +22,7 @@ using Oceananigans.Models: ShallowWaterModel
             for arch in archs, FT in float_types
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = ShallowWaterModel(grid=grid, architecture=arch, float_type=FT)
 
                 # Just testing that the model was constructed with no errors/crashes.
@@ -29,30 +30,37 @@ using Oceananigans.Models: ShallowWaterModel
 
                 # Test that the grid didn't get mangled
                 @test grid === model.grid
+
+                too_big_grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 2), extent=(1, 2, 3))
+
+                @test_throws ArgumentError ShallowWaterModel(grid=too_big_grid, architecture=arch, float_type=FT)
             end
         end
     end
 
-    #=
-    @testset "Setting model fields" begin
-        @info "  Testing setting model fields..."
+    @testset "Setting ShallowWaterModel fields" begin
+        @info "  Testing setting shallow water model fields..."
         for arch in archs, FT in float_types
-            N = (4, 4, 4)
+            N = (4, 4, 1)
             L = (2π, 3π, 5π)
 
             grid = RegularCartesianGrid(FT, size=N, extent=L)
+            model = ShallowWaterModel(grid=grid, architecture=arch, float_type=FT)
+
             x, y, z = nodes((Face, Cell, Cell), grid, reshape=true)
 
-            u₀(x, y, z) = x * y^2 * z^3
-            u_answer = @. x * y^2 * z^3
+            uh₀(x, y, z) = x * y^2 * z^3
+            uh_answer = @. x * y^2 * z^3
 
-            T₀ = rand(size(grid)...)
-            T_answer = deepcopy(T₀)
+            h₀ = rand(size(grid)...)
+            h_answer = deepcopy(h₀)
 
-            @test set_velocity_tracer_fields(arch, grid, :u, u₀, u_answer)
-            @test set_velocity_tracer_fields(arch, grid, :T, T₀, T_answer)
-            @test initial_conditions_correctly_set(arch, FT)
+            set!(model, uh=uh₀, h=h₀)
+
+            uh, vh, h = model.solution
+
+            @test all(interior(uh) .≈ uh_answer)
+            @test all(interior(h) .≈ h_answer)
         end
     end
-    =#
 end

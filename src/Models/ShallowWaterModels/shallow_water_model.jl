@@ -27,13 +27,14 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, Q, C, TS} <: AbstractModel{TS}
+struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, E, Q, C, TS} <: AbstractModel{TS}
     
                  grid :: G         # Grid of physical points on which `Model` is solved
          architecture :: A         # Computer `Architecture` on which `Model` is run
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
             advection :: V         # Advection scheme for velocities _and_ tracers
              coriolis :: R         # Set of parameters for the background rotation rate of `Model`
+              closure :: E         # Diffusive 'turbulence closure' for all model fields
              solution :: Q         # Container for transports `uh`, `vh`, and height `h`
               tracers :: C         # Container for tracer fields
           timestepper :: TS        # Object containing timestepper fields and parameters
@@ -47,11 +48,14 @@ function ShallowWaterModel(;
                                clock = Clock{float_type}(0, 0, 1),
                            advection = CenteredSecondOrder(),
                             coriolis = nothing,
+                             closure = nothing,
                             solution = nothing,
                              tracers = NamedTuple(),
                  boundary_conditions = NamedTuple(),
                          timestepper = :RungeKutta3
     )
+
+    grid.Nz == 1 || throw(ArgumentError("ShallowWaterModel must be constructed with Nz=1!"))
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -70,6 +74,7 @@ function ShallowWaterModel(;
                              clock,
                              advection,
                              coriolis,
+                             closure,
                              solution,
                              tracers,
                              timestepper)
