@@ -49,8 +49,8 @@ using Oceananigans.Grids: Periodic, Bounded
 
             x, y, z = nodes((Face, Cell, Cell), grid, reshape=true)
 
-            uh₀(x, y, z) = x * y^2 * z^3
-            uh_answer = @. x * y^2 * z^3
+            uh₀(x, y, z) = x * y^2
+            uh_answer = @. x * y^2
 
             h₀ = rand(size(grid)...)
             h_answer = deepcopy(h₀)
