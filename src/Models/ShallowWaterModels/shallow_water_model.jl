@@ -3,6 +3,13 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+
+using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
+                                       VVelocityBoundaryConditions,
+                                       TracerBoundaryConditions
+
+using Oceananigans.Fields: XFaceField, YFaceField, CellField
+
 using Oceananigans.Fields: Field, tracernames, TracerFields
 using Oceananigans.Grids: with_halo
 using Oceananigans.TimeSteppers: Clock, TimeStepper
@@ -13,14 +20,14 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     vh_bcs = :vh ∈ keys(bcs) ? bcs.v : VVelocityBoundaryConditions(grid)
     h_bcs = :h ∈ keys(bcs) ? bcs.w : TracerBoundaryConditions(grid)
 
-    uh = XFaceField(arch, grid, u_bcs)
-    vh = YFaceField(arch, grid, v_bcs)
-    h = CellField(arch, grid, w_bcs)
+    uh = XFaceField(arch, grid, uh_bcs)
+    vh = YFaceField(arch, grid, vh_bcs)
+    h = CellField(arch, grid, h_bcs)
 
     return (uh=uh, vh=vh, h=h)
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, Q, C, TS} <: AbstractModel{TS}
+struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, Q, C, TS} <: AbstractModel{TS}
     
                  grid :: G         # Grid of physical points on which `Model` is solved
          architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -30,6 +37,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, Q, C, TS} 
              solution :: Q         # Container for transports `uh`, `vh`, and height `h`
               tracers :: C         # Container for tracer fields
           timestepper :: TS        # Object containing timestepper fields and parameters
+
 end
 
 function ShallowWaterModel(;

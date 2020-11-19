@@ -10,6 +10,7 @@ using Oceananigans.Utils: launch!
 #####
 
 include("shallow_water_model.jl")
+include("set_shallow_water_model.jl")
 
 #####
 ##### Time-stepping ShallowWaterModels
