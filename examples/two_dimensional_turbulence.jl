@@ -7,6 +7,13 @@
 #   * How to use `AbstractOperations`.
 #   * How to use `ComputedField`s to generate output.
 
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 # ## Model setup
 
 # We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,

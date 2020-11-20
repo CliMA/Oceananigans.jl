@@ -4,6 +4,13 @@
 # and watch it propagate. This example illustrates how to set up a two-dimensional
 # model, set initial conditions, and how to use `BackgroundField`s.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
