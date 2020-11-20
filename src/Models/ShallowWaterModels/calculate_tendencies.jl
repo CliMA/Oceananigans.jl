@@ -1,7 +1,12 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
-
+#import Oceananigans.TimeSteppers: calculate_tendencies!
+ 
 using Oceananigans.Utils: work_layout
-using ..Models: fields
+
+#FJP: I needed to comment this out and add the next two lines
+
+#using ..Models: fields
+using Oceananigans.Models: fields
+using KernelAbstractions: @index, @kernel, Event, MultiEvent
 
 """
     calculate_tendencies!(model::ShallowWaterModel)
