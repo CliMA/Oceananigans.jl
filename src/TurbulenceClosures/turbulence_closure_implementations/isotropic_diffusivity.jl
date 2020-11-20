@@ -51,13 +51,13 @@ calculate_diffusivities!(K, arch, grid, closure::IsotropicDiffusivity, args...) 
 end
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, clock, closure.ν, U.u)
+    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, clock, closure.ν, U[1])
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, clock, closure.ν, U.v)
+    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, clock, closure.ν, U[2])
 
 @inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, clock, closure.ν, U.w)
+    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, clock, closure.ν, U[3])
 
 Base.show(io::IO, closure::IsotropicDiffusivity) =
     print(io, "IsotropicDiffusivity: ν=$(closure.ν), κ=$(closure.κ)")
