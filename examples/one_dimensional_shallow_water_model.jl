@@ -42,9 +42,7 @@ savefig("initial_height.png")
 simulation = Simulation(model, Δt = 0.1, stop_iteration = 10)
 
 include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/update_state.jl")
-
 include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/calculate_tendencies.jl")
-
 include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/solution_and_tracer_tendencies.jl")
 
 run!(simulation)

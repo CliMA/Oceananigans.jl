@@ -2,6 +2,9 @@ using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 
+"""
+Compute the tendency for the x-directional transport, uh
+"""
 @inline function uh_solution_tendency(i, j, k, grid,
                                       advection,
                                       coriolis,
@@ -13,6 +16,9 @@ using Oceananigans.Operators
 #    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
 end
 
+"""
+Compute the tendency for the y-directional transport, vh.
+"""
 @inline function vh_solution_tendency(i, j, k, grid,
                                       advection,
                                       coriolis,
@@ -25,6 +31,9 @@ end
 
 end
 
+"""
+Compute the tendency for the height, h.
+"""
 @inline function h_solution_tendency(i, j, k, grid,
                             advection,
                             solution,
