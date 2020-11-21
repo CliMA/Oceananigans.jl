@@ -17,7 +17,7 @@ using Oceananigans.Utils: inflate_halo_size, tupleit
 
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   V, S, K, BG} <: AbstractModel{TS}
+                                   V, S, K, BG, I} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
