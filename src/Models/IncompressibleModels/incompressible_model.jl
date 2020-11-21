@@ -34,6 +34,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
         diffusivities :: K         # Container for turbulent diffusivities
           timestepper :: TS        # Object containing timestepper fields and parameters
       pressure_solver :: S         # Pressure/Poisson solver
+    immersed_boundary :: I         # Determines immersed boundary
 end
 
 """
@@ -55,7 +56,8 @@ end
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
-        pressure_solver = nothing
+        pressure_solver = nothing,
+      immersed_boundary = nothing
     )
 
 Construct an incompressible `Oceananigans.jl` model on `grid`.
@@ -95,7 +97,8 @@ function IncompressibleModel(;
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
-        pressure_solver = nothing
+        pressure_solver = nothing,
+      immersed_boundary = nothing
     )
 
     if architecture == GPU() && !has_cuda()
@@ -143,7 +146,7 @@ function IncompressibleModel(;
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
                                forcing, closure, background_fields, velocities, tracers, pressures,
-                               diffusivities, timestepper, pressure_solver)
+                               diffusivities, timestepper, pressure_solver, immersed_boundary)
 end
 
 #####
