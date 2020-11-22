@@ -1,3 +1,5 @@
+using Oceananigans.Grids: xnode, ynode, znode, Cell, AbstractGrid
+
 """
     correct_immersed_tendencies!(model)
     
