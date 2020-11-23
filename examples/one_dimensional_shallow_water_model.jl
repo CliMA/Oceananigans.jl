@@ -45,4 +45,4 @@ include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/up
 include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/calculate_tendencies.jl")
 include("/home/fpoulin/software/Oceananigans.jl/src/Models/ShallowWaterModels/solution_and_tracer_tendencies.jl")
 
-#run!(simulation)
+run!(simulation)

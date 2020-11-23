@@ -121,16 +121,24 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     barrier = Event(device(model.architecture))
 
-    substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
+    substep_solution_kernel! = rk3_substep_solution!(device(model.architecture), workgroup, worksize)
+    #substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = substep_velocities_kernel!(model.velocities,
-                                                  Δt, γⁿ, ζⁿ,
-                                                  model.timestepper.Gⁿ,
-                                                  model.timestepper.G⁻;
-                                                  dependencies=barrier)
 
-    events = [velocities_event]
+    solution_event = substep_solution_kernel!(model.solution,
+                                              Δt, γⁿ, ζⁿ,
+                                              model.timestepper.Gⁿ,
+                                              model.timestepper.G⁻;
+                                              dependencies=barrier)
+    #velocities_event = substep_velocities_kernel!(model.velocities,
+    #                                              Δt, γⁿ, ζⁿ,
+    #                                              model.timestepper.Gⁿ,
+    #                                              model.timestepper.G⁻;
+    #                                              dependencies=barrier)
+
+    events = [solution_event]
+    #events = [velocities_event]
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
@@ -170,6 +178,33 @@ the 3rd-order Runge-Kutta method
     i, j, k = @index(Global, NTuple)
 
     @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
+end
+
+
+"""
+Time step solution fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_solution!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U.uh[i, j, k] += Δt * (γⁿ * Gⁿ.uh[i, j, k] + ζⁿ * G⁻.uh[i, j, k])
+        U.vh[i, j, k] += Δt * (γⁿ * Gⁿ.vh[i, j, k] + ζⁿ * G⁻.vh[i, j, k])
+        U.h[i, j, k]  += Δt * (γⁿ * Gⁿ.h[i, j, k]  + ζⁿ * G⁻.h[i, j, k])
+    end
+end
+
+"""
+Time step solution fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_solution!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U.uh[i, j, k] += Δt * γ¹ * G¹.uh[i, j, k]
+        U.vh[i, j, k] += Δt * γ¹ * G¹.vh[i, j, k]
+        U.h[i, j, k]  += Δt * γ¹ * G¹.h[i, j, k]
+    end
 end
 
 """

@@ -1,5 +1,13 @@
 using Oceananigans.Grids: AbstractGrid
 
+""" Store source terms for `uh`, `vh`, and `h`. """
+@kernel function store_solution_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻.uh[i, j, k] = G⁰.uh[i, j, k]
+    @inbounds G⁻.vh[i, j, k] = G⁰.vh[i, j, k]
+    @inbounds G⁻.h[i, j, k]  = G⁰.h[i, j, k]
+end
+
 """ Store source terms for `u`, `v`, and `w`. """
 @kernel function store_velocity_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
     i, j, k = @index(Global, NTuple)
@@ -21,15 +29,23 @@ function store_tendencies!(model)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    store_velocity_tendencies_kernel! = store_velocity_tendencies!(device(model.architecture), workgroup, worksize)
+    store_solution_tendencies_kernel! = store_solution_tendencies!(device(model.architecture), workgroup, worksize)
+    #store_velocity_tendencies_kernel! = store_velocity_tendencies!(device(model.architecture), workgroup, worksize)
     store_tracer_tendency_kernel! = store_tracer_tendency!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = store_velocity_tendencies_kernel!(model.timestepper.G⁻,
-                                                         model.grid,
-                                                         model.timestepper.Gⁿ,
-                                                         dependencies=barrier)
+    solution_event = store_solution_tendencies_kernel!(model.timestepper.G⁻,
+                                                       model.grid,
+                                                       model.timestepper.Gⁿ,
+                                                       dependencies=barrier)
 
-    events = [velocities_event]
+    events = [solution_event]
+
+    #velocities_event = store_velocity_tendencies_kernel!(model.timestepper.G⁻,
+    #                                                     model.grid,
+    #                                                     model.timestepper.Gⁿ,
+    #                                                     dependencies=barrier)
+
+    #events = [velocities_event]
 
     # Tracer fields
     for i in 4:length(model.timestepper.G⁻)
