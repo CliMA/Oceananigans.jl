@@ -20,7 +20,6 @@ function ShallowWaterTendencyFields(arch, grid, tracer_names)
     uh = XFaceField(arch, grid, UVelocityBoundaryConditions(grid))
     vh = YFaceField(arch, grid, VVelocityBoundaryConditions(grid))
     h  = CellField(arch,  grid, TracerBoundaryConditions(grid))
-    #tracers = TracerFields(tracer_names, arch, grid; kwargs...)
     tracers = TracerFields(tracer_names, arch, grid)
     
     return merge((uh=uh, vh=vh, h=h), tracers)
@@ -95,4 +94,10 @@ function ShallowWaterModel(;
                              timestepper)
 end
 
+
+import Oceananigans.TimeSteppers: rk3_substep!
+rk3_substep!(model::ShallowWaterModel, args...) = nothing
+
+import Oceananigans.TimeSteppers: store_tendencies!
+store_tendencies!(model::ShallowWaterModel, args...) = nothing
 
