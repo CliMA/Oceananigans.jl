@@ -5,7 +5,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
-#import ..Models: fields
 import Oceananigans.Models: fields
 
 #####

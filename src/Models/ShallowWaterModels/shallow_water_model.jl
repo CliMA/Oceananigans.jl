@@ -12,7 +12,7 @@ using Oceananigans.Fields: XFaceField, YFaceField, CellField
 
 using Oceananigans.Fields: Field, tracernames, TracerFields
 using Oceananigans.Grids: with_halo
-using Oceananigans.TimeSteppers: Clock, TimeStepper
+using Oceananigans.TimeSteppers: Clock, TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
@@ -20,7 +20,8 @@ function ShallowWaterTendencyFields(arch, grid, tracer_names)
     uh = XFaceField(arch, grid, UVelocityBoundaryConditions(grid))
     vh = YFaceField(arch, grid, VVelocityBoundaryConditions(grid))
     h  = CellField(arch,  grid, TracerBoundaryConditions(grid))
-    tracers = TracerFields(tracer_names, arch, grid; kwargs...)
+    #tracers = TracerFields(tracer_names, arch, grid; kwargs...)
+    tracers = TracerFields(tracer_names, arch, grid)
     
     return merge((uh=uh, vh=vh, h=h), tracers)
 end
@@ -48,6 +49,7 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, E, Q, C, TS} <: Ab
               closure :: E         # Diffusive 'turbulence closure' for all model fields
              solution :: Q         # Container for transports `uh`, `vh`, and height `h`
               tracers :: C         # Container for tracer fields
+          timestepper :: TS        # Object containing timestepper fields and parameters
 
 end
 
@@ -62,7 +64,8 @@ function ShallowWaterModel(;
                             solution = nothing,
                              tracers = NamedTuple(),
                  boundary_conditions = NamedTuple(),
-                         timestepper = :RungeKutta3
+                         timestepper = nothing
+#                         timestepper = RungeKutta3
     )
 
     grid.Nz == 1 || throw(ArgumentError("ShallowWaterModel must be constructed with Nz=1!"))
@@ -76,7 +79,7 @@ function ShallowWaterModel(;
     
     solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
     tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)
-    
+
     timestepper = RungeKutta3TimeStepper(architecture, grid, tracernames(tracers);
                                          Gⁿ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)),
                                          G⁻ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)))
