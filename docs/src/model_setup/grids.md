@@ -34,7 +34,16 @@ grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
 
 Another crucial keyword is a 3-`Tuple` that specifies the grid's `topology`.
 In each direction the grid may be `Periodic`, `Bounded`, or `Flat`.
-`Flat` dimensions are used to specify two-dimensional and one-dimensional domains.
+`Flat` dimensions are used to specify two-dimensional and one-dimensional domains. 
+Currently only a subset of the possible topologies are available (the limiting factor being the pressure solver):
+
+```
+(Periodic, Periodic, Periodic)
+(Periodic, Periodic, Bounded)
+(Periodic, Bounded, Bounded)
+(Bounded, Bounded, Bounded) (only works on CPUs)
+```
+
 By default, the `RegularCartesianGrid` constructor assumes the grid topology is horizontally-periodic
 and bounded in the vertical, such that `topology = (Periodic, Periodic, Bounded)`.
 
