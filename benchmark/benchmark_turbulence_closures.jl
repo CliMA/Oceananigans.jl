@@ -1,50 +1,55 @@
-using Printf
-using TimerOutputs
+using BenchmarkTools
+using CUDA
 using Oceananigans
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Utils
+using Benchmarks
 
-include("benchmark_utils.jl")
+# Benchmark function
 
-#####
-##### Benchmark setup and parameters
-#####
+function benchmark_closure(Arch, Closure)
+    grid = RegularCartesianGrid(size=(128, 128, 128), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=Arch(), grid=grid, closure=Closure())
 
-const timer = TimerOutput()
+    time_step!(model, 1) # warmup
 
-Nt = 10  # Number of iterations to use for benchmarking time stepping.
-
-# Run benchmark across these parameters.
-            Ns = [(32, 32, 32), (256, 256, 128)]
-   float_types = [Float64]       # Float types to benchmark.
-         archs = [CPU()]         # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
-      closures = [IsotropicDiffusivity, AnisotropicDiffusivity, SmagorinskyLilly,
-	          VerstappenAnisotropicMinimumDissipation]
-
-#####
-##### Run benchmarks
-#####
-
-for arch in archs, FT in float_types, N in Ns, Closure in closures
-	grid = RegularCartesianGrid(FT, size=N, extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, closure=Closure(FT))
-
-    time_step!(model, 1)  # precompile
-
-    bn =  benchmark_name(N, string(Closure), arch, FT)
-    @printf("Running benchmark: %s...\n", bn)
-    for i in 1:Nt
-        @timeit timer bn time_step!(model, 1)
-    end
+    trial = @benchmark begin
+        @sync_gpu time_step!($model, 1)
+    end samples=10
+    
+    return trial
 end
 
-#####
-##### Print benchmark results
-#####
+# Benchmark parameters
 
-println()
-println(oceananigans_versioninfo())
-println(versioninfo_with_gpu())
-print_timer(timer, title="Turbulence closure benchmarks", sortby=:name)
-println()
+Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+
+Closures = [Nothing,
+            IsotropicDiffusivity,
+            AnisotropicDiffusivity,
+            AnisotropicBiharmonicDiffusivity,
+            TwoDimensionalLeith,
+            SmagorinskyLilly,
+            AnisotropicMinimumDissipation]
+
+# Run and summarize benchmarks
+
+print_system_info()
+suite = run_benchmarks(benchmark_closure; Architectures, Closures)
+
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :Closures], by=(string, string))
+benchmarks_pretty_table(df, title="Turbulence closure benchmarks")
+
+if GPU in Architectures
+    df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df_Δ, :Closures, by=string)
+    benchmarks_pretty_table(df_Δ, title="Turbulence closure CPU -> GPU speedup")
+end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Nothing))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, :Closures, by=string)
+    benchmarks_pretty_table(df_arch, title="Turbulence closures relative performance ($Arch)")
+end
+
