@@ -1,5 +1,3 @@
-#import Oceananigans.TimeSteppers: calculate_tendencies!
- 
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: fields
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
