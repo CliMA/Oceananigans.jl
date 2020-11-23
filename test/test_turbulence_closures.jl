@@ -1,4 +1,5 @@
 using Oceananigans.Diagnostics
+using Oceananigans.TimeSteppers: Clock
 
 for closure in closures
     @eval begin
@@ -57,7 +58,7 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
     velocities = VelocityFields(arch, grid)
-    tracers = TracerFields((:T, :S), arch, grid)
+       tracers = TracerFields((:T, :S), arch, grid)
          clock = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)

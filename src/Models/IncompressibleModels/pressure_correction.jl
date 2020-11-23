@@ -1,9 +1,13 @@
+using Oceananigans.Solvers
+
+import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
+
 """
-    calculate_pressure_correction!(model, Δt)
+    calculate_pressure_correction!(model::IncompressibleModel, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(model, Δt)
+function calculate_pressure_correction!(model::IncompressibleModel, Δt)
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
@@ -32,7 +36,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 end
 
 "Update the solution variables (velocities and tracers)."
-function pressure_correct_velocities!(model, Δt)
+function pressure_correct_velocities!(model::IncompressibleModel, Δt)
 
     event = launch!(model.architecture, model.grid, :xyz,
                     _pressure_correct_velocities!,

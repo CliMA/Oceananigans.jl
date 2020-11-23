@@ -41,14 +41,14 @@ end
 #####
 
 """
-    time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to 
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::IncompressibleModel{<:RungeKutta3TimeStepper}, Δt)
+function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model)

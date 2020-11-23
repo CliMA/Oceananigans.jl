@@ -12,6 +12,13 @@
 #
 #   * How to specify time- and horizontally-averaged output.
 
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 using Oceananigans
 
 # ## Model set-up

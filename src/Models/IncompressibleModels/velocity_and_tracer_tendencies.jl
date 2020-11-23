@@ -1,4 +1,9 @@
 using Oceananigans.Advection
+using Oceananigans.Buoyancy
+using Oceananigans.Coriolis
+using Oceananigans.Operators
+using Oceananigans.SurfaceWaves
+using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 """
     u_velocity_tendency(i, j, k, grid,

@@ -1,6 +1,15 @@
 
 # # Stratified Kelvin-Helmholtz instability
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
+# ## The physical domain
+#
 # We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``,
 
 using Oceananigans

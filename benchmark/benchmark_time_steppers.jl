@@ -1,50 +1,48 @@
-using Printf
-using TimerOutputs
+using BenchmarkTools
+using CUDA
 using Oceananigans
-using Oceananigans.Advection
-using Oceananigans.Utils
+using Benchmarks
 
-include("benchmark_utils.jl")
+# Benchmark function
 
-#####
-##### Benchmark setup and parameters
-#####
+function benchmark_time_stepper(Arch, N, TimeStepper)
+    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=Arch(), grid=grid, timestepper=TimeStepper)
 
-const timer = TimerOutput()
+    time_step!(model, 1) # warmup
 
-Nt = 10  # Number of iterations to use for benchmarking time stepping.
-
-   float_types = [Float64]       # Float types to benchmark.
-         archs = [CPU()]         # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()]  # Benchmark GPU on systems with CUDA-enabled GPUs.
-
-time_steppers = (:QuasiAdamsBashforth2, :RungeKutta3)
-
-#####
-##### Run benchmarks
-#####
-
-for arch in archs, FT in float_types, ts in time_steppers
-    N = arch isa CPU ? 64 : 256
+    trial = @benchmark begin
+        @sync_gpu time_step!($model, 1)
+    end samples=10
     
-    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, timestepper=ts)
-
-    time_step!(model, 1)  # precompile
-
-    bn =  benchmark_name((N, N, N), string(ts), arch, FT)
-    @printf("Running benchmark: %s...\n", bn)
-    for i in 1:Nt
-        @timeit timer bn time_step!(model, 1)
-    end
+    return trial
 end
 
-#####
-##### Print benchmark results
-#####
+# Benchmark parameters
 
-println()
-println(oceananigans_versioninfo())
-println(versioninfo_with_gpu())
-print_timer(timer, title="Time stepper benchmarks", sortby=:name)
-println()
+Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Ns = [192]
+TimeSteppers = [:QuasiAdamsBashforth2, :RungeKutta3]
+
+# Run and summarize benchmarks
+
+print_system_info()
+suite = run_benchmarks(benchmark_time_stepper; Architectures, Ns, TimeSteppers)
+
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :TimeSteppers, :Ns], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Time stepping benchmarks")
+
+if GPU in Architectures
+    df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df_Δ, [:TimeSteppers, :Ns], by=(string, identity))
+    benchmarks_pretty_table(df_Δ, title="Time stepping CPU -> GPU speedup")
+end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], :QuasiAdamsBashforth2))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, :TimeSteppers, by=string)
+    benchmarks_pretty_table(df_arch, title="Time stepping relative performance ($Arch)")
+end
+

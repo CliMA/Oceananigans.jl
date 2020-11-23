@@ -1,3 +1,5 @@
+using Oceananigans.Grids: AbstractGrid
+
 """ Store source terms for `u`, `v`, and `w`. """
 @kernel function store_velocity_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
     i, j, k = @index(Global, NTuple)

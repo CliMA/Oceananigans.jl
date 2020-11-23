@@ -1,8 +1,9 @@
-import Base: show
-
-import Oceananigans: short_show
-
+using Adapt
 using Dates: AbstractTime, Nanosecond
+using Oceananigans.Utils: prettytime
+
+import Base: show
+import Oceananigans: short_show
 
 """
     Clock{T<:Number}

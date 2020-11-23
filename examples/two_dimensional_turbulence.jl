@@ -7,6 +7,13 @@
 #   * How to use `AbstractOperations`.
 #   * How to use `ComputedField`s to generate output.
 
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+using Pkg
+pkg"add Oceananigans, JLD2, Plots"
+
 # ## Model setup
 
 # We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
@@ -41,12 +48,13 @@ set!(model, u=u₀, v=u₀)
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-## To make our equations prettier, we unpack `u`, `v`, and `w` from 
-## the `NamedTuple` model.velocities:
+# To make our equations prettier, we unpack `u`, `v`, and `w` from 
+# the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
 # Next we create two objects called `ComputedField`s that calculate
-# _(i)_ vorticity, defined as
+# _(i)_ vorticity that measures the rate at which the fluid rotates 
+# and is defined as
 #
 # ```math
 # ω = ∂_x v - ∂_y u \, ,
@@ -56,7 +64,6 @@ u, v, w = model.velocities
 
 ω_field = ComputedField(ω)
 
-# "Vorticity" measures the rate at which the fluid rotates. 
 # We also calculate _(ii)_ the _speed_ of the flow,
 #
 # ```math
@@ -107,8 +114,9 @@ using Oceananigans.Grids
 
 xω, yω, zω = nodes(ω_field)
 xs, ys, zs = nodes(s_field)
+nothing # hide
 
-# and animate the vorticity.
+# and animate the vorticity and fluid speed.
 
 using Plots
 

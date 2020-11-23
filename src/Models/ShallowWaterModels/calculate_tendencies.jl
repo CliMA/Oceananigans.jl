@@ -1,10 +1,15 @@
+import Oceananigans.TimeSteppers: calculate_tendencies!
+
+using Oceananigans.Utils: work_layout
+using ..Models: fields
+
 """
-    calculate_tendencies!(model)
+    calculate_tendencies!(model::ShallowWaterModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model)
+function calculate_tendencies!(model::ShallowWaterModel)
 
     # Note:
     #
@@ -21,13 +26,8 @@ function calculate_tendencies!(model)
                                                model.grid,
                                                model.advection,
                                                model.coriolis,
-                                               model.buoyancy,
-                                               model.surface_waves,
-                                               model.closure,
-                                               model.background_fields,
                                                model.velocities,
                                                model.tracers,
-                                               model.pressures.pHY′,
                                                model.diffusivities,
                                                model.forcing,
                                                model.clock)
@@ -50,13 +50,8 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     grid,
                                                     advection,
                                                     coriolis,
-                                                    buoyancy,
-                                                    surface_waves,
-                                                    closure,
-                                                    background_fields,
                                                     velocities,
                                                     tracers,
-                                                    hydrostatic_pressure,
                                                     diffusivities,
                                                     forcings,
                                                     clock)
@@ -65,7 +60,6 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
     calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)
-    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
     calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
 
     barrier = Event(device(arch))
@@ -78,19 +72,14 @@ function calculate_interior_tendency_contributions!(tendencies,
                                     background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
-                                    forcings, clock, dependencies=barrier)
-
-    events = [Gu_event, Gv_event, Gw_event]
+    events = [Gu_event, Gv_event]
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, buoyancy,
-                                        background_fields, velocities, tracers, diffusivities,
-                                        forcing, clock, dependencies=barrier)
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, velocities,
+                                        tracers, diffusivities, forcing, clock, dependencies=barrier)
 
         push!(events, Gc_event)
     end
@@ -101,7 +90,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 end
 
 #####
-##### Tendency calculators for u, v, w-velocity
+##### Tendency calculators for u, v-velocity
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
@@ -109,21 +98,16 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
-                               closure,
-                               background_fields,
                                velocities,
                                tracers,
                                diffusivities,
                                forcings,
-                               hydrostatic_pressure,
                                clock)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, velocities, tracers,
+                                                diffusivities, forcings, clock)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
@@ -131,31 +115,6 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
-                               closure,
-                               background_fields,
-                               velocities,
-                               tracers,
-                               diffusivities,
-                               forcings,
-                               hydrostatic_pressure,
-                               clock)
-
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
-end
-
-""" Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw,
-                               grid,
-                               advection,
-                               coriolis,
-                               surface_waves,
-                               closure,
-                               background_fields,
                                velocities,
                                tracers,
                                diffusivities,
@@ -164,8 +123,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
-                                                closure, background_fields, velocities, tracers,
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, velocities, tracers,
                                                 diffusivities, forcings, clock)
 end
 
@@ -178,9 +136,6 @@ end
                                grid,
                                tracer_index,
                                advection,
-                               closure,
-                               buoyancy,
-                               background_fields,
                                velocities,
                                tracers,
                                diffusivities,
@@ -189,8 +144,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure,
-                                            buoyancy, background_fields, velocities, tracers,
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, velocities, tracers,
                                             diffusivities, forcing, clock)
 end
 
@@ -229,4 +183,3 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, trac
 
     return nothing
 end
-
