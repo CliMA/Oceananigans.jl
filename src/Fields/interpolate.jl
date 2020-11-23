@@ -58,3 +58,15 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     # Convert indices to proper integers and shift to 1-based indexing.
     return _interpolate(field.data, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
 end
+
+@inline function interpolate(field, LX, LY, LZ, grid, x, y, z)
+    i, j, k = fractional_indices(x, y, z, (LX, LY, LZ), grid)
+
+    # Use mod and trunc as CUDA.modf is not defined.
+    ξ, i = mod(i, 1), Base.unsafe_trunc(Int, i)
+    η, j = mod(j, 1), Base.unsafe_trunc(Int, j)
+    ζ, k = mod(k, 1), Base.unsafe_trunc(Int, k)
+
+    return _interpolate(field, ξ, η, ζ, i+1, j+1, k+1)
+end
+

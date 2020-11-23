@@ -2,7 +2,9 @@ module LagrangianParticleTracking
 
 export LagrangianParticles, advect_particles!
 
+using Adapt
 using KernelAbstractions
+using StaticArrays
 
 using Oceananigans.Grids
 
@@ -42,16 +44,13 @@ end
 @kernel function _advect_particles!(particles, grid::RegularCartesianGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
-    x, y, z = particles.x[p], particles.y[p], particles.z[p]
-
-    ℑu = interpolate(velocities.u, x, y, z)
-    ℑv = interpolate(velocities.v, x, y, z)
-    ℑw = interpolate(velocities.w, x, y, z)
+    # X = SVector(particles.x[p], particles.y[p], particles.z[p])
+    # ℑU = SVector(interpolate(velocities.u, X...), interpolate(velocities.v, X...), interpolate(velocities.w, X...))
 
     # Advect!
-    @inbounds particles.x[p] += ℑu * Δt
-    @inbounds particles.y[p] += ℑv * Δt
-    @inbounds particles.z[p] += ℑw * Δt
+    @inbounds particles.x[p] += interpolate(velocities.u, Face, Cell, Cell, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.y[p] += interpolate(velocities.v, Cell, Face, Cell, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.z[p] += interpolate(velocities.w, Cell, Cell, Face, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # If particle go out of the domain along a periodic dimension, put them on the other side.
     @inbounds particles.x[p] = enforce_periodicity(particles.x[p], grid.xF[1], grid.xF[grid.Nx], TX)
@@ -71,7 +70,7 @@ function advect_particles!(particles, model, Δt)
     worksize = length(particles)
     advect_particles_kernel! = _advect_particles!(device(model.architecture), workgroup, worksize)
 
-    advect_particles_event = advect_particles_kernel!(particles, model.grid, Δt, model.velocities,
+    advect_particles_event = advect_particles_kernel!(particles, model.grid, Δt, datatuple(model.velocities),
                                                       dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), advect_particles_event)
@@ -80,5 +79,8 @@ function advect_particles!(particles, model, Δt)
 end
 
 advect_particles!(model, Δt) = advect_particles!(model.particles, model, Δt)
+
+Adapt.adapt_structure(to, particles::LagrangianParticles) =
+    LagrangianParticles(Adapt.adapt(to, particles.x), Adapt.adapt(to, particles.y), Adapt.adapt(to, particles.z))
 
 end # module
