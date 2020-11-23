@@ -94,10 +94,139 @@ function ShallowWaterModel(;
                              timestepper)
 end
 
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: work_layout
+using Oceananigans.Architectures: device
 
 import Oceananigans.TimeSteppers: rk3_substep!
-rk3_substep!(model::ShallowWaterModel, args...) = nothing
+
+function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
+
+    workgroup, worksize = work_layout(model.grid, :xyz)
+
+    barrier = Event(device(model.architecture))
+
+    substep_solution_kernel! = rk3_substep_solution!(device(model.architecture), workgroup, worksize)
+    substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
+
+
+    solution_event = substep_solution_kernel!(model.solution,
+                                              Δt, γⁿ, ζⁿ,
+                                              model.timestepper.Gⁿ,
+                                              model.timestepper.G⁻;
+                                              dependencies=barrier)
+
+    events = [solution_event]
+
+    for i in 1:length(model.tracers)
+        @inbounds c = model.tracers[i]
+        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
+        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
+
+        tracer_event = substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻, dependencies=barrier)
+
+        push!(events, tracer_event)
+    end
+
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
+
+    return nothing
+end
+
+"""
+Time step tracers via the 3rd-order Runge-Kutta method
+    `c^{m+1} = c^m + Δt (γⁿ Gc^{m} + ζⁿ Gc^{m-1})`,
+where `m` denotes the substage. 
+"""
+@kernel function rk3_substep_tracer!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds c[i, j, k] += Δt * (γⁿ * Gcⁿ[i, j, k] + ζⁿ * Gc⁻[i, j, k])
+end
+
+"""
+Time step tracers from the first to the second stage via
+the 3rd-order Runge-Kutta method
+    `c^{2} = c^1 + Δt γ¹ Gc^{1}`.
+"""
+@kernel function rk3_substep_tracer!(c, Δt, γ¹, ::Nothing, Gc¹, Gc⁰)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
+end
+
+
+"""
+Time step solution fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_solution!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U.uh[i, j, k] += Δt * (γⁿ * Gⁿ.uh[i, j, k] + ζⁿ * G⁻.uh[i, j, k])
+        U.vh[i, j, k] += Δt * (γⁿ * Gⁿ.vh[i, j, k] + ζⁿ * G⁻.vh[i, j, k])
+        U.h[i, j, k]  += Δt * (γⁿ * Gⁿ.h[i, j, k]  + ζⁿ * G⁻.h[i, j, k])
+    end
+end
+
+"""
+Time step solution fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_solution!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U.uh[i, j, k] += Δt * γ¹ * G¹.uh[i, j, k]
+        U.vh[i, j, k] += Δt * γ¹ * G¹.vh[i, j, k]
+        U.h[i, j, k]  += Δt * γ¹ * G¹.h[i, j, k]
+    end
+end
+
 
 import Oceananigans.TimeSteppers: store_tendencies!
-store_tendencies!(model::ShallowWaterModel, args...) = nothing
+
+""" Store source terms for `uh`, `vh`, and `h`. """
+@kernel function store_solution_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻.uh[i, j, k] = G⁰.uh[i, j, k]
+    @inbounds G⁻.vh[i, j, k] = G⁰.vh[i, j, k]
+    @inbounds G⁻.h[i, j, k]  = G⁰.h[i, j, k]
+end
+
+""" Store previous source terms for a tracer before updating them. """
+@kernel function store_tracer_tendency!(Gc⁻, grid::AbstractGrid{FT}, Gc⁰) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gc⁻[i, j, k] = Gc⁰[i, j, k]
+end
+
+
+""" Store previous source terms before updating them. """
+function store_tendencies!(model::ShallowWaterModel)
+
+    barrier = Event(device(model.architecture))
+
+    workgroup, worksize = work_layout(model.grid, :xyz)
+
+    store_solution_tendencies_kernel! = store_solution_tendencies!(device(model.architecture), workgroup, worksize)
+    store_tracer_tendency_kernel! = store_tracer_tendency!(device(model.architecture), workgroup, worksize)
+
+    solution_event = store_solution_tendencies_kernel!(model.timestepper.G⁻,
+                                                       model.grid,
+                                                       model.timestepper.Gⁿ,
+                                                       dependencies=barrier)
+
+    events = [solution_event]
+
+    # Tracer fields
+    for i in 4:length(model.timestepper.G⁻)
+        @inbounds Gc⁻ = model.timestepper.G⁻[i]
+        @inbounds Gc⁰ = model.timestepper.Gⁿ[i]
+        tracer_event = store_tracer_tendency_kernel!(Gc⁻, model.grid, Gc⁰, dependencies=barrier)
+        push!(events, tracer_event)
+    end
+
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
+
+    return nothing
+end
 
