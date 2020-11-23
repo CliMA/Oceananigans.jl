@@ -19,7 +19,7 @@ model = ShallowWaterModel(        grid = grid,
 width = 0.3
  h(x, y, z)  = 1.0 + 0.1 * exp(-(x - π)^2 / (2width^2)); 
 uh(x, y, z) = 0.0
-vh(x, y, z) = 0.0
+vh(x, y, z) = 0.0 
 
 include("../src/Models/ShallowWaterModels/set_shallow_water_model.jl")
 set!(model, uh = uh, vh = vh, h = h)
