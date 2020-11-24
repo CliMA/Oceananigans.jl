@@ -70,7 +70,7 @@ function Simulation(model; Δt,
    end
 
    diagnostics[:nan_checker] = NaNChecker(fields=(u=model.velocities.u,),
-                                          schedule=IterationInterval(100))
+                                          schedule=IterationInterval(iteration_interval))
 
    run_time = 0.0
 
