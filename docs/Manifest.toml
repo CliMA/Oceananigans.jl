@@ -22,21 +22,21 @@ version = "0.8.0"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BibInternal]]
-git-tree-sha1 = "71045cd344c6be7c5d5977053f74fc6567f897ff"
+git-tree-sha1 = "e0b69621b5ec237fd748710f35ce7a3d0b0694ce"
 uuid = "2027ae74-3657-4b95-ae00-e2f7d55c3e64"
-version = "0.2.2"
+version = "0.2.4"
 
 [[BibParser]]
 deps = ["Automa", "BibInternal", "DataStructures"]
-git-tree-sha1 = "f2f7cb0ff38227bfecbc30265a684d7e623659a9"
+git-tree-sha1 = "37aefb5575dc908e84fd1f4cb98c6004a2408ef4"
 uuid = "13533e5b-e1c2-4e57-8cef-cac5e52f6474"
-version = "0.1.7"
+version = "0.1.9"
 
 [[Bibliography]]
 deps = ["BibInternal", "BibParser", "DataStructures"]
-git-tree-sha1 = "6467bd14a1f712ec6dfaf115910920124af54bf4"
+git-tree-sha1 = "4bb039a3e29529998778e41c6493cba30d45420a"
 uuid = "f1be7e48-bf82-45af-a471-ae754a193061"
-version = "0.2.3"
+version = "0.2.5"
 
 [[Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -76,14 +76,14 @@ version = "0.4.0"
 
 [[Contour]]
 deps = ["StaticArrays"]
-git-tree-sha1 = "d05a3a25b762720d40246d5bedf518c9c2614ef5"
+git-tree-sha1 = "0d128f9c2d9560349dc46f60c42036e244271d72"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
-version = "0.5.5"
+version = "0.5.6"
 
 [[DataAPI]]
-git-tree-sha1 = "176e23402d80e7743fc26c19c681bfb11246af32"
+git-tree-sha1 = "ad84f52c0b8f05aa20839484dbaf01690b41ff84"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.3.0"
+version = "1.4.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
@@ -115,10 +115,10 @@ uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.8.3"
 
 [[Documenter]]
-deps = ["Base64", "Dates", "DocStringExtensions", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "REPL", "Test", "Unicode"]
-git-tree-sha1 = "fb1ff838470573adc15c71ba79f8d31328f035da"
+deps = ["Base64", "Dates", "DocStringExtensions", "IOCapture", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "REPL", "Test", "Unicode"]
+git-tree-sha1 = "71e35e069daa9969b8af06cef595a1add76e0a11"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.25.2"
+version = "0.25.3"
 
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -202,6 +202,12 @@ git-tree-sha1 = "c7ec02c4c6a039a98a15f955462cd7aea5df4508"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.19"
 
+[[IOCapture]]
+deps = ["Logging"]
+git-tree-sha1 = "377252859f740c217b936cebcd918a44f9b53b59"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.1.1"
+
 [[IniFile]]
 deps = ["Test"]
 git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"
@@ -224,9 +230,9 @@ version = "1.0.0"
 
 [[JLD2]]
 deps = ["CodecZlib", "DataStructures", "MacroTools", "Mmap", "Pkg", "Printf", "Requires", "UUIDs"]
-git-tree-sha1 = "1b8168c14939e43c7c4d2c9e8f0ddd8718965430"
+git-tree-sha1 = "606f435dd9028f1e66819d4b09f104f8457667eb"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.2.4"
+version = "0.3.0"
 
 [[JLLWrappers]]
 git-tree-sha1 = "c70593677bbf2c3ccab4f7500d0f4dacfff7b75c"
@@ -252,9 +258,9 @@ version = "1.2.0"
 
 [[Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
-git-tree-sha1 = "26373ba217b1ade3daf14c73505377d614fd3b51"
+git-tree-sha1 = "8771ad2b1464aa6188899ca0c3e432341e35f96a"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.14.1"
+version = "0.14.5"
 
 [[LibGit2]]
 deps = ["Printf"]
@@ -300,9 +306,9 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "Random", "Sockets"]
-git-tree-sha1 = "426a6978b03a97ceb7ead77775a1da066343ec6e"
+git-tree-sha1 = "1c38e51c3d08ef2278062ebceade0e46cefc96fe"
 uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
-version = "1.0.2"
+version = "1.0.3"
 
 [[MbedTLS_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -354,15 +360,15 @@ uuid = "91d4177d-7536-5919-b921-800302f37372"
 version = "1.3.1+3"
 
 [[OrderedCollections]]
-git-tree-sha1 = "16c08bf5dba06609fe45e30860092d6fa41fde7b"
+git-tree-sha1 = "cf59cfed2e2c12e8a2ff0a4f1e9b2cd8650da6db"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.3.1"
+version = "1.3.2"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "6fa4202675c05ba0f8268a6ddf07606350eda3ce"
+git-tree-sha1 = "b417be52e8be24e916e34b3d70ec2da7bdf56a68"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "1.0.11"
+version = "1.0.12"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -399,9 +405,9 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
-git-tree-sha1 = "6ee6c35fe69e79e17c455a386c1ccdc66d9f7da4"
+git-tree-sha1 = "b3fb709f3c97bfc6e948be68beeecb55a0b340ae"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.1.0"
+version = "1.1.1"
 
 [[RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
@@ -448,9 +454,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "016d1e1a00fabc556473b07161da3d39726ded35"
+git-tree-sha1 = "da4cf579416c81994afd6322365d00916c79b8ae"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.12.4"
+version = "0.12.5"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -476,9 +482,9 @@ version = "1.0.0"
 
 [[Tables]]
 deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "TableTraits", "Test"]
-git-tree-sha1 = "24a584cf65e2cfabdadc21694fb69d2e74c82b44"
+git-tree-sha1 = "5131a624173d532299d1c7eb05341c18112b21b8"
 uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
-version = "1.1.0"
+version = "1.2.1"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
@@ -486,9 +492,9 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TimeZones]]
 deps = ["Dates", "EzXML", "Mocking", "Pkg", "Printf", "RecipesBase", "Serialization", "Unicode"]
-git-tree-sha1 = "2c48caca8f3912857973590a9757e1f86cbbff81"
+git-tree-sha1 = "e863e6524c2a8d703bbd59e7592c97537c94579f"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
-version = "1.4.0"
+version = "1.5.0"
 
 [[TimesDates]]
 deps = ["CompoundPeriods", "Dates", "TimeZones"]
