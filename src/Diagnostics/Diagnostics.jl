@@ -7,6 +7,7 @@ export
     run_diagnostic!,
     TimeInterval, IterationInterval, WallTimeInterval
 
+using CUDA
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
