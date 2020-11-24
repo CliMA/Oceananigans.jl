@@ -10,7 +10,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",) 
+xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
 zdim(::Type{Face}) = ("zF",)
 
@@ -24,6 +24,22 @@ zdim(::Type{Nothing}) = ()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+
+function default_dimensions(output, grid, field_slicer)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    TX, TY, TZ = topology(grid)
+
+    return Dict(
+        "xC" => grid.xC.parent[parent_slice_indices(Cell, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => grid.xF.parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "yC" => grid.yC.parent[parent_slice_indices(Cell, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => grid.yF.parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "zC" => grid.zC.parent[parent_slice_indices(Cell, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+end
+
+default_dimensions(output::LagrangianParticles, grid, field_slicer) = Dict("particleid" => collect(1:length(output.x)))
 
 const default_dimension_attributes = Dict(
     "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
@@ -59,7 +75,7 @@ function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
         "Output was saved every $(prettytime(schedule.interval))."
-    
+
     return nothing
 end
 
@@ -68,7 +84,7 @@ function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
         "Output was saved every $(prettytime(schedule.interval))."
-    
+
     return nothing
 end
 
@@ -81,7 +97,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 
     global_attributes["time_averaging_stride"] = schedule.stride
     global_attributes["time averaging stride"] =
-        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."	
+        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
 
     return nothing
 end
@@ -286,23 +302,11 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     add_schedule_metadata!(global_attributes, schedule)
 
-    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if 
+    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
-    
-    grid = model.grid
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-    TX, TY, TZ = topology(grid)
 
-    dims = Dict(
-        "xC" => grid.xC.parent[parent_slice_indices(Cell, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => grid.xF.parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => grid.yC.parent[parent_slice_indices(Cell, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => grid.yF.parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => grid.zC.parent[parent_slice_indices(Cell, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)]
-    )
+    dims = default_dimensions(outputs, model.grid, field_slicer)
 
     # Open the NetCDF dataset file
     dataset = Dataset(filepath, mode, attrib=global_attributes)
@@ -351,6 +355,15 @@ function define_output_variable!(dataset, output, name, array_type, compression,
     return nothing
 end
 
+""" Defines empty variable for particle trackting. """
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+    for name in ("x", "y", "z")
+        defVar(dataset, name, eltype(array_type),
+            ("particleid", "time"),
+            compression=compression, attrib=output_attributes)
+    end
+end
+
 """ Defines empty field variable. """
 define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
     defVar(dataset, name, eltype(array_type),
@@ -367,6 +380,21 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filepath, "a")
 Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
+
+function save_output!(ds, output, model, ow, time_index, name)
+    data = fetch_and_convert_output(output, model, ow)
+    data = drop_averaged_dims(output, data)
+
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    ds[name][colons..., time_index] = data
+end
+
+function save_output!(ds, output::NamedTuple{(:x, :y, :z)}, model, ow, time_index, name)
+    data = fetch_and_convert_output(output, model, ow)
+    for (k, v) in pairs(data)
+        ds[string(k)][:, time_index] = v
+    end
+end
 
 """
     write_output!(output_writer, model)
@@ -392,11 +420,12 @@ function write_output!(ow::NetCDFOutputWriter, model)
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        data = fetch_and_convert_output(output, model, ow)
-        data = drop_averaged_dims(output, data)
+        save_output!(ds, output, model, ow, time_index, name)
+        # data = fetch_and_convert_output(output, model, ow)
+        # data = drop_averaged_dims(output, data)
 
-        colons = Tuple(Colon() for _ in 1:ndims(data))
-        ds[name][colons..., time_index] = data
+        # colons = Tuple(Colon() for _ in 1:ndims(data))
+        # ds[name][colons..., time_index] = data
 
         if verbose
             # Time after computing this output.
