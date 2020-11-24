@@ -28,8 +28,8 @@ using Oceananigans.Grids: Periodic, Bounded
                 # Just testing that the model was constructed with no errors/crashes.
                 @test model isa ShallowWaterModel
 
-                # Test that the grid didn't get mangled
-                @test grid === model.grid
+                # Test that the grid didn't get mangled (sort of)
+                @test size(grid) === size(model.grid)
 
                 too_big_grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 2), extent=(1, 2, 3))
 
@@ -47,7 +47,7 @@ using Oceananigans.Grids: Periodic, Bounded
             grid = RegularCartesianGrid(FT, size=N, extent=L)
             model = ShallowWaterModel(grid=grid, architecture=arch, float_type=FT)
 
-            x, y, z = nodes((Face, Cell, Cell), grid, reshape=true)
+            x, y, z = nodes((Face, Cell, Cell), model.grid, reshape=true)
 
             uh₀(x, y, z) = x * y^2
             uh_answer = @. x * y^2
@@ -64,12 +64,12 @@ using Oceananigans.Grids: Periodic, Bounded
         end
     end
 
-    @testset "Time-stepping ShallowWaterModels" begin
+    for arch in archs, topo in topos
+        @testset "Time-stepping ShallowWaterModels [$arch, $topo]" begin
+            @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
 
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
-
-        for arch in archs
-            model = ShallowWaterModel(grid=grid, architecture=CPU())
+            grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+            model = ShallowWaterModel(grid=grid, architecture=arch)
             simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
             run!(simulation)
@@ -77,5 +77,4 @@ using Oceananigans.Grids: Periodic, Bounded
             @test model.clock.iteration == 1
         end
     end
-
 end
