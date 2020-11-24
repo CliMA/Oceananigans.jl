@@ -1,3 +1,8 @@
+include("/home/fpoulin/software/Oceananigans.jl/src/Models/Models.jl")
+
+#using ..Oceananigans.Models: fields
+#using ..Oceananigans.Models: fields
+
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
@@ -67,7 +72,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     #
     # First stage
     #
-    
+
     calculate_tendencies!(model)
 
     rk3_substep!(model, Δt, γ¹, nothing)
@@ -121,16 +126,15 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     barrier = Event(device(model.architecture))
 
-    substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
+    model_fields = fields(model)    
+    
+    for (i, field) in enumerate(model_fields)
+        Gⁿ = model.timestepper.Gⁿ[i]             # Do we need @inbounds for these two lines?
+        G⁻ = model.timestepper.G⁻[i]
+        rk3_substep_field!(field, G, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
+    end
+    
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
-
-    velocities_event = substep_velocities_kernel!(model.velocities,
-                                                  Δt, γⁿ, ζⁿ,
-                                                  model.timestepper.Gⁿ,
-                                                  model.timestepper.G⁻;
-                                                  dependencies=barrier)
-
-    events = [velocities_event]
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
@@ -171,6 +175,36 @@ the 3rd-order Runge-Kutta method
 
     @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
 end
+
+
+
+###
+
+"""
+Time step velocity fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U[i, j, k] += Δt * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+    end
+end
+
+"""
+Time step velocity fields with a 3rd-order Runge-Kutta method.
+"""
+@kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
+    end
+end
+
+###
+
+
 
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.

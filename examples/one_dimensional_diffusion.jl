@@ -14,8 +14,8 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+#using Pkg
+#pkg"add Oceananigans, JLD2, Plots"
 
 # ## Using `Oceananigans.jl`
 #
@@ -42,7 +42,8 @@ closure = IsotropicDiffusivity(κ=1.0)
 
 # We finally pass these two ingredients to `IncompressibleModel`,
 
-model = IncompressibleModel(grid=grid, closure=closure)
+model = IncompressibleModel(timestepper=:RungeKutta3, grid=grid, closure=closure)
+#model = IncompressibleModel(timestepper=:QuasiAdamsBashforth2, grid=grid, closure=closure)
 
 # Our simple `grid` and `model` use a number of defaults:
 #
