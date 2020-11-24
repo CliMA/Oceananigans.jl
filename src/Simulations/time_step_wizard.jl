@@ -21,7 +21,7 @@ less than `min_change` from the previous `Δt`, and to be no greater in absolute
 than `max_Δt` and no less than `min_Δt`.
 """
 TimeStepWizard(; cfl=0.1, diffusive_cfl=Inf, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0, Δt=0.01) =
-        TimeStepWizard(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, Δt)
+        TimeStepWizard{typeof(Δt)}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, Δt)
 
 """
     update_Δt!(wizard, model)
