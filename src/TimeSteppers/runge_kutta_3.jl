@@ -172,7 +172,6 @@ the 3rd-order Runge-Kutta method
     @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
 end
 
-
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.
 """

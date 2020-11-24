@@ -63,43 +63,19 @@ using Oceananigans.Grids: Periodic, Bounded
             @test all(interior(h) .≈ h_answer)
         end
     end
-end
 
+    @testset "Time-stepping ShallowWaterModels" begin
 
+        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
 
-@testset "Setting up time-stepping for ShallowWaterModel " begin
+        for arch in archs
+            model = ShallowWaterModel(grid=grid, architecture=CPU())
+            simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
-    using Oceananigans, Oceananigans.Advection
+            run!(simulation)
 
-    include("../src/Models/ShallowWaterModels/ShallowWaterModels.jl")
-
-    using .ShallowWaterModels: ShallowWaterModel
-
-    include("../src/Models/ShallowWaterModels/set_shallow_water_model.jl")
-    include("../src/Models/ShallowWaterModels/update_state.jl")
-    include("../src/Models/ShallowWaterModels/calculate_tendencies.jl")
-    include("../src/Models/ShallowWaterModels/solution_and_tracer_tendencies.jl")
-
-    grid = RegularCartesianGrid(size=(64, 1, 1), extent=(2π, 2π, 2π))
-
-    model = ShallowWaterModel(        grid = grid,
-                                      architecture = CPU(),
-                                      advection = nothing, 
-                                      coriolis = nothing, 
-                                      solution = nothing,
-                                      tracers = nothing,
-                                      )
-
-    width = 0.3
-    h(x, y, z)  = 1.0 + 0.1 * exp(-(x - π)^2 / (2width^2)); 
-    uh(x, y, z) = 0.0
-    vh(x, y, z) = 0.0 
-
-    set!(model, uh = uh, vh = vh, h = h)
-
-    simulation = Simulation(model, Δt = 0.1, stop_iteration = 10)
-
-    run!(simulation)
-    
+            @test model.clock.iteration == 1
+        end
+    end
 
 end
