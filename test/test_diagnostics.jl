@@ -69,7 +69,9 @@ function diagnostics_getindex(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
     nc = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
     simulation.diagnostics[:nc] = nc
-    return simulation.diagnostics[1] == nc
+
+    # The first diagnostic is the NaN checker.
+    return simulation.diagnostics[2] == nc
 end
 
 function diagnostics_setindex(arch, FT)
