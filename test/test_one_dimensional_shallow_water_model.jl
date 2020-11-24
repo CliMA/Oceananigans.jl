@@ -2,7 +2,8 @@
 
 using Oceananigans, Oceananigans.Advection
 
-include("../src/Models/ShallowWaterModels/ShallowWaterModels.jl")
+using Oceananigans.Models # should import the shallow water model stuff
+#include("../src/Models/ShallowWaterModels/ShallowWaterModels.jl")
 using .ShallowWaterModels: ShallowWaterModel
 
 grid = RegularCartesianGrid(size=(64, 1, 1), extent=(2π, 2π, 2π))
