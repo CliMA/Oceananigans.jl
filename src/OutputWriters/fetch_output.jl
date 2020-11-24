@@ -1,6 +1,7 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute!
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 fetch_output(output, model, field_slicer) = output(model)
 

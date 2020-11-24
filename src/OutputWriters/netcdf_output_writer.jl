@@ -9,6 +9,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
+dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
 
 xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
@@ -39,15 +40,16 @@ function default_dimensions(output, grid, field_slicer)
         "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
-default_dimensions(output::LagrangianParticles, grid, field_slicer) = Dict("particleid" => collect(1:length(output.x)))
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) = Dict("particleid" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
-    "xC" => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-    "xF" => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-    "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-    "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-    "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m")
+    "xC"         => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+    "xF"         => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+    "yC"         => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+    "yF"         => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    "zC"         => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"         => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "particleid" => Dict("longname" => "Particle ID")
 )
 
 const default_output_attributes = Dict(
@@ -357,10 +359,10 @@ end
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
-    for name in ("x", "y", "z")
-        defVar(dataset, name, eltype(array_type),
+    for locationname in ("x", "y", "z")
+        defVar(dataset, locationname, eltype(array_type),
             ("particleid", "time"),
-            compression=compression, attrib=output_attributes)
+            compression=compression)#, attrib=output_attributes)
     end
 end
 
@@ -389,7 +391,7 @@ function save_output!(ds, output, model, ow, time_index, name)
     ds[name][colons..., time_index] = data
 end
 
-function save_output!(ds, output::NamedTuple{(:x, :y, :z)}, model, ow, time_index, name)
+function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     for (k, v) in pairs(data)
         ds[string(k)][:, time_index] = v
@@ -421,11 +423,6 @@ function write_output!(ow::NetCDFOutputWriter, model)
         verbose && (t0′ = time_ns())
 
         save_output!(ds, output, model, ow, time_index, name)
-        # data = fetch_and_convert_output(output, model, ow)
-        # data = drop_averaged_dims(output, data)
-
-        # colons = Tuple(Colon() for _ in 1:ndims(data))
-        # ds[name][colons..., time_index] = data
 
         if verbose
             # Time after computing this output.
