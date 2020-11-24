@@ -59,10 +59,21 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     return _interpolate(field.data, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
 end
 
+"""
+    interpolate(field, LX, LY, LZ, grid, x, y, z)
+
+Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation. The location of
+the field is specified with `(LX, LY, LZ)` and the field is defined on `grid`.
+
+Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
+"""
 @inline function interpolate(field, LX, LY, LZ, grid, x, y, z)
     i, j, k = fractional_indices(x, y, z, (LX, LY, LZ), grid)
 
-    # Use mod and trunc as CUDA.modf is not defined.
+    # We use mod and trunc as CUDA.modf is not defined.
+    # For why we use Base.unsafe_trunc instead of trunc see:
+    # https://github.com/CliMA/Oceananigans.jl/issues/828
+    # https://github.com/CliMA/Oceananigans.jl/pull/997
     ξ, i = mod(i, 1), Base.unsafe_trunc(Int, i)
     η, j = mod(j, 1), Base.unsafe_trunc(Int, j)
     ζ, k = mod(k, 1), Base.unsafe_trunc(Int, k)
