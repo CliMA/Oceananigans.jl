@@ -34,4 +34,4 @@ include("update_shallow_water_state.jl")
 include("rk3_substep_shallow_water_model.jl")
 include("store_shallow_water_tendencies.jl")
 
-end 
+end # module

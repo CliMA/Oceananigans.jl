@@ -57,15 +57,12 @@ function ShallowWaterModel(;
   architecture::AbstractArchitecture = CPU(),
                           float_type = Float64,
                                clock = Clock{float_type}(0, 0, 1),
-                           advection = CenteredSecondOrder(),
+                           advection = UpwindBiasedFifthOrder(),
                             coriolis = nothing,
                              closure = nothing,
                             solution = nothing,
-                             tracers = NamedTuple(),
-                 boundary_conditions = NamedTuple(),
-                         timestepper = nothing
-#                         timestepper = RungeKutta3
-    )
+                 tracers::NamedTuple = NamedTuple(),
+     boundary_conditions::NamedTuple = NamedTuple())
 
     grid.Nz == 1 || throw(ArgumentError("ShallowWaterModel must be constructed with Nz=1!"))
 
