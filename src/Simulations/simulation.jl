@@ -69,7 +69,8 @@ function Simulation(model; Δt,
              "recalculate the time step every iteration which can be slow."
    end
 
-   diagnostics[:nan_checker] = NaNChecker(fields=model.velocities, schedule=IterationInterval(1))
+   diagnostics[:nan_checker] = NaNChecker(fields=(u=model.velocities.u,),
+                                          schedule=IterationInterval(100))
 
    run_time = 0.0
 
