@@ -1,5 +1,6 @@
 using Oceananigans.Simulations:
-    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded, TimeStepWizard
+    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    TimeStepWizard, update_Δt!
 
 @testset "Time step wizard" begin
     for arch in archs
