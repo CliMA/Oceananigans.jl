@@ -5,8 +5,12 @@ Thank you for considering contributing to Oceananigans!
 Please feel free to ask us questions and chat with us at any time if you're
 unsure about anything.
 
+Best way to get in touch is to either just open a GitHub issue (don't be shy!) or
+to drop by the #oceananigans channel on the Julia Slack (see
+[https://julialang.org/slack/](https://julialang.org/slack/)).
+
 We follow the [ColPrac guide](https://github.com/SciML/ColPrac) for collaborative
-practices. New contributor should make sure to read that guide.
+practices. New contributors should make sure to read that guide.
 
 ## What can I do?
 
