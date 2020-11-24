@@ -124,7 +124,6 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
-
     velocities_event = substep_velocities_kernel!(model.velocities,
                                                   Δt, γⁿ, ζⁿ,
                                                   model.timestepper.Gⁿ,
