@@ -114,7 +114,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 end
 
 #####
-##### Tracer time stepping and predictor velocity updating
+##### Time stepping in each substep
 #####
 
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
@@ -123,43 +123,19 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     barrier = Event(device(model.architecture))
 
-    # Old method
-    #=
-    substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
-
-    velocities_event = substep_velocities_kernel!(model.velocities,
-                                                  Δt, γⁿ, ζⁿ,
-                                                  model.timestepper.Gⁿ,
-                                                  model.timestepper.G⁻;
-                                                  dependencies=barrier)
-
-    events = [velocities_event]
-    =#
-
-    # New method
-    
     substep_fields_kernel! = rk3_substep_fields!(device(model.architecture), workgroup, worksize)
     
     model_fields = fields(model)    
 
+    events = []
+    
     for (i, field) in enumerate(model_fields)
-        @inbounds Gⁿ = model.timestepper.Gⁿ[i]             # Do we need @inbounds for these two lines?
-        @inbounds G⁻ = model.timestepper.G⁻[i]
-        fields_event = substep_fields_kernel!(field, G, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
-    end
-    
-    events = [fields_event]
-    
-    substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
-
-    for i in 1:length(model.tracers)
-        @inbounds c = model.tracers[i]
-        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
-        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
-
-        tracer_event = substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻, dependencies=barrier)
-
-        push!(events, tracer_event)
+        Gⁿ = model.timestepper.Gⁿ[i]   
+        G⁻ = model.timestepper.G⁻[i]
+        
+        fields_event = substep_fields_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
+        
+        push!(events, fields_event)
     end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
@@ -168,33 +144,12 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 end
 
 """
-Time step tracers via the 3rd-order Runge-Kutta method
+Time step fields via the 3rd-order Runge-Kutta method
 
-    `c^{m+1} = c^m + Δt (γⁿ Gc^{m} + ζⁿ Gc^{m-1})`,
+    `U^{m+1} = U^m + Δt (γⁿ G^{m} + ζⁿ G^{m-1})`,
 
 where `m` denotes the substage. 
 """
-@kernel function rk3_substep_tracer!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds c[i, j, k] += Δt * (γⁿ * Gcⁿ[i, j, k] + ζⁿ * Gc⁻[i, j, k])
-end
-
-"""
-Time step tracers from the first to the second stage via
-the 3rd-order Runge-Kutta method
-
-    `c^{2} = c^1 + Δt γ¹ Gc^{1}`.
-"""
-@kernel function rk3_substep_tracer!(c, Δt, γ¹, ::Nothing, Gc¹, Gc⁰)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds c[i, j, k] += Δt * γ¹ * Gc¹[i, j, k]
-end
-
-
-
-###
 
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.
@@ -218,33 +173,4 @@ Time step velocity fields with a 3rd-order Runge-Kutta method.
     end
 end
 
-###
-
-
-
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
-"""
-@kernel function rk3_substep_velocities!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        U.u[i, j, k] += Δt * (γⁿ * Gⁿ.u[i, j, k] + ζⁿ * G⁻.u[i, j, k])
-        U.v[i, j, k] += Δt * (γⁿ * Gⁿ.v[i, j, k] + ζⁿ * G⁻.v[i, j, k])
-        U.w[i, j, k] += Δt * (γⁿ * Gⁿ.w[i, j, k] + ζⁿ * G⁻.w[i, j, k])
-    end
-end
-
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
-"""
-@kernel function rk3_substep_velocities!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        U.u[i, j, k] += Δt * γ¹ * G¹.u[i, j, k]
-        U.v[i, j, k] += Δt * γ¹ * G¹.v[i, j, k]
-        U.w[i, j, k] += Δt * γ¹ * G¹.w[i, j, k]
-    end
-end
 
