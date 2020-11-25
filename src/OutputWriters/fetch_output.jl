@@ -20,7 +20,10 @@ end
 
 convert_output(output, writer) = output
 convert_output(output::AbstractArray, writer) = CUDA.@allowscalar writer.array_type(output)
-convert_output(outputs::NamedTuple{(:x, :y, :z)}, writer) = CUDA.@allowscalar writer.array_type.(outputs)
+
+# Need to broadcast manually because of https://github.com/JuliaLang/julia/issues/30836
+convert_output(outputs::NamedTuple{(:x, :y, :z)}, writer) =
+    CUDA.@allowscalar (x=writer.array_type(outputs.x), y=writer.array_type(outputs.y), z=writer.array_type(outputs.z))
 
 fetch_and_convert_output(output, model, writer) =
     convert_output(fetch_output(output, model, writer.field_slicer), writer)
