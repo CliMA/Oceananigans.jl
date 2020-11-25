@@ -15,19 +15,25 @@ function run_simple_particle_tracking_tests(arch)
 
     set!(model, u=1, v=1)
 
-    test_output_file = "test_particles.nc"
-    outputw = NetCDFOutputWriter(model, model.particles,
-                                 filepath=test_output_file,
-                                 schedule=IterationInterval(1))
-
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
-    sim.output_writers[:particles] = outputw
+
+    test_output_file = "test_particles.nc"
+    sim.output_writers[:particles] = NetCDFOutputWriter(model, model.particles,
+                                                        filepath=test_output_file,
+                                                        schedule=IterationInterval(1))
 
     run!(sim)
 
-    x = convert(array_type(arch), model.particles.x)
-    y = convert(array_type(arch), model.particles.y)
-    z = convert(array_type(arch), model.particles.z)
+    @test length(model.particles) == P
+    @test size(model.particles) == (P,)
+
+    x = convert(array_type(arch), model.particles.particles.x)
+    y = convert(array_type(arch), model.particles.particles.y)
+    z = convert(array_type(arch), model.particles.particles.z)
+
+    @test size(x) == (P,)
+    @test size(y) == (P,)
+    @test size(z) == (P,)
 
     @test all(x .≈ 0.01)
     @test all(y .≈ 0.01)
@@ -35,6 +41,10 @@ function run_simple_particle_tracking_tests(arch)
 
     ds = NCDataset(test_output_file)
     x, y, z = ds["x"], ds["y"], ds["z"]
+
+    @test size(x) == (P, 2)
+    @test size(y) == (P, 2)
+    @test size(z) == (P, 2)
 
     @test all(x[:, end] .≈ 0.01)
     @test all(y[:, end] .≈ 0.01)
