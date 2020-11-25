@@ -42,7 +42,7 @@ closure = IsotropicDiffusivity(κ=1.0)
 
 # We finally pass these two ingredients to `IncompressibleModel`,
 
-model = IncompressibleModel(timestepper=:RungeKutta3, grid=grid, closure=closure)
+model = IncompressibleModel(grid=grid, closure=closure)
 
 # Our simple `grid` and `model` use a number of defaults:
 #
