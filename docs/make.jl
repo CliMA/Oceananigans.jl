@@ -24,11 +24,6 @@ include("citations.jl")
 ##### Generate examples
 #####
 
-# Gotta set this environment variable when using the GR run-time on Travis CI.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-ENV["GKSwstype"] = "100"
-
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
