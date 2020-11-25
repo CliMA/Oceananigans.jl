@@ -1,8 +1,6 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, fields
-
-function fields end
+export IncompressibleModel, NonDimensionalModel
 
 include("IncompressibleModels/IncompressibleModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")

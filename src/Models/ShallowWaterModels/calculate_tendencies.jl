@@ -1,7 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
+using Oceananigans: fields
 using Oceananigans.Utils: work_layout
-using ..Models: fields
 
 """
     calculate_tendencies!(model::ShallowWaterModel)
@@ -16,9 +16,9 @@ function calculate_tendencies!(model::ShallowWaterModel)
     # "tendencies" is a NamedTuple of OffsetArrays corresponding to the tendency data for use
     # in GPU computations.
     #
-    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
+    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to
     # tendency data.
-    
+
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_interior_tendency_contributions!(model.timestepper.Gⁿ,
@@ -31,8 +31,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.diffusivities,
                                                model.forcing,
                                                model.clock)
-                                               
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
+
+    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
                                                model.architecture,

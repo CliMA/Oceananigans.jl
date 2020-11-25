@@ -1,4 +1,4 @@
-import Oceananigans: fields
+using Oceananigans: fields
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -46,7 +46,7 @@ end
     time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
-The 3rd-order Runge-Kutta method takes three intermediate substep stages to 
+The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
@@ -101,7 +101,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     #
 
     calculate_tendencies!(model)
-    
+
     rk3_substep!(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)
@@ -124,17 +124,17 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     barrier = Event(device(model.architecture))
 
     substep_fields_kernel! = rk3_substep_fields!(device(model.architecture), workgroup, worksize)
-    
-    model_fields = fields(model)    
+
+    model_fields = fields(model)
 
     events = []
-    
+
     for (i, field) in enumerate(model_fields)
-        Gⁿ = model.timestepper.Gⁿ[i]   
+        Gⁿ = model.timestepper.Gⁿ[i]
         G⁻ = model.timestepper.G⁻[i]
-        
+
         fields_event = substep_fields_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
-        
+
         push!(events, fields_event)
     end
 
@@ -148,7 +148,7 @@ Time step fields via the 3rd-order Runge-Kutta method
 
     `U^{m+1} = U^m + Δt (γⁿ G^{m} + ζⁿ G^{m-1})`,
 
-where `m` denotes the substage. 
+where `m` denotes the substage.
 """
 
 """

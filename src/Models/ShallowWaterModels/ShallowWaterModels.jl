@@ -20,4 +20,4 @@ include("set_shallow_water_model.jl")
 
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
 
-end 
+end
