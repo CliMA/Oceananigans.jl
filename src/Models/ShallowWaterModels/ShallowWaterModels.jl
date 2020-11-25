@@ -5,6 +5,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
+import Oceananigans: fields
+
 #####
 ##### ShallowWaterModel definition
 #####
@@ -16,6 +18,6 @@ include("set_shallow_water_model.jl")
 ##### Time-stepping ShallowWaterModels
 #####
 
-# Coming soon!
+fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
 
 end 

@@ -121,6 +121,8 @@ function location end
 function tupleit end
 function short_show end
 
+function fields end
+
 #####
 ##### Include all the submodules
 #####
