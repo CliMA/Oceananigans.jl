@@ -58,7 +58,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 end
 
 #####
-##### Tracer time stepping and predictor velocity updating
+##### Time stepping in each step
 #####
 
 function ab2_step!(model, Δt, χ)
@@ -77,31 +77,10 @@ function ab2_step!(model, Δt, χ)
         Gⁿ = model.timestepper.Gⁿ[i]
         G⁻ = model.timestepper.G⁻[i]
 
-        field_event = step_field_kernel!(field, Δt, x, Gⁿ, G⁻, dependencies=Event(device(model.architecture)))
+        field_event = step_field_kernel!(field, Δt, χ, Gⁿ, G⁻, dependencies=Event(device(model.architecture)))
 
         push!(events, field_event)
     end
-
-
-
-
-    #step_velocities_kernel! = ab2_step_velocities!(device(model.architecture), workgroup, worksize)
-    #step_tracer_kernel! = ab2_step_tracer!(device(model.architecture), workgroup, worksize)
-
-    #velocities_event = step_velocities_kernel!(model.velocities, Δt, χ,
-    #                                           model.timestepper.Gⁿ,
-    #                                           model.timestepper.G⁻,
-    #                                           dependencies=Event(device(model.architecture)))
-
-    #events = [velocities_event]
-
-    #for i in 1:length(model.tracers)
-    #    @inbounds c = model.tracers[i]
-    #    @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
-    #    @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
-    #    event = step_tracer_kernel!(c, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
-    #    push!(events, event)
-    #end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
 

@@ -123,7 +123,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     barrier = Event(device(model.architecture))
 
-    substep_fields_kernel! = rk3_substep_fields!(device(model.architecture), workgroup, worksize)
+    substep_field_kernel! = rk3_substep_field!(device(model.architecture), workgroup, worksize)
 
     model_fields = fields(model)
 
@@ -133,9 +133,9 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
         Gⁿ = model.timestepper.Gⁿ[i]
         G⁻ = model.timestepper.G⁻[i]
 
-        fields_event = substep_fields_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
+        field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
 
-        push!(events, fields_event)
+        push!(events, field_event)
     end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
@@ -154,7 +154,7 @@ where `m` denotes the substage.
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.
 """
-@kernel function rk3_substep_fields!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+@kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
@@ -165,7 +165,7 @@ end
 """
 Time step velocity fields with a 3rd-order Runge-Kutta method.
 """
-@kernel function rk3_substep_fields!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+@kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
