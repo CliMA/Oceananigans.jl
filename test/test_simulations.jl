@@ -1,12 +1,50 @@
 using Oceananigans.Simulations:
-    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded, TimeStepWizard
+    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    TimeStepWizard, update_Δt!
+
+@testset "Time step wizard" begin
+    for arch in archs
+        @info "Testing time step wizard [$(typeof(arch))]..."
+        
+        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = IncompressibleModel(architecture=arch, grid=grid)
+
+        Δx = grid.Δx
+        CFL = 0.45
+        u₀ = 7
+        Δt = 2.5
+
+        model.velocities.u[1, 1, 1] = u₀
+
+        wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
+        update_Δt!(wizard, model)
+        @test wizard.Δt ≈ CFL * Δx / u₀
+
+        wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0.75)
+        update_Δt!(wizard, model)
+        @test wizard.Δt ≈ 0.75Δt
+
+        wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, min_Δt=1.99)
+        update_Δt!(wizard, model)
+        @test wizard.Δt ≈ 1.99
+
+        model.velocities.u[1, 1, 1] = u₀/100
+
+        wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=1.1, min_change=0)
+        update_Δt!(wizard, model)
+        @test wizard.Δt ≈ 1.1Δt
+
+        wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, max_Δt=3.99)
+        update_Δt!(wizard, model)
+        @test wizard.Δt ≈ 3.99
+    end
+end
 
 @testset "Simulations" begin
-    @info "Testing simulations..."
-
     for arch in archs
+        @info "Testing simulations [$(typeof(arch))]..."
 
-        grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
 
         for Δt in (3, TimeStepWizard(Δt=5.0))

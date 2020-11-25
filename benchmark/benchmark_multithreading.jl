@@ -4,7 +4,7 @@ using Benchmarks
 
 # Benchmark parameters
 
-N = 128
+N = 512
 n_threads = min.(2 .^ (0:10), Sys.CPU_THREADS) |> unique
 
 # Run and collect benchmarks

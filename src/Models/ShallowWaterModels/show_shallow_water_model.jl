@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show
+using Oceananigans.Utils: prettytime
 using Oceananigans: short_show
 
 """Show the innards of a `Model` in the REPL."""
