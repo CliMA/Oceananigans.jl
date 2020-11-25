@@ -23,7 +23,7 @@ end
 function LagrangianParticles(; x, y, z)
     size(x) == size(y) == size(z) ||
         error("x, y, z must all have the same size!")
-        
+
     (ndims(x) == 1 && ndims(y) == 1 && ndims(z) == 1) ||
         error("x, y, z must have dimension 1 but ndims=($(ndims(x)), $(ndims(y)), $(ndims(z)))")
 
