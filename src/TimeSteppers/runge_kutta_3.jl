@@ -124,7 +124,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     barrier = Event(device(model.architecture))
 
     # Old method
-    
+    #=
     substep_velocities_kernel! = rk3_substep_velocities!(device(model.architecture), workgroup, worksize)
 
     velocities_event = substep_velocities_kernel!(model.velocities,
@@ -134,8 +134,8 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                                                   dependencies=barrier)
 
     events = [velocities_event]
+    =#
 
-    #=
     # New method
     
     substep_fields_kernel! = rk3_substep_fields!(device(model.architecture), workgroup, worksize)
@@ -149,7 +149,6 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     end
     
     events = [fields_event]
-    =#
     
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
