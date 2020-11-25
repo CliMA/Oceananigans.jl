@@ -67,23 +67,41 @@ function ab2_step!(model, Δt, χ)
 
     barrier = Event(device(model.architecture))
 
-    step_velocities_kernel! = ab2_step_velocities!(device(model.architecture), workgroup, worksize)
-    step_tracer_kernel! = ab2_step_tracer!(device(model.architecture), workgroup, worksize)
+    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
-    velocities_event = step_velocities_kernel!(model.velocities, Δt, χ,
-                                               model.timestepper.Gⁿ,
-                                               model.timestepper.G⁻,
-                                               dependencies=Event(device(model.architecture)))
+    model_fields = fields(model)
 
-    events = [velocities_event]
+    events = []
 
-    for i in 1:length(model.tracers)
-        @inbounds c = model.tracers[i]
-        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
-        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
-        event = step_tracer_kernel!(c, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
-        push!(events, event)
+    for (i, field) in enumerate(model_fields)
+        Gⁿ = model.timestepper.Gⁿ[i]
+        G⁻ = model.timestepper.G⁻[i]
+
+        field_event = step_field_kernel!(field, Δt, x, Gⁿ, G⁻, dependencies=Event(device(model.architecture)))
+
+        push!(events, field_event)
     end
+
+
+
+
+    #step_velocities_kernel! = ab2_step_velocities!(device(model.architecture), workgroup, worksize)
+    #step_tracer_kernel! = ab2_step_tracer!(device(model.architecture), workgroup, worksize)
+
+    #velocities_event = step_velocities_kernel!(model.velocities, Δt, χ,
+    #                                           model.timestepper.Gⁿ,
+    #                                           model.timestepper.G⁻,
+    #                                           dependencies=Event(device(model.architecture)))
+
+    #events = [velocities_event]
+
+    #for i in 1:length(model.tracers)
+    #    @inbounds c = model.tracers[i]
+    #    @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
+    #    @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
+    #    event = step_tracer_kernel!(c, Δt, χ, Gcⁿ, Gc⁻, dependencies=barrier)
+    #    push!(events, event)
+    #end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
 
@@ -91,29 +109,17 @@ function ab2_step!(model, Δt, χ)
 end
 
 """
-Time step tracers via
+Time step via
 
-    `c^{n+1} = c^n + Δt ( (3/2 + χ) * Gc^{n} - (1/2 + χ) G^{n-1} )`
+    `U^{n+1} = U^n + Δt ( (3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1} )`
 
 """
-@kernel function ab2_step_tracer!(c, Δt, χ::FT, Gcⁿ, Gc⁻) where FT
-    i, j, k = @index(Global, NTuple)
 
-    @inbounds c[i, j, k] += Δt * ((FT(1.5) + χ) * Gcⁿ[i, j, k] - (FT(0.5) + χ) * Gc⁻[i, j, k])
-end
-
-""" Update predictor velocity field. """
-@kernel function ab2_step_velocities!(U, Δt, χ::FT, Gⁿ, G⁻) where FT
+@kernel function ab2_step_field!(U, Δt, χ::FT, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.u[i, j, k]
-                               - (FT(0.5) + χ) * G⁻.u[i, j, k] )
+        U[i, j, k] += Δt * (  (FT(1.5) + χ) * Gⁿ[i, j, k] - (FT(0.5) + χ) * G⁻[i, j, k] )
 
-        U.v[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.v[i, j, k]
-                               - (FT(0.5) + χ) * G⁻.v[i, j, k] )
-
-        U.w[i, j, k] += Δt * (   (FT(1.5) + χ) * Gⁿ.w[i, j, k]
-                               - (FT(0.5) + χ) * G⁻.w[i, j, k] )
     end
 end
