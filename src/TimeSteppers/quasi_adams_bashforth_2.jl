@@ -50,11 +50,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
 
-    advect_particles!(model, Δt)
-
     tick!(model.clock, Δt)
     update_state!(model)
     store_tendencies!(model)
+    advect_particles!(model, Δt)
 
     return nothing
 end

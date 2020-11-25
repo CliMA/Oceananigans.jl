@@ -1,6 +1,6 @@
 using NCDatasets
 
-function run_simple_particle_tracking_tests(arch)
+function run_simple_particle_tracking_tests(arch, timestepper)
     topo = (Periodic, Periodic, Bounded)
     domain = (x=(-1, 1), y=(-1, 1), z=(-1, 1))
     grid = RegularCartesianGrid(topology=topo, size=(5, 5, 5); domain...)
@@ -10,7 +10,7 @@ function run_simple_particle_tracking_tests(arch)
     ys = convert(array_type(arch), zeros(P))
     zs = convert(array_type(arch), 0.5*ones(P))
 
-    model = IncompressibleModel(architecture=arch, grid=grid,
+    model = IncompressibleModel(architecture=arch, grid=grid, timestepper=timestepper,
                                 particles=LagrangianParticles(x=xs, y=ys, z=zs))
 
     set!(model, u=1, v=1)
@@ -57,8 +57,8 @@ function run_simple_particle_tracking_tests(arch)
 end
 
 @testset "Lagrangian particle tracking" begin
-    for arch in archs
-        @info "  Testing Lagrangian particle tacking [$(typeof(arch))]..."
-        run_simple_particle_tracking_tests(arch)
+    for arch in archs, timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @info "  Testing Lagrangian particle tacking [$(typeof(arch)), $timestepper]..."
+        run_simple_particle_tracking_tests(arch, timestepper)
     end
 end

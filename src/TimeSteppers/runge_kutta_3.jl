@@ -44,7 +44,7 @@ end
     time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
-The 3rd-order Runge-Kutta method takes three intermediate substep stages to 
+The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
@@ -67,7 +67,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     #
     # First stage
     #
-    
+
     calculate_tendencies!(model)
 
     rk3_substep!(model, Δt, γ¹, nothing)
@@ -78,6 +78,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model)
+    advect_particles!(model, first_stage_Δt)
 
     #
     # Second stage
@@ -93,13 +94,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model)
+    advect_particles!(model, second_stage_Δt)
 
     #
     # Third stage
     #
 
     calculate_tendencies!(model)
-    
+
     rk3_substep!(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)
@@ -107,6 +109,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model)
+    advect_particles!(model, third_stage_Δt)
 
     return nothing
 end
@@ -152,7 +155,7 @@ Time step tracers via the 3rd-order Runge-Kutta method
 
     `c^{m+1} = c^m + Δt (γⁿ Gc^{m} + ζⁿ Gc^{m-1})`,
 
-where `m` denotes the substage. 
+where `m` denotes the substage.
 """
 @kernel function rk3_substep_tracer!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     i, j, k = @index(Global, NTuple)
