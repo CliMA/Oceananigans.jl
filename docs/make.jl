@@ -152,10 +152,9 @@ makedocs(
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
-withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
-    deploydocs(
-              repo = "github.com/CliMA/OceananigansDocumentation.git",
-          versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-      push_preview = true
-    )
-end
+deploydocs(
+          repo = "github.com/CliMA/OceananigansDocumentation.git",
+      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+  push_preview = true
+)
+
