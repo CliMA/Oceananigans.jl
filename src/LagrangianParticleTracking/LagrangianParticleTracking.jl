@@ -4,20 +4,25 @@ export LagrangianParticles, advect_particles!
 
 using Adapt
 using KernelAbstractions
-using StaticArrays
+using StructArrays
 
 using Oceananigans.Grids
-
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: interpolate, datatuple
 using Oceananigans.Utils: MAX_THREADS_PER_BLOCK
 
 import Base: size, length
 
-struct LagrangianParticles{X, Y, Z}
-    x :: X
-    y :: Y
-    z :: Z
+abstract type AbstractParticle end
+
+struct Particle{T} <: AbstractParticle
+    x :: T
+    y :: T
+    z :: T
+end
+
+struct LagrangianParticles{P}
+    particles :: P
 end
 
 function LagrangianParticles(; x, y, z)
@@ -27,11 +32,13 @@ function LagrangianParticles(; x, y, z)
     (ndims(x) == 1 && ndims(y) == 1 && ndims(z) == 1) ||
         error("x, y, z must have dimension 1 but ndims=($(ndims(x)), $(ndims(y)), $(ndims(z)))")
 
-    return LagrangianParticles(x, y, z)
+    particles = StructArray{Particle}((x, y, z))
+
+    return LagrangianParticles(particles)
 end
 
-size(particles::LagrangianParticles) = size(particles.x)
-length(particles::LagrangianParticles) = length(particles.x)
+size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.particles)
+length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.particles)
 
 """
     enforce_boundary_conditions(x, xₗ, xᵣ, ::Type{Bounded})
@@ -74,7 +81,7 @@ function advect_particles!(particles, model, Δt)
     worksize = length(particles)
     advect_particles_kernel! = _advect_particles!(device(model.architecture), workgroup, worksize)
 
-    advect_particles_event = advect_particles_kernel!(particles, model.grid, Δt, datatuple(model.velocities),
+    advect_particles_event = advect_particles_kernel!(particles.particles, model.grid, Δt, datatuple(model.velocities),
                                                       dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), advect_particles_event)
@@ -84,7 +91,7 @@ end
 
 advect_particles!(model, Δt) = advect_particles!(model.particles, model, Δt)
 
-Adapt.adapt_structure(to, particles::LagrangianParticles) =
-    LagrangianParticles(Adapt.adapt(to, particles.x), Adapt.adapt(to, particles.y), Adapt.adapt(to, particles.z))
+# Adapt.adapt_structure(to, particles::LagrangianParticles) =
+#     LagrangianParticles(Adapt.adapt(to, particles.x), Adapt.adapt(to, particles.y), Adapt.adapt(to, particles.z))
 
 end # module
