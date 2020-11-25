@@ -139,13 +139,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
               
-    ω_plot = contourf(xω, yω, clamp.(ω_snapshot, -ω_lim, ω_lim)';
+    ω_plot = contourf(xω, yω, clamp.(ω_snapshot', -ω_lim, ω_lim);
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim)';
+    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim);
                        color = :thermal,
                       levels = s_levels,
                        clims = (0, s_lim),
