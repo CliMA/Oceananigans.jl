@@ -25,20 +25,24 @@ function run_simple_particle_tracking_tests(arch)
 
     run!(sim)
 
-    # Easy placeholder test!
-    @test all(model.particles.x .≈ 0.01)
-    @test all(model.particles.y .≈ 0.01)
-    @test all(model.particles.z .≈ 0.5)
+    x = convert(array_type(arch), model.particles.x)
+    y = convert(array_type(arch), model.particles.y)
+    z = convert(array_type(arch), model.particles.z)
+
+    @test all(x .≈ 0.01)
+    @test all(y .≈ 0.01)
+    @test all(z .≈ 0.5)
 
     ds = NCDataset(test_output_file)
     x, y, z = ds["x"], ds["y"], ds["z"]
 
-    @test all(model.particles.x .≈ x[:, end])
-    @test all(model.particles.y .≈ y[:, end])
-    @test all(model.particles.z .≈ z[:, end])
-    close(ds)
+    @test all(x[:, end] .≈ 0.01)
+    @test all(y[:, end] .≈ 0.01)
+    @test all(z[:, end] .≈ 0.5)
 
+    close(ds)
     rm(test_output_file)
+
     return nothing
 end
 
