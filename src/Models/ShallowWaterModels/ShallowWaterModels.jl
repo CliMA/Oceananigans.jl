@@ -6,6 +6,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Models: fields
+import Oceananigans.LagrangianParticleTracking: advect_particles!
 
 #####
 ##### ShallowWaterModel definition
@@ -33,5 +34,8 @@ include("update_shallow_water_state.jl")
 # These files can be removed when rk3_substep! and store_tendencies! are generalized:
 include("rk3_substep_shallow_water_model.jl")
 include("store_shallow_water_tendencies.jl")
+
+# No particle advection support for shallow water models yet!
+advect_particles!(::ShallowWaterModel, Δt) = nothing
 
 end # module
