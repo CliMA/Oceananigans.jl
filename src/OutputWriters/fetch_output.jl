@@ -15,7 +15,7 @@ function fetch_output(field::AbstractField, model, field_slicer)
 end
 
 function fetch_output(particles::LagrangianParticles, model, field_slicer)
-    return (x=particles.x, y=particles.y, z=particles.z)
+    return (x=particles.particles.x, y=particles.particles.y, z=particles.particles.z)
 end
 
 convert_output(output, writer) = output
