@@ -53,6 +53,9 @@ end
         grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError IncompressibleModel(architecture=CPU, grid=grid)
         @test_throws TypeError IncompressibleModel(architecture=GPU, grid=grid)
+        @test_throws TypeError IncompressibleModel(grid=grid, boundary_conditions=1)
+        @test_throws TypeError IncompressibleModel(grid=grid, forcing=2)
+        @test_throws TypeError IncompressibleModel(grid=grid, background_fields=3)
     end
 
     topos = ((Periodic, Periodic, Periodic),
