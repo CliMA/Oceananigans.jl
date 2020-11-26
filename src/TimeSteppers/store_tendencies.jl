@@ -29,7 +29,7 @@ function store_tendencies!(model)
         push!(events, field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    #wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
