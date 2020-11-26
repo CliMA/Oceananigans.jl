@@ -6,4 +6,5 @@ baseline = BenchmarkConfig(id="master")
 script = joinpath(@__DIR__, "benchmarkable_incompressible_model.jl")
 resultfile = joinpath(@__DIR__, "regression_benchmarks.json")
 
-judge(Oceananigans, baseline, script=script, resultfile=resultfile, verbose=true)
+judgement = judge(Oceananigans, baseline, script=script, resultfile=resultfile, verbose=true)
+
