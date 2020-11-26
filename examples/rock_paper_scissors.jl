@@ -148,4 +148,12 @@ mp4(anim, "idealized_diurnal_cycle.mp4", fps=15)
 
 # # Visualizing the particle trajectories
 
-x, y, z = stack_particles[:x], stack_particles[:y], stack_particles[:z]
+ds_particles = NCDstack("lagrangian_microbes.nc")
+x, y, z = ds_particles[:x], ds_particles[:y], ds_particles[:z]
+
+anim = @animate for n in 1:Nt
+    @info "Plotting particles frame $n/$Nt..."
+    scatter(x[Ti=n], y[Ti=n], z[Ti=n], label="", xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0), dpi=200)
+end
+
+mp4(anim, "particles.mp4", fps=15)
