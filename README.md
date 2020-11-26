@@ -45,9 +45,6 @@
   <a href="https://buildkite.com/clima/oceananigans">
     <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
   </a>
-  <a href="https://travis-ci.com/clima/Oceananigans.jl">
-    <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=Travis&logo=travis&logoColor=white&style=flat-square">
-  </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
