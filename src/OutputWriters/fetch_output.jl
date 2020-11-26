@@ -14,16 +14,18 @@ function fetch_output(field::AbstractField, model, field_slicer)
     return slice_parent(field_slicer, field)
 end
 
-function fetch_output(particles::LagrangianParticles, model, field_slicer)
-    return (x=particles.particles.x, y=particles.particles.y, z=particles.particles.z)
+function fetch_output(lagrangian_particles::LagrangianParticles, model, field_slicer)
+    particles = lagrangian_particles.particles
+    names = propertynames(particles)
+    return NamedTuple{names}([getproperty(particles, name) for name in names])
 end
 
 convert_output(output, writer) = output
 convert_output(output::AbstractArray, writer) = CUDA.@allowscalar writer.array_type(output)
 
 # Need to broadcast manually because of https://github.com/JuliaLang/julia/issues/30836
-convert_output(outputs::NamedTuple{(:x, :y, :z)}, writer) =
-    CUDA.@allowscalar (x=writer.array_type(outputs.x), y=writer.array_type(outputs.y), z=writer.array_type(outputs.z))
+convert_output(outputs::NamedTuple, writer) =
+    NamedTuple{keys(outputs)}(writer.array_type.(values(outputs)))
 
 fetch_and_convert_output(output, model, writer) =
     convert_output(fetch_output(output, model, writer.field_slicer), writer)

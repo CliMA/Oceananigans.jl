@@ -359,10 +359,10 @@ end
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
-    for locationname in ("x", "y", "z")
-        defVar(dataset, locationname, eltype(array_type),
-            ("particleid", "time"),
-            compression=compression)#, attrib=output_attributes)
+    particle_fields = eltype(output.particles) |> fieldnames .|> string
+    for particle_field in particle_fields
+        defVar(dataset, particle_field, eltype(array_type),
+               ("particleid", "time"), compression=compression)
     end
 end
 
@@ -393,8 +393,8 @@ end
 
 function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
-    for (k, v) in pairs(data)
-        ds[string(k)][:, time_index] = v
+    for (particle_field, vals) in pairs(data)
+        ds[string(particle_field)][:, time_index] = vals
     end
 end
 
