@@ -1055,12 +1055,12 @@ end
 function run_netcdf_output_alignment_tests(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=π, stop_time=35, stop_iteration=20)
+    simulation = Simulation(model, Δt=π, stop_time=35)
 
     test_filename = "test_output_alignment.nc"
     simulation.output_writers[:something] =
         NetCDFOutputWriter(model, model.velocities, filepath=test_filename,
-                           schedule=TimeInterval(6.8), verbose=true)
+                           schedule=TimeInterval(6.8))
 
     run!(simulation)
 

@@ -71,6 +71,30 @@ ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
+function align_time_step(sim)
+    clock = sim.model.clock
+
+    # Align time step with output writing
+    if length(sim.output_writers) > 0
+        times_to_next_outputs = [time_to_next_action(writer.schedule, clock) for writer in values(sim.output_writers)]
+        times_to_next_outputs = filter(!ismissing, times_to_next_outputs)
+
+        if length(times_to_next_outputs) > 0
+            time_to_next_output = minimum(times_to_next_outputs)
+            Δt = min(get_Δt(sim.Δt), time_to_next_output)
+        end
+    else
+        Δt = get_Δt(sim.Δt)
+    end
+
+    # Align time step with simulation stop time
+    if clock.time + Δt > sim.stop_time
+        Δt = sim.stop_time - clock.time
+    end
+
+    return Δt
+end
+
 """
     run!(simulation; pickup=false)
 
@@ -136,21 +160,10 @@ function run!(sim; pickup=false)
             [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
         end
 
-        for n in 1:sim.iteration_interval
+        iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
 
-            # Align time step with output writing
-            if length(sim.output_writers) > 0
-                times_to_next_outputs = filter(!ismissing, [time_to_next_action(writer.schedule, clock)
-                                                            for writer in values(sim.output_writers)])
-
-                if length(times_to_next_outputs) > 0
-                    time_to_next_output = minimum(times_to_next_outputs)
-                    Δt = min(get_Δt(sim.Δt), time_to_next_output)
-                end
-            else
-                Δt = get_Δt(sim.Δt)
-            end
-
+        for n in 1:iterations
+            Δt = align_time_step(sim)
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
 
