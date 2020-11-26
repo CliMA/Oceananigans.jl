@@ -82,6 +82,8 @@ function align_time_step(sim)
         if length(times_to_next_outputs) > 0
             time_to_next_output = minimum(times_to_next_outputs)
             Δt = min(get_Δt(sim.Δt), time_to_next_output)
+        else
+            Δt = get_Δt(sim.Δt)
         end
     else
         Δt = get_Δt(sim.Δt)
