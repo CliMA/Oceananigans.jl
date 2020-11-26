@@ -21,15 +21,15 @@ function store_tendencies!(model)
 
     for (i, field) in enumerate(model_fields)
 
-        field_event = store_field_tendencies_kernel!(model.timestepper.G⁻,
+        field_event = store_field_tendencies_kernel!(model.timestepper.G⁻[i],
                                                      model.grid,
-                                                     model.timestepper.Gⁿ,
+                                                     model.timestepper.Gⁿ[i],
                                                      dependencies=barrier)
 
         push!(events, field_event)
     end
 
-    #wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
