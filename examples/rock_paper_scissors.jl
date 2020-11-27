@@ -22,9 +22,9 @@ using Oceananigans.Utils: hours
 
 N² = 1e-5
 
-Qb(x, y, t, p) = p.Q₀ + p.QΔ * sin(2π * t / p.τ)
+Qb(x, y, t, p) = p.Q₀ + p.QΔ * cos(2π * t / p.τ)
 
-b_top_bc = FluxBoundaryCondition(Qb, parameters=(Q₀=2e-8, QΔ=5e-8, τ=24hours))
+b_top_bc = FluxBoundaryCondition(Qb, parameters=(Q₀=0, QΔ=3e-8, τ=24hours))
 b_bot_bc = GradientBoundaryCondition(N²)
 
 b_bcs  = TracerBoundaryConditions(grid, top=b_top_bc, bottom=b_bot_bc)
@@ -44,6 +44,9 @@ struct Microbe{T,S}
           z :: T
     species :: S
 end
+
+import Base: convert
+convert(::Type{Float32}, s::Species) = Float32(Int(s))
 
 n_microbes = 100
 
@@ -96,7 +99,7 @@ end
 
 wizard = TimeStepWizard(cfl=0.7, Δt=1second, min_Δt=0.2seconds, max_Δt=90seconds)
 
-simulation = Simulation(model, Δt=wizard, iteration_interval=10, stop_time=12hours, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, iteration_interval=10, stop_time=24hours, progress=print_progress)
 
 # # Output writing
 
@@ -127,9 +130,9 @@ using GeoData: GeoXDim, GeoYDim, GeoZDim
 @dim zC GeoZDim "z"
 @dim zF GeoZDim "z"
 
-stack = NCDstack("idealized_diurnal_cycle.nc")
+ds = NCDstack("idealized_diurnal_cycle.nc")
 
-w, b = stack[:w], stack[:b]
+w, b = ds[:w], ds[:b]
 times = dims(b)[4]
 Nt = length(times)
 
@@ -137,7 +140,7 @@ anim = @animate for n in 1:Nt
     @info "Plotting idealized diurnal cycle frame $n/$Nt..."
 
     w_plot = plot(w[Ti=n, xC=32], color=:balance, clims=(-0.1, 0.1), aspect_ratio=:auto,
-                  title="Idealized diurnal cycle: $(prettytime(times[Nt]))")
+                  title="Idealized diurnal cycle: $(prettytime(times[n]))")
 
     b_plot = plot(b[Ti=n, xC=32], color=:thermal, aspect_ratio=:auto, title="")
 
@@ -150,10 +153,18 @@ mp4(anim, "idealized_diurnal_cycle.mp4", fps=15)
 
 ds_particles = NCDstack("lagrangian_microbes.nc")
 x, y, z = ds_particles[:x], ds_particles[:y], ds_particles[:z]
+species = ds_particles[:species] .|> Int .|> Species
 
 anim = @animate for n in 1:Nt
     @info "Plotting particles frame $n/$Nt..."
-    scatter(x[Ti=n], y[Ti=n], z[Ti=n], label="", xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0), dpi=200)
+
+    s_plot = scatter(x[Ti=n], y[Ti=n], z[Ti=n], label="", xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0),
+                     title="Lagrangian microbe locations: $(prettytime(times[n]))")
+
+    h_plot = histogram(z[Ti=n], linewidth=0, orientation=:horizontal, normalize=true, bins=range(-50, 0, length=25),
+                       xlabel="p(z)", ylabel="z", label="", title="", xlims=(0, 0.2), ylims=(-50, 0))
+
+    plot(s_plot, h_plot, size=(1600, 900), layout = Plots.grid(1, 2, widths=[0.75, 0.25]))
 end
 
 mp4(anim, "particles.mp4", fps=15)
