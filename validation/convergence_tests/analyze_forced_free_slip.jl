@@ -61,7 +61,7 @@ filepath = joinpath(@__DIR__, "figs", filename)
 mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
-p = sortperm[Nx]
+p = sortperm(Nx)
 for (name, error) in zip(names, errors)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)

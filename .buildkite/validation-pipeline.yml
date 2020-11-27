@@ -3,8 +3,6 @@ env:
   JULIA_MINOR_VERSION: "1.5"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage7/buildkite-agent"
-  GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
-  DOCUMENTER_KEY: "LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUJsd0FBQUFkemMyZ3RjbgpOaEFBQUFBd0VBQVFBQUFZRUF0SitEQ25IRUxCR0w3VGV3M1pWSklCVW9CdnJTS2ZaM0JlOU9OMjBZb3B6bVNlTGtobFRaCnRzRVdSS1FVUU80eDdYYnY1bzliSVVFWmMrTW1zU2tLVjVGeEFIbm4vV0Q5WUlvbDZFT2diNWcrT0F3b1ZHZ0JCK2lZaVYKVmJMNENoK0YwcnhKbFBMbnlhWUxlb2NrT3J3MFNOa0FzbXR3eExMbGVNN1pxbHp4NUVQdU5rYTIwWjdkK09TVlFmR1U3MApjYWVXVUJnZG4yRmdzd3NzcHJmTEVqdlRCaHZDaTBsam5CbXlDNTY1eGJVNnBwTGhsN2F4M1lLTEwxRkxTSjc3SmxIWE50CkJmeWFXanhDTDNueG93bEFzczUzWTNiUkRMVStDWExSbHBybG0vU0htTVZ2WDUrS04zVHZnT3AyVWdsZjhEeWZ4ZkFaTVEKWG1YQ29JNXVkcnhFRzlaOHA2dXFTMG9LWmx0dnkrWmdEaXhXQVd4VzNDeFYxZ1pnb2NKYzB0ZEFtRDUwdmxpS1F0UldsMQpmNzVwaUJtRCtyTThLQzR6MzVMeDZHQU4xTlQxNTIvSzArOUdNb0huejBNcTNnVWluemVSVVQxNTZGekJEUjdnbENXQWI0CmJ0S3RGQzJBR0JLZFA2bFhLbDNRd3M0YzBxUW40d3EvUW9qZ3ZJc2ZBQUFGZ0dHZ0taNWhvQ21lQUFBQUIzTnphQzF5YzIKRUFBQUdCQUxTZmd3cHh4Q3dSaSswM3NOMlZTU0FWS0FiNjBpbjJkd1h2VGpkdEdLS2M1a25pNUlaVTJiYkJGa1NrRkVEdQpNZTEyNythUFd5RkJHWFBqSnJFcENsZVJjUUI1NS8xZy9XQ0tKZWhEb0crWVBqZ01LRlJvQVFmb21JbFZXeStBb2ZoZEs4ClNaVHk1OG1tQzNxSEpEcThORWpaQUxKcmNNU3k1WGpPMmFwYzhlUkQ3alpHdHRHZTNmamtsVUh4bE85SEdubGxBWUhaOWgKWUxNTExLYTN5eEk3MHdZYndvdEpZNXdac2d1ZXVjVzFPcWFTNFplMnNkMkNpeTlSUzBpZSt5WlIxemJRWDhtbG84UWk5NQo4YU1KUUxMT2QyTjIwUXkxUGdseTBaYWE1WnYwaDVqRmIxK2ZpamQwNzREcWRsSUpYL0E4bjhYd0dURUY1bHdxQ09ibmE4ClJCdldmS2VycWt0S0NtWmJiOHZtWUE0c1ZnRnNWdHdzVmRZR1lLSENYTkxYUUpnK2RMNVlpa0xVVnBkWCsrYVlnWmcvcXoKUENndU05K1M4ZWhnRGRUVTllZHZ5dFB2UmpLQjU4OURLdDRGSXA4M2tWRTllZWhjd1EwZTRKUWxnRytHN1NyUlF0Z0JnUwpuVCtwVnlwZDBNTE9ITktrSitNS3YwS0k0THlMSHdBQUFBTUJBQUVBQUFHQVMrU3VPZWc5aGtyRklhS0IxVWtSMWNJdDlHCmpWZjc1SW1wekhuN0JlWm8xSWtna2MvbmlPbGlTaGg2dnR1cTZiR2UwY3RpTE1KcmZreXZYSjN5eWdaTlQreHpWeHpkdy8KK3AxeGVodFlRU3VXRVJUQ3FWeWQra1c0T2hROFlVUktTa0pUenFLZ1M2Y2Rjc0FZcmhKVERKUTBheTdVVUp1QXgzTVFDeApJczAwOGpXODFOOTNsN0tLRURkem82YXZicTdRcCt0UjY4NjZnTjZvMHFjTTdQSzlVcFFPclBIcGx5bWplTndTWXJackJVCmVZTkQrT3hSNWdJaEczdXNCMUtNL1B2OUg5cmpjMENmV0ZxZFJSYTk4bTA2Nkwra09vTVVpRm9ZS3JDbUFmZnhNOUtZamQKc1RYcU9BQi9CandUYU5WYWJGWFE3Z0pZTGlmQzFUN0NKYmcxWXhyZk1RUWp6dXZIOVRQOEpRK0NRRVoxNkJuNXJ1ZndSSgpTUjQ3S2V5S3Z1Vk9lVnNxc3NBdjNlU0JWSUNGMVRDTjRQT1BpY1JLa1ZBakZuRU9vZVZpVEQ5RGZzdmZNakZsUG55TXhUCkY3OVNJMWkzMkdtWkVZVEdDRTlKN1o4S3kwSE80bU50ZGdKM1kzd0lZUDF0TEpTRHJLc3pKeEMvK1Y1a0hSb08xWkFBQUEKd0FXRmo2Ynk4YlFhL1ZWcGk0TndvcFhqRWMrQmNTVHp1MVBNMEVCTjFaZlpFaVhrRGNXZVpweWQ1djIydWdZLzQrUEJPZAo4N2JmNTR0T0ROK3l0bUZDejg4VVZnN2k2TXZtUnBLc2xVSUZzS0loUU9idmI4K24wWkQ5djF2KzlBVndGUEhqL3pWRkVPCkVIRmNhSG83Y3pNODVKcnp0QSthQkJrOVAvUnJOV1pDQlpSK1dmM3JSOXppU2NHbG1wWUxmb0NJVmtDY3BCTDlHKzgvR0QKTSszM0F3Wm5HWnNyRCtuSWZJdUlVRVZLY29yek5yeERDTCtqbFZwQmpvQ2ZmZkJ3QUFBTUVBN3psWm4vVGthaHcwN1lyMApTS3J1QUYreXFPdU1aNFZMRTlvY2RjY3RFcWhxWHdiV3lDSXNyZGhYeUljUlI4V3RkdGo3VEtGNERRbk9TbTlTZitPQWVkCnZXMEp3QmlSRGJTd05Yam9xdnc2ZFQxZFY5Z1ZVeElKV1pNUTB6Y0NVaytCUnNaK0J4L1UrK0g5TnY2QTBzSkJHeHpuMzAKaDFkTm8wdkdlODBWeDFvK1NreC9MU29SV1hacmticDYxTXFRRjdyVnY2VkE4TVNUKzdZd2JKZVZuaFBrdWxIVGwwMngwRQp3S2dERldrQnVZTzltTEJOTHAvZ0xmVzZycXplOTlBQUFBd1FEQlNpSWhobXBVekhKTCsyekYzMlVtTmRFY25RS3JIVHZaCjR5RUJqbUVRU25rRFFkeUl4MW9KS1NsQkxZdSt2aDB4QS8rTVJoejBtZGZmak4xMTNrY25kNCt5L1hBSkJDckJIVmNveXUKN1lka091RGF3Z2NTZnRYOEVNR0hUNHBieW04MkdvZmVFQ0dpcS9VQlA2UlVJbHozM2hhWlBSVE1iMWRJOXdFeGhGSnErZgpKK1JKaHRLTnlINlBzd1ZSNUpxdHlOVEVmOFJDUDdjdEN1czhURUF4YzN1OHZOYk5HU2dNdUdjN3AzeGxuWmlQaTNISEFHCnR2UExlanlSZEZuOHNBQUFBS1JHOWpkVzFsYm5SbGNnRT0KLS0tLS1FTkQgT1BFTlNTSCBQUklWQVRFIEtFWS0tLS0tCg=="
 
 steps:
   - label: "🎪 initialize gpu environment"
@@ -61,7 +59,6 @@ steps:
 
   - label: "🎱 gpu point exponential decay"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "point_exponential_decay"
     commands:
@@ -75,9 +72,9 @@ steps:
 
   - label: "⚽ cpu point exponential decay"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "point_exponential_decay"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -93,7 +90,6 @@ steps:
 
   - label: "⚡ gpu cosine advection-diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "cosine_advection_diffusion"
     commands:
@@ -107,9 +103,9 @@ steps:
 
   - label: "🔌 cpu cosine advection-diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "cosine_advection_diffusion"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -125,7 +121,6 @@ steps:
 
   - label: "🌋 gpu gaussian advection-diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "gaussian_advection_diffusion"
     commands:
@@ -139,9 +134,9 @@ steps:
 
   - label: "⛰️ cpu gaussian advection-diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "gaussian_advection_diffusion"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -157,7 +152,6 @@ steps:
 
   - label: "☀️ gpu diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "diffusion"
     commands:
@@ -171,9 +165,9 @@ steps:
 
   - label: "🔥 cpu diffusion"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "diffusion"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -189,7 +183,6 @@ steps:
 
   - label: "🌀 gpu taylor-green"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "taylor_green"
     commands:
@@ -203,9 +196,9 @@ steps:
 
   - label: "🌪️ cpu taylor-green"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "taylor_green"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -221,7 +214,6 @@ steps:
 
   - label: "🏒 gpu forced flow free slip"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "forced_free_slip"
     commands:
@@ -235,9 +227,9 @@ steps:
 
   - label: "⛸️ cpu forced flow free slip"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "forced_free_slip"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -253,7 +245,6 @@ steps:
 
   - label: "🛋️ gpu forced flow fixed slip"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "forced_fixed_slip"
     commands:
@@ -267,9 +258,9 @@ steps:
 
   - label: "💺 cpu forced flow fixed slip"
     env:
-      PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "forced_fixed_slip"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -287,18 +278,13 @@ steps:
     continue_on_failure: true
 
   - label: "🧻 clean up gpu environment"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    command: "rm -rf $JULIA_DEPOT_PATH"
+    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🧹 clean up cpu environment"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      CUDA_VISIBLE_DEVICES: "-1"
-    command: "rm -rf $JULIA_DEPOT_PATH"
+    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: CPU
