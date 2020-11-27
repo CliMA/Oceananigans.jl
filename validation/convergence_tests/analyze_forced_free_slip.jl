@@ -61,12 +61,11 @@ filepath = joinpath(@__DIR__, "figs", filename)
 mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
-@show Nx
-
+p = sortperm[Nx]
 for (name, error) in zip(names, errors)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)
     name = "Forced flow free slip " * strip(name.s, '$')
-    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name=name * " L₁")
-    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.001, name=name * " L∞")
+    test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.001, name=name * " L₁")
+    test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.001, name=name * " L∞")
 end

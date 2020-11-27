@@ -49,7 +49,6 @@ filepath = joinpath(@__DIR__, "figs", filename)
 mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
-@show Nx
-
-test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name="Taylor-Green L₁")
-test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.050, name="Taylor-Green L∞")
+p = sortperm(Nx)
+test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.001, name="Taylor-Green L₁")
+test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.050, name="Taylor-Green L∞")
