@@ -50,8 +50,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project validation/convergence_tests -e 'using Pkg; Pkg.add("PyCall"); ENV["PYTHON"]=""; Pkg.build("PyCall"); using PyPlot;'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project validation/convergence_tests -e 'using Pkg; Pkg.add(\"PyCall\"); ENV[\"PYTHON\"]=\"\"; Pkg.build(\"PyCall\"); using PyPlot;'"
     agents:
       queue: Oceananigans
       architecture: CPU
