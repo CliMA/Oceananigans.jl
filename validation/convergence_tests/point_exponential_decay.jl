@@ -50,5 +50,5 @@ legend()
 filepath = joinpath(@__DIR__, "figs", "point_exponential_decay_time_stepper_convergence.png")
 savefig(filepath, dpi=480)
 
-test_rate_of_convergence(ab2_L₁, Δt, data_points=9, expected=1.0, atol=0.01)
-test_rate_of_convergence(rk3_L₁, Δt, data_points=9, expected=3.0, atol=0.01)
+test_rate_of_convergence(ab2_L₁, Δt, Ntest=Δt[2], expected=1.0, atol=0.01)
+test_rate_of_convergence(rk3_L₁, Δt, Ntest=Δt[2], expected=3.0, atol=0.01)

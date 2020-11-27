@@ -12,7 +12,8 @@ steps:
     key: "init_gpu"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "init"
     commands:
       # Download julia binaries
       - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
@@ -37,7 +38,8 @@ steps:
     key: "init_cpu"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "init"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       # Download julia binaries
@@ -57,18 +59,7 @@ steps:
 ##### Point exponential decay
 #####
 
-  - label: "cpu point exponential decay"
-    env:
-      TEST_GROUP: "convergence"
-      VALIDATION_TEST: "point_exponential_decay"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    depends_on: "init_cpu"
-
-  - label: "gpu point exponential decay"
+  - label: "🎱 gpu point exponential decay"
     env:
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "point_exponential_decay"
@@ -78,6 +69,17 @@ steps:
       queue: Oceananigans
       architecture: GPU
     depends_on: "init_gpu"
+
+  - label: "⚽ cpu point exponential decay"
+    env:
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "point_exponential_decay"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
 
   - wait: ~
     continue_on_failure: true
