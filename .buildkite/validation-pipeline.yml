@@ -8,7 +8,7 @@ steps:
   - label: "🎪 initialize gpu environment"
     key: "init_gpu"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "init"
     commands:
@@ -34,7 +34,7 @@ steps:
   - label: "🏕️ initialize cpu environment"
     key: "init_cpu"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "init"
       CUDA_VISIBLE_DEVICES: "-1"
@@ -285,13 +285,13 @@ steps:
     continue_on_failure: true
 
   - label: "🧻 clean up gpu environment"
-    command: "rm -rfv $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rfv $SVERDRUP_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🧹 clean up cpu environment"
-    command: "rm -rfv $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rfv $TARTARUS_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: CPU
