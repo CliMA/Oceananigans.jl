@@ -1,9 +1,9 @@
-using PyPlot, Glob, Printf
+using Printf
+using Glob
+using PyPlot
 
-include("ConvergenceTests/ConvergenceTests.jl")
-
-using .ConvergenceTests
-using .ConvergenceTests.ForcedFlowFixedSlip: u
+using ConvergenceTests
+using ConvergenceTests.ForcedFlowFixedSlip: u
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)

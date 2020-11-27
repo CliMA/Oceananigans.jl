@@ -1,13 +1,8 @@
-# # "Point exponential decay" time-stepper convergence test
-
 using PyPlot
 using Oceananigans
 
-# Define a few utilities for running tests and unpacking and plotting results
-include("ConvergenceTests/ConvergenceTests.jl")
-
-using .ConvergenceTests
-using .ConvergenceTests.PointExponentialDecay: run_test
+using ConvergenceTests
+using ConvergenceTests.PointExponentialDecay: run_test
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
