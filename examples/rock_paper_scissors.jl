@@ -121,13 +121,13 @@ model = IncompressibleModel(
 
 # # Setting initial conditions
 
-b₀(x, y, z) = N²*z + 1e-6 * randn()
+b₀(x, y, z) = N²*z + 1e-10 * randn()
 set!(model, b=b₀)
 
 # # Simulation setup
 
 using Printf
-using Oceananigans.Utils: prettytime, second, seconds, hours
+using Oceananigans.Utils: prettytime, second, seconds, hours, days
 
 function print_progress(simulation)
     model = simulation.model
@@ -144,7 +144,7 @@ end
 
 wizard = TimeStepWizard(cfl=0.7, Δt=1second, min_Δt=0.2seconds, max_Δt=90seconds)
 
-simulation = Simulation(model, Δt=wizard, iteration_interval=10, stop_time=24hours, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, iteration_interval=1, stop_time=2days, progress=print_progress)
 
 # # Output writing
 
@@ -155,10 +155,10 @@ using Oceananigans.OutputWriters
 using Oceananigans.Utils: minutes
 
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, fields(model), filepath="idealized_diurnal_cycle.nc",
-                                                        schedule=TimeInterval(5minutes))
+                                                        schedule=TimeInterval(2minutes))
 
 simulation.output_writers[:particles] = NetCDFOutputWriter(model, model.particles, filepath="lagrangian_microbes.nc",
-                                                           schedule=TimeInterval(5minutes))
+                                                           schedule=TimeInterval(2minutes))
 
 run!(simulation)
 
@@ -184,10 +184,10 @@ Nt = length(times)
 anim = @animate for n in 1:Nt
     @info "Plotting idealized diurnal cycle frame $n/$Nt..."
 
-    w_plot = plot(w[Ti=n, xC=32], color=:balance, clims=(-0.1, 0.1), aspect_ratio=:auto,
+    w_plot = plot(w[Ti=n, xC=32], color=:balance, clims=(-0.02, 0.02), aspect_ratio=:auto,
                   title="Idealized diurnal cycle: $(prettytime(times[n]))")
 
-    b_plot = plot(b[Ti=n, xC=32], color=:thermal, aspect_ratio=:auto, title="")
+    b_plot = plot(b[Ti=n, xC=32], color=:thermal, clims=(-5e-4, 4e-4), aspect_ratio=:auto, title="")
 
     plot(w_plot, b_plot, layout=(2, 1), size=(1600, 900))
 end
@@ -206,16 +206,41 @@ function particle_color(s::Species)
     s == Scissors && return "blue"
 end
 
+P = 300 # particles to animate
+T = 20 # particle tail length
+
 anim = @animate for n in 1:Nt
     @info "Plotting particles frame $n/$Nt..."
 
-    xₙ = x[particleid=1:1000, Ti=n]
-    yₙ = y[particleid=1:1000, Ti=n]
-    zₙ = z[particleid=1:1000, Ti=n]
+    xₙ = x[particleid=1:P, Ti=n]
+    yₙ = y[particleid=1:P, Ti=n]
+    zₙ = z[particleid=1:P, Ti=n]
+    sₙ = species[particleid=1:P, Ti=n] .|> Int .|> Species
 
     s_plot = scatter(xₙ, yₙ, zₙ, color=particle_color.(sₙ), label="",
                      xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0),
                      title="Lagrangian microbe locations: $(prettytime(times[n]))")
+
+    for p in 1:P
+        n == 1 && break
+
+        tail_inds = max(1, n-T):n
+
+        x_tail = x[particleid=p, Ti=tail_inds]
+        y_tail = y[particleid=p, Ti=tail_inds]
+        z_tail = z[particleid=p, Ti=tail_inds]
+
+        Δx = -(extrema(x_tail)...) |> abs
+        Δy = -(extrema(y_tail)...) |> abs
+        Δz = -(extrema(z_tail)...) |> abs
+
+        (Δx > 10 || Δy > 10 || Δz > 10) && continue
+
+        tail_color = species[particleid=p, Ti=tail_inds].data .|> particle_color .|> color
+        tail_color = RGBA.(tail_color, range(0, 1, length=length(tail_color)))
+
+        plot!(s_plot, x_tail, y_tail, z_tail, color=tail_color, linewidth=2, label="")
+    end
 
     h_plot = histogram(z[Ti=n], linewidth=0, orientation=:horizontal, normalize=true, bins=range(-50, 0, length=25),
                        xlabel="p(z)", ylabel="z", label="", title="", xlims=(0, 0.2), ylims=(-50, 0))
@@ -224,3 +249,18 @@ anim = @animate for n in 1:Nt
 end
 
 mp4(anim, "particles.mp4", fps=15)
+
+# # Analyzing Lagrangian microbe interactions
+
+n_rocks = [sum(species[Ti=n] .== Rock) for n in 1:Nt]
+n_papers = [sum(species[Ti=n] .== Paper) for n in 1:Nt]
+n_scissors = [sum(species[Ti=n] .== Scissors) for n in 1:Nt]
+
+p = plot(times[:] / hours, n_rocks, color=:red, label="Rocks",
+         xlim=(0, 48), xticks=0:6:24, xlabel="Time (hours)", ylabel="Species count",
+         legend=:outertopright, dpi=200)
+
+plot!(p, times[:] / hours, n_papers, color=:green, label="Papers")
+plot!(p, times[:] / hours, n_scissors, color=:blue, label="Scissors")
+
+savefig(p, "species_count.png")
