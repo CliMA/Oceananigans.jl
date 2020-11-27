@@ -48,7 +48,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on south wall, finite slip on north wall)."
-    u_bcs = UVelocityBoundaryConditions(grid, north = UVelocityBoundaryCondition(Value, :y, (x, y, t) -> f(x, t)),
+    u_bcs = UVelocityBoundaryConditions(grid, north = UVelocityBoundaryConditions(Value, :y, (x, y, t) -> f(x, t)),
                                               south = BoundaryCondition(Value, 0))
 
     model = IncompressibleModel(       architecture = CPU(),

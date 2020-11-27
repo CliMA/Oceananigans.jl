@@ -5,6 +5,7 @@ using Statistics
 
 using Oceananigans
 using Oceananigans.Grids
+using Oceananigans.Advection
 
 include("analysis.jl")
 
