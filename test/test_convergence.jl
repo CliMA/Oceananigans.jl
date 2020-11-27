@@ -1,11 +1,6 @@
 using Pkg
 using SafeTestsets
 
-# Don't use system Python
-if ENV["CI"] == "true"
-    ENV["PYTHON"] = ""
-end
-
 const CONVERGENCE_DIR = joinpath(@__DIR__, "..", "validation", "convergence_tests")
 
 Pkg.activate(CONVERGENCE_DIR)

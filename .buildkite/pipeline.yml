@@ -79,7 +79,7 @@ steps:
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "point_exponential_decay"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"PYTHON\"]=\"\"; using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU

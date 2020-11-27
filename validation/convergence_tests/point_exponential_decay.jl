@@ -1,3 +1,4 @@
+using CUDA
 using PyPlot
 using Oceananigans
 
@@ -9,14 +10,14 @@ removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
 """ Run advection-diffusion test for all Nx in resolutions. """
-function run_convergence_test(stop_time, proposal_Δt, timestepper)
+function run_convergence_test(stop_time, proposal_Δt, arch, timestepper)
 
     # Adjust time-step
     stop_iterations = [round(Int, stop_time / dt) for dt in proposal_Δt]
                  Δt = [stop_time / stop_iter for stop_iter in stop_iterations]
 
     # Run the tests
-    results = [run_test(timestepper=timestepper, Δt=dt, stop_iteration=stop_iter)
+    results = [run_test(architecture=arch, timestepper=timestepper, Δt=dt, stop_iteration=stop_iter)
                for (dt, stop_iter) in zip(Δt, stop_iterations)]
 
     return results, Δt
@@ -24,10 +25,12 @@ end
 
 unpack_errors(results) = map(r -> r.L₁, results)
 
+arch = CUDA.has_cuda() ? GPU() : CPU()
+
 stop_time = 3
 Δt = 10 .^ range(-3, 0, length=30)  # Equally spaced in log space.
-ab2_results, Δt = run_convergence_test(stop_time, Δt, :QuasiAdamsBashforth2)
-rk3_results, Δt = run_convergence_test(stop_time, Δt, :RungeKutta3)
+ab2_results, Δt = run_convergence_test(stop_time, Δt, arch, :QuasiAdamsBashforth2)
+rk3_results, Δt = run_convergence_test(stop_time, Δt, arch, :RungeKutta3)
 
 ab2_L₁ = unpack_errors(ab2_results)
 rk3_L₁ = unpack_errors(rk3_results)

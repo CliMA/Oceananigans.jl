@@ -3,6 +3,7 @@ uuid = "fffa98da-268f-4b20-a084-5d718c209596"
 version = "0.1.0"
 
 [deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
