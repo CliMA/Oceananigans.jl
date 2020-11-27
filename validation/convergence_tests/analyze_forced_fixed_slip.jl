@@ -80,6 +80,8 @@ filepath = joinpath(@__DIR__, "figs", filename)
 mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
+@show Nx
+
 for (label, error) in zip(labels, errorses)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)

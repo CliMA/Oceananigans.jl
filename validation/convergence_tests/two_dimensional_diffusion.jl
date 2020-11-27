@@ -37,12 +37,9 @@ stop_time = 1e-4
 stop_iteration = round(Int, stop_time / proposal_Δt)
             Δt = stop_time / stop_iteration # ensure time-stepping to exact finish time.
 
-all_topologies = ((Periodic, Periodic, Periodic),
-                  (Periodic, Periodic, Bounded),
-                  (Periodic, Bounded,  Bounded),
-                  (Bounded,  Bounded,  Bounded))
-
-topologies = arch isa CPU ? all_topologies : all_topologies[1:3]
+topologies = ((Periodic, Periodic, Bounded),
+              (Periodic, Bounded,  Bounded),
+              (Bounded,  Bounded,  Bounded))
 
 errors = [convergence_test(Nx, Δt, stop_iteration, arch, topo) for topo in topologies]
 
