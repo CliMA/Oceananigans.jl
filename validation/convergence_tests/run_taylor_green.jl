@@ -1,3 +1,4 @@
+using CUDA
 using Oceananigans
 
 using ConvergenceTests.DoublyPeriodicTaylorGreen: setup_and_run

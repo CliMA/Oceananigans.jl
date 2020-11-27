@@ -7,7 +7,7 @@ end
 using Test
 using CUDA
 using PyPlot
-using Oceananigans.Grids
+using Oceananigans
 
 using ConvergenceTests
 using ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test

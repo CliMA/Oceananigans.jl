@@ -1,3 +1,4 @@
+using CUDA
 using Oceananigans
 
 using ConvergenceTests.ForcedFlowFixedSlip: setup_and_run_xy, setup_and_run_xz

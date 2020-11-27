@@ -6,7 +6,7 @@ end
 
 using CUDA
 using PyPlot
-using Oceananigans.Grids
+using Oceananigans
 
 using ConvergenceTests
 using ConvergenceTests.TwoDimensionalDiffusion: run_and_analyze

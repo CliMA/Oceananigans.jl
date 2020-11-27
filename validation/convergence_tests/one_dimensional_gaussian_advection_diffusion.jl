@@ -7,7 +7,7 @@ end
 using Test
 using CUDA
 using PyPlot
-using Oceananigans.Advection
+using Oceananigans
 
 using ConvergenceTests
 using ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
