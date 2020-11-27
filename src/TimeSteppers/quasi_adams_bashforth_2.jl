@@ -74,10 +74,11 @@ function ab2_step!(model, Δt, χ)
     events = []
 
     for (i, field) in enumerate(model_fields)
-        Gⁿ = model.timestepper.Gⁿ[i]
-        G⁻ = model.timestepper.G⁻[i]
 
-        field_event = step_field_kernel!(field, Δt, χ, Gⁿ, G⁻, dependencies=Event(device(model.architecture)))
+        field_event = step_field_kernel!(field, Δt, χ,
+                                         model.timestepper.Gⁿ[i],
+                                         model.timestepper.G⁻[i],
+                                         dependencies=Event(device(model.architecture)))
 
         push!(events, field_event)
     end

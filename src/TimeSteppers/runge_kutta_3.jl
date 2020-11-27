@@ -130,10 +130,11 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     events = []
 
     for (i, field) in enumerate(model_fields)
-        Gⁿ = model.timestepper.Gⁿ[i]
-        G⁻ = model.timestepper.G⁻[i]
 
-        field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, dependencies=barrier)
+        field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
+                                            model.timestepper.Gⁿ[i],
+                                            model.timestepper.G⁻[i],
+                                            dependencies=barrier)
 
         push!(events, field_event)
     end
