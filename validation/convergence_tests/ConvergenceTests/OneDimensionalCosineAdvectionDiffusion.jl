@@ -71,7 +71,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                 u = (x, y, z) -> c(y, x, z, 0, U, κ),
                 c = (x, y, z) -> c(y, x, z, 0, U, κ))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, schedule=IterationInterval(stop_iteration))
 
     @info "Running 1D in y cosine advection diffusion test for u and cy with Ny = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
