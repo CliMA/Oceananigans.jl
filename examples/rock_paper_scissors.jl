@@ -24,7 +24,7 @@ N² = 1e-5
 
 Qb(x, y, t, p) = p.Q₀ + p.QΔ * cos(2π * t / p.τ)
 
-b_top_bc = FluxBoundaryCondition(Qb, parameters=(Q₀=0, QΔ=3e-8, τ=24hours))
+b_top_bc = FluxBoundaryCondition(Qb, parameters=(Q₀=0, QΔ=5e-8, τ=24hours))
 b_bot_bc = GradientBoundaryCondition(N²)
 
 b_bcs  = TracerBoundaryConditions(grid, top=b_top_bc, bottom=b_bot_bc)
@@ -33,7 +33,7 @@ b_bcs  = TracerBoundaryConditions(grid, top=b_top_bc, bottom=b_bot_bc)
 
 # # Lagrangian microbes
 
-using StructArrays
+using StructArrays, NearestNeighbors
 
 @enum Species Rock Paper Scissors
 display(Species)
@@ -48,7 +48,7 @@ end
 import Base: convert
 convert(::Type{Float32}, s::Species) = Float32(Int(s))
 
-n_microbes = 100
+n_microbes = 10000
 
 x₀ = Lx * rand(n_microbes)
 y₀ = Ly * rand(n_microbes)
@@ -58,6 +58,49 @@ s₀ = rand(instances(Species), n_microbes)
 microbes = StructArray{Microbe}((x₀, y₀, z₀, s₀))
 
 particles = LagrangianParticles(microbes, 0.5)
+
+function rock_paper_scissors!(microbes, i, j)
+    sᵢ, sⱼ = microbes[i].species, microbes[j].species
+
+    if sᵢ == Rock && sⱼ == Paper
+        microbes.species[i] = Paper
+    elseif sᵢ == Rock && sⱼ == Scissors
+        microbes.species[j] = Rock
+    elseif sᵢ == Paper && sⱼ == Rock
+        microbes.species[j] = Paper
+    elseif sᵢ == Paper && sⱼ == Scissors
+        microbes.species[i] = Scissors
+    elseif sᵢ == Scissors && sⱼ == Rock
+        microbes.species[i] = Rock
+    elseif sᵢ == Scissors && sⱼ == Paper
+        microbes.species[j] = Scissors
+    end
+
+    return nothing
+end
+
+function microbe_interactions!(microbes; r=1)
+    positions = cat(microbes.x', microbes.y', microbes.z', dims=1)
+    tree = KDTree(positions)
+
+    pairs = Set{Tuple{Int,Int}}()
+    for (m, microbe) in enumerate(microbes)
+        p = [microbe.x, microbe.y, microbe.z]
+        nearby_microbes_inds = inrange(tree, p, r)
+
+        for n in nearby_microbes_inds
+            push!(pairs, minmax(m, n))
+        end
+    end
+
+    @info "Playing out $(length(pairs)) microbe interactions..."
+
+    for pair in pairs
+        rock_paper_scissors!(microbes, pair...)
+    end
+
+    return nothing
+end
 
 # # Model setup
 
@@ -88,6 +131,8 @@ using Oceananigans.Utils: prettytime, second, seconds, hours
 
 function print_progress(simulation)
     model = simulation.model
+
+    microbe_interactions!(microbes, r=0.5)
 
     @info @sprintf("iteration: %04d, time: %s, Δt: %s",
                    model.clock.iteration,
@@ -155,16 +200,27 @@ ds_particles = NCDstack("lagrangian_microbes.nc")
 x, y, z = ds_particles[:x], ds_particles[:y], ds_particles[:z]
 species = ds_particles[:species] .|> Int .|> Species
 
+function particle_color(s::Species)
+    s == Rock     && return "red"
+    s == Paper    && return "green"
+    s == Scissors && return "blue"
+end
+
 anim = @animate for n in 1:Nt
     @info "Plotting particles frame $n/$Nt..."
 
-    s_plot = scatter(x[Ti=n], y[Ti=n], z[Ti=n], label="", xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0),
+    xₙ = x[particleid=1:1000, Ti=n]
+    yₙ = y[particleid=1:1000, Ti=n]
+    zₙ = z[particleid=1:1000, Ti=n]
+
+    s_plot = scatter(xₙ, yₙ, zₙ, color=particle_color.(sₙ), label="",
+                     xlim=(0, 100), ylim=(0, 100), zlim=(-50, 0),
                      title="Lagrangian microbe locations: $(prettytime(times[n]))")
 
     h_plot = histogram(z[Ti=n], linewidth=0, orientation=:horizontal, normalize=true, bins=range(-50, 0, length=25),
                        xlabel="p(z)", ylabel="z", label="", title="", xlims=(0, 0.2), ylims=(-50, 0))
 
-    plot(s_plot, h_plot, size=(1600, 900), layout = Plots.grid(1, 2, widths=[0.75, 0.25]))
+    plot(s_plot, h_plot, size=(1600, 900), layout=Plots.grid(1, 2, widths=[0.75, 0.25]))
 end
 
 mp4(anim, "particles.mp4", fps=15)
