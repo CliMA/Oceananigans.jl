@@ -71,7 +71,7 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
     artifact_paths:
-      - "point_exponential_decay_time_stepper_convergence.png"
+      - "validation/convergence_tests/point_exponential_decay_time_stepper_convergence.png"
 
   - label: "⚽ cpu point exponential decay"
     env:
@@ -85,7 +85,7 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
     artifact_paths:
-      - "point_exponential_decay_time_stepper_convergence.png"
+      - "validation/convergence_tests/point_exponential_decay_time_stepper_convergence.png"
 
   - wait: ~
     continue_on_failure: true
