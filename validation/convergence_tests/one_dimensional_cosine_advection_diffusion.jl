@@ -1,18 +1,20 @@
-# "Cosine advection-diffusion" Spatial resolution convergence test
+if ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    pkg"build PyCall"
+end
 
 using Test
+using CUDA
 using PyPlot
 using Oceananigans.Grids
 
-# Define a few utilities for running tests and unpacking and plotting results
-include("ConvergenceTests/ConvergenceTests.jl")
-
-using .ConvergenceTests
-using .ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test
-using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!, unpack_errors
+using ConvergenceTests
+using ConvergenceTests.OneDimensionalCosineAdvectionDiffusion: run_test
+using ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!, unpack_errors
 
 """ Run advection-diffusion test for all Nx in resolutions. """
-function run_convergence_test(κ, U, resolutions)
+function run_convergence_test(κ, U, resolutions, arch)
 
     # Determine safe time-step
              Lx = 2π
@@ -25,7 +27,8 @@ function run_convergence_test(κ, U, resolutions)
                 Δt = stop_time / stop_iteration
 
     # Run the tests
-    results = [run_test(Nx=Nx, Δt=Δt, stop_iteration=stop_iteration, U=U, κ=κ) for Nx in resolutions]
+    results = [run_test(architecture=arch, Nx=Nx, Δt=Δt, stop_iteration=stop_iteration, U=U, κ=κ)
+               for Nx in resolutions]
 
     return results
 end
@@ -34,10 +37,12 @@ end
 ##### Run test
 #####
 
+arch = CUDA.has_cuda() ? GPU() : CPU()
+
 Nx = 2 .^ (3:7) # N = 8 through N = 256
-diffusion_results = run_convergence_test(1e-1, 0, Nx)
-advection_results = run_convergence_test(1e-6, 3, Nx)
-advection_diffusion_results = run_convergence_test(1e-2, 1, Nx)
+diffusion_results = run_convergence_test(1e-1, 0, Nx, arch)
+advection_results = run_convergence_test(1e-6, 3, Nx, arch)
+advection_diffusion_results = run_convergence_test(1e-2, 1, Nx, arch)
 
 #####
 ##### Plot solution and error profile
@@ -63,7 +68,9 @@ fig, axs = subplots()
 
 legend = plot_error_convergence!(axs, Nx, all_results, names)
 
-filepath = joinpath(@__DIR__, "figs", "cosine_advection_diffusion_error_convergence.png")
+filename = "cosine_advection_diffusion_error_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480, bbox_extra_artists=(legend,), bbox_inches="tight")
 
 # Test rate of convergence

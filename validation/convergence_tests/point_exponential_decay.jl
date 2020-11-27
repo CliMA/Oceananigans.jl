@@ -1,6 +1,8 @@
-ENV["PYTHON"] = ""
-using Pkg
-pkg"build PyCall"
+if ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    pkg"build PyCall"
+end
 
 using CUDA
 using PyPlot
@@ -41,8 +43,8 @@ rk3_L₁ = unpack_errors(rk3_results)
 
 fig, axs = subplots()
 
-loglog(Δt, ab2_L₁, "o--", alpha=0.8, linewidth=1, label="Measured error, Quasi-second-order Adams-Bashforth")
-loglog(Δt, rk3_L₁, "^-.", alpha=0.8, linewidth=1, label="Measured error, Third-order Runge-Kutta")
+loglog(Δt, ab2_L₁, "o--", alpha=0.8, linewidth=1, label="Quasi-second-order Adams-Bashforth")
+loglog(Δt, rk3_L₁, "^-.", alpha=0.8, linewidth=1, label="Third-order Runge-Kutta")
 
 # Guide line to confirm second-order scaling
 loglog(Δt, ab2_L₁[1] .* Δt / Δt[1], "k-", alpha=0.4, linewidth=2, label=L"\sim \Delta t")
@@ -54,7 +56,8 @@ title("Oceananigans time-stepper convergence for \$ c(t) = \\mathrm{e}^{-t} \$")
 removespines("top", "right")
 legend()
 
-filepath = joinpath(@__DIR__, "figs", "point_exponential_decay_time_stepper_convergence.png")
+filename = "point_exponential_decay_time_stepper_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
 mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
