@@ -1,9 +1,18 @@
+if ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    Pkg.build("PyCall")
+end
+
 using Printf
 using Glob
 using PyPlot
+using Oceananigans
 
 using ConvergenceTests
 using ConvergenceTests.ForcedFlowFixedSlip: u
+
+arch = CUDA.has_cuda() ? GPU() : CPU()
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
@@ -27,7 +36,6 @@ close("all")
 fig, ax = subplots()
 
 for j = 1:2
-
     filenames = filenameses[j]
     errors = errorses[j]
     sizes = sizeses[j]
@@ -67,7 +75,9 @@ ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}
 removespines("top", "right")
 title("Convergence for forced fixed slip")
 
-filepath = joinpath(@__DIR__, "figs", "forced_fixed_slip_convergence.png")
+filename = "forced_fixed_slip_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
 for (label, error) in zip(labels, errorses)

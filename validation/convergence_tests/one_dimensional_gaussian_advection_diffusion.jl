@@ -4,6 +4,8 @@ if ENV["CI"] == "true"
     Pkg.build("PyCall")
 end
 
+using Test
+using CUDA
 using PyPlot
 using Oceananigans.Advection
 

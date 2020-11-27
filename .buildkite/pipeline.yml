@@ -79,7 +79,7 @@ steps:
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "point_exponential_decay"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"PYTHON\"]=\"\"; using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -111,7 +111,7 @@ steps:
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "cosine_advection_diffusion"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"PYTHON\"]=\"\"; using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -143,7 +143,7 @@ steps:
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "gaussian_advection_diffusion"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"PYTHON\"]=\"\"; using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -155,7 +155,7 @@ steps:
 ##### 2D Diffusion
 #####
 
-  - label: "🌋 gpu gaussian advection-diffusion"
+  - label: "☀️ gpu diffusion"
     env:
       PYTHON: ""
       TEST_GROUP: "convergence"
@@ -169,13 +169,109 @@ steps:
     artifact_paths:
       - "validation/convergence_tests/figs/*"
 
-  - label: "⛰️ cpu gaussian advection-diffusion"
+  - label: "🔥 cpu diffusion"
     env:
       PYTHON: ""
       TEST_GROUP: "convergence"
       VALIDATION_TEST: "diffusion"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"PYTHON\"]=\"\"; using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+#####
+##### 2D Taylor-Green
+#####
+
+  - label: "🌀 gpu taylor-green"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "taylor_green"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+  - label: "🌪️ cpu taylor-green"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "taylor_green"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+#####
+##### Forced flow free slip
+#####
+
+  - label: "🏒 gpu forced flow free slip"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "forced_free_slip"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+  - label: "⛸️ cpu forced flow free slip"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "forced_free_slip"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+#####
+##### Forced flow fixed slip
+#####
+
+  - label: "🛋️ gpu forced flow fixed slip"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "forced_fixed_slip"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+  - label: "💺 cpu forced flow fixed slip"
+    env:
+      PYTHON: ""
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "forced_fixed_slip"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU

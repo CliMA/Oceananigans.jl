@@ -4,6 +4,7 @@ if ENV["CI"] == "true"
     Pkg.build("PyCall")
 end
 
+using CUDA
 using PyPlot
 using Oceananigans.Grids
 

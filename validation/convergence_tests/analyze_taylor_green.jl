@@ -1,15 +1,22 @@
+if ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    Pkg.build("PyCall")
+end
+
 using PyPlot
 using Glob
 using JLD2
+using Oceananigans
+
+using ConvergenceTests
+using ConvergenceTests: compute_errors, extract_sizes
+
+arch = CUDA.has_cuda() ? GPU() : CPU()
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
-
-include("ConvergenceTests/ConvergenceTests.jl")
-
-using .ConvergenceTests
-using .ConvergenceTests: compute_errors, extract_sizes
 
 filenames = glob("taylor_green*.jld2", joinpath(@__DIR__, "data"))
 
@@ -37,7 +44,9 @@ removespines("top", "right")
 ylabel("Norms of the absolute error, \$ | u_\\mathrm{simulation} - u_\\mathrm{analytical} | \$")
 xlabel(L"N_x")
 
-filepath = joinpath(@__DIR__, "figs", "taylor_green_convergence.png")
+filename = "taylor_green_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
 test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name="Taylor-Green L₁")
