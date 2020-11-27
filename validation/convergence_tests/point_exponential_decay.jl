@@ -55,6 +55,7 @@ removespines("top", "right")
 legend()
 
 filepath = joinpath(@__DIR__, "figs", "point_exponential_decay_time_stepper_convergence.png")
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
 test_rate_of_convergence(ab2_L₁, Δt, Ntest=Δt[2], expected=1.0, atol=0.01)
