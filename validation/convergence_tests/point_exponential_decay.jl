@@ -1,3 +1,5 @@
+ENV["PYTHON"] = ""
+
 using CUDA
 using PyPlot
 using Oceananigans
