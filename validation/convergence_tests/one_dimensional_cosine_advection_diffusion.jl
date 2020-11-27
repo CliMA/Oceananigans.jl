@@ -1,7 +1,7 @@
 if ENV["CI"] == "true"
     ENV["PYTHON"] = ""
     using Pkg
-    pkg"build PyCall"
+    Pkg.build("PyCall")
 end
 
 using Test

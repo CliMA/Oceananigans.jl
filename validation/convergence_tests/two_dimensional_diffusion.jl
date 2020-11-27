@@ -1,19 +1,23 @@
-using Oceananigans.Grids
+if ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    Pkg.build("PyCall")
+end
 
 using PyPlot
+using Oceananigans.Grids
 
-include("ConvergenceTests/ConvergenceTests.jl")
-
-using .ConvergenceTests
-using .ConvergenceTests.TwoDimensionalDiffusion: run_and_analyze
+using ConvergenceTests
+using ConvergenceTests.TwoDimensionalDiffusion: run_and_analyze
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
 removespines(sides...) = [removespine(side) for side in sides]
 
-function convergence_test(Nx, Δt, stop_iteration, topo)
-    results = [run_and_analyze(Nx=N, Δt=Δt, stop_iteration=stop_iteration, topo=topo,
-                               output=false) for N in Nx]
+function convergence_test(Nx, Δt, stop_iteration, arch, topo)
+
+    results = [run_and_analyze(architecture=arch, Nx=N, Δt=Δt, stop_iteration=stop_iteration,
+                               topo=topo, output=false) for N in Nx]
 
     L₁ = map(r -> r.L₁, results)
     L∞ = map(r -> r.L∞, results)
@@ -22,6 +26,7 @@ function convergence_test(Nx, Δt, stop_iteration, topo)
 end
 
 # Setup and run simulations
+arch = CUDA.has_cuda() ? GPU() : CPU()
 Nx = [8, 16, 32, 64, 128, 256]
 stop_time = 1e-4
 
@@ -31,13 +36,14 @@ stop_time = 1e-4
 stop_iteration = round(Int, stop_time / proposal_Δt)
             Δt = stop_time / stop_iteration # ensure time-stepping to exact finish time.
 
-topologies = (
-              (Periodic, Periodic, Bounded),
-              (Periodic, Bounded, Bounded),
-              (Bounded, Bounded, Bounded)
-             )
+all_topologies = ((Periodic, Periodic, Periodic),
+                  (Periodic, Periodic, Bounded),
+                  (Periodic, Bounded,  Bounded),
+                  (Bounded,  Bounded,  Bounded))
 
-errors = [convergence_test(Nx, Δt, stop_iteration, topo) for topo in topologies]
+topologies = arch isa CPU ? all_topologies : all_topologies[1:3]
+
+errors = [convergence_test(Nx, Δt, stop_iteration, arch, topo) for topo in topologies]
 
 fig, axs = subplots()
 
@@ -60,7 +66,9 @@ title("Two dimensional diffusion convergence test")
 removespines("top", "right")
 legend(loc="upper right")
 
-filepath = joinpath(@__DIR__, "figs", "two_dimensional_diffusion_convergence.png")
+filename = "two_dimensional_diffusion_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
 for (itopo, topo) in enumerate(topologies)
