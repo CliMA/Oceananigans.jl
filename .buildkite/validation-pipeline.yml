@@ -47,7 +47,14 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
+
+      # Force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+
+      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+      # Use Conda.jl to provide PyPlot.
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project=validation/convergence_tests/ -e 'using Pkg; Pkg.add(\"PyCall\"); ENV[\"PYTHON\"]=\"\"; Pkg.build(\"PyCall\"); using PyPlot;'"
     agents:
       queue: Oceananigans
@@ -278,13 +285,13 @@ steps:
     continue_on_failure: true
 
   - label: "🧻 clean up gpu environment"
-    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rfv $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🧹 clean up cpu environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rfv $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: CPU
