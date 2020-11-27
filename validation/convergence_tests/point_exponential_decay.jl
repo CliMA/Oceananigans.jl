@@ -1,4 +1,6 @@
 ENV["PYTHON"] = ""
+using Pkg
+pkg"build PyCall"
 
 using CUDA
 using PyPlot
