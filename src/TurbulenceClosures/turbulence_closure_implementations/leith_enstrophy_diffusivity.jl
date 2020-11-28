@@ -27,11 +27,11 @@ end
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
 Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
 
-    `νₑ = (C * Δᶠ)³ * √(ζ² + (∇h ∂z w)²)`
+    `νₑ = (C * Δᶠ)³ * √(|∇h ζ|² + (∇h ∂z w)²)`
 
 and an eddy diffusivity of the form...
 
-where `Δᶠ` is the filter width, `ζ² = (∂x v - ∂y u)²` is the squared vertical vorticity,
+where `Δᶠ` is the filter width, `ζ = (∂x v - ∂y u)` is the vertical vorticity,
 and `C` is a model constant.
 
 Keyword arguments
