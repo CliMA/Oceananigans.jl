@@ -75,7 +75,12 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     end
 
     solve_poisson_equation!(solver, grid)
-    ϕ = real(Array(solver.storage))
+
+    if arch isa GPU && topo == PBB_topo
+        ϕ = real(Array(solver.storage.storage1))
+    else
+        ϕ = real(Array(solver.storage))
+    end
 
     L¹_error = mean(abs, ϕ - Ψ.(xC, yC, zC))
 
