@@ -60,7 +60,9 @@ fig, axs = subplots(nrows=2, figsize=(12, 6), sharex=true)
 
 legends = plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 
-filepath = joinpath(@__DIR__, "figs", "cosine_advection_diffusion_solutions.png")
+filename = "cosine_advection_diffusion_solutions_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480, bbox_extra_artists=legends, bbox_inches="tight")
 
 # Error profile
@@ -78,17 +80,35 @@ for (results, name) in zip(all_results, names)
     name = "1D cosine " * name
     @info "Testing rate of convergence for $name..."
 
-    u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞  = unpack_errors(results)
+    cx_L₁, cy_L₁, cz_L₁,
+           uy_L₁, uz_L₁,
+    vx_L₁,        vz_L₁,
+    wx_L₁, wy_L₁,
+    cx_L∞, cy_L∞, cz_L∞,
+           uy_L∞, uz_L∞,
+    vx_L∞,        vz_L∞,
+    wx_L∞, wy_L∞         = unpack_errors(results)
 
-    test_rate_of_convergence(u_L₁,  Nx, expected=-2.0, atol=0.01, name=name*" u_L₁")
-    test_rate_of_convergence(v_L₁,  Nx, expected=-2.0, atol=0.01, name=name*" v_L₁")
+    test_rate_of_convergence(uy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" ux_L₁")
+    test_rate_of_convergence(uz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" uz_L₁")
+    test_rate_of_convergence(vx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" vx_L₁")
+    test_rate_of_convergence(vz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" vz_L₁")
+    test_rate_of_convergence(wx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" wx_L₁")
+    test_rate_of_convergence(wy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" wy_L₁")
     test_rate_of_convergence(cx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cx_L₁")
     test_rate_of_convergence(cy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cy_L₁")
-    test_rate_of_convergence(u_L∞,  Nx, expected=-2.0, atol=0.05, name=name*" u_L∞")
-    test_rate_of_convergence(v_L∞,  Nx, expected=-2.0, atol=0.05, name=name*" v_L∞")
-    test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=0.05, name=name*" cx_L∞")
-    test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=0.05, name=name*" cy_L∞")
+    test_rate_of_convergence(cz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cz_L₁")
 
-    @test u_L₁ ≈ v_L₁ ≈ cx_L₁ ≈ cy_L₁
-    @test u_L∞ ≈ v_L∞ ≈ cx_L∞ ≈ cy_L∞
+    test_rate_of_convergence(uy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" ux_L∞")
+    test_rate_of_convergence(uz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" uz_L∞")
+    test_rate_of_convergence(vx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" vx_L∞")
+    test_rate_of_convergence(vz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" vz_L∞")
+    test_rate_of_convergence(wx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" wx_L∞")
+    test_rate_of_convergence(wy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" wy_L∞")
+    test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cx_L∞")
+    test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cy_L∞")
+    test_rate_of_convergence(cz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cz_L∞")
+
+    @test uy_L₁ ≈ uz_L₁ ≈ vx_L₁ ≈ vz_L₁ ≈ wx_L₁ ≈ wy_L₁ ≈ cx_L₁ ≈ cy_L₁ ≈ cz_L₁
+    @test uy_L∞ ≈ uz_L∞ ≈ vx_L∞ ≈ vz_L∞ ≈ wx_L∞ ≈ wy_L∞ ≈ cx_L∞ ≈ cy_L∞ ≈ cz_L∞
 end

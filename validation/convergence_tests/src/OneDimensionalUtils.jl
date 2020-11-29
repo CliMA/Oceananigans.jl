@@ -116,15 +116,15 @@ function plot_error_convergence!(axs, Nx, all_results, names)
         u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞ = unpack_errors(results)
 
         common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
-        loglog(Nx,  u_L₁; basex=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
-        loglog(Nx,  v_L₁; basex=2, marker="2", label="\$L_1\$-norm, \$v\$ $name", common_kwargs...)
-        loglog(Nx, cx_L₁; basex=2, marker="*", label="\$L_1\$-norm, \$x\$ tracer $name", common_kwargs...)
-        loglog(Nx, cy_L₁; basex=2, marker="+", label="\$L_1\$-norm, \$y\$ tracer $name", common_kwargs...)
+        loglog(Nx,  u_L₁; base=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
+        loglog(Nx,  v_L₁; base=2, marker="2", label="\$L_1\$-norm, \$v\$ $name", common_kwargs...)
+        loglog(Nx, cx_L₁; base=2, marker="*", label="\$L_1\$-norm, \$x\$ tracer $name", common_kwargs...)
+        loglog(Nx, cy_L₁; base=2, marker="+", label="\$L_1\$-norm, \$y\$ tracer $name", common_kwargs...)
 
-        loglog(Nx,  u_L∞; basex=2, marker="1", label="\$L_\\infty\$-norm, \$u\$ $name", common_kwargs...)
-        loglog(Nx,  v_L∞; basex=2, marker="_", label="\$L_\\infty\$-norm, \$v\$ $name", common_kwargs...)
-        loglog(Nx, cx_L∞; basex=2, marker="^", label="\$L_\\infty\$-norm, \$x\$ tracer $name", common_kwargs...)
-        loglog(Nx, cy_L∞; basex=2, marker="s", label="\$L_\\infty\$-norm, \$y\$ tracer $name", common_kwargs...)
+        loglog(Nx,  u_L∞; base=2, marker="1", label="\$L_\\infty\$-norm, \$u\$ $name", common_kwargs...)
+        loglog(Nx,  v_L∞; base=2, marker="_", label="\$L_\\infty\$-norm, \$v\$ $name", common_kwargs...)
+        loglog(Nx, cx_L∞; base=2, marker="^", label="\$L_\\infty\$-norm, \$x\$ tracer $name", common_kwargs...)
+        loglog(Nx, cy_L∞; base=2, marker="s", label="\$L_\\infty\$-norm, \$y\$ tracer $name", common_kwargs...)
     end
 
     # Guide line to confirm second-order scaling
