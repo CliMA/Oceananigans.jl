@@ -6,8 +6,9 @@ using Statistics
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
+using Oceananigans.Fields: interiorparent
 
-include("analysis.jl")
+using ConvergenceTests: compute_error
 
 # Advection and diffusion of a cosine.
 c(x, y, z, t, U, κ) = exp(-κ * t) * cos(x - U * t)
@@ -16,7 +17,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
                   architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = CenteredSecondOrder())
 
     #####
-    ##### Test cx and v-advection
+    ##### Test advection-diffusion in the x-direction
     #####
 
     domain = (x=(0, 2π), y=(0, 1), z=(0, 1))
@@ -45,20 +46,17 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     c_analytical = c.(x, 0, 0, model.clock.time, U, κ)
 
     # Calculate errors
-    vx_simulation = model.velocities.v
-    vx_simulation = Array(interior(vx_simulation))[:, 1, 1]
+    vx_simulation = interiorparent(model.velocities.v)[:, 1, 1] |> Array
     vx_errors = compute_error(vx_simulation, c_analytical)
 
-    wx_simulation = model.velocities.w
-    wx_simulation = Array(interior(wx_simulation))[:, 1, 1]
+    wx_simulation = interiorparent(model.velocities.w)[:, 1, 1] |> Array
     wx_errors = compute_error(wx_simulation, c_analytical)
 
-    cx_simulation = model.tracers.c
-    cx_simulation = Array(interior(cx_simulation))[:, 1, 1]
+    cx_simulation = interiorparent(model.tracers.c)[:, 1, 1] |> Array
     cx_errors = compute_error(cx_simulation, c_analytical)
 
     #####
-    ##### Test cy and u-advection
+    ##### Test advection-diffusion in the y-direction
     #####
 
     ydomain = (x=(0, 1), y=(0, 2π), z=(0, 1))
@@ -84,20 +82,17 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     run!(simulation)
 
     # Calculate errors
-    uy_simulation = model.velocities.u
-    uy_simulation = Array(interior(uy_simulation))[1, :, 1]
+    uy_simulation = interiorparent(model.velocities.u)[1, :, 1] |> Array
     uy_errors = compute_error(uy_simulation, c_analytical)
 
-    wy_simulation = model.velocities.w
-    wy_simulation = Array(interior(wy_simulation))[1, :, 1]
+    wy_simulation = interiorparent(model.velocities.w)[1, :, 1] |> Array
     wy_errors = compute_error(wy_simulation, c_analytical)
 
-    cy_simulation = model.tracers.c
-    cy_simulation = Array(interior(cy_simulation))[1, :, 1]
+    cy_simulation = interiorparent(model.tracers.c)[1, :, 1] |> Array
     cy_errors = compute_error(cy_simulation, c_analytical)
 
     #####
-    ##### Test cz and w-advection
+    ##### Test advection-diffusion in the z-direction
     #####
 
     zdomain = (x=(0, 1), y=(0, 1), z=(0, 2π))
@@ -123,16 +118,13 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     run!(simulation)
 
     # Calculate errors
-    uz_simulation = model.velocities.u
-    uz_simulation = Array(interior(uz_simulation))[1, 1, :]
+    uz_simulation = interiorparent(model.velocities.u)[1, 1, :] |> Array
     uz_errors = compute_error(uz_simulation, c_analytical)
 
-    vz_simulation = model.velocities.v
-    vz_simulation = Array(interior(vz_simulation))[1, 1, :]
+    vz_simulation = interiorparent(model.velocities.v)[1, 1, :] |> Array
     vz_errors = compute_error(vz_simulation, c_analytical)
 
-    cz_simulation = model.tracers.c
-    cz_simulation = Array(interior(cz_simulation))[1, 1, :]
+    cz_simulation = interiorparent(model.tracers.c)[1, 1, :] |> Array
     cz_errors = compute_error(cz_simulation, c_analytical)
 
     return (
