@@ -58,6 +58,24 @@ end
 k²(::Type{Bounded}, n) = (n/2)^2
 k²(::Type{Periodic}, n) = n^2
 
+using Oceananigans.Solvers: permute_index, unpermute_index
+
+@kernel function permute_indices!(dst, src, solver_type, arch, grid)
+    i, j, k = @index(Global, NTuple)
+
+    i′, j′, k′ = permute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
+
+    @inbounds dst[i′, j′, k′] = src[i, j, k]
+end
+
+@kernel function unpermute_indices!(dst, src, solver_type, arch, grid)
+    i, j, k = @index(Global, NTuple)
+
+    i′, j′, k′ = unpermute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
+
+    @inbounds dst[i′, j′, k′] = src[i, j, k]
+end
+
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
@@ -69,18 +87,27 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     f(x, y, z) = -(k²(Tx, mode) + k²(Ty, mode) + k²(Tz, mode)) * Ψ(x, y, z)
 
     if arch isa GPU && topo == PBB_topo
-        solver.storage.storage1 .= convert(array_type(arch), f.(xC, yC, zC))
+        storage = solver.storage.storage1
     else
-        solver.storage .= convert(array_type(arch), f.(xC, yC, zC))
+        storage = solver.storage
     end
+
+    buffer = similar(storage)
+    buffer .= convert(array_type(arch), f.(xC, yC, zC))
+
+    event = launch!(arch, grid, :xyz,
+                    permute_indices!, storage, buffer, solver.type, arch, grid,
+                    dependencies = Event(device(arch)))
+    wait(device(arch), event)
 
     solve_poisson_equation!(solver, grid)
 
-    if arch isa GPU && topo == PBB_topo
-        ϕ = real(Array(solver.storage.storage1))
-    else
-        ϕ = real(Array(solver.storage))
-    end
+    event = launch!(arch, grid, :xyz,
+                    unpermute_indices!, buffer, storage, solver.type, arch, grid,
+                    dependencies = Event(device(arch)))
+    wait(device(arch), event)
+
+    ϕ = real(Array(buffer))
 
     L¹_error = mean(abs, ϕ - Ψ.(xC, yC, zC))
 
