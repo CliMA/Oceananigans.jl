@@ -1,6 +1,6 @@
 using Glob
 
-using Oceananigans.Utils: initialize_schedule!, time_to_next_action
+using Oceananigans.Utils: initialize_schedule!, align_time_step
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
