@@ -65,28 +65,22 @@ get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
+set_Δt!(simulation, dt) = (simulation.Δt = dt)
+set_Δt!(simulation::Simulation{M,<:TimeStepWizard}, dt) where M = set_Δt!(simulation.wizard, dt)
+
 ab2_or_rk3_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
 ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
 
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
-function align_time_step(sim)
+function align_time_step!(sim)
     clock = sim.model.clock
 
     # Align time step with output writing
-    if length(sim.output_writers) > 0
-        times_to_next_outputs = [time_to_next_action(writer.schedule, clock) for writer in values(sim.output_writers)]
-        times_to_next_outputs = filter(!ismissing, times_to_next_outputs)
-
-        if length(times_to_next_outputs) > 0
-            time_to_next_output = minimum(times_to_next_outputs)
-            Δt = min(get_Δt(sim.Δt), time_to_next_output)
-        else
-            Δt = get_Δt(sim.Δt)
-        end
-    else
-        Δt = get_Δt(sim.Δt)
+    Δt = get_Δt(sim)
+    for writer in values(sim.output_writers)
+        Δt = align_time_step(writer.schedule, clock, Δt)
     end
 
     # Align time step with simulation stop time
@@ -94,7 +88,9 @@ function align_time_step(sim)
         Δt = sim.stop_time - clock.time
     end
 
-    return Δt
+    set_Δt!(simulation, Δt)
+
+    return nothing
 end
 
 """
@@ -162,12 +158,13 @@ function run!(sim; pickup=false)
             [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
         end
 
+        # Ensure that the simulation doesn't iterate past `stop_iteration`.
         iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
 
         for n in 1:iterations
-            Δt = align_time_step(sim)
+            align_time_step!(simulation)
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
-            ab2_or_rk3_time_step!(model, Δt, euler=euler)
+            ab2_or_rk3_time_step!(model, get_Δt(simulation), euler=euler)
 
             # Run diagnostics, then write output
             [  diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]

@@ -9,9 +9,9 @@ abstract type AbstractSchedule end
 
 initialize_schedule!(schedule) = nothing # fallback
 
-# In general, we don't know how much model clock time until the next action.
-# We can only tell if schedule::TimeInterval.
-time_to_next_action(schedule, clock) = missing
+# In general there is no alignment to be done.
+# We can only align if schedule::TimeInterval.
+align_time_step(schedule, clock, Δt) = Δt
 
 #####
 ##### TimeInterval
@@ -52,7 +52,8 @@ function (schedule::TimeInterval)(model)
 
 end
 
-time_to_next_action(schedule::TimeInterval, clock) = schedule.previous_actuation_time + schedule.interval - clock.time
+align_time_step(schedule::TimeInterval, clock, Δt) =
+    min(Δt, schedule.previous_actuation_time + schedule.interval - clock.time)
 
 #####
 ##### IterationInterval
