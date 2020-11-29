@@ -1,9 +1,10 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
-using Bibliography
+using DocumenterCitations
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
+
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Grids
@@ -14,11 +15,7 @@ using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-const BIBLIOGRAPHY = import_bibtex(bib_filepath)
-@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
-
-include("bibliography.jl")
-include("citations.jl")
+bib = CitationBibliography(bib_filepath)
 
 #####
 ##### Generate examples
@@ -135,7 +132,7 @@ format = Documenter.HTML(
         canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
-makedocs(
+makedocs(bib,
   sitename = "Oceananigans.jl",
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
     format = format,
