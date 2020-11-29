@@ -200,6 +200,11 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[i_slice, j_slice, k_slice])
     @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[i_slice, j_slice, k_slice])
     @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[i_slice, j_slice, k_slice])
+
+    rm(nc_filepath)
+    rm(nc_sliced_filepath)
+
+    return nothing
 end
 
 function run_thermal_bubble_netcdf_tests_with_halos(arch)
@@ -224,6 +229,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
                                    filepath=nc_filepath,
                                    schedule=IterationInterval(10),
                                    field_slicer=FieldSlicer(with_halos=true))
+
     push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
@@ -287,6 +293,10 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test all(w .≈ Array(model.velocities.w.data.parent))
     @test all(T .≈ Array(model.tracers.T.data.parent))
     @test all(S .≈ Array(model.tracers.S.data.parent))
+
+    rm(nc_filepath)
+
+    return nothing
 end
 
 function run_netcdf_function_output_tests(arch)
@@ -435,6 +445,8 @@ function run_netcdf_function_output_tests(arch)
     end
 
     close(ds)
+
+    rm(nc_filepath)
 
     return nothing
 end
@@ -826,6 +838,8 @@ function run_dependency_adding_tests(model)
 
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
+    rm("test.nc")
+
     return nothing
 end
 
@@ -843,9 +857,9 @@ function run_windowed_time_averaging_simulation_tests!(model)
                                              force = true)
 
                                           # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
-    nc_filepath = "windowed_time_average_test1.nc"
+    nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath1,
                                           schedule = AveragedTimeInterval(π, window=1))
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
@@ -897,15 +911,18 @@ function run_windowed_time_averaging_simulation_tests!(model)
                                                           prefix = "test",
                                                            force = true)
 
-    nc_filepath = "windowed_time_average_test2.nc"
+    nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath2,
                                                         schedule=AveragedTimeInterval(π, window=π))
 
     run!(simulation)
 
     @test simulation.output_writers[:jld2].outputs.u.schedule.collecting
     @test simulation.output_writers[:nc].outputs["w"].schedule.collecting
+
+    rm(nc_filepath1)
+    rm(nc_filepath2)
 
     return nothing
 end
@@ -1045,6 +1062,9 @@ function run_netcdf_time_averaging_tests(arch)
     end
 
     close(ds)
+
+    rm(horizontal_average_nc_filepath)
+    rm(time_average_nc_filepath)
 
     return nothing
 end
