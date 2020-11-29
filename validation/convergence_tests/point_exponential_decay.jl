@@ -1,4 +1,4 @@
-if ENV["CI"] == "true"
+if haskey(ENV, "CI") && ENV["CI"] == "true"
     ENV["PYTHON"] = ""
     using Pkg
     Pkg.build("PyCall")
